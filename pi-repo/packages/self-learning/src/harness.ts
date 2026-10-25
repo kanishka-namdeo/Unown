@@ -116,7 +116,7 @@ Propose the memory patch.`,
 export interface CycleResult {
         id: string;
         taskId: string;
-        status: "improved" | "no-fix" | "already-passing" | "error";
+        status: "improved" | "no-fix" | "already-passing" | "error" | "quarantined";
         iterations: number;
         baselineRunId: string;
         improvementIds: string[];
@@ -176,6 +176,59 @@ export type CycleTriggerGuard =
                         retryInMs?: number;
                         cooldownMs?: number;
                 };
+
+// ---------------------------------------------------------------------------
+// Capability quarantine — the unsolvable-task circuit breaker (2026-10-25)
+// ---------------------------------------------------------------------------
+
+export const CAPABILITY_QUARANTINE_AFTER = 6;
+
+/** The streak threshold, read at CALL time (the llm.ts bridgeUrl() pattern): tests toggle env per case. 0 disables. */
+export function capabilityQuarantineAfter(): number {
+        // `Number("")` is 0, NOT NaN — an unset/empty env var must fall back to
+        // the default, never disable the breaker (the same trap mint.ts's
+        // MAX_ACTIVE_MINTED comment pins: `.env.example` ships EMPTY values).
+        const raw = process.env.UNOWN_CAPABILITY_QUARANTINE_AFTER;
+        if (raw === undefined || raw === "") return CAPABILITY_QUARANTINE_AFTER;
+        const n = Number(raw);
+        if (!Number.isFinite(n) || n < 0) return CAPABILITY_QUARANTINE_AFTER;
+        return Math.floor(n);
+}
+
+/**
+ * Quarantine a minted capability eval after N consecutive FAILED baselines
+ * with zero passes. Exported for unit tests — runCycle calls it right after a
+ * failed baseline is recorded. Defense in depth behind the mint solvability
+ * gate: anything that slips past (or degrades later — environment drift, an
+ * upstream model change that makes a once-solvable task unreachable) gets
+ * deactivated instead of starving every other learning target forever.
+ */
+export function quarantineCheck(taskId: string): { quarantined: boolean; reason?: string } {
+        const threshold = capabilityQuarantineAfter();
+        if (threshold === 0) return { quarantined: false };
+        const task = store.get<{ origin: string | null; status: string | null; active: number; pass_count: number }>(
+                `SELECT origin, status, active, pass_count FROM tasks WHERE id = ?`,
+                [taskId],
+        );
+        if (!task || task.active !== 1) return { quarantined: false };
+        if ((task.origin ?? "seed") !== "minted" || (task.status ?? "regression") !== "capability") return { quarantined: false };
+        // A pass ever recorded means the task WAS solvable (and graduateTask has
+        // already flipped it to regression status anyway) — never quarantine.
+        if ((task.pass_count ?? 0) > 0) return { quarantined: false };
+        const recent = store.query<{ status: string }>(
+                `SELECT status FROM runs WHERE task_id = ? AND kind IN ('baseline','candidate') ORDER BY started_at DESC LIMIT ?`,
+                [taskId, threshold],
+        );
+        if (recent.length < threshold) return { quarantined: false };
+        // Only an unbroken wall of genuine failures quarantines; an 'error'
+        // (infra) run breaks the streak — it says nothing about solvability.
+        if (recent.some((r) => r.status !== "failed")) return { quarantined: false };
+        store.run(`UPDATE tasks SET active = 0, status = 'quarantined' WHERE id = ?`, [taskId]);
+        const reason = `${threshold} consecutive failed baselines and never passed — quarantined as unsolvable/unreachable (mint solvability gate net; UNOWN_CAPABILITY_QUARANTINE_AFTER to tune, 0 disables)`;
+        emit("task:quarantined", { id: taskId, consecutiveFailures: threshold });
+        console.log(`[harness] task ${taskId} quarantined — ${reason}`);
+        return { quarantined: true, reason };
+}
 
 export function cycleTriggerGuard(taskId: string, opts: { force?: boolean; now?: number } = {}): CycleTriggerGuard {
         const force = opts.force ?? false;
@@ -332,6 +385,34 @@ export async function runCycle(taskId: string, opts: { maxIterations?: number } 
                         };
                 }
                 store.run(`UPDATE tasks SET fail_count = fail_count + 1 WHERE id = ?`, [taskId]);
+
+                // ---- Capability quarantine (the unsolvable-task circuit breaker) ----
+                // A failing capability eval is either the learning target (good) or an
+                // impossible task that slipped past the mint solvability gate (bad):
+                // pickNextTask() selects failing tasks FIRST, so a never-passing task
+                // burns one full agent run EVERY cycle and starves every real learning
+                // target. After UNOWN_CAPABILITY_QUARANTINE_AFTER consecutive failed
+                // baselines with zero passes (default 6, 0 disables), quarantine it:
+                // active=0 (selection + suite stats skip it), status='quarantined'
+                // (the dashboard says why). Infra 'error' runs break the streak — only
+                // genuine failed baselines count.
+                const quarantine = quarantineCheck(taskId);
+                if (quarantine.quarantined) {
+                        store.run(
+                                `UPDATE cycles SET status = 'quarantined', ended_at = ?, iteration = ?, summary = ? WHERE id = ?`,
+                                [Date.now(), iterations, `${quarantine.reason} — task deactivated (circuit breaker)`, cycleId],
+                        );
+                        emit("cycle:finished", { id: cycleId, taskId, status: "quarantined" });
+                        return {
+                                id: cycleId,
+                                taskId,
+                                status: "quarantined",
+                                iterations,
+                                baselineRunId: baseline.id,
+                                improvementIds,
+                                summary: quarantine.reason ?? "capability eval quarantined",
+                        };
+                }
 
                 // ---- Retention check ------------------------------------------------
                 // If a task regresses after a shipped improvement, the lesson did not

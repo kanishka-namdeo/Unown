@@ -734,6 +734,63 @@ export interface OutboxNote {
  * through ingest uncapped). Truncation, not rejection: the note's value is
  * mostly in its head. */
 const OUTBOX_CONTENT_CAP = 20_000;
+
+/** The ONE truncation marker shape for the terminal-note lane (BUG 9): every
+ *  cap site — the outbox write below, notes.ts ingestTerminalNote (the HTTP
+ *  lane's sink and the outbox drain), any future one — must append exactly
+ *  this, so the same note capped on different delivery paths is byte-identical.
+ *  The drain-side exact-content dedup (outbox.ts) compares RAW file bytes
+ *  against the STORED row: before the shared shape, the outbox path stored
+ *  `slice(0,20k) + marker` while the ingest path re-sliced to bare 20k — the
+ *  marker vanished between file and row, the dedup missed, and a note that
+ *  took both delivery paths (the budget race writes the outbox while the POST
+ *  is still in flight) was ingested TWICE. */
+export const TERMINAL_NOTE_TRUNCATION_MARKER = "\n(truncated)";
+
+/** Slice at most `n` UTF-16 code units, backing off to a codepoint boundary
+ *  (BUG 13): a plain slice(0, n) can cut BETWEEN a surrogate pair (emoji,
+ *  CJK ext-B — 4-byte UTF-8, 2 UTF-16 units), leaving a lone high surrogate
+ *  at the end of the stored text. Lone surrogates survive SQLite fine but
+ *  corrupt on every JSON round-trip downstream (SSE, dashboard, the Mem0
+ *  platform's JSON protocol) into U+FFFD replacement chars — silently
+ *  poisoning the note content the dream consolidates. Backing off ONE code
+ *  unit when the cut would orphan a high surrogate keeps every stored slice
+ *  well-formed. Shared by the three cap sites owned in this lane
+ *  (term.ts outbox, notes.ts ingest, termhooks.ts final-outcome). */
+export function sliceCodePointSafe(s: string, n: number): string {
+        if (n >= s.length) return s;
+        // A high surrogate (0xD800–0xDBFF) at position n-1 has its low-surrogate
+        // partner at n — slicing AT n orphans it. A LOW surrogate at n-1 means the
+        // pair started at n-2 and slicing at n keeps it whole. n=1 with an
+        // astral head backs off to the empty string (nothing well-formed fits).
+        if (n > 0) {
+                const boundary = s.charCodeAt(n - 1);
+                if (boundary >= 0xd800 && boundary <= 0xdbff) n -= 1;
+        }
+        return s.slice(0, n);
+}
+
+/** Cap a terminal note's content for storage/delivery: the single shape every
+ *  site in the lane produces (BUG 9 + BUG 13). Cap semantics: content at or
+ *  under the cap passes verbatim; over it, the first `cap` units (backed off
+ *  to a codepoint boundary) plus TERMINAL_NOTE_TRUNCATION_MARKER. IDempotent
+ *  by construction: an already-capped note re-entering the lane (the outbox
+ *  file re-read after a failed archive, or the delivery-budget race's second
+ *  outbox write of the same note) comes through UNCHANGED — the second cap
+ *  must never re-truncate an already-capped string, or file bytes and stored
+ *  row would diverge again and the exact-content dedup would double-ingest. */
+export function capTerminalNoteContent(content: string, cap: number = OUTBOX_CONTENT_CAP): string {
+        if (content.length <= cap) return content;
+        // Already-capped shape: bounded overshoot (cap + marker) ending in the
+        // marker. A genuine fresh note can only land here by already ending in the
+        // marker text — passing it through verbatim is harmless (it stays within
+        // the same cap+marker bound); re-truncating it would NOT be.
+        if (content.length <= cap + TERMINAL_NOTE_TRUNCATION_MARKER.length && content.endsWith(TERMINAL_NOTE_TRUNCATION_MARKER)) {
+                return content;
+        }
+        return sliceCodePointSafe(content, cap) + TERMINAL_NOTE_TRUNCATION_MARKER;
+}
+
 /** Max queued outbox files before the oldest are dropped (Sentry-style
  * maxCacheItems; 0 = unlimited). Surfaced via outboxStats(). */
 export const OUTBOX_MAX = (() => {
@@ -810,7 +867,10 @@ export function writeOutboxNote(note: OutboxNote): string {
         // found live by the outbox dedup test). A short random tail makes the
         // name unique while staying sortable and greppable.
         const name = `${Date.now()}-${randomUUID().slice(0, 6)}-${slugifyPath(note.projectPath)}.md`;
-        const content = note.content.length > OUTBOX_CONTENT_CAP ? `${note.content.slice(0, OUTBOX_CONTENT_CAP)}\n(truncated)` : note.content;
+        // BUG 9/BUG 13: the shared cap shape (capTerminalNoteContent) — the file's
+        // bytes must equal what ingestTerminalNote stores for the same note, or the
+        // drain's exact-content dedup misses and the note is ingested twice.
+        const content = capTerminalNoteContent(note.content);
         const body = `---\nproject: ${note.projectPath}\nts: ${note.ts}\n---\n${content}\n`;
         const p = join(UNOWN_OUTBOX_DIR, name);
         enforceOutboxCap();

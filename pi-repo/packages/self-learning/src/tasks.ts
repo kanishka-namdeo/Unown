@@ -9,21 +9,23 @@ import { createHash } from "node:crypto";
 import { store } from "./store.ts";
 
 export interface TaskDef {
-	id: string;
-	name: string;
-	description: string;
-	category: string;
-	difficulty: number; // 1..5
-	prompt: string;
-	files: Record<string, string>; // seeded into the sandbox
-	verifyTestFile: string; // the file whose integrity is checked + executed
+        id: string;
+        name: string;
+        description: string;
+        category: string;
+        difficulty: number; // 1..5
+        prompt: string;
+        files: Record<string, string>; // seeded into the sandbox
+        verifyTestFile: string; // the file whose integrity is checked + executed
+        /** The SOLVED form of the non-test source files — mint-time solvability proof (not persisted on tasks). */
+        reference?: Record<string, string>;
 }
 
 /** Wraps a test file into a verify script with tamper detection. */
 function _makeVerify(testFile: string, extraFiles: string[] = []): string {
-	const files = [testFile, ...extraFiles];
-	const hashes = files.map((f) => `  ${JSON.stringify(f)}: ${JSON.stringify(sha256Placeholder(f))}`).join(",\n");
-	return `import { createHash } from "node:crypto";
+        const files = [testFile, ...extraFiles];
+        const hashes = files.map((f) => `  ${JSON.stringify(f)}: ${JSON.stringify(sha256Placeholder(f))}`).join(",\n");
+        return `import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 
 const expected = {
@@ -54,16 +56,16 @@ console.log("VERIFY_RESULT: " + JSON.stringify({ passed: true, summary: "all tes
 // The hash of a file must be computed from the exact content we seed. We build
 // verify scripts at seed time (content is static), so we compute hashes here.
 function sha256(content: string): string {
-	return createHash("sha256").update(content, "utf8").digest("hex");
+        return createHash("sha256").update(content, "utf8").digest("hex");
 }
 function sha256Placeholder(_f: string): string {
-	return ""; // replaced by buildVerify below
+        return ""; // replaced by buildVerify below
 }
 
 export function buildVerify(task: TaskDef): string {
-	const files = [task.verifyTestFile, ...(task.files.__integrity ? [] : [])].filter((f, i, a) => a.indexOf(f) === i);
-	const entries = files.map((f) => `  ${JSON.stringify(f)}: ${JSON.stringify(sha256(task.files[f]))}`).join(",\n");
-	return `import { createHash } from "node:crypto";
+        const files = [task.verifyTestFile, ...(task.files.__integrity ? [] : [])].filter((f, i, a) => a.indexOf(f) === i);
+        const entries = files.map((f) => `  ${JSON.stringify(f)}: ${JSON.stringify(sha256(task.files[f]))}`).join(",\n");
+        return `import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 
 const expected = {
@@ -233,98 +235,98 @@ console.log("csv tests passed");
 `;
 
 export const TASK_DEFS: TaskDef[] = [
-	{
-		id: "fix-fizzbuzz",
-		name: "Fix FizzBuzz",
-		description: "Classic FizzBuzz has a branch-ordering bug: multiples of 15 never print FizzBuzz.",
-		category: "bugfix",
-		difficulty: 1,
-		prompt:
-			"The file fizzbuzz.js contains a buggy fizzbuzz implementation. The test file fizzbuzz.test.mjs describes the expected behavior. Fix fizzbuzz.js so all tests pass. Do not modify the test file.",
-		files: { "fizzbuzz.js": fizzbuzzSource, "fizzbuzz.test.mjs": fizzbuzzTest },
-		verifyTestFile: "fizzbuzz.test.mjs",
-	},
-	{
-		id: "fix-drop-right",
-		name: "Fix dropRight off-by-one",
-		description: "dropRight removes one element too many; edge cases around empty results fail.",
-		category: "bugfix",
-		difficulty: 2,
-		prompt:
-			"The file dropRight.js implements dropRight with an off-by-one bug. The test file dropRight.test.mjs describes the expected behavior. Fix dropRight.js so all tests pass. Do not modify the test file.",
-		files: { "dropRight.js": dropRightSource, "dropRight.test.mjs": dropRightTest },
-		verifyTestFile: "dropRight.test.mjs",
-	},
-	{
-		id: "impl-debounce",
-		name: "Implement debounce",
-		description: "Implement a clock-injectable debounce with cancel(), probed at call boundaries.",
-		category: "implementation",
-		difficulty: 4,
-		prompt:
-			"Implement the debounce function in debounce.js according to its doc comment. The test file debounce.test.mjs describes the exact semantics (including the injectable clock and lazy boundary flushing). Make all tests pass. Do not modify the test file.",
-		files: { "debounce.js": debounceSource, "debounce.test.mjs": debounceTest },
-		verifyTestFile: "debounce.test.mjs",
-	},
-	{
-		id: "impl-map-limit",
-		name: "Implement mapLimit",
-		description: "Async map with bounded concurrency, ordered results, rejection propagation.",
-		category: "implementation",
-		difficulty: 4,
-		prompt:
-			"Implement the mapLimit function in mapLimit.js according to its doc comment. The test file mapLimit.test.mjs verifies ordering, the concurrency bound and error propagation. Make all tests pass. Do not modify the test file.",
-		files: { "mapLimit.js": mapLimitSource, "mapLimit.test.mjs": mapLimitTest },
-		verifyTestFile: "mapLimit.test.mjs",
-	},
-	{
-		id: "fix-csv-parser",
-		name: "Fix CSV parsing",
-		description: "Naive comma split breaks on quoted fields and escaped quotes.",
-		category: "bugfix",
-		difficulty: 3,
-		prompt:
-			"The file csv.js contains a naive CSV line parser that breaks on quoted fields. The test file csv.test.mjs describes the expected behavior (quoted fields may contain commas; a doubled double-quote inside a quoted field is an escaped quote). Fix csv.js so all tests pass. Do not modify the test file.",
-		files: { "csv.js": csvSource, "csv.test.mjs": csvTest },
-		verifyTestFile: "csv.test.mjs",
-	},
+        {
+                id: "fix-fizzbuzz",
+                name: "Fix FizzBuzz",
+                description: "Classic FizzBuzz has a branch-ordering bug: multiples of 15 never print FizzBuzz.",
+                category: "bugfix",
+                difficulty: 1,
+                prompt:
+                        "The file fizzbuzz.js contains a buggy fizzbuzz implementation. The test file fizzbuzz.test.mjs describes the expected behavior. Fix fizzbuzz.js so all tests pass. Do not modify the test file.",
+                files: { "fizzbuzz.js": fizzbuzzSource, "fizzbuzz.test.mjs": fizzbuzzTest },
+                verifyTestFile: "fizzbuzz.test.mjs",
+        },
+        {
+                id: "fix-drop-right",
+                name: "Fix dropRight off-by-one",
+                description: "dropRight removes one element too many; edge cases around empty results fail.",
+                category: "bugfix",
+                difficulty: 2,
+                prompt:
+                        "The file dropRight.js implements dropRight with an off-by-one bug. The test file dropRight.test.mjs describes the expected behavior. Fix dropRight.js so all tests pass. Do not modify the test file.",
+                files: { "dropRight.js": dropRightSource, "dropRight.test.mjs": dropRightTest },
+                verifyTestFile: "dropRight.test.mjs",
+        },
+        {
+                id: "impl-debounce",
+                name: "Implement debounce",
+                description: "Implement a clock-injectable debounce with cancel(), probed at call boundaries.",
+                category: "implementation",
+                difficulty: 4,
+                prompt:
+                        "Implement the debounce function in debounce.js according to its doc comment. The test file debounce.test.mjs describes the exact semantics (including the injectable clock and lazy boundary flushing). Make all tests pass. Do not modify the test file.",
+                files: { "debounce.js": debounceSource, "debounce.test.mjs": debounceTest },
+                verifyTestFile: "debounce.test.mjs",
+        },
+        {
+                id: "impl-map-limit",
+                name: "Implement mapLimit",
+                description: "Async map with bounded concurrency, ordered results, rejection propagation.",
+                category: "implementation",
+                difficulty: 4,
+                prompt:
+                        "Implement the mapLimit function in mapLimit.js according to its doc comment. The test file mapLimit.test.mjs verifies ordering, the concurrency bound and error propagation. Make all tests pass. Do not modify the test file.",
+                files: { "mapLimit.js": mapLimitSource, "mapLimit.test.mjs": mapLimitTest },
+                verifyTestFile: "mapLimit.test.mjs",
+        },
+        {
+                id: "fix-csv-parser",
+                name: "Fix CSV parsing",
+                description: "Naive comma split breaks on quoted fields and escaped quotes.",
+                category: "bugfix",
+                difficulty: 3,
+                prompt:
+                        "The file csv.js contains a naive CSV line parser that breaks on quoted fields. The test file csv.test.mjs describes the expected behavior (quoted fields may contain commas; a doubled double-quote inside a quoted field is an escaped quote). Fix csv.js so all tests pass. Do not modify the test file.",
+                files: { "csv.js": csvSource, "csv.test.mjs": csvTest },
+                verifyTestFile: "csv.test.mjs",
+        },
 ];
 
 export function seedTasks() {
-	for (const def of TASK_DEFS) {
-		const existing = store.get(`SELECT id FROM tasks WHERE id = ?`, [def.id]);
-		if (existing) continue;
-		store.run(
-			`INSERT INTO tasks (id, name, description, category, difficulty, prompt, files, verify, created_at, active)
+        for (const def of TASK_DEFS) {
+                const existing = store.get(`SELECT id FROM tasks WHERE id = ?`, [def.id]);
+                if (existing) continue;
+                store.run(
+                        `INSERT INTO tasks (id, name, description, category, difficulty, prompt, files, verify, created_at, active)
                          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1)`,
-			[
-				def.id,
-				def.name,
-				def.description,
-				def.category,
-				def.difficulty,
-				def.prompt,
-				JSON.stringify(def.files),
-				buildVerify(def),
-				Date.now(),
-			],
-		);
-	}
+                        [
+                                def.id,
+                                def.name,
+                                def.description,
+                                def.category,
+                                def.difficulty,
+                                def.prompt,
+                                JSON.stringify(def.files),
+                                buildVerify(def),
+                                Date.now(),
+                        ],
+                );
+        }
 }
 
 export function getTask(id: string) {
-	const row = store.get<any>(`SELECT * FROM tasks WHERE id = ? AND active = 1`, [id]);
-	if (!row) return undefined;
-	return { ...row, files: JSON.parse(row.files) };
+        const row = store.get<any>(`SELECT * FROM tasks WHERE id = ? AND active = 1`, [id]);
+        if (!row) return undefined;
+        return { ...row, files: JSON.parse(row.files) };
 }
 
 export function listTasks() {
-	return store.query<any>(
-		`SELECT t.id, t.name, t.description, t.category, t.difficulty, t.created_at, t.pass_count, t.fail_count,
+        return store.query<any>(
+                `SELECT t.id, t.name, t.description, t.category, t.difficulty, t.created_at, t.pass_count, t.fail_count,
                         t.origin, t.status, t.source_run_id,
                         (SELECT COUNT(*) FROM runs r WHERE r.task_id = t.id AND r.status = 'passed') AS passes,
                         (SELECT COUNT(*) FROM runs r WHERE r.task_id = t.id AND r.status = 'failed') AS fails,
                         (SELECT COUNT(*) FROM cycles c WHERE c.task_id = t.id AND c.status = 'improved') AS improvements
                  FROM tasks t WHERE t.active = 1 ORDER BY t.difficulty, t.id`,
-	);
+        );
 }

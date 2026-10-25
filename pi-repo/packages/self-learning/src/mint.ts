@@ -73,6 +73,8 @@ interface TaskDraft {
         prompt?: unknown;
         files?: unknown;
         verifyTestFile?: unknown;
+        /** The SOLVED form of the non-test source files — the solvability gate's ground truth. */
+        reference?: unknown;
 }
 
 const MINT_SYSTEM = `You are the task minter of a self-improving coding-agent harness. You author NEW benchmark tasks that the agent may plausibly FAIL today. Each task is a tiny, self-contained code exercise that runs fully offline under bun.
@@ -83,9 +85,10 @@ Task contract:
 - tests use node:assert/strict, are deterministic (no real clocks beyond short setTimeout, no network, no filesystem access outside the sandbox dir), and take under 10 seconds
 - prompt: one short paragraph telling the agent what to fix/implement; it must NOT leak the solution and must not describe individual test cases (say "the test file describes the expected behavior")
 - difficulty 1-5 honest; category one of bugfix | implementation | algorithm | refactor
+- reference: the SOLVED content of every NON-TEST source file (the same keys as files, minus the test file). It proves the exercise is solvable — it is executed against the untouched test file before the task can enter the suite. The tests must be written so your reference passes them; if you cannot write a passing reference, the tests are inconsistent — fix the tests, not the reference.
 
 Return STRICT JSON only:
-{"id":"kebab-case-slug","name":"...","description":"...","category":"bugfix","difficulty":3,"prompt":"...","files":{"src.js":"...","src.test.mjs":"..."},"verifyTestFile":"src.test.mjs"}`;
+{"id":"kebab-case-slug","name":"...","description":"...","category":"bugfix","difficulty":3,"prompt":"...","files":{"src.js":"...","src.test.mjs":"..."},"reference":{"src.js":"..."},"verifyTestFile":"src.test.mjs"}`;
 
 /**
  * json_schema for the mint draft — the grammar that constrains the LOCAL
@@ -107,6 +110,7 @@ const MINT_SCHEMA = {
                 difficulty: { type: "integer" },
                 prompt: { type: "string" },
                 files: { type: "object", additionalProperties: { type: "string" } },
+                reference: { type: "object", additionalProperties: { type: "string" } },
                 verifyTestFile: { type: "string" },
         },
         required: ["id", "name", "description", "category", "difficulty", "prompt", "files", "verifyTestFile"],
@@ -192,7 +196,30 @@ function validateDraft(draft: TaskDraft): { ok: true; def: TaskDef } | { ok: fal
         if (!/\.test\.mjs$/.test(verifyTestFile)) return { ok: false, error: "verifyTestFile must be a *.test.mjs file" };
         if (!/node:assert/.test(clean[verifyTestFile])) return { ok: false, error: "test file must use node:assert" };
 
-        return { ok: true, def: { id, name, description, category, difficulty, prompt, files: clean, verifyTestFile } };
+        // Reference solution (the solvability gate's ground truth): OPTIONAL at
+        // the draft level — a draft without one gets a single authored
+        // reference later (authorReferenceSolution) — but WHEN PRESENT it must
+        // be a subset of the seeded file keys, never a test file (the verify
+        // hashes those — a reference touching one is always a rewrite attempt),
+        // and inside the same caps as files.
+        let reference: Record<string, string> | undefined;
+        if (draft.reference !== undefined && draft.reference !== null) {
+                if (typeof draft.reference !== "object" || Array.isArray(draft.reference))
+                        return { ok: false, error: "reference must be an object" };
+                const refEntries = Object.entries(draft.reference as Record<string, unknown>);
+                if (refEntries.length === 0) return { ok: false, error: "reference must not be empty when present" };
+                reference = {};
+                for (const [path, content] of refEntries) {
+                        if (!(path in clean)) return { ok: false, error: `reference key not in files: ${path}` };
+                        if (path === verifyTestFile || /\.test\.mjs$/.test(path))
+                                return { ok: false, error: `reference must not touch test files: ${path}` };
+                        if (typeof content !== "string") return { ok: false, error: `reference content must be a string: ${path}` };
+                        if (content.length > MAX_FILE_CHARS) return { ok: false, error: `reference file exceeds ${MAX_FILE_CHARS} chars: ${path}` };
+                        reference[path] = content;
+                }
+        }
+
+        return { ok: true, def: { id, name, description, category, difficulty, prompt, files: clean, verifyTestFile, reference } };
 }
 
 /**
@@ -219,6 +246,102 @@ async function selfCheckDraft(def: TaskDef): Promise<{ ok: boolean; reason: stri
                 return { ok: false, reason: `verify script crashes on the seeded files (broken draft): ${log.slice(0, 300)}` };
         }
         return { ok: true, reason: `seeded files fail the tests as designed (${result.summary || "assertion failure"})` };
+}
+
+// ---------------------------------------------------------------------------
+// Solvability gate (2026-10-25 live finding)
+// ---------------------------------------------------------------------------
+
+/**
+ * The live finding that motivated the gate: a minted task whose test file is
+ * INTERNALLY CONTRADICTORY (one assertion no implementation can satisfy
+ * alongside the others — measured: mint-fix-drop-right-while, dropRightWhile
+ * line 14) sailed through selfCheckDraft ("seeded files fail as designed")
+ * and the agent validation run ("agent fails it"), because BOTH checks prove
+ * the task is HARD, neither proves it is SOLVABLE. The activation branch then
+ * shipped an impossible task as a "capability eval" — and since
+ * pickNextTask() selects failing tasks FIRST, one full agent run was burned
+ * on it every single cycle, forever, starving every real learning target.
+ *
+ * The gate: before a failed-validation task can be activated, a REFERENCE
+ * SOLUTION (the solved form of the non-test source files) must PASS the
+ * task's own verify in a sandbox. Hard-but-solvable tasks pass the gate and
+ * keep the capability-eval semantics; impossible tasks are discarded with
+ * the failing reference log as the reason.
+ */
+async function referenceCheck(def: TaskDef): Promise<{ ok: boolean; reason: string }> {
+        if (!def.reference || Object.keys(def.reference).length === 0)
+                return { ok: false, reason: "no reference solution to check" };
+        const sandbox = createSandbox(`${def.id}-refcheck`);
+        // Overlay: seeded files with the reference replacing the solved sources.
+        // The test files come from def.files verbatim — buildVerify(def) hashes
+        // those, and validateDraft already refused references touching them.
+        const solved: Record<string, string> = { ...def.files, ...def.reference };
+        seedFiles(sandbox, solved);
+        const result = await verifyInSandbox(sandbox, buildVerify(def));
+        if (result.passed) return { ok: true, reason: "reference solution passes the task's own tests" };
+        const log = (result.log ?? "").slice(0, 300);
+        return {
+                ok: false,
+                reason: `reference solution fails the task's own tests — unsolvable as drafted (${result.summary || log || "assertion failure"})`,
+        };
+}
+
+const REFERENCE_SYSTEM = `You are the reference solver for a benchmark task. Given the task's files (a deliberately broken exercise plus its test file), return the SOLVED content of every NON-TEST source file so the tests pass. Do not modify test files. Return STRICT JSON only: {"reference":{"src.js":"...the full solved file..."}} with one key per non-test source file.`;
+
+/**
+ * The fallback when a draft ships without a reference: ONE bounded call asking
+ * the mint model for the solved files. Same shape guarantee as the draft lane
+ * (chatJson + hand validation) — no schema enforcement remotely (E7/H9).
+ */
+async function authorReferenceSolution(def: TaskDef): Promise<Record<string, string> | null> {
+        const nonTestFiles = Object.keys(def.files).filter((f) => f !== def.verifyTestFile && !/\.test\.mjs$/.test(f));
+        if (nonTestFiles.length === 0) return null;
+        let reply: unknown;
+        try {
+                reply = await chatJson(
+                        [
+                                { role: "system", content: REFERENCE_SYSTEM },
+                                {
+                                        role: "user",
+                                        content: `TASK PROMPT:\n${def.prompt}\n\nFILES:\n${JSON.stringify(def.files, null, 2)}\n\nReturn the reference solution for these non-test files: ${nonTestFiles.join(", ")}`,
+                                },
+                        ],
+                        { maxTokens: 3000, model: modelFor("mint") },
+                );
+        } catch {
+                return null;
+        }
+        if (typeof reply !== "object" || reply === null || Array.isArray(reply)) return null;
+        const raw = (reply as Record<string, unknown>).reference;
+        if (typeof raw !== "object" || raw === null || Array.isArray(raw)) return null;
+        const reference: Record<string, string> = {};
+        for (const [path, content] of Object.entries(raw as Record<string, unknown>)) {
+                if (!nonTestFiles.includes(path) || typeof content !== "string" || content.length > MAX_FILE_CHARS) return null;
+                reference[path] = content;
+        }
+        return Object.keys(reference).length > 0 ? reference : null;
+}
+
+/**
+ * The activation gate's decision: PROVE the task is solvable before it may
+ * enter the suite as a capability eval. Preference order: the draft's own
+ * reference (cheap, already-authored), then one authored reference call.
+ * Either way the reference must PASS the task's verify in a sandbox.
+ */
+export async function proveSolvability(
+        def: TaskDef,
+): Promise<{ ok: true; via: "draft" | "authored" } | { ok: false; reason: string }> {
+        if (def.reference && Object.keys(def.reference).length > 0) {
+                const check = await referenceCheck(def);
+                if (check.ok) return { ok: true, via: "draft" };
+                return { ok: false, reason: check.reason };
+        }
+        const authored = await authorReferenceSolution(def);
+        if (!authored) return { ok: false, reason: "no reference solution obtainable — solvability unprovable, task refused" };
+        const check = await referenceCheck({ ...def, reference: authored });
+        if (check.ok) return { ok: true, via: "authored" };
+        return { ok: false, reason: check.reason };
 }
 
 // ---------------------------------------------------------------------------
@@ -405,7 +528,25 @@ async function runMintPipeline(
         }
 
         if (validation.status === "failed") {
-                // The agent genuinely fails the new task: ship it as a capability eval.
+                // The agent genuinely fails the new task — but "the agent fails
+                // it" alone does not prove the task is a fair capability eval:
+                // it may be IMPOSSIBLE (the 2026-10-25 live finding — a
+                // contradictory test file activated as a capability eval and
+                // burned one agent run per cycle forever, because
+                // pickNextTask() picks failing tasks first). Prove solvability
+                // with a reference solution BEFORE activation.
+                const solvability = await proveSolvability(def);
+                if (!solvability.ok) {
+                        store.run(`UPDATE tasks SET status = 'discarded', fail_count = fail_count + 1 WHERE id = ?`, [def.id]);
+                        emit("task:mint-unsolvable", { id: def.id, reason: solvability.reason, validationRunId: validation.id });
+                        console.log(`[mint] task ${def.id} DISCARDED — unsolvable: ${solvability.reason}`);
+                        return {
+                                status: "discarded",
+                                taskId: def.id,
+                                reason: `unsolvable task refused: ${solvability.reason}`,
+                                validationRunId: validation.id,
+                        };
+                }
                 store.run(`UPDATE tasks SET active = 1, status = 'capability' WHERE id = ?`, [def.id]);
                 store.run(`UPDATE tasks SET fail_count = fail_count + 1 WHERE id = ?`, [def.id]);
                 emit("task:minted", {

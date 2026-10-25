@@ -107,6 +107,90 @@ describe("pruneToBudget — pure degradation policy", () => {
                 expect(shipped).not.toContain("- first");
         });
 
+        test("multi-block drop in ONE tier: surviving content is exactly pristine minus the dropped blocks (string equality)", () => {
+                // 3 dated blocks; the cap equals the total after dropping the 2 OLDEST
+                // (one drop alone leaves the total above it by the middle block's
+                // length). Pre-fix, the second drop re-applied the accumulated
+                // original-coordinate ranges to the ALREADY-CUT string and ate the
+                // newest block entirely while prunedBlocks claimed only 2 old drops.
+                const base = `# base knowledge\n- keep me\n\n`;
+                const oldest = `<!-- agent @ 2024-01-01 10:00 — oldest -->\n- old rule A\n${"a".repeat(300)}\n\n`;
+                const middle = `<!-- agent @ 2025-06-01 10:00 — middle -->\n- mid rule M\n${"m".repeat(300)}\n\n`;
+                const newest = `<!-- agent @ 2026-06-01 10:00 — newest -->\n- new rule B\n${"n".repeat(300)}\n`;
+                const files: BudgetFile[] = [GUIDE, POLICY, { path: "p", content: base + oldest + middle + newest, tier: "project" }];
+                const cap = files.reduce((s, f) => s + f.path.length + f.content.length, 0) - oldest.length - middle.length;
+                const { files: out, report } = pruneToBudget(files, { cap });
+                // EXACT surviving content — string equality, not just length: the tier's
+                // content minus the dropped blocks (oldest-first), NO collateral cuts.
+                expect(out.find((f) => f.tier === "project")!.content).toBe(base + newest);
+                // prunedBlocks stays truthful: exactly the 2 blocks actually dropped.
+                expect(report.prunedBlocks).toEqual([
+                        { tier: "project", note: "agent — oldest", date: "2024-01-01 10:00", chars: oldest.length },
+                        { tier: "project", note: "agent — middle", date: "2025-06-01 10:00", chars: middle.length },
+                ]);
+                expect(report.truncatedTiers).toEqual([]); // blocks sufficed — no head-truncation
+                expect(report.overflow).toBe(false);
+                expect(report.totalAfter).toBeLessThanOrEqual(cap);
+        });
+
+        test("multi-block drop across TWO tiers: each tier drops 2 (4 total), both survivors exact", () => {
+                // Dates interleave so the global oldest-first order is user, project,
+                // user, project — 2 drops per tier, cross-tier, in one pass.
+                const uOld1 = `<!-- agent @ 2024-01-01 09:00 — u-old1 -->\n- user old one\n${"u".repeat(300)}\n\n`;
+                const pOld1 = `<!-- agent @ 2024-02-02 09:00 — p-old1 -->\n- proj old one\n${"p".repeat(300)}\n\n`;
+                const uOld2 = `<!-- agent @ 2025-01-01 09:00 — u-old2 -->\n- user old two\n${"v".repeat(300)}\n\n`;
+                const pOld2 = `<!-- agent @ 2025-02-02 09:00 — p-old2 -->\n- proj old two\n${"q".repeat(300)}\n\n`;
+                const uNew = `<!-- agent @ 2026-06-01 09:00 — u-new -->\n- user new\n${"U".repeat(300)}\n`;
+                const pNew = `<!-- agent @ 2026-07-07 09:00 — p-new -->\n- proj new\n${"P".repeat(300)}\n`;
+                const files: BudgetFile[] = [
+                        GUIDE,
+                        POLICY,
+                        { path: "user", content: `# user\n\n${uOld1}${uOld2}${uNew}`, tier: "user" },
+                        { path: "proj", content: `# proj\n\n${pOld1}${pOld2}${pNew}`, tier: "project" },
+                ];
+                const cap = files.reduce((s, f) => s + f.path.length + f.content.length, 0) - uOld1.length - uOld2.length - pOld1.length - pOld2.length;
+                const { files: out, report } = pruneToBudget(files, { cap });
+                expect(out.find((f) => f.tier === "user")!.content).toBe(`# user\n\n${uNew}`);
+                expect(out.find((f) => f.tier === "project")!.content).toBe(`# proj\n\n${pNew}`);
+                expect(report.prunedBlocks).toHaveLength(4);
+                expect(report.prunedBlocks.map((b) => `${b.tier}@${b.date}`)).toEqual([
+                        "user@2024-01-01 09:00",
+                        "project@2024-02-02 09:00",
+                        "user@2025-01-01 09:00",
+                        "project@2025-02-02 09:00",
+                ]);
+                expect(report.truncatedTiers).toEqual([]);
+                expect(report.overflow).toBe(false);
+                expect(report.totalAfter).toBeLessThanOrEqual(cap);
+        });
+
+        test("multi-block drop does not re-apply ranges at shifted coordinates (mid-tier block between dropped ones survives byte-identical)", () => {
+                // The failure mode this name cites: with ≥2 drops in ONE tier, every
+                // loop iteration re-applied ALL accumulated original-coordinate cut
+                // ranges to the ALREADY-CUT string. The first range re-landed at
+                // SHIFTED coordinates over the survivor's head (its provenance marker
+                // + rule text silently eaten) and later ranges removed shifted text —
+                // a chunk of a block the report claimed was PRUNED leaked back into
+                // the injection. Verified empirically pre-fix: the survivor came out
+                // as a bare pad tail and the "dropped" 2025 marker was resurrected.
+                const base = `# base knowledge\n- keep me\n\n`;
+                const drop1 = `<!-- agent @ 2024-01-01 10:00 — drop1 -->\n- old rule one\n${"1".repeat(300)}\n\n`; // oldest date
+                const survivor = `<!-- agent @ 2026-06-01 10:00 — survivor -->\n- mid-tier rule that must survive byte-identical\n${"S".repeat(300)}\n\n`; // newest date, FILE position between the two drops
+                const drop2 = `<!-- agent @ 2025-01-01 10:00 — drop2 -->\n- old rule two\n${"2".repeat(300)}\n`; // middle date
+                const files: BudgetFile[] = [GUIDE, POLICY, { path: "p", content: base + drop1 + survivor + drop2, tier: "project" }];
+                const cap = files.reduce((s, f) => s + f.path.length + f.content.length, 0) - drop1.length - drop2.length;
+                const { files: out, report } = pruneToBudget(files, { cap });
+                const shipped = out.find((f) => f.tier === "project")!.content;
+                // The survivor sits BETWEEN the two dropped blocks positionally and
+                // must come through byte-identical; the dropped content stays dropped.
+                expect(shipped).toBe(base + survivor);
+                expect(shipped).toContain("<!-- agent @ 2026-06-01 10:00 — survivor -->"); // provenance intact
+                expect(shipped).not.toContain("drop2"); // no resurrected "pruned" content
+                expect(report.prunedBlocks.map((b) => b.date)).toEqual(["2024-01-01 10:00", "2025-01-01 10:00"]);
+                expect(report.overflow).toBe(false);
+                expect(report.totalAfter).toBeLessThanOrEqual(cap);
+        });
+
         test("no droppable blocks: head-truncation with a visible marker, cap honored", () => {
                 const big = "z".repeat(5000);
                 const files: BudgetFile[] = [GUIDE, POLICY, { path: "p", content: big, tier: "project" }];

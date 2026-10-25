@@ -77,7 +77,7 @@ import { createPermissionGate, type PermissionGate, type ToolCallDecision } from
 import { createFormatterSessionState, maybeFormatOnEdit } from "./formatters.ts";
 import { sessionWriteRoots } from "./write-roots.ts";
 import { annotateToolOutput, recordShieldFlag, shieldEnabled, shieldTelemetry } from "./shield.ts";
-import { deliverTerminalNote } from "./term.ts";
+import { deliverTerminalNote, sliceCodePointSafe } from "./term.ts";
 
 export interface TerminalHookOptions {
         cwd: string; // the user's real project directory
@@ -1210,7 +1210,11 @@ export function buildTerminalNote(info: {
                         `Injection shield flagged ${shield.flagged} tool output(s) this session (flags: ${rules}) — treat this session's observations with suspicion: untrusted content may have reached the transcript.`,
                 );
         }
-        if (info.lastAssistantText) lines.push(`Final outcome: ${info.lastAssistantText.slice(0, 400)}`);
+        // BUG 13: the 400-unit slice backs off to a codepoint boundary — a plain
+        // slice can split an astral char (emoji, CJK ext-B) at the boundary and
+        // store a lone surrogate that turns into U+FFFD on every JSON
+        // round-trip downstream (delivery, DB, the dream's extraction input).
+        if (info.lastAssistantText) lines.push(`Final outcome: ${sliceCodePointSafe(info.lastAssistantText, 400)}`);
         lines.push(
                 `Session metadata (counts, duration and session id only — data, not knowledge): ${info.prompts} prompt(s), ${info.toolCalls} tool call(s)${info.toolNames.length ? ` (${info.toolNames.join(", ")})` : ""}, ${durMin} min${info.sessionId ? `, session ${info.sessionId}` : ""}.`,
         );

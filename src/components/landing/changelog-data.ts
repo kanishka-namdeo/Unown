@@ -30,14 +30,14 @@ export interface ChangelogStop {
   groups: ChangelogGroup[];
 }
 
-export const CHANGELOG_TOTAL_ENTRIES = 288;
+export const CHANGELOG_TOTAL_ENTRIES = 290;
 
 export const CHANGELOG_TOTALS: Record<ChangelogBucket, number> = {
   "Added": 127,
   "Changed": 20,
   "Deprecated": 0,
   "Removed": 3,
-  "Fixed": 108,
+  "Fixed": 110,
   "Security": 0,
   "Behavior": 30
 };
@@ -89,13 +89,13 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
   {
     "label": "0.0.18",
     "date": "2026-10-25",
-    "total": 4,
+    "total": 6,
     "counts": {
       "Added": 1,
       "Changed": 1,
       "Deprecated": 0,
       "Removed": 0,
-      "Fixed": 2,
+      "Fixed": 4,
       "Security": 0,
       "Behavior": 0
     },
@@ -118,6 +118,14 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
           },
           {
             "title": "ci: the gitleaks allowlist had drifted behind the fixtures",
+            "behavior": false
+          },
+          {
+            "title": "memory: the learning-loop integrity round — nine defects in the notes → dream → render pipeline…",
+            "behavior": false
+          },
+          {
+            "title": "mint: the solvability gate — an impossible task can no longer enter the suite as a \"capability eval\"",
             "behavior": false
           }
         ]

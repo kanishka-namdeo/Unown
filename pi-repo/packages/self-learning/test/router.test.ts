@@ -10,13 +10,14 @@
 //
 // These tests run on `bun test` (bun:test is built in — zero new deps).
 import "./_env.ts"; // MUST be the first import: store.ts opens SQLite at module scope
-import { afterAll, describe, expect, test } from "bun:test";
+import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { Database } from "bun:sqlite";
-import { mkdtempSync, rmSync } from "node:fs";
+import { mkdirSync, mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { emit } from "../src/bus.ts";
 import { breakerStatus, breakerThreshold, markEngineProcess, recordLlmFailure, resetBreakerForTest, resetEngineProcessForTest } from "../src/governor.ts";
+import { slugifyProject } from "../src/notes.ts";
 import { JOB_DEFS, listJobs, Router, router, ROUTER_TEST_ONLY } from "../src/router.ts";
 import { Store, store } from "../src/store.ts";
 
@@ -513,5 +514,127 @@ describe("Router job outcome columns (M11)", () => {
                 const first = listJobs()[0] as Record<string, unknown> | undefined;
                 expect(first).toBeDefined();
                 expect(Object.keys(first!)).toEqual(expect.arrayContaining(["last_ok", "last_error", "last_duration_ms"]));
+        });
+});
+
+// ---------------------------------------------------------------------------
+// BUG 10: dream-check must count notes KIND-AWARE. The pre-fix event gate
+// counted undreamed notes of BOTH kinds toward the benchmark dream's >=3
+// threshold while the job body ran runDream() unconditionally — and
+// runDream() consumes BENCHMARK notes only, inserting a junk 'no-notes'
+// dreams row when it finds none. A terminal-only backlog therefore fired
+// dream-check once per finished run, manufactured a junk row each time, and
+// the terminal notes themselves were never routed anywhere by this lane.
+// The gate now counts benchmark notes for the benchmark threshold and lets
+// ANY pending terminal note dispatch; the runner mirrors auto-dream —
+// runDream() only at its own >=3, terminal pressure served by
+// runProjectDream() (each project's own .unown memory).
+// ---------------------------------------------------------------------------
+describe("dream-check is kind-aware (BUG 10)", () => {
+        const SCRATCH = join(tmpdir(), `unown-bug10-dreamcheck-${Date.now().toString(36)}`);
+        const PROJECT = join(SCRATCH, "proj");
+        // The project dream rows carry the group slug (recomputed from the
+        // path at dream time — the stored project_slug column is display data
+        // only), so row matching/cleanup keys on THIS, not on any seeded slug.
+        const SLUG = slugifyProject(PROJECT);
+        const noNotesCount = () => (store.get<{ c: number }>(`SELECT COUNT(*) AS c FROM dreams WHERE status = 'no-notes'`)?.c ?? 0);
+        const dreamCheckRow = () => store.get<{ run_count: number; status: string }>(`SELECT run_count, status FROM jobs WHERE id = 'dream-check'`)!;
+        const projectDreamRow = () =>
+                store.get<{ ended_at: number | null }>(`SELECT ended_at FROM dreams WHERE note LIKE ? AND ended_at IS NOT NULL`, [`%${SLUG}%`]);
+
+        /** Hermetic pin for the shared jobs row (see the HIGH-1 suite's note). */
+        function pinDreamCheck() {
+                store.run(`UPDATE jobs SET enabled = 1, status = 'idle' WHERE id = 'dream-check'`);
+        }
+
+        /** Poll until fn() is truthy (bounded — the emit path resolves in microtasks). */
+        async function until(fn: () => boolean, ms = 10_000): Promise<boolean> {
+                const deadline = Date.now() + ms;
+                while (Date.now() < deadline) {
+                        if (fn()) return true;
+                        await Bun.sleep(10);
+                }
+                return fn();
+        }
+
+        beforeAll(() => {
+                mkdirSync(PROJECT, { recursive: true });
+                store.run(`DELETE FROM notes`);
+        });
+
+        afterAll(() => {
+                // Only THIS suite's rows: the marker slug is unique per run, and
+                // the shared dreams/notes tables carry other suites' history.
+                store.run(`DELETE FROM notes WHERE project_path = ?`, [PROJECT]);
+                store.run(`DELETE FROM dreams WHERE note LIKE ?`, [`%${SLUG}%`]);
+                rmSync(SCRATCH, { recursive: true, force: true });
+        });
+
+        test("10 terminal notes, 0 benchmark: the runner takes the PROJECT lane — no junk no-notes row", async () => {
+                store.run(`DELETE FROM notes`);
+                pinDreamCheck();
+                const noNotesBefore = noNotesCount();
+                for (let i = 0; i < 10; i++) store.run(`INSERT INTO notes (id, run_id, content, created_at, kind, project_path, project_slug) VALUES (?, NULL, ?, ?, 'terminal', ?, 'bug10-proj')`, [`bug10-t${i}`, `bug10 terminal note ${i}`, Date.now() + i, PROJECT]);
+                const r = new Router();
+                const result = (await r.execute("dream-check")) as { dream: unknown; projects: Array<{ notesIn: number; projectPath: string }> };
+                // Benchmark lane skipped entirely (0 < 3) — pre-fix runDream() ran
+                // unconditionally and minted the junk row.
+                expect(result.dream).toBeNull();
+                // THE routing fix: the terminal notes reached the PROJECT dream lane
+                // (all 10 of them — the dead test bridge makes the honest 'error'
+                // outcome, exactly like dreams-run-projects.test.ts pins).
+                expect(result.projects).toHaveLength(1);
+                expect(result.projects[0].projectPath).toBe(PROJECT);
+                expect(result.projects[0].notesIn).toBe(10);
+                expect(noNotesCount()).toBe(noNotesBefore); // no new junk 'no-notes' row
+        }, 45_000);
+
+        test("run:finished with terminal-only pressure DISPATCHES dream-check (gate is kind-aware)", async () => {
+                store.run(`DELETE FROM notes`);
+                pinDreamCheck();
+                const noNotesBefore = noNotesCount();
+                const before = dreamCheckRow().run_count;
+                // Fresh terminal-only backlog (the prior test's notes stayed pending —
+                // the dead-bridge error is lossless — but seed fresh for determinism).
+                for (let i = 0; i < 10; i++) store.run(`INSERT INTO notes (id, run_id, content, created_at, kind, project_path, project_slug) VALUES (?, NULL, ?, ?, 'terminal', ?, 'bug10-proj')`, [`bug10-e${i}`, `bug10 emit note ${i}`, Date.now() + i, PROJECT]);
+                const r = new Router(60_000); // slow tick: the emit path dispatches, not the scheduler
+                await r.start();
+                try {
+                        emit("run:finished", { id: "x", kind: "baseline", taskId: "t", status: "passed", durationMs: 5 });
+                        const dispatched = await until(() => dreamCheckRow().run_count > before && dreamCheckRow().status === "idle");
+                        expect(dispatched).toBe(true);
+                        // The dispatched run took the project lane for the terminal notes.
+                        const projectRow = await until(() => Boolean(projectDreamRow()));
+                        expect(projectRow).toBe(true);
+                        expect(noNotesCount()).toBe(noNotesBefore); // still no junk row
+                } finally {
+                        r.stop();
+                }
+        }, 45_000);
+
+        test("run:finished with NOTHING dreamable does not dispatch", async () => {
+                store.run(`DELETE FROM notes`); // no benchmark >=3, no terminal notes
+                pinDreamCheck();
+                const r = new Router(60_000);
+                // The shared jobs row is FOREIGN-ROUTER territory (bun test runs every
+                // file in one process; a still-subscribed router from an earlier suite
+                // could drain its own stale queue on its own tick and move run_count
+                // under this test). The gate's own contract — THIS router's handler
+                // must not reach dispatchEventJob — is asserted directly instead.
+                let dispatches = 0;
+                (r as any).dispatchEventJob = () => {
+                        dispatches++;
+                };
+                await r.start();
+                try {
+                        emit("run:finished", { id: "y", kind: "baseline", taskId: "t", status: "passed", durationMs: 5 });
+                        // The dispatch path executes immediately when idle — a short settle
+                        // window is enough to see it happen (or prove it never does).
+                        await Bun.sleep(150);
+                        expect(dispatches).toBe(0);
+                        expect(r.pendingEventJobs()).toEqual([]);
+                } finally {
+                        r.stop();
+                }
         });
 });

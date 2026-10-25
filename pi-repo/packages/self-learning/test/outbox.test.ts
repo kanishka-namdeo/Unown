@@ -18,7 +18,7 @@ import { spawnSync } from "node:child_process";
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { basename, join } from "node:path";
-import { deliverTerminalNote, OUTBOX_MAX, outboxStats, UNOWN_NOTES_DIR, UNOWN_NOTES_DONE_DIR, UNOWN_OUTBOX_DIR, writeOutboxNote } from "../src/term.ts";
+import { deliverTerminalNote, OUTBOX_MAX, outboxStats, sliceCodePointSafe, UNOWN_NOTES_DIR, UNOWN_NOTES_DONE_DIR, UNOWN_OUTBOX_DIR, writeOutboxNote } from "../src/term.ts";
 import { syncNoteOutbox } from "../src/outbox.ts";
 import { ingestTerminalNote } from "../src/notes.ts";
 import { store } from "../src/store.ts";
@@ -33,6 +33,14 @@ const terminalNotes = () =>
                 `SELECT id, content FROM notes WHERE kind = 'terminal' AND project_path = ? ORDER BY created_at`,
                 [PROJECT],
         );
+
+/** Parse an outbox file into its front-matter fields + note body (shared by
+ *  the M6 cap tests and the BUG 9/13 cap-parity tests below). */
+function parseNoteBody(path: string): { project: string; ts: string; content: string } {
+        const m = readFileSync(path, "utf8").match(/^---\nproject: (.+)\nts: (\d+)\n---\n([\s\S]*)\n$/);
+        expect(m).not.toBeNull();
+        return { project: m![1], ts: m![2], content: m![3] };
+}
 
 afterAll(() => {
         // restore a sane archive dir for later suites
@@ -105,12 +113,6 @@ describe("syncNoteOutbox idempotency (MEDIUM-5)", () => {
 // ---------------------------------------------------------------------------
 
 describe("outbox content cap (M6)", () => {
-        function parseNoteBody(path: string): { project: string; ts: string; content: string } {
-                const m = readFileSync(path, "utf8").match(/^---\nproject: (.+)\nts: (\d+)\n---\n([\s\S]*)\n$/);
-                expect(m).not.toBeNull();
-                return { project: m![1], ts: m![2], content: m![3] };
-        }
-
         test("content over 20k is capped at 20k and marked (truncated)", () => {
                 const file = writeOutboxNote({ content: "x".repeat(20_001), projectPath: PROJECT, ts: 7 });
                 try {
@@ -305,17 +307,23 @@ process.exit(0);
 // the HTTP lane's 20k limit at ingest time.
 // ---------------------------------------------------------------------------
 
-describe("ingestTerminalNote content cap (M6 parity)", () => {
-        test("content is capped at 20k on the drain side too", () => {
+describe("ingestTerminalNote content cap (M6 parity + BUG 9)", () => {
+        test("content is capped at 20k AND MARKED — byte-identical to the outbox cap shape", () => {
+                // REGRESSION (BUG 9): the drain-side cap used to be a bare
+                // slice(0, 20000) with NO marker, while the outbox write stored
+                // slice(0, 20000) + "\n(truncated)". The same oversized note
+                // stored via the two delivery paths therefore differed by the
+                // marker, the drain's exact-content dedup missed, and the note
+                // was ingested twice. All cap sites now produce the SAME bytes.
                 const id = ingestTerminalNote("z".repeat(25_000), "/srv/cap-probe");
                 try {
                         const row = store.get<{ content: string; kind: string; len: number }>(
                                 `SELECT content, kind, LENGTH(content) AS len FROM notes WHERE id = ?`,
                                 [id],
                         );
-                        expect(row!.len).toBe(20_000);
+                        expect(row!.len).toBe(20_012); // 20k cap + the 12-unit marker
                         expect(row!.kind).toBe("terminal");
-                        expect(row!.content).toBe("z".repeat(20_000));
+                        expect(row!.content).toBe(`${"z".repeat(20_000)}\n(truncated)`);
                 } finally {
                         store.run(`DELETE FROM notes WHERE id = ?`, [id]);
                 }
@@ -326,6 +334,128 @@ describe("ingestTerminalNote content cap (M6 parity)", () => {
                 try {
                         const row = store.get<{ len: number }>(`SELECT LENGTH(content) AS len FROM notes WHERE id = ?`, [id]);
                         expect(row!.len).toBe(5);
+                } finally {
+                        store.run(`DELETE FROM notes WHERE id = ?`, [id]);
+                }
+        });
+
+        test("the cap is idempotent: an already-capped note re-entering ingest is unchanged", () => {
+                // The outbox drain re-reads the SAME capped bytes (a failed
+                // archive rename, the budget race's twin write) — re-capping
+                // must be a no-op or file bytes and stored row diverge again.
+                const capped = `${"z".repeat(20_000)}\n(truncated)`;
+                const id = ingestTerminalNote(capped, "/srv/cap-probe");
+                try {
+                        const row = store.get<{ content: string }>(`SELECT content FROM notes WHERE id = ?`, [id]);
+                        expect(row!.content).toBe(capped);
+                } finally {
+                        store.run(`DELETE FROM notes WHERE id = ?`, [id]);
+                }
+        });
+});
+
+// ---------------------------------------------------------------------------
+// BUG 9: double-delivery on >20k notes — the budget race writes the outbox
+// while the POST is still in flight, and the engine's 413 fallback writes it
+// AGAIN; both outbox files then drain through the exact-content dedup. With
+// all cap sites producing identical bytes (capTerminalNoteContent), the twin
+// dedupes. Pre-fix, the marker present in the file but stripped by the ingest
+// slice made every twin look "new" — the note landed in the notes table
+// twice and the dream consolidated the same session twice.
+// ---------------------------------------------------------------------------
+
+describe("terminal-note cap parity across delivery paths (BUG 9)", () => {
+        test("a >20k note delivered via BOTH paths is ingested exactly once", () => {
+                for (const n of terminalNotes()) store.run(`DELETE FROM notes WHERE id = ?`, [n.id]);
+                const big = "x".repeat(20_500);
+                // Both delivery paths' outbox writes for the same note: the
+                // budget-race write and the engine-413 fallback write.
+                writeOutboxNote({ content: big, projectPath: PROJECT, ts: Date.now() });
+                writeOutboxNote({ content: big, projectPath: PROJECT, ts: Date.now() });
+                syncNoteOutbox();
+                // Exactly ONE row for this project's twin files — pre-fix the
+                // marker mismatch defeated the dedup and BOTH landed (the same
+                // session consolidated twice by every later dream).
+                const rows = terminalNotes();
+                expect(rows).toHaveLength(1);
+                expect(rows[0].content).toBe(`${"x".repeat(20_000)}\n(truncated)`);
+                syncNoteOutbox(); // a re-drain (failed archive retry) changes nothing
+                expect(terminalNotes()).toHaveLength(1);
+                // Both twin files are archived (the deduped one retries the archive).
+                expect(readdirSync(UNOWN_OUTBOX_DIR).filter((f) => f.endsWith(".md") && f.includes(MARKER))).toEqual([]);
+        });
+
+        test("all three cap sites agree byte-for-byte (outbox file, direct ingest, drain ingest)", () => {
+                for (const n of terminalNotes()) store.run(`DELETE FROM notes WHERE id = ?`, [n.id]);
+                const big = "y".repeat(20_123);
+                const capped = `${"y".repeat(20_000)}\n(truncated)`;
+                // Site 1 — the outbox write: the file's note body.
+                const file = writeOutboxNote({ content: big, projectPath: PROJECT, ts: 42 });
+                try {
+                        expect(parseNoteBody(file).content).toBe(capped);
+                } finally {
+                        rmSync(file, { force: true });
+                }
+                // Site 2 — the HTTP lane's sink with the RAW oversized content
+                // (the legacy-file drain shape).
+                const idDirect = ingestTerminalNote(big, PROJECT);
+                // Site 3 — the drain re-ingest of the CAPPED file bytes.
+                const idDrain = ingestTerminalNote(capped, PROJECT);
+                try {
+                        const rows = terminalNotes();
+                        expect(rows).toHaveLength(2);
+                        expect(rows.every((r) => r.content === capped)).toBe(true);
+                } finally {
+                        store.run(`DELETE FROM notes WHERE id IN (?, ?)`, [idDirect, idDrain]);
+                }
+        });
+});
+
+// ---------------------------------------------------------------------------
+// BUG 13: every truncation boundary can split an astral char (emoji, CJK
+// ext-B) — the outbox cap and the ingest cap must back off to a codepoint
+// boundary so no lone surrogate is ever stored.
+// ---------------------------------------------------------------------------
+
+describe("codepoint-safe truncation at the 20k cap (BUG 13)", () => {
+        test("sliceCodePointSafe: backs off a high surrogate at the cut, keeps whole pairs, passes short strings", () => {
+                const emoji = "\u{1F600}"; // 2 UTF-16 units
+                expect(sliceCodePointSafe(`a${emoji}b`, 2)).toBe("a"); // cut inside the pair -> back off
+                expect(sliceCodePointSafe(`a${emoji}b`, 3)).toBe(`a${emoji}`); // cut just after the pair -> keep it
+                expect(sliceCodePointSafe(emoji, 1)).toBe(""); // nothing well-formed fits
+                expect(sliceCodePointSafe("abc", 10)).toBe("abc"); // n >= length
+                expect(sliceCodePointSafe("abc", 0)).toBe("");
+        });
+
+        test("an oversized astral note caps at a codepoint boundary on BOTH sites (no lone surrogates stored)", () => {
+                for (const n of terminalNotes()) store.run(`DELETE FROM notes WHERE id = ?`, [n.id]);
+                // 'x' + 10_000 emoji = 20_001 UTF-16 units: the 20_000-unit cut
+                // lands on the LAST emoji's high surrogate and must back off to
+                // 19_999 units ('x' + 9_999 emoji) before the marker.
+                const astral = `x${"\u{1F600}".repeat(10_000)}`;
+                const expected = `x${"\u{1F600}".repeat(9_999)}\n(truncated)`;
+                // Site 1 — the outbox write.
+                const file = writeOutboxNote({ content: astral, projectPath: PROJECT, ts: 43 });
+                let body = "";
+                try {
+                        body = parseNoteBody(file).content;
+                } finally {
+                        rmSync(file, { force: true });
+                }
+                expect(body).toBe(expected);
+                // Site 2 — the ingest sink.
+                const id = ingestTerminalNote(astral, PROJECT);
+                try {
+                        const row = store.get<{ content: string }>(`SELECT content FROM notes WHERE id = ?`, [id]);
+                        expect(row!.content).toBe(expected); // byte-identical to the outbox site
+                        // No lone surrogates in the STORED text.
+                        for (let i = 0; i < row!.content.length; i++) {
+                                const c = row!.content.charCodeAt(i);
+                                if (c >= 0xd800 && c <= 0xdbff) {
+                                        const next = row!.content.charCodeAt(i + 1);
+                                        expect(next >= 0xdc00 && next <= 0xdfff).toBe(true);
+                                }
+                        }
                 } finally {
                         store.run(`DELETE FROM notes WHERE id = ?`, [id]);
                 }

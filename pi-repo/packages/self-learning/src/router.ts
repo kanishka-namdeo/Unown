@@ -235,9 +235,22 @@ export class Router {
                                         // per run; a burst must not become a dream storm).
                                         const cooldown = dreamCheckCooldownMs();
                                         if (cooldown > 0 && Date.now() - this.lastDreamCheckAt < cooldown) return;
-                                        // only fire when enough notes accumulated
-                                        const pending = undreamedNotes(50).length;
-                                        if (pending < 3) return;
+                                        // Only fire when a dream can actually CONSUME something,
+                                        // counted KIND-AWARE (BUG 10): runDream() consolidates
+                                        // BENCHMARK notes only, and below its own >=3 threshold it
+                                        // inserts a junk 'no-notes' dreams row — so the benchmark
+                                        // threshold must count benchmark notes alone. The pre-fix
+                                        // mixed count (undreamedNotes(50) over BOTH kinds) let
+                                        // terminal-only accumulation fire dream-check straight
+                                        // into that junk row, once per finished run. Terminal
+                                        // notes carry their own trigger now: ANY pending terminal
+                                        // note dispatches the job, and the runner below routes
+                                        // that pressure to the PROJECT dream lane (runProjectDream
+                                        // — each project's own .unown memory), the lane that
+                                        // actually consumes terminal notes.
+                                        const benchmarkPending = undreamedNotes(50, "benchmark").length;
+                                        const terminalPending = undreamedNotes(50, "terminal").length;
+                                        if (benchmarkPending < 3 && terminalPending < 1) return;
                                 }
                                 this.dispatchEventJob(def.id, payload);
                         });
@@ -539,8 +552,22 @@ export class Router {
                                 return { results };
                         }
                         case "dream-check": {
-                                const dream = await runDream();
-                                return { dream: { id: dream.id, status: dream.status } };
+                                // KIND-AWARE (BUG 10), mirroring the auto-dream job (and
+                                // /api/dreams/run) exactly: the BENCHMARK lane runs only at its
+                                // own >=3 threshold — runDream() below that inserts a junk
+                                // 'no-notes' dreams row, which the pre-fix runner manufactured
+                                // unconditionally on every trigger (terminal-only accumulation
+                                // = one junk row per finished run). Terminal-note pressure is
+                                // served by the PROJECT lane instead: each real project's notes
+                                // consolidate into its own .unown memory via runProjectDream,
+                                // which is exactly the pressure the event gate dispatched on.
+                                const pending = undreamedNotes(50, "benchmark").length;
+                                let dream: any = null;
+                                if (pending >= 3) dream = await runDream();
+                                const projects = await runProjectDream();
+                                if (!dream && projects.length === 0)
+                                        return { skipped: `only ${pending} undreamed benchmark notes and no terminal notes` };
+                                return { dream: dream ? { id: dream.id, status: dream.status, notesIn: dream.notesIn } : null, projects };
                         }
                         case "task-mint": {
                                 const outcome = await runMintJob();

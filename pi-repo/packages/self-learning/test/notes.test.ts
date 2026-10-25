@@ -17,7 +17,9 @@
 import "./_env.ts";
 import { afterAll, beforeAll, beforeEach, describe, expect, test } from "bun:test";
 import { createHash } from "node:crypto";
-import { resolve } from "node:path";
+import { existsSync, mkdtempSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join, resolve } from "node:path";
 import {
         createNote,
         ingestTerminalNote,
@@ -27,6 +29,7 @@ import {
         slugifyProject,
         undreamedNotes,
 } from "../src/notes.ts";
+import { runProjectDream } from "../src/dream.ts";
 import { resetShieldTelemetry } from "../src/shield.ts";
 import { store } from "../src/store.ts";
 import { buildTerminalNote } from "../src/termhooks.ts";
@@ -227,10 +230,16 @@ describe("pendingTerminalNotesByProject", () => {
                 const groups = pendingTerminalNotesByProject();
                 const alphaSlug = slugifyProject("/srv/alpha");
                 const betaSlug = slugifyProject("/srv/beta");
-                expect(groups.map((g) => g.slug)).toEqual([alphaSlug, betaSlug]); // groups follow note recency order
+                // Groups surface longest-waiting project first (BUG 6: the
+                // oldest pending note orders the pass) — alpha's oldest note
+                // predates beta's only note.
+                expect(groups.map((g) => g.slug)).toEqual([alphaSlug, betaSlug]);
                 const alpha = groups.find((g) => g.slug === alphaSlug);
                 expect(alpha?.projectPath).toBe("/srv/alpha");
-                expect(alpha?.notes.map((n: { content: string }) => n.content)).toEqual(["alpha-2", "alpha-1"]);
+                // REGRESSION (BUG 6): notes within a project are OLDEST-FIRST
+                // (the chronological order the consolidation prompt reads) —
+                // the pre-fix grouping carried them newest-first.
+                expect(alpha?.notes.map((n: { content: string }) => n.content)).toEqual(["alpha-1", "alpha-2"]);
                 const beta = groups.find((g) => g.slug === betaSlug);
                 expect(beta?.notes).toHaveLength(1);
         });
@@ -247,8 +256,11 @@ describe("pendingTerminalNotesByProject", () => {
                 const groups = pendingTerminalNotesByProject();
                 expect(groups).toHaveLength(2);
                 expect(groups[0]?.slug).not.toBe(groups[1]?.slug);
-                expect(groups[0]?.notes.map((n: { content: string }) => n.content)).toEqual(["personal-api-note"]);
-                expect(groups[1]?.notes.map((n: { content: string }) => n.content)).toEqual(["work-api-note"]);
+                // Longest-waiting project first (BUG 6): /work/api's note is the
+                // older of the two — the pre-fix order followed note recency
+                // (newest project first) instead.
+                expect(groups[0]?.notes.map((n: { content: string }) => n.content)).toEqual(["work-api-note"]);
+                expect(groups[1]?.notes.map((n: { content: string }) => n.content)).toEqual(["personal-api-note"]);
         });
 
         test("REGRESSION: legacy rows under the old basename slug heal onto the composite scope", () => {
@@ -268,20 +280,128 @@ describe("pendingTerminalNotesByProject", () => {
                 expect(groups[0]?.projectPath).toBe("/srv/alpha");
         });
 
-        test("QUIRK: legacy rows with a null project_slug land in an 'unknown' group with empty path", () => {
-                // Rows written before the project columns existed (or by raw SQL) have
-                // project_slug NULL; pendingTerminalNotesByProject buckets them under
-                // 'unknown' with projectPath '' (notes.ts:55-56).
+        test("REGRESSION (BUG 7): pathless rows are consumed with an honest dreams row, never grouped", () => {
+                // Pre-fix QUIRK: NULL/empty project_path rows formed a group with
+                // projectPath '' (the 'unknown' bucket) — the dream then ran
+                // initProjectMemory('') and scaffolded .unown/memory/ INSIDE THE
+                // ENGINE'S CWD (plus a bogus migrateLegacyScope attempt on the
+                // empty basename). The grouping layer now skips such rows from
+                // the returned groups AND retires them with a dreams row that
+                // records exactly what happened to the notes.
                 store.run(`DELETE FROM notes`);
+                store.run(`DELETE FROM dreams WHERE note LIKE '%without project path%'`);
                 store.run(
                         `INSERT INTO notes (id, run_id, content, created_at, kind, project_path, project_slug) VALUES (?, NULL, ?, ?, 'terminal', NULL, NULL)`,
-                        ["legacy-1", "legacy note", 1000],
+                        ["legacy-null-path", "legacy note", 1000],
                 );
+                store.run(
+                        `INSERT INTO notes (id, run_id, content, created_at, kind, project_path, project_slug) VALUES (?, NULL, ?, ?, 'terminal', '   ', 'whitespace-slug')`,
+                        ["legacy-blank-path", "whitespace note", 1001],
+                );
+                // A real-path note alongside: IT still groups normally.
+                ingestTerminalNote("real note", "/srv/real");
                 const groups = pendingTerminalNotesByProject();
-                expect(groups).toHaveLength(1);
-                expect(groups[0]?.slug).toBe("unknown");
-                expect(groups[0]?.projectPath).toBe("");
-                expect(groups[0]?.notes.map((n: { content: string }) => n.content)).toEqual(["legacy note"]);
+                expect(groups.map((g) => g.projectPath)).toEqual(["/srv/real"]); // the empty-path group is GONE
+                // Both pathless rows retired by ONE honest skip row.
+                const row = store.get<{ status: string; notes_in: number; note: string }>(
+                        `SELECT status, notes_in, note FROM dreams WHERE note LIKE '%without project path%'`,
+                );
+                expect(row?.status).toBe("done");
+                expect(row?.notes_in).toBe(2);
+                const consumed = store.get<{ dream_id: string }>(`SELECT dream_id FROM notes WHERE id = 'legacy-null-path'`);
+                expect(consumed?.dream_id).toMatch(/^skip-/);
+                // Nothing pathless stays pending (no forever-undreamed backlog).
+                const stillPending = store.query<{ project_path: string | null }>(
+                        `SELECT project_path FROM notes WHERE dream_id IS NULL AND kind = 'terminal'`,
+                );
+                expect(stillPending.map((n) => n.project_path)).toEqual(["/srv/real"]);
+                store.run(`DELETE FROM dreams WHERE note LIKE '%without project path%'`);
+        });
+
+        test("REGRESSION (BUG 7): the runProjectDream path writes NOTHING relative to the engine cwd", async () => {
+                store.run(`DELETE FROM notes`);
+                store.run(`DELETE FROM dreams WHERE note LIKE '%without project path%'`);
+                store.run(
+                        `INSERT INTO notes (id, run_id, content, created_at, kind, project_path, project_slug) VALUES (?, NULL, ?, ?, 'terminal', NULL, NULL)`,
+                        ["cwd-guard-note", "note with no path", 1000],
+                );
+                // The pre-fix grouping returned a projectPath:'' group;
+                // runProjectDream's initProjectMemory('') then created
+                // .unown/memory/project.md in the ENGINE'S cwd. Run the whole
+                // project-dream path from a scratch cwd and pin that nothing
+                // relative to it is ever written.
+                const scratch = mkdtempSync(join(tmpdir(), "unown-pathless-dream-"));
+                const prevCwd = process.cwd();
+                process.chdir(scratch);
+                try {
+                        const results = await runProjectDream();
+                        expect(results).toEqual([]); // no group -> no dream attempt at all
+                        expect(existsSync(join(scratch, ".unown"))).toBe(false);
+                } finally {
+                        process.chdir(prevCwd);
+                        rmSync(scratch, { recursive: true, force: true });
+                }
+                // The note is consumed with the honest skip row (not left pending
+                // forever, never dreamed into a bogus location).
+                const row = store.get<{ status: string; notes_in: number }>(
+                        `SELECT status, notes_in FROM dreams WHERE note LIKE '%without project path%'`,
+                );
+                expect(row?.status).toBe("done");
+                expect(row?.notes_in).toBe(1);
+                const note = store.get<{ dream_id: string }>(`SELECT dream_id FROM notes WHERE id = 'cwd-guard-note'`);
+                expect(note?.dream_id).toMatch(/^skip-/);
+                store.run(`DELETE FROM dreams WHERE note LIKE '%without project path%'`);
+        });
+
+        test("REGRESSION (BUG 6): a busy project cannot starve a quiet project's notes", () => {
+                // 100 notes from a busy project + 3 OLDER notes from a quiet one:
+                // the pre-fix global newest-first window of 40 held only the busy
+                // project's newest notes, so the quiet project's notes were
+                // crowded out of EVERY dream pass indefinitely (dreams run every
+                // 10 min, <=40 notes/pass). The per-project cap keeps every
+                // project's OLDEST notes in the pass.
+                store.run(`DELETE FROM notes`);
+                withSequencedClock(() => {
+                        ingestTerminalNote("quiet-old-1", "/srv/quiet");
+                        ingestTerminalNote("quiet-old-2", "/srv/quiet");
+                        ingestTerminalNote("quiet-old-3", "/srv/quiet");
+                        for (let i = 0; i < 100; i++) ingestTerminalNote(`busy-${i}`, "/srv/busy");
+                });
+                const groups = pendingTerminalNotesByProject();
+                const quiet = groups.find((g) => g.projectPath === "/srv/quiet");
+                const busy = groups.find((g) => g.projectPath === "/srv/busy");
+                // The quiet project's notes are IN the pass, not crowded out.
+                expect(quiet?.notes.map((n: { content: string }) => n.content)).toEqual(["quiet-old-1", "quiet-old-2", "quiet-old-3"]);
+                // The busy project contributes its OLDEST 12 (per-project cap),
+                // not its newest 40.
+                expect(busy?.notes).toHaveLength(12);
+                expect(busy?.notes.map((n: { content: string }) => n.content)).toEqual(
+                        Array.from({ length: 12 }, (_, i) => `busy-${i}`),
+                );
+                // Longest-waiting project first, and the global cap still holds.
+                expect(groups[0]?.projectPath).toBe("/srv/quiet");
+                const total = groups.reduce((n, g) => n + g.notes.length, 0);
+                expect(total).toBeLessThanOrEqual(40);
+        });
+
+        test("the per-project cap keeps the global 40-cap meaningful across many projects (BUG 6)", () => {
+                // 5 projects x 20 notes each (seeded round-robin): after the
+                // per-project cap each contributes at most 12, and the global
+                // 40 takes the 40 OLDEST — with round-robin seeding that is 8
+                // per project. No project dominates; none is starved.
+                store.run(`DELETE FROM notes`);
+                withSequencedClock(() => {
+                        for (let round = 0; round < 20; round++) {
+                                for (let p = 1; p <= 5; p++) ingestTerminalNote(`p${p}-r${round}`, `/srv/fair-${p}`);
+                        }
+                });
+                const groups = pendingTerminalNotesByProject();
+                expect(groups).toHaveLength(5);
+                expect(groups.reduce((n, g) => n + g.notes.length, 0)).toBe(40);
+                for (const g of groups) {
+                        expect(g.notes).toHaveLength(8); // 40 oldest / 5 projects, round-robin
+                        expect(g.notes[0].content).toBe(`p${g.projectPath.slice(-1)}-r0`); // oldest-first within the project
+                }
         });
 });
 
@@ -369,6 +489,27 @@ describe("noteFromRun", () => {
                 expect(note).not.toContain("y".repeat(301));
         });
 
+        test("REGRESSION (BUG 13): failure-evidence and final-words cuts back off surrogate boundaries", () => {
+                // "AssertionError: " (16) + 183 y + one emoji = 201 UTF-16 units: the
+                // 200-unit cut lands on the emoji's HIGH surrogate — the codepoint-safe
+                // slice drops the emoji WHOLE instead of storing a lone surrogate.
+                const note = noteFromRun({ ...baseRun, status: "failed", verifyLog: `AssertionError: ${"y".repeat(183)}\u{1F600}` });
+                const bullet = note.split("\n").find((l) => l.startsWith("  - "))!;
+                expect(bullet).toBe(`  - AssertionError: ${"y".repeat(183)}`);
+                // Same class at the 300-unit final-words boundary: 299 z + emoji = 301.
+                const words = noteFromRun({ ...baseRun, lastAssistantText: `${"z".repeat(299)}\u{1F600}` });
+                expect(words).toContain(`Agent's final words: ${"z".repeat(299)}`);
+                for (const text of [note, words]) {
+                        for (let i = 0; i < text.length; i++) {
+                                const c = text.charCodeAt(i);
+                                if (c >= 0xd800 && c <= 0xdbff) {
+                                        const next = text.charCodeAt(i + 1);
+                                        expect(next >= 0xdc00 && next <= 0xdfff).toBe(true); // pairs stay whole
+                                }
+                        }
+                }
+        });
+
         test("empty lastAssistantText omits the final-words line", () => {
                 expect(noteFromRun({ ...baseRun, lastAssistantText: undefined })).not.toContain("Agent's final words:");
         });
@@ -440,6 +581,34 @@ describe("buildTerminalNote", () => {
                 const note = withFixedNow(() => buildTerminalNote({ ...info, lastAssistantText: text }));
                 const line = note.split("\n").find((l) => l.startsWith("Final outcome:"));
                 expect(line).toBe(`Final outcome: ${text.slice(0, 400)}`);
+        });
+
+        test("REGRESSION (BUG 13): the 400-unit cut backs off astral-char boundaries (no lone surrogates)", () => {
+                // 399 BMP chars + one 4-byte emoji: the plain slice(0, 400) the
+                // pre-fix builder used kept the emoji's HIGH surrogate and
+                // dropped its low partner — the stored note then degraded to
+                // U+FFFD replacement chars on every UTF-8 boundary it crossed
+                // (delivery POST, DB materialization, the dream's extraction
+                // input). The codepoint-safe slice drops the emoji WHOLE.
+                const text = `${"a".repeat(399)}\u{1F600}`;
+                const note = withFixedNow(() => buildTerminalNote({ ...info, lastAssistantText: text }));
+                const line = note.split("\n").find((l) => l.startsWith("Final outcome:"))!;
+                expect(line).toBe(`Final outcome: ${"a".repeat(399)}`);
+                // No lone surrogates anywhere in the note: every high surrogate
+                // is immediately followed by its low partner (charCodeAt probe —
+                // the JSON round-trip is lossless for well-formed pairs).
+                for (let i = 0; i < note.length; i++) {
+                        const c = note.charCodeAt(i);
+                        if (c >= 0xd800 && c <= 0xdbff) {
+                                const next = note.charCodeAt(i + 1);
+                                expect(next >= 0xdc00 && next <= 0xdfff).toBe(true);
+                        }
+                }
+                // A cut exactly AFTER a complete pair keeps the emoji (the backoff
+                // only fires when the boundary would orphan a high surrogate).
+                const whole = `${"a".repeat(398)}\u{1F600}`; // 398 + 2 = 400 units — the emoji fits
+                const noteWhole = withFixedNow(() => buildTerminalNote({ ...info, lastAssistantText: whole }));
+                expect(noteWhole).toContain(`Final outcome: ${whole}`);
         });
 
         test("empty lastAssistantText omits the final-outcome line", () => {

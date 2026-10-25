@@ -5,18 +5,18 @@
 import { closeSync, existsSync, mkdirSync, openSync, readFileSync, rmSync, statSync, writeSync } from "node:fs";
 import { join } from "node:path";
 import {
-	AutomationsScheduler,
-	createAutomation,
-	deleteAutomation,
-	EVENT_NAME_RE,
-	type EventDispatchResult,
-	getAutomation,
-	listRuns as listAutomationRuns,
-	listAutomations,
-	ROUTINE_EVENT_PREFIX,
-	skipNextOccurrence,
-	snoozeNextOccurrence,
-	updateAutomation,
+        AutomationsScheduler,
+        createAutomation,
+        deleteAutomation,
+        EVENT_NAME_RE,
+        type EventDispatchResult,
+        getAutomation,
+        listRuns as listAutomationRuns,
+        listAutomations,
+        ROUTINE_EVENT_PREFIX,
+        skipNextOccurrence,
+        snoozeNextOccurrence,
+        updateAutomation,
 } from "./automations.ts";
 import { emit, subscribe } from "./bus.ts";
 import { dreamNotes, latestDreamNews, listDreams, runDream, runProjectDream } from "./dream.ts";
@@ -249,221 +249,221 @@ function currentAuthPosture(): { mode: "token" | "off"; bind: "loopback" | "netw
 export async function handleApi(req: ApiRequest): Promise<Response> {
         const { method, path, query, body } = req;
 
-	try {
-		// ------------------------------------------------------------------
-		// Automations (the zcode port — scheduled recurring agent runs)
-		// ------------------------------------------------------------------
-		if (path === "/api/automations") {
-			if (method === "GET") {
-				const rows = listAutomations().map((a) => ({
-					...a,
-					schedule: describeRoutineSchedule(a),
-					lastRun: listAutomationRuns(a.id, 1)[0] ?? null,
-				}));
-				return json({ automations: rows });
-			}
-			if (method === "POST") {
-				// `until` accepts epoch ms or an ISO string (the
-				// CLI/tools normalize; both are unambiguous).
-				const untilRaw = body?.until ?? body?.untilMs;
-				const untilMs =
-					untilRaw === undefined || untilRaw === null
-						? null
-						: Number.isFinite(Number(untilRaw))
-							? Number(untilRaw)
-							: Date.parse(String(untilRaw));
-				const created = createAutomation({
-					title: String(body?.title ?? ""),
-					prompt: String(body?.prompt ?? ""),
-					workspace: String(body?.workspace ?? process.cwd()),
-					schedule: {
-						cron: body?.cron !== undefined ? String(body.cron) : undefined,
-						every: body?.every !== undefined ? String(body.every) : undefined,
-						after: body?.after !== undefined ? String(body.after) : undefined,
-						delayMinutes: body?.delayMinutes !== undefined ? Number(body.delayMinutes) : undefined,
-					},
-					timezone: body?.timezone !== undefined && body?.timezone !== null ? String(body.timezone) : null,
-					untilMs,
-					misfire:
-						body?.misfire !== undefined && body?.misfire !== null
-							? String(body.misfire) === "catch-up"
-								? "catch-up"
-								: String(body.misfire) === "skip"
-									? "skip"
-									: undefined
-							: null,
-					mode: body?.mode === "standard" ? "standard" : "read-only",
-					model: body?.model ? String(body.model) : null,
-					maxRuns: body?.maxRuns !== undefined && body?.maxRuns !== null ? Number(body.maxRuns) : null,
-					// M5 policies: activeHours/idleOnly/deliverUrl/jitterSecs (camelCase;
-					// active_hours/idle_only/deliver_url/jitter_secs row aliases accepted).
-					activeHours:
-						body?.activeHours !== undefined
-							? body.activeHours === null || body.activeHours === ""
-								? null
-								: String(body.activeHours)
-							: body?.active_hours !== undefined
-								? String(body.active_hours)
-								: undefined,
-					idleOnly: body?.idleOnly === true || body?.idle_only === 1 || body?.idle_only === true,
-					deliverUrl:
-						body?.deliverUrl !== undefined
-							? body.deliverUrl === null || body.deliverUrl === ""
-								? null
-								: String(body.deliverUrl)
-							: body?.deliver_url !== undefined
-								? String(body.deliver_url)
-								: undefined,
-					jitterSecs:
-						body?.jitterSecs !== undefined && body?.jitterSecs !== null
-							? Number(body.jitterSecs)
-							: body?.jitter_secs !== undefined && body?.jitter_secs !== null
-								? Number(body.jitter_secs)
-								: undefined,
-					// M6: the failed-run retry policy (same camelCase + snake_case
-					// alias convention as the M5 fields).
-					retryMax:
-						body?.retryMax !== undefined && body?.retryMax !== null
-							? Number(body.retryMax)
-							: body?.retry_max !== undefined && body?.retry_max !== null
-								? Number(body.retry_max)
-								: undefined,
-					retryBackoffSecs:
-						body?.retryBackoffSecs !== undefined && body?.retryBackoffSecs !== null
-							? Number(body.retryBackoffSecs)
-							: body?.retry_backoff_secs !== undefined && body?.retry_backoff_secs !== null
-								? Number(body.retry_backoff_secs)
-								: undefined,
-					// M2 event routines: `event` + `filter` (the CLI's spelling;
-					// eventKind/eventFilter aliases accepted for REST symmetry).
-					eventKind:
-						body?.event !== undefined
-							? String(body.event)
-							: body?.eventKind !== undefined
-								? String(body.eventKind)
-								: null,
-					eventFilter:
-						body?.filter !== undefined
-							? String(body.filter)
-							: body?.eventFilter !== undefined
-								? String(body.eventFilter)
-								: null,
-				});
-				if (!created.ok) return json({ error: created.error }, created.status ?? 400);
-				return json({
-					automation: { ...created.automation, schedule: describeRoutineSchedule(created.automation) },
-				});
-			}
-		}
+        try {
+                // ------------------------------------------------------------------
+                // Automations (the zcode port — scheduled recurring agent runs)
+                // ------------------------------------------------------------------
+                if (path === "/api/automations") {
+                        if (method === "GET") {
+                                const rows = listAutomations().map((a) => ({
+                                        ...a,
+                                        schedule: describeRoutineSchedule(a),
+                                        lastRun: listAutomationRuns(a.id, 1)[0] ?? null,
+                                }));
+                                return json({ automations: rows });
+                        }
+                        if (method === "POST") {
+                                // `until` accepts epoch ms or an ISO string (the
+                                // CLI/tools normalize; both are unambiguous).
+                                const untilRaw = body?.until ?? body?.untilMs;
+                                const untilMs =
+                                        untilRaw === undefined || untilRaw === null
+                                                ? null
+                                                : Number.isFinite(Number(untilRaw))
+                                                        ? Number(untilRaw)
+                                                        : Date.parse(String(untilRaw));
+                                const created = createAutomation({
+                                        title: String(body?.title ?? ""),
+                                        prompt: String(body?.prompt ?? ""),
+                                        workspace: String(body?.workspace ?? process.cwd()),
+                                        schedule: {
+                                                cron: body?.cron !== undefined ? String(body.cron) : undefined,
+                                                every: body?.every !== undefined ? String(body.every) : undefined,
+                                                after: body?.after !== undefined ? String(body.after) : undefined,
+                                                delayMinutes: body?.delayMinutes !== undefined ? Number(body.delayMinutes) : undefined,
+                                        },
+                                        timezone: body?.timezone !== undefined && body?.timezone !== null ? String(body.timezone) : null,
+                                        untilMs,
+                                        misfire:
+                                                body?.misfire !== undefined && body?.misfire !== null
+                                                        ? String(body.misfire) === "catch-up"
+                                                                ? "catch-up"
+                                                                : String(body.misfire) === "skip"
+                                                                        ? "skip"
+                                                                        : undefined
+                                                        : null,
+                                        mode: body?.mode === "standard" ? "standard" : "read-only",
+                                        model: body?.model ? String(body.model) : null,
+                                        maxRuns: body?.maxRuns !== undefined && body?.maxRuns !== null ? Number(body.maxRuns) : null,
+                                        // M5 policies: activeHours/idleOnly/deliverUrl/jitterSecs (camelCase;
+                                        // active_hours/idle_only/deliver_url/jitter_secs row aliases accepted).
+                                        activeHours:
+                                                body?.activeHours !== undefined
+                                                        ? body.activeHours === null || body.activeHours === ""
+                                                                ? null
+                                                                : String(body.activeHours)
+                                                        : body?.active_hours !== undefined
+                                                                ? String(body.active_hours)
+                                                                : undefined,
+                                        idleOnly: body?.idleOnly === true || body?.idle_only === 1 || body?.idle_only === true,
+                                        deliverUrl:
+                                                body?.deliverUrl !== undefined
+                                                        ? body.deliverUrl === null || body.deliverUrl === ""
+                                                                ? null
+                                                                : String(body.deliverUrl)
+                                                        : body?.deliver_url !== undefined
+                                                                ? String(body.deliver_url)
+                                                                : undefined,
+                                        jitterSecs:
+                                                body?.jitterSecs !== undefined && body?.jitterSecs !== null
+                                                        ? Number(body.jitterSecs)
+                                                        : body?.jitter_secs !== undefined && body?.jitter_secs !== null
+                                                                ? Number(body.jitter_secs)
+                                                                : undefined,
+                                        // M6: the failed-run retry policy (same camelCase + snake_case
+                                        // alias convention as the M5 fields).
+                                        retryMax:
+                                                body?.retryMax !== undefined && body?.retryMax !== null
+                                                        ? Number(body.retryMax)
+                                                        : body?.retry_max !== undefined && body?.retry_max !== null
+                                                                ? Number(body.retry_max)
+                                                                : undefined,
+                                        retryBackoffSecs:
+                                                body?.retryBackoffSecs !== undefined && body?.retryBackoffSecs !== null
+                                                        ? Number(body.retryBackoffSecs)
+                                                        : body?.retry_backoff_secs !== undefined && body?.retry_backoff_secs !== null
+                                                                ? Number(body.retry_backoff_secs)
+                                                                : undefined,
+                                        // M2 event routines: `event` + `filter` (the CLI's spelling;
+                                        // eventKind/eventFilter aliases accepted for REST symmetry).
+                                        eventKind:
+                                                body?.event !== undefined
+                                                        ? String(body.event)
+                                                        : body?.eventKind !== undefined
+                                                                ? String(body.eventKind)
+                                                                : null,
+                                        eventFilter:
+                                                body?.filter !== undefined
+                                                        ? String(body.filter)
+                                                        : body?.eventFilter !== undefined
+                                                                ? String(body.eventFilter)
+                                                                : null,
+                                });
+                                if (!created.ok) return json({ error: created.error }, created.status ?? 400);
+                                return json({
+                                        automation: { ...created.automation, schedule: describeRoutineSchedule(created.automation) },
+                                });
+                        }
+                }
 
-		// ------------------------------------------------------------------
-		// Event dispatch (M2) — the LOCAL trigger lane: the same handler
-		// as the webhook endpoint minus the hook-id check, behind the
-		// regular bearer gate. `unown routines trigger` and the tests use
-		// this; external senders use POST /api/hooks/<hookId> (below).
-		// ------------------------------------------------------------------
-		if (method === "POST" && path === "/api/automations/event-dispatch") {
-			const event = typeof body?.event === "string" ? body.event.trim() : "";
-			if (!EVENT_NAME_RE.test(event)) return json({ error: "event must match [a-z0-9._-]{1,64}" }, 400);
-			const payload = body?.payload ?? {};
-			if (typeof payload !== "object" || payload === null || Array.isArray(payload)) {
-				return json({ error: "payload must be a JSON object" }, 400);
-			}
-			const result = await automationsScheduler.dispatchEvent(event, payload);
-			recordHookEvent(event, result);
-			return json({ ok: true, ...result });
-		}
-		const automationMatch = path.match(/^\/api\/automations\/([^/]+)(?:\/(run|runs|skip|snooze))?$/);
-		if (automationMatch) {
-			const id = decodeURIComponent(automationMatch[1]);
-			const sub = automationMatch[2];
-			if (sub === "run" && method === "POST") {
-				const triggered = await automationsScheduler.runNow(id);
-				if (!triggered.ok) return json({ error: triggered.error }, triggered.status ?? 400);
-				return json({ ok: true });
-			}
-			if (sub === "skip" && method === "POST") {
-				const skipped = skipNextOccurrence(id);
-				if (!skipped.ok) return json({ error: skipped.error }, skipped.status ?? 400);
-				return json({
-					automation: { ...skipped.automation, schedule: describeRoutineSchedule(skipped.automation) },
-				});
-			}
-			if (sub === "snooze" && method === "POST") {
-				const minutes = Number(body?.minutes);
-				if (!Number.isFinite(minutes)) return json({ error: "snooze needs a { minutes } body (1..525600)" }, 400);
-				const snoozed = snoozeNextOccurrence(id, minutes);
-				if (!snoozed.ok) return json({ error: snoozed.error }, snoozed.status ?? 400);
-				return json({
-					automation: { ...snoozed.automation, schedule: describeRoutineSchedule(snoozed.automation) },
-				});
-			}
-			if (sub === "runs" && method === "GET") {
-				const limit = Number(query?.get("limit") ?? 20);
-				return json({ runs: listAutomationRuns(id, Number.isFinite(limit) ? limit : 20) });
-			}
-			if (method === "GET") {
-				const automation = getAutomation(id);
-				if (!automation) return json({ error: "unknown automation" }, 404);
-				return json({ automation: { ...automation, schedule: describeRoutineSchedule(automation) } });
-			}
-			if (method === "PATCH") {
-				const patch: any = {};
-				for (const key of [
-					"title",
-					"prompt",
-					"mode",
-					"model",
-					"lifecycle",
-					"cron",
-					"every",
-					"after",
-					"timezone",
-					"misfire",
-				]) {
-					if (body?.[key] !== undefined) patch[key] = body[key];
-				}
-				if (body?.maxRuns !== undefined) patch.max_runs = body.maxRuns; // REST camelCase → the row's snake_case
-				// M5 policies (camelCase + row aliases; null clears).
-				if (body?.activeHours !== undefined || body?.active_hours !== undefined) {
-					patch.activeHours = body.activeHours ?? body.active_hours ?? null;
-				}
-				if (body?.idleOnly !== undefined || body?.idle_only !== undefined) {
-					patch.idleOnly = body.idleOnly ?? body.idle_only ?? false;
-				}
-				if (body?.deliverUrl !== undefined || body?.deliver_url !== undefined) {
-					patch.deliverUrl = body.deliverUrl ?? body.deliver_url ?? null;
-				}
-				if (body?.jitterSecs !== undefined || body?.jitter_secs !== undefined) {
-					patch.jitterSecs = body.jitterSecs ?? body.jitter_secs ?? null;
-				}
-				// M6: the failed-run retry policy (null clears; 0 also disarms
-				// a pending retry chain).
-				if (body?.retryMax !== undefined || body?.retry_max !== undefined) {
-					patch.retryMax = body.retryMax ?? body.retry_max ?? null;
-				}
-				if (body?.retryBackoffSecs !== undefined || body?.retry_backoff_secs !== undefined) {
-					patch.retryBackoffSecs = body.retryBackoffSecs ?? body.retry_backoff_secs ?? null;
-				}
-				const untilRaw = body?.until ?? body?.untilMs;
-				if (untilRaw !== undefined) {
-					patch.until_ms =
-						untilRaw === null || untilRaw === ""
-							? null
-							: Number.isFinite(Number(untilRaw))
-								? Number(untilRaw)
-								: Date.parse(String(untilRaw));
-				}
-				if (patch.misfire === "default" || patch.misfire === "") patch.misfire = null;
-				const updated = updateAutomation(id, patch);
-				if (!updated.ok) return json({ error: updated.error }, updated.status ?? 400);
-				return json({ automation: updated.automation });
-			}
-			if (method === "DELETE") {
-				const deleted = deleteAutomation(id);
-				return deleted ? json({ ok: true }) : json({ error: "unknown automation" }, 404);
-			}
-		}
+                // ------------------------------------------------------------------
+                // Event dispatch (M2) — the LOCAL trigger lane: the same handler
+                // as the webhook endpoint minus the hook-id check, behind the
+                // regular bearer gate. `unown routines trigger` and the tests use
+                // this; external senders use POST /api/hooks/<hookId> (below).
+                // ------------------------------------------------------------------
+                if (method === "POST" && path === "/api/automations/event-dispatch") {
+                        const event = typeof body?.event === "string" ? body.event.trim() : "";
+                        if (!EVENT_NAME_RE.test(event)) return json({ error: "event must match [a-z0-9._-]{1,64}" }, 400);
+                        const payload = body?.payload ?? {};
+                        if (typeof payload !== "object" || payload === null || Array.isArray(payload)) {
+                                return json({ error: "payload must be a JSON object" }, 400);
+                        }
+                        const result = await automationsScheduler.dispatchEvent(event, payload);
+                        recordHookEvent(event, result);
+                        return json({ ok: true, ...result });
+                }
+                const automationMatch = path.match(/^\/api\/automations\/([^/]+)(?:\/(run|runs|skip|snooze))?$/);
+                if (automationMatch) {
+                        const id = decodeURIComponent(automationMatch[1]);
+                        const sub = automationMatch[2];
+                        if (sub === "run" && method === "POST") {
+                                const triggered = await automationsScheduler.runNow(id);
+                                if (!triggered.ok) return json({ error: triggered.error }, triggered.status ?? 400);
+                                return json({ ok: true });
+                        }
+                        if (sub === "skip" && method === "POST") {
+                                const skipped = skipNextOccurrence(id);
+                                if (!skipped.ok) return json({ error: skipped.error }, skipped.status ?? 400);
+                                return json({
+                                        automation: { ...skipped.automation, schedule: describeRoutineSchedule(skipped.automation) },
+                                });
+                        }
+                        if (sub === "snooze" && method === "POST") {
+                                const minutes = Number(body?.minutes);
+                                if (!Number.isFinite(minutes)) return json({ error: "snooze needs a { minutes } body (1..525600)" }, 400);
+                                const snoozed = snoozeNextOccurrence(id, minutes);
+                                if (!snoozed.ok) return json({ error: snoozed.error }, snoozed.status ?? 400);
+                                return json({
+                                        automation: { ...snoozed.automation, schedule: describeRoutineSchedule(snoozed.automation) },
+                                });
+                        }
+                        if (sub === "runs" && method === "GET") {
+                                const limit = Number(query?.get("limit") ?? 20);
+                                return json({ runs: listAutomationRuns(id, Number.isFinite(limit) ? limit : 20) });
+                        }
+                        if (method === "GET") {
+                                const automation = getAutomation(id);
+                                if (!automation) return json({ error: "unknown automation" }, 404);
+                                return json({ automation: { ...automation, schedule: describeRoutineSchedule(automation) } });
+                        }
+                        if (method === "PATCH") {
+                                const patch: any = {};
+                                for (const key of [
+                                        "title",
+                                        "prompt",
+                                        "mode",
+                                        "model",
+                                        "lifecycle",
+                                        "cron",
+                                        "every",
+                                        "after",
+                                        "timezone",
+                                        "misfire",
+                                ]) {
+                                        if (body?.[key] !== undefined) patch[key] = body[key];
+                                }
+                                if (body?.maxRuns !== undefined) patch.max_runs = body.maxRuns; // REST camelCase → the row's snake_case
+                                // M5 policies (camelCase + row aliases; null clears).
+                                if (body?.activeHours !== undefined || body?.active_hours !== undefined) {
+                                        patch.activeHours = body.activeHours ?? body.active_hours ?? null;
+                                }
+                                if (body?.idleOnly !== undefined || body?.idle_only !== undefined) {
+                                        patch.idleOnly = body.idleOnly ?? body.idle_only ?? false;
+                                }
+                                if (body?.deliverUrl !== undefined || body?.deliver_url !== undefined) {
+                                        patch.deliverUrl = body.deliverUrl ?? body.deliver_url ?? null;
+                                }
+                                if (body?.jitterSecs !== undefined || body?.jitter_secs !== undefined) {
+                                        patch.jitterSecs = body.jitterSecs ?? body.jitter_secs ?? null;
+                                }
+                                // M6: the failed-run retry policy (null clears; 0 also disarms
+                                // a pending retry chain).
+                                if (body?.retryMax !== undefined || body?.retry_max !== undefined) {
+                                        patch.retryMax = body.retryMax ?? body.retry_max ?? null;
+                                }
+                                if (body?.retryBackoffSecs !== undefined || body?.retry_backoff_secs !== undefined) {
+                                        patch.retryBackoffSecs = body.retryBackoffSecs ?? body.retry_backoff_secs ?? null;
+                                }
+                                const untilRaw = body?.until ?? body?.untilMs;
+                                if (untilRaw !== undefined) {
+                                        patch.until_ms =
+                                                untilRaw === null || untilRaw === ""
+                                                        ? null
+                                                        : Number.isFinite(Number(untilRaw))
+                                                                ? Number(untilRaw)
+                                                                : Date.parse(String(untilRaw));
+                                }
+                                if (patch.misfire === "default" || patch.misfire === "") patch.misfire = null;
+                                const updated = updateAutomation(id, patch);
+                                if (!updated.ok) return json({ error: updated.error }, updated.status ?? 400);
+                                return json({ automation: updated.automation });
+                        }
+                        if (method === "DELETE") {
+                                const deleted = deleteAutomation(id);
+                                return deleted ? json({ ok: true }) : json({ error: "unknown automation" }, 404);
+                        }
+                }
 
                 // ------------------------------------------------------------------
                 // Version (M8) — the version-skew handshake block. GET and HEAD both
@@ -593,7 +593,46 @@ export async function handleApi(req: ApiRequest): Promise<Response> {
                 // ------------------------------------------------------------------
                 // Tasks
                 // ------------------------------------------------------------------
-                if (method === "GET" && path === "/api/tasks") return json({ tasks: listTasks() });
+                if (method === "GET" && path === "/api/tasks") {
+                        // ?all=1 — the operator lane: include INACTIVE rows (quarantined /
+                        // discarded minted tasks) so the circuit breaker's catches stay
+                        // visible and reversible. Default stays active-only (the dashboard
+                        // and pickNextTask shape).
+                        if (query.get("all") === "1")
+                                return json({
+                                        tasks: store.query(
+                                                `SELECT id, name, description, category, difficulty, created_at, pass_count, fail_count, origin, status, source_run_id, active FROM tasks ORDER BY active DESC, id`,
+                                        ),
+                                });
+                        return json({ tasks: listTasks() });
+                }
+                // Operator lifecycle lanes for the capability quarantine (the
+                // unsolvable-task circuit breaker). POST because both mutate task
+                // state; both emit on the bus so a live dashboard updates.
+                if (method === "POST" && /^\/api\/tasks\/[^/]+\/quarantine$/.test(path)) {
+                        const id = decodeURIComponent(path.split("/")[3] ?? "");
+                        const row = store.get<{ active: number }>(`SELECT active FROM tasks WHERE id = ?`, [id]);
+                        if (!row) return json({ error: "not found" }, 404);
+                        store.run(`UPDATE tasks SET active = 0, status = 'quarantined' WHERE id = ?`, [id]);
+                        emit("task:quarantined", { id, by: "operator" });
+                        return json({ ok: true, id, active: 0, status: "quarantined" });
+                }
+                if (method === "POST" && /^\/api\/tasks\/[^/]+\/activate$/.test(path)) {
+                        const id = decodeURIComponent(path.split("/")[3] ?? "");
+                        const row = store.get<{ origin: string | null; status: string | null }>(
+                                `SELECT origin, status FROM tasks WHERE id = ?`,
+                                [id],
+                        );
+                        if (!row) return json({ error: "not found" }, 404);
+                        // Restoring a quarantined task puts it back where it came from:
+                        // minted capability evals return to 'capability' (the learning
+                        // lane that can still graduate), everything else to 'regression'.
+                        const restored =
+                                (row.status ?? "") === "quarantined" && (row.origin ?? "seed") === "minted" ? "capability" : "regression";
+                        store.run(`UPDATE tasks SET active = 1, status = ? WHERE id = ?`, [restored, id]);
+                        emit("task:activated", { id, status: restored });
+                        return json({ ok: true, id, active: 1, status: restored });
+                }
                 if (method === "GET" && path === "/api/skills") {
                         // ApiRequest carries the parsed query — req.url was a latent bug here
                         // (undefined on ApiRequest, so the project filter never applied).
@@ -862,33 +901,33 @@ export async function handleApi(req: ApiRequest): Promise<Response> {
                         return json({ started: true, pendingNotes: pending });
                 }
 
-		// ------------------------------------------------------------------
-		// Hooks (the termhook log) + the inbound-webhook surface (M2):
-		// GET /api/hooks/info is bearer-gated (it reveals the hook id) and
-		// reports the hook lane's observability: how many event routines
-		// listen and the last few inbound events. The hook POST itself
-		// lives OUTSIDE handleApi — see handleWebhookPost at the fetch
-		// wrapper (auth-by-URL, 64KB cap, malformed-JSON 400).
-		// ------------------------------------------------------------------
-		if (method === "GET" && path === "/api/hooks/info") {
-			const hookId = ensureHooksToken();
-			const eventRoutines =
-				store.get<{ c: number }>(
-					`SELECT COUNT(*) AS c FROM automations WHERE schedule_kind = 'event' AND lifecycle = 'active'`,
-				)?.c ?? 0;
-			return json({
-				hookId,
-				hookUrl: `/api/hooks/${hookId}`,
-				hint: 'POST {"event": "<name>", "payload": {...}} — knowing the URL is the authorization; `unown routines hook-url` prints the curl-able form',
-				eventRoutines,
-				lastEvents: [...hookEventRing],
-			});
-		}
-		if (method === "GET" && path === "/api/hooks") {
-			const limit = Math.min(Number(query.get("limit") ?? 100), 500);
-			const hooks = store.query<any>(`SELECT * FROM hook_log ORDER BY ts DESC LIMIT ?`, [limit]);
-			return json({ hooks });
-		}
+                // ------------------------------------------------------------------
+                // Hooks (the termhook log) + the inbound-webhook surface (M2):
+                // GET /api/hooks/info is bearer-gated (it reveals the hook id) and
+                // reports the hook lane's observability: how many event routines
+                // listen and the last few inbound events. The hook POST itself
+                // lives OUTSIDE handleApi — see handleWebhookPost at the fetch
+                // wrapper (auth-by-URL, 64KB cap, malformed-JSON 400).
+                // ------------------------------------------------------------------
+                if (method === "GET" && path === "/api/hooks/info") {
+                        const hookId = ensureHooksToken();
+                        const eventRoutines =
+                                store.get<{ c: number }>(
+                                        `SELECT COUNT(*) AS c FROM automations WHERE schedule_kind = 'event' AND lifecycle = 'active'`,
+                                )?.c ?? 0;
+                        return json({
+                                hookId,
+                                hookUrl: `/api/hooks/${hookId}`,
+                                hint: 'POST {"event": "<name>", "payload": {...}} — knowing the URL is the authorization; `unown routines hook-url` prints the curl-able form',
+                                eventRoutines,
+                                lastEvents: [...hookEventRing],
+                        });
+                }
+                if (method === "GET" && path === "/api/hooks") {
+                        const limit = Math.min(Number(query.get("limit") ?? 100), 500);
+                        const hooks = store.query<any>(`SELECT * FROM hook_log ORDER BY ts DESC LIMIT ?`, [limit]);
+                        return json({ hooks });
+                }
 
                 // ------------------------------------------------------------------
                 // Notes
@@ -1075,50 +1114,50 @@ function recordHookEvent(event: string, result: EventDispatchResult): void {
  * cause runs).
  */
 async function handleWebhookPost(pathname: string, req: Request): Promise<Response> {
-	const hookId = decodeURIComponent(pathname.split("/")[3] ?? "");
-	const expected = ensureHooksToken();
-	if (!tokenMatches(hookId, expected)) return json({ error: "unknown hook" }, 404);
-	const declared = Number(req.headers.get("content-length") ?? "0");
-	if (Number.isFinite(declared) && declared > HOOK_MAX_BODY_BYTES) {
-		return json({ error: `body too large (max ${HOOK_MAX_BODY_BYTES} bytes)` }, 413);
-	}
-	let raw: string;
-	try {
-		raw = await req.text();
-	} catch {
-		return json({ error: "unreadable body" }, 400);
-	}
-	if (raw.length > HOOK_MAX_BODY_BYTES)
-		return json({ error: `body too large (max ${HOOK_MAX_BODY_BYTES} bytes)` }, 413);
-	let body: any;
-	try {
-		body = JSON.parse(raw);
-	} catch {
-		return json({ error: `body must be JSON: {"event": "<name>", "payload": {...}}` }, 400);
-	}
-	const event = typeof body?.event === "string" ? body.event.trim() : "";
-	if (!EVENT_NAME_RE.test(event)) return json({ error: "event must match [a-z0-9._-]{1,64}" }, 400);
-	// M6: the routine.* namespace is engine-emitted (chained routines) — a
-	// sender who knows the hook URL must not be able to forge a
-	// "routine A just finished successfully" body any more than GitHub lets a
-	// webhook caller forge workflow_run. The token-gated LOCAL lane keeps it
-	// (tests + chain rehearsal).
-	if (event.startsWith(ROUTINE_EVENT_PREFIX)) {
-		return json(
-			{
-				error: `the ${ROUTINE_EVENT_PREFIX}* namespace is reserved for engine-emitted events (chained routines) — pick another event name`,
-			},
-			400,
-		);
-	}
-	let payload = body?.payload ?? {};
-	if (payload === null) payload = {};
-	if (typeof payload !== "object" || Array.isArray(payload)) {
-		return json({ error: "payload must be a JSON object" }, 400);
-	}
-	const result = await automationsScheduler.dispatchEvent(event, payload);
-	recordHookEvent(event, result);
-	return json({ ok: true, ...result });
+        const hookId = decodeURIComponent(pathname.split("/")[3] ?? "");
+        const expected = ensureHooksToken();
+        if (!tokenMatches(hookId, expected)) return json({ error: "unknown hook" }, 404);
+        const declared = Number(req.headers.get("content-length") ?? "0");
+        if (Number.isFinite(declared) && declared > HOOK_MAX_BODY_BYTES) {
+                return json({ error: `body too large (max ${HOOK_MAX_BODY_BYTES} bytes)` }, 413);
+        }
+        let raw: string;
+        try {
+                raw = await req.text();
+        } catch {
+                return json({ error: "unreadable body" }, 400);
+        }
+        if (raw.length > HOOK_MAX_BODY_BYTES)
+                return json({ error: `body too large (max ${HOOK_MAX_BODY_BYTES} bytes)` }, 413);
+        let body: any;
+        try {
+                body = JSON.parse(raw);
+        } catch {
+                return json({ error: `body must be JSON: {"event": "<name>", "payload": {...}}` }, 400);
+        }
+        const event = typeof body?.event === "string" ? body.event.trim() : "";
+        if (!EVENT_NAME_RE.test(event)) return json({ error: "event must match [a-z0-9._-]{1,64}" }, 400);
+        // M6: the routine.* namespace is engine-emitted (chained routines) — a
+        // sender who knows the hook URL must not be able to forge a
+        // "routine A just finished successfully" body any more than GitHub lets a
+        // webhook caller forge workflow_run. The token-gated LOCAL lane keeps it
+        // (tests + chain rehearsal).
+        if (event.startsWith(ROUTINE_EVENT_PREFIX)) {
+                return json(
+                        {
+                                error: `the ${ROUTINE_EVENT_PREFIX}* namespace is reserved for engine-emitted events (chained routines) — pick another event name`,
+                        },
+                        400,
+                );
+        }
+        let payload = body?.payload ?? {};
+        if (payload === null) payload = {};
+        if (typeof payload !== "object" || Array.isArray(payload)) {
+                return json({ error: "payload must be a JSON object" }, 400);
+        }
+        const result = await automationsScheduler.dispatchEvent(event, payload);
+        recordHookEvent(event, result);
+        return json({ ok: true, ...result });
 }
 
 /** Async since the learning-core swap: the boot sequence seeds the memory

@@ -145,6 +145,15 @@ export function pruneToBudget(
         }
         blocks.sort((a, b) => (a.date === b.date ? a.start - b.start : a.date < b.date ? -1 : 1)); // oldest first
         const dropped = new Map<string, Array<[number, number]>>();
+        // Pristine pre-cut content per tier. Block ranges are in ORIGINAL tier
+        // coordinates, so each drop must re-derive the tier from the UNcut copy
+        // with the FULL accumulated range set. Re-applying the ranges to the
+        // already-cut string (the pre-fix code) sliced at SHIFTED coordinates
+        // whenever one tier dropped ≥2 blocks: the first range re-landed over
+        // unrelated mid-tier content and later ranges removed shifted text, so
+        // the NEWEST rules were silently truncated/dropped — while the report
+        // claimed only old blocks were pruned and the cap looked satisfied.
+        const pristine = new Map<string, string>();
         for (const block of blocks) {
                 if (total(work) <= cap) break;
                 const ranges = dropped.get(block.tier) ?? [];
@@ -152,7 +161,11 @@ export function pruneToBudget(
                 dropped.set(block.tier, ranges);
                 report.prunedBlocks.push({ tier: block.tier, note: block.note, date: block.date, chars: block.text.length });
                 const target = work.find((f) => (f.tier ?? "?") === block.tier);
-                if (target) target.content = cutRanges(target.content, ranges);
+                if (target) {
+                        // First drop for this tier: content is still uncut — freeze it.
+                        if (!pristine.has(block.tier)) pristine.set(block.tier, target.content);
+                        target.content = cutRanges(pristine.get(block.tier)!, ranges);
+                }
         }
         if (total(work) <= cap) {
                 report.totalAfter = total(work);

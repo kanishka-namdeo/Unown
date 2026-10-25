@@ -316,6 +316,7 @@ export const MINT_SCHEMA = {
     difficulty: { type: "integer" },
     prompt: { type: "string" },
     files: { type: "object", additionalProperties: { type: "string" } },
+    reference: { type: "object", additionalProperties: { type: "string" } },
     verifyTestFile: { type: "string" },
   },
   required: ["id", "name", "description", "category", "difficulty", "prompt", "files", "verifyTestFile"],

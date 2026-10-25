@@ -26,6 +26,10 @@
  *   - the governed LLM wrapper: every Mem0 LLM call lands in the governor
  *     ledger + circuit breaker exactly like llm.ts calls (auto-mode budget
  *     discipline covers the platform too)
+ *   - the empty-extraction escalation ladder: reframe retry (deterministic
+ *     note strip) + a level-3 COMPACT salvage extraction (one governed
+ *     chatJson call, mem0's stochastic-zero failure mode — see the salvage
+ *     lane block for the measured why)
  *   - the thin RECONCILE pass: mem0's additive extraction ADDs atomic
  *     memories (dedup + linking); contradiction resolution — the shipped
  *     "recency-first, loser never current" contract from the memory-eval
@@ -342,12 +346,16 @@ export interface PlatformMemory {
         score?: number;
 }
 
-/** The event stream a remember/reconcile produced — revert's input. */
+/** The event stream a remember/reconcile produced — revert's input.
+ *  `kind` carries the memory's original metadata kind so a DELETE revert
+ *  restores it with its original identity (seed/harness cap immunity)
+ *  instead of the generic "revert" marker (2026-10-29 fix). */
 export interface MemoryPlatformEvent {
         event: "ADD" | "UPDATE" | "DELETE" | "NONE";
         id: string;
         text: string;
         previousText?: string | null;
+        kind?: string;
 }
 
 /** The seam dreams/tests drive: everything the engine does to memories. */
@@ -495,15 +503,26 @@ async function buildMem0Platform(): Promise<MemoryPlatform> {
         await (memory as any)._ensureInitialized();
 
         // -- backend bookkeeping + reindex-on-switch -----------------------------
+        // Partial-reindex honesty (2026-10-29 fix): the recorded backend flips
+        // ONLY on a FULL reindex pass. The pre-fix code upserted the new backend
+        // unconditionally after reindexMemories() — which catches its own
+        // errors and returns a PARTIAL count — so an interrupted reindex was
+        // recorded as complete: a silently MIXED vector space (old-backend
+        // rows + new-backend rows, no signal, never retried — permanently
+        // degraded recall). Keeping the OLD recorded backend on failure makes
+        // the next boot re-attempt the switch (the pass is idempotent by
+        // design) and mem0:reindex-partial makes the degradation observable.
         const recorded = store.get<{ value: string }>(`SELECT value FROM memory_platform WHERE key = 'embedder_backend'`);
         if (recorded && recorded.value !== embedder.backend) {
-                await reindexMemories(memory, recorded.value, embedder.backend);
+                const outcome = await applyEmbedderBackendSwitch(memory, recorded.value, embedder.backend);
+                if (!outcome.ok) {
+                        console.warn(
+                                `[mem0] reindex incomplete (${outcome.done}/${outcome.total}) — embedder_backend stays '${recorded.value}'; the next boot retries`,
+                        );
+                }
+        } else {
+                recordEmbedderBackend(embedder.backend);
         }
-        store.run(
-                `INSERT INTO memory_platform (key, value, updated_at) VALUES ('embedder_backend', ?, ?)
-                 ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at`,
-                [embedder.backend, Date.now()],
-        );
 
         statusCache = {
                 available: true,
@@ -519,49 +538,107 @@ async function buildMem0Platform(): Promise<MemoryPlatform> {
         return new Mem0Platform(memory, embedder.backend);
 }
 
+/** Outcome of a backend-switch reindex pass: `done` of `total` eligible
+ *  rows re-embedded; `ok` is true ONLY on a full pass (the caller records
+ *  the new backend exactly then — see buildMem0Platform). */
+export interface ReindexOutcome {
+        ok: boolean;
+        done: number;
+        total: number;
+}
+
+/** Record the ACTIVE embedder backend (idempotent upsert). */
+function recordEmbedderBackend(backend: string): void {
+        store.run(
+                `INSERT INTO memory_platform (key, value, updated_at) VALUES ('embedder_backend', ?, ?)
+                 ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at`,
+                [backend, Date.now()],
+        );
+}
+
 /**
  * Re-embed every stored memory after an embedder-backend switch (e.g. the
  * ONNX lane installed on a machine that previously ran lexical). Both
  * backends are 384-dim, so this is a pure vector-space migration: same ids,
  * same payloads, same history — only the embeddings change. Idempotent.
+ *
+ * Reports success honestly (2026-10-29 fix): a row that fails to re-embed
+ * (embedder crash, store error) makes the pass PARTIAL — ok:false with the
+ * done/total counts and a mem0:reindex-partial bus event — so the caller
+ * keeps the old recorded backend and the next boot retries. The pre-fix
+ * return was a bare count the caller ignored, and every interruption was
+ * recorded as a completed switch.
  */
-async function reindexMemories(memory: any, fromBackend: string, toBackend: string): Promise<number> {
+async function reindexMemories(memory: any, fromBackend: string, toBackend: string): Promise<ReindexOutcome> {
         const vs = memory.vectorStore;
         if (!vs || typeof vs.list !== "function" || typeof vs.update !== "function") {
                 console.warn(
                         `[mem0] reindex skipped: vector store surface changed (mem0ai upgrade?) — ${fromBackend} vectors kept`,
                 );
-                return 0;
+                emit("mem0:reindex-partial", { done: 0, total: 0 });
+                return { ok: false, done: 0, total: 0 };
         }
-        let n = 0;
+        let done = 0;
+        let total = 0;
         try {
                 // vs.list() returns a [rows, total] TUPLE (mem0's own callers
                 // destructure it) — iterating the tuple directly visits the row ARRAY
                 // and the COUNT, never a row, and the reindex silently no-ops.
                 const listed = await vs.list({}, 100_000);
                 const rows = Array.isArray(listed) && Array.isArray(listed[0]) ? listed[0] : listed;
+                // collect the eligible rows FIRST so `total` counts every row the pass
+                // INTENDS to re-embed — a mid-loop failure must not understate what is
+                // left unre-embedded (the done/total pair is the partial signal).
+                const eligible: Array<{ id: string; payload: any; text: string }> = [];
                 for (const row of rows ?? []) {
                         const payload = row?.payload ?? row;
                         const text = String(payload?.data ?? payload?.text ?? "");
-                        if (!text || !row?.id) continue;
-                        const vec = await (memory as any).embedder.embed(text, "update");
-                        await vs.update(row.id, vec, payload);
-                        n++;
+                        if (!text || !row?.id) continue; // not a reindexable memory row
+                        eligible.push({ id: row.id, payload, text });
+                }
+                total = eligible.length;
+                for (const row of eligible) {
+                        const vec = await (memory as any).embedder.embed(row.text, "update");
+                        await vs.update(row.id, vec, row.payload);
+                        done++;
                 }
         } catch (err: any) {
                 console.warn(`[mem0] reindex interrupted (${err instanceof Error ? err.message : String(err)}) — rerun happens on next boot`);
-                return n;
         }
-        emit("mem0:reindexed", { from: fromBackend, to: toBackend, memories: n });
-        console.log(`[mem0] reindexed ${n} memories: ${fromBackend} -> ${toBackend} embeddings`);
-        return n;
+        if (done < total) {
+                // PARTIAL: signal it, and let the caller keep the old backend marker
+                // (recording the new one here would hide a mixed vector space).
+                emit("mem0:reindex-partial", { done, total });
+                return { ok: false, done, total };
+        }
+        emit("mem0:reindexed", { from: fromBackend, to: toBackend, memories: done });
+        console.log(`[mem0] reindexed ${done} memories: ${fromBackend} -> ${toBackend} embeddings`);
+        return { ok: true, done, total };
 }
 
 /**
- * Map mem0 add() results onto platform events. Shared by the first pass and
- * the empty-extraction retry. Empty-text rows (an extraction returning a
- * blank fact — observed live: a memory with empty text sat in the store) are
- * dropped here so they never render or count as learnings.
+ * The boot-time embedder-backend switch (buildMem0Platform's bookkeeping
+ * half, exported for tests): run the reindex pass, then record the new
+ * backend ONLY on a full success — a partial/interrupted pass keeps the OLD
+ * recorded backend so the next boot retries the switch (idempotent by
+ * design) instead of running on a silently mixed vector space forever.
+ */
+export async function applyEmbedderBackendSwitch(
+        memory: any,
+        fromBackend: string,
+        toBackend: string,
+): Promise<ReindexOutcome> {
+        const outcome = await reindexMemories(memory, fromBackend, toBackend);
+        if (outcome.ok) recordEmbedderBackend(toBackend);
+        return outcome;
+}
+
+/**
+ * Map mem0 add() results onto platform events. Shared by the first pass,
+ * the empty-extraction retry and the level-3 salvage inserts. Empty-text rows
+ * (an extraction returning a blank fact — observed live: a memory with empty
+ * text sat in the store) are dropped here so they never render or count as
+ * learnings.
  */
 function mapAddResults(results: any[]): MemoryPlatformEvent[] {
         return results
@@ -581,6 +658,12 @@ function mapAddResults(results: any[]): MemoryPlatformEvent[] {
  * line) and reframe what remains pitfall-first. Returns null when nothing
  * substantive remains (a metadata-only note must not pay for a retry).
  * Purely textual — no LLM, no state; safe to run on every empty extraction.
+ *
+ * The stripping itself lives in strippedNoteBody (below) so the level-3
+ * salvage lane can reuse it WITHOUT the 80-char substantive floor: a
+ * short-but-real note ("suite is flaky; re-run with --runInBand") deserves
+ * its one compact extraction attempt even when the full reframe retry —
+ * which pays for a whole second mem0 extraction round — would skip it.
  */
 /**
  * Old terminal-note header: "Terminal session in X (N min): a prompt(s), b tool
@@ -613,7 +696,14 @@ function isOutcomeTerminalNoteHeader(line: string): boolean {
         return rest.length >= 2 && rest.trimEnd().endsWith(":");
 }
 
-export function reframeNoteForExtraction(text: string | Array<{ role: string; content: string }>): string | null {
+/**
+ * The scaffolding-stripped note body (the reframe lane's filters, no length
+ * floor): session headers, the metadata line, the old consolidation
+ * instruction and the shield telemetry line are removed deterministically —
+ * no LLM, no state. Returns "" when nothing substantive survives, which is
+ * the metadata-only-note signal both extraction lanes key on (no spend).
+ */
+function strippedNoteBody(text: string | Array<{ role: string; content: string }>): string {
         const joined = typeof text === "string" ? text : text.map((m) => `${m.role}: ${m.content}`).join("\n");
         const lines = joined.split("\n").filter((l) => l.trim().length > 0);
         const kept = lines.filter((l) => {
@@ -636,16 +726,98 @@ export function reframeNoteForExtraction(text: string | Array<{ role: string; co
                 if (/^Injection shield flagged/i.test(s)) return false;
                 return true;
         });
-        const body = kept
+        return kept
                 .map((l) => l.replace(/^Final outcome:\s*/i, "").trim())
                 .join("\n")
                 .trim();
+}
+
+export function reframeNoteForExtraction(text: string | Array<{ role: string; content: string }>): string | null {
+        const body = strippedNoteBody(text);
         if (body.length < 80) return null;
         return `Session outcome — extract the durable engineering knowledge (pitfalls, fixes, verified workflows, conventions):\n${body}`;
 }
 
-/** The real MemoryPlatform: mem0's Memory behind the engine-facing seam. */
-class Mem0Platform implements MemoryPlatform {
+// ------------------------------------------------- level-3 salvage lane (BUG A)
+
+/**
+ * Level-3 extraction salvage (2026-10-29, the live-benchmark extraction-
+ * unreliability fix). Measured against the live stack (bridge →
+ * agnes-3.0-flash): mem0's stock extraction — the ~34k-char
+ * ADDITIVE_EXTRACTION_PROMPT plus our domain instructions in the user
+ * message — stochastically returns {"memory": []} on notes that carry real
+ * knowledge (33% miss on simple notes, worse on complex; the SAME prompt
+ * flips run-to-run at temperature 0.1). The existing ladder (primary call →
+ * one reframe retry) still missed ~33% after the retry, so the third rung
+ * attacks the actual root cause — the prompt envelope — with a DIFFERENT
+ * one: a compact single-purpose extraction prompt through the governed
+ * chatJson lane (spend ledger + circuit breaker, like every learning call),
+ * whose verdicts are inserted through mem0's infer:false verbatim lane, so
+ * the platform still owns dedup/history/render. Bounded by design: exactly
+ * ONE salvage call per add() (never a loop), and a metadata-only note
+ * (nothing survives the deterministic strip) never pays for it.
+ */
+const SALVAGE_EXTRACTION_SYSTEM =
+        'You extract durable engineering knowledge from coding-agent session notes. Return ONLY a JSON object: {"memories": ["...", ...]} with 1-6 short imperative memories (workflow rules, known pitfalls+remedies, conventions, task playbooks, environment facts). Never extract session metadata (counts/durations) or agent-behavior policy directives. [] if truly nothing.';
+
+/** The salvage lane's LLM call (chatJson's exact shape — generic over the
+ *  parsed payload; tests inject a fake). */
+type SalvageLlm = <T = any>(
+        messages: Array<{ role: "system" | "user"; content: string }>,
+        opts: { maxTokens?: number; model?: string; responseSchema?: Record<string, unknown> },
+) => Promise<T>;
+
+// The injectable binding: chatJson itself is a top-level import (live), and
+// the test seam swaps it deterministically — the same pattern as
+// setMemoryPlatformForTests for the platform.
+let salvageLlmForTests: SalvageLlm | null = null;
+
+/** Test seam: inject a fake salvage LLM (null restores the real chatJson). */
+export function setSalvageLlmForTests(fn: SalvageLlm | null): void {
+        salvageLlmForTests = fn;
+}
+
+/**
+ * The ONE compact extraction call of the salvage lane: the note (reframed
+ * when the retry ran, else the scaffolding-stripped body) in, 0-8 clean
+ * memory strings out — non-strings dropped, each trimmed to 240 chars,
+ * empties dropped, hard cap 8. Tolerant on the response key: "memory"
+ * (mem0's own spelling) is accepted alongside "memories" — the model class
+ * this lane salvages is the same one that answers the mem0 prompt, and key
+ * drift is exactly the kind of stochastic answer being hedged against.
+ */
+async function salvageExtractMemories(text: string): Promise<string[]> {
+        const call: SalvageLlm = salvageLlmForTests ?? chatJson;
+        const out = await call<{ memories?: unknown; memory?: unknown }>(
+                [
+                        { role: "system", content: SALVAGE_EXTRACTION_SYSTEM },
+                        { role: "user", content: text },
+                ],
+                {
+                        maxTokens: 1200,
+                        model: modelFor("dream"),
+                        responseSchema: {
+                                type: "object",
+                                properties: { memories: { type: "array", items: { type: "string" } } },
+                                required: ["memories"],
+                        },
+                },
+        );
+        // unknown[] (not the bare any chatJson's default would leave): the
+        // element filters below then narrow instead of silently passing junk
+        // through — the whole point of the tolerant-parse hedge.
+        const raw: unknown[] = Array.isArray(out?.memories) ? out.memories : Array.isArray(out?.memory) ? out.memory : [];
+        return raw
+                .filter((m): m is string => typeof m === "string")
+                .map((m) => m.trim().slice(0, 240))
+                .filter((m) => m.length > 0)
+                .slice(0, 8);
+}
+
+/** The real MemoryPlatform: mem0's Memory behind the engine-facing seam.
+ *  Exported for tests: the escalation ladder (retry + salvage) is exercised
+ *  against a fake inner Memory that mimics mem0's result shapes. */
+export class Mem0Platform implements MemoryPlatform {
         constructor(
                 private memory: any,
                 readonly backend: string,
@@ -681,8 +853,73 @@ class Mem0Platform implements MemoryPlatform {
                                 });
                                 events = mapAddResults((retry?.results ?? []) as any[]);
                         }
+                        // Level 3 — the salvage lane (2026-10-29): when even the reframed
+                        // retry extracts nothing, ONE compact governed extraction (see the
+                        // SALVAGE_EXTRACTION_SYSTEM block above for the measured why) whose
+                        // memories insert through the verbatim infer:false lane. Dreams and
+                        // callers get REAL events back; a total miss is signaled on the bus.
+                        if (events.length === 0) {
+                                return await this.salvageEmptyExtraction(text, reframed, scope, metadata);
+                        }
                 }
                 return events;
+        }
+
+        /**
+         * The level-3 salvage pass behind add()'s empty-extraction escalation:
+         * one compact chatJson extraction (never more), inserts through the
+         * infer:false verbatim lane with salvage-marked metadata, and returns the
+         * resulting events. Fires mem0:extraction-salvage on success and
+         * mem0:extraction-miss when nothing was recoverable — the miss is
+         * observable, never a silent drop. A metadata-only note (nothing survives
+         * the deterministic strip) returns [] without spending the call.
+         */
+        private async salvageEmptyExtraction(
+                text: string | Array<{ role: string; content: string }>,
+                reframed: string | null,
+                scope: MemoryScope,
+                metadata: Record<string, any>,
+        ): Promise<MemoryPlatformEvent[]> {
+                // Input: the reframed note when the retry lane ran; else the
+                // scaffolding-stripped body (a short-but-real note under the retry's
+                // 80-char floor still deserves its one compact attempt). Both null
+                // only for a metadata-only note — the no-spend case by design.
+                const input = reframed ?? (strippedNoteBody(text) || null);
+                if (!input) return [];
+                let memories: string[];
+                try {
+                        memories = await salvageExtractMemories(input);
+                } catch {
+                        // unparseable / dead bridge → the miss lane below (bounded: this
+                        // call is already the single salvage attempt for this add())
+                        memories = [];
+                }
+                if (memories.length > 0) {
+                        const collected: MemoryPlatformEvent[] = [];
+                        for (const mem of memories) {
+                                // mem0's infer:false lane adds each message VERBATIM (no
+                                // extraction round): exactly what a salvage verdict needs — the
+                                // compact prompt already did the extraction.
+                                const r = await this.memory.add(mem, {
+                                        ...scope,
+                                        metadata: { ...metadata, salvage: true },
+                                        infer: false,
+                                });
+                                collected.push(...mapAddResults((r?.results ?? []) as any[]));
+                        }
+                        if (collected.length > 0) {
+                                emit("mem0:extraction-salvage", {
+                                        scope: scope.agentId ?? scope.userId ?? "?",
+                                        memories: collected.length,
+                                });
+                                return collected;
+                        }
+                }
+                emit("mem0:extraction-miss", {
+                        scope: scope.agentId ?? scope.userId ?? "?",
+                        noteChars: (typeof text === "string" ? text : text.map((m) => m.content).join("\n")).length,
+                });
+                return [];
         }
 
         async getAll(scope: MemoryScope): Promise<PlatformMemory[]> {
@@ -899,7 +1136,9 @@ export async function updateMemory(id: string, text: string, opts?: { platform?:
 /**
  * Revert an event stream produced by rememberNote/reconcileMemories — the
  * canary/guard rollback path. ADD → delete; UPDATE → restore previousText;
- * DELETE → re-add the old text verbatim (infer-free) under the same scope.
+ * DELETE → re-add the old text verbatim through the infer:false lane (no
+ * extraction round — a rollback must restore, not re-learn) under the same
+ * scope, preserving the original memory kind when the event recorded one.
  */
 export async function revertMemoryEvents(
         events: MemoryPlatformEvent[],
@@ -916,9 +1155,20 @@ export async function revertMemoryEvents(
                         } else if (ev.event === "UPDATE") {
                                 await platform.update(ev.id, String(ev.previousText ?? ""));
                         } else if (ev.event === "DELETE") {
-                                // re-add the pre-delete text verbatim (a new id — mem0 keeps the
-                                // old id's history, so the audit trail survives the revert)
-                                await platform.add(String(ev.previousText ?? ev.text ?? ""), scope, { kind: "revert" });
+                                // re-add the pre-delete text VERBATIM through the infer:false lane (a
+                                // new id — mem0 keeps the old id's history, so the audit trail
+                                // survives the revert). The 2026-10-29 fix: this used to call add()
+                                // with infer DEFAULT, so a rollback re-ran the full extraction LLM —
+                                // which could return ZERO events (the memory silently NOT restored
+                                // on rollback, the exact data the canary was protecting) or DIFFERENT
+                                // text (a rollback that rewrites what it restores) — and the original
+                                // kind (seed/harness render-cap immunity) was lost under "revert".
+                                await platform.add(
+                                        String(ev.previousText ?? ev.text ?? ""),
+                                        scope,
+                                        { kind: ev.kind ?? "revert" },
+                                        { infer: false },
+                                );
                         } else {
                                 continue;
                         }
@@ -1035,7 +1285,17 @@ export async function reconcileMemories(
                                 if (/not found/i.test(err instanceof Error ? err.message : String(err))) continue;
                                 throw err;
                         }
-                        events.push({ event: "DELETE", id: op.id, text: prior.text, previousText: prior.text });
+                        events.push({
+                                event: "DELETE",
+                                id: op.id,
+                                text: prior.text,
+                                previousText: prior.text,
+                                // the original kind rides the event so revertMemoryEvents
+                                // can restore the memory with its original identity (the
+                                // seed/harness render-cap immunity survives a rollback —
+                                // 2026-10-29 fix)
+                                kind: prior.metadata?.kind ? String(prior.metadata.kind) : undefined,
+                        });
                         pruned++;
                 } else if (op.op === "UPDATE" && typeof op.text === "string" && op.text.trim()) {
                         // Rationale stripping (2026-10-23, found live in this repo's own
@@ -1201,13 +1461,22 @@ function stripNoteAnnotation(line: string): string {
  * .unown/memory/project.md). Bullets are stored VERBATIM (infer: false — no
  * LLM rewrites, the reconcile pass tidies them later) with kind "legacy" so
  * renders mark their provenance. Returns the number of memories imported.
+ *
+ * Manual-notes exclusion (2026-10-29 fix): the import input is the WHOLE
+ * previous file at the swap boundary (dream.ts passes `current`), which
+ * used to include the "## Manual notes" section — those user-authored
+ * bullets became platform memories AND the render re-appended the section
+ * verbatim, so every hand-edit duplicated forever (and every re-import of
+ * the same file duplicated them again). The section is excluded here at
+ * the source: the hand-edit lane is preserved by the RENDER
+ * (preserveManualNotesFrom), never imported as platform knowledge.
  */
 export async function importLegacyMarkdown(
         markdown: string,
         scope: MemoryScope,
         opts: { platform?: MemoryPlatform; kind?: string } = {},
 ): Promise<number> {
-        const bullets = String(markdown ?? "")
+        const bullets = withoutManualNotesSection(markdown)
                 .split("\n")
                 .map((l) => l.trim())
                 .filter((l) => l.startsWith("- ") && !l.startsWith("- (")) // skeleton placeholders stay out
@@ -1249,6 +1518,40 @@ const RENDER_SECTIONS: Array<{ title: string; test: RegExp }> = [
         },
 ];
 
+/** The [start, end) LINE range of the "## Manual notes" section: from the
+ *  line-anchored h2 heading to the next line-start h2 heading, the line-start
+ *  render footer, or EOF. Null when the file has no such section. Single
+ *  source of truth for the section boundary — the render's preserve pass
+ *  (extractManualNotesSection) and the legacy-import exclusion
+ *  (withoutManualNotesSection, the 2026-10-29 duplicate-import fix) must
+ *  always agree on where the hand-edit lane starts and stops. */
+function manualNotesRange(lines: string[]): [number, number] | null {
+        const start = lines.findIndex((l) => /^##[ \t]+Manual notes[ \t]*$/.test(l));
+        if (start === -1) return null;
+        let end = lines.length;
+        for (let i = start + 1; i < lines.length; i++) {
+                if (/^##[ \t]/.test(lines[i]) || /^<!--[ \t]*unown:[ \t]*rendered/.test(lines[i])) {
+                        end = i;
+                        break;
+                }
+        }
+        return [start, end];
+}
+
+/** The markdown with the "## Manual notes" section removed (verbatim
+ *  remainder) — the legacy import's input. The hand-edit lane is preserved by
+ *  the RENDER (preserveManualNotesFrom), never imported as platform
+ *  knowledge; importing it duplicated every user bullet forever (2026-10-29
+ *  fix). A file without the section passes through unchanged. */
+function withoutManualNotesSection(markdown: string): string {
+        const src = String(markdown ?? "");
+        const lines = src.split(/\r?\n/);
+        const range = manualNotesRange(lines);
+        if (!range) return src;
+        const [start, end] = range;
+        return [...lines.slice(0, start), ...lines.slice(end)].join("\n");
+}
+
 /** Extract the "## Manual notes" section from a previous project-memory file
  *  (from the heading to the next `## ` heading or the render footer/EOF).
  *  Returns "" when the file has none.
@@ -1265,15 +1568,9 @@ const RENDER_SECTIONS: Array<{ title: string; test: RegExp }> = [
 export function extractManualNotesSection(markdown: string): string {
         const src = String(markdown ?? "");
         const lines = src.split(/\r?\n/);
-        const start = lines.findIndex((l) => /^##[ \t]+Manual notes[ \t]*$/.test(l));
-        if (start === -1) return "";
-        let end = lines.length;
-        for (let i = start + 1; i < lines.length; i++) {
-                if (/^##[ \t]/.test(lines[i]) || /^<!--[ \t]*unown:[ \t]*rendered/.test(lines[i])) {
-                        end = i;
-                        break;
-                }
-        }
+        const range = manualNotesRange(lines);
+        if (!range) return "";
+        const [start, end] = range;
         let section = `${lines.slice(start, end).join("\n").trim()}\n`;
         if (section.length > MANUAL_NOTES_CAP) {
                 const kept: string[] = [];
@@ -1468,4 +1765,29 @@ export function renderProjectMemoryMarkdown(
                 return `# ${opts.title ?? "Project Memory"}\n\n## Workflow\n\n## Known pitfalls\n\n## Task playbooks\n\n<!-- unown: rendered 0/0 memories via Mem0 (backend: ${opts.backend ?? memoryPlatformStatus().backend}) at ${new Date().toISOString()} -->\n`;
         }
         return out;
+}
+
+/** Strip the render footer's volatile `at <ISO>` timestamp (line-anchored to
+ *  the `<!-- unown: rendered …` footer, so an ISO-looking date inside a
+ *  memory bullet or a manual note is never touched). The timestamp made every
+ *  dream's idempotence check (`rendered.trim() === current.trim()` in
+ *  dream.ts) permanently false — a dream that learned NOTHING still minted a
+ *  new version every run (version inflation, 2026-10-29). The comparison
+ *  belongs to the CONSUMER (dream.ts owns those checks); this is the
+ *  deterministic strip it should compose — exported so the dream-side fix is
+ *  a two-line change (see renderFooterMatches below). */
+export function stripRenderFooterTimestamp(text: string): string {
+        return String(text ?? "")
+                .split("\n")
+                .map((l) => l.replace(/^(<!-- unown: rendered .*) at \d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?Z -->$/, "$1 -->"))
+                .join("\n");
+}
+
+/** Idempotence-aware comparison of two rendered memory documents: equal
+ *  after stripping the footer timestamp from BOTH sides (trimmed, matching
+ *  the dream-side `rendered.trim() === current.trim()` shape). dream.ts's
+ *  no-change checks should call this instead of raw string equality, so an
+ *  unchanged memory set consumes its notes without minting a version. */
+export function renderFooterMatches(a: string, b: string): boolean {
+        return stripRenderFooterTimestamp(a).trim() === stripRenderFooterTimestamp(b).trim();
 }
