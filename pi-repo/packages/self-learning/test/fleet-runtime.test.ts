@@ -131,6 +131,21 @@ describe("FleetManager.spawnFleetChild", () => {
                 manager.dispose();
         });
 
+        test("routing.maxTurns rides the spawn args as --max-turns (the runaway guard)", () => {
+                // The async lane's twin of the sync lane's cap: tools.ts passes
+                // agent.maxTurns into FleetSpawnRequest.routing, and the child
+                // aborts at the (N+1)th turn start instead of looping forever on
+                // a cheap model long before the wall-clock timeout trips.
+                const harness = new SpawnHarness();
+                const { manager } = makeManager(harness, freshDir());
+                manager.spawnFleetChild({ ...REQUEST, name: "capped", routing: { maxTurns: 12 } });
+                const call = harness.calls[0];
+                const idx = call.args.indexOf("--max-turns");
+                expect(idx).toBeGreaterThan(-1);
+                expect(call.args[idx + 1]).toBe("12");
+                manager.dispose();
+        });
+
         test("names dedupe against running children + the registry", () => {
                 const harness = new SpawnHarness();
                 const { manager } = makeManager(harness, freshDir());

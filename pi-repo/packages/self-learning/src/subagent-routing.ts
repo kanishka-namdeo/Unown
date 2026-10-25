@@ -77,6 +77,17 @@ export interface SubagentRoutingFields {
 	 *  Long-running specialists (the browser agent) raise this; cheap
 	 *  scouts keep the default. */
 	timeoutMs?: number;
+	/** Per-agent cap on COMPLETED MODEL TURNS for ONE spawn (a turn is
+	 *  one model call, the same definition the CLI's --max-turns uses).
+	 *  Routed to the child as `--max-turns N`: the (N+1)th turn start
+	 *  aborts and the answer-so-far stands — the runaway-fan-out guard
+	 *  the competitor sweep kept filing ("subagents go on forever and
+	 *  cannot be stopped"; instruction-only limits get ignored, so the
+	 *  harness must enforce it). undefined = no turn cap (the timeout
+	 *  remains the only bound). Resolution: agent field >
+	 *  UNOWN_SUBAGENT_MAX_TURNS env > unset; clamped to
+	 *  [SUBAGENT_MAX_TURNS_MIN, SUBAGENT_MAX_TURNS_MAX]. */
+	maxTurns?: number;
 }
 
 // ---------------------------------------------------------------------------
@@ -107,6 +118,22 @@ export const SUBAGENT_QWEN_THINKING_ENV = "BRIDGE_QWEN_THINKING";
  *  [SUBAGENT_TIMEOUT_MIN_MS, SUBAGENT_TIMEOUT_MAX_MS]; junk falls back to
  *  the default. Per-agent `timeoutMs` still wins over this. */
 export const SUBAGENT_TIMEOUT_ENV = "UNOWN_SUBAGENT_TIMEOUT_MS";
+
+/** When set (positive integer), caps every subagent's COMPLETED model turns
+ *  (routed to the child as --max-turns). Per-agent `maxTurns` still wins.
+ *  Unset or junk = no turn cap. The runaway-fan-out guard: a child that
+ *  loops forever on a cheap model burns the shared budget long before the
+ *  wall-clock timeout trips. */
+export const SUBAGENT_MAX_TURNS_ENV = "UNOWN_SUBAGENT_MAX_TURNS";
+
+/** Floor for a resolved turn cap — a cap below one completed turn cannot
+ *  produce even a partial report. */
+export const SUBAGENT_MAX_TURNS_MIN = 1;
+
+/** Ceiling for a resolved turn cap. Above this the wall-clock timeout is
+ *  the meaningful bound; the clamp keeps a typo (maxTurns: 10000) from
+ *  silently becoming "no cap" in the report. */
+export const SUBAGENT_MAX_TURNS_MAX = 500;
 
 /** Floor for any resolved subagent timeout — a budget below this cannot
  *  complete even a trivial spawn (process boot + one model turn). */
@@ -268,6 +295,16 @@ export function parseAgentFrontmatterExtras(frontmatter: unknown): SubagentRouti
 		if (parsed !== undefined) out.timeoutMs = parsed;
 	}
 
+	// maxTurns accepts a number OR a numeric string ("30"), camelCase or
+	// snake_case. A turn-count is dimensionless — no unit suffixes.
+	const turnsRaw = fm.maxTurns ?? fm.max_turns;
+	if (typeof turnsRaw === "number" && Number.isFinite(turnsRaw) && turnsRaw > 0) {
+		out.maxTurns = Math.round(turnsRaw);
+	} else if (typeof turnsRaw === "string") {
+		const parsed = Number.parseInt(turnsRaw.trim(), 10);
+		if (Number.isFinite(parsed) && parsed > 0) out.maxTurns = parsed;
+	}
+
 	return out;
 }
 
@@ -362,6 +399,37 @@ export function resolveSubagentTimeoutMs(
 }
 
 // ---------------------------------------------------------------------------
+// Turn-cap resolution (2026-10-25 stress round) — the runaway guard
+// ---------------------------------------------------------------------------
+
+/**
+ * Resolve the per-spawn cap on COMPLETED model turns. Precedence:
+ *   1. `agent.maxTurns` (per-subagent override)
+ *   2. `env.UNOWN_SUBAGENT_MAX_TURNS` (global override)
+ *   3. undefined → no turn cap (the wall-clock timeout remains the bound)
+ *
+ * The winner is clamped to [SUBAGENT_MAX_TURNS_MIN, SUBAGENT_MAX_TURNS_MAX].
+ * Junk in the env var falls back to "no cap" (the default), never to a
+ * misread number. Pure: takes the env record, never reads process.env.
+ */
+export function resolveSubagentMaxTurns(
+	agent: Pick<SubagentRoutingFields, "maxTurns">,
+	env: Record<string, string | undefined> = process.env,
+): number | undefined {
+	const clamp = (n: number): number =>
+		Math.min(SUBAGENT_MAX_TURNS_MAX, Math.max(SUBAGENT_MAX_TURNS_MIN, Math.round(n)));
+	if (typeof agent.maxTurns === "number" && Number.isFinite(agent.maxTurns) && agent.maxTurns > 0) {
+		return clamp(agent.maxTurns);
+	}
+	const raw = env[SUBAGENT_MAX_TURNS_ENV];
+	if (typeof raw === "string" && raw.trim()) {
+		const parsed = Number.parseInt(raw.trim(), 10);
+		if (Number.isFinite(parsed) && parsed > 0) return clamp(parsed);
+	}
+	return undefined;
+}
+
+// ---------------------------------------------------------------------------
 // Args-array builder — extracted from runSubagentOnce so it is hermetically
 // testable. Backward-compatible: an agent with no new routing fields returns
 // the same args array as before.
@@ -417,6 +485,14 @@ export function buildSubagentArgs(agent: BuildSubagentArgsAgent): string[] {
 	if (agent.injectAgentsMd === false) {
 		// Default is `true` (legacy injection). Only `=== false` opts out.
 		args.push("--no-agents-md");
+	}
+
+	const maxTurns = resolveSubagentMaxTurns(agent);
+	if (maxTurns !== undefined) {
+		// The runaway guard: the child aborts at the (N+1)th turn start
+		// and the answer-so-far stands as the report (the CLI's own
+		// --max-turns contract; a turn is ONE model call).
+		args.push("--max-turns", String(maxTurns));
 	}
 
 	return args;

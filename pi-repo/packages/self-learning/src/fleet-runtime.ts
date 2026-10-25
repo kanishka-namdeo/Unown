@@ -63,6 +63,7 @@ import {
 	writeFleetRegistry,
 	writeLoadout,
 } from "./fleet.ts";
+import { annotateToolOutput } from "./shield.ts";
 import { CHILD_BOUNDARY_INSTRUCTIONS } from "./subagent-catalog.ts";
 import { compactTokens, humanizeToolLabel } from "./subagent-progress.ts";
 import { buildSubagentArgs, type SubagentRoutingFields } from "./subagent-routing.ts";
@@ -92,7 +93,7 @@ export interface FleetSpawnRequest {
 	name?: string;
 	model?: string;
 	cwd?: string;
-	/** Agent routing fields (tools/model/effort/mcpServers/injectAgentsMd). */
+	/** Agent routing fields (tools/model/effort/mcpServers/injectAgentsMd/maxTurns). */
 	routing: SubagentRoutingFields;
 	/** Tool allowlist for the child (agent.tools). */
 	tools?: string[];
@@ -208,6 +209,7 @@ export class FleetManager {
 			effort: request.routing.effort,
 			mcpServers: request.routing.mcpServers,
 			injectAgentsMd: request.routing.injectAgentsMd,
+			maxTurns: request.routing.maxTurns,
 			tools: request.tools,
 		}).filter((flag) => flag !== "--no-session");
 		// The ask channel is fleet infrastructure, not agent surface: pi's
@@ -1116,10 +1118,20 @@ export function registerFleetSurface(pi: any, manager: FleetManager, opts: { cwd
 				notify: (text, level) => ctx?.ui?.notify?.(text, level),
 			},
 			(content, _details, kind) => {
+				// Injection shield on fleet deliveries (2026-10-25 stress
+				// round): a child that fetched a poisoned page can carry
+				// injected instructions home in its report or even its
+				// question — the delivery lands in the parent's context as
+				// a steer message, so it gets the same banner treatment as
+				// bash stdout (fail-open; content passes under the banner).
+				const shielded = annotateToolOutput(
+					content,
+					kind === "question" ? "unown-subagent-question" : "unown-subagent-result",
+				);
 				pi.sendMessage(
 					{
 						customType: kind === "question" ? "unown-subagent-question" : "unown-subagent-result",
-						content,
+						content: shielded,
 						display: true,
 						details: _details,
 					},

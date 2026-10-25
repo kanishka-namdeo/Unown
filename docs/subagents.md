@@ -117,6 +117,7 @@ Load order is built-in → global → project; a definition with the same `name`
 | `context` | no | `fresh` (default) or `summary` — `summary` prepends a distilled brief of the parent session to the task (see [Context briefs](#context-briefs)) |
 | `contextBrief` | no | Role-directed instruction shaping the summary brief (what it keeps) — only used with `context: summary` |
 | `timeoutMs` | no | Per-agent wall-clock budget for one spawn — `600000`, `"10m"` and `"90s"` all parse; clamped to 30s–30min. Default 300000 (5 min); the `browser` builtin ships 600000. Also `timeout_ms` / `timeout`. Session-wide override: `UNOWN_SUBAGENT_TIMEOUT_MS` (a per-agent value always wins) |
+| `maxTurns` | no | Cap on completed model turns for one spawn — routed to the child as `--max-turns`; a turn is ONE model call. Default none (timeout is the only bound). Also `max_turns`. Session-wide override: `UNOWN_SUBAGENT_MAX_TURNS` (a per-agent value always wins) |
 
 The Markdown **body (everything after the closing `---`) becomes the subagent's system prompt**. Files without valid `name` and `description` frontmatter are skipped silently. Invalid values for the routing fields are dropped, never thrown. Other frontmatter fields are ignored. Run `/agents` in a session to list everything discovered, with source and toolset.
 

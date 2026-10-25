@@ -45,7 +45,13 @@ import {
  * developer's shell) may have UNOWN_SUBAGENT_MODEL set. Each test sets its
  * own values; the restore guarantees no cross-test pollution.
  */
-const ENV_KEYS = [SUBAGENT_MODEL_ENV, SUBAGENT_MCP_SERVERS_ENV, SUBAGENT_NO_AGENTS_MD_ENV, SUBAGENT_QWEN_THINKING_ENV];
+const ENV_KEYS = [
+	SUBAGENT_MODEL_ENV,
+	SUBAGENT_MCP_SERVERS_ENV,
+	SUBAGENT_NO_AGENTS_MD_ENV,
+	SUBAGENT_QWEN_THINKING_ENV,
+	SUBAGENT_MAX_TURNS_ENV,
+];
 const envSnapshots: Record<string, string | undefined> = {};
 
 beforeEach(() => {
@@ -656,5 +662,137 @@ describe("parseAgentFrontmatterExtras: timeoutMs", () => {
 	test("junk values leave the field unset (default budget applies)", () => {
 		expect(parseAgentFrontmatterExtras({ timeoutMs: "later" }).timeoutMs).toBeUndefined();
 		expect(parseAgentFrontmatterExtras({ timeoutMs: -1 }).timeoutMs).toBeUndefined();
+	});
+});
+
+// ---------------------------------------------------------------------------
+// Per-agent turn cap (the runaway guard, 2026-10-25 stress round) —
+// resolveSubagentMaxTurns + the frontmatter plumb + the --max-turns wiring in
+// buildSubagentArgs. Same hermeticity: pure module only; the env is passed
+// explicitly except where buildSubagentArgs (which reads process.env) is
+// exercised — those tests set the var and rely on ENV_KEYS restore.
+// ---------------------------------------------------------------------------
+import {
+	resolveSubagentMaxTurns,
+	SUBAGENT_MAX_TURNS_ENV,
+	SUBAGENT_MAX_TURNS_MAX,
+	SUBAGENT_MAX_TURNS_MIN,
+} from "../src/subagent-routing.ts";
+
+describe("env-var name constants: the turn cap", () => {
+	test("SUBAGENT_MAX_TURNS_ENV is 'UNOWN_SUBAGENT_MAX_TURNS'", () => {
+		expect(SUBAGENT_MAX_TURNS_ENV).toBe("UNOWN_SUBAGENT_MAX_TURNS");
+	});
+
+	test("the clamp window is [1, 500]", () => {
+		expect(SUBAGENT_MAX_TURNS_MIN).toBe(1);
+		expect(SUBAGENT_MAX_TURNS_MAX).toBe(500);
+	});
+});
+
+describe("resolveSubagentMaxTurns", () => {
+	test("no agent value + no env → undefined (the timeout is the only bound)", () => {
+		expect(resolveSubagentMaxTurns({}, {})).toBeUndefined();
+	});
+
+	test("per-agent maxTurns wins over the env var", () => {
+		expect(resolveSubagentMaxTurns({ maxTurns: 30 }, { [SUBAGENT_MAX_TURNS_ENV]: "12" })).toBe(30);
+	});
+
+	test("the env var applies when the agent has no own cap", () => {
+		expect(resolveSubagentMaxTurns({}, { [SUBAGENT_MAX_TURNS_ENV]: "12" })).toBe(12);
+	});
+
+	test("env junk ('many', '', '0') falls back to no cap", () => {
+		expect(resolveSubagentMaxTurns({}, { [SUBAGENT_MAX_TURNS_ENV]: "many" })).toBeUndefined();
+		expect(resolveSubagentMaxTurns({}, { [SUBAGENT_MAX_TURNS_ENV]: "" })).toBeUndefined();
+		expect(resolveSubagentMaxTurns({}, { [SUBAGENT_MAX_TURNS_ENV]: "0" })).toBeUndefined();
+	});
+
+	test("values clamp to [1, 500] from both ends", () => {
+		expect(resolveSubagentMaxTurns({ maxTurns: 0.4 }, {})).toBe(1);
+		expect(resolveSubagentMaxTurns({ maxTurns: 10_000 }, {})).toBe(500);
+		expect(resolveSubagentMaxTurns({}, { [SUBAGENT_MAX_TURNS_ENV]: "99999" })).toBe(500);
+	});
+
+	test("non-finite / zero / negative agent values fall through to env, then unset", () => {
+		expect(resolveSubagentMaxTurns({ maxTurns: 0 }, { [SUBAGENT_MAX_TURNS_ENV]: "7" })).toBe(7);
+		expect(resolveSubagentMaxTurns({ maxTurns: -5 }, {})).toBeUndefined();
+		expect(resolveSubagentMaxTurns({ maxTurns: Number.NaN }, {})).toBeUndefined();
+	});
+});
+
+describe("parseAgentFrontmatterExtras: maxTurns", () => {
+	test("numeric frontmatter round-trips (rounded to whole turns)", () => {
+		expect(parseAgentFrontmatterExtras({ maxTurns: 30 }).maxTurns).toBe(30);
+		expect(parseAgentFrontmatterExtras({ maxTurns: 30.6 }).maxTurns).toBe(31);
+	});
+
+	test("numeric strings and snake_case are accepted", () => {
+		expect(parseAgentFrontmatterExtras({ maxTurns: "30" }).maxTurns).toBe(30);
+		expect(parseAgentFrontmatterExtras({ max_turns: 24 }).maxTurns).toBe(24);
+		expect(parseAgentFrontmatterExtras({ max_turns: "24" }).maxTurns).toBe(24);
+	});
+
+	test("junk values leave the field unset (no cap)", () => {
+		expect(parseAgentFrontmatterExtras({ maxTurns: "many" }).maxTurns).toBeUndefined();
+		expect(parseAgentFrontmatterExtras({ maxTurns: 0 }).maxTurns).toBeUndefined();
+		expect(parseAgentFrontmatterExtras({ maxTurns: -3 }).maxTurns).toBeUndefined();
+		expect(parseAgentFrontmatterExtras({ maxTurns: Number.NaN }).maxTurns).toBeUndefined();
+	});
+});
+
+describe("buildSubagentArgs: --max-turns", () => {
+	test("agent.maxTurns → --max-turns N appended", () => {
+		const args = buildSubagentArgs({ name: "capped", maxTurns: 25 });
+		expect(args).toEqual(["--mode", "json", "-p", "--no-session", "--max-turns", "25"]);
+	});
+
+	test("UNOWN_SUBAGENT_MAX_TURNS env → --max-turns N (session-wide cap)", () => {
+		process.env[SUBAGENT_MAX_TURNS_ENV] = "40";
+		const args = buildSubagentArgs({ name: "capped-by-env" });
+		expect(args).toEqual(["--mode", "json", "-p", "--no-session", "--max-turns", "40"]);
+	});
+
+	test("per-agent maxTurns beats the env var (a per-agent value always wins)", () => {
+		process.env[SUBAGENT_MAX_TURNS_ENV] = "40";
+		const args = buildSubagentArgs({ name: "capped", maxTurns: 5 });
+		expect(args).toEqual(["--mode", "json", "-p", "--no-session", "--max-turns", "5"]);
+	});
+
+	test("no cap anywhere → the flag is absent (backward compat)", () => {
+		delete process.env[SUBAGENT_MAX_TURNS_ENV];
+		const args = buildSubagentArgs({ name: "general" });
+		expect(args).toEqual(["--mode", "json", "-p", "--no-session"]);
+		expect(args).not.toContain("--max-turns");
+	});
+
+	test("composes with the other routing flags (order pinned: --max-turns last)", () => {
+		const args = buildSubagentArgs({
+			name: "all-five",
+			tools: ["read"],
+			model: "kimi-k2.5",
+			effort: "high",
+			mcpServers: ["srv-a"],
+			injectAgentsMd: false,
+			maxTurns: 30,
+		});
+		expect(args).toEqual([
+			"--mode",
+			"json",
+			"-p",
+			"--no-session",
+			"--tools",
+			"read",
+			"--model",
+			"kimi-k2.5",
+			"--effort",
+			"high",
+			"--mcp-servers",
+			"srv-a",
+			"--no-agents-md",
+			"--max-turns",
+			"30",
+		]);
 	});
 });

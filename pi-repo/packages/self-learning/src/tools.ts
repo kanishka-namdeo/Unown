@@ -138,6 +138,7 @@ import {
 	reviewerAgent,
 	saveReviewArtifact,
 } from "./review.ts";
+import { annotateToolOutput } from "./shield.ts";
 import { registerStatusCommands } from "./status-card.ts";
 import { ROLE_BUILTIN_AGENTS } from "./subagent-builtins.ts";
 import {
@@ -1871,6 +1872,10 @@ export function createUnownToolsExtension(opts: UnownToolsOptions) {
 									effort: agent.effort,
 									mcpServers: agent.mcpServers,
 									injectAgentsMd: agent.injectAgentsMd,
+									// The runaway guard rides the fleet lane too: a
+									// capped child aborts at the (N+1)th turn start
+									// instead of burning the shared budget forever.
+									maxTurns: agent.maxTurns,
 								},
 								tools: agent.tools,
 								systemPrompt: agent.systemPrompt,
@@ -2116,9 +2121,17 @@ export function createUnownToolsExtension(opts: UnownToolsOptions) {
 					// model can resubmit dropped tasks / learn the object
 					// form — visible, never silent.
 					const trailingNotes = [overflowNote, ...new Set(schemaCoercionNotes)].filter(Boolean);
-					const resultText =
+					const rawResultText =
 						sections.filter(Boolean).join("\n\n---\n\n") +
 						(trailingNotes.length > 0 ? `\n\n---\n\n${trailingNotes.join("\n\n")}` : "");
+					// Injection shield on subagent reports (2026-10-25 stress
+					// round): a child that fetched a poisoned page can carry
+					// injected instructions home in its report — up to 16k
+					// chars of child-generated text landing in the parent's
+					// context with full trust. Same treatment as bash stdout:
+					// suspect text passes through UNDER the shield banner
+					// (fail-open; the data stays usable).
+					const resultText = annotateToolOutput(rawResultText, "task");
 					return { content: [{ type: "text", text: resultText }], details };
 				},
 				renderCall(args: any, theme: any) {
