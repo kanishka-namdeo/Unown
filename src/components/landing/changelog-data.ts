@@ -46,9 +46,9 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
   {
     "label": "Unreleased",
     "date": null,
-    "total": 1,
+    "total": 2,
     "counts": {
-      "Added": 1,
+      "Added": 2,
       "Changed": 0,
       "Deprecated": 0,
       "Removed": 0,
@@ -61,6 +61,10 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
         "bucket": "Added",
         "items": [
           {
+            "title": "subagents: the stress round — ten live scenarios, six real findings, six fixes, and the receipts",
+            "behavior": false
+          },
+          {
             "title": "subagents: the stress round's follow-through — the turn cap and the report shield",
             "behavior": false
           }
@@ -71,9 +75,9 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
   {
     "label": "0.0.23",
     "date": "2026-10-26",
-    "total": 4,
+    "total": 3,
     "counts": {
-      "Added": 1,
+      "Added": 0,
       "Changed": 2,
       "Deprecated": 0,
       "Removed": 0,
@@ -87,15 +91,6 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
         "items": [
           {
             "title": "engine: a foreign or occupied engine can no longer spawn-loop",
-            "behavior": false
-          }
-        ]
-      },
-      {
-        "bucket": "Added",
-        "items": [
-          {
-            "title": "subagents: the stress round — ten live scenarios, six real findings, six fixes, and the receipts",
             "behavior": false
           }
         ]
