@@ -52,7 +52,7 @@
 import { execFileSync } from "node:child_process";
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
-import { dirname, join, resolve } from "node:path";
+import { dirname, join, resolve, win32 } from "node:path";
 import { autoStartDisabled, engineHealth, loadEnvValues } from "./engine-supervisor.ts";
 import { IS_COMPILED_BINARY, unownHome } from "./packaging.ts";
 
@@ -115,10 +115,13 @@ function firstBunOnPath(
 ): string | null {
 	if (!pathValue) return null;
 	const name = platform === "win32" ? "bun.exe" : "bun";
+	// Windows separators independent of the HOST: this function is unit-tested
+	// on every OS, and a mixed `C:\...\bin/bun.exe` would never exist.
+	const j = platform === "win32" ? win32.join : join;
 	for (const raw of pathValue.split(platform === "win32" ? ";" : ":")) {
 		const dir = raw.trim().replace(/^"(.*)"$/, "$1");
 		if (!dir) continue;
-		const candidate = join(dir, name);
+		const candidate = j(dir, name);
 		if (exists(candidate)) return candidate;
 	}
 	return null;
@@ -139,7 +142,8 @@ export function resolveServiceBunPath(input: ServiceSpecInput = {}): string {
 	const fromPath = firstBunOnPath(env.PATH, platform, exists);
 	if (fromPath) return fromPath;
 	if (env.BUN_INSTALL) {
-		const installed = join(env.BUN_INSTALL, "bin", platform === "win32" ? "bun.exe" : "bun");
+		const j = platform === "win32" ? win32.join : join;
+		const installed = j(env.BUN_INSTALL, "bin", platform === "win32" ? "bun.exe" : "bun");
 		if (exists(installed)) return installed;
 	}
 	return execPath;
@@ -424,7 +428,8 @@ export const WINDOWS_RUN_MAX_CHARS = 260;
  *  is optional; Windows PowerShell 5.1 is the guaranteed binary). */
 export function windowsPowerShellPath(env: NodeJS.ProcessEnv = process.env): string {
 	const root = env.SystemRoot || env.windir || "C:\\Windows";
-	return join(root, "System32", "WindowsPowerShell", "v1.0", "powershell.exe");
+	// Always a WINDOWS path, whatever host runs the generator (and tests).
+	return win32.join(root, "System32", "WindowsPowerShell", "v1.0", "powershell.exe");
 }
 
 /** Windows logon watchdog — the fallback when Task Scheduler refuses the

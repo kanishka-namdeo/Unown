@@ -21,7 +21,7 @@ import "./_env.ts"; // MUST be the first import
 import { describe, expect, test } from "bun:test";
 import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { dirname, join } from "node:path";
+import { dirname, join, win32 } from "node:path";
 import {
         ENGINE_SERVICE_NAME,
         LAUNCHD_LABEL,
@@ -289,7 +289,7 @@ describe("resolveServiceBunPath (a long-lived service must not own a versioned b
                 expect(
                         resolveServiceBunPath({
                                 execPath,
-                                env: { PATH: `C:\\Windows;${dirname(shim)}` },
+                                env: { PATH: `C:\\Windows;${win32.dirname(shim)}` },
                                 platform: "win32",
                                 exists: existing([shim]),
                         }),
