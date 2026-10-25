@@ -72,21 +72,21 @@ export const DELEGATION_LEVEL_ENV = "UNOWN_DELEGATION_LEVEL";
 /** Parse + validate a delegation level; invalid values fall back to "standard"
  *  (tolerant posture, matching parseAgentFrontmatterExtras). */
 export function parseDelegationLevel(value: string | undefined): DelegationLevel {
-        const v = (value ?? "").trim().toLowerCase();
-        if (v === "never" || v === "rarely" || v === "standard" || v === "aggressive") return v;
-        return "standard";
+	const v = (value ?? "").trim().toLowerCase();
+	if (v === "never" || v === "rarely" || v === "standard" || v === "aggressive") return v;
+	return "standard";
 }
 
 /** The one sentence each level contributes (cciotti keeps these to a single
  *  line each — the catalog is re-sent every turn, so every byte is recurring
  *  cost). */
 export const DELEGATION_SENTENCES: Record<DelegationLevel, string> = {
-        never: "Delegate only when the user explicitly asks for a subagent.",
-        rarely: "Delegate rarely — only for large, clearly separable investigations the user would expect you to hand off.",
-        standard:
-                "Delegate focused, self-contained investigations or implementations whenever a fresh context would keep this session sharp.",
-        aggressive:
-                "Delegate aggressively — prefer a subagent for most non-trivial investigation and implementation work; keep orchestration and user-facing decisions here.",
+	never: "Delegate only when the user explicitly asks for a subagent.",
+	rarely: "Delegate rarely — only for large, clearly separable investigations the user would expect you to hand off.",
+	standard:
+		"Delegate focused, self-contained investigations or implementations whenever a fresh context would keep this session sharp.",
+	aggressive:
+		"Delegate aggressively — prefer a subagent for most non-trivial investigation and implementation work; keep orchestration and user-facing decisions here.",
 };
 
 // ---------------------------------------------------------------------------
@@ -96,24 +96,24 @@ export const DELEGATION_SENTENCES: Record<DelegationLevel, string> = {
 /** Fields parsed from agent frontmatter that configure catalog + guard
  *  behavior. SubagentConfig extends this in tools.ts. */
 export interface CatalogFields {
-        /** Include this agent in the advertised catalog (default true). Set
-         *  false for internal helpers the model should only use when a
-         *  command/skill names them explicitly (cciotti's planner shape). */
-        advertise?: boolean;
-        /** Deterministic completion guard: a writing agent that finishes with
-         *  zero working-tree mutations is reported as FAILED (default false;
-         *  the `worker` builtin turns it on). */
-        completionGuard?: boolean;
-        /** Ordered fallback models for provider-style failures (auth / quota /
-         *  rate / 5xx / timeout, before any tool use). Never rotates on
-         *  context overflow or content errors. */
-        fallbackModels?: string[];
-        /** Context mode: "fresh" (default) or "summary" — a distilled brief of
-         *  the parent conversation prepended to the task. */
-        context?: "fresh" | "summary";
-        /** Role-directed instruction shaping the summary brief (only used when
-         *  context === "summary"). */
-        contextBrief?: string;
+	/** Include this agent in the advertised catalog (default true). Set
+	 *  false for internal helpers the model should only use when a
+	 *  command/skill names them explicitly (cciotti's planner shape). */
+	advertise?: boolean;
+	/** Deterministic completion guard: a writing agent that finishes with
+	 *  zero working-tree mutations is reported as FAILED (default false;
+	 *  the `worker` builtin turns it on). */
+	completionGuard?: boolean;
+	/** Ordered fallback models for provider-style failures (auth / quota /
+	 *  rate / 5xx / timeout, before any tool use). Never rotates on
+	 *  context overflow or content errors. */
+	fallbackModels?: string[];
+	/** Context mode: "fresh" (default) or "summary" — a distilled brief of
+	 *  the parent conversation prepended to the task. */
+	context?: "fresh" | "summary";
+	/** Role-directed instruction shaping the summary brief (only used when
+	 *  context === "summary"). */
+	contextBrief?: string;
 }
 
 /**
@@ -123,51 +123,51 @@ export interface CatalogFields {
  * discovery).
  */
 export function parseAgentCatalogFrontmatter(frontmatter: unknown): CatalogFields {
-        if (!frontmatter || typeof frontmatter !== "object" || Array.isArray(frontmatter)) return {};
-        const fm = frontmatter as Record<string, unknown>;
-        const out: CatalogFields = {};
+	if (!frontmatter || typeof frontmatter !== "object" || Array.isArray(frontmatter)) return {};
+	const fm = frontmatter as Record<string, unknown>;
+	const out: CatalogFields = {};
 
-        const advRaw = fm.advertise;
-        if (typeof advRaw === "boolean") out.advertise = advRaw;
-        else if (typeof advRaw === "string") {
-                const v = advRaw.trim().toLowerCase();
-                if (v === "true" || v === "1") out.advertise = true;
-                else if (v === "false" || v === "0") out.advertise = false;
-        }
+	const advRaw = fm.advertise;
+	if (typeof advRaw === "boolean") out.advertise = advRaw;
+	else if (typeof advRaw === "string") {
+		const v = advRaw.trim().toLowerCase();
+		if (v === "true" || v === "1") out.advertise = true;
+		else if (v === "false" || v === "0") out.advertise = false;
+	}
 
-        const guardRaw = fm.completionGuard ?? fm.completion_guard;
-        if (typeof guardRaw === "boolean") out.completionGuard = guardRaw;
-        else if (typeof guardRaw === "string") {
-                const v = guardRaw.trim().toLowerCase();
-                if (v === "true" || v === "1") out.completionGuard = true;
-                else if (v === "false" || v === "0") out.completionGuard = false;
-        }
+	const guardRaw = fm.completionGuard ?? fm.completion_guard;
+	if (typeof guardRaw === "boolean") out.completionGuard = guardRaw;
+	else if (typeof guardRaw === "string") {
+		const v = guardRaw.trim().toLowerCase();
+		if (v === "true" || v === "1") out.completionGuard = true;
+		else if (v === "false" || v === "0") out.completionGuard = false;
+	}
 
-        const fbRaw = fm.fallbackModels ?? fm.fallback_models;
-        if (typeof fbRaw === "string") {
-                const list = fbRaw
-                        .split(",")
-                        .map((s) => s.trim())
-                        .filter(Boolean);
-                if (list.length > 0) out.fallbackModels = list;
-        } else if (Array.isArray(fbRaw)) {
-                const list = fbRaw
-                        .filter((s): s is string => typeof s === "string")
-                        .map((s) => s.trim())
-                        .filter(Boolean);
-                if (list.length > 0) out.fallbackModels = list;
-        }
+	const fbRaw = fm.fallbackModels ?? fm.fallback_models;
+	if (typeof fbRaw === "string") {
+		const list = fbRaw
+			.split(",")
+			.map((s) => s.trim())
+			.filter(Boolean);
+		if (list.length > 0) out.fallbackModels = list;
+	} else if (Array.isArray(fbRaw)) {
+		const list = fbRaw
+			.filter((s): s is string => typeof s === "string")
+			.map((s) => s.trim())
+			.filter(Boolean);
+		if (list.length > 0) out.fallbackModels = list;
+	}
 
-        const ctxRaw = fm.context;
-        if (typeof ctxRaw === "string") {
-                const v = ctxRaw.trim().toLowerCase();
-                if (v === "fresh" || v === "summary") out.context = v;
-        }
+	const ctxRaw = fm.context;
+	if (typeof ctxRaw === "string") {
+		const v = ctxRaw.trim().toLowerCase();
+		if (v === "fresh" || v === "summary") out.context = v;
+	}
 
-        const briefRaw = fm.contextBrief ?? fm.context_brief;
-        if (typeof briefRaw === "string" && briefRaw.trim()) out.contextBrief = briefRaw.trim();
+	const briefRaw = fm.contextBrief ?? fm.context_brief;
+	if (typeof briefRaw === "string" && briefRaw.trim()) out.contextBrief = briefRaw.trim();
 
-        return out;
+	return out;
 }
 
 // ---------------------------------------------------------------------------
@@ -184,9 +184,9 @@ export const ADVERTISED_CATALOG_DESCRIPTION_MAX_BYTES = 512;
 /** The minimum shape renderAdvertisedCatalog needs (SubagentConfig satisfies
  *  this; tests pass smaller literals). */
 export interface CatalogAgent {
-        name: string;
-        description: string;
-        advertise?: boolean;
+	name: string;
+	description: string;
+	advertise?: boolean;
 }
 
 /**
@@ -210,48 +210,48 @@ export interface CatalogAgent {
  * last, so project agents are the ones kept).
  */
 export function renderAdvertisedCatalog(agents: CatalogAgent[], level: DelegationLevel): string | undefined {
-        if (level === "never") return undefined;
-        const advertisable = agents.filter((a) => a.advertise !== false);
-        if (advertisable.length === 0) return undefined;
+	if (level === "never") return undefined;
+	const advertisable = agents.filter((a) => a.advertise !== false);
+	if (advertisable.length === 0) return undefined;
 
-        const cap = (s: string): string => {
-                const bytes = Buffer.byteLength(s, "utf8");
-                if (bytes <= ADVERTISED_CATALOG_DESCRIPTION_MAX_BYTES) return s;
-                // Byte-safe truncation: never split a UTF-8 sequence; the
-                // ellipsis counts against the cap so the result is EXACTLY at
-                // most ADVERTISED_CATALOG_DESCRIPTION_MAX_BYTES bytes.
-                const ellipsis = "…";
-                const budget = ADVERTISED_CATALOG_DESCRIPTION_MAX_BYTES - Buffer.byteLength(ellipsis, "utf8");
-                return (
-                        Buffer.from(s, "utf8")
-                                .subarray(0, budget)
-                                .toString("utf8")
-                                // A multi-byte sequence cut at the byte boundary decodes to
-                                // U+FFFD — it can only appear at the very end of the slice.
-                                .replace(/\uFFFD+$/, "")
-                                .replace(/\s+\S*$/, "") + ellipsis
-                );
-        };
+	const cap = (s: string): string => {
+		const bytes = Buffer.byteLength(s, "utf8");
+		if (bytes <= ADVERTISED_CATALOG_DESCRIPTION_MAX_BYTES) return s;
+		// Byte-safe truncation: never split a UTF-8 sequence; the
+		// ellipsis counts against the cap so the result is EXACTLY at
+		// most ADVERTISED_CATALOG_DESCRIPTION_MAX_BYTES bytes.
+		const ellipsis = "…";
+		const budget = ADVERTISED_CATALOG_DESCRIPTION_MAX_BYTES - Buffer.byteLength(ellipsis, "utf8");
+		return (
+			Buffer.from(s, "utf8")
+				.subarray(0, budget)
+				.toString("utf8")
+				// A multi-byte sequence cut at the byte boundary decodes to
+				// U+FFFD — it can only appear at the very end of the slice.
+				.replace(/\uFFFD+$/, "")
+				.replace(/\s+\S*$/, "") + ellipsis
+		);
+	};
 
-        const entry = (a: CatalogAgent): string => `- name: ${a.name}\n  description: ${cap(a.description)}`;
+	const entry = (a: CatalogAgent): string => `- name: ${a.name}\n  description: ${cap(a.description)}`;
 
-        // Render greedily; drop from the FRONT (oldest-name-first in cciotti's
-        // sense: earliest in discovery order) when over budget.
-        let kept = advertisable.slice(0, ADVERTISED_CATALOG_MAX_AGENTS).map(entry);
-        let omitted = Math.max(0, advertisable.length - ADVERTISED_CATALOG_MAX_AGENTS);
-        const header =
-                `Delegation policy: ${DELEGATION_SENTENCES[level]}\n` +
-                `Confirm the exact agent (task tool / "task_control list") before executing; unknown agent names fail with the available list.`;
-        const frame = (body: string): string =>
-                `<advertised_subagents>\n${header}\n\n${body}${omitted > 0 ? `\n<omitted count="${omitted}"/>` : ""}\n</advertised_subagents>`;
-        let block = frame(kept.join("\n\n"));
-        while (Buffer.byteLength(block, "utf8") > ADVERTISED_CATALOG_MAX_BYTES && kept.length > 0) {
-                kept = kept.slice(1);
-                omitted++;
-                block = frame(kept.join("\n\n"));
-        }
-        if (kept.length === 0) return undefined;
-        return block;
+	// Render greedily; drop from the FRONT (oldest-name-first in cciotti's
+	// sense: earliest in discovery order) when over budget.
+	let kept = advertisable.slice(0, ADVERTISED_CATALOG_MAX_AGENTS).map(entry);
+	let omitted = Math.max(0, advertisable.length - ADVERTISED_CATALOG_MAX_AGENTS);
+	const header =
+		`Delegation policy: ${DELEGATION_SENTENCES[level]}\n` +
+		`Confirm the exact agent (task tool / "task_control list") before executing; unknown agent names fail with the available list.`;
+	const frame = (body: string): string =>
+		`<advertised_subagents>\n${header}\n\n${body}${omitted > 0 ? `\n<omitted count="${omitted}"/>` : ""}\n</advertised_subagents>`;
+	let block = frame(kept.join("\n\n"));
+	while (Buffer.byteLength(block, "utf8") > ADVERTISED_CATALOG_MAX_BYTES && kept.length > 0) {
+		kept = kept.slice(1);
+		omitted++;
+		block = frame(kept.join("\n\n"));
+	}
+	if (kept.length === 0) return undefined;
+	return block;
 }
 
 // ---------------------------------------------------------------------------
@@ -282,16 +282,16 @@ A BLOCKED reply is routed back to the parent as a first-class status, so the orc
  *  the fenced + first-line shapes models actually emit, but never a
  *  mid-document mention — discussing the protocol is not using it). */
 export function isBlockedReply(text: string): { blocked: boolean; reason?: string } {
-        const stripped = text
-                .trim()
-                .replace(/^```[a-zA-Z]*\s*\n?/, "")
-                .replace(/\n?```\s*$/, "")
-                .trim();
-        if (!stripped) return { blocked: false };
-        const firstLine = stripped.split("\n", 1)[0].trim();
-        const match = firstLine.match(/^BLOCKED:\s*(.+)$/i);
-        if (match) return { blocked: true, reason: match[1].trim().slice(0, 200) };
-        return { blocked: false };
+	const stripped = text
+		.trim()
+		.replace(/^```[a-zA-Z]*\s*\n?/, "")
+		.replace(/\n?```\s*$/, "")
+		.trim();
+	if (!stripped) return { blocked: false };
+	const firstLine = stripped.split("\n", 1)[0].trim();
+	const match = firstLine.match(/^BLOCKED:\s*(.+)$/i);
+	if (match) return { blocked: true, reason: match[1].trim().slice(0, 200) };
+	return { blocked: false };
 }
 
 // ---------------------------------------------------------------------------
@@ -305,10 +305,10 @@ export const COMPLETION_GUARD_FAILURE = "Subagent completed without making edits
 /** A working-tree mutation fingerprint: the sorted list of changed paths plus
  *  a hash over their diffs. Same snapshot before and after ⇒ nothing changed. */
 export interface MutationSnapshot {
-        /** Sorted changed paths (git diff --name-only, tracked + untracked-but-not-ignored). */
-        changedPaths: string[];
-        /** SHA-256 over the full named diff; empty-string hash when clean. */
-        diffDigest: string;
+	/** Sorted changed paths (git diff --name-only, tracked + untracked-but-not-ignored). */
+	changedPaths: string[];
+	/** SHA-256 over the full named diff; empty-string hash when clean. */
+	diffDigest: string;
 }
 
 /** Digest of the empty diff — the "clean tree" value. */
@@ -324,56 +324,56 @@ export const CLEAN_DIGEST = "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca49
  * dodge for stale fsmonitor daemons reporting phantom-clean trees).
  */
 export function snapshotWorkingTree(cwd: string): MutationSnapshot | null {
-        if (!existsSync(join(cwd, ".git"))) return null;
-        const run = (args: string[]): string | null => {
-                try {
-                        const res = spawnSync("git", ["-c", "core.fsmonitor=false", ...args], {
-                                cwd,
-                                encoding: "utf8",
-                                timeout: 15_000,
-                                windowsHide: true,
-                        });
-                        if (res.error || res.status !== 0) return null;
-                        return res.stdout ?? "";
-                } catch {
-                        return null;
-                }
-        };
-        const status = run(["status", "--porcelain=v1", "-z"]);
-        const diff = run(["diff", "HEAD"]);
-        if (status === null) return null;
-        // The full diff including untracked files is expensive; the GUARD only
-        // needs to know WHAT changed and that SOMETHING changed. Path list
-        // from status; content digest from the tracked diff (untracked files
-        // already show up in the path list).
-        const changedPaths = status
-                .split("\0")
-                .map((entry) => entry.slice(3))
-                .filter(Boolean)
-                .sort();
-        // Content digest: the tracked diff (with staged changes) hashed with
-        // SHA-256. Collision resistance is more than enough here — we compare
-        // equality of the SAME tree before/after; the digest only needs
-        // determinism, and untracked files already surface via the path list.
-        let digest = CLEAN_DIGEST;
-        const material = changedPaths.join("\n") + "\u0000" + (diff ?? "");
-        if (material !== "\u0000") {
-                digest = createHash("sha256").update(material, "utf8").digest("hex");
-        }
-        return { changedPaths, diffDigest: digest };
+	if (!existsSync(join(cwd, ".git"))) return null;
+	const run = (args: string[]): string | null => {
+		try {
+			const res = spawnSync("git", ["-c", "core.fsmonitor=false", ...args], {
+				cwd,
+				encoding: "utf8",
+				timeout: 15_000,
+				windowsHide: true,
+			});
+			if (res.error || res.status !== 0) return null;
+			return res.stdout ?? "";
+		} catch {
+			return null;
+		}
+	};
+	const status = run(["status", "--porcelain=v1", "-z"]);
+	const diff = run(["diff", "HEAD"]);
+	if (status === null) return null;
+	// The full diff including untracked files is expensive; the GUARD only
+	// needs to know WHAT changed and that SOMETHING changed. Path list
+	// from status; content digest from the tracked diff (untracked files
+	// already show up in the path list).
+	const changedPaths = status
+		.split("\0")
+		.map((entry) => entry.slice(3))
+		.filter(Boolean)
+		.sort();
+	// Content digest: the tracked diff (with staged changes) hashed with
+	// SHA-256. Collision resistance is more than enough here — we compare
+	// equality of the SAME tree before/after; the digest only needs
+	// determinism, and untracked files already surface via the path list.
+	let digest = CLEAN_DIGEST;
+	const material = changedPaths.join("\n") + "\u0000" + (diff ?? "");
+	if (material !== "\u0000") {
+		digest = createHash("sha256").update(material, "utf8").digest("hex");
+	}
+	return { changedPaths, diffDigest: digest };
 }
 
 /** Pure: did anything mutate between two snapshots? (null snapshot ⇒ unknown.) */
 export function treeMutated(before: MutationSnapshot | null, after: MutationSnapshot | null): boolean | null {
-        if (!before || !after) return null;
-        if (before.changedPaths.length !== after.changedPaths.length) return true;
-        if (before.diffDigest !== after.diffDigest) return true;
-        return false;
+	if (!before || !after) return null;
+	if (before.changedPaths.length !== after.changedPaths.length) return true;
+	if (before.diffDigest !== after.diffDigest) return true;
+	return false;
 }
 
 /** Paths touched between snapshots (for the guard's evidence line). */
 export function mutatedPaths(before: MutationSnapshot | null, after: MutationSnapshot | null): string[] {
-        if (!before || !after) return [];
-        const beforeSet = new Set(before.changedPaths);
-        return after.changedPaths.filter((p) => !beforeSet.has(p));
+	if (!before || !after) return [];
+	const beforeSet = new Set(before.changedPaths);
+	return after.changedPaths.filter((p) => !beforeSet.has(p));
 }
