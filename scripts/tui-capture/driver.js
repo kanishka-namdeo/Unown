@@ -38,6 +38,27 @@ const PLAYWRIGHT = require(path.join(UNOWN_ROOT, "node_modules", "playwright"));
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const SPINNER_RE = /[⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏]/;
 
+/** Bounded-retry screenshot — headless Chromium intermittently fails a
+ *  Page.captureScreenshot with a bare protocol error right after viewport
+ *  resizes or dense canvas repaints (measured: ~1 in 3 corner-test2 runs
+ *  died at the closing still with "Unable to capture screenshot" while the
+ *  page itself was fine — the pane and the xterm buffer both held the
+ *  content). One immediate retry plus one after a settle beat resolves the
+ *  transient without masking a genuinely dead renderer (a third consecutive
+ *  failure still throws, which the scenario runner treats as a re-run). */
+async function shotWithRetry(page, opts, attempts = 3) {
+  let lastErr;
+  for (let i = 0; i < attempts; i++) {
+    try {
+      return await page.screenshot(opts);
+    } catch (e) {
+      lastErr = e;
+      if (i < attempts - 1) await sleep(i === 0 ? 120 : 450);
+    }
+  }
+  throw lastErr;
+}
+
 function sh(file, args, opts = {}) {
   return new Promise((resolve, reject) => {
     execFile(file, args, { maxBuffer: 64 * 1024 * 1024, timeout: 30_000, ...opts }, (err, stdout, stderr) => {
@@ -144,7 +165,7 @@ class FrameRecorder {
             this.lastFrameAt = now;
             this.stats.frames++;
             changed ? this.stats.changes++ : this.stats.heartbeats++;
-            const shotP = this.page.screenshot({ type: "jpeg", quality: 87 }).catch(() => null);
+            const shotP = shotWithRetry(this.page, { type: "jpeg", quality: 87 }).catch(() => null);
             const myIdx = this.idx;
             const rec = { i: myIdx, changed, working };
             this.meta.push(rec);
@@ -182,7 +203,7 @@ class FrameRecorder {
   async dwell(ms) {
     const frames = Math.max(1, Math.round(ms / 125));
     for (let i = 0; i < frames; i++) {
-      const buf = await this.page.screenshot({ type: "jpeg", quality: 87 }).catch(() => null);
+      const buf = await shotWithRetry(this.page, { type: "jpeg", quality: 87 }).catch(() => null);
       if (buf) {
         fs.writeFileSync(path.join(this.dir, `f_${String(this.idx).padStart(5, "0")}.jpg`), buf);
         this.idx++;
@@ -525,7 +546,7 @@ class CaptureSession {
       }
     } catch {}
     const file = path.join(this.stillsDir, `${name}.png`);
-    await this.page.screenshot({ path: file });
+    await shotWithRetry(this.page, { path: file });
     // keep the pane state that produced this still for debugging
     try {
       const t = await this.tmux.text();

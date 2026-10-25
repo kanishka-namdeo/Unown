@@ -13,6 +13,17 @@ const LD_LIB = process.env.LD_LIB || "/home/z/.local/opt/tmux-root/usr/lib/x86_6
 const HTML = require("node:path").join(__dirname, "ttyd-index.html"); // run make_ttyd_index.sh first
 const PLAYWRIGHT = require(require("node:path").join(process.env.UNOWN_ROOT || require("node:path").resolve(__dirname, "..", ".."), "node_modules", "playwright"));
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+/** Bounded-retry screenshot — same transient headless protocol error the
+ *  driver guards against (see driver.js shotWithRetry). */
+async function shotWithRetry(page, opts, attempts = 3) {
+  let lastErr;
+  for (let i = 0; i < attempts; i++) {
+    try { return await page.screenshot(opts); }
+    catch (e) { lastErr = e; if (i < attempts - 1) await sleep(i === 0 ? 120 : 450); }
+  }
+  throw lastErr;
+}
 const OUT = require("node:path").join(process.env.OUT_ROOT || "/home/z/my-project/download/unown-tui-captures", "_audit", "render-stress");
 let PORT = 7980;
 
@@ -65,10 +76,10 @@ async function run(name, renderer) {
   await sh(TMUX_BIN, ["send-keys", "-t", `${S}-${name}`, "Enter"], { env: tmuxEnv });
   await sleep(1400); // mid-storm
   const mid = `${OUT}/${name}-mid.png`;
-  await page.screenshot({ path: mid });
+  await shotWithRetry(page, { path: mid });
   await sleep(2500); // after the storm settles
   const post = `${OUT}/${name}-post.png`;
-  await page.screenshot({ path: post });
+  await shotWithRetry(page, { path: post });
   await browser.close();
   ttyd.kill("SIGTERM");
   await sleep(300);
