@@ -1,0 +1,349 @@
+{
+  "suite": "ops-accuracy",
+  "id": "supersede",
+  "desc": "Contradicted fact superseded: staging ran Postgres 14, then the migration to Postgres 16 (note 2, newer). DELETE(old)+ADD(new): the old version must never be stated as current after the dream.",
+  "model": "agnes-3.0-flash",
+  "date": "2026-10-25T18:40:46.183Z",
+  "durationMs": 49590,
+  "scope": "project:oa-supersede",
+  "notesFed": [
+    {
+      "order": 1,
+      "ts": "2026-10-11T12:10:00.000Z",
+      "created_at": null,
+      "fedBy": "ts",
+      "eventTimeInText": null,
+      "text": "Migration session: we migrated staging to Postgres 16 last night; the Postgres 14 instance is decommissioned. pg_stat_statements still needs loading on the new cluster. Backups unchanged, still the nightly S3 bucket."
+    },
+    {
+      "order": 2,
+      "ts": "2026-10-03T14:20:00.000Z",
+      "created_at": null,
+      "fedBy": "ts",
+      "eventTimeInText": null,
+      "text": "Infrastructure session: staging environment runs Postgres 14 with the pg_stat_statements extension loaded. Backups go to the nightly S3 bucket."
+    }
+  ],
+  "noteRules": [
+    [],
+    []
+  ],
+  "seed": {
+    "bullets": 3,
+    "render": "# Project Memory\n\n## Workflow\n- The gateway must never log full request bodies in production [seed].\n- Trunk branch is `main`; feature work ships via short-lived branches [seed].\n- aurora-gateway is a TypeScript API gateway; handlers stay thin, domain logic lives in src/domain/ [seed].\n\n<!-- unown: rendered 3/3 memories via Mem0 (backend: onnx) at 2026-10-25T18:39:56.613Z -->\n"
+  },
+  "dream": {
+    "error": null,
+    "stats": {
+      "added": 3,
+      "merged": 0,
+      "pruned": 0,
+      "quarantined": 0,
+      "guardDeleted": 0
+    },
+    "reconcileOps": [],
+    "renderedCandidate": "# Project Memory\n\n## Workflow\n- The gateway must never log full request bodies in production [seed].\n- Trunk branch is `main`; feature work ships via short-lived branches [seed].\n- aurora-gateway is a TypeScript API gateway; handlers stay thin, domain logic lives in src/domain/ [seed].\n\n## Environment\n- Staging environment migrated to Postgres 16 on 2026-10-24; the previous Postgres 14 instance is decommissioned\n\n## Facts\n- pg_stat_statements extension must be loaded on the new Postgres 16 staging cluster; it was not automatically configured after migration\n- Staging database backups are sent to a nightly S3 bucket\n\n<!-- unown: rendered 6/6 memories via Mem0 (backend: onnx) at 2026-10-25T18:40:46.140Z -->\n",
+    "durationMs": 49527,
+    "dreamCalls": 1
+  },
+  "render": "# Project Memory\n\n## Workflow\n- The gateway must never log full request bodies in production [seed].\n- Trunk branch is `main`; feature work ships via short-lived branches [seed].\n- aurora-gateway is a TypeScript API gateway; handlers stay thin, domain logic lives in src/domain/ [seed].\n\n## Environment\n- Staging environment migrated to Postgres 16 on 2026-10-24; the previous Postgres 14 instance is decommissioned\n\n## Facts\n- pg_stat_statements extension must be loaded on the new Postgres 16 staging cluster; it was not automatically configured after migration\n- Staging database backups are sent to a nightly S3 bucket\n\n<!-- unown: rendered 6/6 memories via Mem0 (backend: onnx) at 2026-10-25T18:40:46.143Z -->\n",
+  "platform": {
+    "memoryCount": 6,
+    "memories": [
+      {
+        "id": "5f6ba665-36af-47bb-b8ac-6483586b4fde",
+        "createdAt": "2026-10-25T18:39:56.603Z",
+        "updatedAt": null,
+        "text": "aurora-gateway is a TypeScript API gateway; handlers stay thin, domain logic lives in src/domain/ [seed]."
+      },
+      {
+        "id": "e9c054a7-e8df-4ac8-a9ec-ef89405c2353",
+        "createdAt": "2026-10-25T18:39:56.607Z",
+        "updatedAt": null,
+        "text": "Trunk branch is `main`; feature work ships via short-lived branches [seed]."
+      },
+      {
+        "id": "7d49c9a1-c62b-42e0-b231-33b30a8c9cca",
+        "createdAt": "2026-10-25T18:39:56.611Z",
+        "updatedAt": null,
+        "text": "The gateway must never log full request bodies in production [seed]."
+      },
+      {
+        "id": "e851a925-bee5-4962-8d09-b7fa00fbd181",
+        "createdAt": "2026-10-25T18:39:58.894Z",
+        "updatedAt": "2026-10-25T18:39:58.894Z",
+        "text": "Staging environment migrated to Postgres 16 on 2026-10-24; the previous Postgres 14 instance is decommissioned"
+      },
+      {
+        "id": "f0566653-0973-4cd9-aa91-76083eee970a",
+        "createdAt": "2026-10-25T18:39:58.894Z",
+        "updatedAt": "2026-10-25T18:39:58.894Z",
+        "text": "pg_stat_statements extension must be loaded on the new Postgres 16 staging cluster; it was not automatically configured after migration"
+      },
+      {
+        "id": "5eb85e1a-7977-4986-b770-38e49302b650",
+        "createdAt": "2026-10-25T18:39:58.894Z",
+        "updatedAt": "2026-10-25T18:39:58.894Z",
+        "text": "Staging database backups are sent to a nightly S3 bucket"
+      }
+    ]
+  },
+  "probes": {
+    "present": {
+      "pg16": {
+        "pass": true,
+        "satisfiedBy": "platform+render",
+        "matchCount": 2,
+        "matchedMemoryIds": [
+          "e851a925-bee5-4962-8d09-b7fa00fbd181",
+          "f0566653-0973-4cd9-aa91-76083eee970a"
+        ],
+        "matchedMemoryTexts": [
+          "Staging environment migrated to Postgres 16 on 2026-10-24; the previous Postgres 14 instance is decommissioned",
+          "pg_stat_statements extension must be loaded on the new Postgres 16 staging cluster; it was not automatically configured after migration"
+        ],
+        "matchedRenderLines": [
+          "- Staging environment migrated to Postgres 16 on 2026-10-24; the previous Postgres 14 instance is decommissioned",
+          "- pg_stat_statements extension must be loaded on the new Postgres 16 staging cluster; it was not automatically configured after migration"
+        ]
+      },
+      "pgstat": {
+        "pass": true,
+        "satisfiedBy": "platform+render",
+        "matchCount": 1,
+        "matchedMemoryIds": [
+          "f0566653-0973-4cd9-aa91-76083eee970a"
+        ],
+        "matchedMemoryTexts": [
+          "pg_stat_statements extension must be loaded on the new Postgres 16 staging cluster; it was not automatically configured after migration"
+        ],
+        "matchedRenderLines": [
+          "- pg_stat_statements extension must be loaded on the new Postgres 16 staging cluster; it was not automatically configured after migration"
+        ]
+      },
+      "backups": {
+        "pass": true,
+        "satisfiedBy": "platform+render",
+        "matchCount": 1,
+        "matchedMemoryIds": [
+          "5eb85e1a-7977-4986-b770-38e49302b650"
+        ],
+        "matchedMemoryTexts": [
+          "Staging database backups are sent to a nightly S3 bucket"
+        ],
+        "matchedRenderLines": [
+          "- Staging database backups are sent to a nightly S3 bucket"
+        ]
+      }
+    },
+    "absentCurrent": {
+      "pg14": {
+        "pass": true,
+        "violations": [],
+        "exemptHits": [
+          {
+            "surface": "render",
+            "line": "- Staging environment migrated to Postgres 16 on 2026-10-24; the previous Postgres 14 instance is decommissioned",
+            "marker": "migrated"
+          },
+          {
+            "surface": "search",
+            "rank": 1,
+            "id": "e851a925-bee5-4962-8d09-b7fa00fbd181",
+            "text": "Staging environment migrated to Postgres 16 on 2026-10-24; the previous Postgres 14 instance is decommissioned",
+            "marker": "migrated"
+          }
+        ],
+        "searchQuery": "postgres 14",
+        "searchTop10": [
+          {
+            "rank": 1,
+            "id": "e851a925-bee5-4962-8d09-b7fa00fbd181",
+            "score": 0.5789492884792049,
+            "text": "Staging environment migrated to Postgres 16 on 2026-10-24; the previous Postgres 14 instance is decommissioned"
+          },
+          {
+            "rank": 2,
+            "id": "f0566653-0973-4cd9-aa91-76083eee970a",
+            "score": 0.5186277965403848,
+            "text": "pg_stat_statements extension must be loaded on the new Postgres 16 staging cluster; it was not automatically configured after migration"
+          },
+          {
+            "rank": 3,
+            "id": "5eb85e1a-7977-4986-b770-38e49302b650",
+            "score": 0.38551743196290655,
+            "text": "Staging database backups are sent to a nightly S3 bucket"
+          },
+          {
+            "rank": 4,
+            "id": "5f6ba665-36af-47bb-b8ac-6483586b4fde",
+            "score": 0.2129131465540485,
+            "text": "aurora-gateway is a TypeScript API gateway; handlers stay thin, domain logic lives in src/domain/ [seed]."
+          },
+          {
+            "rank": 5,
+            "id": "7d49c9a1-c62b-42e0-b231-33b30a8c9cca",
+            "score": 0.19774029606189888,
+            "text": "The gateway must never log full request bodies in production [seed]."
+          },
+          {
+            "rank": 6,
+            "id": "e9c054a7-e8df-4ac8-a9ec-ef89405c2353",
+            "score": 0.19125724882373557,
+            "text": "Trunk branch is `main`; feature work ships via short-lived branches [seed]."
+          }
+        ]
+      }
+    },
+    "once": {},
+    "maxMatchCount": {},
+    "search": [
+      {
+        "q": "what postgres version does staging run",
+        "expect": "pg16",
+        "pass": true,
+        "satisfiedByRank": 1,
+        "surface": "search",
+        "top10": [
+          {
+            "rank": 1,
+            "id": "e851a925-bee5-4962-8d09-b7fa00fbd181",
+            "score": 0.5424878878513014,
+            "text": "Staging environment migrated to Postgres 16 on 2026-10-24; the previous Postgres 14 instance is decommissioned"
+          },
+          {
+            "rank": 2,
+            "id": "f0566653-0973-4cd9-aa91-76083eee970a",
+            "score": 0.5160023754042926,
+            "text": "pg_stat_statements extension must be loaded on the new Postgres 16 staging cluster; it was not automatically configured after migration"
+          },
+          {
+            "rank": 3,
+            "id": "5eb85e1a-7977-4986-b770-38e49302b650",
+            "score": 0.4279567969482286,
+            "text": "Staging database backups are sent to a nightly S3 bucket"
+          },
+          {
+            "rank": 4,
+            "id": "5f6ba665-36af-47bb-b8ac-6483586b4fde",
+            "score": 0.23873189081819918,
+            "text": "aurora-gateway is a TypeScript API gateway; handlers stay thin, domain logic lives in src/domain/ [seed]."
+          },
+          {
+            "rank": 5,
+            "id": "7d49c9a1-c62b-42e0-b231-33b30a8c9cca",
+            "score": 0.21327586212393287,
+            "text": "The gateway must never log full request bodies in production [seed]."
+          },
+          {
+            "rank": 6,
+            "id": "e9c054a7-e8df-4ac8-a9ec-ef89405c2353",
+            "score": 0.20964627624004914,
+            "text": "Trunk branch is `main`; feature work ships via short-lived branches [seed]."
+          }
+        ]
+      }
+    ]
+  },
+  "probesEvaluated": 5,
+  "facts": {
+    "pg14": {
+      "op": "DELETE",
+      "desc": "staging runs Postgres 14 (SUPERSEDED — must not be current)",
+      "current": false,
+      "dedupOf": null,
+      "present": true,
+      "matchCount": 1,
+      "matchedMemoryIds": [
+        "e851a925-bee5-4962-8d09-b7fa00fbd181"
+      ],
+      "matchedRenderLines": [
+        "- Staging environment migrated to Postgres 16 on 2026-10-24; the previous Postgres 14 instance is decommissioned"
+      ],
+      "absentCurrentPass": true,
+      "observed": "applied",
+      "reason": "old value absent-current (replacement pg16 present)"
+    },
+    "pg16": {
+      "op": "ADD",
+      "desc": "staging runs Postgres 16",
+      "current": true,
+      "dedupOf": null,
+      "present": true,
+      "matchCount": 2,
+      "matchedMemoryIds": [
+        "e851a925-bee5-4962-8d09-b7fa00fbd181",
+        "f0566653-0973-4cd9-aa91-76083eee970a"
+      ],
+      "matchedRenderLines": [
+        "- Staging environment migrated to Postgres 16 on 2026-10-24; the previous Postgres 14 instance is decommissioned",
+        "- pg_stat_statements extension must be loaded on the new Postgres 16 staging cluster; it was not automatically configured after migration"
+      ],
+      "absentCurrentPass": null,
+      "observed": "over-applied",
+      "reason": "2 distinct memories match the fact (duplicate)"
+    },
+    "pgstat": {
+      "op": "ADD",
+      "desc": "pg_stat_statements extension",
+      "current": null,
+      "dedupOf": null,
+      "present": true,
+      "matchCount": 1,
+      "matchedMemoryIds": [
+        "f0566653-0973-4cd9-aa91-76083eee970a"
+      ],
+      "matchedRenderLines": [
+        "- pg_stat_statements extension must be loaded on the new Postgres 16 staging cluster; it was not automatically configured after migration"
+      ],
+      "absentCurrentPass": null,
+      "observed": "applied",
+      "reason": "present in platform memory"
+    },
+    "backups": {
+      "op": "ADD",
+      "desc": "nightly S3 backups",
+      "current": null,
+      "dedupOf": null,
+      "present": true,
+      "matchCount": 1,
+      "matchedMemoryIds": [
+        "5eb85e1a-7977-4986-b770-38e49302b650"
+      ],
+      "matchedRenderLines": [
+        "- Staging database backups are sent to a nightly S3 bucket"
+      ],
+      "absentCurrentPass": null,
+      "observed": "applied",
+      "reason": "present in platform memory"
+    }
+  },
+  "opsMatrix": {
+    "ADD": {
+      "applied": 2,
+      "missed": 0,
+      "over-applied": 1,
+      "wrong-winner": 0
+    },
+    "UPDATE": {
+      "applied": 0,
+      "missed": 0,
+      "over-applied": 0,
+      "wrong-winner": 0
+    },
+    "DELETE": {
+      "applied": 1,
+      "missed": 0,
+      "over-applied": 0,
+      "wrong-winner": 0
+    },
+    "NOOP": {
+      "applied": 0,
+      "missed": 0,
+      "over-applied": 0,
+      "wrong-winner": 0
+    }
+  },
+  "pass": true,
+  "notes": "probes are deterministic regex/line classification over normalized text (lowercase, whitespace collapsed, bullet markers stripped); absentCurrent exemptions carry the historical-marker word; every verdict is auditable from matched lines/counts/surfaces recorded here"
+}

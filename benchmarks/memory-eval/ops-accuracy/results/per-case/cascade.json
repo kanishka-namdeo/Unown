@@ -1,0 +1,295 @@
+{
+  "suite": "ops-accuracy",
+  "id": "cascade",
+  "desc": "MEME Cascade (dependency reasoning): note 1 renames the auth module to identity; note 2 says the identity module's config moved from auth.ini to identity.yaml. A probe for the OLD name's config location must resolve through the chain to identity.yaml.",
+  "model": "agnes-3.0-flash",
+  "date": "2026-10-25T18:44:16.631Z",
+  "durationMs": 52147,
+  "scope": "project:oa-cascade",
+  "notesFed": [
+    {
+      "order": 1,
+      "ts": "2026-10-17T13:45:00.000Z",
+      "created_at": null,
+      "fedBy": "ts",
+      "eventTimeInText": null,
+      "text": "Config follow-up: the identity module (the module we renamed from auth) no longer reads auth.ini — its configuration now lives in identity.yaml at the repo root. The old auth.ini file was deleted."
+    },
+    {
+      "order": 2,
+      "ts": "2026-10-16T10:15:00.000Z",
+      "created_at": null,
+      "fedBy": "ts",
+      "eventTimeInText": null,
+      "text": "Refactor session: we renamed the auth module to identity across the codebase. New directory is src/identity/. The auth module name is gone."
+    }
+  ],
+  "noteRules": [
+    [],
+    []
+  ],
+  "seed": {
+    "bullets": 3,
+    "render": "# Project Memory\n\n## Workflow\n- The gateway must never log full request bodies in production [seed].\n- Trunk branch is `main`; feature work ships via short-lived branches [seed].\n- aurora-gateway is a TypeScript API gateway; handlers stay thin, domain logic lives in src/domain/ [seed].\n\n<!-- unown: rendered 3/3 memories via Mem0 (backend: onnx) at 2026-10-25T18:43:24.508Z -->\n"
+  },
+  "dream": {
+    "error": null,
+    "stats": {
+      "added": 2,
+      "merged": 0,
+      "pruned": 0,
+      "quarantined": 0,
+      "guardDeleted": 0
+    },
+    "reconcileOps": [],
+    "renderedCandidate": "# Project Memory\n\n## Workflow\n- The gateway must never log full request bodies in production [seed].\n- Trunk branch is `main`; feature work ships via short-lived branches [seed].\n- aurora-gateway is a TypeScript API gateway; handlers stay thin, domain logic lives in src/domain/ [seed].\n\n## Facts\n- The auth module has been renamed to identity across the aurora-gateway codebase; it now lives in src/identity/ and the 'auth' module name is retired.\n- The identity module configuration now lives in identity.yaml at the repo root; it no longer reads auth.ini, and the old auth.ini file was deleted.\n\n<!-- unown: rendered 5/5 memories via Mem0 (backend: onnx) at 2026-10-25T18:44:16.606Z -->\n",
+    "durationMs": 52098,
+    "dreamCalls": 1
+  },
+  "render": "# Project Memory\n\n## Workflow\n- The gateway must never log full request bodies in production [seed].\n- Trunk branch is `main`; feature work ships via short-lived branches [seed].\n- aurora-gateway is a TypeScript API gateway; handlers stay thin, domain logic lives in src/domain/ [seed].\n\n## Facts\n- The auth module has been renamed to identity across the aurora-gateway codebase; it now lives in src/identity/ and the 'auth' module name is retired.\n- The identity module configuration now lives in identity.yaml at the repo root; it no longer reads auth.ini, and the old auth.ini file was deleted.\n\n<!-- unown: rendered 5/5 memories via Mem0 (backend: onnx) at 2026-10-25T18:44:16.608Z -->\n",
+  "platform": {
+    "memoryCount": 5,
+    "memories": [
+      {
+        "id": "5ea98969-7e58-4800-8ef0-6a958f8df9cd",
+        "createdAt": "2026-10-25T18:43:24.497Z",
+        "updatedAt": null,
+        "text": "aurora-gateway is a TypeScript API gateway; handlers stay thin, domain logic lives in src/domain/ [seed]."
+      },
+      {
+        "id": "9556142c-b75d-4e7b-96ef-de4ea6490d5d",
+        "createdAt": "2026-10-25T18:43:24.502Z",
+        "updatedAt": null,
+        "text": "Trunk branch is `main`; feature work ships via short-lived branches [seed]."
+      },
+      {
+        "id": "7b112f97-51c6-4fd5-b583-35580bdf00ec",
+        "createdAt": "2026-10-25T18:43:24.506Z",
+        "updatedAt": null,
+        "text": "The gateway must never log full request bodies in production [seed]."
+      },
+      {
+        "id": "a52484dd-8db8-462c-8c7e-36e4f33b6b82",
+        "createdAt": "2026-10-25T18:43:26.033Z",
+        "updatedAt": "2026-10-25T18:43:26.033Z",
+        "text": "The auth module has been renamed to identity across the aurora-gateway codebase; it now lives in src/identity/ and the 'auth' module name is retired."
+      },
+      {
+        "id": "74d1130a-d1a2-4fd4-b05a-4e809f0f19c3",
+        "createdAt": "2026-10-25T18:43:26.033Z",
+        "updatedAt": "2026-10-25T18:43:26.033Z",
+        "text": "The identity module configuration now lives in identity.yaml at the repo root; it no longer reads auth.ini, and the old auth.ini file was deleted."
+      }
+    ]
+  },
+  "probes": {
+    "present": {
+      "rename": {
+        "pass": true,
+        "satisfiedBy": "platform+render",
+        "matchCount": 1,
+        "matchedMemoryIds": [
+          "a52484dd-8db8-462c-8c7e-36e4f33b6b82"
+        ],
+        "matchedMemoryTexts": [
+          "The auth module has been renamed to identity across the aurora-gateway codebase; it now lives in src/identity/ and the 'auth' module name is retired."
+        ],
+        "matchedRenderLines": [
+          "- The auth module has been renamed to identity across the aurora-gateway codebase; it now lives in src/identity/ and the 'auth' module name is retired."
+        ]
+      },
+      "cfg": {
+        "pass": true,
+        "satisfiedBy": "platform+render",
+        "matchCount": 1,
+        "matchedMemoryIds": [
+          "74d1130a-d1a2-4fd4-b05a-4e809f0f19c3"
+        ],
+        "matchedMemoryTexts": [
+          "The identity module configuration now lives in identity.yaml at the repo root; it no longer reads auth.ini, and the old auth.ini file was deleted."
+        ],
+        "matchedRenderLines": [
+          "- The identity module configuration now lives in identity.yaml at the repo root; it no longer reads auth.ini, and the old auth.ini file was deleted."
+        ]
+      }
+    },
+    "absentCurrent": {
+      "authini": {
+        "pass": true,
+        "violations": [],
+        "exemptHits": [
+          {
+            "surface": "render",
+            "line": "- The identity module configuration now lives in identity.yaml at the repo root; it no longer reads auth.ini, and the old auth.ini file was deleted.",
+            "marker": "no longer"
+          },
+          {
+            "surface": "search",
+            "rank": 1,
+            "id": "74d1130a-d1a2-4fd4-b05a-4e809f0f19c3",
+            "text": "The identity module configuration now lives in identity.yaml at the repo root; it no longer reads auth.ini, and the old auth.ini file was deleted.",
+            "marker": "no longer"
+          }
+        ],
+        "searchQuery": "auth\\.ini",
+        "searchTop10": [
+          {
+            "rank": 1,
+            "id": "74d1130a-d1a2-4fd4-b05a-4e809f0f19c3",
+            "score": 0.4513730019006164,
+            "text": "The identity module configuration now lives in identity.yaml at the repo root; it no longer reads auth.ini, and the old auth.ini file was deleted."
+          },
+          {
+            "rank": 2,
+            "id": "a52484dd-8db8-462c-8c7e-36e4f33b6b82",
+            "score": 0.3309707414553049,
+            "text": "The auth module has been renamed to identity across the aurora-gateway codebase; it now lives in src/identity/ and the 'auth' module name is retired."
+          },
+          {
+            "rank": 3,
+            "id": "5ea98969-7e58-4800-8ef0-6a958f8df9cd",
+            "score": 0.28377218743891874,
+            "text": "aurora-gateway is a TypeScript API gateway; handlers stay thin, domain logic lives in src/domain/ [seed]."
+          },
+          {
+            "rank": 4,
+            "id": "7b112f97-51c6-4fd5-b583-35580bdf00ec",
+            "score": 0.28340803664992276,
+            "text": "The gateway must never log full request bodies in production [seed]."
+          },
+          {
+            "rank": 5,
+            "id": "9556142c-b75d-4e7b-96ef-de4ea6490d5d",
+            "score": 0.19829117151110354,
+            "text": "Trunk branch is `main`; feature work ships via short-lived branches [seed]."
+          }
+        ]
+      }
+    },
+    "once": {},
+    "maxMatchCount": {},
+    "search": [
+      {
+        "q": "where does the auth module read its configuration from",
+        "expect": "cfg",
+        "pass": true,
+        "satisfiedByRank": 1,
+        "surface": "search",
+        "top10": [
+          {
+            "rank": 1,
+            "id": "74d1130a-d1a2-4fd4-b05a-4e809f0f19c3",
+            "score": 0.531144383067366,
+            "text": "The identity module configuration now lives in identity.yaml at the repo root; it no longer reads auth.ini, and the old auth.ini file was deleted."
+          },
+          {
+            "rank": 2,
+            "id": "a52484dd-8db8-462c-8c7e-36e4f33b6b82",
+            "score": 0.5073027102709392,
+            "text": "The auth module has been renamed to identity across the aurora-gateway codebase; it now lives in src/identity/ and the 'auth' module name is retired."
+          },
+          {
+            "rank": 3,
+            "id": "5ea98969-7e58-4800-8ef0-6a958f8df9cd",
+            "score": 0.24288656745040918,
+            "text": "aurora-gateway is a TypeScript API gateway; handlers stay thin, domain logic lives in src/domain/ [seed]."
+          },
+          {
+            "rank": 4,
+            "id": "7b112f97-51c6-4fd5-b583-35580bdf00ec",
+            "score": 0.227504634074905,
+            "text": "The gateway must never log full request bodies in production [seed]."
+          },
+          {
+            "rank": 5,
+            "id": "9556142c-b75d-4e7b-96ef-de4ea6490d5d",
+            "score": 0.1878960465515693,
+            "text": "Trunk branch is `main`; feature work ships via short-lived branches [seed]."
+          }
+        ]
+      }
+    ]
+  },
+  "probesEvaluated": 4,
+  "facts": {
+    "rename": {
+      "op": "ADD",
+      "desc": "auth module renamed to identity, dir src/identity/ (order/voice-flexible: active and passive phrasings)",
+      "current": null,
+      "dedupOf": null,
+      "present": true,
+      "matchCount": 1,
+      "matchedMemoryIds": [
+        "a52484dd-8db8-462c-8c7e-36e4f33b6b82"
+      ],
+      "matchedRenderLines": [
+        "- The auth module has been renamed to identity across the aurora-gateway codebase; it now lives in src/identity/ and the 'auth' module name is retired."
+      ],
+      "absentCurrentPass": null,
+      "observed": "applied",
+      "reason": "present in platform memory"
+    },
+    "cfg": {
+      "op": "ADD",
+      "desc": "identity config at identity.yaml (cascade: auth's config too)",
+      "current": null,
+      "dedupOf": null,
+      "present": true,
+      "matchCount": 1,
+      "matchedMemoryIds": [
+        "74d1130a-d1a2-4fd4-b05a-4e809f0f19c3"
+      ],
+      "matchedRenderLines": [
+        "- The identity module configuration now lives in identity.yaml at the repo root; it no longer reads auth.ini, and the old auth.ini file was deleted."
+      ],
+      "absentCurrentPass": null,
+      "observed": "applied",
+      "reason": "present in platform memory"
+    },
+    "authini": {
+      "op": "DELETE",
+      "desc": "auth.ini as the config file (SUPERSEDED through the rename chain)",
+      "current": false,
+      "dedupOf": null,
+      "present": true,
+      "matchCount": 1,
+      "matchedMemoryIds": [
+        "74d1130a-d1a2-4fd4-b05a-4e809f0f19c3"
+      ],
+      "matchedRenderLines": [
+        "- The identity module configuration now lives in identity.yaml at the repo root; it no longer reads auth.ini, and the old auth.ini file was deleted."
+      ],
+      "absentCurrentPass": true,
+      "observed": "applied",
+      "reason": "old value absent-current"
+    }
+  },
+  "opsMatrix": {
+    "ADD": {
+      "applied": 2,
+      "missed": 0,
+      "over-applied": 0,
+      "wrong-winner": 0
+    },
+    "UPDATE": {
+      "applied": 0,
+      "missed": 0,
+      "over-applied": 0,
+      "wrong-winner": 0
+    },
+    "DELETE": {
+      "applied": 1,
+      "missed": 0,
+      "over-applied": 0,
+      "wrong-winner": 0
+    },
+    "NOOP": {
+      "applied": 0,
+      "missed": 0,
+      "over-applied": 0,
+      "wrong-winner": 0
+    }
+  },
+  "pass": true,
+  "notes": "probes are deterministic regex/line classification over normalized text (lowercase, whitespace collapsed, bullet markers stripped); absentCurrent exemptions carry the historical-marker word; every verdict is auditable from matched lines/counts/surfaces recorded here"
+}

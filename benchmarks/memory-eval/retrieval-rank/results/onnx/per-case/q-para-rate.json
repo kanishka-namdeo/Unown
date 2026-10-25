@@ -1,0 +1,101 @@
+{
+  "suite": "retrieval-rank",
+  "id": "q-para-rate",
+  "kind": "paraphrase",
+  "q": "How many requests per minute is each client allowed before throttling kicks in?",
+  "gold": [
+    "ratelimit"
+  ],
+  "embedder": {
+    "arm": "onnx-arm",
+    "requested": "onnx",
+    "backend": "onnx",
+    "embedderFallback": false,
+    "autoDegraded": false
+  },
+  "date": "2026-10-25T18:33:02.171Z",
+  "durationMs": 47,
+  "results": [
+    {
+      "rank": 1,
+      "memoryId": "417c6021-8f19-4420-b1b8-a702c0ccdbfc",
+      "factId": "ratelimit",
+      "score": 0.675,
+      "text": "Rate limiting is 100 requests per minute per client id, enforced at the router layer."
+    },
+    {
+      "rank": 2,
+      "memoryId": "bea475da-d2c8-4296-9b74-021f09f9a3a0",
+      "factId": "counters",
+      "score": 0.3931,
+      "text": "Per-client rate-limit counters live in Redis with a 60-second TTL."
+    },
+    {
+      "rank": 3,
+      "memoryId": "04054927-531d-4967-8b16-947a20ad9419",
+      "factId": "prom",
+      "score": 0.3141,
+      "text": "Prometheus scrapes the /metrics path every 15 seconds."
+    },
+    {
+      "rank": 4,
+      "memoryId": "4c0f8bd2-c480-4947-9dbd-1b404e46784f",
+      "factId": "fetch",
+      "score": 0.3135,
+      "text": "axios is forbidden in this codebase; outbound HTTP goes through the platform fetch wrapper with a 2-attempt retry budget."
+    },
+    {
+      "rank": 5,
+      "memoryId": "b5eb2613-9582-4814-82bd-acf4e82f217e",
+      "factId": "proto",
+      "score": 0.3045,
+      "text": "The protocol buffer schema lives at proto/gateway.proto."
+    },
+    {
+      "rank": 6,
+      "memoryId": "a9e25d16-4809-4c00-8213-294c04f254a5",
+      "factId": "ci",
+      "score": 0.2995,
+      "text": "Continuous integration runs in GitHub Actions on the self-hosted buildkite pool."
+    },
+    {
+      "rank": 7,
+      "memoryId": "789bd00f-c59c-4935-8aeb-61e31b299802",
+      "factId": "p99",
+      "score": 0.2922,
+      "text": "The p99 latency budget for the gateway is 250 milliseconds."
+    },
+    {
+      "rank": 8,
+      "memoryId": "efbfdf7f-317f-49ad-a4d5-13ce8b6c8efe",
+      "factId": "healthz",
+      "score": 0.2868,
+      "text": "The health endpoint is GET /healthz and returns 200 with a JSON status object."
+    },
+    {
+      "rank": 9,
+      "memoryId": "d334f038-99cd-40bd-a64c-1444b8cbde7d",
+      "factId": "flags-old",
+      "score": 0.2849,
+      "text": "The feature-flags service endpoint is http://flags.internal:7070."
+    },
+    {
+      "rank": 10,
+      "memoryId": "99b36420-a89e-4f02-8d0a-73a7c26a0826",
+      "factId": "pg14",
+      "score": 0.2821,
+      "text": "Staging runs Postgres 14 with pg_stat_statements loaded."
+    }
+  ],
+  "goldRanks": {
+    "ratelimit": 1
+  },
+  "firstGoldRank": 1,
+  "recall": {
+    "at3": true,
+    "at5": true,
+    "at10": true
+  },
+  "mrr": 1,
+  "error": null
+}

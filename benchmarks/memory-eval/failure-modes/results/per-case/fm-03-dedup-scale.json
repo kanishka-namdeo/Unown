@@ -1,0 +1,44 @@
+{
+  "suite": "failure-modes",
+  "case": "fm-03-dedup-scale",
+  "mode": "live",
+  "source": "Mem0 #7123 (dedup window miss at corpus scale)",
+  "doc": "Dedup window miss at corpus scale (Mem0 #7123): seed twelve near-duplicate variants of one lint rule verbatim (the accumulated state), then one more variant arrives via the dream. The reconcile must collapse the family: no more than 4 matching memories survive, and the ESLint enforcement detail from the new note is present.",
+  "model": "agnes-3.0-flash",
+  "date": "2026-10-25T18:54:37.761Z",
+  "durationMs": 57089,
+  "error": null,
+  "dreamCalls": 1,
+  "checks": [
+    {
+      "name": "the alphabet family collapses to <= 4 matching memories (seeded 12)",
+      "pass": true,
+      "evidence": {
+        "seededVariants": 12,
+        "familyMatchCount": 1,
+        "familyTexts": [
+          "Keep imports sorted alphabetically as enforced by the ESLint rule `import/order`."
+        ],
+        "rendered": "# Project Memory\n\n## Facts\n- Keep imports sorted alphabetically as enforced by the ESLint rule `import/order`.\n\n<!-- unown: rendered 1/1 memories via Mem0 (backend: onnx) at 2026-10-25T18:55:34.848Z -->\n",
+        "dreamStats": {
+          "added": 1,
+          "merged": 0,
+          "pruned": 12
+        }
+      }
+    },
+    {
+      "name": "the new note's enforcement detail (import/order) is present after the dream",
+      "pass": true,
+      "evidence": {
+        "satisfiedBy": "render",
+        "renderLine": "Keep imports sorted alphabetically as enforced by the ESLint rule `import/order`.",
+        "platformText": "Keep imports sorted alphabetically as enforced by the ESLint rule `import/order`."
+      }
+    }
+  ],
+  "checksPassed": 2,
+  "checksTotal": 2,
+  "findings": [],
+  "pass": true
+}

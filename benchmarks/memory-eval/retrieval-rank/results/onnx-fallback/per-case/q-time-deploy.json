@@ -1,0 +1,117 @@
+{
+  "suite": "retrieval-rank",
+  "id": "q-time-deploy",
+  "kind": "time-qualified",
+  "q": "What is the current production deploy window?",
+  "gold": [
+    "deploy-tuesday"
+  ],
+  "conflictGold": [
+    "deploy-friday"
+  ],
+  "embedder": {
+    "arm": "onnx-arm",
+    "requested": "onnx",
+    "backend": "lexical",
+    "embedderFallback": true,
+    "autoDegraded": false,
+    "embedderBootError": "PI_MEM0_EMBEDDER=onnx but the local-ml lane failed to load: local-ml probe failed: Cannot find package '@huggingface/transformers' imported from <pi-repo>/packages/self-learning/local-ml/lib/index.mjs (lane files present but not operational — npm install in that dir)"
+  },
+  "date": "2026-10-25T18:15:46.909Z",
+  "durationMs": 3,
+  "results": [
+    {
+      "rank": 1,
+      "memoryId": "d191ef1b-b001-4db8-ada9-b1209681d382",
+      "factId": "deploy-friday",
+      "score": 0.6824,
+      "text": "The production deploy window is Friday afternoons."
+    },
+    {
+      "rank": 2,
+      "memoryId": "083f3c77-b439-4568-b3ea-d2c0b66337ee",
+      "factId": "deploy-tuesday",
+      "score": 0.4803,
+      "text": "The production deploy window is Tuesdays at 14:00 UTC since May."
+    },
+    {
+      "rank": 3,
+      "memoryId": "46ff7dbb-373f-4a59-b7aa-e981825f580a",
+      "factId": "logging",
+      "score": 0.1765,
+      "text": "The gateway must never log full request bodies in production; pino structured logging with redacted fields is the convention."
+    },
+    {
+      "rank": 4,
+      "memoryId": "daa0a555-4a80-40f7-ba5a-667451232b70",
+      "factId": "p99",
+      "score": 0.1544,
+      "text": "The p99 latency budget for the gateway is 250 milliseconds."
+    },
+    {
+      "rank": 5,
+      "memoryId": "71eedf83-448e-42b9-bb21-52033cd86e48",
+      "factId": "authz",
+      "score": 0.1497,
+      "text": "Authorization is enforced by the policy engine; the identity module (renamed from auth) reads its configuration from identity.yaml."
+    },
+    {
+      "rank": 6,
+      "memoryId": "d178501e-4fa3-4644-98b4-d7fd41912ad9",
+      "factId": "admin",
+      "score": 0.1477,
+      "text": "The admin API is mounted under /_admin and requires the internal bearer token."
+    },
+    {
+      "rank": 7,
+      "memoryId": "4893cfc7-7d22-4181-9933-8f40d04c6f06",
+      "factId": "port",
+      "score": 0.1429,
+      "text": "The gateway's default listen port is 8787."
+    },
+    {
+      "rank": 8,
+      "memoryId": "fa883863-0736-4a47-8f34-40bbeff424ac",
+      "factId": "composefile",
+      "score": 0.1348,
+      "text": "The local development stack runs via Docker Compose from deploy/compose.yaml."
+    },
+    {
+      "rank": 9,
+      "memoryId": "35c046c5-84e8-4137-a07c-85748e09966f",
+      "factId": "flags-old",
+      "score": 0.1336,
+      "text": "The feature-flags service endpoint is http://flags.internal:7070."
+    },
+    {
+      "rank": 10,
+      "memoryId": "59d09cc3-a4c0-43f3-b3da-1000d152572d",
+      "factId": "flags-new",
+      "score": 0.1326,
+      "text": "The feature-flags service endpoint is http://flags.corp:7071 after the service mesh migration."
+    }
+  ],
+  "goldRanks": {
+    "deploy-tuesday": 2
+  },
+  "firstGoldRank": 2,
+  "recall": {
+    "at3": true,
+    "at5": true,
+    "at10": true
+  },
+  "mrr": 0.5,
+  "conflict": {
+    "newSide": [
+      "deploy-tuesday"
+    ],
+    "oldSide": [
+      "deploy-friday"
+    ],
+    "rankNew": 2,
+    "rankOld": 1,
+    "outcome": "old-first",
+    "preference": false
+  },
+  "error": null
+}

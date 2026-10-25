@@ -1,0 +1,57 @@
+{
+  "suite": "failure-modes",
+  "case": "fm-04-contradiction-coexistence",
+  "mode": "live",
+  "source": "Codex #56767 (outdated + newer rule both served as current)",
+  "doc": "Outdated and newer rule both served as current (Codex #56767): the CDN cache header rule changes max-age=3600 -> max-age=60. After the dream, the invalidated rule must never appear as current in the render, in a search for the old rule's terms, or in cross-project recall — Unown's shipped contract (the loser is deleted, per the quality-axes receipts), made a measured one. (probe r2 2026-10-26: the new-rule regex accepts the fused 'reduced from 3600 to 60' paraphrase the extraction actually produces; the old-rule assertion stays strict — the reconcile-miss it caught in run 2 is a real finding, recorded in RESULTS.md)",
+  "model": "agnes-3.0-flash",
+  "date": "2026-10-25T19:08:03.809Z",
+  "durationMs": 46709,
+  "error": null,
+  "dreamCalls": 1,
+  "checks": [
+    {
+      "name": "the new rule (max-age.{0,60}60|3600.{0,20}to 60) is present as current",
+      "pass": true,
+      "evidence": {
+        "satisfiedBy": "render",
+        "renderLine": "CDN cache-policy update: Cut CDN max-age from 3600 to 60 seconds for gateway responses due to an incident from serving stale endpoints; the old 3600 value is now incorrect. Stale-while-revalidate remains enabled.",
+        "platformText": "CDN cache-policy update: Cut CDN max-age from 3600 to 60 seconds for gateway responses due to an incident from serving stale endpoints; the old 3600 value is now incorrect. Stale-while-revalidate remains enabled."
+      }
+    },
+    {
+      "name": "the invalidated rule (max-age=3600) never appears as current — render, search for its terms, and cross-project recall (historical-marked lines exempt)",
+      "pass": true,
+      "evidence": {
+        "renderLinesMentioningOldFact": [],
+        "searchHits": [
+          {
+            "text": "CDN cache-policy update: Cut CDN max-age from 3600 to 60 seconds for gateway responses due to an incident from serving stale endpoints; the old 3600 value is now incorrect. Stale-while-revalidate remains enabled.",
+            "score": 0.5304229459155024
+          }
+        ],
+        "searchOffenders": [],
+        "crossScopeHits": [
+          {
+            "scope": "project:fm04-contradiction-coexistence",
+            "text": "CDN cache-policy update: Cut CDN max-age from 3600 to 60 seconds for gateway responses due to an incident from serving stale endpoints; the old 3600 value is now incorrect. Stale-while-revalidate remains enabled."
+          }
+        ],
+        "crossScopeOffenders": []
+      }
+    },
+    {
+      "name": "the unchanged detail (stale-while-revalidate) survives the rule change",
+      "pass": true,
+      "evidence": {
+        "satisfiedBy": "render",
+        "renderLine": "CDN cache-policy update: Cut CDN max-age from 3600 to 60 seconds for gateway responses due to an incident from serving stale endpoints; the old 3600 value is now incorrect. Stale-while-revalidate remains enabled.",
+        "platformText": "CDN cache-policy update: Cut CDN max-age from 3600 to 60 seconds for gateway responses due to an incident from serving stale endpoints; the old 3600 value is now incorrect. Stale-while-revalidate remains enabled."
+      }
+    }
+  ],
+  "checksPassed": 3,
+  "checksTotal": 3,
+  "findings": [],
+  "pass": true
+}

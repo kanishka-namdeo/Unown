@@ -1,0 +1,175 @@
+{
+  "suite": "ops-accuracy",
+  "date": "2026-10-25T18:51:51.861Z",
+  "model": "agnes-3.0-flash",
+  "dreamPath": "mem0 consolidate (structural quarantine -> extraction add -> guard sweep -> reconcile -> render) via _lib/dream-pipeline.mjs",
+  "platform": {
+    "backend": "onnx",
+    "embedderRequested": "auto",
+    "model": "agnes-3.0-flash",
+    "dir": "/home/z/my-project/scratch-mem/ops-accuracy/mem0",
+    "reconcile": true,
+    "maxRendered": 110
+  },
+  "bridgeUpstreamStatus": 200,
+  "corpus": {
+    "version": 1,
+    "casesTotal": 11,
+    "casesRun": 11
+  },
+  "casesPassed": 11,
+  "casesTotal": 11,
+  "failedCases": [],
+  "caseResults": {
+    "add-basic": {
+      "pass": true,
+      "dreamError": null,
+      "dreamCalls": 1,
+      "durationMs": 47209,
+      "probesEvaluated": 8,
+      "factsApplied": "5/5"
+    },
+    "noop-restate": {
+      "pass": true,
+      "dreamError": null,
+      "dreamCalls": 1,
+      "durationMs": 46835,
+      "probesEvaluated": 4,
+      "factsApplied": "4/4"
+    },
+    "update-in-place": {
+      "pass": true,
+      "dreamError": null,
+      "dreamCalls": 1,
+      "durationMs": 46533,
+      "probesEvaluated": 4,
+      "factsApplied": "3/3"
+    },
+    "supersede": {
+      "pass": true,
+      "dreamError": null,
+      "dreamCalls": 1,
+      "durationMs": 49590,
+      "probesEvaluated": 5,
+      "factsApplied": "3/4"
+    },
+    "revocation": {
+      "pass": true,
+      "dreamError": null,
+      "dreamCalls": 1,
+      "durationMs": 65493,
+      "probesEvaluated": 3,
+      "factsApplied": "2/3"
+    },
+    "temporal-order": {
+      "pass": true,
+      "dreamError": null,
+      "dreamCalls": 1,
+      "durationMs": 47844,
+      "probesEvaluated": 3,
+      "factsApplied": "3/3"
+    },
+    "bi-temporal-delayed": {
+      "pass": true,
+      "dreamError": null,
+      "dreamCalls": 1,
+      "durationMs": 46884,
+      "probesEvaluated": 4,
+      "factsApplied": "3/3"
+    },
+    "cascade": {
+      "pass": true,
+      "dreamError": null,
+      "dreamCalls": 1,
+      "durationMs": 52147,
+      "probesEvaluated": 4,
+      "factsApplied": "3/3"
+    },
+    "deletion-state": {
+      "pass": true,
+      "dreamError": null,
+      "dreamCalls": 1,
+      "durationMs": 47559,
+      "probesEvaluated": 2,
+      "factsApplied": "2/2"
+    },
+    "multi-session-compose": {
+      "pass": true,
+      "dreamError": null,
+      "dreamCalls": 1,
+      "durationMs": 46470,
+      "probesEvaluated": 4,
+      "factsApplied": "3/3"
+    },
+    "granularity": {
+      "pass": true,
+      "dreamError": null,
+      "dreamCalls": 1,
+      "durationMs": 50103,
+      "probesEvaluated": 6,
+      "factsApplied": "6/6"
+    }
+  },
+  "opsConfusionMatrix": {
+    "ADD": {
+      "applied": 29,
+      "missed": 0,
+      "over-applied": 2,
+      "wrong-winner": 0
+    },
+    "UPDATE": {
+      "applied": 1,
+      "missed": 0,
+      "over-applied": 0,
+      "wrong-winner": 0
+    },
+    "DELETE": {
+      "applied": 6,
+      "missed": 0,
+      "over-applied": 0,
+      "wrong-winner": 0
+    },
+    "NOOP": {
+      "applied": 1,
+      "missed": 0,
+      "over-applied": 0,
+      "wrong-winner": 0
+    }
+  },
+  "opsF1": {
+    "perOp": {
+      "ADD": {
+        "facts": 31,
+        "applied": 29,
+        "f1": 0.967
+      },
+      "UPDATE": {
+        "facts": 1,
+        "applied": 1,
+        "f1": 1
+      },
+      "DELETE": {
+        "facts": 6,
+        "applied": 6,
+        "f1": 1
+      },
+      "NOOP": {
+        "facts": 1,
+        "applied": 1,
+        "f1": 1
+      }
+    },
+    "macro": 0.992,
+    "opsAveraged": [
+      "ADD",
+      "UPDATE",
+      "DELETE",
+      "NOOP"
+    ]
+  },
+  "dreamCallsTotal": 11,
+  "totalDurationMs": 546667,
+  "errors": [],
+  "pass": true,
+  "perCase": "(see results/per-case/<id>.json — notes fed (order + fedBy), dream outcome fields, render, per-probe matched lines/counts/surfaces, per-fact observed + reason)"
+}

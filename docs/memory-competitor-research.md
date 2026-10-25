@@ -254,7 +254,7 @@ Runners-up (worth a spike, not top-10): load-time injection neutralization of co
 
 ## Common failure modes to benchmark
 
-Failure modes observed across ≥2 products — each should have a pinned case in `benchmarks/memory-eval/`:
+Failure modes observed across ≥2 products — each should have a pinned case in `benchmarks/memory-eval/`. **[PAID 2026-10-26 — all twelve are now pinned and measured: `benchmarks/memory-eval/failure-modes/` runs 12/12 green with four recorded findings inside the passing receipts (a reconcile variance event on contradiction pairs, the fm-07 load-scan coverage gap, the raw-import dedup gap, the scanner false-positive surface); see its RESULTS.md.]**
 
 1. **Silent truncation of injected memory** — Codex #13386 (32 KB AGENTS.md), #48679 (2,500-token summary, middle-cut, newest dropped). Test: oversized `project.md`, 20k note, render cap hit — assert a visible warning and a dropped-content receipt in every case.
 2. **Dedup failure under concurrency (TOCTOU)** — Mem0 #6515/#6531. Test: two sessions exit simultaneously with the same fact; assert one memory. Unown's engine mutex should pass — pin it so a refactor can't silently drop the serialization.

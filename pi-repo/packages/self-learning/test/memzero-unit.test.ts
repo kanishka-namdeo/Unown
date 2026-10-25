@@ -149,6 +149,20 @@ describe("MEM0_CUSTOM_INSTRUCTIONS", () => {
                 expect(MEM0_CUSTOM_INSTRUCTIONS).not.toContain("runner/tool switches");
         });
 
+        test("carries the infrastructure-facts anti-loss clause (2026-10-26 extraction fix)", () => {
+                // Measured live by benchmarks/memory-eval/ops-accuracy (supersede +
+                // bi-temporal-delayed receipts): agnes-3.0-flash extracted the
+                // headline facts of a note and DROPPED the routine infrastructure
+                // detail — "backups go to the nightly S3 bucket" (stated in BOTH
+                // notes of the supersede case) and "we shipped the flag-evaluation
+                // cache" never became memories. The fix names the infra-fact family
+                // explicitly and states the completeness contract: extraction is the
+                // only pass over the note, a skipped fact is unrecoverable.
+                expect(MEM0_CUSTOM_INSTRUCTIONS).toContain("backup schedules, retention windows");
+                expect(MEM0_CUSTOM_INSTRUCTIONS).toContain("Extract EVERY distinct fact even when several share one sentence");
+                expect(MEM0_CUSTOM_INSTRUCTIONS).toContain("a fact skipped at extraction is unrecoverable later");
+        });
+
         test("RECONCILE_SYSTEM carries the same carve-out (2026-10-23 reconcile fix)", () => {
                 // The mirror bug on the reconcile side: rule 6's "runner/tool switches"
                 // phrasing made the reconciler DELETE a shipped, verified pitfall

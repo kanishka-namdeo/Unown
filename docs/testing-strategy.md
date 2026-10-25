@@ -791,11 +791,12 @@ preserved in the margin notes where they were cited from history.
   materialisation and self-healing reads; the deterministic guard; K-sampled
   canaries; live injection proof by unique marker in the captured upstream
   request; a 10-case obfuscation ladder with 10/10 flagged, 0 planted, 0 shipped.
-- **OPEN, highest value in this section** - **contradiction and staleness**
-  tests. Ship two memories that conflict; assert the precedence rule decides, that
-  the loser is not injected as an active directive, and that `changed_by`
-  provenance makes the winner auditable. Then supersede a rule and assert the
-  obsolete text is not still presented as current.
+- **SHIPPED (2026-10-22 quality-axes; extended 2026-10-26)** - **contradiction and
+  staleness tests**. `benchmarks/memory-eval/quality-axes/` (4/4 axes deterministic)
+  plus `ops-accuracy/` (gold-op ledger: supersede/revocation/temporal cases, opsF1
+  0.992 on agnes-3.0-flash) and `failure-modes/fm-04` (contradiction co-existence
+  pinned end-to-end: render + search + cross-scope recall, with the reconcile
+  variance honestly recorded — 1 miss in 3 runs).
 - **OPEN** - **forgetting / interference under accumulation**. Drive the tier to
   its cap with low-value rules and assert the retention policy degrades in the
   documented order and that task success does not regress versus an empty tier.
@@ -806,7 +807,14 @@ preserved in the margin notes where they were cited from history.
   repeat-task suites: cold vs warm vs "everything inline in the prompt". Without
   it, "warm costs +36% tokens for 6/6" (Track 5 v3) cannot be read as a win - it
   is only a win against a baseline that is equally correct and equally cheap.
-- **OPEN** - **judge calibration for every graded number** (§10 item L).
+- **SHIPPED (2026-10-26)** - **judge calibration for every graded number**
+  (§10 item L): `benchmarks/memory-eval/judge-calib/` measures the binary
+  CORRECT/WRONG QA judge protocol against 24 gold-labeled items in 8 classes
+  (wrong-number, wrong-entity, paraphrase, partial, both abstention
+  directions) — agnes-3.0-flash: agreement 20/20, FPR 0/8, FNR 0/8, run-to-run
+  flips 0/72 at temperature 0, order sensitivity 0/6 (the MemStrata
+  instability does not reproduce on the served tier). The judged lane for
+  recall-qa is now unblocked with a measured judge.
 - **OPEN** - **regime labelling**: each memory claim states whether the history
   fits in context. Per §4.1 finding 4, this determines what the number means.
 

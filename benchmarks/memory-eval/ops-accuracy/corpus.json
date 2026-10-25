@@ -1,0 +1,541 @@
+{
+ "suite": "ops-accuracy",
+ "version": 1,
+ "storyline": "Memory-operations accuracy against gold ops (the Mem0-paper taxonomy: ADD / UPDATE / DELETE / NOOP \u2014 arXiv 2504.19413 \u00a73.1/Alg.1 \u2014 plus MEME's Cascade and Deletion hard cases, arXiv 2605.12477, and MemoryAgentBench's conflict-resolution competency, arXiv 2507.05257). One fictional project ('aurora-gateway' \u2014 a TypeScript API-gateway service) carries eleven isolated cases (the twelfth documented shape \u2014 dedup at corpus scale \u2014 is pinned as failure-modes/fm-03), each a scripted note sequence with a GOLD LEDGER of expected memory operations. After the production consolidate path runs, deterministic probes (regex over platform getAll + rendered markdown + search) classify the OBSERVED effect per fact; the receipt is a gold-op x observed confusion matrix. No note collides with the guard's poison families: no runner names in directive positions, no authority spoofs, no propagation/secrecy phrasing. The dedup-at-scale window-miss case lives in failure-modes/fm-03 (one dream, not two).",
+ "seedMemory": "# Tier 1 \u2014 Project Memory\n\n## Workflow\n- aurora-gateway is a TypeScript API gateway; handlers stay thin, domain logic lives in src/domain/ [seed].\n- Trunk branch is `main`; feature work ships via short-lived branches [seed].\n\n## Known pitfalls\n- The gateway must never log full request bodies in production [seed].\n",
+ "cases": [
+  {
+   "id": "add-basic",
+   "desc": "Five brand-new facts in one note: every ADD must land (present in platform AND render).",
+   "notes": [
+    {
+     "ts": "2026-10-06T17:02:00.000Z",
+     "text": "Session closed out the routing layer work. Facts for the record: the gateway listens on port 8787 by default. Health endpoint is GET /healthz, not /health. Rate limiting is enabled globally at 100 requests per minute per client id. The admin API is mounted under /_admin and requires the internal bearer token. Deploy artifact is a single Docker image named ghcr.io/aurora/gateway."
+    }
+   ],
+   "facts": {
+    "port": {
+     "desc": "default listen port 8787",
+     "match": "port 8787",
+     "op": "ADD"
+    },
+    "healthz": {
+     "desc": "health endpoint is /healthz",
+     "match": "healthz",
+     "op": "ADD"
+    },
+    "ratelimit": {
+     "desc": "rate limit 100 req/min per client id",
+     "match": "100 requests per minute",
+     "op": "ADD"
+    },
+    "admin": {
+     "desc": "admin API under /_admin with internal bearer token",
+     "match": "_admin",
+     "op": "ADD"
+    },
+    "image": {
+     "desc": "deploy image ghcr.io/aurora/gateway",
+     "match": "ghcr.io/aurora/gateway",
+     "op": "ADD"
+    }
+   },
+   "probes": {
+    "present": [
+     "port",
+     "healthz",
+     "ratelimit",
+     "admin",
+     "image"
+    ],
+    "absentCurrent": [],
+    "once": [
+     "port",
+     "healthz"
+    ],
+    "search": [
+     {
+      "q": "what port does the gateway listen on",
+      "expect": "port"
+     }
+    ]
+   }
+  },
+  {
+   "id": "noop-restate",
+   "desc": "A fact stated in note 1 and RESTATED in different words in note 2: ADD then NOOP \u2014 present exactly once, no duplicate pair.",
+   "notes": [
+    {
+     "ts": "2026-10-07T10:00:00.000Z",
+     "text": "Onboarding session done. Decided the local dev stack runs against Docker Compose, and the gateway talks to Redis for caching at redis://cache:6379."
+    },
+    {
+     "ts": "2026-10-08T11:30:00.000Z",
+     "text": "Follow-up session, nothing structural changed. Reminder for the record: we use Docker Compose for the local development environment, and caching goes through Redis on the cache host at port 6379. Also confirmed the compose file lives at deploy/compose.yaml."
+    }
+   ],
+   "facts": {
+    "compose": {
+     "desc": "local dev stack = docker compose (once signature: the env-stack phrasing, not the compose keyword family)",
+     "match": "docker compose",
+     "op": "ADD",
+     "onceMatch": "local development"
+    },
+    "compose-restate": {
+     "desc": "the same compose fact restated in note 2 (NOOP \u2014 must not create a second memory)",
+     "match": "compose",
+     "op": "NOOP",
+     "dedupOf": "compose"
+    },
+    "redis": {
+     "desc": "gateway caching via redis cache:6379",
+     "match": "redis://cache:6379",
+     "op": "ADD"
+    },
+    "composefile": {
+     "desc": "compose file at deploy/compose.yaml",
+     "match": "deploy/compose.yaml",
+     "op": "ADD"
+    }
+   },
+   "probes": {
+    "present": [
+     "compose",
+     "redis",
+     "composefile"
+    ],
+    "absentCurrent": [],
+    "once": [
+     "compose"
+    ],
+    "search": []
+   }
+  },
+  {
+   "id": "update-in-place",
+   "desc": "Fact augmented: CI runs on GitHub Actions (note 1) then self-hosted runners on the buildkite pool are added (note 2). UPDATE: augmented content current, the bare old text must not survive as a separate current memory.",
+   "notes": [
+    {
+     "ts": "2026-10-09T09:00:00.000Z",
+     "text": "CI session: the gateway builds in GitHub Actions on every push. Test matrix is bun test across node 22 and 24."
+    },
+    {
+     "ts": "2026-10-10T16:45:00.000Z",
+     "text": "CI follow-up: GitHub Actions now runs on the self-hosted buildkite pool in the office cluster because the hosted runners were too slow for the integration matrix. Everything else about CI stays: bun test, node 22 and 24."
+    }
+   ],
+   "facts": {
+    "gha": {
+     "desc": "CI = GitHub Actions (family: the CI system name OR the runner pool identifies the CI memory)",
+     "match": "github actions|buildkite",
+     "op": "ADD"
+    },
+    "selfhosted": {
+     "desc": "GitHub Actions on self-hosted buildkite pool",
+     "match": "self-hosted",
+     "op": "UPDATE"
+    },
+    "testmatrix": {
+     "desc": "test matrix bun test node 22 and 24 (regex tolerates the \"node 22 and node 24\" paraphrase)",
+     "match": "node 22.{0,12}24",
+     "op": "ADD"
+    }
+   },
+   "probes": {
+    "present": [
+     "gha",
+     "selfhosted",
+     "testmatrix"
+    ],
+    "absentCurrent": [],
+    "once": [
+     "gha"
+    ],
+    "search": []
+   }
+  },
+  {
+   "id": "supersede",
+   "desc": "Contradicted fact superseded: staging ran Postgres 14, then the migration to Postgres 16 (note 2, newer). DELETE(old)+ADD(new): the old version must never be stated as current after the dream.",
+   "notes": [
+    {
+     "ts": "2026-10-03T14:20:00.000Z",
+     "text": "Infrastructure session: staging environment runs Postgres 14 with the pg_stat_statements extension loaded. Backups go to the nightly S3 bucket."
+    },
+    {
+     "ts": "2026-10-11T12:10:00.000Z",
+     "text": "Migration session: we migrated staging to Postgres 16 last night; the Postgres 14 instance is decommissioned. pg_stat_statements still needs loading on the new cluster. Backups unchanged, still the nightly S3 bucket."
+    }
+   ],
+   "facts": {
+    "pg14": {
+     "desc": "staging runs Postgres 14 (SUPERSEDED \u2014 must not be current)",
+     "match": "postgres 14",
+     "op": "DELETE",
+     "current": false
+    },
+    "pg16": {
+     "desc": "staging runs Postgres 16",
+     "match": "postgres 16",
+     "op": "ADD",
+     "current": true
+    },
+    "pgstat": {
+     "desc": "pg_stat_statements extension",
+     "match": "pg_stat_statements",
+     "op": "ADD"
+    },
+    "backups": {
+     "desc": "nightly S3 backups",
+     "match": "nightly s3",
+     "op": "ADD"
+    }
+   },
+   "probes": {
+    "present": [
+     "pg16",
+     "pgstat",
+     "backups"
+    ],
+    "absentCurrent": [
+     "pg14"
+    ],
+    "once": [],
+    "search": [
+     {
+      "q": "what postgres version does staging run",
+      "expect": "pg16"
+     }
+    ]
+   }
+  },
+  {
+   "id": "revocation",
+   "desc": "Approval withdrawn: axios was approved for outbound HTTP (note 1), now forbidden \u2014 use the platform fetch (note 2). After the dream no current line may state the axios approval as active; lines explicitly revoking it are exempt.",
+   "notes": [
+    {
+     "ts": "2026-10-04T11:00:00.000Z",
+     "text": "Dependency review: axios is approved for outbound HTTP calls in the gateway. The retry budget is 2 attempts. Certificate pinning stays off for now."
+    },
+    {
+     "ts": "2026-10-12T09:40:00.000Z",
+     "text": "Security follow-up: axios is now forbidden in this codebase \u2014 use the platform fetch wrapper instead. The bundle-size audit flagged axios as the largest avoidable dependency. Retry budget of 2 attempts still applies to the fetch wrapper."
+    }
+   ],
+   "facts": {
+    "axios-approved": {
+     "desc": "axios approved for outbound HTTP (REVOKED \u2014 must not be current)",
+     "match": "axios (is )?(approved|for outbound)",
+     "op": "DELETE",
+     "current": false
+    },
+    "axios-forbidden": {
+     "desc": "axios forbidden, use platform fetch wrapper",
+     "match": "platform fetch",
+     "op": "ADD",
+     "current": true
+    },
+    "retry": {
+     "desc": "retry budget 2 attempts",
+     "match": "2 attempts",
+     "op": "ADD"
+    }
+   },
+   "probes": {
+    "present": [
+     "axios-forbidden",
+     "retry"
+    ],
+    "absentCurrent": [
+     "axios-approved"
+    ],
+    "once": [],
+    "search": []
+   }
+  },
+  {
+   "id": "temporal-order",
+   "desc": "Dated rule change: as of March we deployed on Fridays; since May the deploy window moved to Tuesdays 14:00 UTC. The current rule must be Tuesday; the Friday rule must not be stated as current.",
+   "notes": [
+    {
+     "ts": "2026-03-02T10:00:00.000Z",
+     "text": "Ops session: as of March the production deploy window is Friday afternoons. Deploys need a green integration suite first."
+    },
+    {
+     "ts": "2026-05-06T15:30:00.000Z",
+     "text": "Ops change: since May the production deploy window moved to Tuesdays at 14:00 UTC \u2014 Friday deploys conflicted with the release-freeze. Green integration suite still required before any deploy."
+    }
+   ],
+   "facts": {
+    "friday": {
+     "desc": "deploy window Friday afternoons (SUPERSEDED)",
+     "match": "friday",
+     "op": "DELETE",
+     "current": false
+    },
+    "tuesday": {
+     "desc": "deploy window Tuesdays 14:00 UTC",
+     "match": "tuesdays? at 14:00 utc",
+     "op": "ADD",
+     "current": true
+    },
+    "greensuite": {
+     "desc": "green integration suite required before deploy",
+     "match": "green integration suite",
+     "op": "ADD"
+    }
+   },
+   "probes": {
+    "present": [
+     "tuesday",
+     "greensuite"
+    ],
+    "absentCurrent": [
+     "friday"
+    ],
+    "once": [],
+    "search": []
+   }
+  },
+  {
+   "id": "bi-temporal-delayed",
+   "desc": "Bi-temporal recency (competitor-research failure mode 11 / Letta #4097 / Zep's bi-temporal lesson): a note about MONDAY's state is DELIVERED after a note about Wednesday's state (delayed outbox delivery \u2014 creation order != event order). The reconcile must resolve to Wednesday's fact as current, using the note's stated event time, not the delivery order. Notes are listed chronologically by event time; the runner feeds them newest-first by created_at the way undreamedNotes does \u2014 note the monday-note has the LATER created_at (delivered last) but the EARLIER event time.",
+   "notes": [
+    {
+     "ts": "2026-10-13T09:00:00.000Z",
+     "created_at": "2026-10-15T08:00:00.000Z",
+     "text": "Session from Monday [2026-10-12]: the feature-flags service endpoint was http://flags.internal:7070. We shipped the flag-evaluation cache that day."
+    },
+    {
+     "ts": "2026-10-14T18:00:00.000Z",
+     "created_at": "2026-10-14T18:05:00.000Z",
+     "text": "Wednesday session: the feature-flags service moved to the new endpoint http://flags.corp:7071 as part of the service mesh migration. The old flags.internal host is being decommissioned. Flag-evaluation cache config moved with it to flags.corp."
+    }
+   ],
+   "facts": {
+    "flags-old": {
+     "desc": "flags endpoint flags.internal:7070 (SUPERSEDED by event time)",
+     "match": "flags.internal",
+     "op": "DELETE",
+     "current": false
+    },
+    "flags-new": {
+     "desc": "flags endpoint flags.corp:7071",
+     "match": "flags.corp:7071",
+     "op": "ADD",
+     "current": true
+    },
+    "flagcache": {
+     "desc": "flag-evaluation cache shipped",
+     "match": "flag-evaluation cache",
+     "op": "ADD"
+    }
+   },
+   "probes": {
+    "present": [
+     "flags-new",
+     "flagcache"
+    ],
+    "absentCurrent": [
+     "flags-old"
+    ],
+    "once": [],
+    "search": [
+     {
+      "q": "which host serves feature flags",
+      "expect": "flags-new"
+     }
+    ]
+   }
+  },
+  {
+   "id": "cascade",
+   "desc": "MEME Cascade (dependency reasoning): note 1 renames the auth module to identity; note 2 says the identity module's config moved from auth.ini to identity.yaml. A probe for the OLD name's config location must resolve through the chain to identity.yaml.",
+   "notes": [
+    {
+     "ts": "2026-10-16T10:15:00.000Z",
+     "text": "Refactor session: we renamed the auth module to identity across the codebase. New directory is src/identity/. The auth module name is gone."
+    },
+    {
+     "ts": "2026-10-17T13:45:00.000Z",
+     "text": "Config follow-up: the identity module (the module we renamed from auth) no longer reads auth.ini \u2014 its configuration now lives in identity.yaml at the repo root. The old auth.ini file was deleted."
+    }
+   ],
+   "facts": {
+    "rename": {
+     "desc": "auth module renamed to identity, dir src/identity/ (order/voice-flexible: active and passive phrasings)",
+     "match": "auth module.{0,60}renamed.{0,60}identity|renamed.{0,40}auth module.{0,40}identity",
+     "op": "ADD"
+    },
+    "cfg": {
+     "desc": "identity config at identity.yaml (cascade: auth's config too)",
+     "match": "identity.yaml",
+     "op": "ADD"
+    },
+    "authini": {
+     "desc": "auth.ini as the config file (SUPERSEDED through the rename chain)",
+     "match": "auth\\.ini",
+     "op": "DELETE",
+     "current": false
+    }
+   },
+   "probes": {
+    "present": [
+     "rename",
+     "cfg"
+    ],
+    "absentCurrent": [
+     "authini"
+    ],
+    "once": [],
+    "search": [
+     {
+      "q": "where does the auth module read its configuration from",
+      "expect": "cfg"
+     }
+    ]
+   }
+  },
+  {
+   "id": "deletion-state",
+   "desc": "MEME Deletion (post-removal state): the canary-deploy feature flag existed (note 1) and was REMOVED in v2.3 (note 2). Post-dream, the flag must not be stated as an active feature; a line recording its removal is the correct current state.",
+   "notes": [
+    {
+     "ts": "2026-10-05T12:00:00.000Z",
+     "text": "Feature session: canary deploys are enabled through the canary.enabled feature flag, config-driven from flags.json. Shadow traffic set at 5 percent."
+    },
+    {
+     "ts": "2026-10-18T10:30:00.000Z",
+     "text": "Release session for v2.3: the canary-deploy feature was removed entirely in 2.3 \u2014 the canary.enabled flag and its flags.json entry are gone. Standard rolling deploys only now."
+    }
+   ],
+   "facts": {
+    "canary-on": {
+     "desc": "canary deploys enabled via canary.enabled flag (REMOVED)",
+     "match": "canary.enabled",
+     "op": "DELETE",
+     "current": false
+    },
+    "canary-off": {
+     "desc": "canary-deploy feature removed in 2.3, rolling deploys only",
+     "match": "removed",
+     "op": "ADD",
+     "current": true
+    }
+   },
+   "probes": {
+    "present": [
+     "canary-off"
+    ],
+    "absentCurrent": [
+     "canary-on"
+    ],
+    "once": [],
+    "search": []
+   }
+  },
+  {
+   "id": "multi-session-compose",
+   "desc": "MemoryAgentBench multi-session reasoning: the rate-limit store was Redis (note 1); note 2 moves Redis to the cache cluster. The composed current state (rate limits live on the cache cluster's Redis) must be resolvable from memory.",
+   "notes": [
+    {
+     "ts": "2026-10-19T09:20:00.000Z",
+     "text": "Scaling session: per-client rate-limit counters live in the shared Redis instance. TTL on counters is 60 seconds."
+    },
+    {
+     "ts": "2026-10-20T14:55:00.000Z",
+     "text": "Infra session: Redis moved to the dedicated cache cluster at redis://cache-cluster.internal:6379 \u2014 everything that used the shared Redis instance (including the rate-limit counters) follows it. Counter TTL still 60 seconds."
+    }
+   ],
+   "facts": {
+    "cachecluster": {
+     "desc": "Redis now at cache-cluster.internal:6379",
+     "match": "cache-cluster.internal:6379",
+     "op": "ADD",
+     "current": true
+    },
+    "counters": {
+     "desc": "rate-limit counters in Redis (with the store now on the cache cluster)",
+     "match": "rate-limit counters",
+     "op": "ADD"
+    },
+    "ttl": {
+     "desc": "counter TTL 60 seconds",
+     "match": "60.?.?second",
+     "op": "ADD"
+    }
+   },
+   "probes": {
+    "present": [
+     "cachecluster",
+     "counters",
+     "ttl"
+    ],
+    "absentCurrent": [],
+    "once": [],
+    "search": [
+     {
+      "q": "where do the rate limit counters live now",
+      "expect": "cachecluster"
+     }
+    ]
+   }
+  },
+  {
+   "id": "granularity",
+   "desc": "Extraction granularity: ONE note carrying six distinct atomic facts \u2014 at least five must be independently recoverable after the dream (search or render).",
+   "notes": [
+    {
+     "ts": "2026-10-21T11:00:00.000Z",
+     "text": "Mixed session, facts for the record: (1) the metrics scraper is prometheus, scraping the /metrics path every 15s. (2) The dashboard uses grafana, dashboard name aurora-ops. (3) Alerts route to the #aurora-oncall Slack channel. (4) The p99 latency budget is 250 milliseconds. (5) The gateway protocol buffer schema lives in proto/gateway.proto. (6) Release notes are generated by changesets."
+    }
+   ],
+   "facts": {
+    "prom": {
+     "desc": "prometheus scrapes /metrics every 15s",
+     "match": "every 15.?(s|seconds)|15 seconds",
+     "op": "ADD"
+    },
+    "grafana": {
+     "desc": "grafana dashboard aurora-ops",
+     "match": "aurora-ops",
+     "op": "ADD"
+    },
+    "oncall": {
+     "desc": "alerts to #aurora-oncall slack",
+     "match": "#aurora-oncall",
+     "op": "ADD"
+    },
+    "p99": {
+     "desc": "p99 latency budget 250ms",
+     "match": "250 milliseconds",
+     "op": "ADD"
+    },
+    "proto": {
+     "desc": "schema at proto/gateway.proto",
+     "match": "proto/gateway.proto",
+     "op": "ADD"
+    },
+    "changesets": {
+     "desc": "release notes via changesets",
+     "match": "changesets",
+     "op": "ADD"
+    }
+   },
+   "probes": {
+    "present": [
+     "prom",
+     "grafana",
+     "oncall",
+     "p99",
+     "proto",
+     "changesets"
+    ],
+    "absentCurrent": [],
+    "once": [],
+    "search": []
+   }
+  }
+ ],
+ "_corpusRevision": "2026-10-26 r3 \u2014 paraphrase tolerance from live run 2: the UPDATE merge may name the runner pool instead of the CI system (buildkite family match); hyphenated/space numeric forms (60-second, 15 seconds); compose signature matches the merged phrasing. Run 2 also measured extraction run-to-run variance (the update-in-place CI memory flipped shape between runs) \u2014 recorded in RESULTS.md as a finding, not papered over."
+}

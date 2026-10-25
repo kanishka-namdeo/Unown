@@ -1,0 +1,101 @@
+{
+  "suite": "retrieval-rank",
+  "id": "q-compose",
+  "kind": "paraphrase",
+  "q": "How is the local development environment brought up?",
+  "gold": [
+    "composefile"
+  ],
+  "embedder": {
+    "arm": "default",
+    "requested": "auto",
+    "backend": "lexical",
+    "embedderFallback": false,
+    "autoDegraded": true
+  },
+  "date": "2026-10-25T18:15:46.071Z",
+  "durationMs": 5,
+  "results": [
+    {
+      "rank": 1,
+      "memoryId": "0b4bea30-1fe4-45f1-98cc-ed47af1ecfbe",
+      "factId": "composefile",
+      "score": 0.3133,
+      "text": "The local development stack runs via Docker Compose from deploy/compose.yaml."
+    },
+    {
+      "rank": 2,
+      "memoryId": "4cffdabb-1c7d-46a4-9492-93af3c14aeaf",
+      "factId": "prettier",
+      "score": 0.1531,
+      "text": "Code formatting is Prettier with the default config, no semicolons."
+    },
+    {
+      "rank": 3,
+      "memoryId": "5cbc841e-2e4f-4263-89ee-7da7d5e3d513",
+      "factId": "p99",
+      "score": 0.1444,
+      "text": "The p99 latency budget for the gateway is 250 milliseconds."
+    },
+    {
+      "rank": 4,
+      "memoryId": "9a7a86b8-4187-4dd7-8811-b4ec5c229546",
+      "factId": "authz",
+      "score": 0.14,
+      "text": "Authorization is enforced by the policy engine; the identity module (renamed from auth) reads its configuration from identity.yaml."
+    },
+    {
+      "rank": 5,
+      "memoryId": "9cba8f09-0a00-441d-a632-91b430205b10",
+      "factId": "admin",
+      "score": 0.1382,
+      "text": "The admin API is mounted under /_admin and requires the internal bearer token."
+    },
+    {
+      "rank": 6,
+      "memoryId": "465519a9-9f83-44ee-aced-b4909c1926da",
+      "factId": "port",
+      "score": 0.1336,
+      "text": "The gateway's default listen port is 8787."
+    },
+    {
+      "rank": 7,
+      "memoryId": "011116e8-3dfc-4310-8419-178c0d08bef3",
+      "factId": "deploy-friday",
+      "score": 0.1336,
+      "text": "The production deploy window is Friday afternoons."
+    },
+    {
+      "rank": 8,
+      "memoryId": "fda02b66-f448-4e3d-a225-1b4a7980c961",
+      "factId": "flags-old",
+      "score": 0.125,
+      "text": "The feature-flags service endpoint is http://flags.internal:7070."
+    },
+    {
+      "rank": 9,
+      "memoryId": "48d8d7fb-9c84-4c3f-831f-7acbd60b8ea5",
+      "factId": "flags-new",
+      "score": 0.124,
+      "text": "The feature-flags service endpoint is http://flags.corp:7071 after the service mesh migration."
+    },
+    {
+      "rank": 10,
+      "memoryId": "b2f9b00b-7784-41e8-84b8-5d064f5f5ab2",
+      "factId": "grafana",
+      "score": 0.1187,
+      "text": "The operations dashboard is Grafana, dashboard name aurora-ops."
+    }
+  ],
+  "goldRanks": {
+    "composefile": 1
+  },
+  "firstGoldRank": 1,
+  "recall": {
+    "at3": true,
+    "at5": true,
+    "at10": true
+  },
+  "mrr": 1,
+  "error": null
+}

@@ -1,0 +1,268 @@
+{
+  "suite": "ops-accuracy",
+  "id": "revocation",
+  "desc": "Approval withdrawn: axios was approved for outbound HTTP (note 1), now forbidden — use the platform fetch (note 2). After the dream no current line may state the axios approval as active; lines explicitly revoking it are exempt.",
+  "model": "agnes-3.0-flash",
+  "date": "2026-10-25T18:41:51.677Z",
+  "durationMs": 65493,
+  "scope": "project:oa-revocation",
+  "notesFed": [
+    {
+      "order": 1,
+      "ts": "2026-10-12T09:40:00.000Z",
+      "created_at": null,
+      "fedBy": "ts",
+      "eventTimeInText": null,
+      "text": "Security follow-up: axios is now forbidden in this codebase — use the platform fetch wrapper instead. The bundle-size audit flagged axios as the largest avoidable dependency. Retry budget of 2 attempts still applies to the fetch wrapper."
+    },
+    {
+      "order": 2,
+      "ts": "2026-10-04T11:00:00.000Z",
+      "created_at": null,
+      "fedBy": "ts",
+      "eventTimeInText": null,
+      "text": "Dependency review: axios is approved for outbound HTTP calls in the gateway. The retry budget is 2 attempts. Certificate pinning stays off for now."
+    }
+  ],
+  "noteRules": [
+    [],
+    []
+  ],
+  "seed": {
+    "bullets": 3,
+    "render": "# Project Memory\n\n## Workflow\n- The gateway must never log full request bodies in production [seed].\n- Trunk branch is `main`; feature work ships via short-lived branches [seed].\n- aurora-gateway is a TypeScript API gateway; handlers stay thin, domain logic lives in src/domain/ [seed].\n\n<!-- unown: rendered 3/3 memories via Mem0 (backend: onnx) at 2026-10-25T18:40:46.210Z -->\n"
+  },
+  "dream": {
+    "error": null,
+    "stats": {
+      "added": 4,
+      "merged": 1,
+      "pruned": 1,
+      "quarantined": 0,
+      "guardDeleted": 0
+    },
+    "reconcileOps": [
+      {
+        "op": "UPDATE",
+        "id": "b222d51c-c4f6-424c-85a4-6f27d691f8fb",
+        "text": "Use the platform fetch wrapper for general HTTP calls; axios is forbidden in the broader codebase to avoid bundle-size bloat but is approved exclusively for outbound HTTP calls in the gateway service.",
+        "reason": "Axios is explicitly approved for outbound calls in the gateway service per the newer memory (1e8e4786). Tighten the wording to reflect the exception rather than a blanket prohibition."
+      },
+      {
+        "op": "DELETE",
+        "id": "1e8e4786-9c7d-4a9e-9547-9db0ee6a4102",
+        "text": null,
+        "reason": "The specific exception for axios in the gateway service is now fully merged into the general rule (b222d51c). Keeping both creates a near-duplicate contradiction where the broader rule says 'forbidden' and this one says 'approved'."
+      }
+    ],
+    "renderedCandidate": "# Project Memory\n\n## Workflow\n- The gateway must never log full request bodies in production [seed].\n- Trunk branch is `main`; feature work ships via short-lived branches [seed].\n- aurora-gateway is a TypeScript API gateway; handlers stay thin, domain logic lives in src/domain/ [seed].\n\n## Known pitfalls\n- Use the platform fetch wrapper for general HTTP calls; axios is forbidden in the broader codebase to avoid bundle-size bloat but is approved exclusively for outbound HTTP calls in the gateway service.\n\n## Facts\n- Keep certificate pinning disabled for HTTP client configurations.\n- Apply a retry budget of 2 attempts to the platform fetch wrapper.\n\n<!-- unown: rendered 6/6 memories via Mem0 (backend: onnx) at 2026-10-25T18:41:51.619Z -->\n",
+    "durationMs": 65408,
+    "dreamCalls": 1
+  },
+  "render": "# Project Memory\n\n## Workflow\n- The gateway must never log full request bodies in production [seed].\n- Trunk branch is `main`; feature work ships via short-lived branches [seed].\n- aurora-gateway is a TypeScript API gateway; handlers stay thin, domain logic lives in src/domain/ [seed].\n\n## Known pitfalls\n- Use the platform fetch wrapper for general HTTP calls; axios is forbidden in the broader codebase to avoid bundle-size bloat but is approved exclusively for outbound HTTP calls in the gateway service.\n\n## Facts\n- Keep certificate pinning disabled for HTTP client configurations.\n- Apply a retry budget of 2 attempts to the platform fetch wrapper.\n\n<!-- unown: rendered 6/6 memories via Mem0 (backend: onnx) at 2026-10-25T18:41:51.623Z -->\n",
+  "platform": {
+    "memoryCount": 6,
+    "memories": [
+      {
+        "id": "2852775a-8190-462f-92c7-3b16201b8991",
+        "createdAt": "2026-10-25T18:40:46.196Z",
+        "updatedAt": null,
+        "text": "aurora-gateway is a TypeScript API gateway; handlers stay thin, domain logic lives in src/domain/ [seed]."
+      },
+      {
+        "id": "0a4bacdc-c4e8-4966-877a-61add7a1aabf",
+        "createdAt": "2026-10-25T18:40:46.203Z",
+        "updatedAt": null,
+        "text": "Trunk branch is `main`; feature work ships via short-lived branches [seed]."
+      },
+      {
+        "id": "8a2fd647-1044-4f8b-ae17-8b39f267b85a",
+        "createdAt": "2026-10-25T18:40:46.208Z",
+        "updatedAt": null,
+        "text": "The gateway must never log full request bodies in production [seed]."
+      },
+      {
+        "id": "b222d51c-c4f6-424c-85a4-6f27d691f8fb",
+        "createdAt": "2026-10-25T18:41:48.247Z",
+        "updatedAt": "2026-10-25T18:41:51.573Z",
+        "text": "Use the platform fetch wrapper for general HTTP calls; axios is forbidden in the broader codebase to avoid bundle-size bloat but is approved exclusively for outbound HTTP calls in the gateway service."
+      },
+      {
+        "id": "28c09def-393f-4118-8d84-02cf44a341d3",
+        "createdAt": "2026-10-25T18:41:48.254Z",
+        "updatedAt": null,
+        "text": "Apply a retry budget of 2 attempts to the platform fetch wrapper."
+      },
+      {
+        "id": "764a843b-8f48-40d7-87c9-3c869ed54fcd",
+        "createdAt": "2026-10-25T18:41:48.264Z",
+        "updatedAt": null,
+        "text": "Keep certificate pinning disabled for HTTP client configurations."
+      }
+    ]
+  },
+  "probes": {
+    "present": {
+      "axios-forbidden": {
+        "pass": true,
+        "satisfiedBy": "platform+render",
+        "matchCount": 2,
+        "matchedMemoryIds": [
+          "b222d51c-c4f6-424c-85a4-6f27d691f8fb",
+          "28c09def-393f-4118-8d84-02cf44a341d3"
+        ],
+        "matchedMemoryTexts": [
+          "Use the platform fetch wrapper for general HTTP calls; axios is forbidden in the broader codebase to avoid bundle-size bloat but is approved exclusively for outbound HTTP calls in the gateway service.",
+          "Apply a retry budget of 2 attempts to the platform fetch wrapper."
+        ],
+        "matchedRenderLines": [
+          "- Use the platform fetch wrapper for general HTTP calls; axios is forbidden in the broader codebase to avoid bundle-size bloat but is approved exclusively for outbound HTTP calls in the gateway service.",
+          "- Apply a retry budget of 2 attempts to the platform fetch wrapper."
+        ]
+      },
+      "retry": {
+        "pass": true,
+        "satisfiedBy": "platform+render",
+        "matchCount": 1,
+        "matchedMemoryIds": [
+          "28c09def-393f-4118-8d84-02cf44a341d3"
+        ],
+        "matchedMemoryTexts": [
+          "Apply a retry budget of 2 attempts to the platform fetch wrapper."
+        ],
+        "matchedRenderLines": [
+          "- Apply a retry budget of 2 attempts to the platform fetch wrapper."
+        ]
+      }
+    },
+    "absentCurrent": {
+      "axios-approved": {
+        "pass": true,
+        "violations": [],
+        "exemptHits": [],
+        "searchQuery": "axios (is )?(approved|for outbound)",
+        "searchTop10": [
+          {
+            "rank": 1,
+            "id": "b222d51c-c4f6-424c-85a4-6f27d691f8fb",
+            "score": 0.533112301706623,
+            "text": "Use the platform fetch wrapper for general HTTP calls; axios is forbidden in the broader codebase to avoid bundle-size bloat but is approved exclusively for outbound HTTP calls in the gateway service."
+          },
+          {
+            "rank": 2,
+            "id": "2852775a-8190-462f-92c7-3b16201b8991",
+            "score": 0.2672526203911564,
+            "text": "aurora-gateway is a TypeScript API gateway; handlers stay thin, domain logic lives in src/domain/ [seed]."
+          },
+          {
+            "rank": 3,
+            "id": "764a843b-8f48-40d7-87c9-3c869ed54fcd",
+            "score": 0.24195788205853028,
+            "text": "Keep certificate pinning disabled for HTTP client configurations."
+          },
+          {
+            "rank": 4,
+            "id": "28c09def-393f-4118-8d84-02cf44a341d3",
+            "score": 0.23399217571925676,
+            "text": "Apply a retry budget of 2 attempts to the platform fetch wrapper."
+          },
+          {
+            "rank": 5,
+            "id": "8a2fd647-1044-4f8b-ae17-8b39f267b85a",
+            "score": 0.2216519224795303,
+            "text": "The gateway must never log full request bodies in production [seed]."
+          },
+          {
+            "rank": 6,
+            "id": "0a4bacdc-c4e8-4966-877a-61add7a1aabf",
+            "score": 0.1931522434988624,
+            "text": "Trunk branch is `main`; feature work ships via short-lived branches [seed]."
+          }
+        ]
+      }
+    },
+    "once": {},
+    "maxMatchCount": {},
+    "search": []
+  },
+  "probesEvaluated": 3,
+  "facts": {
+    "axios-approved": {
+      "op": "DELETE",
+      "desc": "axios approved for outbound HTTP (REVOKED — must not be current)",
+      "current": false,
+      "dedupOf": null,
+      "present": false,
+      "matchCount": 0,
+      "matchedMemoryIds": [],
+      "matchedRenderLines": [],
+      "absentCurrentPass": true,
+      "observed": "applied",
+      "reason": "old value absent-current (replacement axios-forbidden present)"
+    },
+    "axios-forbidden": {
+      "op": "ADD",
+      "desc": "axios forbidden, use platform fetch wrapper",
+      "current": true,
+      "dedupOf": null,
+      "present": true,
+      "matchCount": 2,
+      "matchedMemoryIds": [
+        "b222d51c-c4f6-424c-85a4-6f27d691f8fb",
+        "28c09def-393f-4118-8d84-02cf44a341d3"
+      ],
+      "matchedRenderLines": [
+        "- Use the platform fetch wrapper for general HTTP calls; axios is forbidden in the broader codebase to avoid bundle-size bloat but is approved exclusively for outbound HTTP calls in the gateway service.",
+        "- Apply a retry budget of 2 attempts to the platform fetch wrapper."
+      ],
+      "absentCurrentPass": null,
+      "observed": "over-applied",
+      "reason": "2 distinct memories match the fact (duplicate)"
+    },
+    "retry": {
+      "op": "ADD",
+      "desc": "retry budget 2 attempts",
+      "current": null,
+      "dedupOf": null,
+      "present": true,
+      "matchCount": 1,
+      "matchedMemoryIds": [
+        "28c09def-393f-4118-8d84-02cf44a341d3"
+      ],
+      "matchedRenderLines": [
+        "- Apply a retry budget of 2 attempts to the platform fetch wrapper."
+      ],
+      "absentCurrentPass": null,
+      "observed": "applied",
+      "reason": "present in platform memory"
+    }
+  },
+  "opsMatrix": {
+    "ADD": {
+      "applied": 1,
+      "missed": 0,
+      "over-applied": 1,
+      "wrong-winner": 0
+    },
+    "UPDATE": {
+      "applied": 0,
+      "missed": 0,
+      "over-applied": 0,
+      "wrong-winner": 0
+    },
+    "DELETE": {
+      "applied": 1,
+      "missed": 0,
+      "over-applied": 0,
+      "wrong-winner": 0
+    },
+    "NOOP": {
+      "applied": 0,
+      "missed": 0,
+      "over-applied": 0,
+      "wrong-winner": 0
+    }
+  },
+  "pass": true,
+  "notes": "probes are deterministic regex/line classification over normalized text (lowercase, whitespace collapsed, bullet markers stripped); absentCurrent exemptions carry the historical-marker word; every verdict is auditable from matched lines/counts/surfaces recorded here"
+}

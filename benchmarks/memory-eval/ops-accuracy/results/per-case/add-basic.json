@@ -1,0 +1,361 @@
+{
+  "suite": "ops-accuracy",
+  "id": "add-basic",
+  "desc": "Five brand-new facts in one note: every ADD must land (present in platform AND render).",
+  "model": "agnes-3.0-flash",
+  "date": "2026-10-25T18:38:21.229Z",
+  "durationMs": 47209,
+  "scope": "project:oa-add-basic",
+  "notesFed": [
+    {
+      "order": 1,
+      "ts": "2026-10-06T17:02:00.000Z",
+      "created_at": null,
+      "fedBy": "ts",
+      "eventTimeInText": null,
+      "text": "Session closed out the routing layer work. Facts for the record: the gateway listens on port 8787 by default. Health endpoint is GET /healthz, not /health. Rate limiting is enabled globally at 100 requests per minute per client id. The admin API is mounted under /_admin and requires the internal bearer token. Deploy artifact is a single Docker image named ghcr.io/aurora/gateway."
+    }
+  ],
+  "noteRules": [
+    []
+  ],
+  "seed": {
+    "bullets": 3,
+    "render": "# Project Memory\n\n## Workflow\n- The gateway must never log full request bodies in production [seed].\n- Trunk branch is `main`; feature work ships via short-lived branches [seed].\n- aurora-gateway is a TypeScript API gateway; handlers stay thin, domain logic lives in src/domain/ [seed].\n\n<!-- unown: rendered 3/3 memories via Mem0 (backend: onnx) at 2026-10-25T18:37:35.599Z -->\n"
+  },
+  "dream": {
+    "error": null,
+    "stats": {
+      "added": 5,
+      "merged": 0,
+      "pruned": 0,
+      "quarantined": 0,
+      "guardDeleted": 0
+    },
+    "reconcileOps": [],
+    "renderedCandidate": "# Project Memory\n\n## Workflow\n- The gateway must never log full request bodies in production [seed].\n- Trunk branch is `main`; feature work ships via short-lived branches [seed].\n- aurora-gateway is a TypeScript API gateway; handlers stay thin, domain logic lives in src/domain/ [seed].\n\n## Environment\n- Gateway admin API is mounted under /_admin and requires an internal bearer token\n\n## Facts\n- aurora-gateway routing layer listens on port 8787 by default\n- Gateway health endpoint is GET /healthz, not /health\n- Gateway rate limiting is enabled globally at 100 requests per minute per client id\n- aurora-gateway deploy artifact is a single Docker image named ghcr.io/aurora/gateway\n\n<!-- unown: rendered 8/8 memories via Mem0 (backend: onnx) at 2026-10-25T18:38:21.206Z -->\n",
+    "durationMs": 45606,
+    "dreamCalls": 1
+  },
+  "render": "# Project Memory\n\n## Workflow\n- The gateway must never log full request bodies in production [seed].\n- Trunk branch is `main`; feature work ships via short-lived branches [seed].\n- aurora-gateway is a TypeScript API gateway; handlers stay thin, domain logic lives in src/domain/ [seed].\n\n## Environment\n- Gateway admin API is mounted under /_admin and requires an internal bearer token\n\n## Facts\n- aurora-gateway routing layer listens on port 8787 by default\n- Gateway health endpoint is GET /healthz, not /health\n- Gateway rate limiting is enabled globally at 100 requests per minute per client id\n- aurora-gateway deploy artifact is a single Docker image named ghcr.io/aurora/gateway\n\n<!-- unown: rendered 8/8 memories via Mem0 (backend: onnx) at 2026-10-25T18:38:21.209Z -->\n",
+  "platform": {
+    "memoryCount": 8,
+    "memories": [
+      {
+        "id": "09dff521-8a98-43b7-9151-e7fccf8da45a",
+        "createdAt": "2026-10-25T18:37:35.585Z",
+        "updatedAt": null,
+        "text": "aurora-gateway is a TypeScript API gateway; handlers stay thin, domain logic lives in src/domain/ [seed]."
+      },
+      {
+        "id": "4f6134e5-69c0-46e9-89e7-317676b1d069",
+        "createdAt": "2026-10-25T18:37:35.591Z",
+        "updatedAt": null,
+        "text": "Trunk branch is `main`; feature work ships via short-lived branches [seed]."
+      },
+      {
+        "id": "728ccc65-dd3c-43b2-8e0c-979d38009d74",
+        "createdAt": "2026-10-25T18:37:35.596Z",
+        "updatedAt": null,
+        "text": "The gateway must never log full request bodies in production [seed]."
+      },
+      {
+        "id": "1eafa1ef-cac9-4658-bf6d-62b06c9c74f5",
+        "createdAt": "2026-10-25T18:37:37.589Z",
+        "updatedAt": "2026-10-25T18:37:37.589Z",
+        "text": "aurora-gateway routing layer listens on port 8787 by default"
+      },
+      {
+        "id": "471921d2-8eb5-46d0-8682-d0acd09d96a6",
+        "createdAt": "2026-10-25T18:37:37.589Z",
+        "updatedAt": "2026-10-25T18:37:37.589Z",
+        "text": "Gateway health endpoint is GET /healthz, not /health"
+      },
+      {
+        "id": "5cd6aae8-8342-4171-8cd8-5790c720da50",
+        "createdAt": "2026-10-25T18:37:37.589Z",
+        "updatedAt": "2026-10-25T18:37:37.589Z",
+        "text": "Gateway rate limiting is enabled globally at 100 requests per minute per client id"
+      },
+      {
+        "id": "c4b242ab-cf7a-4ecb-9ebc-e618c2065900",
+        "createdAt": "2026-10-25T18:37:37.589Z",
+        "updatedAt": "2026-10-25T18:37:37.589Z",
+        "text": "Gateway admin API is mounted under /_admin and requires an internal bearer token"
+      },
+      {
+        "id": "a3858917-2e37-4a65-9a8c-21ffe7bd6066",
+        "createdAt": "2026-10-25T18:37:37.589Z",
+        "updatedAt": "2026-10-25T18:37:37.589Z",
+        "text": "aurora-gateway deploy artifact is a single Docker image named ghcr.io/aurora/gateway"
+      }
+    ]
+  },
+  "probes": {
+    "present": {
+      "port": {
+        "pass": true,
+        "satisfiedBy": "platform+render",
+        "matchCount": 1,
+        "matchedMemoryIds": [
+          "1eafa1ef-cac9-4658-bf6d-62b06c9c74f5"
+        ],
+        "matchedMemoryTexts": [
+          "aurora-gateway routing layer listens on port 8787 by default"
+        ],
+        "matchedRenderLines": [
+          "- aurora-gateway routing layer listens on port 8787 by default"
+        ]
+      },
+      "healthz": {
+        "pass": true,
+        "satisfiedBy": "platform+render",
+        "matchCount": 1,
+        "matchedMemoryIds": [
+          "471921d2-8eb5-46d0-8682-d0acd09d96a6"
+        ],
+        "matchedMemoryTexts": [
+          "Gateway health endpoint is GET /healthz, not /health"
+        ],
+        "matchedRenderLines": [
+          "- Gateway health endpoint is GET /healthz, not /health"
+        ]
+      },
+      "ratelimit": {
+        "pass": true,
+        "satisfiedBy": "platform+render",
+        "matchCount": 1,
+        "matchedMemoryIds": [
+          "5cd6aae8-8342-4171-8cd8-5790c720da50"
+        ],
+        "matchedMemoryTexts": [
+          "Gateway rate limiting is enabled globally at 100 requests per minute per client id"
+        ],
+        "matchedRenderLines": [
+          "- Gateway rate limiting is enabled globally at 100 requests per minute per client id"
+        ]
+      },
+      "admin": {
+        "pass": true,
+        "satisfiedBy": "platform+render",
+        "matchCount": 1,
+        "matchedMemoryIds": [
+          "c4b242ab-cf7a-4ecb-9ebc-e618c2065900"
+        ],
+        "matchedMemoryTexts": [
+          "Gateway admin API is mounted under /_admin and requires an internal bearer token"
+        ],
+        "matchedRenderLines": [
+          "- Gateway admin API is mounted under /_admin and requires an internal bearer token"
+        ]
+      },
+      "image": {
+        "pass": true,
+        "satisfiedBy": "platform+render",
+        "matchCount": 1,
+        "matchedMemoryIds": [
+          "a3858917-2e37-4a65-9a8c-21ffe7bd6066"
+        ],
+        "matchedMemoryTexts": [
+          "aurora-gateway deploy artifact is a single Docker image named ghcr.io/aurora/gateway"
+        ],
+        "matchedRenderLines": [
+          "- aurora-gateway deploy artifact is a single Docker image named ghcr.io/aurora/gateway"
+        ]
+      }
+    },
+    "absentCurrent": {},
+    "once": {
+      "port": {
+        "pass": true,
+        "count": 1,
+        "matchedMemoryIds": [
+          "1eafa1ef-cac9-4658-bf6d-62b06c9c74f5"
+        ]
+      },
+      "healthz": {
+        "pass": true,
+        "count": 1,
+        "matchedMemoryIds": [
+          "471921d2-8eb5-46d0-8682-d0acd09d96a6"
+        ]
+      }
+    },
+    "maxMatchCount": {},
+    "search": [
+      {
+        "q": "what port does the gateway listen on",
+        "expect": "port",
+        "pass": true,
+        "satisfiedByRank": 1,
+        "surface": "search",
+        "top10": [
+          {
+            "rank": 1,
+            "id": "1eafa1ef-cac9-4658-bf6d-62b06c9c74f5",
+            "score": 0.5464299727235259,
+            "text": "aurora-gateway routing layer listens on port 8787 by default"
+          },
+          {
+            "rank": 2,
+            "id": "5cd6aae8-8342-4171-8cd8-5790c720da50",
+            "score": 0.35020237140541355,
+            "text": "Gateway rate limiting is enabled globally at 100 requests per minute per client id"
+          },
+          {
+            "rank": 3,
+            "id": "c4b242ab-cf7a-4ecb-9ebc-e618c2065900",
+            "score": 0.3376236813398883,
+            "text": "Gateway admin API is mounted under /_admin and requires an internal bearer token"
+          },
+          {
+            "rank": 4,
+            "id": "471921d2-8eb5-46d0-8682-d0acd09d96a6",
+            "score": 0.33642478299396195,
+            "text": "Gateway health endpoint is GET /healthz, not /health"
+          },
+          {
+            "rank": 5,
+            "id": "09dff521-8a98-43b7-9151-e7fccf8da45a",
+            "score": 0.3327629710238875,
+            "text": "aurora-gateway is a TypeScript API gateway; handlers stay thin, domain logic lives in src/domain/ [seed]."
+          },
+          {
+            "rank": 6,
+            "id": "a3858917-2e37-4a65-9a8c-21ffe7bd6066",
+            "score": 0.325466323868965,
+            "text": "aurora-gateway deploy artifact is a single Docker image named ghcr.io/aurora/gateway"
+          },
+          {
+            "rank": 7,
+            "id": "728ccc65-dd3c-43b2-8e0c-979d38009d74",
+            "score": 0.29966455639052714,
+            "text": "The gateway must never log full request bodies in production [seed]."
+          },
+          {
+            "rank": 8,
+            "id": "4f6134e5-69c0-46e9-89e7-317676b1d069",
+            "score": 0.2306929521133044,
+            "text": "Trunk branch is `main`; feature work ships via short-lived branches [seed]."
+          }
+        ]
+      }
+    ]
+  },
+  "probesEvaluated": 8,
+  "facts": {
+    "port": {
+      "op": "ADD",
+      "desc": "default listen port 8787",
+      "current": null,
+      "dedupOf": null,
+      "present": true,
+      "matchCount": 1,
+      "matchedMemoryIds": [
+        "1eafa1ef-cac9-4658-bf6d-62b06c9c74f5"
+      ],
+      "matchedRenderLines": [
+        "- aurora-gateway routing layer listens on port 8787 by default"
+      ],
+      "absentCurrentPass": null,
+      "observed": "applied",
+      "reason": "present in platform memory"
+    },
+    "healthz": {
+      "op": "ADD",
+      "desc": "health endpoint is /healthz",
+      "current": null,
+      "dedupOf": null,
+      "present": true,
+      "matchCount": 1,
+      "matchedMemoryIds": [
+        "471921d2-8eb5-46d0-8682-d0acd09d96a6"
+      ],
+      "matchedRenderLines": [
+        "- Gateway health endpoint is GET /healthz, not /health"
+      ],
+      "absentCurrentPass": null,
+      "observed": "applied",
+      "reason": "present in platform memory"
+    },
+    "ratelimit": {
+      "op": "ADD",
+      "desc": "rate limit 100 req/min per client id",
+      "current": null,
+      "dedupOf": null,
+      "present": true,
+      "matchCount": 1,
+      "matchedMemoryIds": [
+        "5cd6aae8-8342-4171-8cd8-5790c720da50"
+      ],
+      "matchedRenderLines": [
+        "- Gateway rate limiting is enabled globally at 100 requests per minute per client id"
+      ],
+      "absentCurrentPass": null,
+      "observed": "applied",
+      "reason": "present in platform memory"
+    },
+    "admin": {
+      "op": "ADD",
+      "desc": "admin API under /_admin with internal bearer token",
+      "current": null,
+      "dedupOf": null,
+      "present": true,
+      "matchCount": 1,
+      "matchedMemoryIds": [
+        "c4b242ab-cf7a-4ecb-9ebc-e618c2065900"
+      ],
+      "matchedRenderLines": [
+        "- Gateway admin API is mounted under /_admin and requires an internal bearer token"
+      ],
+      "absentCurrentPass": null,
+      "observed": "applied",
+      "reason": "present in platform memory"
+    },
+    "image": {
+      "op": "ADD",
+      "desc": "deploy image ghcr.io/aurora/gateway",
+      "current": null,
+      "dedupOf": null,
+      "present": true,
+      "matchCount": 1,
+      "matchedMemoryIds": [
+        "a3858917-2e37-4a65-9a8c-21ffe7bd6066"
+      ],
+      "matchedRenderLines": [
+        "- aurora-gateway deploy artifact is a single Docker image named ghcr.io/aurora/gateway"
+      ],
+      "absentCurrentPass": null,
+      "observed": "applied",
+      "reason": "present in platform memory"
+    }
+  },
+  "opsMatrix": {
+    "ADD": {
+      "applied": 5,
+      "missed": 0,
+      "over-applied": 0,
+      "wrong-winner": 0
+    },
+    "UPDATE": {
+      "applied": 0,
+      "missed": 0,
+      "over-applied": 0,
+      "wrong-winner": 0
+    },
+    "DELETE": {
+      "applied": 0,
+      "missed": 0,
+      "over-applied": 0,
+      "wrong-winner": 0
+    },
+    "NOOP": {
+      "applied": 0,
+      "missed": 0,
+      "over-applied": 0,
+      "wrong-winner": 0
+    }
+  },
+  "pass": true,
+  "notes": "probes are deterministic regex/line classification over normalized text (lowercase, whitespace collapsed, bullet markers stripped); absentCurrent exemptions carry the historical-marker word; every verdict is auditable from matched lines/counts/surfaces recorded here"
+}

@@ -1,0 +1,104 @@
+{
+  "suite": "retrieval-rank",
+  "id": "q-cascade-counters",
+  "kind": "time-qualified",
+  "q": "Where do the rate limit counters live since the Redis move?",
+  "gold": [
+    "counters",
+    "cache"
+  ],
+  "embedder": {
+    "arm": "onnx-arm",
+    "requested": "onnx",
+    "backend": "lexical",
+    "embedderFallback": true,
+    "autoDegraded": false,
+    "embedderBootError": "PI_MEM0_EMBEDDER=onnx but the local-ml lane failed to load: local-ml probe failed: Cannot find package '@huggingface/transformers' imported from <pi-repo>/packages/self-learning/local-ml/lib/index.mjs (lane files present but not operational — npm install in that dir)"
+  },
+  "date": "2026-10-25T18:15:46.967Z",
+  "durationMs": 5,
+  "results": [
+    {
+      "rank": 1,
+      "memoryId": "82e27f60-6cad-45f6-8769-374f819dd472",
+      "factId": "counters",
+      "score": 0.5488,
+      "text": "Per-client rate-limit counters live in Redis with a 60-second TTL."
+    },
+    {
+      "rank": 2,
+      "memoryId": "2e5fb5dc-0c6b-4d8b-9c7a-96cc9e2a200d",
+      "factId": "cache",
+      "score": 0.1604,
+      "text": "Redis moved to the dedicated cache cluster at redis://cache-cluster.internal:6379."
+    },
+    {
+      "rank": 3,
+      "memoryId": "71eedf83-448e-42b9-bb21-52033cd86e48",
+      "factId": "authz",
+      "score": 0.1402,
+      "text": "Authorization is enforced by the policy engine; the identity module (renamed from auth) reads its configuration from identity.yaml."
+    },
+    {
+      "rank": 4,
+      "memoryId": "083f3c77-b439-4568-b3ea-d2c0b66337ee",
+      "factId": "deploy-tuesday",
+      "score": 0.1277,
+      "text": "The production deploy window is Tuesdays at 14:00 UTC since May."
+    },
+    {
+      "rank": 5,
+      "memoryId": "daa0a555-4a80-40f7-ba5a-667451232b70",
+      "factId": "p99",
+      "score": 0.1168,
+      "text": "The p99 latency budget for the gateway is 250 milliseconds."
+    },
+    {
+      "rank": 6,
+      "memoryId": "d178501e-4fa3-4644-98b4-d7fd41912ad9",
+      "factId": "admin",
+      "score": 0.1117,
+      "text": "The admin API is mounted under /_admin and requires the internal bearer token."
+    },
+    {
+      "rank": 7,
+      "memoryId": "aca16839-224e-40c6-a278-6f720fc9f70a",
+      "factId": "proto",
+      "score": 0.1012,
+      "text": "The protocol buffer schema lives at proto/gateway.proto."
+    },
+    {
+      "rank": 8,
+      "memoryId": "59d09cc3-a4c0-43f3-b3da-1000d152572d",
+      "factId": "flags-new",
+      "score": 0.1003,
+      "text": "The feature-flags service endpoint is http://flags.corp:7071 after the service mesh migration."
+    },
+    {
+      "rank": 9,
+      "memoryId": "1d6757c5-f265-4609-b3e3-4bee15f91eef",
+      "factId": "lint",
+      "score": 0.0971,
+      "text": "Import statements are kept sorted alphabetically, enforced by the ESLint import/order rule."
+    },
+    {
+      "rank": 10,
+      "memoryId": "d04d00e4-0a99-4018-86a2-8af260235788",
+      "factId": "ratelimit",
+      "score": 0.0965,
+      "text": "Rate limiting is 100 requests per minute per client id, enforced at the router layer."
+    }
+  ],
+  "goldRanks": {
+    "counters": 1,
+    "cache": 2
+  },
+  "firstGoldRank": 1,
+  "recall": {
+    "at3": true,
+    "at5": true,
+    "at10": true
+  },
+  "mrr": 1,
+  "error": null
+}

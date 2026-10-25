@@ -1,0 +1,233 @@
+{
+  "suite": "failure-modes",
+  "case": "fm-12-context-bloat",
+  "mode": "deterministic",
+  "source": "Claude Code 2.1.309 (compaction loop under a very large CLAUDE.md)",
+  "doc": "Context bloat from memory itself (Claude Code 2.1.309 — compaction loop under a very large CLAUDE.md): a pathological tier stack (every tier at its cap with dated low-value blocks) must resolve within PI_MEMORY_TOTAL_CHARS with the documented degradation order (oldest dated blocks dropped first, markers announced), and the surviving injected block remains parseable markdown with the guide intact.",
+  "model": "agnes-3.0-flash",
+  "date": "2026-10-25T19:02:23.159Z",
+  "durationMs": 6,
+  "error": null,
+  "checks": [
+    {
+      "name": "the resolved injected block is <= PI_MEMORY_TOTAL_CHARS (80000)",
+      "pass": true,
+      "evidence": {
+        "cap": 80000,
+        "totalBefore": 134793,
+        "totalAfter": 79393,
+        "budgetedTotal": 79393,
+        "overflow": false
+      }
+    },
+    {
+      "name": "prune markers announce what was dropped",
+      "pass": true,
+      "evidence": {
+        "prunedBlocks": [
+          {
+            "tier": "project",
+            "note": "author — proj-note-0",
+            "date": "2026-01-01 10:00",
+            "chars": 2770
+          },
+          {
+            "tier": "user",
+            "note": "author — user-note-0",
+            "date": "2026-01-02 10:00",
+            "chars": 2770
+          },
+          {
+            "tier": "project",
+            "note": "author — proj-note-1",
+            "date": "2026-01-03 10:00",
+            "chars": 2770
+          },
+          {
+            "tier": "user",
+            "note": "author — user-note-1",
+            "date": "2026-01-04 10:00",
+            "chars": 2770
+          },
+          {
+            "tier": "project",
+            "note": "author — proj-note-2",
+            "date": "2026-01-05 10:00",
+            "chars": 2770
+          },
+          {
+            "tier": "user",
+            "note": "author — user-note-2",
+            "date": "2026-01-06 10:00",
+            "chars": 2770
+          },
+          {
+            "tier": "project",
+            "note": "author — proj-note-3",
+            "date": "2026-01-07 10:00",
+            "chars": 2770
+          },
+          {
+            "tier": "user",
+            "note": "author — user-note-3",
+            "date": "2026-01-08 10:00",
+            "chars": 2770
+          },
+          {
+            "tier": "project",
+            "note": "author — proj-note-4",
+            "date": "2026-01-09 10:00",
+            "chars": 2770
+          },
+          {
+            "tier": "user",
+            "note": "author — user-note-4",
+            "date": "2026-01-10 10:00",
+            "chars": 2770
+          },
+          {
+            "tier": "project",
+            "note": "author — proj-note-5",
+            "date": "2026-01-11 10:00",
+            "chars": 2770
+          },
+          {
+            "tier": "user",
+            "note": "author — user-note-5",
+            "date": "2026-01-12 10:00",
+            "chars": 2770
+          },
+          {
+            "tier": "project",
+            "note": "author — proj-note-6",
+            "date": "2026-01-13 10:00",
+            "chars": 2770
+          },
+          {
+            "tier": "user",
+            "note": "author — user-note-6",
+            "date": "2026-01-14 10:00",
+            "chars": 2770
+          },
+          {
+            "tier": "project",
+            "note": "author — proj-note-7",
+            "date": "2026-01-15 10:00",
+            "chars": 2770
+          },
+          {
+            "tier": "user",
+            "note": "author — user-note-7",
+            "date": "2026-01-16 10:00",
+            "chars": 2770
+          },
+          {
+            "tier": "project",
+            "note": "author — proj-note-8",
+            "date": "2026-01-17 10:00",
+            "chars": 2770
+          },
+          {
+            "tier": "user",
+            "note": "author — user-note-8",
+            "date": "2026-01-18 10:00",
+            "chars": 2770
+          },
+          {
+            "tier": "project",
+            "note": "author — proj-note-9",
+            "date": "2026-01-19 10:00",
+            "chars": 2770
+          },
+          {
+            "tier": "user",
+            "note": "author — user-note-9",
+            "date": "2026-01-20 10:00",
+            "chars": 2770
+          }
+        ],
+        "prunedDatesNonDecreasing": true,
+        "truncatedTiers": [],
+        "inBandMarker": []
+      }
+    },
+    {
+      "name": "the memory guide header is never pruned",
+      "pass": true,
+      "evidence": {
+        "guideIntact": true,
+        "guideChars": 659,
+        "policyIntact": true,
+        "policyChars": 681
+      }
+    },
+    {
+      "name": "the newest dated blocks survive; the oldest are dropped first",
+      "pass": true,
+      "evidence": {
+        "projectKeptBlockNotes": [
+          10,
+          11,
+          12,
+          13,
+          14,
+          15,
+          16,
+          17,
+          18,
+          19
+        ],
+        "userKeptBlockNotes": [
+          10,
+          11,
+          12,
+          13,
+          14,
+          15,
+          16,
+          17
+        ],
+        "localKeptBlockNotes": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9
+        ],
+        "prunedOrder": [
+          "project:2026-01-01 10:00",
+          "user:2026-01-02 10:00",
+          "project:2026-01-03 10:00",
+          "user:2026-01-04 10:00",
+          "project:2026-01-05 10:00",
+          "user:2026-01-06 10:00",
+          "project:2026-01-07 10:00",
+          "user:2026-01-08 10:00",
+          "project:2026-01-09 10:00",
+          "user:2026-01-10 10:00",
+          "project:2026-01-11 10:00",
+          "user:2026-01-12 10:00",
+          "project:2026-01-13 10:00",
+          "user:2026-01-14 10:00",
+          "project:2026-01-15 10:00",
+          "user:2026-01-16 10:00",
+          "project:2026-01-17 10:00",
+          "user:2026-01-18 10:00",
+          "project:2026-01-19 10:00",
+          "user:2026-01-20 10:00"
+        ],
+        "oldestProjectBlockDropped": true,
+        "newestTierSurvivesWhole": true
+      }
+    }
+  ],
+  "checksPassed": 4,
+  "checksTotal": 4,
+  "findings": [],
+  "pass": true
+}

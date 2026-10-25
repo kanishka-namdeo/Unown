@@ -1,0 +1,60 @@
+{
+  "suite": "retrieval-rank",
+  "id": "q-time-flags",
+  "kind": "time-qualified",
+  "q": "Which host serves feature flags now?",
+  "gold": [
+    "flags-new"
+  ],
+  "conflictGold": [
+    "flags-old"
+  ],
+  "embedder": {
+    "arm": "default",
+    "requested": "auto",
+    "backend": "lexical",
+    "embedderFallback": false,
+    "autoDegraded": true
+  },
+  "date": "2026-10-25T18:15:46.031Z",
+  "durationMs": 3,
+  "results": [
+    {
+      "rank": 1,
+      "memoryId": "db73d3ac-cfea-4266-b131-b7845db15763",
+      "factId": "canary",
+      "score": 0.0854,
+      "text": "The canary-deploy feature was removed in v2.3; standard rolling deploys only."
+    },
+    {
+      "rank": 2,
+      "memoryId": "ec7f1948-6df0-4909-8efe-63f9eda249b8",
+      "factId": "cache",
+      "score": 0.0593,
+      "text": "Redis moved to the dedicated cache cluster at redis://cache-cluster.internal:6379."
+    }
+  ],
+  "goldRanks": {
+    "flags-new": null
+  },
+  "firstGoldRank": null,
+  "recall": {
+    "at3": false,
+    "at5": false,
+    "at10": false
+  },
+  "mrr": 0,
+  "conflict": {
+    "newSide": [
+      "flags-new"
+    ],
+    "oldSide": [
+      "flags-old"
+    ],
+    "rankNew": null,
+    "rankOld": null,
+    "outcome": "neither",
+    "preference": false
+  },
+  "error": null
+}

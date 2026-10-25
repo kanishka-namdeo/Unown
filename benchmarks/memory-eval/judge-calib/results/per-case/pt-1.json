@@ -1,0 +1,87 @@
+{
+  "suite": "judge-calib",
+  "id": "pt-1",
+  "cls": "partial",
+  "q": "What is the rate limit and where is it enforced?",
+  "gold": "100 requests per minute per client id, enforced at the router layer",
+  "hyp": "The rate limit is 100 requests per minute.",
+  "expect": "WRONG",
+  "note": "leniency probe: strict grading marks incomplete answers WRONG; the recorded pass rate is the judge's leniency",
+  "model": "agnes-3.0-flash",
+  "date": "2026-10-25T18:53:30.075Z",
+  "judgeProtocol": {
+    "system": "You are a strict grader for question-answering against a reference answer. Compare the candidate answer to the reference answer for factual equivalence: the candidate must convey the same fact(s) — exact wording is not required, but a wrong number, wrong entity, missing required detail, or a refusal when the reference contains the answer is WRONG. Answer with exactly one word: CORRECT or WRONG.",
+    "standardOrder": "Question: {q}\nReference answer: {gold}\nCandidate answer: {hyp}\nOne word (CORRECT or WRONG):",
+    "swappedOrder": "Question: {q}\nCandidate answer: {hyp}\nReference answer: {gold}\nOne word (CORRECT or WRONG):",
+    "temperature": 0,
+    "runs": 3,
+    "maxTokens": 16,
+    "model": "agnes-3.0-flash",
+    "parser": "first /\\b(CORRECT|WRONG)\\b/i match (word boundary, case-insensitive; INCORRECT cannot parse as CORRECT)",
+    "verdictOrder": {
+      "standardOrder": "question -> reference -> candidate",
+      "swappedOrder": "question -> candidate -> reference"
+    },
+    "selfJudging": "judge and the corpus candidate answers share the same served model (metered single-model deployment)"
+  },
+  "prompts": {
+    "standard": "Question: What is the rate limit and where is it enforced?\nReference answer: 100 requests per minute per client id, enforced at the router layer\nCandidate answer: The rate limit is 100 requests per minute.\nOne word (CORRECT or WRONG):",
+    "swapped": "Question: What is the rate limit and where is it enforced?\nCandidate answer: The rate limit is 100 requests per minute.\nReference answer: 100 requests per minute per client id, enforced at the router layer\nOne word (CORRECT or WRONG):"
+  },
+  "runs": [
+    {
+      "run": 1,
+      "raw": "WRONG",
+      "verdict": "WRONG",
+      "matched": "WRONG",
+      "index": 0,
+      "finishReason": "stop",
+      "completionTokens": 3,
+      "durationMs": 394,
+      "error": null
+    },
+    {
+      "run": 2,
+      "raw": "WRONG",
+      "verdict": "WRONG",
+      "matched": "WRONG",
+      "index": 0,
+      "finishReason": "stop",
+      "completionTokens": 3,
+      "durationMs": 713,
+      "error": null
+    },
+    {
+      "run": 3,
+      "raw": "WRONG",
+      "verdict": "WRONG",
+      "matched": "WRONG",
+      "index": 0,
+      "finishReason": "stop",
+      "completionTokens": 3,
+      "durationMs": 433,
+      "error": null
+    }
+  ],
+  "orderSwap": {
+    "template": "swappedOrder",
+    "raw": "WRONG",
+    "verdict": "WRONG",
+    "matched": "WRONG",
+    "index": 0,
+    "finishReason": "stop",
+    "completionTokens": 3,
+    "durationMs": 365,
+    "error": null
+  },
+  "majority": "WRONG",
+  "majorityCounts": {
+    "CORRECT": 0,
+    "WRONG": 3,
+    "unparsed": 0
+  },
+  "agree": true,
+  "orderSwapDelta": false,
+  "error": null,
+  "durationMs": 1907
+}

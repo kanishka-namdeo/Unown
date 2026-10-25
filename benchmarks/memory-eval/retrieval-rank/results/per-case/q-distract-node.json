@@ -1,0 +1,101 @@
+{
+  "suite": "retrieval-rank",
+  "id": "q-distract-node",
+  "kind": "distractor",
+  "q": "Which node versions are in the test matrix?",
+  "gold": [
+    "testmatrix"
+  ],
+  "embedder": {
+    "arm": "default",
+    "requested": "auto",
+    "backend": "lexical",
+    "embedderFallback": false,
+    "autoDegraded": true
+  },
+  "date": "2026-10-25T18:15:46.063Z",
+  "durationMs": 21,
+  "results": [
+    {
+      "rank": 1,
+      "memoryId": "21a6aed6-7c52-46a2-a678-fd36369b1830",
+      "factId": "testmatrix",
+      "score": 0.6998,
+      "text": "The test matrix runs bun test across node 22 and node 24."
+    },
+    {
+      "rank": 2,
+      "memoryId": "f6521669-5457-429c-921e-d3e2546444db",
+      "factId": "logging",
+      "score": 0.1233,
+      "text": "The gateway must never log full request bodies in production; pino structured logging with redacted fields is the convention."
+    },
+    {
+      "rank": 3,
+      "memoryId": "b2b321b8-8e4d-4d11-bb20-c84b9397f01c",
+      "factId": "ci",
+      "score": 0.1231,
+      "text": "Continuous integration runs in GitHub Actions on the self-hosted buildkite pool."
+    },
+    {
+      "rank": 4,
+      "memoryId": "db73d3ac-cfea-4266-b131-b7845db15763",
+      "factId": "canary",
+      "score": 0.1231,
+      "text": "The canary-deploy feature was removed in v2.3; standard rolling deploys only."
+    },
+    {
+      "rank": 5,
+      "memoryId": "fef97828-98cf-46ac-b942-59e1fc143007",
+      "factId": "lint",
+      "score": 0.1096,
+      "text": "Import statements are kept sorted alphabetically, enforced by the ESLint import/order rule."
+    },
+    {
+      "rank": 6,
+      "memoryId": "5cbc841e-2e4f-4263-89ee-7da7d5e3d513",
+      "factId": "p99",
+      "score": 0.1048,
+      "text": "The p99 latency budget for the gateway is 250 milliseconds."
+    },
+    {
+      "rank": 7,
+      "memoryId": "9cba8f09-0a00-441d-a632-91b430205b10",
+      "factId": "admin",
+      "score": 0.1003,
+      "text": "The admin API is mounted under /_admin and requires the internal bearer token."
+    },
+    {
+      "rank": 8,
+      "memoryId": "bd98ce17-93b3-42d1-afd0-185e30be5a04",
+      "factId": "fetch",
+      "score": 0.0962,
+      "text": "axios is forbidden in this codebase; outbound HTTP goes through the platform fetch wrapper with a 2-attempt retry budget."
+    },
+    {
+      "rank": 9,
+      "memoryId": "48d8d7fb-9c84-4c3f-831f-7acbd60b8ea5",
+      "factId": "flags-new",
+      "score": 0.09,
+      "text": "The feature-flags service endpoint is http://flags.corp:7071 after the service mesh migration."
+    },
+    {
+      "rank": 10,
+      "memoryId": "aca63759-1e34-41cf-ac4b-3bc048c8b97d",
+      "factId": "pg16",
+      "score": 0.0845,
+      "text": "Staging runs Postgres 16 after the October migration; the old Postgres 14 cluster is decommissioned."
+    }
+  ],
+  "goldRanks": {
+    "testmatrix": 1
+  },
+  "firstGoldRank": 1,
+  "recall": {
+    "at3": true,
+    "at5": true,
+    "at10": true
+  },
+  "mrr": 1,
+  "error": null
+}

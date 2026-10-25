@@ -1,0 +1,233 @@
+{
+  "suite": "judge-calib",
+  "date": "2026-10-25T18:53:42.099Z",
+  "model": "agnes-3.0-flash",
+  "dry": false,
+  "bridgeUpstreamStatus": 200,
+  "judgeProtocol": {
+    "system": "You are a strict grader for question-answering against a reference answer. Compare the candidate answer to the reference answer for factual equivalence: the candidate must convey the same fact(s) — exact wording is not required, but a wrong number, wrong entity, missing required detail, or a refusal when the reference contains the answer is WRONG. Answer with exactly one word: CORRECT or WRONG.",
+    "standardOrder": "Question: {q}\nReference answer: {gold}\nCandidate answer: {hyp}\nOne word (CORRECT or WRONG):",
+    "swappedOrder": "Question: {q}\nCandidate answer: {hyp}\nReference answer: {gold}\nOne word (CORRECT or WRONG):",
+    "temperature": 0,
+    "runs": 3,
+    "maxTokens": 16,
+    "model": "agnes-3.0-flash",
+    "parser": "first /\\b(CORRECT|WRONG)\\b/i match (word boundary, case-insensitive; INCORRECT cannot parse as CORRECT)",
+    "verdictOrder": {
+      "standardOrder": "question -> reference -> candidate",
+      "swappedOrder": "question -> candidate -> reference"
+    },
+    "selfJudging": "judge and the corpus candidate answers share the same served model (metered single-model deployment)",
+    "orderSwapProbeIds": [
+      "cg-1",
+      "cg-2",
+      "wn-1",
+      "we-1",
+      "pt-1",
+      "pt-3"
+    ]
+  },
+  "selection": {
+    "case": null,
+    "limit": null,
+    "selected": 24,
+    "of": 24
+  },
+  "n": 24,
+  "itemsTotal": 24,
+  "complete": true,
+  "agreement": {
+    "n": 20,
+    "agreed": 20,
+    "rate": 1,
+    "disagreements": [],
+    "note": "majority verdict == expect over the hard-labeled items (partial items excluded — they are the leniency profile)"
+  },
+  "fpr": {
+    "n": 8,
+    "falsePositives": [],
+    "rate": 0,
+    "note": "share of wrong-* items (wrong-number, wrong-entity) judged CORRECT"
+  },
+  "fnr": {
+    "n": 8,
+    "falseNegatives": [],
+    "rate": 0,
+    "note": "share of correct-* items (correct-gold, correct-paraphrase) judged WRONG"
+  },
+  "leniency": {
+    "n": 4,
+    "passed": 0,
+    "passRate": 0,
+    "perItem": [
+      {
+        "id": "pt-1",
+        "majority": "WRONG"
+      },
+      {
+        "id": "pt-2",
+        "majority": "WRONG"
+      },
+      {
+        "id": "pt-3",
+        "majority": "WRONG"
+      },
+      {
+        "id": "pt-4",
+        "majority": "WRONG"
+      }
+    ],
+    "note": "share of the partial items the judge PASSED (majority CORRECT) — a strict judge scores 0; the corpus's strict label (incomplete => WRONG) is deliberately not folded into agreement"
+  },
+  "abstention": {
+    "answerable": {
+      "n": 2,
+      "judgedWrong": 2,
+      "judgedWrongRate": 1,
+      "perItem": [
+        {
+          "id": "ab-1",
+          "majority": "WRONG"
+        },
+        {
+          "id": "ab-2",
+          "majority": "WRONG"
+        }
+      ],
+      "note": "ab-* must be judged WRONG — refusing an answerable question fails (LoCoMo/Mem0 contract)"
+    },
+    "unanswerable": {
+      "n": 2,
+      "judgedCorrect": 2,
+      "judgedCorrectRate": 1,
+      "perItem": [
+        {
+          "id": "au-1",
+          "majority": "CORRECT"
+        },
+        {
+          "id": "au-2",
+          "majority": "CORRECT"
+        }
+      ],
+      "note": "au-* must be judged CORRECT — abstaining on an unanswerable question passes (LongMemEval _abs contract)"
+    }
+  },
+  "flipRate": {
+    "parsedRuns": 72,
+    "flips": 0,
+    "rate": 0,
+    "note": "share of item x run verdicts differing from their item's majority (MemStrata's same-seed label-flip measure, at temperature 0)"
+  },
+  "orderSensitivity": {
+    "probed": 6,
+    "evaluated": 6,
+    "flips": 0,
+    "rate": 0,
+    "perItem": [
+      {
+        "id": "cg-1",
+        "standardMajority": "CORRECT",
+        "swappedVerdict": "CORRECT",
+        "delta": false
+      },
+      {
+        "id": "cg-2",
+        "standardMajority": "CORRECT",
+        "swappedVerdict": "CORRECT",
+        "delta": false
+      },
+      {
+        "id": "wn-1",
+        "standardMajority": "WRONG",
+        "swappedVerdict": "WRONG",
+        "delta": false
+      },
+      {
+        "id": "we-1",
+        "standardMajority": "WRONG",
+        "swappedVerdict": "WRONG",
+        "delta": false
+      },
+      {
+        "id": "pt-1",
+        "standardMajority": "WRONG",
+        "swappedVerdict": "WRONG",
+        "delta": false
+      },
+      {
+        "id": "pt-3",
+        "standardMajority": "WRONG",
+        "swappedVerdict": "WRONG",
+        "delta": false
+      }
+    ],
+    "note": "swappedOrder probe (candidate before reference) — verdict delta vs the standard-order majority"
+  },
+  "parseFailures": {
+    "calls": 78,
+    "unparsed": 0,
+    "rate": 0
+  },
+  "byClass": {
+    "correct-gold": {
+      "n": 4,
+      "agreed": 4,
+      "majorityCORRECT": 4,
+      "majorityWRONG": 0,
+      "noMajority": 0
+    },
+    "correct-paraphrase": {
+      "n": 4,
+      "agreed": 4,
+      "majorityCORRECT": 4,
+      "majorityWRONG": 0,
+      "noMajority": 0
+    },
+    "wrong-number": {
+      "n": 4,
+      "agreed": 4,
+      "majorityCORRECT": 0,
+      "majorityWRONG": 4,
+      "noMajority": 0
+    },
+    "wrong-entity": {
+      "n": 4,
+      "agreed": 4,
+      "majorityCORRECT": 0,
+      "majorityWRONG": 4,
+      "noMajority": 0
+    },
+    "partial": {
+      "n": 4,
+      "agreed": 0,
+      "majorityCORRECT": 0,
+      "majorityWRONG": 4,
+      "noMajority": 0
+    },
+    "abstention-answerable": {
+      "n": 2,
+      "agreed": 2,
+      "majorityCORRECT": 0,
+      "majorityWRONG": 2,
+      "noMajority": 0
+    },
+    "abstention-unanswerable": {
+      "n": 2,
+      "agreed": 2,
+      "majorityCORRECT": 2,
+      "majorityWRONG": 0,
+      "noMajority": 0
+    }
+  },
+  "errors": [],
+  "llmCalls": {
+    "judge": 72,
+    "orderSwap": 6,
+    "total": 78,
+    "sequential": true,
+    "note": "sequential awaits; the bridge spaces them (~20 RPM metered upstream)"
+  },
+  "totalDurationMs": 105534,
+  "perCase": "(see results/per-case/<id>.json — every run's raw reply + parsed verdict + order-swap probe)"
+}

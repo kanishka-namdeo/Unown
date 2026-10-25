@@ -1,0 +1,284 @@
+{
+  "suite": "ops-accuracy",
+  "id": "bi-temporal-delayed",
+  "desc": "Bi-temporal recency (competitor-research failure mode 11 / Letta #4097 / Zep's bi-temporal lesson): a note about MONDAY's state is DELIVERED after a note about Wednesday's state (delayed outbox delivery — creation order != event order). The reconcile must resolve to Wednesday's fact as current, using the note's stated event time, not the delivery order. Notes are listed chronologically by event time; the runner feeds them newest-first by created_at the way undreamedNotes does — note the monday-note has the LATER created_at (delivered last) but the EARLIER event time.",
+  "model": "agnes-3.0-flash",
+  "date": "2026-10-25T18:43:24.483Z",
+  "durationMs": 46884,
+  "scope": "project:oa-bi-temporal-delayed",
+  "notesFed": [
+    {
+      "order": 1,
+      "ts": "2026-10-13T09:00:00.000Z",
+      "created_at": "2026-10-15T08:00:00.000Z",
+      "fedBy": "created_at",
+      "eventTimeInText": true,
+      "text": "Session from Monday [2026-10-12]: the feature-flags service endpoint was http://flags.internal:7070. We shipped the flag-evaluation cache that day."
+    },
+    {
+      "order": 2,
+      "ts": "2026-10-14T18:00:00.000Z",
+      "created_at": "2026-10-14T18:05:00.000Z",
+      "fedBy": "created_at",
+      "eventTimeInText": true,
+      "text": "Wednesday session: the feature-flags service moved to the new endpoint http://flags.corp:7071 as part of the service mesh migration. The old flags.internal host is being decommissioned. Flag-evaluation cache config moved with it to flags.corp."
+    }
+  ],
+  "noteRules": [
+    [],
+    []
+  ],
+  "seed": {
+    "bullets": 3,
+    "render": "# Project Memory\n\n## Workflow\n- The gateway must never log full request bodies in production [seed].\n- Trunk branch is `main`; feature work ships via short-lived branches [seed].\n- aurora-gateway is a TypeScript API gateway; handlers stay thin, domain logic lives in src/domain/ [seed].\n\n<!-- unown: rendered 3/3 memories via Mem0 (backend: onnx) at 2026-10-25T18:42:37.629Z -->\n"
+  },
+  "dream": {
+    "error": null,
+    "stats": {
+      "added": 2,
+      "merged": 0,
+      "pruned": 1,
+      "quarantined": 0,
+      "guardDeleted": 0
+    },
+    "reconcileOps": [
+      {
+        "op": "DELETE",
+        "id": "9f0ac96b-b204-4b9e-a37f-8370ecd7e67b",
+        "text": null,
+        "reason": "Stale endpoint information; the service has been migrated to flags.corp and the old host is being decommissioned, so this memory is no longer current practice."
+      }
+    ],
+    "renderedCandidate": "# Project Memory\n\n## Workflow\n- The gateway must never log full request bodies in production [seed].\n- Trunk branch is `main`; feature work ships via short-lived branches [seed].\n- aurora-gateway is a TypeScript API gateway; handlers stay thin, domain logic lives in src/domain/ [seed].\n\n## Facts\n- Feature-flags service migrated to http://flags.corp:7071 as part of service mesh migration; old flags.internal host is being decommissioned; flag-evaluation cache config moved to flags.corp\n\n<!-- unown: rendered 4/4 memories via Mem0 (backend: onnx) at 2026-10-25T18:43:24.443Z -->\n",
+    "durationMs": 46814,
+    "dreamCalls": 1
+  },
+  "render": "# Project Memory\n\n## Workflow\n- The gateway must never log full request bodies in production [seed].\n- Trunk branch is `main`; feature work ships via short-lived branches [seed].\n- aurora-gateway is a TypeScript API gateway; handlers stay thin, domain logic lives in src/domain/ [seed].\n\n## Facts\n- Feature-flags service migrated to http://flags.corp:7071 as part of service mesh migration; old flags.internal host is being decommissioned; flag-evaluation cache config moved to flags.corp\n\n<!-- unown: rendered 4/4 memories via Mem0 (backend: onnx) at 2026-10-25T18:43:24.447Z -->\n",
+  "platform": {
+    "memoryCount": 4,
+    "memories": [
+      {
+        "id": "db540329-f0c9-49cc-aa22-18b27e889ec1",
+        "createdAt": "2026-10-25T18:42:37.617Z",
+        "updatedAt": null,
+        "text": "aurora-gateway is a TypeScript API gateway; handlers stay thin, domain logic lives in src/domain/ [seed]."
+      },
+      {
+        "id": "233d36d8-cb49-4a06-a641-d796a0d50bc7",
+        "createdAt": "2026-10-25T18:42:37.623Z",
+        "updatedAt": null,
+        "text": "Trunk branch is `main`; feature work ships via short-lived branches [seed]."
+      },
+      {
+        "id": "3e990f95-e8b8-49a8-8bdd-0bae7fd18ed2",
+        "createdAt": "2026-10-25T18:42:37.627Z",
+        "updatedAt": null,
+        "text": "The gateway must never log full request bodies in production [seed]."
+      },
+      {
+        "id": "e644d71e-6df5-4aa0-914a-0109c4347114",
+        "createdAt": "2026-10-25T18:42:39.027Z",
+        "updatedAt": "2026-10-25T18:42:39.027Z",
+        "text": "Feature-flags service migrated to http://flags.corp:7071 as part of service mesh migration; old flags.internal host is being decommissioned; flag-evaluation cache config moved to flags.corp"
+      }
+    ]
+  },
+  "probes": {
+    "present": {
+      "flags-new": {
+        "pass": true,
+        "satisfiedBy": "platform+render",
+        "matchCount": 1,
+        "matchedMemoryIds": [
+          "e644d71e-6df5-4aa0-914a-0109c4347114"
+        ],
+        "matchedMemoryTexts": [
+          "Feature-flags service migrated to http://flags.corp:7071 as part of service mesh migration; old flags.internal host is being decommissioned; flag-evaluation cache config moved to flags.corp"
+        ],
+        "matchedRenderLines": [
+          "- Feature-flags service migrated to http://flags.corp:7071 as part of service mesh migration; old flags.internal host is being decommissioned; flag-evaluation cache config moved to flags.corp"
+        ]
+      },
+      "flagcache": {
+        "pass": true,
+        "satisfiedBy": "platform+render",
+        "matchCount": 1,
+        "matchedMemoryIds": [
+          "e644d71e-6df5-4aa0-914a-0109c4347114"
+        ],
+        "matchedMemoryTexts": [
+          "Feature-flags service migrated to http://flags.corp:7071 as part of service mesh migration; old flags.internal host is being decommissioned; flag-evaluation cache config moved to flags.corp"
+        ],
+        "matchedRenderLines": [
+          "- Feature-flags service migrated to http://flags.corp:7071 as part of service mesh migration; old flags.internal host is being decommissioned; flag-evaluation cache config moved to flags.corp"
+        ]
+      }
+    },
+    "absentCurrent": {
+      "flags-old": {
+        "pass": true,
+        "violations": [],
+        "exemptHits": [
+          {
+            "surface": "render",
+            "line": "- Feature-flags service migrated to http://flags.corp:7071 as part of service mesh migration; old flags.internal host is being decommissioned; flag-evaluation cache config moved to flags.corp",
+            "marker": "migrated"
+          },
+          {
+            "surface": "search",
+            "rank": 1,
+            "id": "e644d71e-6df5-4aa0-914a-0109c4347114",
+            "text": "Feature-flags service migrated to http://flags.corp:7071 as part of service mesh migration; old flags.internal host is being decommissioned; flag-evaluation cache config moved to flags.corp",
+            "marker": "migrated"
+          }
+        ],
+        "searchQuery": "flags.internal",
+        "searchTop10": [
+          {
+            "rank": 1,
+            "id": "e644d71e-6df5-4aa0-914a-0109c4347114",
+            "score": 0.5747120925116496,
+            "text": "Feature-flags service migrated to http://flags.corp:7071 as part of service mesh migration; old flags.internal host is being decommissioned; flag-evaluation cache config moved to flags.corp"
+          },
+          {
+            "rank": 2,
+            "id": "db540329-f0c9-49cc-aa22-18b27e889ec1",
+            "score": 0.22532118827180447,
+            "text": "aurora-gateway is a TypeScript API gateway; handlers stay thin, domain logic lives in src/domain/ [seed]."
+          },
+          {
+            "rank": 3,
+            "id": "233d36d8-cb49-4a06-a641-d796a0d50bc7",
+            "score": 0.19377283163640718,
+            "text": "Trunk branch is `main`; feature work ships via short-lived branches [seed]."
+          },
+          {
+            "rank": 4,
+            "id": "3e990f95-e8b8-49a8-8bdd-0bae7fd18ed2",
+            "score": 0.18861468624553338,
+            "text": "The gateway must never log full request bodies in production [seed]."
+          }
+        ]
+      }
+    },
+    "once": {},
+    "maxMatchCount": {},
+    "search": [
+      {
+        "q": "which host serves feature flags",
+        "expect": "flags-new",
+        "pass": true,
+        "satisfiedByRank": 1,
+        "surface": "search",
+        "top10": [
+          {
+            "rank": 1,
+            "id": "e644d71e-6df5-4aa0-914a-0109c4347114",
+            "score": 0.548721920963099,
+            "text": "Feature-flags service migrated to http://flags.corp:7071 as part of service mesh migration; old flags.internal host is being decommissioned; flag-evaluation cache config moved to flags.corp"
+          },
+          {
+            "rank": 2,
+            "id": "db540329-f0c9-49cc-aa22-18b27e889ec1",
+            "score": 0.2404955335155671,
+            "text": "aurora-gateway is a TypeScript API gateway; handlers stay thin, domain logic lives in src/domain/ [seed]."
+          },
+          {
+            "rank": 3,
+            "id": "233d36d8-cb49-4a06-a641-d796a0d50bc7",
+            "score": 0.21647027466505256,
+            "text": "Trunk branch is `main`; feature work ships via short-lived branches [seed]."
+          },
+          {
+            "rank": 4,
+            "id": "3e990f95-e8b8-49a8-8bdd-0bae7fd18ed2",
+            "score": 0.207240258136762,
+            "text": "The gateway must never log full request bodies in production [seed]."
+          }
+        ]
+      }
+    ]
+  },
+  "probesEvaluated": 4,
+  "facts": {
+    "flags-old": {
+      "op": "DELETE",
+      "desc": "flags endpoint flags.internal:7070 (SUPERSEDED by event time)",
+      "current": false,
+      "dedupOf": null,
+      "present": true,
+      "matchCount": 1,
+      "matchedMemoryIds": [
+        "e644d71e-6df5-4aa0-914a-0109c4347114"
+      ],
+      "matchedRenderLines": [
+        "- Feature-flags service migrated to http://flags.corp:7071 as part of service mesh migration; old flags.internal host is being decommissioned; flag-evaluation cache config moved to flags.corp"
+      ],
+      "absentCurrentPass": true,
+      "observed": "applied",
+      "reason": "old value absent-current (replacement flags-new present)"
+    },
+    "flags-new": {
+      "op": "ADD",
+      "desc": "flags endpoint flags.corp:7071",
+      "current": true,
+      "dedupOf": null,
+      "present": true,
+      "matchCount": 1,
+      "matchedMemoryIds": [
+        "e644d71e-6df5-4aa0-914a-0109c4347114"
+      ],
+      "matchedRenderLines": [
+        "- Feature-flags service migrated to http://flags.corp:7071 as part of service mesh migration; old flags.internal host is being decommissioned; flag-evaluation cache config moved to flags.corp"
+      ],
+      "absentCurrentPass": null,
+      "observed": "applied",
+      "reason": "present in platform memory"
+    },
+    "flagcache": {
+      "op": "ADD",
+      "desc": "flag-evaluation cache shipped",
+      "current": null,
+      "dedupOf": null,
+      "present": true,
+      "matchCount": 1,
+      "matchedMemoryIds": [
+        "e644d71e-6df5-4aa0-914a-0109c4347114"
+      ],
+      "matchedRenderLines": [
+        "- Feature-flags service migrated to http://flags.corp:7071 as part of service mesh migration; old flags.internal host is being decommissioned; flag-evaluation cache config moved to flags.corp"
+      ],
+      "absentCurrentPass": null,
+      "observed": "applied",
+      "reason": "present in platform memory"
+    }
+  },
+  "opsMatrix": {
+    "ADD": {
+      "applied": 2,
+      "missed": 0,
+      "over-applied": 0,
+      "wrong-winner": 0
+    },
+    "UPDATE": {
+      "applied": 0,
+      "missed": 0,
+      "over-applied": 0,
+      "wrong-winner": 0
+    },
+    "DELETE": {
+      "applied": 1,
+      "missed": 0,
+      "over-applied": 0,
+      "wrong-winner": 0
+    },
+    "NOOP": {
+      "applied": 0,
+      "missed": 0,
+      "over-applied": 0,
+      "wrong-winner": 0
+    }
+  },
+  "pass": true,
+  "notes": "probes are deterministic regex/line classification over normalized text (lowercase, whitespace collapsed, bullet markers stripped); absentCurrent exemptions carry the historical-marker word; every verdict is auditable from matched lines/counts/surfaces recorded here"
+}

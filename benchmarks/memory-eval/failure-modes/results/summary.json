@@ -1,0 +1,131 @@
+{
+  "suite": "failure-modes",
+  "date": "2026-10-25T19:08:59.561Z",
+  "model": "agnes-3.0-flash",
+  "bridgeUpstreamStatus": 200,
+  "platform": {
+    "backend": "unknown",
+    "embedderRequested": "auto",
+    "model": "agnes-3.0-flash",
+    "dir": "/home/z/my-project/scratch-mem/failure-modes/mem0",
+    "reconcile": true,
+    "maxRendered": 110
+  },
+  "casesTotal": 12,
+  "casesPassed": 12,
+  "modes": {
+    "deterministic": {
+      "total": 6,
+      "passed": 6
+    },
+    "engine": {
+      "total": 2,
+      "passed": 2
+    },
+    "live": {
+      "total": 4,
+      "passed": 4
+    }
+  },
+  "cases": {
+    "fm-01-silent-truncation": {
+      "mode": "deterministic",
+      "pass": true,
+      "error": null,
+      "checks": "4/4",
+      "findings": 0,
+      "durationMs": 6
+    },
+    "fm-02-dedup-toctou": {
+      "mode": "engine",
+      "pass": true,
+      "error": null,
+      "checks": "3/3",
+      "findings": 0,
+      "durationMs": 47659
+    },
+    "fm-03-dedup-scale": {
+      "mode": "live",
+      "pass": true,
+      "error": null,
+      "checks": "2/2",
+      "findings": 0,
+      "durationMs": 57089
+    },
+    "fm-04-contradiction-coexistence": {
+      "mode": "live",
+      "pass": true,
+      "error": null,
+      "checks": "3/3",
+      "findings": 0,
+      "durationMs": 46709
+    },
+    "fm-05-cross-scope-leakage": {
+      "mode": "deterministic",
+      "pass": true,
+      "error": null,
+      "checks": "4/4",
+      "findings": 0,
+      "durationMs": 92
+    },
+    "fm-06-poisoning-direct-write": {
+      "mode": "live",
+      "pass": true,
+      "error": null,
+      "checks": "2/2",
+      "findings": 0,
+      "durationMs": 40
+    },
+    "fm-07-injection-via-memory-file": {
+      "mode": "deterministic",
+      "pass": true,
+      "error": null,
+      "checks": "4/4",
+      "findings": 1,
+      "durationMs": 3
+    },
+    "fm-08-ingestion-loss": {
+      "mode": "engine",
+      "pass": true,
+      "error": null,
+      "checks": "4/4",
+      "findings": 0,
+      "durationMs": 50675
+    },
+    "fm-09-stale-index": {
+      "mode": "deterministic",
+      "pass": true,
+      "error": null,
+      "checks": "3/3",
+      "findings": 0,
+      "durationMs": 49
+    },
+    "fm-10-merged-conflicts": {
+      "mode": "deterministic",
+      "pass": true,
+      "error": null,
+      "checks": "3/3",
+      "findings": 1,
+      "durationMs": 66
+    },
+    "fm-11-bitemporal-recency": {
+      "mode": "live",
+      "pass": true,
+      "error": null,
+      "checks": "3/3",
+      "findings": 0,
+      "durationMs": 54664
+    },
+    "fm-12-context-bloat": {
+      "mode": "deterministic",
+      "pass": true,
+      "error": null,
+      "checks": "4/4",
+      "findings": 0,
+      "durationMs": 6
+    }
+  },
+  "dreamCallsTotal": 4,
+  "engineChildren": 3,
+  "notes": "per-case receipts in results/per-case/<case-id>.json — every check carries verbatim evidence (matched lines, statuses, counts); findings document known-gaps without overriding verdicts"
+}

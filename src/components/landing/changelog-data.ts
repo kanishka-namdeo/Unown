@@ -30,14 +30,14 @@ export interface ChangelogStop {
   groups: ChangelogGroup[];
 }
 
-export const CHANGELOG_TOTAL_ENTRIES = 296;
+export const CHANGELOG_TOTAL_ENTRIES = 298;
 
 export const CHANGELOG_TOTALS: Record<ChangelogBucket, number> = {
-  "Added": 130,
+  "Added": 131,
   "Changed": 21,
   "Deprecated": 0,
   "Removed": 3,
-  "Fixed": 112,
+  "Fixed": 113,
   "Security": 0,
   "Behavior": 30
 };
@@ -46,20 +46,33 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
   {
     "label": "Unreleased",
     "date": null,
-    "total": 1,
+    "total": 3,
     "counts": {
-      "Added": 0,
+      "Added": 1,
       "Changed": 0,
       "Deprecated": 0,
       "Removed": 0,
-      "Fixed": 1,
+      "Fixed": 2,
       "Security": 0,
       "Behavior": 0
     },
     "groups": [
       {
+        "bucket": "Added",
+        "items": [
+          {
+            "title": "benchmarks: the memory-eval SOTA round — four research-driven suites, one measured production fix",
+            "behavior": false
+          }
+        ]
+      },
+      {
         "bucket": "Fixed",
         "items": [
+          {
+            "title": "engine: extraction was silently dropping routine infrastructure facts — measured, fixed, pinned",
+            "behavior": false
+          },
           {
             "title": "engine service: the platform audit — five latent failures under the happy path",
             "behavior": false

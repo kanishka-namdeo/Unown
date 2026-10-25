@@ -1,0 +1,101 @@
+{
+  "suite": "retrieval-rank",
+  "id": "q-exact-proto",
+  "kind": "exact",
+  "q": "Where does the protocol buffer schema live?",
+  "gold": [
+    "proto"
+  ],
+  "embedder": {
+    "arm": "default",
+    "requested": "auto",
+    "backend": "lexical",
+    "embedderFallback": false,
+    "autoDegraded": true
+  },
+  "date": "2026-10-25T18:15:45.992Z",
+  "durationMs": 5,
+  "results": [
+    {
+      "rank": 1,
+      "memoryId": "7993b04f-2b83-4918-b7d1-5f082c0ade6c",
+      "factId": "proto",
+      "score": 0.7504,
+      "text": "The protocol buffer schema lives at proto/gateway.proto."
+    },
+    {
+      "rank": 2,
+      "memoryId": "5cbc841e-2e4f-4263-89ee-7da7d5e3d513",
+      "factId": "p99",
+      "score": 0.1544,
+      "text": "The p99 latency budget for the gateway is 250 milliseconds."
+    },
+    {
+      "rank": 3,
+      "memoryId": "9cba8f09-0a00-441d-a632-91b430205b10",
+      "factId": "admin",
+      "score": 0.0929,
+      "text": "The admin API is mounted under /_admin and requires the internal bearer token."
+    },
+    {
+      "rank": 4,
+      "memoryId": "6d5dd557-cdee-47a8-b6b0-8ad1a136d67c",
+      "factId": "counters",
+      "score": 0.0917,
+      "text": "Per-client rate-limit counters live in Redis with a 60-second TTL."
+    },
+    {
+      "rank": 5,
+      "memoryId": "48d8d7fb-9c84-4c3f-831f-7acbd60b8ea5",
+      "factId": "flags-new",
+      "score": 0.0834,
+      "text": "The feature-flags service endpoint is http://flags.corp:7071 after the service mesh migration."
+    },
+    {
+      "rank": 6,
+      "memoryId": "aca63759-1e34-41cf-ac4b-3bc048c8b97d",
+      "factId": "pg16",
+      "score": 0.0782,
+      "text": "Staging runs Postgres 16 after the October migration; the old Postgres 14 cluster is decommissioned."
+    },
+    {
+      "rank": 7,
+      "memoryId": "f6521669-5457-429c-921e-d3e2546444db",
+      "factId": "logging",
+      "score": 0.0718,
+      "text": "The gateway must never log full request bodies in production; pino structured logging with redacted fields is the convention."
+    },
+    {
+      "rank": 8,
+      "memoryId": "465519a9-9f83-44ee-aced-b4909c1926da",
+      "factId": "port",
+      "score": 0.0714,
+      "text": "The gateway's default listen port is 8787."
+    },
+    {
+      "rank": 9,
+      "memoryId": "011116e8-3dfc-4310-8419-178c0d08bef3",
+      "factId": "deploy-friday",
+      "score": 0.0714,
+      "text": "The production deploy window is Friday afternoons."
+    },
+    {
+      "rank": 10,
+      "memoryId": "64acaa6f-b72f-43e2-9db3-3c71553ab57c",
+      "factId": "oncall",
+      "score": 0.0714,
+      "text": "Alerts route to the #aurora-oncall Slack channel."
+    }
+  ],
+  "goldRanks": {
+    "proto": 1
+  },
+  "firstGoldRank": 1,
+  "recall": {
+    "at3": true,
+    "at5": true,
+    "at10": true
+  },
+  "mrr": 1,
+  "error": null
+}

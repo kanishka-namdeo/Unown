@@ -1,0 +1,101 @@
+{
+  "suite": "retrieval-rank",
+  "id": "q-para-logging",
+  "kind": "paraphrase",
+  "q": "What is the rule about logging payload contents in production traffic?",
+  "gold": [
+    "logging"
+  ],
+  "embedder": {
+    "arm": "default",
+    "requested": "auto",
+    "backend": "lexical",
+    "embedderFallback": false,
+    "autoDegraded": true
+  },
+  "date": "2026-10-25T18:15:46.021Z",
+  "durationMs": 6,
+  "results": [
+    {
+      "rank": 1,
+      "memoryId": "f6521669-5457-429c-921e-d3e2546444db",
+      "factId": "logging",
+      "score": 0.3009,
+      "text": "The gateway must never log full request bodies in production; pino structured logging with redacted fields is the convention."
+    },
+    {
+      "rank": 2,
+      "memoryId": "011116e8-3dfc-4310-8419-178c0d08bef3",
+      "factId": "deploy-friday",
+      "score": 0.1909,
+      "text": "The production deploy window is Friday afternoons."
+    },
+    {
+      "rank": 3,
+      "memoryId": "9a7a86b8-4187-4dd7-8811-b4ec5c229546",
+      "factId": "authz",
+      "score": 0.1518,
+      "text": "Authorization is enforced by the policy engine; the identity module (renamed from auth) reads its configuration from identity.yaml."
+    },
+    {
+      "rank": 4,
+      "memoryId": "dc6beafc-6acc-4217-8108-7f3e9fa55a06",
+      "factId": "deploy-tuesday",
+      "score": 0.1461,
+      "text": "The production deploy window is Tuesdays at 14:00 UTC since May."
+    },
+    {
+      "rank": 5,
+      "memoryId": "aca63759-1e34-41cf-ac4b-3bc048c8b97d",
+      "factId": "pg16",
+      "score": 0.1361,
+      "text": "Staging runs Postgres 16 after the October migration; the old Postgres 14 cluster is decommissioned."
+    },
+    {
+      "rank": 6,
+      "memoryId": "5cbc841e-2e4f-4263-89ee-7da7d5e3d513",
+      "factId": "p99",
+      "score": 0.1232,
+      "text": "The p99 latency budget for the gateway is 250 milliseconds."
+    },
+    {
+      "rank": 7,
+      "memoryId": "9cba8f09-0a00-441d-a632-91b430205b10",
+      "factId": "admin",
+      "score": 0.1179,
+      "text": "The admin API is mounted under /_admin and requires the internal bearer token."
+    },
+    {
+      "rank": 8,
+      "memoryId": "465519a9-9f83-44ee-aced-b4909c1926da",
+      "factId": "port",
+      "score": 0.114,
+      "text": "The gateway's default listen port is 8787."
+    },
+    {
+      "rank": 9,
+      "memoryId": "fda02b66-f448-4e3d-a225-1b4a7980c961",
+      "factId": "flags-old",
+      "score": 0.1066,
+      "text": "The feature-flags service endpoint is http://flags.internal:7070."
+    },
+    {
+      "rank": 10,
+      "memoryId": "bd98ce17-93b3-42d1-afd0-185e30be5a04",
+      "factId": "fetch",
+      "score": 0.1066,
+      "text": "axios is forbidden in this codebase; outbound HTTP goes through the platform fetch wrapper with a 2-attempt retry budget."
+    }
+  ],
+  "goldRanks": {
+    "logging": 1
+  },
+  "firstGoldRank": 1,
+  "recall": {
+    "at3": true,
+    "at5": true,
+    "at10": true
+  },
+  "mrr": 1,
+  "error": null
+}

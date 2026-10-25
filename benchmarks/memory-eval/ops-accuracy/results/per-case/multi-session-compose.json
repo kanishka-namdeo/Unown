@@ -1,0 +1,264 @@
+{
+  "suite": "ops-accuracy",
+  "id": "multi-session-compose",
+  "desc": "MemoryAgentBench multi-session reasoning: the rate-limit store was Redis (note 1); note 2 moves Redis to the cache cluster. The composed current state (rate limits live on the cache cluster's Redis) must be resolvable from memory.",
+  "model": "agnes-3.0-flash",
+  "date": "2026-10-25T18:51:01.756Z",
+  "durationMs": 46470,
+  "scope": "project:oa-multi-session-compose",
+  "notesFed": [
+    {
+      "order": 1,
+      "ts": "2026-10-20T14:55:00.000Z",
+      "created_at": null,
+      "fedBy": "ts",
+      "eventTimeInText": null,
+      "text": "Infra session: Redis moved to the dedicated cache cluster at redis://cache-cluster.internal:6379 — everything that used the shared Redis instance (including the rate-limit counters) follows it. Counter TTL still 60 seconds."
+    },
+    {
+      "order": 2,
+      "ts": "2026-10-19T09:20:00.000Z",
+      "created_at": null,
+      "fedBy": "ts",
+      "eventTimeInText": null,
+      "text": "Scaling session: per-client rate-limit counters live in the shared Redis instance. TTL on counters is 60 seconds."
+    }
+  ],
+  "noteRules": [
+    [],
+    []
+  ],
+  "seed": {
+    "bullets": 3,
+    "render": "# Project Memory\n\n## Workflow\n- The gateway must never log full request bodies in production [seed].\n- Trunk branch is `main`; feature work ships via short-lived branches [seed].\n- aurora-gateway is a TypeScript API gateway; handlers stay thin, domain logic lives in src/domain/ [seed].\n\n<!-- unown: rendered 3/3 memories via Mem0 (backend: onnx) at 2026-10-25T18:50:15.307Z -->\n"
+  },
+  "dream": {
+    "error": null,
+    "stats": {
+      "added": 3,
+      "merged": 0,
+      "pruned": 1,
+      "quarantined": 0,
+      "guardDeleted": 0
+    },
+    "reconcileOps": [
+      {
+        "op": "DELETE",
+        "id": "108843dc-b4da-420c-9bde-35c3f5137149",
+        "text": null,
+        "reason": "Redundant side-fact; its substance is already covered by 11662f57 (components migrated to the dedicated cache cluster)."
+      }
+    ],
+    "renderedCandidate": "# Project Memory\n\n## Workflow\n- The gateway must never log full request bodies in production [seed].\n- Trunk branch is `main`; feature work ships via short-lived branches [seed].\n- aurora-gateway is a TypeScript API gateway; handlers stay thin, domain logic lives in src/domain/ [seed].\n\n## Facts\n- Per-client rate-limit counters and all components using the shared Redis instance were migrated to the dedicated cache cluster at redis://cache-cluster.internal:6379.\n- Rate-limit counter TTL is set to 60 seconds.\n\n<!-- unown: rendered 5/5 memories via Mem0 (backend: onnx) at 2026-10-25T18:51:01.732Z -->\n",
+    "durationMs": 46426,
+    "dreamCalls": 1
+  },
+  "render": "# Project Memory\n\n## Workflow\n- The gateway must never log full request bodies in production [seed].\n- Trunk branch is `main`; feature work ships via short-lived branches [seed].\n- aurora-gateway is a TypeScript API gateway; handlers stay thin, domain logic lives in src/domain/ [seed].\n\n## Facts\n- Per-client rate-limit counters and all components using the shared Redis instance were migrated to the dedicated cache cluster at redis://cache-cluster.internal:6379.\n- Rate-limit counter TTL is set to 60 seconds.\n\n<!-- unown: rendered 5/5 memories via Mem0 (backend: onnx) at 2026-10-25T18:51:01.739Z -->\n",
+  "platform": {
+    "memoryCount": 5,
+    "memories": [
+      {
+        "id": "051bd65a-df03-47f2-a18b-27f17a0228da",
+        "createdAt": "2026-10-25T18:50:15.296Z",
+        "updatedAt": null,
+        "text": "aurora-gateway is a TypeScript API gateway; handlers stay thin, domain logic lives in src/domain/ [seed]."
+      },
+      {
+        "id": "21d8b1ff-d0ef-4d63-9fd3-9780b40581a2",
+        "createdAt": "2026-10-25T18:50:15.301Z",
+        "updatedAt": null,
+        "text": "Trunk branch is `main`; feature work ships via short-lived branches [seed]."
+      },
+      {
+        "id": "665445bb-050a-4024-bc8d-83a1305bdc95",
+        "createdAt": "2026-10-25T18:50:15.306Z",
+        "updatedAt": null,
+        "text": "The gateway must never log full request bodies in production [seed]."
+      },
+      {
+        "id": "11662f57-6579-4f65-b9f5-ce79d6bab022",
+        "createdAt": "2026-10-25T18:50:17.718Z",
+        "updatedAt": "2026-10-25T18:50:17.718Z",
+        "text": "Per-client rate-limit counters and all components using the shared Redis instance were migrated to the dedicated cache cluster at redis://cache-cluster.internal:6379."
+      },
+      {
+        "id": "49ec61f9-582a-40b2-9f8a-b6c3ba1ebf7f",
+        "createdAt": "2026-10-25T18:50:17.718Z",
+        "updatedAt": "2026-10-25T18:50:17.718Z",
+        "text": "Rate-limit counter TTL is set to 60 seconds."
+      }
+    ]
+  },
+  "probes": {
+    "present": {
+      "cachecluster": {
+        "pass": true,
+        "satisfiedBy": "platform+render",
+        "matchCount": 1,
+        "matchedMemoryIds": [
+          "11662f57-6579-4f65-b9f5-ce79d6bab022"
+        ],
+        "matchedMemoryTexts": [
+          "Per-client rate-limit counters and all components using the shared Redis instance were migrated to the dedicated cache cluster at redis://cache-cluster.internal:6379."
+        ],
+        "matchedRenderLines": [
+          "- Per-client rate-limit counters and all components using the shared Redis instance were migrated to the dedicated cache cluster at redis://cache-cluster.internal:6379."
+        ]
+      },
+      "counters": {
+        "pass": true,
+        "satisfiedBy": "platform+render",
+        "matchCount": 1,
+        "matchedMemoryIds": [
+          "11662f57-6579-4f65-b9f5-ce79d6bab022"
+        ],
+        "matchedMemoryTexts": [
+          "Per-client rate-limit counters and all components using the shared Redis instance were migrated to the dedicated cache cluster at redis://cache-cluster.internal:6379."
+        ],
+        "matchedRenderLines": [
+          "- Per-client rate-limit counters and all components using the shared Redis instance were migrated to the dedicated cache cluster at redis://cache-cluster.internal:6379."
+        ]
+      },
+      "ttl": {
+        "pass": true,
+        "satisfiedBy": "platform+render",
+        "matchCount": 1,
+        "matchedMemoryIds": [
+          "49ec61f9-582a-40b2-9f8a-b6c3ba1ebf7f"
+        ],
+        "matchedMemoryTexts": [
+          "Rate-limit counter TTL is set to 60 seconds."
+        ],
+        "matchedRenderLines": [
+          "- Rate-limit counter TTL is set to 60 seconds."
+        ]
+      }
+    },
+    "absentCurrent": {},
+    "once": {},
+    "maxMatchCount": {},
+    "search": [
+      {
+        "q": "where do the rate limit counters live now",
+        "expect": "cachecluster",
+        "pass": true,
+        "satisfiedByRank": 1,
+        "surface": "search",
+        "top10": [
+          {
+            "rank": 1,
+            "id": "11662f57-6579-4f65-b9f5-ce79d6bab022",
+            "score": 0.4828529651494792,
+            "text": "Per-client rate-limit counters and all components using the shared Redis instance were migrated to the dedicated cache cluster at redis://cache-cluster.internal:6379."
+          },
+          {
+            "rank": 2,
+            "id": "49ec61f9-582a-40b2-9f8a-b6c3ba1ebf7f",
+            "score": 0.47450470935730776,
+            "text": "Rate-limit counter TTL is set to 60 seconds."
+          },
+          {
+            "rank": 3,
+            "id": "051bd65a-df03-47f2-a18b-27f17a0228da",
+            "score": 0.22631043094937797,
+            "text": "aurora-gateway is a TypeScript API gateway; handlers stay thin, domain logic lives in src/domain/ [seed]."
+          },
+          {
+            "rank": 4,
+            "id": "665445bb-050a-4024-bc8d-83a1305bdc95",
+            "score": 0.18971860784556732,
+            "text": "The gateway must never log full request bodies in production [seed]."
+          },
+          {
+            "rank": 5,
+            "id": "21d8b1ff-d0ef-4d63-9fd3-9780b40581a2",
+            "score": 0.18157850072844844,
+            "text": "Trunk branch is `main`; feature work ships via short-lived branches [seed]."
+          }
+        ]
+      }
+    ]
+  },
+  "probesEvaluated": 4,
+  "facts": {
+    "cachecluster": {
+      "op": "ADD",
+      "desc": "Redis now at cache-cluster.internal:6379",
+      "current": true,
+      "dedupOf": null,
+      "present": true,
+      "matchCount": 1,
+      "matchedMemoryIds": [
+        "11662f57-6579-4f65-b9f5-ce79d6bab022"
+      ],
+      "matchedRenderLines": [
+        "- Per-client rate-limit counters and all components using the shared Redis instance were migrated to the dedicated cache cluster at redis://cache-cluster.internal:6379."
+      ],
+      "absentCurrentPass": null,
+      "observed": "applied",
+      "reason": "present in platform memory"
+    },
+    "counters": {
+      "op": "ADD",
+      "desc": "rate-limit counters in Redis (with the store now on the cache cluster)",
+      "current": null,
+      "dedupOf": null,
+      "present": true,
+      "matchCount": 1,
+      "matchedMemoryIds": [
+        "11662f57-6579-4f65-b9f5-ce79d6bab022"
+      ],
+      "matchedRenderLines": [
+        "- Per-client rate-limit counters and all components using the shared Redis instance were migrated to the dedicated cache cluster at redis://cache-cluster.internal:6379."
+      ],
+      "absentCurrentPass": null,
+      "observed": "applied",
+      "reason": "present in platform memory"
+    },
+    "ttl": {
+      "op": "ADD",
+      "desc": "counter TTL 60 seconds",
+      "current": null,
+      "dedupOf": null,
+      "present": true,
+      "matchCount": 1,
+      "matchedMemoryIds": [
+        "49ec61f9-582a-40b2-9f8a-b6c3ba1ebf7f"
+      ],
+      "matchedRenderLines": [
+        "- Rate-limit counter TTL is set to 60 seconds."
+      ],
+      "absentCurrentPass": null,
+      "observed": "applied",
+      "reason": "present in platform memory"
+    }
+  },
+  "opsMatrix": {
+    "ADD": {
+      "applied": 3,
+      "missed": 0,
+      "over-applied": 0,
+      "wrong-winner": 0
+    },
+    "UPDATE": {
+      "applied": 0,
+      "missed": 0,
+      "over-applied": 0,
+      "wrong-winner": 0
+    },
+    "DELETE": {
+      "applied": 0,
+      "missed": 0,
+      "over-applied": 0,
+      "wrong-winner": 0
+    },
+    "NOOP": {
+      "applied": 0,
+      "missed": 0,
+      "over-applied": 0,
+      "wrong-winner": 0
+    }
+  },
+  "pass": true,
+  "notes": "probes are deterministic regex/line classification over normalized text (lowercase, whitespace collapsed, bullet markers stripped); absentCurrent exemptions carry the historical-marker word; every verdict is auditable from matched lines/counts/surfaces recorded here"
+}

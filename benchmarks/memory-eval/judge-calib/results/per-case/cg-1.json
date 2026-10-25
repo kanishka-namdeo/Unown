@@ -1,0 +1,87 @@
+{
+  "suite": "judge-calib",
+  "id": "cg-1",
+  "cls": "correct-gold",
+  "q": "What is the default listen port of the gateway?",
+  "gold": "8787",
+  "hyp": "The default listen port is 8787.",
+  "expect": "CORRECT",
+  "note": null,
+  "model": "agnes-3.0-flash",
+  "date": "2026-10-25T18:01:47.814Z",
+  "judgeProtocol": {
+    "system": "You are a strict grader for question-answering against a reference answer. Compare the candidate answer to the reference answer for factual equivalence: the candidate must convey the same fact(s) — exact wording is not required, but a wrong number, wrong entity, missing required detail, or a refusal when the reference contains the answer is WRONG. Answer with exactly one word: CORRECT or WRONG.",
+    "standardOrder": "Question: {q}\nReference answer: {gold}\nCandidate answer: {hyp}\nOne word (CORRECT or WRONG):",
+    "swappedOrder": "Question: {q}\nCandidate answer: {hyp}\nReference answer: {gold}\nOne word (CORRECT or WRONG):",
+    "temperature": 0,
+    "runs": 3,
+    "maxTokens": 16,
+    "model": "agnes-3.0-flash",
+    "parser": "first /\\b(CORRECT|WRONG)\\b/i match (word boundary, case-insensitive; INCORRECT cannot parse as CORRECT)",
+    "verdictOrder": {
+      "standardOrder": "question -> reference -> candidate",
+      "swappedOrder": "question -> candidate -> reference"
+    },
+    "selfJudging": "judge and the corpus candidate answers share the same served model (metered single-model deployment)"
+  },
+  "prompts": {
+    "standard": "Question: What is the default listen port of the gateway?\nReference answer: 8787\nCandidate answer: The default listen port is 8787.\nOne word (CORRECT or WRONG):",
+    "swapped": "Question: What is the default listen port of the gateway?\nCandidate answer: The default listen port is 8787.\nReference answer: 8787\nOne word (CORRECT or WRONG):"
+  },
+  "runs": [
+    {
+      "run": 1,
+      "raw": "CORRECT",
+      "verdict": "CORRECT",
+      "matched": "CORRECT",
+      "index": 0,
+      "finishReason": "stop",
+      "completionTokens": 3,
+      "durationMs": 469,
+      "error": null
+    },
+    {
+      "run": 2,
+      "raw": "CORRECT",
+      "verdict": "CORRECT",
+      "matched": "CORRECT",
+      "index": 0,
+      "finishReason": "stop",
+      "completionTokens": 3,
+      "durationMs": 486,
+      "error": null
+    },
+    {
+      "run": 3,
+      "raw": "CORRECT",
+      "verdict": "CORRECT",
+      "matched": "CORRECT",
+      "index": 0,
+      "finishReason": "stop",
+      "completionTokens": 3,
+      "durationMs": 400,
+      "error": null
+    }
+  ],
+  "orderSwap": {
+    "template": "swappedOrder",
+    "raw": "CORRECT",
+    "verdict": "CORRECT",
+    "matched": "CORRECT",
+    "index": 0,
+    "finishReason": "stop",
+    "completionTokens": 3,
+    "durationMs": 380,
+    "error": null
+  },
+  "majority": "CORRECT",
+  "majorityCounts": {
+    "CORRECT": 3,
+    "WRONG": 0,
+    "unparsed": 0
+  },
+  "agree": true,
+  "orderSwapDelta": false,
+  "error": null,
+  "durationMs": 1736
+}

@@ -1,0 +1,219 @@
+{
+  "suite": "ops-accuracy",
+  "id": "deletion-state",
+  "desc": "MEME Deletion (post-removal state): the canary-deploy feature flag existed (note 1) and was REMOVED in v2.3 (note 2). Post-dream, the flag must not be stated as an active feature; a line recording its removal is the correct current state.",
+  "model": "agnes-3.0-flash",
+  "date": "2026-10-25T18:45:04.190Z",
+  "durationMs": 47559,
+  "scope": "project:oa-deletion-state",
+  "notesFed": [
+    {
+      "order": 1,
+      "ts": "2026-10-18T10:30:00.000Z",
+      "created_at": null,
+      "fedBy": "ts",
+      "eventTimeInText": null,
+      "text": "Release session for v2.3: the canary-deploy feature was removed entirely in 2.3 — the canary.enabled flag and its flags.json entry are gone. Standard rolling deploys only now."
+    },
+    {
+      "order": 2,
+      "ts": "2026-10-05T12:00:00.000Z",
+      "created_at": null,
+      "fedBy": "ts",
+      "eventTimeInText": null,
+      "text": "Feature session: canary deploys are enabled through the canary.enabled feature flag, config-driven from flags.json. Shadow traffic set at 5 percent."
+    }
+  ],
+  "noteRules": [
+    [],
+    []
+  ],
+  "seed": {
+    "bullets": 3,
+    "render": "# Project Memory\n\n## Workflow\n- The gateway must never log full request bodies in production [seed].\n- Trunk branch is `main`; feature work ships via short-lived branches [seed].\n- aurora-gateway is a TypeScript API gateway; handlers stay thin, domain logic lives in src/domain/ [seed].\n\n<!-- unown: rendered 3/3 memories via Mem0 (backend: onnx) at 2026-10-25T18:44:16.656Z -->\n"
+  },
+  "dream": {
+    "error": null,
+    "stats": {
+      "added": 2,
+      "merged": 0,
+      "pruned": 1,
+      "quarantined": 0,
+      "guardDeleted": 0
+    },
+    "reconcileOps": [
+      {
+        "op": "DELETE",
+        "id": "8126b19a-cbfb-4a4f-b516-c4b827e87781",
+        "text": null,
+        "reason": "Contradicted by the newer memory 29972799 (canary removed in v2.3); stale feature description"
+      }
+    ],
+    "renderedCandidate": "# Project Memory\n\n## Workflow\n- The gateway must never log full request bodies in production [seed].\n- Trunk branch is `main`; feature work ships via short-lived branches [seed].\n- aurora-gateway is a TypeScript API gateway; handlers stay thin, domain logic lives in src/domain/ [seed].\n\n## Facts\n- In v2.3, the canary-deploy feature was removed entirely: the canary.enabled flag and its flags.json entry were deleted, and deployments now use standard rolling deploys only\n\n<!-- unown: rendered 4/4 memories via Mem0 (backend: onnx) at 2026-10-25T18:45:04.176Z -->\n",
+    "durationMs": 47519,
+    "dreamCalls": 1
+  },
+  "render": "# Project Memory\n\n## Workflow\n- The gateway must never log full request bodies in production [seed].\n- Trunk branch is `main`; feature work ships via short-lived branches [seed].\n- aurora-gateway is a TypeScript API gateway; handlers stay thin, domain logic lives in src/domain/ [seed].\n\n## Facts\n- In v2.3, the canary-deploy feature was removed entirely: the canary.enabled flag and its flags.json entry were deleted, and deployments now use standard rolling deploys only\n\n<!-- unown: rendered 4/4 memories via Mem0 (backend: onnx) at 2026-10-25T18:45:04.179Z -->\n",
+  "platform": {
+    "memoryCount": 4,
+    "memories": [
+      {
+        "id": "23113d41-2ba1-4210-b258-cc7981600959",
+        "createdAt": "2026-10-25T18:44:16.647Z",
+        "updatedAt": null,
+        "text": "aurora-gateway is a TypeScript API gateway; handlers stay thin, domain logic lives in src/domain/ [seed]."
+      },
+      {
+        "id": "cca4ea2f-8325-4fc4-855f-96b8663b8613",
+        "createdAt": "2026-10-25T18:44:16.651Z",
+        "updatedAt": null,
+        "text": "Trunk branch is `main`; feature work ships via short-lived branches [seed]."
+      },
+      {
+        "id": "41398893-a285-4d88-912f-29ee3f603eda",
+        "createdAt": "2026-10-25T18:44:16.655Z",
+        "updatedAt": null,
+        "text": "The gateway must never log full request bodies in production [seed]."
+      },
+      {
+        "id": "29972799-463b-478d-9cfe-f48b38492069",
+        "createdAt": "2026-10-25T18:44:18.108Z",
+        "updatedAt": "2026-10-25T18:44:18.108Z",
+        "text": "In v2.3, the canary-deploy feature was removed entirely: the canary.enabled flag and its flags.json entry were deleted, and deployments now use standard rolling deploys only"
+      }
+    ]
+  },
+  "probes": {
+    "present": {
+      "canary-off": {
+        "pass": true,
+        "satisfiedBy": "platform+render",
+        "matchCount": 1,
+        "matchedMemoryIds": [
+          "29972799-463b-478d-9cfe-f48b38492069"
+        ],
+        "matchedMemoryTexts": [
+          "In v2.3, the canary-deploy feature was removed entirely: the canary.enabled flag and its flags.json entry were deleted, and deployments now use standard rolling deploys only"
+        ],
+        "matchedRenderLines": [
+          "- In v2.3, the canary-deploy feature was removed entirely: the canary.enabled flag and its flags.json entry were deleted, and deployments now use standard rolling deploys only"
+        ]
+      }
+    },
+    "absentCurrent": {
+      "canary-on": {
+        "pass": true,
+        "violations": [],
+        "exemptHits": [
+          {
+            "surface": "render",
+            "line": "- In v2.3, the canary-deploy feature was removed entirely: the canary.enabled flag and its flags.json entry were deleted, and deployments now use standard rolling deploys only",
+            "marker": "was"
+          },
+          {
+            "surface": "search",
+            "rank": 1,
+            "id": "29972799-463b-478d-9cfe-f48b38492069",
+            "text": "In v2.3, the canary-deploy feature was removed entirely: the canary.enabled flag and its flags.json entry were deleted, and deployments now use standard rolling deploys only",
+            "marker": "was"
+          }
+        ],
+        "searchQuery": "canary.enabled",
+        "searchTop10": [
+          {
+            "rank": 1,
+            "id": "29972799-463b-478d-9cfe-f48b38492069",
+            "score": 0.5579364525678067,
+            "text": "In v2.3, the canary-deploy feature was removed entirely: the canary.enabled flag and its flags.json entry were deleted, and deployments now use standard rolling deploys only"
+          },
+          {
+            "rank": 2,
+            "id": "23113d41-2ba1-4210-b258-cc7981600959",
+            "score": 0.2429936292547315,
+            "text": "aurora-gateway is a TypeScript API gateway; handlers stay thin, domain logic lives in src/domain/ [seed]."
+          },
+          {
+            "rank": 3,
+            "id": "41398893-a285-4d88-912f-29ee3f603eda",
+            "score": 0.21128173750849172,
+            "text": "The gateway must never log full request bodies in production [seed]."
+          },
+          {
+            "rank": 4,
+            "id": "cca4ea2f-8325-4fc4-855f-96b8663b8613",
+            "score": 0.19760454346967965,
+            "text": "Trunk branch is `main`; feature work ships via short-lived branches [seed]."
+          }
+        ]
+      }
+    },
+    "once": {},
+    "maxMatchCount": {},
+    "search": []
+  },
+  "probesEvaluated": 2,
+  "facts": {
+    "canary-on": {
+      "op": "DELETE",
+      "desc": "canary deploys enabled via canary.enabled flag (REMOVED)",
+      "current": false,
+      "dedupOf": null,
+      "present": true,
+      "matchCount": 1,
+      "matchedMemoryIds": [
+        "29972799-463b-478d-9cfe-f48b38492069"
+      ],
+      "matchedRenderLines": [
+        "- In v2.3, the canary-deploy feature was removed entirely: the canary.enabled flag and its flags.json entry were deleted, and deployments now use standard rolling deploys only"
+      ],
+      "absentCurrentPass": true,
+      "observed": "applied",
+      "reason": "old value absent-current (replacement canary-off present)"
+    },
+    "canary-off": {
+      "op": "ADD",
+      "desc": "canary-deploy feature removed in 2.3, rolling deploys only",
+      "current": true,
+      "dedupOf": null,
+      "present": true,
+      "matchCount": 1,
+      "matchedMemoryIds": [
+        "29972799-463b-478d-9cfe-f48b38492069"
+      ],
+      "matchedRenderLines": [
+        "- In v2.3, the canary-deploy feature was removed entirely: the canary.enabled flag and its flags.json entry were deleted, and deployments now use standard rolling deploys only"
+      ],
+      "absentCurrentPass": null,
+      "observed": "applied",
+      "reason": "present in platform memory"
+    }
+  },
+  "opsMatrix": {
+    "ADD": {
+      "applied": 1,
+      "missed": 0,
+      "over-applied": 0,
+      "wrong-winner": 0
+    },
+    "UPDATE": {
+      "applied": 0,
+      "missed": 0,
+      "over-applied": 0,
+      "wrong-winner": 0
+    },
+    "DELETE": {
+      "applied": 1,
+      "missed": 0,
+      "over-applied": 0,
+      "wrong-winner": 0
+    },
+    "NOOP": {
+      "applied": 0,
+      "missed": 0,
+      "over-applied": 0,
+      "wrong-winner": 0
+    }
+  },
+  "pass": true,
+  "notes": "probes are deterministic regex/line classification over normalized text (lowercase, whitespace collapsed, bullet markers stripped); absentCurrent exemptions carry the historical-marker word; every verdict is auditable from matched lines/counts/surfaces recorded here"
+}

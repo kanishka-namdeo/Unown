@@ -31,7 +31,8 @@ Landing-page consts carry the fresh numbers.
 | [HumanEval+ (evalplus)](evalplus/results/RESULTS.md) | model-tier codegen sanity (non-agentic) | 93.3% | 93.3% | **93.9%** | 89.0% |
 | [LiveCodeBench v6](livecodebench/results/RESULTS.md) | contamination-aware model-tier headline, post-cutoff problems | 52% @1 | 38% @1 | 36% @1 | 28% @1 |
 | [Long-horizon refactor](longhorizon/results/RESULTS.md) | multi-file contract change under a cap; cost separation | 245s · 43.5k in · 474k cache | 299s · 62.6k in · 841k cache | 291s · 1.2M in · 0 cache | 345s · 62k in · **1.07M cache** |
-| Memory defenses ([poison](memory-eval/poison-corpus/results/RESULTS.md) · [mpbench](memory-eval/mpbench/results/RESULTS.md) · [axes](memory-eval/quality-axes/results/RESULTS.md) · [recall](memory-eval/recall-qa/results/RESULTS.md)) | adversarial memory + QA recall | 10/10 flagged · 0 planted · 4/4 axes · +0.625 lift | | | 10/10 flagged · 0 planted (post-backstop) · 4/4 axes · +0.55 lift |
+| Memory defenses ([poison](memory-eval/poison-corpus/results/RESULTS.md) · [pbench](memory-eval/mpbench/results/RESULTS.md) · [axes](memory-eval/quality-axes/results/RESULTS.md) · [recall](memory-eval/recall-qa/results/RESULTS.md)) | adversarial memory + QA recall | 10/10 flagged · 0 planted · 4/4 axes · +0.625 lift | | | 10/10 flagged · 0 planted (post-backstop) · 4/4 axes · +0.55 lift |
+| Memory ops + retrieval + judge + failure modes ([ops](memory-eval/ops-accuracy/results/RESULTS.md) · [rank](memory-eval/retrieval-rank/results/RESULTS.md) · [judge](memory-eval/judge-calib/results/RESULTS.md) · [fm](memory-eval/failure-modes/results/RESULTS.md)) | SOTA memory-eval suite (2026-10-26) | | | | opsF1 0.992 (11/11) · rank r@5 1.00 onnx / 0.86 lexical · judge 20/20, FPR 0, flips 0/72 · 12/12 failure modes |
 
 ## The 2026-10-21 agnes-3.0-flash campaign
 
@@ -152,3 +153,37 @@ SWE-bench Verified and Terminal-Bench require per-task Docker environments
 instead — the honest pattern other tool vendors use. Reference points
 (2026-10, vendor-reported): Kimi K2.5 — SWE-bench Verified 76.8 / TB 2.0
 50.8; Qwen3.7-Plus — SWE-bench Verified 77.7 / TB 2.0 70.3.
+
+
+## The 2026-10-26 memory-eval SOTA round
+
+Four new suites (research-driven — the LoCoMo/LongMemEval/MemoryAgentBench/
+MEME/MemBench methodology landscape surveyed first), all run live on
+agnes-3.0-flash through the production consolidate path, per-case receipts
+committed:
+
+- **ops-accuracy** — 11/11 cases, **opsF1 0.992** (gold-op × observed
+  confusion matrix over the Mem0-paper ADD/UPDATE/DELETE/NOOP taxonomy +
+  MEME Cascade/Deletion). The campaign measured and fixed a real
+  extraction-loss defect (routine infrastructure facts dropped by the
+  extraction LLM) — the `MEM0_CUSTOM_INSTRUCTIONS` anti-loss clause with a
+  unit-test pin, the repo's established prompt-fix pattern.
+- **retrieval-rank** — the platform's own search scored in isolation
+  (recall@k/MRR, conflict preference, scope isolation) in two embedder
+  arms: lexical r@5 0.864 → onnx **1.000** (the H10 recall-parity gap,
+  measured), isolation clean on both arms. Shared finding: the search
+  layer prefers the OLD side of a conflict pair (5/6 on onnx) — recency is
+  guarded only by the reconciler.
+- **judge-calib** — the §10-L open item answered with a measurement:
+  agreement 20/20, FPR 0/8, FNR 0/8, leniency 0/4 (strict), abstention
+  correct both directions, run-to-run flips 0/72, order sensitivity 0/6.
+- **failure-modes** — the competitor-research doc's twelve documented
+  failure modes pinned as measured regressions: **12/12 PASS**, with four
+  recorded findings inside the passing receipts (reconcile variance on
+  contradiction pairs — 1 miss in 3 runs; the fm-07 load-scan coverage gap;
+  the raw-import dedup gap; the scanner false-positive surface that can
+  silently consume a quarantined benign note).
+
+Per-suite RESULTS.md files carry the full honest-limitations sections; the
+scratch engines ran the real `startServer()` (fm-02 concurrency + fm-08
+dead-bridge recovery are real process-level receipts, not mocks).

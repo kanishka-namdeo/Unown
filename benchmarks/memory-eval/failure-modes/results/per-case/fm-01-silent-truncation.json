@@ -1,0 +1,68 @@
+{
+  "suite": "failure-modes",
+  "case": "fm-01-silent-truncation",
+  "mode": "deterministic",
+  "source": "Codex #13386 (32 KB AGENTS.md), #48679 (middle-cut 2500-token summary)",
+  "doc": "Oversized injected memory must NEVER truncate silently (Codex #13386 32KB AGENTS.md, #48679 middle-cut 2500-token summary): an oversized project tier, an over-cap 20k terminal note, and a render-cap-hit platform all leave visible receipts — budget prune markers, a (truncated) note marker, and a capped render — with the injected block still under PI_MEMORY_TOTAL_CHARS.",
+  "model": "agnes-3.0-flash",
+  "date": "2026-10-25T18:53:50.095Z",
+  "durationMs": 6,
+  "error": null,
+  "checks": [
+    {
+      "name": "oversized tiers (project at cap + user near cap) resolve to a block <= PI_MEMORY_TOTAL_CHARS",
+      "pass": true,
+      "evidence": {
+        "cap": 80000,
+        "totalBefore": 135195,
+        "totalAfter": 79916,
+        "budgetedTotal": 79916,
+        "truncatedTiers": [
+          "project"
+        ],
+        "prunedBlocks": 0,
+        "overflow": false
+      }
+    },
+    {
+      "name": "the pruned block carries an HTML-comment budget marker (<!-- budget: pruned ... -->)",
+      "pass": true,
+      "evidence": {
+        "markerMatches": [
+          {
+            "tier": "project",
+            "marker": "<!-- budget: pruned 55355 of 56099 chars (PI_MEMORY_TOTAL_CHARS=80000) -->"
+          }
+        ]
+      }
+    },
+    {
+      "name": "a 25000-char terminal note passes through capTerminalNoteContent at exactly 20000 codepoints with a '(truncated)' marker",
+      "pass": true,
+      "evidence": {
+        "inputChars": 24997,
+        "outputChars": 20012,
+        "bodyChars": 20000,
+        "marker": "\"\\n(truncated)\"",
+        "headPreservedFor20k": true,
+        "idempotent": true
+      }
+    },
+    {
+      "name": "a platform render over PI_MEM0_MAX_RENDERED records the drop in its footer (rendered N/M)",
+      "pass": true,
+      "evidence": {
+        "renderCap": 12,
+        "rows": 30,
+        "footer": "<!-- unown: rendered 12/30 memories via Mem0 (backend: unknown) · 18 oldest pruned at render (cap 12; hard-won rules immune) at 2026-10-25T18:53:50.101Z -->",
+        "bulletCount": 12,
+        "newestSurvives": true,
+        "oldestDropped": true
+      }
+    }
+  ],
+  "checksPassed": 4,
+  "checksTotal": 4,
+  "findings": [],
+  "pass": true
+}

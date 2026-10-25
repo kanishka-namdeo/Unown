@@ -1,0 +1,303 @@
+{
+  "suite": "retrieval-rank",
+  "date": "2026-10-25T18:15:46.978Z",
+  "model": "onnx-fallback",
+  "embedder": {
+    "arm": "onnx-arm",
+    "requested": "onnx",
+    "backend": "lexical",
+    "embedderFallback": true,
+    "autoDegraded": false,
+    "embedderBootError": "PI_MEM0_EMBEDDER=onnx but the local-ml lane failed to load: local-ml probe failed: Cannot find package '@huggingface/transformers' imported from <pi-repo>/packages/self-learning/local-ml/lib/index.mjs (lane files present but not operational — npm install in that dir)",
+    "platform": {
+      "backend": "lexical",
+      "embedderRequested": "lexical",
+      "model": "agnes-3.0-flash",
+      "dir": "/home/z/my-project/scratch-mem/retrieval-rank-onnx/mem0",
+      "reconcile": true,
+      "maxRendered": 110
+    }
+  },
+  "piModelId": "agnes-3.0-flash",
+  "bridge": {
+    "required": false,
+    "bridgeUpstreamStatus": null,
+    "reason": "NO LLM anywhere: verbatim infer:false seeding + platform.search — deterministic given the embedder"
+  },
+  "corpus": {
+    "file": "corpus.json",
+    "sha256": "45545d1155ce86fa4b7c225d8d72dfd8df5d223107ae8e090b88cad38204e308",
+    "facts": 28,
+    "queries": 22,
+    "foreignFacts": 4,
+    "leakProbes": 2,
+    "source": "hand-authored (project-memory-shaped gateway/aurora facts); see README"
+  },
+  "scopes": {
+    "main": "project:rr-main",
+    "foreign": "project:rr-foreign",
+    "foreignLabel": "aurora-billing"
+  },
+  "seed": {
+    "main": {
+      "scope": "project:rr-main",
+      "wiped": 28,
+      "importedBullets": 28,
+      "memoryCount": 28,
+      "factCount": 28
+    },
+    "foreign": {
+      "scope": "project:rr-foreign",
+      "label": "aurora-billing",
+      "wiped": 4,
+      "importedBullets": 4,
+      "memoryCount": 4,
+      "factCount": 4
+    },
+    "idMap": {
+      "port": "4893cfc7-7d22-4181-9933-8f40d04c6f06",
+      "healthz": "01669ffe-6258-4eb9-bb03-f75bdd53787a",
+      "ratelimit": "d04d00e4-0a99-4018-86a2-8af260235788",
+      "admin": "d178501e-4fa3-4644-98b4-d7fd41912ad9",
+      "ci": "7b562033-f4f1-4c36-aead-b381002175a4",
+      "testmatrix": "045db450-a6f1-4d7c-810a-2634cdf03d6f",
+      "pg16": "05a3baee-e63b-4eb3-83ea-0e51546be9a8",
+      "pg14": "fbd7f697-fcec-4d04-b407-ef49b28e537f",
+      "backups": "34c8c267-d298-464f-94f2-8ef3520d0c97",
+      "lint": "1d6757c5-f265-4609-b3e3-4bee15f91eef",
+      "prettier": "c1175810-79f4-463b-9899-d4eab387e7e2",
+      "deploy-tuesday": "083f3c77-b439-4568-b3ea-d2c0b66337ee",
+      "deploy-friday": "d191ef1b-b001-4db8-ada9-b1209681d382",
+      "flags-new": "59d09cc3-a4c0-43f3-b3da-1000d152572d",
+      "flags-old": "35c046c5-84e8-4137-a07c-85748e09966f",
+      "cache": "2e5fb5dc-0c6b-4d8b-9c7a-96cc9e2a200d",
+      "counters": "82e27f60-6cad-45f6-8769-374f819dd472",
+      "prom": "fee917a9-5f4c-406a-8d63-251e3266bc49",
+      "grafana": "081db20c-2148-4676-8e5b-1f8c0a8b4ab1",
+      "oncall": "0b74dce0-1f0e-4e59-93e7-153ec301e95a",
+      "p99": "daa0a555-4a80-40f7-ba5a-667451232b70",
+      "proto": "aca16839-224e-40c6-a278-6f720fc9f70a",
+      "changesets": "c19b5615-cff9-43fe-9c0d-737f7cb1f65e",
+      "fetch": "d2c558e0-c059-4c6b-9c38-f74b284a8678",
+      "logging": "46ff7dbb-373f-4a59-b7aa-e981825f580a",
+      "authz": "71eedf83-448e-42b9-bb21-52033cd86e48",
+      "composefile": "fa883863-0736-4a47-8f34-40bbeff424ac",
+      "canary": "adc386dd-3d94-49f2-b438-0578c4e57536"
+    },
+    "foreignIdMap": {
+      "billing-port": "342d5a50-58e4-4550-95ce-f71873b10e15",
+      "billing-db": "8d625ddc-f03c-4b38-bfe8-0615090a50a1",
+      "billing-cron": "623a5dcb-65aa-4143-be5a-f0bc7d34231b",
+      "billing-port-conflict": "3922195e-f0a2-440e-8082-fc4070f92958"
+    },
+    "pass": true
+  },
+  "isolation": {
+    "leakProbes": [
+      {
+        "q": "What is the default listen port?",
+        "desc": "a port query in the GATEWAY scope must not surface the foreign billing-service port fact",
+        "mustNotReturn": [
+          "billing-port"
+        ],
+        "present": [],
+        "pass": true,
+        "top10FactIds": [
+          "port",
+          "prettier",
+          "p99",
+          "authz",
+          "admin",
+          "deploy-friday",
+          "flags-old",
+          "flags-new",
+          "grafana",
+          "pg16"
+        ]
+      },
+      {
+        "q": "billing service port",
+        "desc": "billing-adjacent query in the gateway scope must not surface billing-only facts",
+        "mustNotReturn": [
+          "billing-cron",
+          "billing-db"
+        ],
+        "present": [],
+        "pass": true,
+        "top10FactIds": [
+          "flags-new",
+          "port",
+          "flags-old"
+        ]
+      }
+    ],
+    "structural": {
+      "mainContainsForeign": [],
+      "foreignContainsMain": [],
+      "pass": true
+    },
+    "crossScope": {
+      "query": "What is the default listen port?",
+      "scopesSearched": [
+        "rr-main",
+        "aurora-billing"
+      ],
+      "results": [
+        {
+          "rank": 1,
+          "memoryId": "4893cfc7-7d22-4181-9933-8f40d04c6f06",
+          "scope": "rr-main",
+          "factId": "port",
+          "score": 0.8696,
+          "text": "The gateway's default listen port is 8787."
+        },
+        {
+          "rank": 2,
+          "memoryId": "3922195e-f0a2-440e-8082-fc4070f92958",
+          "scope": "aurora-billing",
+          "factId": "billing-port-conflict",
+          "score": 0.3339,
+          "text": "The gateway's default listen port is 8787 and the billing service also references it for health checks."
+        },
+        {
+          "rank": 3,
+          "memoryId": "c1175810-79f4-463b-9899-d4eab387e7e2",
+          "scope": "rr-main",
+          "factId": "prettier",
+          "score": 0.2612,
+          "text": "Code formatting is Prettier with the default config, no semicolons."
+        },
+        {
+          "rank": 4,
+          "memoryId": "342d5a50-58e4-4550-95ce-f71873b10e15",
+          "scope": "aurora-billing",
+          "factId": "billing-port",
+          "score": 0.1971,
+          "text": "The billing service listens on port 9090."
+        },
+        {
+          "rank": 5,
+          "memoryId": "daa0a555-4a80-40f7-ba5a-667451232b70",
+          "scope": "rr-main",
+          "factId": "p99",
+          "score": 0.1668,
+          "text": "The p99 latency budget for the gateway is 250 milliseconds."
+        },
+        {
+          "rank": 6,
+          "memoryId": "71eedf83-448e-42b9-bb21-52033cd86e48",
+          "scope": "rr-main",
+          "factId": "authz",
+          "score": 0.1617,
+          "text": "Authorization is enforced by the policy engine; the identity module (renamed from auth) reads its configuration from identity.yaml."
+        },
+        {
+          "rank": 7,
+          "memoryId": "d178501e-4fa3-4644-98b4-d7fd41912ad9",
+          "scope": "rr-main",
+          "factId": "admin",
+          "score": 0.1596,
+          "text": "The admin API is mounted under /_admin and requires the internal bearer token."
+        },
+        {
+          "rank": 8,
+          "memoryId": "d191ef1b-b001-4db8-ada9-b1209681d382",
+          "scope": "rr-main",
+          "factId": "deploy-friday",
+          "score": 0.1543,
+          "text": "The production deploy window is Friday afternoons."
+        },
+        {
+          "rank": 9,
+          "memoryId": "35c046c5-84e8-4137-a07c-85748e09966f",
+          "scope": "rr-main",
+          "factId": "flags-old",
+          "score": 0.1443,
+          "text": "The feature-flags service endpoint is http://flags.internal:7070."
+        },
+        {
+          "rank": 10,
+          "memoryId": "8d625ddc-f03c-4b38-bfe8-0615090a50a1",
+          "scope": "aurora-billing",
+          "factId": "billing-db",
+          "score": 0.1443,
+          "text": "The billing database is MariaDB 11 on billing-db.internal."
+        },
+        {
+          "rank": 11,
+          "memoryId": "59d09cc3-a4c0-43f3-b3da-1000d152572d",
+          "scope": "rr-main",
+          "factId": "flags-new",
+          "score": 0.1432,
+          "text": "The feature-flags service endpoint is http://flags.corp:7071 after the service mesh migration."
+        }
+      ],
+      "tagged": 11,
+      "scopeTagsPresence": 1,
+      "scopesSeen": [
+        "rr-main",
+        "aurora-billing"
+      ],
+      "pass": true
+    },
+    "passRate": 1,
+    "pass": true
+  },
+  "metrics": {
+    "queries": 22,
+    "overall": {
+      "recallAt3": 0.8636,
+      "recallAt5": 0.8636,
+      "recallAt10": 0.9091,
+      "mrr": 0.7792,
+      "meanFirstGoldRank": 1.5,
+      "queriesWithNoResults": [
+        "q-para-ci"
+      ]
+    },
+    "byKind": {
+      "exact": {
+        "n": 5,
+        "recallAt5": 1,
+        "mrr": 1
+      },
+      "paraphrase": {
+        "n": 8,
+        "recallAt5": 0.75,
+        "mrr": 0.7054
+      },
+      "time-qualified": {
+        "n": 4,
+        "recallAt5": 0.75,
+        "mrr": 0.625
+      },
+      "conflict": {
+        "n": 3,
+        "recallAt5": 1,
+        "mrr": 0.6667
+      },
+      "distractor": {
+        "n": 2,
+        "recallAt5": 1,
+        "mrr": 1
+      }
+    },
+    "conflictPreference": {
+      "queries": 6,
+      "rate": 0.3333,
+      "outcomes": {
+        "new-first": 2,
+        "new-only": 0,
+        "tie": 0,
+        "old-first": 3,
+        "old-only": 0,
+        "neither": 1
+      }
+    }
+  },
+  "resumed": 0,
+  "durationMs": 190,
+  "pass": true,
+  "perCase": "(see results/per-case/<query-id>.json — top-10 ids, fact ids, ranks, scores, gold ranks, conflict detail)",
+  "notes": "memory ids are per-seed UUIDs (each run reseeds); ranks/metrics are the stable artifact. Metrics are measurements, not gates — pass = seeding integrity + scope isolation contracts. conflictPreference compares the corpus gold (new side) vs conflictGold (old side) ranking; both sides seed in ONE import (no distinct timestamps), so it measures the pure text/ranking preference (Zep-style probe minus the temporal signal)."
+}

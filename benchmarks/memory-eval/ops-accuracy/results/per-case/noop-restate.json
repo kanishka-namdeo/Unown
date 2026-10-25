@@ -1,0 +1,242 @@
+{
+  "suite": "ops-accuracy",
+  "id": "noop-restate",
+  "desc": "A fact stated in note 1 and RESTATED in different words in note 2: ADD then NOOP — present exactly once, no duplicate pair.",
+  "model": "agnes-3.0-flash",
+  "date": "2026-10-25T18:48:40.907Z",
+  "durationMs": 46835,
+  "scope": "project:oa-noop-restate",
+  "notesFed": [
+    {
+      "order": 1,
+      "ts": "2026-10-08T11:30:00.000Z",
+      "created_at": null,
+      "fedBy": "ts",
+      "eventTimeInText": null,
+      "text": "Follow-up session, nothing structural changed. Reminder for the record: we use Docker Compose for the local development environment, and caching goes through Redis on the cache host at port 6379. Also confirmed the compose file lives at deploy/compose.yaml."
+    },
+    {
+      "order": 2,
+      "ts": "2026-10-07T10:00:00.000Z",
+      "created_at": null,
+      "fedBy": "ts",
+      "eventTimeInText": null,
+      "text": "Onboarding session done. Decided the local dev stack runs against Docker Compose, and the gateway talks to Redis for caching at redis://cache:6379."
+    }
+  ],
+  "noteRules": [
+    [],
+    []
+  ],
+  "seed": {
+    "bullets": 3,
+    "render": "# Project Memory\n\n## Workflow\n- The gateway must never log full request bodies in production [seed].\n- Trunk branch is `main`; feature work ships via short-lived branches [seed].\n- aurora-gateway is a TypeScript API gateway; handlers stay thin, domain logic lives in src/domain/ [seed].\n\n<!-- unown: rendered 3/3 memories via Mem0 (backend: onnx) at 2026-10-25T18:47:55.470Z -->\n"
+  },
+  "dream": {
+    "error": null,
+    "stats": {
+      "added": 2,
+      "merged": 0,
+      "pruned": 0,
+      "quarantined": 0,
+      "guardDeleted": 0
+    },
+    "reconcileOps": [],
+    "renderedCandidate": "# Project Memory\n\n## Workflow\n- The gateway must never log full request bodies in production [seed].\n- Trunk branch is `main`; feature work ships via short-lived branches [seed].\n- aurora-gateway is a TypeScript API gateway; handlers stay thin, domain logic lives in src/domain/ [seed].\n\n## Environment\n- Local development environment runs against Docker Compose; the compose file is located at deploy/compose.yaml.\n\n## Facts\n- Caching is handled by Redis on the cache host at port 6379; the gateway connects to it via the redis://cache:6379 endpoint.\n\n<!-- unown: rendered 5/5 memories via Mem0 (backend: onnx) at 2026-10-25T18:48:40.903Z -->\n",
+    "durationMs": 45433,
+    "dreamCalls": 1
+  },
+  "render": "# Project Memory\n\n## Workflow\n- The gateway must never log full request bodies in production [seed].\n- Trunk branch is `main`; feature work ships via short-lived branches [seed].\n- aurora-gateway is a TypeScript API gateway; handlers stay thin, domain logic lives in src/domain/ [seed].\n\n## Environment\n- Local development environment runs against Docker Compose; the compose file is located at deploy/compose.yaml.\n\n## Facts\n- Caching is handled by Redis on the cache host at port 6379; the gateway connects to it via the redis://cache:6379 endpoint.\n\n<!-- unown: rendered 5/5 memories via Mem0 (backend: onnx) at 2026-10-25T18:48:40.906Z -->\n",
+  "platform": {
+    "memoryCount": 5,
+    "memories": [
+      {
+        "id": "f7008bbc-3096-4326-b934-a59ef9e23600",
+        "createdAt": "2026-10-25T18:47:55.431Z",
+        "updatedAt": null,
+        "text": "aurora-gateway is a TypeScript API gateway; handlers stay thin, domain logic lives in src/domain/ [seed]."
+      },
+      {
+        "id": "3cd00ba8-2c7d-4ba3-9a63-7a18ec32bb48",
+        "createdAt": "2026-10-25T18:47:55.463Z",
+        "updatedAt": null,
+        "text": "Trunk branch is `main`; feature work ships via short-lived branches [seed]."
+      },
+      {
+        "id": "92fd9ab0-705f-48dd-9504-228b629be65a",
+        "createdAt": "2026-10-25T18:47:55.467Z",
+        "updatedAt": null,
+        "text": "The gateway must never log full request bodies in production [seed]."
+      },
+      {
+        "id": "493b2f9d-c661-4f49-9ca1-cdb2490ccacf",
+        "createdAt": "2026-10-25T18:47:57.542Z",
+        "updatedAt": "2026-10-25T18:47:57.542Z",
+        "text": "Local development environment runs against Docker Compose; the compose file is located at deploy/compose.yaml."
+      },
+      {
+        "id": "eabb8c09-0bca-4221-8ab5-2aaf7c1bbb27",
+        "createdAt": "2026-10-25T18:47:57.542Z",
+        "updatedAt": "2026-10-25T18:47:57.542Z",
+        "text": "Caching is handled by Redis on the cache host at port 6379; the gateway connects to it via the redis://cache:6379 endpoint."
+      }
+    ]
+  },
+  "probes": {
+    "present": {
+      "compose": {
+        "pass": true,
+        "satisfiedBy": "platform+render",
+        "matchCount": 1,
+        "matchedMemoryIds": [
+          "493b2f9d-c661-4f49-9ca1-cdb2490ccacf"
+        ],
+        "matchedMemoryTexts": [
+          "Local development environment runs against Docker Compose; the compose file is located at deploy/compose.yaml."
+        ],
+        "matchedRenderLines": [
+          "- Local development environment runs against Docker Compose; the compose file is located at deploy/compose.yaml."
+        ]
+      },
+      "redis": {
+        "pass": true,
+        "satisfiedBy": "platform+render",
+        "matchCount": 1,
+        "matchedMemoryIds": [
+          "eabb8c09-0bca-4221-8ab5-2aaf7c1bbb27"
+        ],
+        "matchedMemoryTexts": [
+          "Caching is handled by Redis on the cache host at port 6379; the gateway connects to it via the redis://cache:6379 endpoint."
+        ],
+        "matchedRenderLines": [
+          "- Caching is handled by Redis on the cache host at port 6379; the gateway connects to it via the redis://cache:6379 endpoint."
+        ]
+      },
+      "composefile": {
+        "pass": true,
+        "satisfiedBy": "platform+render",
+        "matchCount": 1,
+        "matchedMemoryIds": [
+          "493b2f9d-c661-4f49-9ca1-cdb2490ccacf"
+        ],
+        "matchedMemoryTexts": [
+          "Local development environment runs against Docker Compose; the compose file is located at deploy/compose.yaml."
+        ],
+        "matchedRenderLines": [
+          "- Local development environment runs against Docker Compose; the compose file is located at deploy/compose.yaml."
+        ]
+      }
+    },
+    "absentCurrent": {},
+    "once": {
+      "compose": {
+        "pass": true,
+        "count": 1,
+        "matchedMemoryIds": [
+          "493b2f9d-c661-4f49-9ca1-cdb2490ccacf"
+        ]
+      }
+    },
+    "maxMatchCount": {},
+    "search": []
+  },
+  "probesEvaluated": 4,
+  "facts": {
+    "compose": {
+      "op": "ADD",
+      "desc": "local dev stack = docker compose (once signature: the env-stack phrasing, not the compose keyword family)",
+      "current": null,
+      "dedupOf": null,
+      "present": true,
+      "matchCount": 1,
+      "matchedMemoryIds": [
+        "493b2f9d-c661-4f49-9ca1-cdb2490ccacf"
+      ],
+      "matchedRenderLines": [
+        "- Local development environment runs against Docker Compose; the compose file is located at deploy/compose.yaml."
+      ],
+      "absentCurrentPass": null,
+      "observed": "applied",
+      "reason": "present in platform memory"
+    },
+    "compose-restate": {
+      "op": "NOOP",
+      "desc": "the same compose fact restated in note 2 (NOOP — must not create a second memory)",
+      "current": null,
+      "dedupOf": "compose",
+      "present": true,
+      "matchCount": 1,
+      "matchedMemoryIds": [
+        "493b2f9d-c661-4f49-9ca1-cdb2490ccacf"
+      ],
+      "matchedRenderLines": [
+        "- Local development environment runs against Docker Compose; the compose file is located at deploy/compose.yaml."
+      ],
+      "absentCurrentPass": null,
+      "observed": "applied",
+      "reason": "fact compose present exactly once (restatement deduped)"
+    },
+    "redis": {
+      "op": "ADD",
+      "desc": "gateway caching via redis cache:6379",
+      "current": null,
+      "dedupOf": null,
+      "present": true,
+      "matchCount": 1,
+      "matchedMemoryIds": [
+        "eabb8c09-0bca-4221-8ab5-2aaf7c1bbb27"
+      ],
+      "matchedRenderLines": [
+        "- Caching is handled by Redis on the cache host at port 6379; the gateway connects to it via the redis://cache:6379 endpoint."
+      ],
+      "absentCurrentPass": null,
+      "observed": "applied",
+      "reason": "present in platform memory"
+    },
+    "composefile": {
+      "op": "ADD",
+      "desc": "compose file at deploy/compose.yaml",
+      "current": null,
+      "dedupOf": null,
+      "present": true,
+      "matchCount": 1,
+      "matchedMemoryIds": [
+        "493b2f9d-c661-4f49-9ca1-cdb2490ccacf"
+      ],
+      "matchedRenderLines": [
+        "- Local development environment runs against Docker Compose; the compose file is located at deploy/compose.yaml."
+      ],
+      "absentCurrentPass": null,
+      "observed": "applied",
+      "reason": "present in platform memory"
+    }
+  },
+  "opsMatrix": {
+    "ADD": {
+      "applied": 3,
+      "missed": 0,
+      "over-applied": 0,
+      "wrong-winner": 0
+    },
+    "UPDATE": {
+      "applied": 0,
+      "missed": 0,
+      "over-applied": 0,
+      "wrong-winner": 0
+    },
+    "DELETE": {
+      "applied": 0,
+      "missed": 0,
+      "over-applied": 0,
+      "wrong-winner": 0
+    },
+    "NOOP": {
+      "applied": 1,
+      "missed": 0,
+      "over-applied": 0,
+      "wrong-winner": 0
+    }
+  },
+  "pass": true,
+  "notes": "probes are deterministic regex/line classification over normalized text (lowercase, whitespace collapsed, bullet markers stripped); absentCurrent exemptions carry the historical-marker word; every verdict is auditable from matched lines/counts/surfaces recorded here"
+}

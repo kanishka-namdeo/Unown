@@ -1,0 +1,103 @@
+{
+  "suite": "failure-modes",
+  "case": "fm-05-cross-scope-leakage",
+  "mode": "deterministic",
+  "source": "Mem0 #5439 (cross-scope entity linking), Graphiti #2065/#2066",
+  "doc": "Cross-scope leakage (Mem0 #5439, Graphiti #2065/#2066): two SAME-NAMED project directories (the classic collision), seeded with different facts through their own scopes. Scoped searches never return the other project's memories; the cross-scope search (across=1) returns results tagged with their scope; writes to one scope never appear in the other.",
+  "model": "agnes-3.0-flash",
+  "date": "2026-10-25T18:56:24.435Z",
+  "durationMs": 92,
+  "error": null,
+  "checks": [
+    {
+      "name": "scopeA search for a scopeB-only fact returns nothing",
+      "pass": true,
+      "evidence": {
+        "slugA": "api-server-bfa258",
+        "slugB": "api-server-be2c1d",
+        "distinctSlugs": true,
+        "query": "ORBIT relay single tenant helios",
+        "hits": [
+          {
+            "text": "The ZEPHYR gateway fronts the work deployment with a regional failover pool",
+            "score": 0.6360311744130152
+          },
+          {
+            "text": "The work database is vacuumed on the aurora cluster nightly",
+            "score": 0.63091709794609
+          }
+        ],
+        "leakedHits": [],
+        "evaluatedAs": "no returned hit carries the scopeB-only marker (orbit relay / helios) — same-scope nearest-neighbor noise without the marker is not leakage"
+      }
+    },
+    {
+      "name": "scopeB search for a scopeA-only fact returns nothing",
+      "pass": true,
+      "evidence": {
+        "query": "ZEPHYR gateway regional failover aurora",
+        "hits": [
+          {
+            "text": "The ORBIT relay fronts the personal deployment with a single tenant",
+            "score": 0.636462448262293
+          },
+          {
+            "text": "The personal database is snapshot on the helios cluster nightly",
+            "score": 0.6196385897181735
+          }
+        ],
+        "leakedHits": []
+      }
+    },
+    {
+      "name": "cross-scope search returns results tagged with their originating scope",
+      "pass": true,
+      "evidence": {
+        "query": "database cluster nightly",
+        "results": [
+          {
+            "scope": "personal:api-server-be2c1d",
+            "text": "The personal database is snapshot on the helios cluster nightly",
+            "score": 0.46867622609608783
+          },
+          {
+            "scope": "work:api-server-bfa258",
+            "text": "The work database is vacuumed on the aurora cluster nightly",
+            "score": 0.4292067656033953
+          },
+          {
+            "scope": "work:api-server-bfa258",
+            "text": "The ZEPHYR gateway fronts the work deployment with a regional failover pool",
+            "score": 0.30547474735108865
+          },
+          {
+            "scope": "personal:api-server-be2c1d",
+            "text": "The ORBIT relay fronts the personal deployment with a single tenant",
+            "score": 0.30395907414808787
+          }
+        ],
+        "distinctScopeLabels": [
+          "personal:api-server-be2c1d",
+          "work:api-server-bfa258"
+        ]
+      }
+    },
+    {
+      "name": "a write into scopeA is invisible in scopeB's getAll and render",
+      "pass": true,
+      "evidence": {
+        "scopeBCount": 2,
+        "scopeBTexts": [
+          "The ORBIT relay fronts the personal deployment with a single tenant",
+          "The personal database is snapshot on the helios cluster nightly"
+        ],
+        "renderCarriesCanary": false,
+        "scopeACountAfterWrite": 3
+      }
+    }
+  ],
+  "checksPassed": 4,
+  "checksTotal": 4,
+  "findings": [],
+  "pass": true
+}

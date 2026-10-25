@@ -1,0 +1,103 @@
+{
+  "suite": "retrieval-rank",
+  "id": "q-cascade-counters",
+  "kind": "time-qualified",
+  "q": "Where do the rate limit counters live since the Redis move?",
+  "gold": [
+    "counters",
+    "cache"
+  ],
+  "embedder": {
+    "arm": "onnx-arm",
+    "requested": "onnx",
+    "backend": "onnx",
+    "embedderFallback": false,
+    "autoDegraded": false
+  },
+  "date": "2026-10-25T18:33:02.526Z",
+  "durationMs": 20,
+  "results": [
+    {
+      "rank": 1,
+      "memoryId": "bea475da-d2c8-4296-9b74-021f09f9a3a0",
+      "factId": "counters",
+      "score": 0.8257,
+      "text": "Per-client rate-limit counters live in Redis with a 60-second TTL."
+    },
+    {
+      "rank": 2,
+      "memoryId": "5dbee098-04ea-4c99-b37a-a4b001c605cf",
+      "factId": "cache",
+      "score": 0.3609,
+      "text": "Redis moved to the dedicated cache cluster at redis://cache-cluster.internal:6379."
+    },
+    {
+      "rank": 3,
+      "memoryId": "417c6021-8f19-4420-b1b8-a702c0ccdbfc",
+      "factId": "ratelimit",
+      "score": 0.3394,
+      "text": "Rate limiting is 100 requests per minute per client id, enforced at the router layer."
+    },
+    {
+      "rank": 4,
+      "memoryId": "04054927-531d-4967-8b16-947a20ad9419",
+      "factId": "prom",
+      "score": 0.3066,
+      "text": "Prometheus scrapes the /metrics path every 15 seconds."
+    },
+    {
+      "rank": 5,
+      "memoryId": "b5eb2613-9582-4814-82bd-acf4e82f217e",
+      "factId": "proto",
+      "score": 0.3053,
+      "text": "The protocol buffer schema lives at proto/gateway.proto."
+    },
+    {
+      "rank": 6,
+      "memoryId": "d334f038-99cd-40bd-a64c-1444b8cbde7d",
+      "factId": "flags-old",
+      "score": 0.293,
+      "text": "The feature-flags service endpoint is http://flags.internal:7070."
+    },
+    {
+      "rank": 7,
+      "memoryId": "a9e25d16-4809-4c00-8213-294c04f254a5",
+      "factId": "ci",
+      "score": 0.2922,
+      "text": "Continuous integration runs in GitHub Actions on the self-hosted buildkite pool."
+    },
+    {
+      "rank": 8,
+      "memoryId": "99b36420-a89e-4f02-8d0a-73a7c26a0826",
+      "factId": "pg14",
+      "score": 0.2895,
+      "text": "Staging runs Postgres 14 with pg_stat_statements loaded."
+    },
+    {
+      "rank": 9,
+      "memoryId": "71d1d392-b83b-4725-b6f8-6ee3f24216f7",
+      "factId": "grafana",
+      "score": 0.2885,
+      "text": "The operations dashboard is Grafana, dashboard name aurora-ops."
+    },
+    {
+      "rank": 10,
+      "memoryId": "7827d5ce-599d-4336-b337-bef9259fc154",
+      "factId": "flags-new",
+      "score": 0.2871,
+      "text": "The feature-flags service endpoint is http://flags.corp:7071 after the service mesh migration."
+    }
+  ],
+  "goldRanks": {
+    "counters": 1,
+    "cache": 2
+  },
+  "firstGoldRank": 1,
+  "recall": {
+    "at3": true,
+    "at5": true,
+    "at10": true
+  },
+  "mrr": 1,
+  "error": null
+}

@@ -1,0 +1,101 @@
+{
+  "suite": "retrieval-rank",
+  "id": "q-exact-p99",
+  "kind": "exact",
+  "q": "What is the p99 latency budget?",
+  "gold": [
+    "p99"
+  ],
+  "embedder": {
+    "arm": "default",
+    "requested": "auto",
+    "backend": "lexical",
+    "embedderFallback": false,
+    "autoDegraded": true
+  },
+  "date": "2026-10-25T18:15:45.987Z",
+  "durationMs": 4,
+  "results": [
+    {
+      "rank": 1,
+      "memoryId": "5cbc841e-2e4f-4263-89ee-7da7d5e3d513",
+      "factId": "p99",
+      "score": 0.8363,
+      "text": "The p99 latency budget for the gateway is 250 milliseconds."
+    },
+    {
+      "rank": 2,
+      "memoryId": "bd98ce17-93b3-42d1-afd0-185e30be5a04",
+      "factId": "fetch",
+      "score": 0.2003,
+      "text": "axios is forbidden in this codebase; outbound HTTP goes through the platform fetch wrapper with a 2-attempt retry budget."
+    },
+    {
+      "rank": 3,
+      "memoryId": "dc6beafc-6acc-4217-8108-7f3e9fa55a06",
+      "factId": "deploy-tuesday",
+      "score": 0.1768,
+      "text": "The production deploy window is Tuesdays at 14:00 UTC since May."
+    },
+    {
+      "rank": 4,
+      "memoryId": "9a7a86b8-4187-4dd7-8811-b4ec5c229546",
+      "factId": "authz",
+      "score": 0.1617,
+      "text": "Authorization is enforced by the policy engine; the identity module (renamed from auth) reads its configuration from identity.yaml."
+    },
+    {
+      "rank": 5,
+      "memoryId": "9cba8f09-0a00-441d-a632-91b430205b10",
+      "factId": "admin",
+      "score": 0.1596,
+      "text": "The admin API is mounted under /_admin and requires the internal bearer token."
+    },
+    {
+      "rank": 6,
+      "memoryId": "465519a9-9f83-44ee-aced-b4909c1926da",
+      "factId": "port",
+      "score": 0.1543,
+      "text": "The gateway's default listen port is 8787."
+    },
+    {
+      "rank": 7,
+      "memoryId": "011116e8-3dfc-4310-8419-178c0d08bef3",
+      "factId": "deploy-friday",
+      "score": 0.1543,
+      "text": "The production deploy window is Friday afternoons."
+    },
+    {
+      "rank": 8,
+      "memoryId": "56d5523d-a670-434a-962c-0b4653495d89",
+      "factId": "ratelimit",
+      "score": 0.1537,
+      "text": "Rate limiting is 100 requests per minute per client id, enforced at the router layer."
+    },
+    {
+      "rank": 9,
+      "memoryId": "fda02b66-f448-4e3d-a225-1b4a7980c961",
+      "factId": "flags-old",
+      "score": 0.1443,
+      "text": "The feature-flags service endpoint is http://flags.internal:7070."
+    },
+    {
+      "rank": 10,
+      "memoryId": "7993b04f-2b83-4918-b7d1-5f082c0ade6c",
+      "factId": "proto",
+      "score": 0.1443,
+      "text": "The protocol buffer schema lives at proto/gateway.proto."
+    }
+  ],
+  "goldRanks": {
+    "p99": 1
+  },
+  "firstGoldRank": 1,
+  "recall": {
+    "at3": true,
+    "at5": true,
+    "at10": true
+  },
+  "mrr": 1,
+  "error": null
+}

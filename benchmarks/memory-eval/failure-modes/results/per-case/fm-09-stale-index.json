@@ -1,0 +1,47 @@
+{
+  "suite": "failure-modes",
+  "case": "fm-09-stale-index",
+  "mode": "deterministic",
+  "source": "Letta #4337 (deleted skills still advertised)",
+  "doc": "Stale index after deletion (Letta #4337 — deleted skills still advertised): after platform.delete, the deleted fact is absent from search, from getAll, and from the rendered project memory — the next session's injected stack cannot contain it.",
+  "model": "agnes-3.0-flash",
+  "date": "2026-10-25T19:01:28.379Z",
+  "durationMs": 49,
+  "error": null,
+  "checks": [
+    {
+      "name": "fact seeded verbatim is found by search",
+      "pass": true,
+      "evidence": {
+        "seededCount": 1,
+        "searchHits": [
+          {
+            "text": "The verification canary STALE-4477 must run before every merge in the index-hygiene repo",
+            "score": 0.4731536942704117
+          }
+        ]
+      }
+    },
+    {
+      "name": "after platform.delete the fact is absent from search results",
+      "pass": true,
+      "evidence": {
+        "hitsAfterDelete": [],
+        "staleHits": []
+      }
+    },
+    {
+      "name": "the rendered memory does not contain the deleted fact's text",
+      "pass": true,
+      "evidence": {
+        "getAllCount": 0,
+        "renderCarriesDeletedFact": false,
+        "render": "# Project Memory\n\n## Workflow\n\n## Known pitfalls\n\n## Task playbooks\n\n<!-- unown: rendered 0/0 memories via Mem0 (backend: onnx) at 2026-10-25T19:01:28.427Z -->\n"
+      }
+    }
+  ],
+  "checksPassed": 3,
+  "checksTotal": 3,
+  "findings": [],
+  "pass": true
+}

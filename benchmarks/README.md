@@ -213,6 +213,47 @@ provenance), sessions recast as terminal notes → production Mem0
 consolidate() path → shipped memory injected into a fresh QA session,
 against a no-dream control arm. Headline: warm 0.650 vs cold 0.025 — **lift +0.625** (the
 memory loop's core value proposition, finally measured with a control).
+
+**Memory-operations accuracy (2026-10-26):** `memory-eval/ops-accuracy/` —
+eleven isolated cases with a GOLD LEDGER of expected memory operations (the
+Mem0-paper ADD/UPDATE/DELETE/NOOP taxonomy, arXiv 2504.19413, plus MEME's
+Cascade/Deletion hard cases and MemoryAgentBench's conflict resolution),
+scored as a gold-op × observed confusion matrix over deterministic probes of
+platform + render + search. Result on agnes-3.0-flash: **11/11 cases, opsF1
+0.992** — and the campaign that got there measured and FIXED a real
+extraction-loss defect (routine infrastructure facts dropped by the
+extraction; the `MEM0_CUSTOM_INSTRUCTIONS` anti-loss clause + unit-test
+pin). Receipts + RESULTS.md in the dir.
+
+**Retrieval ranking (2026-10-26):** `memory-eval/retrieval-rank/` — the
+platform's own search scored in isolation (facts seeded verbatim, no
+extraction LLM): recall@3/5/10 + MRR per query kind, conflict-recency
+preference, cross-scope isolation, in TWO embedder arms. Result: lexical
+r@5 0.864 vs onnx r@5 **1.000** (the H10 recall-parity gap, measured), and
+a finding both arms share: **the search layer prefers the OLD side of a
+conflict pair** (5/6 on onnx) — recency is guarded only by the reconciler.
+Receipts + RESULTS.md in the dir.
+
+**Judge calibration (2026-10-26):** `memory-eval/judge-calib/` — the binary
+CORRECT/WRONG QA judge protocol (question → reference → candidate, temp 0,
+3 runs) measured against 24 gold-labeled items in 8 classes (wrong-number,
+wrong-entity, paraphrase, partial, both abstention directions). Result on
+agnes-3.0-flash: **agreement 20/20, FPR 0/8, FNR 0/8, run-to-run flips 0/72,
+order sensitivity 0/6** — testing-strategy §10 item L ("judge calibration
+for every graded number") now has a measured answer. Receipts + RESULTS.md
+in the dir.
+
+**The twelve documented failure modes (2026-10-26):** `memory-eval/failure-modes/`
+— the competitor-research sweep's explicit debt ("each should have a pinned
+case in `benchmarks/memory-eval/`"), paid: silent truncation, dedup TOCTOU
+(real scratch engine, concurrent dream triggers), dedup at corpus scale,
+contradiction co-existence, cross-scope leakage, direct-write poisoning,
+committed-file injection, ingestion loss (dead-bridge → error-visible →
+note-not-consumed → recovery), stale index, merged-memory conflicts,
+bi-temporal recency, context bloat. Result: **12/12 PASS** with four
+recorded findings inside the passing receipts (a reconcile variance event
+on contradiction pairs — 1 miss in 3 runs; the fm-07 load-scan coverage
+gap; the raw-import dedup gap; the scanner false-positive surface).
 Per-type receipts decompose failures into consolidation loss vs
 retrieval loss (evidence-retention metric); weakest axis:
 user-preference consolidation (0.33) — a user-tier dream path finding.

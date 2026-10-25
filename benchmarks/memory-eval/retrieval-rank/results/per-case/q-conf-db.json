@@ -1,0 +1,95 @@
+{
+  "suite": "retrieval-rank",
+  "id": "q-conf-db",
+  "kind": "conflict",
+  "q": "Postgres version in staging",
+  "gold": [
+    "pg16"
+  ],
+  "conflictGold": [
+    "pg14"
+  ],
+  "embedder": {
+    "arm": "default",
+    "requested": "auto",
+    "backend": "lexical",
+    "embedderFallback": false,
+    "autoDegraded": true
+  },
+  "date": "2026-10-25T18:15:46.035Z",
+  "durationMs": 4,
+  "results": [
+    {
+      "rank": 1,
+      "memoryId": "aca63759-1e34-41cf-ac4b-3bc048c8b97d",
+      "factId": "pg16",
+      "score": 0.5074,
+      "text": "Staging runs Postgres 16 after the October migration; the old Postgres 14 cluster is decommissioned."
+    },
+    {
+      "rank": 2,
+      "memoryId": "2f10e836-0603-47ff-9bef-f123e889edb4",
+      "factId": "pg14",
+      "score": 0.4654,
+      "text": "Staging runs Postgres 14 with pg_stat_statements loaded."
+    },
+    {
+      "rank": 3,
+      "memoryId": "6d5dd557-cdee-47a8-b6b0-8ad1a136d67c",
+      "factId": "counters",
+      "score": 0.0833,
+      "text": "Per-client rate-limit counters live in Redis with a 60-second TTL."
+    },
+    {
+      "rank": 4,
+      "memoryId": "b2b321b8-8e4d-4d11-bb20-c84b9397f01c",
+      "factId": "ci",
+      "score": 0.0754,
+      "text": "Continuous integration runs in GitHub Actions on the self-hosted buildkite pool."
+    },
+    {
+      "rank": 5,
+      "memoryId": "db73d3ac-cfea-4266-b131-b7845db15763",
+      "factId": "canary",
+      "score": 0.0754,
+      "text": "The canary-deploy feature was removed in v2.3; standard rolling deploys only."
+    },
+    {
+      "rank": 6,
+      "memoryId": "bd98ce17-93b3-42d1-afd0-185e30be5a04",
+      "factId": "fetch",
+      "score": 0.0589,
+      "text": "axios is forbidden in this codebase; outbound HTTP goes through the platform fetch wrapper with a 2-attempt retry budget."
+    },
+    {
+      "rank": 7,
+      "memoryId": "f6521669-5457-429c-921e-d3e2546444db",
+      "factId": "logging",
+      "score": 0.0561,
+      "text": "The gateway must never log full request bodies in production; pino structured logging with redacted fields is the convention."
+    }
+  ],
+  "goldRanks": {
+    "pg16": 1
+  },
+  "firstGoldRank": 1,
+  "recall": {
+    "at3": true,
+    "at5": true,
+    "at10": true
+  },
+  "mrr": 1,
+  "conflict": {
+    "newSide": [
+      "pg16"
+    ],
+    "oldSide": [
+      "pg14"
+    ],
+    "rankNew": 1,
+    "rankOld": 2,
+    "outcome": "new-first",
+    "preference": true
+  },
+  "error": null
+}

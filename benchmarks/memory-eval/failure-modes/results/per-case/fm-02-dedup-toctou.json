@@ -1,0 +1,98 @@
+{
+  "suite": "failure-modes",
+  "case": "fm-02-dedup-toctou",
+  "mode": "engine",
+  "source": "Mem0 #6515 (Python twin), #6531 (TS SDK TOCTOU dedup race)",
+  "doc": "Two sessions exit simultaneously with the same fact (Mem0 #6515/#6531): two concurrent dream triggers against the scratch engine must serialize (the busy-mutex) and the final platform state holds the fact once — no duplicate pair. Pin it so a refactor cannot silently drop the serialization.",
+  "model": "agnes-3.0-flash",
+  "date": "2026-10-25T18:53:50.102Z",
+  "durationMs": 47659,
+  "error": null,
+  "checks": [
+    {
+      "name": "two concurrent POST /api/dreams/run (or the engine's dream trigger) do not run two dreams at once (busy-mutex honored)",
+      "pass": true,
+      "evidence": {
+        "triggers": [
+          {
+            "label": "A",
+            "status": 200,
+            "body": {
+              "started": true,
+              "pendingNotes": 2
+            }
+          },
+          {
+            "label": "B",
+            "status": 409,
+            "body": {
+              "error": "engine is busy with another job — try again in a moment",
+              "reason": "engine-busy"
+            }
+          }
+        ],
+        "busyRejectedRequest": null,
+        "busyError": {
+          "error": "engine is busy with another job — try again in a moment",
+          "reason": "engine-busy"
+        },
+        "note": "the request that hit the busy-mutex is recorded in busyRejectedRequest — the other trigger's dream ran serialized under the router's startFireAndForget mutex"
+      }
+    },
+    {
+      "name": "after both complete, the shared fact exists in the platform scope exactly once (no near-duplicate pair)",
+      "pass": true,
+      "evidence": {
+        "projectScope": "project:orders-api-b91a82",
+        "factMarker": "QX7-4471",
+        "factMatchCount": 1,
+        "factMatchTexts": [
+          "In the orders-api repo, the deploy gate enforces that checklist step QX7-4471 must be verified before every production release."
+        ],
+        "platformMemoryCount": 1,
+        "projectRender": "# Project Memory\n\n## Facts\n- In the orders-api repo, the deploy gate enforces that checklist step QX7-4471 must be verified before every production release.\n\n<!-- unown: rendered 1/1 memories via Mem0 (backend: lexical) at 2026-10-25T18:54:37.743Z -->\n",
+        "dream": {
+          "id": "project-bcecd1ad-7164-4638-80e3-7a2c28f09158",
+          "status": "done",
+          "notes_in": 2,
+          "note": "project dream: orders-api-b91a82 memory -> v1 (/home/z/my-project/scratch-mem/failure-modes/fm-02-dedup-toctou/work/orders-api)"
+        }
+      }
+    },
+    {
+      "name": "both dream rows are visible with terminal statuses (no stuck 'running')",
+      "pass": true,
+      "evidence": {
+        "dream": {
+          "id": "project-bcecd1ad-7164-4638-80e3-7a2c28f09158",
+          "status": "done",
+          "notes_in": 2,
+          "note": "project dream: orders-api-b91a82 memory -> v1 (/home/z/my-project/scratch-mem/failure-modes/fm-02-dedup-toctou/work/orders-api)"
+        },
+        "dreamRows": [
+          {
+            "id": "project-bcecd1ad-7164-4638-80e3-7a2c28f09158",
+            "status": "done",
+            "notes_in": 2
+          }
+        ],
+        "allDreamsTerminal": true,
+        "pendingAfter": 0,
+        "noteDreamIds": [
+          {
+            "marker": "QX7-4471",
+            "dream_id": "project-bcecd1ad-7164-4638-80e3-7a2c28f09158"
+          },
+          {
+            "marker": "QX7-4471",
+            "dream_id": "project-bcecd1ad-7164-4638-80e3-7a2c28f09158"
+          }
+        ]
+      }
+    }
+  ],
+  "checksPassed": 3,
+  "checksTotal": 3,
+  "findings": [],
+  "pass": true
+}

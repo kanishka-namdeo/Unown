@@ -1,0 +1,75 @@
+{
+  "suite": "failure-modes",
+  "case": "fm-08-ingestion-loss",
+  "mode": "engine",
+  "source": "Graphiti #1707 (200-then-dropped silent ingestion loss)",
+  "doc": "Silent ingestion loss (Graphiti #1707 — '200-then-dropped'): a note is delivered to the engine, the dream fails mid-run (extraction LLM unreachable — the scratch engine points at a dead bridge port), the note must NOT be consumed (markDreamed only on success) and the failed dream must be VISIBLE (error status, never a no-op); when the bridge comes back, the same note is dreamable and then consumed. NOTE (2026-10-26): the first corpus note tripped the runner-directive scanner rule as a FALSE POSITIVE ('retries must back off exponentially' — imperative phrasing read as a directive to the agent) — the quarantine consumed the note with a clean 'done' dream instead of erroring on the dead bridge. The rewritten note is scanner-clean; the false-positive surface itself is recorded in RESULTS.md as a finding.",
+  "model": "agnes-3.0-flash",
+  "date": "2026-10-25T19:05:41.878Z",
+  "durationMs": 50675,
+  "error": null,
+  "checks": [
+    {
+      "name": "note delivered to engine (POST /api/notes) is visible as pending",
+      "pass": true,
+      "evidence": {
+        "notePosted": {
+          "status": 200,
+          "id": "11cbf20b-70d6-4311-bbb6-63906dca4973"
+        },
+        "pendingAfterPost": 1,
+        "notePendingAfterPost": true
+      }
+    },
+    {
+      "name": "dream with dead bridge ends in an error/gated status — visible in the dreams list",
+      "pass": true,
+      "evidence": {
+        "failedDream": {
+          "id": "project-9f9480f0-0979-4145-b716-dd19ba6001c3",
+          "status": "error",
+          "notes_in": 1,
+          "note": "project dream error (ingest-service-34729f): LLM extraction failed: Error: Connection error.",
+          "ended_at": 1792955143907
+        },
+        "dreamRows": [
+          {
+            "id": "project-9f9480f0-0979-4145-b716-dd19ba6001c3",
+            "status": "error",
+            "notes_in": 1
+          }
+        ],
+        "deadBridge": "http://127.0.0.1:59989"
+      }
+    },
+    {
+      "name": "after the failed dream the note is STILL pending (not consumed)",
+      "pass": true,
+      "evidence": {
+        "notePendingAfterFail": true,
+        "pendingAfterFail": 1,
+        "failedDreamNote": "project dream error (ingest-service-34729f): LLM extraction failed: Error: Connection error."
+      }
+    },
+    {
+      "name": "with the bridge healthy, a dream consumes the note (pending count returns to zero)",
+      "pass": true,
+      "evidence": {
+        "pendingAtBoot": 1,
+        "recoveryDream": {
+          "id": "project-e72cbf60-b364-462b-8788-78b58b41f337",
+          "status": "done",
+          "notes_in": 1,
+          "note": "project dream: ingest-service-34729f memory -> v1 (/home/z/my-project/scratch-mem/failure-modes/fm-08-ingestion-loss/work/ingest-service)"
+        },
+        "noteDreamIdAfterRecovery": "project-e72cbf60-b364-462b-8788-78b58b41f337",
+        "pendingAfterRecovery": 0,
+        "realBridge": "http://127.0.0.1:3031"
+      }
+    }
+  ],
+  "checksPassed": 4,
+  "checksTotal": 4,
+  "findings": [],
+  "pass": true
+}

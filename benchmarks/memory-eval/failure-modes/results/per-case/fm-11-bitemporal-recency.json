@@ -1,0 +1,61 @@
+{
+  "suite": "failure-modes",
+  "case": "fm-11-bitemporal-recency",
+  "mode": "live",
+  "source": "Letta #4097 (reflection overwriting fresher facts) + Zep's bi-temporal lesson",
+  "doc": "Recency by ingestion time instead of event time (Letta #4097 — reflection overwriting fresher facts; Zep's bi-temporal lesson): a note about THURSDAY's database state is delivered AFTER a note about Friday's (delayed outbox delivery). The reconcile must resolve to Friday's fact as current using the notes' stated event times — the Monday/Wednesday shape from ops-accuracy, pinned with a different fact family.",
+  "model": "agnes-3.0-flash",
+  "date": "2026-10-25T19:01:28.494Z",
+  "durationMs": 54664,
+  "error": null,
+  "dreamCalls": 1,
+  "checks": [
+    {
+      "name": "the EVENT-time winner (logs.corp:9201 — Friday, delivered EARLIER) is present as current",
+      "pass": true,
+      "evidence": {
+        "satisfiedBy": "render",
+        "renderLine": "Audit-log store migrated to OpenSearch at http://logs.corp:9201; Elasticsearch host is being retired; retention remains 14 days (as of 2026-10-16)",
+        "platformText": "Audit-log store migrated to OpenSearch at http://logs.corp:9201; Elasticsearch host is being retired; retention remains 14 days (as of 2026-10-16)"
+      }
+    },
+    {
+      "name": "the ingestion-time winner (logs.internal:9200 — Thursday, delivered LATER) is never current (historical-marked lines exempt)",
+      "pass": true,
+      "evidence": {
+        "noteDeliveryOrder": [
+          {
+            "content": "Session from Thursday [2026-10-15]: the audit-log store was ",
+            "created_at": "2026-10-17T08:00:00.000Z"
+          },
+          {
+            "content": "Friday session: the audit-log store moved to OpenSearch at h",
+            "created_at": "2026-10-16T17:45:00.000Z"
+          }
+        ],
+        "renderLinesMentioningOldFact": [],
+        "searchHits": [
+          {
+            "text": "Audit-log store migrated to OpenSearch at http://logs.corp:9201; Elasticsearch host is being retired; retention remains 14 days (as of 2026-10-16)",
+            "score": 0.5357974727436294
+          }
+        ],
+        "searchOffenders": [],
+        "rendered": "# Project Memory\n\n## Facts\n- Audit-log store migrated to OpenSearch at http://logs.corp:9201; Elasticsearch host is being retired; retention remains 14 days (as of 2026-10-16)\n\n<!-- unown: rendered 1/1 memories via Mem0 (backend: onnx) at 2026-10-25T19:02:23.134Z -->\n"
+      }
+    },
+    {
+      "name": "the shared detail (14 days) survives the transition",
+      "pass": true,
+      "evidence": {
+        "satisfiedBy": "render",
+        "renderLine": "Audit-log store migrated to OpenSearch at http://logs.corp:9201; Elasticsearch host is being retired; retention remains 14 days (as of 2026-10-16)",
+        "platformText": "Audit-log store migrated to OpenSearch at http://logs.corp:9201; Elasticsearch host is being retired; retention remains 14 days (as of 2026-10-16)"
+      }
+    }
+  ],
+  "checksPassed": 3,
+  "checksTotal": 3,
+  "findings": [],
+  "pass": true
+}

@@ -1,0 +1,250 @@
+{
+  "suite": "ops-accuracy",
+  "id": "temporal-order",
+  "desc": "Dated rule change: as of March we deployed on Fridays; since May the deploy window moved to Tuesdays 14:00 UTC. The current rule must be Tuesday; the Friday rule must not be stated as current.",
+  "model": "agnes-3.0-flash",
+  "date": "2026-10-25T18:50:15.285Z",
+  "durationMs": 47844,
+  "scope": "project:oa-temporal-order",
+  "notesFed": [
+    {
+      "order": 1,
+      "ts": "2026-05-06T15:30:00.000Z",
+      "created_at": null,
+      "fedBy": "ts",
+      "eventTimeInText": null,
+      "text": "Ops change: since May the production deploy window moved to Tuesdays at 14:00 UTC — Friday deploys conflicted with the release-freeze. Green integration suite still required before any deploy."
+    },
+    {
+      "order": 2,
+      "ts": "2026-03-02T10:00:00.000Z",
+      "created_at": null,
+      "fedBy": "ts",
+      "eventTimeInText": null,
+      "text": "Ops session: as of March the production deploy window is Friday afternoons. Deploys need a green integration suite first."
+    }
+  ],
+  "noteRules": [
+    [],
+    []
+  ],
+  "seed": {
+    "bullets": 3,
+    "render": "# Project Memory\n\n## Workflow\n- The gateway must never log full request bodies in production [seed].\n- Trunk branch is `main`; feature work ships via short-lived branches [seed].\n- aurora-gateway is a TypeScript API gateway; handlers stay thin, domain logic lives in src/domain/ [seed].\n\n<!-- unown: rendered 3/3 memories via Mem0 (backend: onnx) at 2026-10-25T18:49:27.462Z -->\n"
+  },
+  "dream": {
+    "error": null,
+    "stats": {
+      "added": 2,
+      "merged": 0,
+      "pruned": 1,
+      "quarantined": 0,
+      "guardDeleted": 0
+    },
+    "reconcileOps": [
+      {
+        "op": "DELETE",
+        "id": "ab91f1ba-ef02-422e-bc73-ebc406fbb9fa",
+        "text": null,
+        "reason": "Superseded by f1314cf2 (2026-10-25) which states the deploy window moved to Tuesdays; Friday afternoons is no longer current practice."
+      }
+    ],
+    "renderedCandidate": "# Project Memory\n\n## Workflow\n- The gateway must never log full request bodies in production [seed].\n- Trunk branch is `main`; feature work ships via short-lived branches [seed].\n- aurora-gateway is a TypeScript API gateway; handlers stay thin, domain logic lives in src/domain/ [seed].\n\n## Facts\n- Since May, the production deploy window moved to Tuesdays at 14:00 UTC because Friday deploys conflicted with the release-freeze; green integration suite remains required before any deploy.\n\n<!-- unown: rendered 4/4 memories via Mem0 (backend: onnx) at 2026-10-25T18:50:15.274Z -->\n",
+    "durationMs": 47811,
+    "dreamCalls": 1
+  },
+  "render": "# Project Memory\n\n## Workflow\n- The gateway must never log full request bodies in production [seed].\n- Trunk branch is `main`; feature work ships via short-lived branches [seed].\n- aurora-gateway is a TypeScript API gateway; handlers stay thin, domain logic lives in src/domain/ [seed].\n\n## Facts\n- Since May, the production deploy window moved to Tuesdays at 14:00 UTC because Friday deploys conflicted with the release-freeze; green integration suite remains required before any deploy.\n\n<!-- unown: rendered 4/4 memories via Mem0 (backend: onnx) at 2026-10-25T18:50:15.276Z -->\n",
+  "platform": {
+    "memoryCount": 4,
+    "memories": [
+      {
+        "id": "ce5d28d9-fdd1-40b5-9309-3d3ae55eb4d5",
+        "createdAt": "2026-10-25T18:49:27.453Z",
+        "updatedAt": null,
+        "text": "aurora-gateway is a TypeScript API gateway; handlers stay thin, domain logic lives in src/domain/ [seed]."
+      },
+      {
+        "id": "90fde0e4-8484-4b9a-93c1-553e4fba03c5",
+        "createdAt": "2026-10-25T18:49:27.457Z",
+        "updatedAt": null,
+        "text": "Trunk branch is `main`; feature work ships via short-lived branches [seed]."
+      },
+      {
+        "id": "a65b1279-2ce4-4b4c-a5a1-0156df000867",
+        "createdAt": "2026-10-25T18:49:27.461Z",
+        "updatedAt": null,
+        "text": "The gateway must never log full request bodies in production [seed]."
+      },
+      {
+        "id": "f1314cf2-a23f-4dba-8893-2ce338abdf7b",
+        "createdAt": "2026-10-25T18:49:32.417Z",
+        "updatedAt": "2026-10-25T18:49:32.417Z",
+        "text": "Since May, the production deploy window moved to Tuesdays at 14:00 UTC because Friday deploys conflicted with the release-freeze; green integration suite remains required before any deploy."
+      }
+    ]
+  },
+  "probes": {
+    "present": {
+      "tuesday": {
+        "pass": true,
+        "satisfiedBy": "platform+render",
+        "matchCount": 1,
+        "matchedMemoryIds": [
+          "f1314cf2-a23f-4dba-8893-2ce338abdf7b"
+        ],
+        "matchedMemoryTexts": [
+          "Since May, the production deploy window moved to Tuesdays at 14:00 UTC because Friday deploys conflicted with the release-freeze; green integration suite remains required before any deploy."
+        ],
+        "matchedRenderLines": [
+          "- Since May, the production deploy window moved to Tuesdays at 14:00 UTC because Friday deploys conflicted with the release-freeze; green integration suite remains required before any deploy."
+        ]
+      },
+      "greensuite": {
+        "pass": true,
+        "satisfiedBy": "platform+render",
+        "matchCount": 1,
+        "matchedMemoryIds": [
+          "f1314cf2-a23f-4dba-8893-2ce338abdf7b"
+        ],
+        "matchedMemoryTexts": [
+          "Since May, the production deploy window moved to Tuesdays at 14:00 UTC because Friday deploys conflicted with the release-freeze; green integration suite remains required before any deploy."
+        ],
+        "matchedRenderLines": [
+          "- Since May, the production deploy window moved to Tuesdays at 14:00 UTC because Friday deploys conflicted with the release-freeze; green integration suite remains required before any deploy."
+        ]
+      }
+    },
+    "absentCurrent": {
+      "friday": {
+        "pass": true,
+        "violations": [],
+        "exemptHits": [
+          {
+            "surface": "render",
+            "line": "- Since May, the production deploy window moved to Tuesdays at 14:00 UTC because Friday deploys conflicted with the release-freeze; green integration suite remains required before any deploy.",
+            "marker": "before"
+          },
+          {
+            "surface": "search",
+            "rank": 1,
+            "id": "f1314cf2-a23f-4dba-8893-2ce338abdf7b",
+            "text": "Since May, the production deploy window moved to Tuesdays at 14:00 UTC because Friday deploys conflicted with the release-freeze; green integration suite remains required before any deploy.",
+            "marker": "before"
+          }
+        ],
+        "searchQuery": "friday",
+        "searchTop10": [
+          {
+            "rank": 1,
+            "id": "f1314cf2-a23f-4dba-8893-2ce338abdf7b",
+            "score": 0.2803826172528719,
+            "text": "Since May, the production deploy window moved to Tuesdays at 14:00 UTC because Friday deploys conflicted with the release-freeze; green integration suite remains required before any deploy."
+          },
+          {
+            "rank": 2,
+            "id": "90fde0e4-8484-4b9a-93c1-553e4fba03c5",
+            "score": 0.2231334674961904,
+            "text": "Trunk branch is `main`; feature work ships via short-lived branches [seed]."
+          },
+          {
+            "rank": 3,
+            "id": "ce5d28d9-fdd1-40b5-9309-3d3ae55eb4d5",
+            "score": 0.21991633777862094,
+            "text": "aurora-gateway is a TypeScript API gateway; handlers stay thin, domain logic lives in src/domain/ [seed]."
+          },
+          {
+            "rank": 4,
+            "id": "a65b1279-2ce4-4b4c-a5a1-0156df000867",
+            "score": 0.20160374754467325,
+            "text": "The gateway must never log full request bodies in production [seed]."
+          }
+        ]
+      }
+    },
+    "once": {},
+    "maxMatchCount": {},
+    "search": []
+  },
+  "probesEvaluated": 3,
+  "facts": {
+    "friday": {
+      "op": "DELETE",
+      "desc": "deploy window Friday afternoons (SUPERSEDED)",
+      "current": false,
+      "dedupOf": null,
+      "present": true,
+      "matchCount": 1,
+      "matchedMemoryIds": [
+        "f1314cf2-a23f-4dba-8893-2ce338abdf7b"
+      ],
+      "matchedRenderLines": [
+        "- Since May, the production deploy window moved to Tuesdays at 14:00 UTC because Friday deploys conflicted with the release-freeze; green integration suite remains required before any deploy."
+      ],
+      "absentCurrentPass": true,
+      "observed": "applied",
+      "reason": "old value absent-current (replacement tuesday present)"
+    },
+    "tuesday": {
+      "op": "ADD",
+      "desc": "deploy window Tuesdays 14:00 UTC",
+      "current": true,
+      "dedupOf": null,
+      "present": true,
+      "matchCount": 1,
+      "matchedMemoryIds": [
+        "f1314cf2-a23f-4dba-8893-2ce338abdf7b"
+      ],
+      "matchedRenderLines": [
+        "- Since May, the production deploy window moved to Tuesdays at 14:00 UTC because Friday deploys conflicted with the release-freeze; green integration suite remains required before any deploy."
+      ],
+      "absentCurrentPass": null,
+      "observed": "applied",
+      "reason": "present in platform memory"
+    },
+    "greensuite": {
+      "op": "ADD",
+      "desc": "green integration suite required before deploy",
+      "current": null,
+      "dedupOf": null,
+      "present": true,
+      "matchCount": 1,
+      "matchedMemoryIds": [
+        "f1314cf2-a23f-4dba-8893-2ce338abdf7b"
+      ],
+      "matchedRenderLines": [
+        "- Since May, the production deploy window moved to Tuesdays at 14:00 UTC because Friday deploys conflicted with the release-freeze; green integration suite remains required before any deploy."
+      ],
+      "absentCurrentPass": null,
+      "observed": "applied",
+      "reason": "present in platform memory"
+    }
+  },
+  "opsMatrix": {
+    "ADD": {
+      "applied": 2,
+      "missed": 0,
+      "over-applied": 0,
+      "wrong-winner": 0
+    },
+    "UPDATE": {
+      "applied": 0,
+      "missed": 0,
+      "over-applied": 0,
+      "wrong-winner": 0
+    },
+    "DELETE": {
+      "applied": 1,
+      "missed": 0,
+      "over-applied": 0,
+      "wrong-winner": 0
+    },
+    "NOOP": {
+      "applied": 0,
+      "missed": 0,
+      "over-applied": 0,
+      "wrong-winner": 0
+    }
+  },
+  "pass": true,
+  "notes": "probes are deterministic regex/line classification over normalized text (lowercase, whitespace collapsed, bullet markers stripped); absentCurrent exemptions carry the historical-marker word; every verdict is auditable from matched lines/counts/surfaces recorded here"
+}

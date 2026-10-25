@@ -1,0 +1,101 @@
+{
+  "suite": "retrieval-rank",
+  "id": "q-para-dash",
+  "kind": "paraphrase",
+  "q": "What do we use to watch the system in production — the ops console?",
+  "gold": [
+    "grafana"
+  ],
+  "embedder": {
+    "arm": "onnx-arm",
+    "requested": "onnx",
+    "backend": "onnx",
+    "embedderFallback": false,
+    "autoDegraded": false
+  },
+  "date": "2026-10-25T18:33:02.269Z",
+  "durationMs": 53,
+  "results": [
+    {
+      "rank": 1,
+      "memoryId": "71d1d392-b83b-4725-b6f8-6ee3f24216f7",
+      "factId": "grafana",
+      "score": 0.379,
+      "text": "The operations dashboard is Grafana, dashboard name aurora-ops."
+    },
+    {
+      "rank": 2,
+      "memoryId": "4e1e0f29-28d3-4e0c-9809-f84119bc7732",
+      "factId": "deploy-friday",
+      "score": 0.3189,
+      "text": "The production deploy window is Friday afternoons."
+    },
+    {
+      "rank": 3,
+      "memoryId": "f0650335-48c5-4f69-90f8-aa489a18e118",
+      "factId": "deploy-tuesday",
+      "score": 0.2984,
+      "text": "The production deploy window is Tuesdays at 14:00 UTC since May."
+    },
+    {
+      "rank": 4,
+      "memoryId": "99b36420-a89e-4f02-8d0a-73a7c26a0826",
+      "factId": "pg14",
+      "score": 0.2807,
+      "text": "Staging runs Postgres 14 with pg_stat_statements loaded."
+    },
+    {
+      "rank": 5,
+      "memoryId": "b5eb2613-9582-4814-82bd-acf4e82f217e",
+      "factId": "proto",
+      "score": 0.2756,
+      "text": "The protocol buffer schema lives at proto/gateway.proto."
+    },
+    {
+      "rank": 6,
+      "memoryId": "a9e25d16-4809-4c00-8213-294c04f254a5",
+      "factId": "ci",
+      "score": 0.2749,
+      "text": "Continuous integration runs in GitHub Actions on the self-hosted buildkite pool."
+    },
+    {
+      "rank": 7,
+      "memoryId": "b295a5ab-08ed-4bf3-b490-7ade3bad5864",
+      "factId": "pg16",
+      "score": 0.2745,
+      "text": "Staging runs Postgres 16 after the October migration; the old Postgres 14 cluster is decommissioned."
+    },
+    {
+      "rank": 8,
+      "memoryId": "7827d5ce-599d-4336-b337-bef9259fc154",
+      "factId": "flags-new",
+      "score": 0.2739,
+      "text": "The feature-flags service endpoint is http://flags.corp:7071 after the service mesh migration."
+    },
+    {
+      "rank": 9,
+      "memoryId": "d334f038-99cd-40bd-a64c-1444b8cbde7d",
+      "factId": "flags-old",
+      "score": 0.2734,
+      "text": "The feature-flags service endpoint is http://flags.internal:7070."
+    },
+    {
+      "rank": 10,
+      "memoryId": "bea475da-d2c8-4296-9b74-021f09f9a3a0",
+      "factId": "counters",
+      "score": 0.273,
+      "text": "Per-client rate-limit counters live in Redis with a 60-second TTL."
+    }
+  ],
+  "goldRanks": {
+    "grafana": 1
+  },
+  "firstGoldRank": 1,
+  "recall": {
+    "at3": true,
+    "at5": true,
+    "at10": true
+  },
+  "mrr": 1,
+  "error": null
+}

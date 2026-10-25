@@ -1,0 +1,226 @@
+{
+  "suite": "ops-accuracy",
+  "id": "update-in-place",
+  "desc": "Fact augmented: CI runs on GitHub Actions (note 1) then self-hosted runners on the buildkite pool are added (note 2). UPDATE: augmented content current, the bare old text must not survive as a separate current memory.",
+  "model": "agnes-3.0-flash",
+  "date": "2026-10-25T18:49:27.440Z",
+  "durationMs": 46533,
+  "scope": "project:oa-update-in-place",
+  "notesFed": [
+    {
+      "order": 1,
+      "ts": "2026-10-10T16:45:00.000Z",
+      "created_at": null,
+      "fedBy": "ts",
+      "eventTimeInText": null,
+      "text": "CI follow-up: GitHub Actions now runs on the self-hosted buildkite pool in the office cluster because the hosted runners were too slow for the integration matrix. Everything else about CI stays: bun test, node 22 and 24."
+    },
+    {
+      "order": 2,
+      "ts": "2026-10-09T09:00:00.000Z",
+      "created_at": null,
+      "fedBy": "ts",
+      "eventTimeInText": null,
+      "text": "CI session: the gateway builds in GitHub Actions on every push. Test matrix is bun test across node 22 and 24."
+    }
+  ],
+  "noteRules": [
+    [],
+    []
+  ],
+  "seed": {
+    "bullets": 3,
+    "render": "# Project Memory\n\n## Workflow\n- The gateway must never log full request bodies in production [seed].\n- Trunk branch is `main`; feature work ships via short-lived branches [seed].\n- aurora-gateway is a TypeScript API gateway; handlers stay thin, domain logic lives in src/domain/ [seed].\n\n<!-- unown: rendered 3/3 memories via Mem0 (backend: onnx) at 2026-10-25T18:48:40.930Z -->\n"
+  },
+  "dream": {
+    "error": null,
+    "stats": {
+      "added": 2,
+      "merged": 0,
+      "pruned": 1,
+      "quarantined": 0,
+      "guardDeleted": 0
+    },
+    "reconcileOps": [
+      {
+        "op": "DELETE",
+        "id": "fd4cfd5c-05f7-4844-a8e3-0d345c8779d2",
+        "text": null,
+        "reason": "Near-duplicate of id=0a6aa0f5; the newer/more complete terminal-note already states GitHub Actions on every push and the bun test node 22/24 matrix."
+      }
+    ],
+    "renderedCandidate": "# Project Memory\n\n## Workflow\n- The gateway must never log full request bodies in production [seed].\n- Trunk branch is `main`; feature work ships via short-lived branches [seed].\n- aurora-gateway is a TypeScript API gateway; handlers stay thin, domain logic lives in src/domain/ [seed].\n\n## Facts\n- GitHub Actions builds run on a self-hosted buildkite pool in the office cluster because hosted runners were too slow for the integration matrix. Test matrix: bun test across node 22 and 24. Build triggers on every push.\n\n<!-- unown: rendered 4/4 memories via Mem0 (backend: onnx) at 2026-10-25T18:49:27.437Z -->\n",
+    "durationMs": 46506,
+    "dreamCalls": 1
+  },
+  "render": "# Project Memory\n\n## Workflow\n- The gateway must never log full request bodies in production [seed].\n- Trunk branch is `main`; feature work ships via short-lived branches [seed].\n- aurora-gateway is a TypeScript API gateway; handlers stay thin, domain logic lives in src/domain/ [seed].\n\n## Facts\n- GitHub Actions builds run on a self-hosted buildkite pool in the office cluster because hosted runners were too slow for the integration matrix. Test matrix: bun test across node 22 and 24. Build triggers on every push.\n\n<!-- unown: rendered 4/4 memories via Mem0 (backend: onnx) at 2026-10-25T18:49:27.440Z -->\n",
+  "platform": {
+    "memoryCount": 4,
+    "memories": [
+      {
+        "id": "69e70683-e6cf-4d7d-8b18-538e3ffc1f81",
+        "createdAt": "2026-10-25T18:48:40.918Z",
+        "updatedAt": null,
+        "text": "aurora-gateway is a TypeScript API gateway; handlers stay thin, domain logic lives in src/domain/ [seed]."
+      },
+      {
+        "id": "60239a26-6a7e-4768-94d0-ad957003f7d8",
+        "createdAt": "2026-10-25T18:48:40.924Z",
+        "updatedAt": null,
+        "text": "Trunk branch is `main`; feature work ships via short-lived branches [seed]."
+      },
+      {
+        "id": "dfdbcfe2-0ce1-43e0-b637-01c53af5fd48",
+        "createdAt": "2026-10-25T18:48:40.929Z",
+        "updatedAt": null,
+        "text": "The gateway must never log full request bodies in production [seed]."
+      },
+      {
+        "id": "0a6aa0f5-9074-4879-a106-9dfeffbc91f7",
+        "createdAt": "2026-10-25T18:48:42.657Z",
+        "updatedAt": "2026-10-25T18:48:42.657Z",
+        "text": "GitHub Actions builds run on a self-hosted buildkite pool in the office cluster because hosted runners were too slow for the integration matrix. Test matrix: bun test across node 22 and 24. Build triggers on every push."
+      }
+    ]
+  },
+  "probes": {
+    "present": {
+      "gha": {
+        "pass": true,
+        "satisfiedBy": "platform+render",
+        "matchCount": 1,
+        "matchedMemoryIds": [
+          "0a6aa0f5-9074-4879-a106-9dfeffbc91f7"
+        ],
+        "matchedMemoryTexts": [
+          "GitHub Actions builds run on a self-hosted buildkite pool in the office cluster because hosted runners were too slow for the integration matrix. Test matrix: bun test across node 22 and 24. Build triggers on every push."
+        ],
+        "matchedRenderLines": [
+          "- GitHub Actions builds run on a self-hosted buildkite pool in the office cluster because hosted runners were too slow for the integration matrix. Test matrix: bun test across node 22 and 24. Build triggers on every push."
+        ]
+      },
+      "selfhosted": {
+        "pass": true,
+        "satisfiedBy": "platform+render",
+        "matchCount": 1,
+        "matchedMemoryIds": [
+          "0a6aa0f5-9074-4879-a106-9dfeffbc91f7"
+        ],
+        "matchedMemoryTexts": [
+          "GitHub Actions builds run on a self-hosted buildkite pool in the office cluster because hosted runners were too slow for the integration matrix. Test matrix: bun test across node 22 and 24. Build triggers on every push."
+        ],
+        "matchedRenderLines": [
+          "- GitHub Actions builds run on a self-hosted buildkite pool in the office cluster because hosted runners were too slow for the integration matrix. Test matrix: bun test across node 22 and 24. Build triggers on every push."
+        ]
+      },
+      "testmatrix": {
+        "pass": true,
+        "satisfiedBy": "platform+render",
+        "matchCount": 1,
+        "matchedMemoryIds": [
+          "0a6aa0f5-9074-4879-a106-9dfeffbc91f7"
+        ],
+        "matchedMemoryTexts": [
+          "GitHub Actions builds run on a self-hosted buildkite pool in the office cluster because hosted runners were too slow for the integration matrix. Test matrix: bun test across node 22 and 24. Build triggers on every push."
+        ],
+        "matchedRenderLines": [
+          "- GitHub Actions builds run on a self-hosted buildkite pool in the office cluster because hosted runners were too slow for the integration matrix. Test matrix: bun test across node 22 and 24. Build triggers on every push."
+        ]
+      }
+    },
+    "absentCurrent": {},
+    "once": {
+      "gha": {
+        "pass": true,
+        "count": 1,
+        "matchedMemoryIds": [
+          "0a6aa0f5-9074-4879-a106-9dfeffbc91f7"
+        ]
+      }
+    },
+    "maxMatchCount": {},
+    "search": []
+  },
+  "probesEvaluated": 4,
+  "facts": {
+    "gha": {
+      "op": "ADD",
+      "desc": "CI = GitHub Actions (family: the CI system name OR the runner pool identifies the CI memory)",
+      "current": null,
+      "dedupOf": null,
+      "present": true,
+      "matchCount": 1,
+      "matchedMemoryIds": [
+        "0a6aa0f5-9074-4879-a106-9dfeffbc91f7"
+      ],
+      "matchedRenderLines": [
+        "- GitHub Actions builds run on a self-hosted buildkite pool in the office cluster because hosted runners were too slow for the integration matrix. Test matrix: bun test across node 22 and 24. Build triggers on every push."
+      ],
+      "absentCurrentPass": null,
+      "observed": "applied",
+      "reason": "present in platform memory"
+    },
+    "selfhosted": {
+      "op": "UPDATE",
+      "desc": "GitHub Actions on self-hosted buildkite pool",
+      "current": null,
+      "dedupOf": null,
+      "present": true,
+      "matchCount": 1,
+      "matchedMemoryIds": [
+        "0a6aa0f5-9074-4879-a106-9dfeffbc91f7"
+      ],
+      "matchedRenderLines": [
+        "- GitHub Actions builds run on a self-hosted buildkite pool in the office cluster because hosted runners were too slow for the integration matrix. Test matrix: bun test across node 22 and 24. Build triggers on every push."
+      ],
+      "absentCurrentPass": null,
+      "observed": "applied",
+      "reason": "new text present"
+    },
+    "testmatrix": {
+      "op": "ADD",
+      "desc": "test matrix bun test node 22 and 24 (regex tolerates the \"node 22 and node 24\" paraphrase)",
+      "current": null,
+      "dedupOf": null,
+      "present": true,
+      "matchCount": 1,
+      "matchedMemoryIds": [
+        "0a6aa0f5-9074-4879-a106-9dfeffbc91f7"
+      ],
+      "matchedRenderLines": [
+        "- GitHub Actions builds run on a self-hosted buildkite pool in the office cluster because hosted runners were too slow for the integration matrix. Test matrix: bun test across node 22 and 24. Build triggers on every push."
+      ],
+      "absentCurrentPass": null,
+      "observed": "applied",
+      "reason": "present in platform memory"
+    }
+  },
+  "opsMatrix": {
+    "ADD": {
+      "applied": 2,
+      "missed": 0,
+      "over-applied": 0,
+      "wrong-winner": 0
+    },
+    "UPDATE": {
+      "applied": 1,
+      "missed": 0,
+      "over-applied": 0,
+      "wrong-winner": 0
+    },
+    "DELETE": {
+      "applied": 0,
+      "missed": 0,
+      "over-applied": 0,
+      "wrong-winner": 0
+    },
+    "NOOP": {
+      "applied": 0,
+      "missed": 0,
+      "over-applied": 0,
+      "wrong-winner": 0
+    }
+  },
+  "pass": true,
+  "notes": "probes are deterministic regex/line classification over normalized text (lowercase, whitespace collapsed, bullet markers stripped); absentCurrent exemptions carry the historical-marker word; every verdict is auditable from matched lines/counts/surfaces recorded here"
+}

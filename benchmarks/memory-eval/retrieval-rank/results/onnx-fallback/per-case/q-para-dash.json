@@ -1,0 +1,102 @@
+{
+  "suite": "retrieval-rank",
+  "id": "q-para-dash",
+  "kind": "paraphrase",
+  "q": "What do we use to watch the system in production — the ops console?",
+  "gold": [
+    "grafana"
+  ],
+  "embedder": {
+    "arm": "onnx-arm",
+    "requested": "onnx",
+    "backend": "lexical",
+    "embedderFallback": true,
+    "autoDegraded": false,
+    "embedderBootError": "PI_MEM0_EMBEDDER=onnx but the local-ml lane failed to load: local-ml probe failed: Cannot find package '@huggingface/transformers' imported from <pi-repo>/packages/self-learning/local-ml/lib/index.mjs (lane files present but not operational — npm install in that dir)"
+  },
+  "date": "2026-10-25T18:15:46.899Z",
+  "durationMs": 4,
+  "results": [
+    {
+      "rank": 1,
+      "memoryId": "d191ef1b-b001-4db8-ada9-b1209681d382",
+      "factId": "deploy-friday",
+      "score": 0.1708,
+      "text": "The production deploy window is Friday afternoons."
+    },
+    {
+      "rank": 2,
+      "memoryId": "46ff7dbb-373f-4a59-b7aa-e981825f580a",
+      "factId": "logging",
+      "score": 0.1665,
+      "text": "The gateway must never log full request bodies in production; pino structured logging with redacted fields is the convention."
+    },
+    {
+      "rank": 3,
+      "memoryId": "71eedf83-448e-42b9-bb21-52033cd86e48",
+      "factId": "authz",
+      "score": 0.1402,
+      "text": "Authorization is enforced by the policy engine; the identity module (renamed from auth) reads its configuration from identity.yaml."
+    },
+    {
+      "rank": 4,
+      "memoryId": "0b74dce0-1f0e-4e59-93e7-153ec301e95a",
+      "factId": "oncall",
+      "score": 0.1367,
+      "text": "Alerts route to the #aurora-oncall Slack channel."
+    },
+    {
+      "rank": 5,
+      "memoryId": "083f3c77-b439-4568-b3ea-d2c0b66337ee",
+      "factId": "deploy-tuesday",
+      "score": 0.1297,
+      "text": "The production deploy window is Tuesdays at 14:00 UTC since May."
+    },
+    {
+      "rank": 6,
+      "memoryId": "05a3baee-e63b-4eb3-83ea-0e51546be9a8",
+      "factId": "pg16",
+      "score": 0.1269,
+      "text": "Staging runs Postgres 16 after the October migration; the old Postgres 14 cluster is decommissioned."
+    },
+    {
+      "rank": 7,
+      "memoryId": "081db20c-2148-4676-8e5b-1f8c0a8b4ab1",
+      "factId": "grafana",
+      "score": 0.1251,
+      "text": "The operations dashboard is Grafana, dashboard name aurora-ops."
+    },
+    {
+      "rank": 8,
+      "memoryId": "daa0a555-4a80-40f7-ba5a-667451232b70",
+      "factId": "p99",
+      "score": 0.1168,
+      "text": "The p99 latency budget for the gateway is 250 milliseconds."
+    },
+    {
+      "rank": 9,
+      "memoryId": "34c8c267-d298-464f-94f2-8ef3520d0c97",
+      "factId": "backups",
+      "score": 0.1144,
+      "text": "Backups go to the nightly S3 bucket with 30-day retention."
+    },
+    {
+      "rank": 10,
+      "memoryId": "d178501e-4fa3-4644-98b4-d7fd41912ad9",
+      "factId": "admin",
+      "score": 0.1117,
+      "text": "The admin API is mounted under /_admin and requires the internal bearer token."
+    }
+  ],
+  "goldRanks": {
+    "grafana": 7
+  },
+  "firstGoldRank": 7,
+  "recall": {
+    "at3": false,
+    "at5": false,
+    "at10": true
+  },
+  "mrr": 0.1429,
+  "error": null
+}

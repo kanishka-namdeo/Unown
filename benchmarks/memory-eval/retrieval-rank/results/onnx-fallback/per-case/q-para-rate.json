@@ -1,0 +1,74 @@
+{
+  "suite": "retrieval-rank",
+  "id": "q-para-rate",
+  "kind": "paraphrase",
+  "q": "How many requests per minute is each client allowed before throttling kicks in?",
+  "gold": [
+    "ratelimit"
+  ],
+  "embedder": {
+    "arm": "onnx-arm",
+    "requested": "onnx",
+    "backend": "lexical",
+    "embedderFallback": true,
+    "autoDegraded": false,
+    "embedderBootError": "PI_MEM0_EMBEDDER=onnx but the local-ml lane failed to load: local-ml probe failed: Cannot find package '@huggingface/transformers' imported from <pi-repo>/packages/self-learning/local-ml/lib/index.mjs (lane files present but not operational — npm install in that dir)"
+  },
+  "date": "2026-10-25T18:15:46.884Z",
+  "durationMs": 4,
+  "results": [
+    {
+      "rank": 1,
+      "memoryId": "d04d00e4-0a99-4018-86a2-8af260235788",
+      "factId": "ratelimit",
+      "score": 0.5467,
+      "text": "Rate limiting is 100 requests per minute per client id, enforced at the router layer."
+    },
+    {
+      "rank": 2,
+      "memoryId": "d2c558e0-c059-4c6b-9c38-f74b284a8678",
+      "factId": "fetch",
+      "score": 0.0981,
+      "text": "axios is forbidden in this codebase; outbound HTTP goes through the platform fetch wrapper with a 2-attempt retry budget."
+    },
+    {
+      "rank": 3,
+      "memoryId": "05a3baee-e63b-4eb3-83ea-0e51546be9a8",
+      "factId": "pg16",
+      "score": 0.0678,
+      "text": "Staging runs Postgres 16 after the October migration; the old Postgres 14 cluster is decommissioned."
+    },
+    {
+      "rank": 4,
+      "memoryId": "71eedf83-448e-42b9-bb21-52033cd86e48",
+      "factId": "authz",
+      "score": 0.0595,
+      "text": "Authorization is enforced by the policy engine; the identity module (renamed from auth) reads its configuration from identity.yaml."
+    },
+    {
+      "rank": 5,
+      "memoryId": "4893cfc7-7d22-4181-9933-8f40d04c6f06",
+      "factId": "port",
+      "score": 0.0524,
+      "text": "The gateway's default listen port is 8787."
+    },
+    {
+      "rank": 6,
+      "memoryId": "d191ef1b-b001-4db8-ada9-b1209681d382",
+      "factId": "deploy-friday",
+      "score": 0.0524,
+      "text": "The production deploy window is Friday afternoons."
+    }
+  ],
+  "goldRanks": {
+    "ratelimit": 1
+  },
+  "firstGoldRank": 1,
+  "recall": {
+    "at3": true,
+    "at5": true,
+    "at10": true
+  },
+  "mrr": 1,
+  "error": null
+}

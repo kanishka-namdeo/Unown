@@ -1,0 +1,85 @@
+{
+  "suite": "failure-modes",
+  "case": "fm-10-merged-conflicts",
+  "mode": "deterministic",
+  "source": "Letta #4832/#5091 + the 0.33.0 git-conflict repair",
+  "doc": "Shared/merged memory conflicts (Letta #4832/#5091 + the 0.33.0 git-conflict repair): a teammate's clone carries a committed project.md (seed rules + Manual notes) while the local engine already has overlapping platform state. The verbatim import must not duplicate or clobber: overlapping facts stay single, Manual notes survive, and the render is stable across a re-import (idempotent).",
+  "model": "agnes-3.0-flash",
+  "date": "2026-10-25T19:01:28.428Z",
+  "durationMs": 66,
+  "error": null,
+  "checks": [
+    {
+      "name": "importing a project.md whose bullets overlap existing platform memories creates no duplicates",
+      "pass": true,
+      "evidence": {
+        "lane": "local engine (scope already holds overlapping platform state)",
+        "guard": {
+          "existingCount": 2,
+          "pristine": false,
+          "imported": 0,
+          "guardRan": false
+        },
+        "overlappingFactCountBefore": 1,
+        "overlappingFactCountAfterImport": 1
+      }
+    },
+    {
+      "name": "the '## Manual notes' section from the file survives the import and the render",
+      "pass": true,
+      "evidence": {
+        "lane": "teammate clone (empty scope — the import runs)",
+        "guard": {
+          "existingCount": 0,
+          "pristine": false,
+          "imported": 2,
+          "guardRan": true
+        },
+        "platformCarriesManualBullet": false,
+        "renderCarriesManualSection": true,
+        "render": "# Project Memory\n\n## Workflow\n- Run the integration suite with bun test integration/\n\n## Facts\n- Never commit directly to main; push a branch and open a PR\n\n## Manual notes\n- Remember to thank the reviewer in PR descriptions\n\n<!-- unown: rendered 2/2 memories via Mem0 (backend: onnx) at 2026-10-25T19:01:28.466Z -->\n"
+      }
+    },
+    {
+      "name": "a second identical import is a no-op (idempotent counts)",
+      "pass": true,
+      "evidence": {
+        "teammateCounts": {
+          "firstImport": 2,
+          "secondImport": 2
+        },
+        "localCounts": {
+          "firstAttempt": 2,
+          "secondAttempt": 2
+        },
+        "guards": {
+          "teammateSecond": {
+            "existingCount": 2,
+            "pristine": false,
+            "imported": 0,
+            "guardRan": false
+          },
+          "localBoth": {
+            "existingCount": 2,
+            "pristine": false,
+            "imported": 0,
+            "guardRan": false
+          }
+        },
+        "rawUnguardedSurface": {
+          "firstImportBullets": 2,
+          "secondImportBullets": 2,
+          "scopeCountAfterFirst": 3,
+          "scopeCountAfterSecond": 5,
+          "overlappingFactCopies": 3
+        }
+      }
+    }
+  ],
+  "checksPassed": 3,
+  "checksTotal": 3,
+  "findings": [
+    "fm-10: importLegacyMarkdown itself has NO content-level dedup — measured on an unguarded scope: 2 then 2 bullets imported, scope count 3 -> 5, the overlapping fact ends up in 3 memories. Production's only guard is the dream-time emptiness check (dream.ts imports a committed file into an EMPTY scope only). Any future call site that imports into a non-empty scope duplicates. Recommendation: hash-dedup inside importLegacyMarkdown. (Recorded as a finding, not a src edit — the no-benchmark-driven-edits constraint.)"
+  ],
+  "pass": true
+}

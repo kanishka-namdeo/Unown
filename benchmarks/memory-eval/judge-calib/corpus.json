@@ -1,0 +1,39 @@
+{
+	"suite": "judge-calib",
+	"version": 1,
+	"storyline": "Judge calibration for memory-QA verdicts — docs/testing-strategy.md §7.6 open item 'judge calibration for every graded number' (§10 item L). Every published memory benchmark (LoCoMo's J, LongMemEval, Letta's leaderboard) leans on an LLM judge; the 2026 audit literature (MemStrata arXiv 2610.05343 — 1.5-2.3% same-seed label flips; 'Auditing Long-Term Memory Evaluation' arXiv 2609.38021) shows uncalibrated judges are the weak link. This suite measures OUR judge protocol (Mem0-style binary CORRECT/WRONG, question -> gold -> hypothesis, temperature 0) against 24 gold-labeled items in six classes: correct-gold, correct-paraphrase, wrong-number, wrong-entity, partial (the leniency profile — no gold label, recorded), abstention-on-answerable (must be WRONG) and abstention-on-unanswerable (must be CORRECT, the LongMemEval _abs contract). Also measured: run-to-run flip rate (3 judge runs per item at temperature 0) and order sensitivity (reference-after-candidate vs reference-before, 6-item probe). Model: the judge and the agent are the same served model (agnes-3.0-flash) — the honest constraint of a metered single-model deployment, recorded in every receipt.",
+	"judgeProtocol": {
+		"system": "You are a strict grader for question-answering against a reference answer. Compare the candidate answer to the reference answer for factual equivalence: the candidate must convey the same fact(s) — exact wording is not required, but a wrong number, wrong entity, missing required detail, or a refusal when the reference contains the answer is WRONG. Answer with exactly one word: CORRECT or WRONG.",
+		"standardOrder": "Question: {q}\nReference answer: {gold}\nCandidate answer: {hyp}\nOne word (CORRECT or WRONG):",
+		"swappedOrder": "Question: {q}\nCandidate answer: {hyp}\nReference answer: {gold}\nOne word (CORRECT or WRONG):",
+		"temperature": 0,
+		"runs": 3
+	},
+	"items": [
+		{ "id": "cg-1", "cls": "correct-gold", "q": "What is the default listen port of the gateway?", "gold": "8787", "hyp": "The default listen port is 8787.", "expect": "CORRECT" },
+		{ "id": "cg-2", "cls": "correct-gold", "q": "What database does staging run on?", "gold": "Postgres 16", "hyp": "Staging runs Postgres 16.", "expect": "CORRECT" },
+		{ "id": "cg-3", "cls": "correct-gold", "q": "When is the production deploy window?", "gold": "Tuesdays at 14:00 UTC", "hyp": "The production deploy window is Tuesdays at 14:00 UTC.", "expect": "CORRECT" },
+		{ "id": "cg-4", "cls": "correct-gold", "q": "Where do alerts route?", "gold": "The #aurora-oncall Slack channel", "hyp": "Alerts route to the #aurora-oncall Slack channel.", "expect": "CORRECT" },
+		{ "id": "cp-1", "cls": "correct-paraphrase", "q": "What is the p99 latency budget?", "gold": "250 milliseconds", "hyp": "We need to keep the ninety-ninth percentile under a quarter of a second.", "expect": "CORRECT" },
+		{ "id": "cp-2", "cls": "correct-paraphrase", "q": "How often does Prometheus scrape the metrics endpoint?", "gold": "Every 15 seconds", "hyp": "Prometheus polls the metrics endpoint at fifteen-second intervals.", "expect": "CORRECT" },
+		{ "id": "cp-3", "cls": "correct-paraphrase", "q": "What is the rate limit?", "gold": "100 requests per minute per client id", "hyp": "Each client identifier is capped at one hundred requests in any sixty-second window.", "expect": "CORRECT" },
+		{ "id": "cp-4", "cls": "correct-paraphrase", "q": "Where does the protocol buffer schema live?", "gold": "proto/gateway.proto", "hyp": "It's in the gateway proto file under the proto directory — proto/gateway.proto.", "expect": "CORRECT" },
+		{ "id": "wn-1", "cls": "wrong-number", "q": "What is the default listen port?", "gold": "8787", "hyp": "The default listen port is 8788.", "expect": "WRONG" },
+		{ "id": "wn-2", "cls": "wrong-number", "q": "What is the p99 latency budget?", "gold": "250 milliseconds", "hyp": "The p99 budget is 350 milliseconds.", "expect": "WRONG" },
+		{ "id": "wn-3", "cls": "wrong-number", "q": "How often does Prometheus scrape the metrics endpoint?", "gold": "Every 15 seconds", "hyp": "Prometheus scrapes every 30 seconds.", "expect": "WRONG" },
+		{ "id": "wn-4", "cls": "wrong-number", "q": "What is the rate limit?", "gold": "100 requests per minute", "hyp": "The rate limit is 200 requests per minute.", "expect": "WRONG" },
+		{ "id": "we-1", "cls": "wrong-entity", "q": "Where do alerts route?", "gold": "The #aurora-oncall Slack channel", "hyp": "Alerts route to the ops-general PagerDuty email list.", "expect": "WRONG" },
+		{ "id": "we-2", "cls": "wrong-entity", "q": "Where does the protocol buffer schema live?", "gold": "proto/gateway.proto", "hyp": "The schema is at src/schema.ts.", "expect": "WRONG" },
+		{ "id": "we-3", "cls": "wrong-entity", "q": "Which CI system does the gateway use?", "gold": "GitHub Actions on the self-hosted buildkite pool", "hyp": "CI runs on GitLab CI with shared runners.", "expect": "WRONG" },
+		{ "id": "we-4", "cls": "wrong-entity", "q": "Which Slack channel receives alerts?", "gold": "#aurora-oncall", "hyp": "Alerts go to the #general channel.", "expect": "WRONG" },
+		{ "id": "pt-1", "cls": "partial", "q": "What is the rate limit and where is it enforced?", "gold": "100 requests per minute per client id, enforced at the router layer", "hyp": "The rate limit is 100 requests per minute.", "expect": "WRONG", "note": "leniency probe: strict grading marks incomplete answers WRONG; the recorded pass rate is the judge's leniency" },
+		{ "id": "pt-2", "cls": "partial", "q": "What database does staging run and which extension needs loading?", "gold": "Postgres 16; pg_stat_statements", "hyp": "Staging runs Postgres 16.", "expect": "WRONG", "note": "leniency probe" },
+		{ "id": "pt-3", "cls": "partial", "q": "When is the deploy window and what must pass first?", "gold": "Tuesdays at 14:00 UTC; a green integration suite", "hyp": "Deploys happen on Tuesdays.", "expect": "WRONG", "note": "leniency probe" },
+		{ "id": "pt-4", "cls": "partial", "q": "Where do backups go and what is the retention?", "gold": "The nightly S3 bucket; 30-day retention", "hyp": "Backups go to S3.", "expect": "WRONG", "note": "leniency probe" },
+		{ "id": "ab-1", "cls": "abstention-answerable", "q": "What is the default listen port?", "gold": "8787", "hyp": "I don't have that information in the project memory.", "expect": "WRONG", "note": "refusing an answerable question is WRONG (LoCoMo/Mem0 protocol)" },
+		{ "id": "ab-2", "cls": "abstention-answerable", "q": "What database does staging run?", "gold": "Postgres 16", "hyp": "The notes don't say — I can't determine that from memory.", "expect": "WRONG", "note": "refusing an answerable question is WRONG" },
+		{ "id": "au-1", "cls": "abstention-unanswerable", "q": "Who is the on-call engineer this quarter?", "gold": "information not enough", "hyp": "I don't have that information in the project memory.", "expect": "CORRECT", "note": "abstaining on an unanswerable question is CORRECT (LongMemEval _abs contract)" },
+		{ "id": "au-2", "cls": "abstention-unanswerable", "q": "What is the gateway's projected Q4 revenue impact?", "gold": "information not enough", "hyp": "The project memory doesn't contain any financial data, so I can't answer that.", "expect": "CORRECT", "note": "abstaining on an unanswerable question is CORRECT" }
+	],
+	"orderSwapProbe": ["cg-1", "cg-2", "wn-1", "we-1", "pt-1", "pt-3"]
+}
