@@ -359,8 +359,8 @@ export function BenchmarksPane() {
           </div>
           <p className="mt-3 max-w-3xl text-[13px] leading-relaxed text-dim">
             Each model solved the same 10-task Python Exercism set cold (fresh project,
-            fresh memory), then warm: a brand-new workspace carrying only the dreamed
-            memory from its cold pass. Bars are input tokens, normalized per model; the
+            fresh memory), then warm: a new workspace carrying only the memory dreamed
+            from its cold pass. Bars are input tokens, normalized per model; the
             scale runs to {LIFT_SCALE}% — recomputed from these receipts, so the models
             that spent more widen the axis and are never cropped.
           </p>
@@ -560,7 +560,7 @@ export function BenchmarksPane() {
             A self-improving agent regresses its own harness first: a bad memory ship
             looks exactly like a better model. The loop sits on a locked suite that
             must stay green while everything above it evolves — anti-tamper scoring
-            (tests restored to pristine state before scoring), pinned datasets and
+            (tests restored before scoring), pinned datasets and
             harness versions, official harnesses only, per-task JSONL receipts under{" "}
             <a
               href={BENCH_URL}

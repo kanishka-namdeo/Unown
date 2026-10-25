@@ -67,10 +67,10 @@ const COMMANDS: [string, string][] = [
  * requirement (incl. the local lane), and the three-OS sandbox ladder.
  */
 const PREREQS =
-  "Full install: bun ≥ 1.2 · an endpoint (any OpenAI-compatible base URL + " +
-  "key; background learning can also run on a local llama.cpp or Ollama lane, " +
-  "keyless and offline) · Windows, macOS or Linux — same commands. OS sandbox: " +
-  "bubblewrap (Linux), Seatbelt (macOS); native Windows runs the in-process jail.";
+  "Full install: bun ≥ 1.4 · any OpenAI-compatible endpoint (background " +
+  "learning can also run local llama.cpp or Ollama, keyless and offline) · " +
+  "Windows, macOS or Linux. Sandbox: bubblewrap (Linux), Seatbelt (macOS); " +
+  "Windows runs the in-process jail.";
 
 /* ------------------------------------------------------------------ */
 /* the seal                                                            */
@@ -195,10 +195,10 @@ export function Hero() {
             </h1>
 
             <p className="mt-6 max-w-xl text-pretty text-lg leading-relaxed text-dim">
-              It reads what you write down: every session ends by handing a
+              It reads what you write down: every session hands a
               background engine a{" "}
               <span className="text-ink">note</span>. Overnight that engine turns notes into
-              project memory, and refuses to keep any of it until a fresh sandbox has proven it
+              project memory, and keeps none of it until a fresh sandbox proves it
               twice.
             </p>
 
@@ -280,7 +280,7 @@ export function Hero() {
             <details className="group mt-2 max-w-xl border border-line bg-panel-2/40">
               <summary className="flex cursor-pointer list-none items-center gap-2 px-3 py-2 font-mono text-[11px] text-dim transition-colors hover:text-ink focus:outline-none focus-visible:ring-2 focus-visible:ring-gold [&::-webkit-details-marker]:hidden">
                 <span className="gb-label text-[9px] text-gold">source</span>
-                Full install — clone it, point it at a model, run it.
+                Full install — clone, point at a model, run.
                 <span
                   aria-hidden="true"
                   className="ml-auto flex text-faint transition-transform group-open:rotate-90"
@@ -422,8 +422,8 @@ export function Hero() {
         <div className="rise mt-10 sm:mt-14">
           <SessionReplay />
           <p className="mt-3 text-center font-mono text-[11px] text-faint">
-            a real session: the memory banner, hook log line and note template are the
-            formats Unown actually writes
+            a real session: the memory banner, hook log and note template are formats
+            Unown writes
           </p>
         </div>
       </div>

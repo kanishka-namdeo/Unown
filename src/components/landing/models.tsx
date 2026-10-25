@@ -78,9 +78,9 @@ export function ModelsPane() {
 
           <FadeUp>
             <p className="mt-4 max-w-3xl text-[12.5px] leading-relaxed text-dim">
-              Any OpenAI-compatible endpoint works — the bundled bridge maps model
+              Any OpenAI-compatible endpoint works — the bridge maps model
               ids onto an allow-list, injects upstream auth, passes tool calls and
-              image content through natively, and streams SSE back untouched. It also
+              images through natively, and streams SSE back untouched. It also
               has a local lane: point{" "}
               <code className="font-mono text-ink">BRIDGE_LOCAL_URL</code> at llama.cpp,
               Ollama or LM Studio and <code className="font-mono text-ink">local-*</code>{" "}

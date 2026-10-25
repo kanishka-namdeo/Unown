@@ -67,7 +67,7 @@ const BEATS: Beat[] = [
     label: "Work",
     caption: "you chat",
     title: "The session ends by writing something down.",
-    lead: "Every terminal session is captured on the way out as a note in a fixed template, delivered to the engine. If the engine is down the note waits in an outbox and syncs when it comes back — so the learning loop never depends on the loop being up.",
+    lead: "Every terminal session is captured as a note in a fixed template and delivered to the engine. If the engine is down the note waits in an outbox and syncs on return — learning never depends on the loop being up.",
     filename: "~/.unown/notes/outbox/1757...-checkout.md",
     body: [
       "Terminal session outcome in ~/code/checkout:",
@@ -77,7 +77,7 @@ const BEATS: Beat[] = [
       "14 tool call(s) (read, grep, edit, bash), 3 min.",
     ].join("\n"),
     caption2:
-      "The literal note template — outcome first (that is the knowledge), counts and duration demoted to a labeled data-only metadata line (a phrasing the injection guard can never trip on). A subagent session gets a [subagent] tag in the same header, so the engine can tell where a note came from.",
+      "The literal note template — outcome first (that is the knowledge), counts and duration demoted to a labeled data-only line (a phrasing the injection guard can never trip on). A subagent session gets a [subagent] tag in the same header, so the engine knows where a note came from.",
   },
   {
     key: "learn",
@@ -131,13 +131,13 @@ const TWO = [
   {
     glyph: "A" as const,
     title: "The terminal agent",
-    body: "pi's TUI in your real project directory, with the memory stack already loaded. Alone: a good coding agent that forgets everything at midnight.",
+    body: "pi's TUI in your project with the memory stack loaded. Alone: a good coding agent that forgets everything at midnight.",
     lines: ["unown", "unown --plan", "unown doctor"],
   },
   {
     glyph: "B" as const,
     title: "The engine behind it",
-    body: "Sandboxed harness cycles and AutoDream consolidation, on a clock instead of in your session. It never touches your editor.",
+    body: "Sandboxed harness cycles and AutoDream on a clock, not in your session — never touching your editor.",
     lines: JOB_LINES,
   },
 ];
@@ -177,8 +177,8 @@ export function LoopSection() {
             Most agents forget. This one has to prove it remembered.
           </SectionHead>
           <p className="mt-4 text-pretty leading-relaxed text-dim">
-            Three steps, run continuously by the engine while you work — each tab
-            shows the file that step actually writes.
+            Three steps the engine runs continuously — each tab shows its
+            file.
           </p>
         </FadeUp>
 

@@ -30,19 +30,53 @@ export interface ChangelogStop {
   groups: ChangelogGroup[];
 }
 
-export const CHANGELOG_TOTAL_ENTRIES = 292;
+export const CHANGELOG_TOTAL_ENTRIES = 294;
 
 export const CHANGELOG_TOTALS: Record<ChangelogBucket, number> = {
   "Added": 129,
-  "Changed": 20,
+  "Changed": 21,
   "Deprecated": 0,
   "Removed": 3,
-  "Fixed": 110,
+  "Fixed": 111,
   "Security": 0,
   "Behavior": 30
 };
 
 export const CHANGELOG_STOPS: ChangelogStop[] = [
+  {
+    "label": "Unreleased",
+    "date": null,
+    "total": 2,
+    "counts": {
+      "Added": 0,
+      "Changed": 1,
+      "Deprecated": 0,
+      "Removed": 0,
+      "Fixed": 1,
+      "Security": 0,
+      "Behavior": 0
+    },
+    "groups": [
+      {
+        "bucket": "Changed",
+        "items": [
+          {
+            "title": "landing: the two rapid cuts pay their own scroll bill",
+            "behavior": false
+          }
+        ]
+      },
+      {
+        "bucket": "Fixed",
+        "items": [
+          {
+            "title": "ci: the macOS dream-check pin also hashes the project's created realpath",
+            "behavior": false
+          }
+        ]
+      }
+    ]
+  },
   {
     "label": "0.0.20",
     "date": "2026-10-25",

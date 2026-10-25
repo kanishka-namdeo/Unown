@@ -177,10 +177,10 @@ export function ShowcaseSection() {
             <div className="mt-6 grid gap-8 lg:grid-cols-[18rem_minmax(0,1fr)] lg:gap-12">
               <div className="min-w-0">
                 <p className="text-[12.5px] leading-relaxed text-dim">
-                  The knobs range from the todo panel&apos;s line budget and the
-                  advisor&apos;s review cadence to the tool descriptions the
-                  model reads. Native TypeScript over pi-tui with no native
-                  modules, so the same dialogs run on Windows, macOS and Linux.
+                  The knobs range from the todo panel&apos;s line budget to the
+                  tool descriptions the model reads. Native TypeScript over
+                  pi-tui with no native modules, so the same dialogs run on
+                  Windows, macOS and Linux.
                 </p>
                 <p className="mt-4 flex flex-wrap gap-x-3 gap-y-1 font-mono text-[10px]">
                   <span className="text-faint">receipts:</span>

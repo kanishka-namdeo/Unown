@@ -79,7 +79,7 @@ const GATES = [
   },
   {
     t: "Unattended discipline",
-    d: "The engine keeps its own books when nobody is watching: hourly and daily call + token ceilings on its LLM spend, an exponential backoff breaker for a failing upstream, and a watchdog that frees the engine from any stuck job — every skip is logged with its reason.",
+    d: "The engine keeps its own books: hourly and daily call + token ceilings on LLM spend, an exponential backoff breaker for a failing upstream, and a watchdog that frees any stuck job — every skip is logged with its reason.",
     tag: "budget · breaker · watchdog",
   },
 ];
@@ -238,9 +238,9 @@ export function IntegrityPane() {
           </div>
         </div>
         <p className="mt-4 text-[12px] leading-relaxed text-faint">
-          Every reason above is a literal the engine writes — the deny lines, the
-          syntax-gate augment and the ship decision are all emitted by real runs, and
-          the gate re-checks them against the source on every push.
+          Every reason above is a literal the engine writes — deny lines, the
+          syntax-gate augment and the ship decision come from real runs, and the
+          gate re-checks them against the source on every push.
         </p>
       </FadeUp>
     </div>

@@ -52,7 +52,7 @@ describe("landing quickstart (hero expanders)", () => {
     // three expanders: the delegation prompt, the source sequence, the CLI surface
     expect(expanders.length).toBe(3);
     expect(container.textContent).toContain(
-      "Full install — clone it, point it at a model, run it.",
+      "Full install — clone, point at a model, run.",
     );
     for (const line of [
       "git clone https://github.com/kanishka-namdeo/Unown.git",
@@ -89,9 +89,9 @@ describe("landing quickstart (hero expanders)", () => {
     expect(text).toContain("Windows, macOS or Linux");
     expect(text).toContain("bubblewrap (Linux)");
     expect(text).toContain("Seatbelt (macOS)");
-    expect(text).toContain("native Windows runs the in-process jail");
+    expect(text).toContain("Windows runs the in-process jail");
     expect(text).toContain("bun");
-    expect(text).toContain("≥ 1.2");
+    expect(text).toContain("≥ 1.4");
   });
 
   test("lists the terminal command surface", () => {

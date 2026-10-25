@@ -233,7 +233,7 @@ const RAW: readonly DexEntryInput[] = [
     weakness: "a confident answer with no source",
     practice: [
       "Native web access through web_search and webfetch — keyless providers work out of the box, 19 total, an auto-selecting chain that keeps trying until one answers.",
-      "A persistent web results store answers repeats from disk while fresh, revalidates by ETag (a 304 means the page never changed), serves stale answers instantly — marked — while a background refresh restores them, and keeps the last good answer — flagged stale — when every provider fails.",
+      "A persistent web results store answers repeats from disk while fresh, revalidates by ETag (304 = unchanged), serves stale answers instantly (marked) while a background refresh restores them, and keeps the last good answer — flagged stale — when every provider fails.",
       "Benchmarked with committed receipts: the dashboard's 8-second store poll dropped from a 49.9 ms disk scan to 0.003 ms answered from memory, and repeat hits answer ~200× faster through a bounded hot-entry memo.",
     ],
     habitat: "joins every session",
@@ -451,15 +451,15 @@ const RAW: readonly DexEntryInput[] = [
     category: "the window form",
     type: "session",
     entry:
-      "A living window that carries its own little page wherever it goes. It points at things with a golden claw, and the things obey. When the web asks whether it is human, it has learned to answer calmly.",
+      "A living window that carries its own little page. It points at things with a golden claw, and the things obey. When the web asks whether it is human, it has learned to answer calmly.",
     weakness: "an agent that can read about the web but never touch it",
     practice: [
       "Drives a real Chromium over CDP — navigate, a11y-tree snapshots with element refs, trusted clicks and typing (isTrusted passes), forms in one call, tabs, downloads, cookies, console and network.",
-      "Screenshots come back as image blocks the model sees directly — the vision loop grounds coordinate clicks against the picture. Auto-starts headless, keeps logins in a persistent profile, or attaches to the Chrome you are already logged into.",
-      "Stealth tier: the Runtime domain is never enabled, so the 2026 CDP detection signal stays silent — verified live in both directions — while the browser itself applies a coherent fingerprint (real engine version, matching client hints, timezone, screen) and humanizes mouse paths and typing; stealth verify re-reads the live fingerprint: 10/10 coherent, and bot.sannysoft.com shows zero FAIL rows.",
+      "Screenshots come back as image blocks the model sees — the vision loop grounds coordinate clicks against the picture. Auto-starts headless, keeps logins in a persistent profile, or attaches to the Chrome you are already logged into.",
+      "Stealth tier: the Runtime domain is never enabled, so the 2026 CDP detection signal stays silent — verified live in both directions — while the browser applies a coherent fingerprint (engine version, matching client hints, timezone, screen) and humanizes mouse paths and typing; the verifier re-reads it: 10/10 coherent, and bot.sannysoft.com shows zero FAIL rows.",
       "Captcha tier: detect then solve Turnstile, reCAPTCHA, hCaptcha, DataDome, AWS WAF and image challenges — a native checkbox click first, then 2Captcha/CapSolver, then vision OCR on the repo's own Agnes preset (verified reading a live captcha); the vendor gaps are stated, not faked.",
       "Zero new runtime dependencies: the protocol is spoken directly over the runtime's native WebSocket, so the compiled binaries stay a closed graph.",
-      "The browser SUBAGENT: delegate the whole flow (task agent=browser, sync or async) and the child holds every snapshot, screenshot and console line in its own context — you get back a compact verified report on a 10-minute budget. The 2026 consensus shape (Gemini's browser_agent, Cursor's Browser subagent): DOM trees are context poison, so the browser surface ships as a subagent.",
+      "The browser SUBAGENT: delegate the whole flow (task agent=browser, sync or async); the child holds every snapshot, screenshot and console line in its own context and returns a compact verified report on a 10-minute budget. The 2026 consensus shape (Gemini's browser_agent, Cursor's Browser subagent): DOM trees are context poison, so the browser ships as a subagent.",
     ],
     habitat: "joins every session",
     receipts: [

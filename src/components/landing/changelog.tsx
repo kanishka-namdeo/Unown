@@ -321,8 +321,8 @@ export function ChangelogRail() {
         </FadeUp>
 
         <p className="gb-term mt-4 text-[15px] leading-snug text-faint">
-          Newest on the left; cut releases recede to the right. Scroll it sideways, or
-          use ◀ ▶.
+          Newest left; cut releases recede right. Scroll or use
+          ◀ ▶.
         </p>
       </div>
     </section>

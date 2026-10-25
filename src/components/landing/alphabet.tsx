@@ -284,12 +284,11 @@ export function AlphabetSection() {
           </div>
           <p className="mt-3 max-w-3xl text-[11px] leading-relaxed text-faint">
           Every line under <span className="text-dim">in unown</span> describes something
-          that actually runs in this repository. Short quotations of game text appear for
-          commentary, with the source named on each one; no sprite, card, logo or audio
-          from any Pokémon release is bundled, linked or reproduced. An independent
-          open-source project — not affiliated with, endorsed by or sponsored by Nintendo,
-          Game Freak, Creatures Inc. or The Pokémon Company. Pokémon and Unown are
-          trademarks of their respective owners.
+          that runs here. Game-text quotations appear for commentary, sources named; no
+          Pokémon sprite, card, logo or audio is bundled or reproduced. Open-source
+          project — not affiliated with, endorsed by or sponsored by Nintendo, Game Freak,
+          Creatures Inc. or The Pokémon Company. Pokémon and Unown remain their
+          owners&apos; trademarks.
           </p>
         </div>
       </div>
