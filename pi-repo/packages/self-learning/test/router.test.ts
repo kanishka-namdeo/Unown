@@ -604,13 +604,21 @@ describe("dream-check is kind-aware (BUG 10)", () => {
                         const dispatched = await until(() => dreamCheckRow().run_count > before && dreamCheckRow().status === "idle");
                         expect(dispatched).toBe(true);
                         // The dispatched run took the project lane for the terminal notes.
-                        const projectRow = await until(() => Boolean(projectDreamRow()));
+                        // 30s window, NOT the 10s default: the dead-bridge error path
+                        // (platform init + the extraction retries + every embed call
+                        // refusing) is SLOW on the macOS CI runner — measured on the
+                        // v0.0.19 release run (40201780672, macos-latest): the row
+                        // lands past 10s and the default window failed the exact
+                        // assertion this pins. dreams-run-projects.test.ts pins the
+                        // SAME dead-bridge outcome with the same 30_000 budget — this
+                        // matches it.
+                        const projectRow = await until(() => Boolean(projectDreamRow()), 30_000);
                         expect(projectRow).toBe(true);
                         expect(noNotesCount()).toBe(noNotesBefore); // still no junk row
                 } finally {
                         r.stop();
                 }
-        }, 45_000);
+        }, 60_000);
 
         test("run:finished with NOTHING dreamable does not dispatch", async () => {
                 store.run(`DELETE FROM notes`); // no benchmark >=3, no terminal notes
