@@ -2,7 +2,7 @@
 
 How unown remembers: a four-tier memory stack injected into every session, a note pipeline that captures what actually happened, and AutoDream — the consolidation job that turns notes into memory and mints skills. Since 2026-10-22 the consolidation engine underneath AutoDream is a memory platform — [Mem0](https://github.com/mem0ai/mem0) (the `mem0ai` OSS TypeScript SDK) running in-process in the engine; the decision, the options table and the receipts live in [memory-platform-swap-assessment](memory-platform-swap-assessment.md).
 
-Related pages: [usage](usage.md) · [skills](skills.md) · [configuration](configuration.md) · [troubleshooting](troubleshooting.md) · [memory-classifier-evaluation](memory-classifier-evaluation.md) · [memory-system-review](memory-system-review.md) · [memory-platform-swap-assessment](memory-platform-swap-assessment.md)
+Related pages: [usage](usage.md) · [skills](skills.md) · [configuration](configuration.md) · [troubleshooting](troubleshooting.md) · [memory-classifier-evaluation](memory-classifier-evaluation.md) · [memory-system-review](memory-system-review.md) · [memory-competitor-research](memory-competitor-research.md) · [memory-platform-swap-assessment](memory-platform-swap-assessment.md)
 
 - [The four-tier stack](#the-four-tier-stack)
 - [What every session sees](#what-every-session-sees)
