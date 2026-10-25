@@ -64,9 +64,10 @@ The source lane clones the newest stable `vX.Y.Z` tag (the newest entry on [Rele
 | `--force` | `-Force` | install over an install recorded in the other mode (the old files are left for its own uninstall); also allows overwriting a foreign binary shim |
 | `--experimental` | `-Experimental` | allow the un-smoked windows-arm64 archive (Windows only; accepted for parity elsewhere) |
 | — | `-NoModifyPath` | do not add the binary shim directory to the user PATH |
+| `--inspect` | `-Inspect` | print the install record the installer reads from `~/.unown/install.json`, then stop — read-only, no download, no build, no PATH change, no root/Administrator refusal |
 | `--help` | `-Help` | usage |
 
-`--main`/`-Main` and `--version`/`-Version` are mutually exclusive; `--binary`/`-Binary` cannot be combined with `--source`, `--main` or `--dest`. Both installers refuse to run as root/Administrator; `UNOWN_INSTALL_ALLOW_ROOT=1` overrides that for a deliberately shared machine. A bare run against a machine whose `install.json` records the other mode is refused with the flag that keeps it (`--source` or no flag).
+`--main`/`-Main` and `--version`/`-Version` are mutually exclusive; `--binary`/`-Binary` cannot be combined with `--source`, `--main` or `--dest`. Both installers refuse to run as root/Administrator; `UNOWN_INSTALL_ALLOW_ROOT=1` overrides that for a deliberately shared machine. A bare run against a machine whose `install.json` records the other mode is refused with the flag that keeps it (`--source` or no flag). A record that is not schema 1, or names no known mode, is refused the same way — the installer will not guess which channel owns the machine, and `--force` is the only override. When a refusal looks wrong, run `--inspect` / `-Inspect` first: it prints what the installer actually read (`status: ok`, `none` or `foreign`, then each field) without touching anything.
 
 Pinned installs use a version placeholder — take the current one from [Releases](https://github.com/kanishka-namdeo/Unown/releases). Without `--source` this pins the binary; add `--source` to pin a checkout:
 
@@ -117,7 +118,7 @@ irm https://unown-nine.vercel.app/install.ps1 | iex
 | Windows shims | `%UNOWN_BIN_DIR%` else `%USERPROFILE%\.local\bin\unown.cmd` + `unown.ps1` |
 | Metadata | `~/.unown/install.json` (`UNOWN_HOME` is honored) |
 
-The shims set `UNOWN_INSTALL_ROOT` and execute the active versioned binary, which is how `unown update` and `unown uninstall` know they are looking at a binary install. `install.json` is schema 1 and records `mode`, `version`, `platform`, `root`, `bin`, `shim`, `previousVersion` (after an update) and `installedAt`. `unown update` reuses an already verified version directory and keeps the old version on disk for rollback; the Windows installer does the same for a same-version reinstall.
+The shims set `UNOWN_INSTALL_ROOT` and execute the active versioned binary, which is how `unown update` and `unown uninstall` know they are looking at a binary install. `install.json` is schema 1 and records `mode`, `version`, `platform`, `root`, `bin`, `shim`, `previousVersion` (after an update) and `installedAt`. Three readers parse that record — the runtime (`install-layout.ts`), `install.sh` (POSIX sh, where no bun is available to help) and `install.ps1` — and they accept it by one rule: schema 1, with a mode of `checkout` or `binary` (`source` is the pre-release spelling of `checkout` and all three fold it). `test/install-meta-readers.test.ts` drives the two shipped installers against records the runtime wrote, so a reader that drifts fails a test instead of breaking an update. `unown update` reuses an already verified version directory and keeps the old version on disk for rollback; the Windows installer does the same for a same-version reinstall.
 
 ### Platform support
 

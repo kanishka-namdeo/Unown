@@ -30,6 +30,8 @@ You get the real pi TUI in your actual project directory: file tools (read / edi
 
 On first run, unown seeds `~/.unown/agent/` (models.json pointing at the bundled llm-bridge, settings.json, a sessions dir, and four starter [skills](skills.md)) and prints a banner — and on an interactive TTY it offers the guided provider wizard on the spot ("connect a model provider now?" → the `unown setup` presets with live verification; declining keeps the bundled bridge). Connect a different provider any time with `unown setup` — see [providers](providers.md).
 
+The first interactive session after an install also reads `~/.unown/install.json` and prints one card naming the channel that install took: standalone binary or source checkout, the version, where the binary (or repo) and the PATH shim live, and when it was installed — with `from v…` after an update, and a closing line when this process is still running an older build than the record describes. It shows once per recorded version, so an update gets one line of acknowledgement and nothing repeats, and it stays quiet when the machine has no record (a bare run straight from a clone). `/status` carries the one-line form of the same fact (`install binary v0.0.16 (linux-x64)`), omitted when there is no record.
+
 **2. One-shot print mode — `unown -p "prompt"`**
 
 ```bash
@@ -93,7 +95,7 @@ suppresses the whole header), or export `NO_COLOR`. See
 
 ## Terminal status & the turn meter (2026-10-25)
 
-Two always-on presence surfaces ship with the convergence round:
+Three always-on presence surfaces ship with the convergence round:
 
 - **OSC 7501 program status** — the terminal-status protocol Claude Code
   (v2.1.295), Crush (v0.98.0) and Goose (v1.56.0) all shipped in October 2026
@@ -113,6 +115,15 @@ Two always-on presence surfaces ship with the convergence round:
   segment — a price is never invented). This is the per-turn visibility
   Goose (v1.42+), Gemini CLI (`/stats`) and Claude Code (the status line)
   all normalize; `UNOWN_TURN_METER=0` turns it off.
+- **The model pill** — while the agent dir has no provider configured, the
+  footer carries `no model connected · /setup`. The first-run gate asks the
+  connect-a-provider question once and then deliberately never re-asks it; the
+  pill is what replaced re-asking, because a declined answer used to surface
+  only as a 401. It reads the agent dir from disk (no probe on the hot path),
+  and it never claims an absent model while the bundled bridge is answering —
+  that state reads `model: the bundled bridge · /setup for your own provider`,
+  and a `models.json` that does not parse reads as unreadable rather than
+  unconfigured. Once a provider exists the chip is gone.
 
 ## Plan mode
 
