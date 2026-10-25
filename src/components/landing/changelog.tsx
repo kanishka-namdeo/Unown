@@ -308,6 +308,14 @@ export function ChangelogRail() {
                     >
                       GitHub Releases
                     </a>
+                    {/* The longhand lane: each meaningful release gets a post
+                        on the blog, so the record's exit points there too. */}
+                    <a
+                      href="/blog"
+                      className="text-gold underline underline-offset-2 hover:text-gold-soft"
+                    >
+                      Blog
+                    </a>
                   </p>
                 </div>
               </li>
@@ -316,7 +324,7 @@ export function ChangelogRail() {
         </FadeUp>
 
         <p className="gb-term mt-4 text-[15px] leading-snug text-faint">
-          Newest on the left; the trail of cut releases recedes to the right. Scroll it sideways, or
+          Newest on the left; cut releases recede to the right. Scroll it sideways, or
           use ◀ ▶.
         </p>
       </div>

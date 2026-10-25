@@ -7,3 +7,4 @@
 #
 # Current exemptions: none — every changed line is exercisable.
 src/app/layout.tsx   next/font/google exports are compiler-generated — importing the module under bun test is a SyntaxError (pinned by src/app/__tests__/layout.test.tsx as a text drift-gate + asset-existence check instead)
+src/app/blog/[slug]/opengraph-image.tsx   ImageResponse renders through Satori/resvg wasm at request/build time — cannot execute under the bun test happy-dom lane; pinned end to end by e2e/blog.spec.ts (route 200, PNG magic bytes, og:image meta) and verify-deploy.mjs

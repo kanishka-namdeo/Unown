@@ -488,6 +488,23 @@ jobs:
         # a contract: a changelog entry that never reached the rail fails here,
         # and so does a rail that invented a date.
         run: bun scripts/landing_changelog.mjs --check
+      - name: Install dependencies for the blog gate
+        # landing_blog.mjs is the one landing generator with a dependency
+        # (marked, dev-only) — everything else in this job runs on node
+        # builtins straight off the checkout.
+        run: bun install --frozen-lockfile
+      - name: Blog extraction
+        # The generator's own regressions: the frontmatter subset grammar
+        # (unknown/duplicate keys fail, not silently drop), the validation
+        # bands (description 70-160 caught two real posts in the round that
+        # shipped it), the dated-slug rule, draft skipping, reading-time
+        # derivation, feed escaping.
+        run: node --test scripts/landing_blog.test.mjs
+      - name: Blog data matches content/blog
+        # The same contract the changelog rail holds, for the blog: a post
+        # that changed without the data being regenerated is a red build,
+        # and so is a media path that stopped existing.
+        run: node scripts/landing_blog.mjs --check
       - name: Benchmark receipt extraction
         # The canonical-run rule (newest `rerun-*` wins), the percentage
         # validation, and the null-for-missing-receipt path.

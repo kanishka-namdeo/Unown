@@ -481,6 +481,10 @@ export function BetaBadge({ className }: { className?: string }) {
  * app behind a login-free but data-less shell. There is no separate
  * "Features" link: on 2026-10-23 the capture carousel merged into the
  * capability dex, so the catalog and its footage are one anchor.
+ *
+ * "Blog" (2026-10-25) is the one non-anchor entry — a real route, rendered
+ * through next/link for soft navigation, last in the bar where a record
+ * belongs. The landing-copy suite pins the full label list.
  */
 const NAV_LINKS = [
   { href: "#loop", label: "How it learns" },
@@ -490,7 +494,46 @@ const NAV_LINKS = [
   { href: "#alphabet", label: "Alphabet" },
   { href: "#faq", label: "FAQ" },
   { href: "#changelog", label: "Changelog" },
-];
+  { href: "/blog", label: "Blog" },
+] as const;
+
+/** A nav entry: in-page anchors are plain `<a>` (same-document jumps), real
+ * routes go through next/link — one component so both bars stay in sync.
+ * Both carry the gutter `▶` hover cursor; for the route entry it sits in the
+ * same gap the anchors put it in. */
+function NavLink({
+  href,
+  label,
+  className,
+  onClick,
+  cursorClassName,
+}: {
+  href: string;
+  label: string;
+  className: string;
+  onClick?: () => void;
+  /** Where the entry renders its hover cursor — the desktop bar positions it
+   * in the link gap, the menu list in a fixed leading slot. */
+  cursorClassName?: string;
+}) {
+  const cursor = cursorClassName ? (
+    <PixelCursor className={cursorClassName} />
+  ) : null;
+  if (href.startsWith("/")) {
+    return (
+      <Link href={href} onClick={onClick} className={className}>
+        {cursor}
+        {label}
+      </Link>
+    );
+  }
+  return (
+    <a href={href} onClick={onClick} className={className}>
+      {cursor}
+      {label}
+    </a>
+  );
+}
 
 /**
  * A console menu bar: bright rule underneath, pixel wordmark, and a `▶`
@@ -569,14 +612,13 @@ export function Nav() {
           className="ml-auto hidden items-center gap-4 min-[1100px]:gap-5 lg:flex"
         >
           {NAV_LINKS.map((l) => (
-            <a
+            <NavLink
               key={l.href}
               href={l.href}
+              label={l.label}
               className="group relative whitespace-nowrap text-[12.5px] text-dim transition-colors hover:text-gold focus-visible:text-gold focus:outline-none min-[1100px]:text-[13px]"
-            >
-              <PixelCursor className="absolute -left-3.5 top-1/2 h-3 w-[7px] -translate-y-1/2 text-gold opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100" />
-              {l.label}
-            </a>
+              cursorClassName="absolute -left-3.5 top-1/2 h-3 w-[7px] -translate-y-1/2 text-gold opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100"
+            />
           ))}
         </nav>
 
@@ -646,15 +688,14 @@ export function Nav() {
 
           <nav aria-label="Main menu" className="mt-3 border-t border-line pt-1">
             {NAV_LINKS.map((l) => (
-              <a
+              <NavLink
                 key={l.href}
                 href={l.href}
+                label={l.label}
                 onClick={close}
                 className="group flex items-center border-b border-line py-3 text-[13px] text-dim transition-colors last:border-b-0 hover:text-gold focus-visible:text-gold focus:outline-none"
-              >
-                <PixelCursor className="mr-3 h-3 w-[7px] shrink-0 text-gold opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100" />
-                {l.label}
-              </a>
+                cursorClassName="mr-3 h-3 w-[7px] shrink-0 text-gold opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100"
+              />
             ))}
           </nav>
         </div>
@@ -768,7 +809,15 @@ export function ThemeToggle() {
 /* footer                                                              */
 /* ------------------------------------------------------------------ */
 
-export function Footer() {
+/**
+ * The shared footer. `anchorPrefix` exists for the blog routes (2026-10-25):
+ * rendered there with "/" so the in-page anchors (#showcase, #alphabet,
+ * #quickstart, #changelog) resolve to the landing page instead of dying as
+ * /blog#showcase; on the landing page itself it stays "" and every href is
+ * byte-identical to what it always was. The Blog link is a real route and
+ * takes no prefix — it is absolute everywhere it renders.
+ */
+export function Footer({ anchorPrefix = "" }: { anchorPrefix?: string }) {
   const { wake } = useAlphabetWake();
   useKonami(wake);
 
@@ -802,21 +851,26 @@ export function Footer() {
             <a href={DOCS_URL} target="_blank" rel="noreferrer noopener" className="text-dim transition-colors hover:text-gold">
               Documentation
             </a>
-            <a href="#showcase" className="text-dim transition-colors hover:text-gold">
+            <a href={`${anchorPrefix}#showcase`} className="text-dim transition-colors hover:text-gold">
               Dashboard
             </a>
             <a href={BENCH_URL} target="_blank" rel="noreferrer noopener" className="text-dim transition-colors hover:text-gold">
               Benchmarks
             </a>
-            <a href="#alphabet" className="text-dim transition-colors hover:text-gold">
+            <a href={`${anchorPrefix}#alphabet`} className="text-dim transition-colors hover:text-gold">
               The alphabet
             </a>
-            <a href="#quickstart" className="text-dim transition-colors hover:text-gold">
+            <a href={`${anchorPrefix}#quickstart`} className="text-dim transition-colors hover:text-gold">
               Install
             </a>
-            <a href="#changelog" className="text-dim transition-colors hover:text-gold">
+            <a href={`${anchorPrefix}#changelog`} className="text-dim transition-colors hover:text-gold">
               Changelog
             </a>
+            {/* A real route, never prefixed — the eighth cell fills the 4x2
+                grid the seven links left one short of. */}
+            <Link href="/blog" className="text-dim transition-colors hover:text-gold">
+              Blog
+            </Link>
           </nav>
         </div>
 

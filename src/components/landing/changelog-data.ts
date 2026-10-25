@@ -30,10 +30,10 @@ export interface ChangelogStop {
   groups: ChangelogGroup[];
 }
 
-export const CHANGELOG_TOTAL_ENTRIES = 279;
+export const CHANGELOG_TOTAL_ENTRIES = 280;
 
 export const CHANGELOG_TOTALS: Record<ChangelogBucket, number> = {
-  "Added": 124,
+  "Added": 125,
   "Changed": 18,
   "Deprecated": 0,
   "Removed": 3,
@@ -46,9 +46,9 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
   {
     "label": "Unreleased",
     "date": null,
-    "total": 12,
+    "total": 13,
     "counts": {
-      "Added": 12,
+      "Added": 13,
       "Changed": 0,
       "Deprecated": 0,
       "Removed": 0,
@@ -60,6 +60,10 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
       {
         "bucket": "Added",
         "items": [
+          {
+            "title": "landing: the blog — the longhand record of each feature and release",
+            "behavior": false
+          },
           {
             "title": "landing: the beta mark — the page says plainly what stage the product is in",
             "behavior": false

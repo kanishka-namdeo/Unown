@@ -25,6 +25,7 @@ import { expect, test } from "@playwright/test";
 import { SITE } from "@/lib/site";
 import { FAQ } from "@/components/landing/faq-data";
 import { DEX } from "@/components/landing/dex-data";
+import { BLOG_TOTAL_POSTS } from "@/components/blog/blog-data";
 
 const ORIGIN = SITE.url;
 
@@ -94,9 +95,14 @@ test("robots.txt and sitemap.xml are served and cross-reference", async ({ reque
   expect(sitemap.status()).toBe(200);
   const sitemapText = await sitemap.text();
   expect(sitemapText).toContain(`<loc>${ORIGIN}</loc>`);
+  expect(sitemapText).toContain(`<loc>${ORIGIN}/blog</loc>`);
   expect(sitemapText).toContain("<lastmod>");
-  // One URL, the marketing page — the sitemap must not invent routes.
-  expect(sitemapText.match(/<loc>/g)?.length).toBe(1);
+  // The URL set is exactly the pages that exist: the landing page, the blog
+  // index, one per published post (the count derives from the generated
+  // data the sitemap itself reads — the sitemap must not invent routes,
+  // and it must not miss a shipped post either). Tag pages are a
+  // deliberate non-feature while the post count is single-digit.
+  expect(sitemapText.match(/<loc>/g)?.length).toBe(2 + BLOG_TOTAL_POSTS);
 });
 
 test("the JSON-LD graph parses and carries the required properties", async ({ page }) => {

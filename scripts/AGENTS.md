@@ -33,13 +33,14 @@ The cross-platform lifecycle scripts (install/start/stop/link), the release buil
 - `check_coverage.mjs` (`test:coverage`) — changed-line coverage gate: >= 80% of touched `src/` lines executed; a file with no coverage row = 0%, never 100%; exemptions require same-line justification in `coverage-exempt.txt`.
 - `check_instruction_chars.mjs` — invisible-Unicode lint over every file the agent loads as behavior (AGENTS.md / SKILL.md / CLAUDE.md at any depth, `.unown/**`, hooks configs): seven rules (bidi controls/isolates, zero-width, soft-hyphen, invisible operators, unicode-tag emoji backdoor, variation-selector runs). Never echoes raw invisible chars; allowlist in `instruction-chars-allowlist.txt` is fail-closed (unknown rule = config error). Every AGENTS.md edit must pass it.
 - `landing_changelog.mjs` / `landing_benchmarks.mjs` / `landing_claims.mjs` — regenerate the three landing data files (`changelog-data.ts`, `benchmarks-data.ts`, `engine-data.ts`); `check:changelog`/`check:benchmarks`/`check:claims` gate drift. Benchmarks canonical run = per model, newest `rerun-*` receipt wins, else base; missing figure = `null`, never a guess. Claims gate is one-directional (page implies source).
+- `landing_blog.mjs` (`check:blog`) — the blog generator: `content/blog/*.md` -> generated `src/components/blog/blog-data.ts` + the static RSS `public/feed.xml`. The one landing generator with a dependency (`marked`, dev-only); everything else is node builtins. Validates the frontmatter subset grammar loudly (unknown keys, band violations, non-dated slugs, dead media paths all fail the run), derives reading time, sorts date-desc/slug-asc, and writes the feed with entity escaping. Pinned by `scripts/landing_blog.test.mjs`.
 - `gba_palette_check.mjs` — the landing palette gate (GBA 5-bit grid, dual-declared identical light scheme, AA contrast, no hand-picked hexes in components).
 - `check_theme.mjs` — TUI theme schema (51 color tokens, every var resolves).
 - `mermaid_check.mjs` — README mermaid blocks parse under the vendored sha-pinned mermaid 11.16.1 and dual-render byte-identical; `check_overflow.mjs` — brand HTML overflow gate.
 - `landing_og_shots.mjs` — regenerates the tracked `public/landing/landing-{hero,full,mobile}.png` against a production build (asserts `--color-canvas === #102039` first).
 - `landing_audit.mjs` (`audit:landing`) — scroll/text density; `--budget` enforces <= 13 viewports / <= 3,200 words / <= 3vh per band.
 - `landing_shots.mjs` / `contrast_audit.mjs` / `theme_toggle_check.mjs` — visual verification against a production build (both schemes, reduced motion, mobile; WCAG AA on every visible text node; the real toggle).
-- `verify-deploy.mjs` — the live-deployment gate over `https://unown-nine.vercel.app` (routes, SEO surface, signature content); runs after any push to `main`.
+- `verify-deploy.mjs` — the live-deployment gate over `https://unown-nine.vercel.app` (routes incl. `/blog` + `/feed.xml`, SEO surface, signature content, the blog + feed); runs after any push to `main`.
 - `agnes_review.mjs` (`review:vlm`) — VLM design critique through the Agnes lane; a reviewer's aid, not a gate.
 - `websearch-live.mjs` / `webcache-bench.mjs` — live provider verification and web-cache perf receipts (outputs under `benchmarks/`).
 
@@ -56,7 +57,7 @@ The cross-platform lifecycle scripts (install/start/stop/link), the release buil
 ## Verification
 
 - `node --test scripts/build-artifacts.test.mjs scripts/release-manifest.test.mjs` (the release plan gates); `node --test scripts/check_instruction_chars.test.mjs` (the scanner itself).
-- `bun run check:docs` / `check:changelog` / `check:benchmarks` / `check:claims` — all green after any docs/landing/benchmarks change.
+- `bun run check:docs` / `check:changelog` / `check:blog` / `check:benchmarks` / `check:claims` — all green after any docs/landing/benchmarks/blog change.
 - `bash scripts/bwrap_smoke.sh` + `bun scripts/verify_sandbox.mjs` (Linux sandbox legs) before committing sandbox changes.
 - CI runs: lint-shell (`bash -n scripts/*.sh public/*.sh`), the docs/palette/theme/instruction-chars/coverage jobs, and the 3-OS build-test matrix through the real installer.
 

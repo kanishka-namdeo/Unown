@@ -50,6 +50,11 @@ const routes = [
   ["/", 200],
   ["/robots.txt", 200],
   ["/sitemap.xml", 200],
+  // The blog round (2026-10-25): the marketing site grew its second surface.
+  // /blog and the generated static feed are probed exactly like the landing
+  // page — a deploy that lost them half-serves the site this repo claims.
+  ["/blog", 200],
+  ["/feed.xml", 200],
 ];
 const bodies = {};
 for (const [path, want] of routes) {
@@ -143,6 +148,35 @@ note(html.includes("not affiliated with, endorsed by or sponsored by"), "non-aff
 note(html.includes("pass@1") || html.includes("HumanEval"), "benchmark figures");
 note(html.includes("hook_log"), "hook decision log");
 note(/Neuro|<svg[^>]+>/.test(html) || html.includes("<svg"), "inline svg present");
+
+/* ---------------------------------------------------------------- */
+/* blog: the second surface, served or not                         */
+/* ---------------------------------------------------------------- */
+
+section("blog");
+const blogHtml = bodies["/blog"] ?? "";
+if (!blogHtml) {
+  note(false, "/blog returned HTML", "no body — the route checks above failed first");
+} else {
+  note(/<h1[^>]*>\s*Blog\s*<\/h1>/.test(blogHtml), "blog index carries its h1");
+  note(blogHtml.includes('href="/feed.xml"'), "the index links the RSS feed");
+  note(
+    /<link rel="alternate" type="application\/rss\+xml"[^>]*feed\.xml/.test(blogHtml),
+    "RSS autodiscovery link in the head",
+  );
+  // The landing page's access points still work after the blog round: the
+  // nav's one non-anchor entry and the footer's eighth link.
+  note(/href="\/blog"[^>]*>\s*Blog\s*</.test(blogHtml) || blogHtml.includes('href="/blog"'), "a /blog link renders");
+}
+const feed = bodies["/feed.xml"] ?? "";
+if (feed) {
+  note(feed.includes('<rss version="2.0"'), "feed.xml is RSS 2.0");
+  note((feed.match(/<item>/g) || []).length >= 1, "feed carries items", `${(feed.match(/<item>/g) || []).length} item(s)`);
+  note(feed.includes("unown-nine.vercel.app/blog/"), "feed links are absolute against SITE");
+}
+const sitemapAll = bodies["/sitemap.xml"] ?? "";
+note(/<loc>https:\/\/unown-nine\.vercel\.app\/blog<\/loc>/.test(sitemapAll), "sitemap.xml carries /blog");
+note((sitemapAll.match(/<loc>https:\/\/unown-nine\.vercel\.app\/blog\//g) || []).length >= 1, "sitemap.xml carries the post URLs");
 
 /* ---------------------------------------------------------------- */
 /* no-JS: the page must not be a blank slate without scripting      */

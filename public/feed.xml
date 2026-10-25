@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+  <channel>
+    <title>Unown blog</title>
+    <link>https://unown-nine.vercel.app/blog</link>
+    <atom:link href="https://unown-nine.vercel.app/feed.xml" rel="self" type="application/rss+xml"/>
+    <description>How each feature and release works, what it does, and the receipts behind it — the longhand record of the self-improving terminal coding agent Unown.</description>
+    <language>en</language>
+    <item>
+      <title>The memory that proves itself before it ships</title>
+      <link>https://unown-nine.vercel.app/blog/2026-10-25-memory-that-proves-itself</link>
+      <guid isPermaLink="true">https://unown-nine.vercel.app/blog/2026-10-25-memory-that-proves-itself</guid>
+      <pubDate>Sun, 25 Oct 2026 00:00:00 GMT</pubDate>
+      <description>How Unown turns session notes into four-tier project memory, why the files stay plain markdown, and what the engine verifies before keeping any of it.</description>
+      <category>memory</category>
+      <category>engine</category>
+    </item>
+    <item>
+      <title>Unown is in beta — here is what that means</title>
+      <link>https://unown-nine.vercel.app/blog/2026-10-25-unown-is-in-beta</link>
+      <guid isPermaLink="true">https://unown-nine.vercel.app/blog/2026-10-25-unown-is-in-beta</guid>
+      <pubDate>Sun, 25 Oct 2026 00:00:00 GMT</pubDate>
+      <description>The self-improving terminal coding agent is in beta: what works, what moves, and where to report what breaks while the 0.0.x line grows up.</description>
+      <category>meta</category>
+      <category>beta</category>
+    </item>
+    <item>
+      <title>v0.0.15 — every capability filmed, the atlas passes review</title>
+      <link>https://unown-nine.vercel.app/blog/2026-10-25-v0-0-15-every-capability-filmed</link>
+      <guid isPermaLink="true">https://unown-nine.vercel.app/blog/2026-10-25-v0-0-15-every-capability-filmed</guid>
+      <pubDate>Sun, 25 Oct 2026 00:00:00 GMT</pubDate>
+      <description>The media-completion and sprite-craft round: the dex ships 24 movies on 22 entries with zero pending plates, and the creature atlas passes its review lane.</description>
+      <category>release</category>
+    </item>
+  </channel>
+</rss>

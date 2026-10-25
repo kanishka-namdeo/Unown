@@ -1,0 +1,188 @@
+/* blog.css — the blog's own layer, imported by src/app/blog/layout.tsx.
+ *
+ * The landing page's grammar, applied to longhand prose. Everything here
+ * follows the landing contracts: square corners (never `border-radius` on
+ * furniture), palette tokens through var(--color-*) so the data-theme
+ * cascade repaints both schemes with zero `dark:` variants, fonts by role
+ * (Geist body, Pixelify headings, VT323 quotes, Press Start 2P chrome at
+ * 8-10px only), and steps()/no motion — the blog ships zero animation by
+ * design (a no-JS visitor gets the complete article).
+ *
+ * .prose-unown styles the RENDERED MARKDOWN the generator emits (marked
+ * output is plain elements; there is no MDX component mapping to lean on).
+ * Selectors are element-scoped under the wrapper so nothing leaks into the
+ * landing bands. */
+
+/* ------------------------------------------------------------------ */
+/* prose                                                               */
+/* ------------------------------------------------------------------ */
+
+.prose-unown {
+  max-width: 68ch;
+  color: var(--color-dim);
+  font-size: 16px;
+  line-height: 1.75;
+}
+
+.prose-unown > * + * {
+  margin-top: 1.1rem;
+}
+
+.prose-unown h2 {
+  font-family: var(--font-pixelify), var(--font-geist-sans), sans-serif;
+  color: var(--color-ink);
+  font-size: 1.6rem;
+  font-weight: 600;
+  line-height: 1.2;
+  margin-top: 2.6rem;
+  letter-spacing: -0.01em;
+}
+
+.prose-unown h3 {
+  font-family: var(--font-pixelify), var(--font-geist-sans), sans-serif;
+  color: var(--color-ink);
+  font-size: 1.2rem;
+  font-weight: 600;
+  line-height: 1.25;
+  margin-top: 2rem;
+}
+
+.prose-unown h2 + *,
+.prose-unown h3 + * {
+  margin-top: 0.8rem;
+}
+
+.prose-unown a {
+  color: var(--color-gold);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.prose-unown a:hover {
+  color: var(--color-gold-soft);
+}
+
+.prose-unown strong {
+  color: var(--color-ink);
+  font-weight: 600;
+}
+
+.prose-unown code {
+  font-family: var(--font-geist-mono), monospace;
+  font-size: 0.875em;
+  color: var(--color-ink);
+  background: var(--color-panel-2);
+  border: 1px solid var(--color-line);
+  padding: 0.1em 0.35em;
+  /* square like every other inset on the site */
+  word-break: break-word;
+}
+
+.prose-unown pre {
+  background: var(--gb-hp-well, var(--color-panel));
+  border: 3px solid var(--color-line);
+  padding: 1rem 1.15rem;
+  overflow-x: auto;
+  line-height: 1.6;
+}
+
+.prose-unown pre code {
+  background: none;
+  border: none;
+  padding: 0;
+  font-size: 12.5px;
+  color: var(--color-dim);
+}
+
+.prose-unown blockquote {
+  border-left: 3px solid var(--color-gold);
+  padding: 0.15rem 0 0.15rem 1.1rem;
+  color: var(--color-faint);
+  /* a quoted line is game text: VT323, the landing `.quote` rule */
+  font-family: var(--font-vt), var(--font-geist-mono), monospace;
+  font-size: 19px;
+  line-height: 1.5;
+}
+
+.prose-unown ul,
+.prose-unown ol {
+  padding-left: 1.4rem;
+}
+
+.prose-unown ul {
+  list-style: square;
+}
+
+.prose-unown ol {
+  list-style: decimal;
+}
+
+.prose-unown li {
+  margin-top: 0.45rem;
+}
+
+.prose-unown li::marker {
+  color: var(--color-gold);
+}
+
+.prose-unown img {
+  display: block;
+  width: 100%;
+  height: auto;
+  border: 3px solid var(--color-line);
+  background: var(--gb-hp-well, var(--color-panel));
+  margin-top: 1.6rem;
+}
+
+.prose-unown video {
+  display: block;
+  width: 100%;
+  border: 3px solid var(--color-line);
+  background: var(--gb-hp-well, var(--color-panel));
+  margin-top: 1.6rem;
+}
+
+.prose-unown table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9em;
+}
+
+.prose-unown th {
+  text-align: left;
+  font-family: var(--font-geist-mono), monospace;
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--color-faint);
+  border-bottom: 3px solid var(--color-line);
+  padding: 0.5rem 0.7rem 0.4rem;
+}
+
+.prose-unown td {
+  border-bottom: 1px solid var(--color-line);
+  padding: 0.55rem 0.7rem;
+  vertical-align: top;
+}
+
+.prose-unown hr {
+  border: none;
+  border-top: 1px solid var(--color-line);
+  margin: 2.4rem 0;
+}
+
+/* ------------------------------------------------------------------ */
+/* index list                                                          */
+/* ------------------------------------------------------------------ */
+
+/* The post list entry: a date rule in mono, the title in the display face,
+ * the description as body. Borders, not cards — the console dialogue look
+ * without boxing every entry into identical tiles. */
+.blog-entry {
+  border-bottom: 1px solid var(--color-line);
+  padding: 1.6rem 0;
+}
+
+.blog-entry:first-of-type {
+  border-top: 1px solid var(--color-line);
+}

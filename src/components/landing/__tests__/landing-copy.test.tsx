@@ -365,9 +365,14 @@ describe("landing shell", () => {
     // CTA are the other <a>s in the header.
     const wordmark = container.querySelector('a[href="/"]');
     expect(wordmark?.textContent).toContain("Beta");
+    // The Blog access point: the one non-anchor nav entry, a real route.
+    const blogLink = container.querySelector('nav[aria-label="Main"] a[href="/blog"]');
+    expect(blogLink?.textContent?.trim()).toBe("Blog");
     cleanup();
     render(<Footer />);
     expect(screen.getByText("Currently in beta.")).toBeTruthy();
+    // The footer's eighth link fills the grid and routes absolutely.
+    expect(screen.getByRole("link", { name: /^Blog$/i }).getAttribute("href")).toBe("/blog");
   });
 
   // Below lg the seven anchors live behind the section menu. These pin the
@@ -391,7 +396,10 @@ describe("landing shell", () => {
     expect(button.getAttribute("aria-expanded")).toBe("true");
     expect(panel!.hasAttribute("hidden")).toBe(false);
     const menu = screen.getByRole("navigation", { name: "Main menu" });
-    for (const label of ["How it learns", "Capability dex", "Dashboard", "Proof", "Alphabet", "FAQ", "Changelog"]) {
+    // The eight entries the bar carries: the seven in-page anchors plus
+    // Blog — the one real route, pinned here with the rest since the menu
+    // is the phone visitor's only navigation.
+    for (const label of ["How it learns", "Capability dex", "Dashboard", "Proof", "Alphabet", "FAQ", "Changelog", "Blog"]) {
       const links = menu.querySelectorAll("a");
       expect(
         [...links].some((a) => a.textContent?.trim() === label),
