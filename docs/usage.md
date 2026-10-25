@@ -91,6 +91,29 @@ To turn it off: `UNOWN_NO_SPLASH=1`, or set `quietStartup` (which already
 suppresses the whole header), or export `NO_COLOR`. See
 [configuration](configuration.md#terminal-agent-unown-cli).
 
+## Terminal status & the turn meter (2026-10-25)
+
+Two always-on presence surfaces ship with the convergence round:
+
+- **OSC 7501 program status** — the terminal-status protocol Claude Code
+  (v2.1.295), Crush (v0.98.0) and Goose (v1.56.0) all shipped in October 2026
+  (spec: mitchellh.com/writing/program-status-osc7501). The session reports
+  itself to the terminal: `idle` on boot, `working` (with the prompt preview)
+  while a turn runs, `blocked kind=question` while the ask_user_question
+  dialog waits, `idle` (with the answer preview) at turn end, `clear` on
+  shutdown — so terminals like Rex and Ghostty can show what the agent is
+  doing in the tab title / status area instead of guessing from a spinner.
+  Emission is TTY-only and opt-out: `PROGRAM_STATUS=0` (the spec-wide name) or
+  `UNOWN_OSC7501=0`.
+- **The turn meter** — after every turn the footer carries the live chip
+  `turn 3.4s · ctx 62% · in 45.2k out 1.1k (cached 42k) · ~$0.0084`: the
+  turn's duration, the context utilization, the session token rollup (the
+  `/usage` attribution) and the price-model estimate
+  (`UNOWN_PRICE_<MODEL>_IN/_OUT` overrides; unknown models drop the cost
+  segment — a price is never invented). This is the per-turn visibility
+  Goose (v1.42+), Gemini CLI (`/stats`) and Claude Code (the status line)
+  all normalize; `UNOWN_TURN_METER=0` turns it off.
+
 ## Plan mode
 
 Plan mode is a read-only exploration phase with an explicit approval gate before anything changes. Start it three ways: `unown --plan` (print or TUI), `/plan` in the TUI, or Ctrl+Alt+P.
@@ -181,7 +204,7 @@ unown completions powershell >> $PROFILE                                  # Powe
 
 ## Session tools
 
-Every unown session registers **sixteen** unown tools on top of pi's built-ins — `read`/`bash`/`edit`/`write` plus the **default-active search tools** `grep`/`find`/`ls` (enabled when their binaries answer on PATH; `ls` is pure JS and always on; a configured settings `defaultTools` or an explicit `--tools` list still wins; `powershell` on Windows); `todo` and `ask_user_question` ride the [addon framework](addons.md) and are user-configurable:
+Every unown session registers **seventeen** unown tools on top of pi's built-ins — `read`/`bash`/`edit`/`write` plus the **default-active search tools** `grep`/`find`/`ls` (enabled when their binaries answer on PATH; `ls` is pure JS and always on; a configured settings `defaultTools` or an explicit `--tools` list still wins; `powershell` on Windows); `todo` and `ask_user_question` ride the [addon framework](addons.md) and are user-configurable:
 
 | Tool | What the agent does with it |
 |---|---|
@@ -197,6 +220,7 @@ Every unown session registers **sixteen** unown tools on top of pi's built-ins �
 | `lsp` | Language-server code intelligence: `diagnostics` (per file or `all`), `hover`, `definition`, `references`, `symbols`, `status`. Auto-detects servers on PATH (typescript-language-server, pyright/pylsp, gopls, rust-analyzer, clangd, bash-language-server, ruby-lsp, intelephense); configure or override with `.unown/lsp.json` / `~/.unown/agent/lsp.json`. After every `write`/`edit`, fresh diagnostics for that file are appended to the tool result — type errors get fed back to the agent instead of compounding (cold start never blocks; `UNOWN_LSP=0` disables). Also `/lsp`. |
 | `get_context_remaining` | Reports the live context budget — `{tokensUsed, maxTokens, remainingTokens, remainingPercent}` from pi's `getContextUsage()` seam, falling back to a chars/4 estimate of the message history; `maxTokens` resolves from `PI_MAX_TOKENS` → the session's context window → a 200,000 default. |
 | `view_image` | Loads an image file (PNG / JPEG / GIF / WebP, ≤ 4 MB, magic-byte validated) from the project dir or the system tmp dir as a vision-format image block — jail-checked like `write`/`edit`; missing/non-image/too-big/jail-escape are typed errors. |
+| `monitor` | Watches a long-running command for a **bounded window** (Claude Code Monitor tool parity): `command` (e.g. `tail -f app.log`, `npm run dev`), `duration_ms` (default 30000, cap 120000), `max_lines` (default 200, cap 2000), `stop_pattern` (a regex that ends the watch the moment it matches — the `listening on\|ready in` case). Captures each stdout/stderr line with a timestamp and returns them as one bounded result (tail-capped at 200 lines); ends on window expiry, the line cap, process exit, the stop pattern or session abort — call it again to keep following. The bash deny-list applies to watched commands exactly as to one-shot bash, and plan mode allows only the read-only allowlist. |
 | `routine_list` | List this project's scheduled [routines](#routines-unown-routines) — id, schedule, next run, last outcome. Registered in every session. |
 | `routine_create` \| `routine_update` \| `routine_run` \| `routine_delete` | Create / edit / trigger-now / delete [routines](#routines-unown-routines) (any schedule kind, per-routine timezone + misfire). Hidden inside routine runs and subagents — no recursion. |
 | `automation_create` | Create a scheduled automation (cron in the local timezone, or a one-shot `--delay-minutes`) — default mode `read-only`. Registered only in interactive sessions: hidden inside subagents and inside automation runs themselves, so a scheduled run cannot schedule more runs. |
@@ -365,7 +389,7 @@ Limits (zcode's, transliterated): 20 routines total, 2 concurrent runs (manual r
 
 ## Slash commands
 
-unown adds thirty-two commands of its own — plus the split-view display mode's eleven (`/split*` and `/files`), listed last:
+unown adds thirty-three commands of its own — plus the split-view display mode's eleven (`/split*` and `/files`), listed last:
 
 | Command | What it does |
 |---|---|
@@ -398,10 +422,11 @@ unown adds thirty-two commands of its own — plus the split-view display mode's
 | `/hooks` | Show user-configurable hooks status — per-event handler counts, config sources, trust state; `/hooks trust` approves a project `.unown/hooks.json`. See [User-configurable hooks](#user-configurable-hooks) |
 | `/goal [objective]` | Set/show/pause/resume/clear a durable, evidence-verified goal |
 | `/commit [message]`| Stage and commit all project-dir changes (`git add -A .` + commit — never pushes); without a message one is generated from the session's work. See [Git-native commits](#git-native-commits-commit) |
-| `/review [base]` | Parallel-subagent code review: P0–P3 findings + SHIP verdict. Also accepts a PR URL/number or a commit range; `--comment` posts the verdict as a PR comment (needs `gh`) |
+| `/review [base]` | Parallel-subagent code review: P0–P3 findings + SHIP verdict. Also accepts a PR URL/number or a commit range; `--comment` posts the verdict as a PR comment (needs `gh`). **Team checks** (Goose v1.40 parity): every `.unown/review/checks/*.md` (project) and `~/.unown/agent/review/checks/*.md` (personal) runs as one more parallel reviewer — frontmatter `title`/`severity` (P0–P3 floor, default P2)/`model` (per-check reviewer override), the body instructs the reviewer; `.unown/review/scope.md` + `~/.unown/agent/review/scope.md` are prepended to every reviewer as team context. Flags: `--severity P1` (display floor), `--checks a,b` (only these checks), `--dry-run` (print the reviewer plan), `--list-checks` |
 | `/init-agents` | Preview the generated `AGENTS.md` from repo forensics (no write — `unown init-agents --print` for the full text) |
 | `/doctor-instructions` | Run the instruction-set audit inline (AGENTS.md freshness, skills, MCP, hooks, adversary, injection scanner, unicode integrity) |
 | `/blame <file>` | Show which receipts touched a file (write/edit/bash); no argument = summary; `--session <id>` `--since <ts>` `--json` filter |
+| `/recap [turns]` | The session summary (Claude Code `/recap` parity): the deterministic digest of the session (turns, tool calls, files touched) plus a one-line model summary through the /btw side-question lane — never entering the transcript, the receipts ledger or AutoDream's mining; the digest stands alone when the model lane is down. After a real idle gap (default 3m, `UNOWN_RECAP_IDLE_MINUTES`; 0 kills) the digest also fires automatically as the welcome-home line on your next prompt |
 | `/sessions <sub>` | `export` \| `import` \| `list` — the in-session alias for `unown sessions`; `/sessions export` writes `.unown/sessions/export-<id>.json` |
 | `/status` | **The one-glance session card** (Codex `/status` parity): unown version + checkout sha, session id/name/message count, model + provider + thinking level, permission mode (config or session override) + add-dir count, the resolved memory tiers with injected chars, engine up/down, the session worktree when `--worktree` put you in one, and the git branch + dirty counts. Read-only, instant (no live probes) — the assembly of what `/session` (stats), `/model`, `/permissions`, `/engine` and `/context` each show a slice of |
 | `/diff` | **The working-tree diff** — what `/commit` was missing its other half for (aider `/diff`, Codex `/diff`): the change count, untracked files, and the unified staged+unstaged diff against HEAD, capped at 200 lines in the notify pane with a pointer to the full command; `--stat` renders the compact `git diff --stat` view. Off-repo and clean-tree states say so plainly |
@@ -537,6 +562,8 @@ Two more session tools ride the same machinery:
 **Turn-complete attention.** Long interactive turns ping you when they finish: after a turn that lasted at least `UNOWN_NOTIFY_MS` (default 120s — quick turns stay silent), a deferred OSC-9 desktop notification + BEL lands once the frame settles ("unown: done — <first 80 chars>"). The write is deferred so it never tears a frame, a fresh turn cancels a pending ping (they never stack), and the same gates as print mode apply (`UNOWN_NOTIFY=0`, `DO_NOT_TRACK=1`). `UNOWN_TUI_NOTIFY=0` is the TUI-specific kill switch.
 
 **Context budget.** `/compact` (pi's own) compacts manually. Engine sandbox runs add an auto-compact guard on top — after every turn it checks the live context usage against a proportional curve: warn at 70% of the window, auto-compact at 85%, hard-block the next request at 95% (`UNOWN_AUTO_COMPACT_THRESHOLD` / `UNOWN_AUTO_COMPACT_HARD_LIMIT` tune the last two; see [configuration](configuration.md#terminal-agent-unown-cli)). The `get_context_remaining` tool reports the same numbers to the agent.
+
+**Idle compaction** (2026-10-25, Claude Code v2.1.299 parity): a terminal session that sits **idle ≥ 45 minutes with ≥ 50% of its context used** is compacted automatically *before* your next prompt ships — the summary work happens while nobody waits, and a heavy session never returns to an overflowing window. A plain-language notice explains what happened and names the knobs (`UNOWN_IDLE_COMPACT_MINUTES`, `UNOWN_IDLE_COMPACT_MIN_USAGE`; `UNOWN_IDLE_COMPACT_MINUTES=0` is the kill switch). The idle gap is consumed by the first prompt that arrives, so queued follow-ups never double-fire it.
 
 ## Guardrails
 

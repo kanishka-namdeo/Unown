@@ -48,6 +48,7 @@ import {
 } from "./ask-user-question-core.ts";
 import type { AddonGuidance, AskUserQuestionAddonConfig } from "./config.ts";
 import { formatKeyForDisplay } from "./config.ts";
+import { reportBlocked, reportWorking } from "../osc-status.ts";
 
 // ---------------------------------------------------------------------------
 // LLM-facing copy (verbatim port; overridable via config.guidance)
@@ -699,7 +700,13 @@ export function registerAskUserQuestionTool(pi: ExtensionAPI, config: AskUserQue
 				};
 			}
 			if (ctx.mode === "tui") {
+				// OSC 7501 program status (the 2026-10 convergence round): the
+				// questionnaire dialog blocks the turn on the user — report the block
+				// (kind=question) while it is open, and working again once answered.
+				// Emission gates on TTY + opt-outs (osc-status.ts); never breaks the tool.
+				reportBlocked("question", params.questions[0]?.question ?? "waiting for your answer");
 				const result = await runTuiQuestionnaire(ctx, params, config.collapseKey);
+				reportWorking("questionnaire answered — continuing the turn");
 				if (result) {
 					const response = buildQuestionnaireResponse(result, params);
 					return { content: [{ type: "text", text: response.text }], details: response.details };

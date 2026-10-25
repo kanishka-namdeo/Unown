@@ -67,6 +67,7 @@ import { engineFetch } from "./engine-auth.ts";
 import { getEngineStatusInfo } from "./engine-status.ts";
 import { FleetManager, type FleetSpawnRequest, registerFleetSurface } from "./fleet-runtime.ts";
 import { registerGitTools } from "./gittools.ts";
+	import { reportBlocked, reportClear, reportIdle, reportWorking } from "./osc-status.ts";
 import {
 	checkGoalCompletion,
 	type GoalState,
@@ -117,13 +118,19 @@ import { loadRecipes, runRecipe, userRecipesDir } from "./recipes.ts";
 import { generateWiki, searchWiki, type WikiRunContext } from "./repo-wiki.ts";
 import { runRepomapCommand, withRepoMap } from "./repomap/repomap-cli.ts";
 import {
+	buildCheckReviewerTask,
 	buildReviewerTask,
 	captureReviewTarget,
+	checkReviewerAgent,
+	discoverReviewPolicy,
+	filterFindingsBySeverity,
 	mergeReviews,
 	parseReviewOutput,
+	parseReviewFlags,
 	REVIEWER_FOCUSES,
 	type ReviewTarget,
 	renderReview,
+	renderReviewPlan,
 	reviewerAgent,
 	saveReviewArtifact,
 } from "./review.ts";
@@ -163,7 +170,11 @@ import {
 	unownHome,
 	updateChipLine,
 } from "./update-status.ts";
-import { fetchBridgeUsage, resolveBridgeUrl, runUsageCommand } from "./usage-cli.ts";
+	import { fetchBridgeUsage, resolveBridgeUrl, resolveModelPrice, runUsageCommand } from "./usage-cli.ts";
+	import { formatTurnMeter } from "./turn-meter.ts";
+	import { formatIdleCompactNotice, shouldIdleCompact } from "./auto-compact.ts";
+	import { registerMonitorTool } from "./monitor.ts";
+	import { buildRecapDigest, buildRecapQuestion, renderRecapDigestLine, shouldRecap } from "./recap.ts";
 import { createAutoVerifyRunner } from "./verify.ts";
 import { fetchPageContent, registerWebTools } from "./websearch.ts";
 import { cleanupWorktree, createWorktree, type WorktreeHandle } from "./worktree.ts";
@@ -1438,6 +1449,11 @@ export function createUnownToolsExtension(opts: UnownToolsOptions) {
 		// guard (the module's own guards do the real gating).
 		let turnStartTs: number | null = null;
 		let pendingTurnPing: { cancel(): void } | null = null;
+		// Idle-compaction state (the 2026-10 convergence round): when the last
+		// agent turn ended. The gap is CONSUMED by the first prompt that arrives
+		// after it (nulled in before_agent_start) — queued follow-ups never
+		// re-fire the same window.
+		let lastAgentEndTs: number | null = null;
 		const titledSessions = new Set<string>();
 
 		let planModeEnabled = false;
@@ -2399,6 +2415,20 @@ export function createUnownToolsExtension(opts: UnownToolsOptions) {
 		registerGitTools(pi, { cwd: opts.cwd, isSubagent, verbose });
 
 		// -------------------------------------------------------------------
+		// monitor — the bounded watch window (Claude Code Monitor tool parity,
+		// the 2026-10 convergence round, src/monitor.ts): watch a dev server /
+		// log tail / test watcher and get the output lines back as a bounded,
+		// timestamped tool result.
+		// -------------------------------------------------------------------
+
+		registerMonitorTool(pi, {
+			cwd: opts.cwd,
+			verbose,
+			isSafeCommand,
+			isPlanMode: () => planModeEnabled,
+		});
+
+		// -------------------------------------------------------------------
 		// /status + /diff — the visibility pair (2026-10-25 completion
 		// round, src/status-card.ts): the one-glance session card
 		// (model, thinking, permissions, memory, engine, worktree, git)
@@ -3014,6 +3044,50 @@ export function createUnownToolsExtension(opts: UnownToolsOptions) {
 			},
 		});
 
+		// /recap — the on-demand session summary (Claude Code /recap parity,
+		// the 2026-10 convergence round): the deterministic digest of the last
+		// turns plus a one-line LLM summary through the /btw side-question lane
+		// (never entering the transcript / receipts / AutoDream); the digest is
+		// shown even when the model lane is down.
+		pi.registerCommand("recap", {
+			description:
+				"Summarize what happened in this session — /recap [turns] shows the digest of the last turns plus a one-line model summary",
+			handler: async (args: string, ctx) => {
+				const turns = Math.max(1, Math.min(50, Number((args ?? "").trim() || 6) || 6));
+				const entries =
+					typeof (ctx as any)?.sessionManager?.getEntries === "function"
+						? (ctx as any).sessionManager.getEntries()
+						: [];
+				const digest = buildRecapDigest(entries, 0, 0);
+				const digestLine =
+					`recap · ${digest.turns} turn${digest.turns === 1 ? "" : "s"}, ` +
+					`${digest.toolCalls} tool call${digest.toolCalls === 1 ? "" : "s"}` +
+					(digest.toolsUsed.length ? `, tools: ${digest.toolsUsed.slice(0, 6).join(", ")}` : "") +
+					(digest.filesTouched.length
+						? `\nfiles: ${digest.filesTouched.join(", ")}`
+						: "");
+				const result = await answerBtw(entries, buildRecapQuestion(turns));
+				const summary = result.answer
+					? result.answer
+					: `model lane unavailable — the digest stands alone (${result.error ?? "no answer"})`;
+				if (ctx.mode === "tui" && ctx.hasUI) {
+					await ctx.ui.custom<void>(
+						(tui, theme, keybindings, done) =>
+							new BtwOverlay({
+								header: "recap — what happened in this session",
+								answer: `${summary}\n\n${digestLine}`,
+								theme,
+								keybindings,
+								done,
+							}),
+							{ overlay: false },
+					);
+				} else {
+					ctx.ui.notify(`recap\n${summary}\n${digestLine}\n(side channel — not added to the session)`, "info");
+				}
+			},
+		});
+
 		// /output-style — Claude Code /output-style parity: built-in styles
 		// (default/concise/explanatory/proactive) + custom .unown/styles/*.md,
 		// persisted per project, applied as a system-prompt appendix.
@@ -3216,17 +3290,32 @@ export function createUnownToolsExtension(opts: UnownToolsOptions) {
 
 		pi.registerCommand("review", {
 			description:
-				"Parallel-subagent code review of uncommitted work (or /review <base-branch> | <PR URL/number> | <commit range>): P0–P3 findings + SHIP verdict. Add --comment to post the verdict as a PR comment (PR review only).",
+				"Parallel-subagent code review of uncommitted work (or /review <base-branch> | <PR URL/number> | <commit range>): P0–P3 findings + SHIP verdict, plus this project's team checks (.unown/review/checks/*.md). Flags: --severity P1 (floor), --checks a,b (only these checks), --dry-run (plan only), --list-checks, --comment (PR comment).",
 			handler: async (args, ctx) => {
-				const raw = (args ?? "").trim();
-				// Milestone 3.3: --comment flag opts into posting the verdict
-				// as a PR comment (only meaningful for PR-shaped input).
-				const wantComment = /\s--comment\b/.test(` ${raw}`);
-				const base = raw.replace(/\s--comment\b/g, "").trim() || undefined;
+				const flags = parseReviewFlags((args ?? "").trim());
+				// Team review policy (the 2026-10 convergence round, Goose v1.40
+				// parity): project + user check files and the scope files.
+				const policy = discoverReviewPolicy(opts.cwd, UNOWN_AGENT_DIR);
+				let selectedChecks = policy.checks;
+				if (flags.checksFilter) {
+					const wanted = new Set(flags.checksFilter);
+					selectedChecks = policy.checks.filter((c) => wanted.has(c.name));
+					const missing = flags.checksFilter.filter((n) => !policy.checks.some((c) => c.name === n));
+					if (missing.length > 0) {
+						ctx.ui.notify(`Unknown check name(s): ${missing.join(", ")} — /review --list-checks lists them`, "warning");
+					}
+				}
+				if (flags.listChecks) {
+					ctx.ui.notify(renderReviewPlan(REVIEWER_FOCUSES.slice(0, 0), policy.checks, policy), "info");
+					return;
+				}
+				if (policy.errors.length > 0 && !flags.dryRun) {
+					ctx.ui.notify(policy.errors.join("\n"), "warning");
+				}
 				ctx.ui.notify("Review: freezing the diff snapshot…", "info");
 				let target: ReviewTarget;
 				try {
-					target = await captureReviewTarget(opts.cwd, base);
+					target = await captureReviewTarget(opts.cwd, flags.base);
 				} catch (err: any) {
 					// Git-plumbing aborts (non-repo, git missing, merge-base
 					// failure, timeout) AND `gh`-unavailable (PR review
@@ -3244,22 +3333,27 @@ export function createUnownToolsExtension(opts: UnownToolsOptions) {
 				}
 				const agent = reviewerAgent(target.diff);
 				const focuses = target.diff.length < 6000 ? REVIEWER_FOCUSES.slice(0, 1) : REVIEWER_FOCUSES;
+				if (flags.dryRun) {
+					ctx.ui.notify(renderReviewPlan(focuses, selectedChecks, policy), "info");
+					return;
+				}
+				const reviewerCount = focuses.length + selectedChecks.length;
 				ctx.ui.notify(
-					`Review: ${focuses.length} reviewer(s) over ${target.label} (${target.diff.length} chars${target.truncated ? ", truncated" : ""}) — subagents spawn with fresh contexts…`,
+					`Review: ${reviewerCount} reviewer(s) over ${target.label} (${target.diff.length} chars${target.truncated ? ", truncated" : ""}) — subagents spawn with fresh contexts…`,
 					"info",
 				);
 				// Footer progress line (P1-b): the multi-minute fan-out is
 				// otherwise invisible after the notify scrolls away. Cleared
 				// when the verdict lands (or the handler throws).
-				setStatusLine(ctx, "review", `review: ${focuses.length} reviewer(s) running`);
+				setStatusLine(ctx, "review", `review: ${reviewerCount} reviewer(s) running`);
 				// S4: thread the command ctx abort signal when pi provides one
 				// (usually undefined for idle-context commands — full cancel UI
 				// needs restructuring runSubagent's caller; runSubagent itself
 				// already handles a signal by tree-killing the reviewers).
 				const signal = (ctx as any)?.signal as AbortSignal | undefined;
 				try {
-					const results = await Promise.all(
-						focuses.map((f) =>
+					const results = await Promise.all([
+						...focuses.map((f) =>
 							runSubagent(
 								agent,
 								buildReviewerTask({
@@ -3273,7 +3367,22 @@ export function createUnownToolsExtension(opts: UnownToolsOptions) {
 								signal,
 							),
 						),
-					);
+						...selectedChecks.map((check) =>
+							runSubagent(
+								checkReviewerAgent(agent, check),
+								buildCheckReviewerTask({
+									check,
+									label: target.label,
+									diff: target.diff,
+									untracked: target.untracked,
+									scope: policy.scope,
+									cwd: opts.cwd,
+								}),
+								opts.cwd,
+								signal,
+							),
+						),
+					]);
 					// Reviewer honesty (R-b S1): a non-zero exit, timeout or empty
 					// output marks the reviewer FAILED — its silence must never
 					// render as "the diff looked clean". Truncated outputs are
@@ -3281,15 +3390,20 @@ export function createUnownToolsExtension(opts: UnownToolsOptions) {
 					const outputs = results.map((r, i) =>
 						parseReviewOutput(
 							r.output + (r.outputTruncated ? "\n(reviewer output truncated)" : ""),
-							focuses[i].key,
+							labels[i],
 							{
 								failed: r.exitCode !== 0 || !r.output.trim(),
 								truncated: r.outputTruncated,
 							},
 						),
 					);
+					const labels = [
+						...focuses.map((f) => f.key),
+						...selectedChecks.map((c) => `check:${c.name}`),
+					];
 					const merged = mergeReviews(outputs);
-					const text = renderReview(target.label, outputs, merged.findings);
+					const shownFindings = filterFindingsBySeverity(merged.findings, flags.minSeverity);
+					const text = renderReview(target.label, outputs, shownFindings);
 					const artifact = saveReviewArtifact(opts.cwd, target.label, text);
 					const allFailed = outputs.length > 0 && outputs.every((o) => o.failed);
 					ctx.ui.notify(
@@ -3302,7 +3416,7 @@ export function createUnownToolsExtension(opts: UnownToolsOptions) {
 					// missing `gh` or a failed `gh pr comment` surfaces as a
 					// warning AFTER the verdict has been shown — the verdict itself
 					// is never lost.
-					if (wantComment && target.label.startsWith("PR ")) {
+					if (flags.wantComment && target.label.startsWith("PR ")) {
 						try {
 							const prRef = target.label.slice("PR ".length).split(":")[0];
 							await postPrComment(prRef, text);
@@ -4047,7 +4161,59 @@ export function createUnownToolsExtension(opts: UnownToolsOptions) {
 			};
 		});
 
-		pi.on("before_agent_start", async (event: any) => {
+		pi.on("before_agent_start", async (event: any, ctx: any) => {
+			// OSC 7501 program status (the 2026-10 convergence round): the turn is
+			// running — the terminal can show what the agent was asked instead of
+			// guessing from a spinner. Cosmetic best-effort (osc-status.ts).
+			reportWorking(String(event?.prompt ?? ""));
+			// ---- idle compaction (Claude Code v2.1.299 parity, the 2026-10
+			// convergence round): a heavy context that sat idle long enough is
+			// compacted BEFORE this prompt ships — the return never eats a
+			// context-overflow failure, and the summary work happens while nobody
+			// is waiting on it. Pure curve in auto-compact.ts (shouldIdleCompact);
+			// the trigger is the documented ctx.compact() seam.
+			try {
+				if (lastAgentEndTs !== null && typeof ctx?.getContextUsage === "function") {
+					const usage = ctx.getContextUsage();
+					if (usage && typeof usage.tokens === "number" && typeof usage.contextWindow === "number") {
+						const decision = shouldIdleCompact(
+							Date.now() - lastAgentEndTs,
+							usage.tokens,
+							usage.contextWindow,
+						);
+						if (decision.action === "compact") {
+								if (ctx?.hasUI) ctx.ui.notify(formatIdleCompactNotice(decision), "info");
+								ctx.compact?.();
+							}
+						}
+					}
+				} catch {
+					/* idle compaction is a convenience — never block a turn */
+				}
+			// ---- auto-recap on return (Claude Code parity, the 2026-10
+			// convergence round): after a real idle gap the next prompt gets a
+			// deterministic welcome-home line through the notify pane — the shape
+			// of the missed work, instantly, no LLM on the prompt path (/recap has
+			// the LLM lane; UNOWN_RECAP_IDLE_MINUTES=0 kills the auto line).
+			try {
+				if (lastAgentEndTs !== null && ctx?.hasUI) {
+					const gapMs = Date.now() - lastAgentEndTs;
+					const decision = shouldRecap(gapMs);
+					if (decision.action === "show") {
+						const entries =
+							typeof ctx?.sessionManager?.getEntries === "function"
+								? ctx.sessionManager.getEntries()
+								: [];
+						const digest = buildRecapDigest(entries, lastAgentEndTs, gapMs);
+						if (digest.turns > 0 || digest.toolCalls > 0) {
+							ctx.ui.notify(renderRecapDigestLine(digest), "info");
+						}
+					}
+				}
+			} catch {
+				/* the recap is cosmetic — never block a turn */
+			}
+			lastAgentEndTs = null;
 			// ---- advertised-subagent catalog (pi-cciotti port): append the
 			// byte-budgeted <advertised_subagents> block to the system prompt so
 			// the model SEES user/project agents (not just the two named in the
@@ -4164,10 +4330,51 @@ Execute the steps in order. After completing a step, include a [DONE:n] tag in y
 						scheduleTurnEndPing(Date.now() - turnStartTs, preview, { isTty: Boolean(process.stdout.isTTY) }) ??
 						null;
 				}
-				turnStartTs = null;
 			} catch {
 				/* attention must never break a turn */
 			}
+			// ---- per-turn session meter (the 2026-10 convergence round;
+			// goose v1.42+ / Gemini /stats / Claude Code statusline parity): a
+			// compact footer chip — turn duration, context %, the session token
+			// rollup (the /usage attribution) and the price-model estimate.
+			// Pure core in turn-meter.ts; UNOWN_TURN_METER=0 off.
+			try {
+				const turnDuration = turnStartTs ? Date.now() - turnStartTs : 0;
+				const entries =
+					typeof ctx?.sessionManager?.getEntries === "function" ? ctx.sessionManager.getEntries() : [];
+				const rollup = sessionUsageSummary(entries);
+				const msgModel = event?.message?.responseModel ?? event?.message?.model;
+				let liveContext: { tokens: number; contextWindow: number } | undefined;
+				try {
+					const usage =
+						typeof ctx?.getContextUsage === "function" ? ctx.getContextUsage() : undefined;
+					if (
+						usage &&
+						typeof usage.tokens === "number" &&
+						typeof usage.contextWindow === "number" &&
+						usage.contextWindow > 0
+					) {
+						liveContext = { tokens: usage.tokens, contextWindow: usage.contextWindow };
+					}
+				} catch {
+					/* optional seam — the chip renders without the ctx % */
+				}
+				const meter = formatTurnMeter({
+					usage: {
+						tokensIn: rollup.tokensIn,
+						tokensOut: rollup.tokensOut,
+						cacheRead: rollup.cacheRead,
+						model: typeof msgModel === "string" && msgModel ? msgModel : rollup.models[0],
+					},
+					durationMs: turnDuration,
+					context: liveContext,
+					resolvePrice: resolveModelPrice,
+				});
+				setStatusLine(ctx, "turn", meter.enabled ? meter.text : undefined);
+			} catch {
+				/* the meter is cosmetic — degrade silently */
+			}
+			turnStartTs = null;
 			if (!executionMode || planItems.length === 0) return;
 			const msg = event?.message;
 			if (msg?.role !== "assistant" || !Array.isArray(msg.content)) return;
@@ -4182,6 +4389,18 @@ Execute the steps in order. After completing a step, include a [DONE:n] tag in y
 		});
 
 		pi.on("agent_end", async (event: any, ctx: any) => {
+			// OSC 7501 program status: the turn finished and the agent is at rest —
+			// surface the answer preview in the terminal status area.
+			try {
+				const _msgs = Array.isArray(event?.messages) ? event.messages : [];
+				const _lastAssistant = [..._msgs].reverse().find((m: any) => m?.role === "assistant");
+				reportIdle(assistantTextOf(_lastAssistant) || "turn complete");
+			} catch {
+				/* cosmetic — never break the turn boundary */
+			}
+			// The idle clock for idle compaction starts at the last turn boundary
+			// (auto-compact.ts shouldIdleCompact consumes it in before_agent_start).
+			lastAgentEndTs = Date.now();
 			// ---- session auto-titles (the every-competitor feature): after the
 			// turn settles, a cheap background call names the session so /resume
 			// is scannable. All guards live in auto-title.ts (enabled flag,
@@ -4402,6 +4621,10 @@ Execute the steps in order. After completing a step, include a [DONE:n] tag in y
 
 		// ---- restore state on session (re)start
 		pi.on("session_start", async (_event: any, ctx: any) => {
+			// OSC 7501 program status (the 2026-10 convergence round): the session
+			// is at rest — terminals (Rex, Ghostty) surface it in the tab/status
+			// area. Cosmetic best-effort, same posture as the OSC-9 turn ping.
+			reportIdle("session ready");
 			if (pi.getFlag("plan") === true) planModeEnabled = true;
 			try {
 				const entries = ctx.sessionManager.getEntries();
@@ -4457,6 +4680,10 @@ Execute the steps in order. After completing a step, include a [DONE:n] tag in y
 		});
 
 		pi.on("session_shutdown", () => {
+			// OSC 7501 shutdown hygiene (spec): `working`/`blocked` records must
+			// not outlive the process — `clear` drops every record we own so a
+			// stale "working" never lingers in the terminal.
+			reportClear();
 			if (updateChipTimer) {
 				clearInterval(updateChipTimer);
 				updateChipTimer = null;

@@ -30,10 +30,10 @@ export interface ChangelogStop {
   groups: ChangelogGroup[];
 }
 
-export const CHANGELOG_TOTAL_ENTRIES = 271;
+export const CHANGELOG_TOTAL_ENTRIES = 278;
 
 export const CHANGELOG_TOTALS: Record<ChangelogBucket, number> = {
-  "Added": 116,
+  "Added": 123,
   "Changed": 18,
   "Deprecated": 0,
   "Removed": 3,
@@ -46,9 +46,9 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
   {
     "label": "Unreleased",
     "date": null,
-    "total": 4,
+    "total": 11,
     "counts": {
-      "Added": 4,
+      "Added": 11,
       "Changed": 0,
       "Deprecated": 0,
       "Removed": 0,
@@ -60,6 +60,34 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
       {
         "bucket": "Added",
         "items": [
+          {
+            "title": "tui: OSC 7501 program status — the terminal knows what the agent is doing",
+            "behavior": false
+          },
+          {
+            "title": "tui: the turn meter — per-turn cost on screen, not three commands deep",
+            "behavior": false
+          },
+          {
+            "title": "agent: the monitor tool — watch a process, get its lines back",
+            "behavior": false
+          },
+          {
+            "title": "review: team checks — the review policy rides with the repo",
+            "behavior": false
+          },
+          {
+            "title": "tui: the session recap — what happened while you were away",
+            "behavior": false
+          },
+          {
+            "title": "engine: idle compaction — a parked heavy session compacts itself before you return",
+            "behavior": false
+          },
+          {
+            "title": "cli: print mode never goes silent — stall progress on stderr",
+            "behavior": false
+          },
           {
             "title": "cli: the stream-json alias + the unknown-flag guard",
             "behavior": false

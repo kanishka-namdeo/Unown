@@ -251,3 +251,108 @@ export function formatContextExhaustedError(tokensUsed: number, maxTokens: numbe
         `Run /compact manually to summarize older turns, or start a new session.`
     );
 }
+
+// ---------------------------------------------------------------------------
+// Idle compaction (the 2026-10 convergence round) — Claude Code v2.1.299
+// ---------------------------------------------------------------------------
+
+/** Env: minutes a session must sit idle before idle compaction may fire
+ *  (default 45 — Claude Code ships ~54 min against a 1h prompt-cache window;
+ *  Unown has no provider-cache knowledge, so the default is the conservative
+ *  "long gone" bound. 0 disables idle compaction entirely.) */
+export const IDLE_COMPACT_MINUTES_ENV = "UNOWN_IDLE_COMPACT_MINUTES";
+export const DEFAULT_IDLE_COMPACT_MINUTES = 45;
+
+/** Env: minimum context usage (percent) for idle compaction (default 50 —
+ *  compacting a light session destroys cheap context for no overflow win). */
+export const IDLE_COMPACT_MIN_USAGE_ENV = "UNOWN_IDLE_COMPACT_MIN_USAGE";
+export const DEFAULT_IDLE_COMPACT_MIN_USAGE = 50;
+
+export interface IdleCompactConfig {
+    /** Idle minutes at/above which idle compaction may fire. */
+    minutes?: number;
+    /** Minimum context usage (percent) for idle compaction to fire. */
+    minUsagePercent?: number;
+}
+
+export interface IdleCompactDecision {
+    action: "compact" | "none";
+    reason: string;
+    /** Idle minutes, 1dp — mirrored for logs and the recap line. */
+    idleMinutes: number;
+    usagePercent: number;
+}
+
+function parseMinutesEnv(name: string, fallback: number): number {
+    const raw = process.env[name];
+    if (typeof raw !== "string") return fallback;
+    const parsed = Number(raw.trim());
+    if (!Number.isFinite(parsed) || parsed < 0) return fallback;
+    return parsed;
+}
+
+/** Resolve {@link IdleCompactConfig}: explicit field → env → default. Pure. */
+export function resolveIdleCompactConfig(cfg?: IdleCompactConfig): Required<IdleCompactConfig> {
+    return {
+        minutes: cfg?.minutes ?? parseMinutesEnv(IDLE_COMPACT_MINUTES_ENV, DEFAULT_IDLE_COMPACT_MINUTES),
+        minUsagePercent:
+            cfg?.minUsagePercent ?? parsePercentEnv(IDLE_COMPACT_MIN_USAGE_ENV, DEFAULT_IDLE_COMPACT_MIN_USAGE),
+    };
+}
+
+/**
+ * Should a session that sat IDLE for `idleMs` be compacted before the next
+ * prompt ships? The Claude Code v2.1.299 posture, adapted: a heavy context
+ * that has been parked long enough is compacted BEFORE the user's next
+ * message arrives, so the return never eats a context-overflow failure (and
+ * the summary work happens while nobody is waiting on it).
+ *
+ *   - `minutes === 0`              → never (the kill switch; "none" always)
+ *   - idle < minutes               → "none" (still an active session)
+ *   - usage < minUsagePercent      → "none" (light context — compaction would
+ *                                    destroy cheap context for no overflow win)
+ *   - else                          → "compact"
+ *
+ * Pure, defensive (never throws), exported for tests + the runner wiring.
+ */
+export function shouldIdleCompact(
+    idleMs: number,
+    tokensUsed: number,
+    maxTokens: number,
+    cfg?: IdleCompactConfig,
+): IdleCompactDecision {
+    const { minutes, minUsagePercent } = resolveIdleCompactConfig(cfg);
+    const idleMinutes = Number((Math.max(0, idleMs) / 60_000).toFixed(1));
+    const base = { idleMinutes, usagePercent: 0 as number };
+    if (minutes <= 0) return { ...base, action: "none", reason: "idle compaction disabled (UNOWN_IDLE_COMPACT_MINUTES=0)" };
+    if (idleMinutes < minutes) {
+        return { ...base, action: "none", reason: `idle ${idleMinutes}m < ${minutes}m — session still active` };
+    }
+    if (typeof maxTokens !== "number" || !Number.isFinite(maxTokens) || maxTokens <= 0) {
+        return { ...base, action: "none", reason: "no context window signal — cannot judge usage" };
+    }
+    const used = typeof tokensUsed === "number" && Number.isFinite(tokensUsed) && tokensUsed > 0 ? tokensUsed : 0;
+    const pct = Number(((used / maxTokens) * 100).toFixed(1));
+    base.usagePercent = pct;
+    if (pct < minUsagePercent) {
+        return { ...base, action: "none", reason: `idle ${idleMinutes}m but usage ${pct}% < ${minUsagePercent}% — light context` };
+    }
+    return {
+        ...base,
+        action: "compact",
+        reason: `idle ${idleMinutes}m with usage ${pct}% ≥ ${minUsagePercent}% — compacting before the next prompt`,
+    };
+}
+
+/**
+ * The one-line notice shown (and logged) when idle compaction fires — plain
+ * language, the two facts, and the recovery command, matching the tone of
+ * formatCompactionWarning above.
+ */
+export function formatIdleCompactNotice(decision: IdleCompactDecision): string {
+    return (
+        `[idle-compact] This session sat idle for ${decision.idleMinutes}m at ${decision.usagePercent}% context — ` +
+        `older turns were summarized while you were away so your next prompt starts with room to work. ` +
+        `(Reason: ${decision.reason}. Tune with UNOWN_IDLE_COMPACT_MINUTES / _MIN_USAGE; /compact remains the manual path.)`
+    );
+}

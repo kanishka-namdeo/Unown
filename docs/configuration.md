@@ -230,6 +230,12 @@ Author `.env` in the repo root from [`.env.example`](../.env.example). This tabl
 | `UNOWN_MAX_MINTED_TASKS` | `8` | Cap on ACTIVE minted tasks before the engine's task-mint job skips authoring new curriculum variants (minting resumes as tasks are archived/graduated). Read by the engine. |
 | `UNOWN_AUTO_COMPACT_THRESHOLD` | `85` | Engine-run auto-compact: percent of the context window at which compaction auto-triggers (0–100; a warn receipt starts at a fixed 70%). Read by the engine's runner (`auto-compact.ts`). |
 | `UNOWN_AUTO_COMPACT_HARD_LIMIT` | `95` | Engine-run auto-compact: percent at which the next model request is hard-blocked and the session aborted (0–100) — the session must be compacted or restarted. Read by the engine's runner. |
+| `UNOWN_IDLE_COMPACT_MINUTES` | `45` | Terminal-session idle compaction (Claude Code v2.1.299 parity): idle minutes at/above which a heavy session is compacted before the next prompt ships; requires usage ≥ `UNOWN_IDLE_COMPACT_MIN_USAGE`. `0` disables idle compaction. Read by the terminal agent (`auto-compact.ts` `shouldIdleCompact`). |
+| `UNOWN_IDLE_COMPACT_MIN_USAGE` | `50` | Idle-compaction usage floor: percent of the context window a session must be using before idle compaction may fire (a light session never compacts — it would destroy cheap context for no overflow win). Read by the terminal agent. |
+| `UNOWN_TURN_METER` | `1` | The per-turn footer chip (`turn 3.4s · ctx 62% · in 45.2k …`) on every interactive turn_end; `0` hides it. Read by the terminal agent (`turn-meter.ts`). |
+| `UNOWN_RECAP_IDLE_MINUTES` | `3` | Auto-recap threshold: idle minutes at/above which the next prompt gets the deterministic welcome-home digest line; `0` disables the auto line (`/recap` on demand always works). Read by the terminal agent (`recap.ts`). |
+| `PROGRAM_STATUS` | unset | OSC 7501 program-status opt-out (the spec-wide name): `0` stops the session lifecycle emitting terminal-status reports. `UNOWN_OSC7501=0` is the Unown-native alias. Emission is TTY-only regardless. |
+| `PI_PRINT_STALL_PROGRESS` | `1` | Print-mode stall-progress lines: one stderr line at 50/75/90% of the stall budget when no session events arrive (silence is never the only signal); `0` silences. Read by the terminal agent. |
 
 ### OS-level sandbox (bubblewrap)
 

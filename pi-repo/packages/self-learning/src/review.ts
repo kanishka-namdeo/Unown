@@ -43,7 +43,7 @@
  * merge artifact is written to `.unown/reviews/` (gitignored runtime state).
  */
 import { spawnSync } from "node:child_process";
-import { mkdirSync, writeFileSync } from "node:fs";
+import { mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { slugify } from "./checkpoints.ts";
 import {
@@ -558,4 +558,261 @@ export function saveReviewArtifact(cwd: string, label: string, text: string, now
     } catch {
         return null;
     }
+}
+
+// ---------------------------------------------------------------------------
+// Team review policy (the 2026-10 convergence round) — Goose v1.40 parity:
+// versioned check files + a project scope file, discoverable like agents.
+// ---------------------------------------------------------------------------
+
+/**
+ * A team review check — a markdown file with frontmatter:
+ *
+ *     ---
+ *     title: DB migrations must be reversible
+ *     severity: P1          # the floor for findings this check reports (P0–P3)
+ *     model: zai-bridge/agnes-2.5-flash   # optional per-check reviewer model
+ *     ---
+ *     <body: what this check looks for, in plain instructions to the reviewer>
+ *
+ * Discovery mirrors the subagent/commands/skills convention (Goose reads
+ * `.agents/checks/*.md`; Unown's own lanes are `.unown/` for project scope and
+ * `~/.unown/agent/` for user scope):
+ *   - `.unown/review/checks/*.md`     (this project — rides with the repo)
+ *   - `<agentDir>/review/checks/*.md`  (your personal checks, every project)
+ * plus the shared context files `.unown/review/scope.md` and
+ * `<agentDir>/review/scope.md`, prepended to every reviewer's task.
+ */
+export interface ReviewCheck {
+    /** File stem — the stable id used by --checks. */
+    name: string;
+    title: string;
+    /** The minimum severity findings from this check are reported at (P0–P3). */
+    severity: "P0" | "P1" | "P2" | "P3";
+    /** Optional per-check reviewer model ("provider/model"). */
+    model?: string;
+    /** The check body — instructions to the reviewer subagent. */
+    body: string;
+    source: "project" | "user";
+    path: string;
+}
+
+export interface ReviewPolicy {
+    checks: ReviewCheck[];
+    /** Concatenated scope files (user first, then project — most specific last). */
+    scope: string;
+    /** Unreadable/malformed files, surfaced to the user (never fatal). */
+    errors: string[];
+}
+
+// SEVERITIES is shared with the output-parsing section above (one table).
+
+function parseCheckFile(file: string, source: "project" | "user", text: string): ReviewCheck | string {
+    const name = file.replace(/\.md$/i, "");
+    let title = name;
+    let severity: ReviewCheck["severity"] = "P2";
+    let model: string | undefined;
+    let body = text;
+    const fm = /^---\r?\n([\s\S]*?)\r?\n---\r?\n?([\s\S]*)$/.exec(text);
+    if (fm) {
+        body = fm[2];
+        for (const line of fm[1].split(/\r?\n/)) {
+            const m = /^([a-zA-Z_-]+)\s*:\s*(.*)$/.exec(line.trim());
+            if (!m) continue;
+            const key = m[1].toLowerCase();
+            const value = m[2].trim();
+            if (key === "title" && value) title = value.slice(0, 100);
+            if (key === "severity" && SEVERITIES.includes(value.toUpperCase() as any)) {
+                severity = value.toUpperCase() as ReviewCheck["severity"];
+            }
+            if (key === "model" && value) model = value.slice(0, 100);
+        }
+    }
+    body = body.trim();
+    if (!body) return `${file}: empty check body — nothing to instruct the reviewer with`;
+    return {
+        name,
+        title,
+        severity,
+        model,
+        body: body.slice(0, 4_000),
+        source,
+        path: file,
+    };
+}
+
+/** Read one checks lane (a directory of *.md). Errors are collected, never thrown. */
+function readChecksLane(dir: string, source: "project" | "user", errors: string[]): ReviewCheck[] {
+    const checks: ReviewCheck[] = [];
+    let entries: string[];
+    try {
+        entries = readdirSync(dir).filter((f) => f.toLowerCase().endsWith(".md")).sort();
+    } catch {
+        return checks; // absent lane — the normal case
+    }
+    for (const entry of entries.slice(0, 20)) {
+        try {
+            const parsed = parseCheckFile(entry, source, readFileSync(join(dir, entry), "utf8"));
+            if (typeof parsed === "string") {
+                errors.push(parsed);
+            } else {
+                checks.push(parsed);
+            }
+        } catch (err: any) {
+            errors.push(`${entry}: unreadable (${err instanceof Error ? err.message : String(err)})`);
+        }
+    }
+    return checks;
+}
+
+/** Read one scope file (absent = empty string, never an error). */
+function readScopeFile(file: string): string {
+    try {
+        const text = readFileSync(file, "utf8").trim();
+        return text ? text.slice(0, 8_000) : "";
+    } catch {
+        return "";
+    }
+}
+
+/** Project checks lane: `.unown/review/checks/`. */
+export function reviewChecksDir(cwd: string): string {
+    return join(cwd, ".unown", "review", "checks");
+}
+
+/** User checks lane: `<agentDir>/review/checks/`. */
+export function userReviewChecksDir(agentDir: string): string {
+    return join(agentDir, "review", "checks");
+}
+
+/** Discover both lanes + the scope files. Pure-ish (fs reads, never throws). */
+export function discoverReviewPolicy(cwd: string, agentDir: string): ReviewPolicy {
+    const errors: string[] = [];
+    const userChecks = readChecksLane(userReviewChecksDir(agentDir), "user", errors);
+    const projectChecks = readChecksLane(reviewChecksDir(cwd), "project", errors);
+    const names = new Set<string>();
+    const checks: ReviewCheck[] = [];
+    // Project wins on name collisions (the repo's own rules are the rules) —
+    // project checks iterate FIRST, later same-named lanes are the shadowed ones.
+    for (const check of [...projectChecks, ...userChecks]) {
+        if (names.has(check.name)) {
+            errors.push(`${check.name}: shadowed by a ${check.source === "user" ? "project" : "user"} check with the same name`);
+            continue;
+        }
+        names.add(check.name);
+        checks.push(check);
+    }
+    const scope = [readScopeFile(join(agentDir, "review", "scope.md")), readScopeFile(join(cwd, ".unown", "review", "scope.md"))]
+        .filter(Boolean)
+        .join("\n\n");
+    return { checks, scope, errors };
+}
+
+// ---------------------------------------------------------------------------
+// /review flags (the Goose v1.40 surface: --severity / --checks / --dry-run
+// / --list-checks, alongside the existing base/PR/commit-range + --comment)
+// ---------------------------------------------------------------------------
+
+export interface ReviewCommandFlags {
+    base?: string;
+    wantComment: boolean;
+    /** Findings at this severity or stricter are shown (default: all). */
+    minSeverity?: "P0" | "P1" | "P2" | "P3";
+    /** Run only these checks (comma-separated names). */
+    checksFilter?: string[];
+    dryRun: boolean;
+    listChecks: boolean;
+    /** The remaining positional target (base branch / PR / commit range). */
+}
+
+export function parseReviewFlags(raw: string): ReviewCommandFlags {
+    let text = ` ${(raw ?? "").trim()} `;
+    const wantComment = /\s--comment\b/.test(text);
+    text = text.replace(/\s--comment\b/g, " ");
+    const dryRun = /\s--dry-run\b/.test(text);
+    text = text.replace(/\s--dry-run\b/g, " ");
+    const listChecks = /\s--list-checks\b/.test(text);
+    text = text.replace(/\s--list-checks\b/g, " ");
+    let minSeverity: ReviewCommandFlags["minSeverity"];
+    const sevMatch = /\s--severity[ =](P[0-3])\b/i.exec(text);
+    if (sevMatch) {
+        minSeverity = sevMatch[1].toUpperCase() as ReviewCommandFlags["minSeverity"];
+        text = text.replace(/\s--severity[ =]P[0-3]\b/ig, " ");
+    }
+    let checksFilter: string[] | undefined;
+    const checksMatch = /\s--checks[ =]([^\s]+)/.exec(text);
+    if (checksMatch) {
+        checksFilter = checksMatch[1]
+            .split(",")
+            .map((s) => s.trim())
+            .filter(Boolean);
+        text = text.replace(/\s--checks[ =][^\s]+/g, " ");
+    }
+    const base = text.replace(/\s+/g, " ").trim() || undefined;
+    return { base, wantComment, minSeverity, checksFilter, dryRun, listChecks };
+}
+
+// ---------------------------------------------------------------------------
+// Check-driven reviewers
+// ---------------------------------------------------------------------------
+
+/** A check's reviewer agent: the read-only reviewer with an optional model override. */
+export function checkReviewerAgent(base: SubagentConfig, check: ReviewCheck): SubagentConfig {
+    return check.model ? { ...base, name: "reviewer", model: check.model } : { ...base, name: "reviewer" };
+}
+
+/** The task prompt a check-driven reviewer gets (the check body + the frozen diff). */
+export function buildCheckReviewerTask(opts: {
+    check: ReviewCheck;
+    label: string;
+    diff: string;
+    untracked: string[];
+    scope: string;
+    cwd: string;
+}): string {
+    const untrackedNote =
+        opts.untracked.length > 0
+            ? `\n\nUntracked files (new, not in the diff — read them if relevant):\n${opts.untracked.slice(0, 50).join("\n")}`
+            : "";
+    const scopeNote = opts.scope ? `\n\nProject review scope (team context):\n${opts.scope}` : "";
+    return `Review ${opts.label} in the repository at ${opts.cwd}.
+
+TEAM CHECK: ${opts.check.title}
+(This check reports findings at severity ${opts.check.severity} or stricter.)
+
+${opts.check.body}
+${scopeNote}
+
+Frozen diff snapshot:
+\`\`\`diff
+${opts.diff}
+\`\`\`${untrackedNote}
+
+Rules: verify claims against the actual files (read them — the diff alone can lie); report only real findings; cite file:line; follow the FINDINGS/VERDICT format exactly.`;
+}
+
+/** Severity floor filter: keep findings at `min` or stricter (P0 strictest). */
+export function filterFindingsBySeverity(findings: ReviewFinding[], min?: "P0" | "P1" | "P2" | "P3"): ReviewFinding[] {
+    if (!min) return findings;
+    const order = SEVERITIES;
+    const floor = order.indexOf(min);
+    return findings.filter((f) => order.indexOf(f.severity) <= floor);
+}
+
+/** The --dry-run / --list-checks plan text. */
+export function renderReviewPlan(
+    focuses: readonly { key: string; brief: string }[],
+    checks: ReviewCheck[],
+    policy: ReviewPolicy,
+): string {
+    const lines: string[] = [];
+    lines.push(`Review plan: ${focuses.length} built-in reviewer(s)`);
+    for (const f of focuses) lines.push(`  - ${f.key}`);
+    lines.push(checks.length ? `${checks.length} team check(s)` : "no team checks discovered (.unown/review/checks/*.md — see docs/usage.md)");
+    for (const c of checks) {
+        lines.push(`  - ${c.name}${c.model ? ` [model: ${c.model}]` : ""} (floor ${c.severity}) — ${c.title}`);
+    }
+    if (policy.scope) lines.push("scope file: active");
+    if (policy.errors.length) for (const e of policy.errors) lines.push(`! ${e}`);
+    return lines.join("\n");
 }

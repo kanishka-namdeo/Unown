@@ -2440,10 +2440,61 @@ function printExitGraceMs(): number {
  * json's envelope in the pathological case — the streamed text is already
  * flushed; hanging forever is the worse trade.
  */
+/** Stall-progress milestones (the 2026-10 dogfood round). Measured live: an
+ * Agnes flash upstream intermittently answers 200 streams with ZERO content
+ * (usage-log receipts), and the client-side retries that follow are silent —
+ * `unown -p` sat quiet for its whole 180s stall budget in four consecutive
+ * fresh runs, looking exactly like a hang to every unattended caller (CI,
+ * engine automations, a human at a terminal). The fix mirrors what Codex
+ * exec's JSONL event lane and Claude Code's headless mode both assume:
+ * never let silence be the only signal. One stderr line per milestone
+ * (50/75/90% of the budget), at most once each per stall window; stdout
+ * stays pure. PI_PRINT_STALL_PROGRESS=0 silences them. */
+function printStallProgressEnabled(): boolean {
+	return (process.env.PI_PRINT_STALL_PROGRESS ?? "") !== "0";
+}
+
+/** The milestone fractions of the stall budget, ascending. */
+export const STALL_PROGRESS_FRACTIONS = [0.5, 0.75, 0.9] as const;
+
+/**
+ * Pure milestone stepper (exported for tests): given the elapsed silence and
+ * the already-emitted set, return the next milestone fraction that should
+ * print its progress line — or null when nothing is due. The caller formats
+ * and writes; this never touches env, clock, or streams.
+ */
+export function nextStallMilestone(
+	elapsedMs: number,
+	budgetMs: number,
+	emitted: ReadonlyArray<number>,
+): number | null {
+	if (budgetMs <= 0) return null;
+	for (const fraction of STALL_PROGRESS_FRACTIONS) {
+		if (elapsedMs >= budgetMs * fraction && !emitted.includes(fraction)) return fraction;
+	}
+	return null;
+}
+
 function installPrintStallWatchdog(runtime: any): void {
 	try {
 		let timer: any = null;
+		let lastEventTs = Date.now();
+		let emitted: Record<number, boolean> = {};
+		const stallProgress = () => {
+			if (!printStallProgressEnabled()) return;
+			const elapsed = Date.now() - lastEventTs;
+			const budget = printStallMs();
+			const fraction = nextStallMilestone(elapsed, budget, Object.keys(emitted).map(Number));
+			if (fraction !== null) {
+				emitted[fraction] = true;
+				console.error(
+						`unown: no session events for ${Math.round(elapsed / 1000)}s — still waiting (stall guard at ${Math.round(budget / 1000)}s; tune with PI_PRINT_STALL_MS)`,
+					);
+			}
+		};
 		const arm = () => {
+			lastEventTs = Date.now();
+			emitted = {};
 			if (timer) clearTimeout(timer);
 			timer = setTimeout(() => {
 				console.error(
@@ -2464,6 +2515,9 @@ function installPrintStallWatchdog(runtime: any): void {
 		let lastSession: unknown = null;
 		let off: (() => void) | null = null;
 		const poll = setInterval(() => {
+			// Stall progress: the poll interval doubles as the progress tick —
+			// bounded (1s), and milestones emit at most once per stall window.
+			stallProgress();
 			const s = runtime?.session;
 			if (s && s !== lastSession) {
 				lastSession = s;
