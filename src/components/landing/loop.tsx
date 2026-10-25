@@ -67,7 +67,7 @@ const BEATS: Beat[] = [
     label: "Work",
     caption: "you chat",
     title: "The session ends by writing something down.",
-    lead: "Every terminal session is captured as a note in a fixed template and delivered to the engine. If the engine is down the note waits in an outbox and syncs on return — learning never depends on the loop being up.",
+    lead: "Every session hands the engine a templated note. A down engine gets it from the outbox later — learning never depends on the loop being up.",
     filename: "~/.unown/notes/outbox/1757...-checkout.md",
     body: [
       "Terminal session outcome in ~/code/checkout:",
@@ -77,7 +77,7 @@ const BEATS: Beat[] = [
       "14 tool call(s) (read, grep, edit, bash), 3 min.",
     ].join("\n"),
     caption2:
-      "The literal note template — outcome first (that is the knowledge), counts and duration demoted to a labeled data-only line (a phrasing the injection guard can never trip on). A subagent session gets a [subagent] tag in the same header, so the engine knows where a note came from.",
+      "The literal note template — outcome first (that is the knowledge), counts and duration demoted to a labeled data-only line. A subagent session gets a [subagent] tag in the same header, so the engine knows where it came from.",
   },
   {
     key: "learn",
@@ -85,7 +85,7 @@ const BEATS: Beat[] = [
     label: "Learn",
     caption: "it mines",
     title: "A patch has to pass twice to be allowed to exist.",
-    lead: "The harness runs the suite in a fresh sandbox. If it fails, the transcript is mined for memory rules that would have prevented it, and a candidate re-runs against the patched memory. One passing run is a lucky run; the second run is the gate.",
+    lead: "The harness runs the suite in a fresh sandbox. On failure the transcript is mined for preventive rules, and a candidate re-runs with the patched memory. One pass is luck; the second is the gate.",
     filename: "engine log - harness.ts",
     body: [
       "candidate run 41d0c9a2 failed — looping back",
@@ -97,7 +97,7 @@ const BEATS: Beat[] = [
       "to project memory (v7)",
     ].join("\n"),
     caption2:
-      "Three real log lines from `harness.ts`, in the order the engine emits them — the failed loop-back, the noise-gate refusal, the ship. A patch that regresses later gets un-shipped by the retention check.",
+      "Three real log lines from `harness.ts`, in engine order — the failed loop-back, the noise-gate refusal, the ship. A patch that regresses later is un-shipped by the retention check.",
   },
   {
     key: "dream",
@@ -105,7 +105,7 @@ const BEATS: Beat[] = [
     label: "Dream",
     caption: "it dreams",
     title: "Then the notes become a file you can read.",
-    lead: "AutoDream extracts atomic memories through the Mem0 learning core, reconciles them — newest evidence wins, hard-won verified rules are preserved — and renders the scope into topic sections with a provenance footer. A canary run gates the whole thing, and rolls it back if the last-passing task stops passing.",
+    lead: "AutoDream extracts atomic memories through the Mem0 learning core, reconciles them — newest evidence wins, hard-won rules are preserved — and renders the scope into topic sections with a provenance footer. A canary run gates it all, rolling back if the last-passing task stops passing.",
     filename: ".unown/memory/project.md",
     body: [
       "# Project Memory",
@@ -119,7 +119,7 @@ const BEATS: Beat[] = [
       "- Failed cycles auto-recover — do NOT restart engine to fix them.",
     ].join("\n"),
     caption2:
-      "Verbatim lines from this repository's project memory, rendered by the Mem0-backed AutoDream. If a dream breaks the last-passing task, the log reads: rolled back to v5: canary task failed under the new memory.",
+      "Verbatim lines from this repository's project memory, rendered by the Mem0-backed AutoDream. A dream that breaks the last-passing task logs: rolled back to v5: canary task failed under the new memory.",
   },
 ];
 

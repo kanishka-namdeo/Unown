@@ -197,9 +197,8 @@ export function Hero() {
             <p className="mt-6 max-w-xl text-pretty text-lg leading-relaxed text-dim">
               It reads what you write down: every session hands a
               background engine a{" "}
-              <span className="text-ink">note</span>. Overnight that engine turns notes into
-              project memory, and keeps none of it until a fresh sandbox proves it
-              twice.
+              <span className="text-ink">note</span>. Overnight the notes become
+              project memory — kept only after a fresh sandbox proves it twice.
             </p>
 
             {/* What "beta" means here, in words — the plain-language half of

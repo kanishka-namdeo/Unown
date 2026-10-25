@@ -743,9 +743,9 @@ export function DexSection() {
             Every capability, catalogued and filmed.
           </SectionHead>
           <p className="mt-4 text-pretty leading-relaxed text-dim">
-            The session tools, the engine mechanisms, the workflows and the
-            configurable surfaces — one numbered spine you can walk whole or a
-            screen at a time. Play a cry, watch the capture. {TALLY_SENTENCE}
+            Session tools, engine mechanisms, workflows, configurable
+            surfaces — one numbered spine, whole or screen-by-screen. Play a cry,
+            watch the capture. {TALLY_SENTENCE}
           </p>
         </FadeUp>
 

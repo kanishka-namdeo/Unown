@@ -170,10 +170,10 @@ export function AlphabetSection() {
             <FadeUp delay={0.06}>
               <p className="text-pretty leading-relaxed text-dim">
                 <span className="text-ink">un</span>own — the <em>Symbol Pokémon</em>: a
-                flat black letter with one eye, alive since 1999. Twenty-six letter
-                forms to start, with ! and ? arriving in 2004; the 28 below are ours,
-                drawn from scratch as inline SVG — no font file, no image sprite — and
-                each decodes twice: the lore it borrows, the mechanism it stands for here.
+                flat black letter with one eye, alive since 1999. Twenty-six forms
+                at first, ! and ? in 2004; the 28 below are drawn from scratch as
+                inline SVG — no font file, no sprite — each decoding twice: the
+                lore it borrows, the mechanism it stands for.
               </p>
             </FadeUp>
           </div>
