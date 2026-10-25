@@ -400,6 +400,33 @@ let spawnInFlight: Promise<boolean> | null = null;
 export const SPAWN_DISABLED = process.env.PI_DISABLE_ENGINE_SPAWN === "1";
 
 /**
+ * The win32 detach spawn, as DATA (pure - pinned by
+ * test/windows-spawn-verbatim.test.ts). `cmd /c start /b` with the
+ * SS64-correct shape: the empty string is the window-title slot, the
+ * executable is QUOTE-WRAPPED, and the spawn MUST set
+ * windowsVerbatimArguments - the argv is already quoted for `start`, and
+ * Node/Bun's default Windows arg escaping would re-escape the embedded quotes
+ * (`\"C:\...\unown.exe\"`). cmd.exe does not treat backslash as an escape, so
+ * `start` reads the token `\C:\...\unown.exe\` and ShellExecute pops the
+ * "Windows cannot find" dialog - the v0.0.16 binary-install bug (every engine
+ * auto-start attempt on Windows popped it; stdioSpawnSpec in mcp.ts met the
+ * same class first and its fix is the verbatim flag this builder carries).
+ */
+export interface WindowsEngineSpawnSpec {
+        command: string;
+        args: string[];
+        verbatim: boolean;
+}
+
+export function buildWindowsEngineSpawnSpec(execPath: string, serveArgs: string[]): WindowsEngineSpawnSpec {
+        return {
+                command: "cmd",
+                args: ["/c", "start", "/b", "", `"${execPath}"`, ...serveArgs],
+                verbatim: true,
+        };
+}
+
+/**
  * Spawn the engine detached. Resolves true when the child was launched
  * (NOT when it is healthy — the caller decides whether to wait). The child
  * runs `unown engine serve` (this same binary/package), which boots the
@@ -462,10 +489,12 @@ export function spawnEngineDetached(opts: { force?: boolean } = {}): Promise<boo
                                 );
                         }
                         if (process.platform === "win32") {
-                                const child = spawn("cmd", ["/c", "start", "/b", "", `"${command}"`, ...args], {
+                                const spec = buildWindowsEngineSpawnSpec(command, args);
+                                const child = spawn(spec.command, spec.args, {
                                         cwd: state,
                                         env,
                                         windowsHide: true,
+                                        windowsVerbatimArguments: spec.verbatim,
                                         stdio: ["ignore", logFd, logFd],
                                 });
                                 child.unref();

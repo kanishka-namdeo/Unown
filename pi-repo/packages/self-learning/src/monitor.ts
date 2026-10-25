@@ -111,14 +111,32 @@ export interface MonitorSpawner {
         };
 }
 
-/** Default spawner: `bash -lc <command>` (POSIX) / `cmd /c` on win32, cwd-scoped. */
+/**
+ * The win32 monitor spawn, as DATA (pure - pinned by
+ * test/windows-spawn-verbatim.test.ts): `cmd /d /s /c` with the command
+ * OUTER-quoted and the spawn VERBATIM. Node's default Windows arg escaping
+ * re-escapes embedded quotes (`\"...\"`), which cmd.exe does not honor - the
+ * engine-supervisor detach spawn of v0.0.16 popped "Windows cannot find
+ * '\C:\...\unown.exe\'" from exactly that class. /s plus the outer quote
+ * pair is cmd's documented way to keep inner quotes intact (stdioSpawnSpec's
+ * shape).
+ */
+export function windowsMonitorSpawnSpec(command: string): { command: string; args: string[]; verbatim: boolean } {
+        return { command: "cmd", args: ["/d", "/s", "/c", `"${command}"`], verbatim: true };
+}
+
+/** Default spawner: `bash -lc <command>` (POSIX) / `cmd /d /s /c` (win32, verbatim), cwd-scoped. */
 export const defaultMonitorSpawner: MonitorSpawner = (command, opts) => {
         // Late import keeps the module pure for tests that inject a spawner.
         // eslint-disable-next-line @typescript-eslint/no-var-requires
         const { spawn } = require("node:child_process") as typeof import("node:child_process");
-        const isWin = process.platform === "win32";
-        const child = isWin
-                ? spawn("cmd", ["/d", "/s", "/c", command], { cwd: opts.cwd, windowsHide: true })
+        const win = process.platform === "win32" ? windowsMonitorSpawnSpec(command) : null;
+        const child = win
+                ? spawn(win.command, win.args, {
+                          cwd: opts.cwd,
+                          windowsHide: true,
+                          windowsVerbatimArguments: win.verbatim,
+                  })
                 : spawn("bash", ["-lc", command], { cwd: opts.cwd });
         return { child, stdout: child.stdout, stderr: child.stderr } as unknown as ReturnType<MonitorSpawner>;
 };

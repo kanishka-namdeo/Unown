@@ -9,6 +9,12 @@ otherwise specified; the release tag must always equal package.json's version.
 
 Repo conventions: measured claims cite their receipts (`docs/testing-strategy.md`, `benchmarks/memory-eval/*/RESULTS.md`). Changes to agent behavior — prompts, default models, routing, guard rules, hooks, memory injection — are filed under **Agent Behavior**; the policy lives in [docs/BEHAVIOR.md](docs/BEHAVIOR.md).
 
+## [0.0.17] - 2026-10-25
+
+### Fixed
+
+- **windows: the engine auto-start popped a "Windows cannot find '\C:\...\unown.exe\'" dialog** — every engine auto-spawn on a Windows binary install (and `unown setup`'s first health ping, which triggers one) showed a GUI error instead of starting the engine. Root cause: the detach spawn hands `cmd /c start /b "" "<exe>"` to the runtime with the executable ALREADY quoted, but without `windowsVerbatimArguments` — so Node/Bun's default Windows arg escaping re-escaped the embedded quotes into `\"C:\...\unown.exe\"`, a form cmd.exe does not understand (it has no backslash escaping). `start` consumed the quotes as delimiters and ShellExecute'd the residue — `\C:\...\unown.exe\`, the exact path in the dialog. The argv is now built by `buildWindowsEngineSpawnSpec` (pure, pinned): the SS64-correct empty-title slot, a once-quoted executable and `windowsVerbatimArguments: true` — the same fix `stdioSpawnSpec` (MCP stdio) shipped first. The monitor tool's win32 spawner carried the same latent class (any quoted Windows command — `type "C:\Program Files\..."` — would run the wrong thing); it now goes through `windowsMonitorSpawnSpec`, the `cmd /d /s /c` + outer-quote + verbatim shape. Pins in `test/windows-spawn-verbatim.test.ts` — including the regression proof that reproduces the dialog's path from the default escaper's output — 7 tests, suite 4584/0, tsc at baseline.
+
 ## [0.0.16] - 2026-10-25
 
 ### Added
