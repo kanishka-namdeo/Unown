@@ -30,19 +30,44 @@ export interface ChangelogStop {
   groups: ChangelogGroup[];
 }
 
-export const CHANGELOG_TOTAL_ENTRIES = 295;
+export const CHANGELOG_TOTAL_ENTRIES = 296;
 
 export const CHANGELOG_TOTALS: Record<ChangelogBucket, number> = {
   "Added": 130,
   "Changed": 21,
   "Deprecated": 0,
   "Removed": 3,
-  "Fixed": 111,
+  "Fixed": 112,
   "Security": 0,
   "Behavior": 30
 };
 
 export const CHANGELOG_STOPS: ChangelogStop[] = [
+  {
+    "label": "Unreleased",
+    "date": null,
+    "total": 1,
+    "counts": {
+      "Added": 0,
+      "Changed": 0,
+      "Deprecated": 0,
+      "Removed": 0,
+      "Fixed": 1,
+      "Security": 0,
+      "Behavior": 0
+    },
+    "groups": [
+      {
+        "bucket": "Fixed",
+        "items": [
+          {
+            "title": "engine service: the platform audit — five latent failures under the happy path",
+            "behavior": false
+          }
+        ]
+      }
+    ]
+  },
   {
     "label": "0.0.21",
     "date": "2026-10-25",

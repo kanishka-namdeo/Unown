@@ -21,22 +21,26 @@ import "./_env.ts"; // MUST be the first import
 import { describe, expect, test } from "bun:test";
 import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 import {
         ENGINE_SERVICE_NAME,
         LAUNCHD_LABEL,
         autoServiceEnv,
         buildLaunchdPlist,
         buildSystemdUnit,
-        buildWindowsLauncherVbs,
+        buildWindowsLauncherPs,
         buildWindowsRegisterPs,
+        buildWindowsRunCommand,
         decideAutoServiceInstall,
         describeServiceAutoSkip,
         detectServiceManager,
         installEngineService,
+        resolveServiceBunPath,
         resolveServiceSpec,
         serviceDisabledMarker,
+        windowsLauncherDir,
         windowsLauncherPath,
+        windowsLegacyLauncherPath,
         windowsStartupDir,
         type ServiceSpec,
 } from "../src/engine-service.ts";
@@ -60,9 +64,13 @@ describe("detectServiceManager", () => {
 });
 
 describe("resolveServiceSpec", () => {
-        test("source checkout: bun = execPath, entry = <repo>/bin/unown, cwd = repo", () => {
-                const spec = resolveServiceSpec("/repo/unown", false);
-                expect(spec.bunPath).toBe(process.execPath);
+        test("source checkout: bun = the (stable) exec path, entry = <repo>/bin/unown, cwd = repo", () => {
+                const spec = resolveServiceSpec("/repo/unown", false, {
+                        execPath: "/opt/bun/bin/bun",
+                        env: {},
+                        exists: () => false,
+                });
+                expect(spec.bunPath).toBe("/opt/bun/bin/bun");
                 expect(spec.entryPath).toBe(join("/repo/unown", "bin", "unown"));
                 expect(spec.workDir).toBe("/repo/unown");
                 expect(spec.envFile).toBe(join("/repo/unown", ".env"));
@@ -81,18 +89,29 @@ describe("buildSystemdUnit", () => {
                 expect(unit).toContain(`ExecStart="/opt/bun 1.4/bin/bun" "/home/u/my projects/Unown/bin/unown" engine serve`);
         });
         test("works from the checkout (where .env lives)", () => {
-                expect(unit).toContain("WorkingDirectory=/home/u/my projects/Unown");
+                expect(unit).toContain('WorkingDirectory="/home/u/my projects/Unown"');
         });
         test("restarts on crash but NEVER over a clean exit (lock loser / graceful stop)", () => {
                 expect(unit).toContain("Restart=on-failure");
                 expect(unit).toContain("RestartPreventExitStatus=0");
         });
-        test("bounded restart storm (StartLimit) and a drain-friendly stop timeout", () => {
-                expect(unit).toContain("StartLimitBurst=5");
+        test("bounded restart storm lives in [Unit] — systemd ignores StartLimit* in [Service]", () => {
+                const [unitBlock, serviceBlock] = unit.split("\n[Service]\n");
+                expect(unitBlock).toContain("StartLimitBurst=5");
+                expect(unitBlock).toContain("StartLimitIntervalSec=60");
+                expect(serviceBlock).not.toContain("StartLimit");
+        });
+        test("a drain-friendly stop timeout", () => {
                 expect(unit).toContain("TimeoutStopSec=30");
         });
         test("enabled at login for the USER session", () => {
                 expect(unit).toContain("WantedBy=default.target");
+        });
+        test("doubles systemd specifiers (%) and env expansion ($) for literal paths", () => {
+                const hostile = buildSystemdUnit({ ...SPEC, workDir: "/srv/100%/proj", bunPath: "/opt/$bun/bin/bun" });
+                expect(hostile).toContain('WorkingDirectory="/srv/100%%/proj"');
+                expect(hostile).toContain('ExecStart="/opt/$$bun/bin/bun"');
+                expect(hostile).toContain('"/home/u/my projects/Unown/bin/unown"');
         });
 });
 
@@ -152,28 +171,129 @@ describe("buildWindowsRegisterPs", () => {
         });
 });
 
-describe("buildWindowsLauncherVbs (the no-admin logon lane)", () => {
-        const vbs = buildWindowsLauncherVbs(SPEC);
+describe("buildWindowsLauncherPs (the no-admin logon watchdog)", () => {
+        const ps = buildWindowsLauncherPs(SPEC);
 
-        test("runs engine serve hidden and waits, with every path quote-wrapped", () => {
-                expect(vbs).toContain(
-                        `shell.Run("""/opt/bun 1.4/bin/bun"" ""/home/u/my projects/Unown/bin/unown"" engine serve", 0, True)`,
+        test("runs engine serve through cmd so the log keeps the child's UTF-8 bytes", () => {
+                expect(ps).toContain(
+                        `$line = '"' + '/opt/bun 1.4/bin/bun' + '" "' + '/home/u/my projects/Unown/bin/unown' + '" engine serve >> "' + $log + '" 2>&1'`,
                 );
-                expect(vbs).toContain('Set shell = CreateObject("WScript.Shell")');
-                expect(vbs).toContain(`shell.CurrentDirectory = "/home/u/my projects/Unown"`);
+                expect(ps).toContain("& $env:ComSpec /d /c $line");
+                // PS 5.1's own `*>>` writes UTF-16 and would corrupt the shared log.
+                expect(ps).not.toContain("*>>");
+                expect(ps).toContain(`$log = '/home/u/my projects/Unown/.run/engine.log'`);
+                expect(ps).toContain(`Set-Location -LiteralPath '/home/u/my projects/Unown'`);
         });
-        test("restarts on failure and stops on a clean exit (systemd/launchd semantics)", () => {
-                expect(vbs).toContain("If code = 0 Then Exit Do");
-                expect(vbs).toContain("WScript.Sleep 3000");
-                expect(vbs).toContain("Do");
-                expect(vbs).toContain("Loop");
+        test("restarts on failure with capped backoff and stops on a clean exit", () => {
+                expect(ps).toContain("if ($LASTEXITCODE -eq 0) { break }");
+                expect(ps).toContain("Start-Sleep -Seconds $delay");
+                expect(ps).toContain("$delay = [Math]::Min($delay * 2, 60)");
         });
-        test("lives in the per-user Startup folder, keyed off APPDATA", () => {
-                const env = { APPDATA: join("C:", "Users", "u", "AppData", "Roaming") } as NodeJS.ProcessEnv;
+        test("single-quote-escapes apostrophes (PowerShell doubling)", () => {
+                expect(buildWindowsLauncherPs({ ...SPEC, workDir: "C:\\o'brien" })).toContain("'C:\\o''brien'");
+        });
+        test("is WSH-free — VBScript is a retired feature, not a runtime dependency", () => {
+                expect(ps.toLowerCase()).not.toContain("wscript");
+                expect(ps.toLowerCase()).not.toContain("createobject");
+        });
+});
+
+describe("Windows no-admin paths and the HKCU Run-key contract", () => {
+        const env = {
+                LOCALAPPDATA: join("C:", "Users", "u", "AppData", "Local"),
+                APPDATA: join("C:", "Users", "u", "AppData", "Roaming"),
+                SystemRoot: "C:\\Windows",
+        } as NodeJS.ProcessEnv;
+
+        test("watchdog lives under %LOCALAPPDATA%; the legacy VBS is only a cleanup path", () => {
+                expect(windowsLauncherDir(env)).toBe(join(env.LOCALAPPDATA!, "unown"));
+                expect(windowsLauncherPath(env)).toBe(join(env.LOCALAPPDATA!, "unown", "engine-service.ps1"));
+                expect(windowsLegacyLauncherPath(env)).toBe(
+                        join(env.APPDATA!, "Microsoft", "Windows", "Start Menu", "Programs", "Startup", "unown-engine.vbs"),
+                );
                 expect(windowsStartupDir(env)).toBe(
                         join(env.APPDATA!, "Microsoft", "Windows", "Start Menu", "Programs", "Startup"),
                 );
-                expect(windowsLauncherPath(env)).toBe(join(windowsStartupDir(env), "unown-engine.vbs"));
+        });
+        test("the Run command is hidden, absolute, and quotes the script path", () => {
+                const script = join(env.LOCALAPPDATA!, "unown", "engine-service.ps1");
+                const cmd = buildWindowsRunCommand(script, env)!;
+                expect(cmd).toContain("-WindowStyle Hidden");
+                expect(cmd).toContain('"C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe"');
+                expect(cmd).toContain(`-File "${script}"`);
+        });
+        test("refuses a command over the documented 260-char Run cap (a truncated autostart is worse than none)", () => {
+                expect(buildWindowsRunCommand("C:\\" + "x".repeat(300) + ".ps1", env)).toBeNull();
+                expect(buildWindowsRunCommand("C:\\short.ps1", env)).not.toBeNull();
+        });
+});
+
+describe("resolveServiceBunPath (a long-lived service must not own a versioned binary)", () => {
+        const existing = (paths: string[]) => (p: string) => paths.includes(p);
+
+        test("official installer paths are stable and kept as-is", () => {
+                expect(resolveServiceBunPath({ execPath: "/home/u/.bun/bin/bun", exists: () => false })).toBe(
+                        "/home/u/.bun/bin/bun",
+                );
+                expect(
+                        resolveServiceBunPath({
+                                platform: "win32",
+                                execPath: "C:\\Users\\u\\.bun\\bin\\bun.exe",
+                                exists: () => false,
+                        }),
+                ).toBe("C:\\Users\\u\\.bun\\bin\\bun.exe");
+        });
+        test("Homebrew Cellar → the stable bin symlink on PATH", () => {
+                const execPath = join("/opt/homebrew", "Cellar", "bun", "1.4.2", "bin", "bun");
+                const stable = join("/opt/homebrew", "bin", "bun");
+                expect(
+                        resolveServiceBunPath({
+                                execPath,
+                                env: { PATH: `/usr/bin:${dirname(stable)}` },
+                                platform: "darwin",
+                                exists: existing([stable]),
+                        }),
+                ).toBe(stable);
+        });
+        test("asdf/mise install → the shim on PATH", () => {
+                const execPath = join("/home/u/.asdf", "installs", "bun", "1.4.2", "bin", "bun");
+                const shim = join("/home/u/.asdf", "shims", "bun");
+                expect(
+                        resolveServiceBunPath({
+                                execPath,
+                                env: { PATH: `/usr/bin:${dirname(shim)}` },
+                                platform: "linux",
+                                exists: existing([shim]),
+                        }),
+                ).toBe(shim);
+        });
+        test("BUN_INSTALL/bin is the fallback when PATH has no bun", () => {
+                expect(
+                        resolveServiceBunPath({
+                                execPath: join("/home/u/.asdf", "installs", "bun", "1.4.2", "bin", "bun"),
+                                env: { PATH: "/usr/bin", BUN_INSTALL: join("/opt", "bun") },
+                                platform: "linux",
+                                exists: existing([join("/opt", "bun", "bin", "bun")]),
+                        }),
+                ).toBe(join("/opt", "bun", "bin", "bun"));
+        });
+        test("no stable alternative → the running binary (better than nothing)", () => {
+                const execPath = "/home/u/.asdf/installs/bun/1.4.2/bin/bun";
+                expect(
+                        resolveServiceBunPath({ execPath, env: { PATH: "/usr/bin" }, platform: "linux", exists: () => false }),
+                ).toBe(execPath);
+        });
+        test("Scoop's versioned app dir is treated as unstable too", () => {
+                const execPath = "C:\\Users\\u\\scoop\\apps\\bun\\1.4.2\\bin\\bun.exe";
+                const shim = "C:\\Users\\u\\scoop\\shims\\bun.exe";
+                expect(
+                        resolveServiceBunPath({
+                                execPath,
+                                env: { PATH: `C:\\Windows;${dirname(shim)}` },
+                                platform: "win32",
+                                exists: existing([shim]),
+                        }),
+                ).toBe(shim);
         });
 });
 
