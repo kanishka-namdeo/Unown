@@ -64,6 +64,23 @@ function PixelMenuIcon({ className }: { className?: string }) {
   );
 }
 
+/** The ▾ on the bar's "More" disclosure: the same staircase as `ContinueArrow`
+ *  with no blink, and drawn rather than rotated so the crisp edges stay on the
+ *  pixel grid. State is carried by `aria-expanded`, not by flipping the caret. */
+function PixelCaretDown({ className }: { className?: string }) {
+  return (
+    <svg
+      viewBox="0 0 10 7"
+      aria-hidden="true"
+      shapeRendering="crispEdges"
+      className={className}
+      fill="currentColor"
+    >
+      <polygon points="0,0 10,0 5,7" />
+    </svg>
+  );
+}
+
 /**
  * Reduced motion, read the way a server render can agree with.
  *
@@ -475,27 +492,41 @@ export function BetaBadge({ className }: { className?: string }) {
 /* ------------------------------------------------------------------ */
 
 /**
- * Mirrors the top-level anchors of the nine-band page (see `page.tsx`).
- * "Dashboard" deliberately points at the in-page screenshots (#showcase),
- * not the live route: a visitor without the engine running would hit a dead
- * app behind a login-free but data-less shell. There is no separate
- * "Features" link: on 2026-10-23 the capture carousel merged into the
- * capability dex, so the catalog and its footage are one anchor.
+ * Every top-level entry of the nine-band page (see `page.tsx`), in page order,
+ * tagged with the group it renders in on desktop.
+ *
+ * Four carry the argument — mechanism, capability, evidence, objections — and
+ * sit in the bar. The other four are the record surfaces (the screenshots, the
+ * identity, the shipping rail, the longhand blog) and fold behind the "More"
+ * disclosure: eight labels in a row read as a wall, and the bar's one gold
+ * action was losing to them. Below `lg` the section menu renders the whole list
+ * flat — a phone visitor gets one menu, not a menu inside a menu.
+ *
+ * "Dashboard" deliberately points at the in-page screenshots (#showcase), not
+ * the live route: a visitor without the engine running would hit a dead app
+ * behind a login-free but data-less shell. There is no separate "Features"
+ * link: on 2026-10-23 the capture carousel merged into the capability dex, so
+ * the catalog and its footage are one anchor.
  *
  * "Blog" (2026-10-25) is the one non-anchor entry — a real route, rendered
- * through next/link for soft navigation, last in the bar where a record
- * belongs. The landing-copy suite pins the full label list.
+ * through next/link for soft navigation. The landing-copy suite pins the full
+ * label list.
  */
-const NAV_LINKS = [
-  { href: "#loop", label: "How it learns" },
-  { href: "#dex", label: "Capability dex" },
-  { href: "#showcase", label: "Dashboard" },
-  { href: "#proof", label: "Proof" },
-  { href: "#alphabet", label: "Alphabet" },
-  { href: "#faq", label: "FAQ" },
-  { href: "#changelog", label: "Changelog" },
-  { href: "/blog", label: "Blog" },
+const NAV_ENTRIES = [
+  { href: "#loop", label: "How it learns", group: "primary" },
+  { href: "#dex", label: "Capability dex", group: "primary" },
+  { href: "#showcase", label: "Dashboard", group: "more" },
+  { href: "#proof", label: "Proof", group: "primary" },
+  { href: "#alphabet", label: "Alphabet", group: "more" },
+  { href: "#faq", label: "FAQ", group: "primary" },
+  { href: "#changelog", label: "Changelog", group: "more" },
+  { href: "/blog", label: "Blog", group: "more" },
 ] as const;
+
+/** The desktop bar's four, and the four behind "More" — both in page order,
+ *  so the concatenation of the two is the list the section menu renders. */
+const NAV_PRIMARY = NAV_ENTRIES.filter((l) => l.group === "primary");
+const NAV_MORE = NAV_ENTRIES.filter((l) => l.group === "more");
 
 /** A nav entry: in-page anchors are plain `<a>` (same-document jumps), real
  * routes go through next/link — one component so both bars stay in sync.
@@ -536,26 +567,118 @@ function NavLink({
 }
 
 /**
+ * The desktop bar's disclosure for the four record surfaces.
+ *
+ * The trigger is a nav link, not a button-shaped thing: framing it in
+ * `gb-btn-dark` would park a second bordered block beside the gold CTA, which
+ * is the crowding this bar had in the first place. It takes the same type,
+ * colour and gutter `▶` as its neighbours and adds only the caret that says it
+ * opens something.
+ *
+ * The panel is `hidden`-toggled rather than conditionally rendered — same
+ * contract as the section menu, so `aria-controls` always resolves and the
+ * links stay in the server render for crawlers and for `verify-deploy`. It
+ * closes on Escape (back to the trigger), on a link click, on a pointer-down
+ * outside, and on focus leaving the disclosure.
+ */
+function NavMore() {
+  const [open, setOpen] = React.useState(false);
+  const wrap = React.useRef<HTMLDivElement>(null);
+  const trigger = React.useRef<HTMLButtonElement>(null);
+
+  React.useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== "Escape") return;
+      setOpen(false);
+      // The panel is about to leave the tab order; focus has somewhere to go
+      // back to or the keyboard visitor is dropped at the top of the document.
+      trigger.current?.focus();
+    };
+    // Pointer-down rather than click: a click outside would first land on
+    // whatever is under the cursor, then never reach the close handler.
+    const onPointerDown = (e: PointerEvent) => {
+      if (!wrap.current?.contains(e.target as Node)) setOpen(false);
+    };
+    window.addEventListener("keydown", onKey);
+    document.addEventListener("pointerdown", onPointerDown);
+    return () => {
+      window.removeEventListener("keydown", onKey);
+      document.removeEventListener("pointerdown", onPointerDown);
+    };
+  }, [open]);
+
+  const close = () => setOpen(false);
+
+  return (
+    <div
+      ref={wrap}
+      className="relative"
+      onBlur={(e) => {
+        if (open && !wrap.current?.contains(e.relatedTarget as Node)) close();
+      }}
+    >
+      <button
+        ref={trigger}
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        aria-expanded={open}
+        aria-controls="nav-more"
+        className="group relative flex items-center gap-1.5 whitespace-nowrap text-[13px] text-dim transition-colors hover:text-gold focus:outline-none focus-visible:text-gold"
+      >
+        <PixelCursor className="absolute -left-3.5 top-1/2 h-3 w-[7px] -translate-y-1/2 text-gold opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100" />
+        More
+        <PixelCaretDown className="h-[6px] w-[9px] text-faint" />
+      </button>
+
+      <div
+        id="nav-more"
+        hidden={!open}
+        className="absolute right-0 top-full z-50 mt-2 min-w-[190px] border-[3px] border-gold bg-panel px-4 py-1"
+      >
+        {NAV_MORE.map((l) => (
+          <NavLink
+            key={l.href}
+            href={l.href}
+            label={l.label}
+            onClick={close}
+            className="group flex items-center border-b border-line py-2.5 text-[13px] text-dim transition-colors last:border-b-0 hover:text-gold focus:outline-none focus-visible:text-gold"
+            cursorClassName="mr-3 h-3 w-[7px] shrink-0 text-gold opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100"
+          />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/**
  * A console menu bar: bright rule underneath, pixel wordmark, and a `▶`
  * cursor that lights up in the gutter on hover.
  *
  * The cursor is absolutely positioned into the 20px link gap rather than
- * laid out in front of the label, so hovering costs no reflow — seven links
+ * laid out in front of the label, so hovering costs no reflow — eight links
  * shifting by nine pixels each is the kind of jitter that makes a sticky
  * header feel cheap. The nav keeps Geist for its links on purpose: Press
  * Start 2P is a fixed-width bitmap face, and "HOW IT LEARNED" in it overruns
  * the header below 1200px. The retro here comes from the rule, the wordmark
  * and the cursor, not from making the navigation hard to read.
  *
- * Below `lg` the seven anchors do not fit next to the wordmark and the
- * actions (the bar measured exactly full at 390px with the CTA alone), so
- * the links, GitHub and "Get started" live behind a section menu — a
- * disclosure button (WAI-ARIA disclosure-navigation pattern: `aria-expanded`
- * + `aria-controls`, focus stays on the button, Esc closes, focus leaving
- * the header closes) opening a panel that overlays the page from the sticky
- * header instead of pushing it. A visitor on a phone gets the same jumps the
- * desktop bar has always had; before it, the only in-page navigation below
- * `lg` was the footer at the very bottom of the page.
+ * The bar carries four links plus the "More" disclosure (2026-10-25). It used
+ * to carry all eight, and the cost was visible: the wordmark, eight labels,
+ * two icon actions and a gold CTA measured exactly full at 1024px, which is
+ * why the labels had to step down to 12.5px below 1100px. Four links fit at
+ * the full 13px with room to spare, so that step is gone.
+ *
+ * Below `lg` the four links and "More" do not fit next to the wordmark and the
+ * actions either (the bar measured exactly full at 390px with the CTA alone),
+ * so everything — the eight entries and the GitHub and "Get started" actions —
+ * lives behind a section menu: a disclosure button (WAI-ARIA
+ * disclosure-navigation pattern: `aria-expanded` + `aria-controls`, focus stays
+ * on the button, Esc closes, focus leaving the header closes) opening a panel
+ * that overlays the page from the sticky header instead of pushing it. A
+ * visitor on a phone gets the same jumps the desktop bar has always had; before
+ * it, the only in-page navigation below `lg` was the footer at the very bottom
+ * of the page.
  */
 export function Nav() {
   const [open, setOpen] = React.useState(false);
@@ -597,29 +720,26 @@ export function Nav() {
               product's name, before any claim is read. Not hidden below a
               breakpoint: on a phone the header is the first screen too. */}
           <BetaBadge />
-          <span className="gb-label hidden text-[8px] text-faint min-[430px]:inline">
-            self-improving
-          </span>
         </Link>
 
-        {/* `gap-4` + 12.5px at the lg floor, full size from 1100px: the seven
-            links, the wordmark and the actions measured exactly full at 1024,
-            and at 13px/20px the two longest labels wrapped onto a second line
-            inside the 64px bar. `whitespace-nowrap` keeps every label on one
-            line at every width in between. */}
+        {/* `gap-5` at the full 13px from `lg` up: four links, the wordmark and
+            the actions fit with room to spare, where the eight-label bar
+            needed a 12.5px step below 1100px. `whitespace-nowrap` keeps every
+            label on one line at every width. */}
         <nav
           aria-label="Main"
-          className="ml-auto hidden items-center gap-4 min-[1100px]:gap-5 lg:flex"
+          className="ml-auto hidden items-center gap-5 lg:flex"
         >
-          {NAV_LINKS.map((l) => (
+          {NAV_PRIMARY.map((l) => (
             <NavLink
               key={l.href}
               href={l.href}
               label={l.label}
-              className="group relative whitespace-nowrap text-[12.5px] text-dim transition-colors hover:text-gold focus-visible:text-gold focus:outline-none min-[1100px]:text-[13px]"
+              className="group relative whitespace-nowrap text-[13px] text-dim transition-colors hover:text-gold focus-visible:text-gold focus:outline-none"
               cursorClassName="absolute -left-3.5 top-1/2 h-3 w-[7px] -translate-y-1/2 text-gold opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100"
             />
           ))}
+          <NavMore />
         </nav>
 
         <div className="ml-auto flex items-center gap-2.5 lg:ml-0">
@@ -687,7 +807,7 @@ export function Nav() {
           </div>
 
           <nav aria-label="Main menu" className="mt-3 border-t border-line pt-1">
-            {NAV_LINKS.map((l) => (
+            {NAV_ENTRIES.map((l) => (
               <NavLink
                 key={l.href}
                 href={l.href}

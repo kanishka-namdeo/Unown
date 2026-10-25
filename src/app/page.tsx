@@ -66,8 +66,9 @@ import { Footer, LandingMotion, Nav } from "@/components/landing/shell";
  * instead of being restated, and the harness-provenance paragraph that used to
  * repeat inside every empty stage is now said once for the whole band.
  *
- * `NAV_LINKS` in `shell.tsx` mirrors the top-level anchors. If you add a
- * section, add it there too or the page grows an orphan.
+ * `NAV_ENTRIES` in `shell.tsx` mirrors the top-level anchors. If you add a
+ * section, add it there too or the page grows an orphan — `group: "more"` is
+ * the default home for a new entry; the bar's four are the argument's four.
  */
 export default function LandingPage() {
   return (

@@ -344,11 +344,78 @@ describe("landing integrity", () => {
 });
 
 describe("landing shell", () => {
+  // The desktop bar's own contract, and the reason it exists: four argument
+  // links and one disclosure, where eight labels in a row competed with the
+  // single gold CTA. The record surfaces are still reachable — they are the
+  // "More" panel's whole content — they just no longer share the row.
+  const PRIMARY = ["How it learns", "Capability dex", "Proof", "FAQ"];
+  const MORE = ["Dashboard", "Alphabet", "Changelog", "Blog"];
+  const barText = (container: HTMLElement) =>
+    Array.from(container.querySelectorAll('nav[aria-label="Main"] > a')).map((a) =>
+      a.textContent?.trim(),
+    );
+  const moreText = (container: HTMLElement) =>
+    Array.from(container.querySelectorAll("#nav-more a")).map((a) => a.textContent?.trim());
+
+  test("the bar carries four links and a More disclosure, not eight", () => {
+    const { container } = render(<Nav />);
+    expect(barText(container)).toEqual(PRIMARY);
+    expect(moreText(container)).toEqual(MORE);
+    // Nothing framed inside the nav row: the one filled action in the header is
+    // the gold CTA, and the disclosure must not compete with it.
+    expect(container.querySelectorAll('nav[aria-label="Main"] .gb-btn').length).toBe(0);
+    const trigger = screen.getByRole("button", { name: /^more/i });
+    expect(trigger.getAttribute("aria-controls")).toBe("nav-more");
+    expect(trigger.className).not.toContain("gb-btn");
+  });
+
+  test("the More disclosure opens, jumps, and closes on Escape, click and blur", () => {
+    const { container } = render(<Nav />);
+    const trigger = screen.getByRole("button", { name: /^more/i });
+    const panel = document.getElementById("nav-more");
+    expect(panel).toBeTruthy();
+    // Closed: in the DOM so aria-controls resolves and the SSR HTML keeps the
+    // links, out of the tree so a screen reader is not read a hidden menu.
+    expect(panel!.hasAttribute("hidden")).toBe(true);
+    expect(trigger.getAttribute("aria-expanded")).toBe("false");
+    expect(screen.queryByRole("link", { name: /^Changelog$/i })).toBeNull();
+
+    fireEvent.click(trigger);
+    expect(panel!.hasAttribute("hidden")).toBe(false);
+    expect(trigger.getAttribute("aria-expanded")).toBe("true");
+    for (const label of MORE) {
+      expect(screen.getByRole("link", { name: new RegExp(`^${label}$`, "i") })).toBeTruthy();
+    }
+
+    // Escape closes and hands focus back to the trigger — the panel is about to
+    // leave the tab order, so a keyboard visitor needs somewhere to land.
+    fireEvent.keyDown(window, { key: "Escape" });
+    expect(panel!.hasAttribute("hidden")).toBe(true);
+    expect(document.activeElement).toBe(trigger);
+
+    // A jump closes it too: an open panel over the band the visitor asked for
+    // is a panel in the way.
+    fireEvent.click(trigger);
+    fireEvent.click(screen.getByRole("link", { name: /^Blog$/i }));
+    expect(panel!.hasAttribute("hidden")).toBe(true);
+
+    // And so does a pointer-down anywhere outside the disclosure.
+    fireEvent.click(trigger);
+    expect(panel!.hasAttribute("hidden")).toBe(false);
+    fireEvent.pointerDown(document.body);
+    expect(panel!.hasAttribute("hidden")).toBe(true);
+    cleanup();
+  });
+
   test("nav and footer Dashboard point at the screenshots, not /dashboard", () => {
-    render(<Nav />);
-    const navLinks = screen.getAllByRole("link", { name: /^Dashboard$/i });
-    expect(navLinks.length).toBeGreaterThan(0);
-    for (const l of navLinks) expect(l.getAttribute("href")).toBe("#showcase");
+    const { container } = render(<Nav />);
+    // The bar's Dashboard sits in the closed More panel, which the `hidden`
+    // attribute keeps out of role queries — the pin is on the rendered href.
+    const navDashboards = Array.from(container.querySelectorAll('nav[aria-label="Main"] a')).filter(
+      (a) => a.textContent?.trim() === "Dashboard",
+    );
+    expect(navDashboards.length).toBeGreaterThan(0);
+    for (const l of navDashboards) expect(l.getAttribute("href")).toBe("#showcase");
     cleanup();
     render(<Footer />);
     const footLinks = screen.getAllByRole("link", { name: /^Dashboard$/i });
@@ -365,7 +432,8 @@ describe("landing shell", () => {
     // CTA are the other <a>s in the header.
     const wordmark = container.querySelector('a[href="/"]');
     expect(wordmark?.textContent).toContain("Beta");
-    // The Blog access point: the one non-anchor nav entry, a real route.
+    // The Blog access point: the one non-anchor nav entry, a real route. It is
+    // in the More panel, which is inside the main nav and always rendered.
     const blogLink = container.querySelector('nav[aria-label="Main"] a[href="/blog"]');
     expect(blogLink?.textContent?.trim()).toBe("Blog");
     cleanup();
@@ -375,11 +443,13 @@ describe("landing shell", () => {
     expect(screen.getByRole("link", { name: /^Blog$/i }).getAttribute("href")).toBe("/blog");
   });
 
-  // Below lg the seven anchors live behind the section menu. These pin the
-  // disclosure contract: the panel exists (aria-controls resolves), starts
-  // closed and out of the accessibility tree (the `hidden` attribute), opens
-  // on the button, carries the same seven anchors plus the two header actions
-  // that no longer fit the bar, and closes on link click and Escape.
+  // Below lg the whole list lives behind the section menu — flat, all eight,
+  // because a phone visitor gets one menu rather than a menu inside a menu.
+  // These pin the disclosure contract: the panel exists (aria-controls
+  // resolves), starts closed and out of the accessibility tree (the `hidden`
+  // attribute), opens on the button, carries every entry the desktop bar and
+  // the More disclosure have, plus the two header actions that no longer fit
+  // the bar, and closes on link click and Escape.
   test("the section menu is a closed disclosure below lg, then opens with every anchor", () => {
     render(<Nav />);
     const button = screen.getByRole("button", { name: /open the section menu/i });
@@ -396,9 +466,9 @@ describe("landing shell", () => {
     expect(button.getAttribute("aria-expanded")).toBe("true");
     expect(panel!.hasAttribute("hidden")).toBe(false);
     const menu = screen.getByRole("navigation", { name: "Main menu" });
-    // The eight entries the bar carries: the seven in-page anchors plus
-    // Blog — the one real route, pinned here with the rest since the menu
-    // is the phone visitor's only navigation.
+    // The eight entries the page has: the seven in-page anchors plus Blog —
+    // the one real route, pinned here with the rest since the menu is the
+    // phone visitor's only navigation.
     for (const label of ["How it learns", "Capability dex", "Dashboard", "Proof", "Alphabet", "FAQ", "Changelog", "Blog"]) {
       const links = menu.querySelectorAll("a");
       expect(
