@@ -30,10 +30,10 @@ export interface ChangelogStop {
   groups: ChangelogGroup[];
 }
 
-export const CHANGELOG_TOTAL_ENTRIES = 294;
+export const CHANGELOG_TOTAL_ENTRIES = 295;
 
 export const CHANGELOG_TOTALS: Record<ChangelogBucket, number> = {
-  "Added": 129,
+  "Added": 130,
   "Changed": 21,
   "Deprecated": 0,
   "Removed": 3,
@@ -44,11 +44,11 @@ export const CHANGELOG_TOTALS: Record<ChangelogBucket, number> = {
 
 export const CHANGELOG_STOPS: ChangelogStop[] = [
   {
-    "label": "Unreleased",
-    "date": null,
-    "total": 2,
+    "label": "0.0.21",
+    "date": "2026-10-25",
+    "total": 3,
     "counts": {
-      "Added": 0,
+      "Added": 1,
       "Changed": 1,
       "Deprecated": 0,
       "Removed": 0,
@@ -57,6 +57,15 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
       "Behavior": 0
     },
     "groups": [
+      {
+        "bucket": "Added",
+        "items": [
+          {
+            "title": "release: the second re-cut — v0.0.21 supersedes the failed v0.0.20 tag, and the true macOS root cause is found",
+            "behavior": false
+          }
+        ]
+      },
       {
         "bucket": "Changed",
         "items": [

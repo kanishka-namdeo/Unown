@@ -9,7 +9,11 @@ otherwise specified; the release tag must always equal package.json's version.
 
 Repo conventions: measured claims cite their receipts (`docs/testing-strategy.md`, `benchmarks/memory-eval/*/RESULTS.md`). Changes to agent behavior — prompts, default models, routing, guard rules, hooks, memory injection — are filed under **Agent Behavior**; the policy lives in [docs/BEHAVIOR.md](docs/BEHAVIOR.md).
 
-## [Unreleased]
+## [0.0.21] - 2026-10-25
+
+### Added
+
+- **release: the second re-cut — v0.0.21 supersedes the failed v0.0.20 tag, and the true macOS root cause is found** — the v0.0.20 run failed the SAME macos-latest leg on the SAME pin, which ruled out the slow-dead-bridge theory the first re-cut bet on and forced the real diagnosis: the BUG 10 suite derived its project slug at module load, BEFORE `beforeAll` created the scratch project directory — and on macOS `/var` is a symlink into `/private/…`, so an existing dir realpaths to a different identity than the literal spelling `resolveProjectIdentity()` falls back to for a missing one. The dispatched project dream's row was written with the REALPATH slug while the test's `projectDreamRow` LIKE-matched the LITERAL-path slug: the row existed the whole time, the query just looked for the wrong string on every macOS leg (Linux `/tmp` is not a symlink, so both spellings agree — ubuntu green told us nothing). The suite now materializes the directory first and derives the slug from `realpathSync` — both sides of the lookup agree on every OS. Belt-and-suspenders on top: the emit-path pin now runs its dispatched dream on the deterministic fake platform (no LLM, no network — the test's subject is ROUTING, and the dead-bridge error outcome stays pinned by `dreams-run-projects.test.ts`), and its job-idle window grows to 30s because a SUCCEEDING dream proceeds to the post-ship skill-mint pass whose dead-bridge chatJson legitimately burns llm.ts's retry ladder before the job returns to idle. The failed v0.0.19 and v0.0.20 tags stay as the record.
 
 ### Changed
 
