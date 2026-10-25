@@ -220,12 +220,17 @@ class FakeProc extends EventEmitter {
 }
 
 describe("waitForFleetDrain (delivery + turn settle)", () => {
+	// 2026-10-26: explicit per-test timeouts — the pins carry their own
+	// bounded waits (5s/8s drain budgets) plus ~1s of scenario sleeps, and
+	// bun's default 5s test cap fired FIRST on the slow release-verify
+	// runners, turning a drain-budget overrun into a timeout the pin
+	// could not even report. The cap must sit ABOVE the drain budget.
 	test("returns immediately when no manager ever saw a child", async () => {
 		const t0 = Date.now();
 		const drained = await waitForFleetDrain(5000);
 		expect(drained).toBe(true);
 		expect(Date.now() - t0).toBeLessThan(400); // no grace tax for fleetless runs
-	});
+	}, 10_000);
 
 	test("waits through pending results and an active turn, returns after settle + grace", async () => {
 		const dir = mkdtempSync(join(tmpdir(), "unown-drain-"));
@@ -302,7 +307,7 @@ describe("waitForFleetDrain (delivery + turn settle)", () => {
 		const ok = await drain;
 		expect(ok).toBe(true);
 		manager.dispose();
-	});
+	}, 15_000);
 });
 
 // ---------------------------------------------------------------------------
