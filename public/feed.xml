@@ -7,6 +7,16 @@
     <description>How each feature and release works, what it does, and the receipts behind it — the longhand record of the self-improving terminal coding agent Unown.</description>
     <language>en</language>
     <item>
+      <title>&quot;The SOTA memory-eval round: four suites, one real fix, and a bill paid&quot;</title>
+      <link>https://unown-nine.vercel.app/blog/2026-10-26-the-sota-memory-eval-round</link>
+      <guid isPermaLink="true">https://unown-nine.vercel.app/blog/2026-10-26-the-sota-memory-eval-round</guid>
+      <pubDate>Mon, 26 Oct 2026 00:00:00 GMT</pubDate>
+      <description>&quot;How our memory system earned its numbers: gold-op ledgers, dual-embedder retrieval, a calibrated judge, twelve failure modes — and the bug they caught.&quot;</description>
+      <category>memory</category>
+      <category>benchmarks</category>
+      <category>release</category>
+    </item>
+    <item>
       <title>The memory that proves itself before it ships</title>
       <link>https://unown-nine.vercel.app/blog/2026-10-25-memory-that-proves-itself</link>
       <guid isPermaLink="true">https://unown-nine.vercel.app/blog/2026-10-25-memory-that-proves-itself</guid>
