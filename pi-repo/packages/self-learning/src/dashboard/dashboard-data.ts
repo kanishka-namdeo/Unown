@@ -197,6 +197,9 @@ const INVALIDATIONS: Record<string, ResourceId[]> = {
         "skill:retired": ["skills", "overview"],
         "task:minted": ["tasks", "overview"],
         "task:mint-discarded": ["tasks", "overview"],
+        "task:mint-unsolvable": ["tasks", "overview"],
+        "task:quarantined": ["tasks", "overview"],
+        "task:activated": ["tasks", "overview"],
         "task:graduated": ["tasks", "overview"],
         "mint:cascade": ["tasks", "overview"],
         "automation:created": ["automations", "overview"],
@@ -318,6 +321,21 @@ export function describeEvent(ev: AgentEvent): { text: string; tone: ActivityIte
                         return { text: `task minted · ${str("name")} (${str("source")})`, tone: "emerald" };
                 case "task:mint-discarded":
                         return { text: `minted draft discarded · ${str("reason")}`, tone: "amber" };
+                case "task:mint-unsolvable":
+                        return {
+                                text: `unsolvable draft refused · ${str("id")} — the reference solution cannot pass its own tests`,
+                                tone: "amber",
+                        };
+                case "task:quarantined": {
+                        const by = p.by === "operator" ? " · by operator" : "";
+                        const streak = p.consecutiveFailures ? ` · ${str("consecutiveFailures")} straight failures` : "";
+                        return {
+                                text: `capability eval quarantined · ${str("id")}${streak} — deactivated${by}`,
+                                tone: "rose",
+                        };
+                }
+                case "task:activated":
+                        return { text: `task reactivated · ${str("id")} → ${str("status")}`, tone: "emerald" };
                 case "task:graduated":
                         return { text: `task graduated · ${str("id")} — promoted to regression guard`, tone: "emerald" };
                 case "mint:cascade":

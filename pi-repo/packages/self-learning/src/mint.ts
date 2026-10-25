@@ -24,6 +24,7 @@ export interface SuiteStats {
         minted: number; // active tasks with origin 'minted'
         graduated: number; // minted tasks that earned regression-suite status
         saturated: boolean; // every active task currently passing
+        quarantined: number; // DEACTIVATED capability evals the circuit breaker caught
 }
 
 function lastRunStatus(taskId: string): string | null {
@@ -49,6 +50,11 @@ export function suiteStats(): SuiteStats {
         const graduated = tasks.filter(
                 (t) => (t.origin ?? "seed") === "minted" && (t.status ?? "regression") === "regression",
         ).length;
+        // Quarantined tasks are active=0 (excluded from every count above) —
+        // counted separately so the dashboard can say the breaker fired.
+        const quarantined = store.query<{ n: number }>(
+                `SELECT COUNT(*) AS n FROM tasks WHERE active = 0 AND status = 'quarantined'`,
+        )[0]?.n ?? 0;
         return {
                 total: tasks.length,
                 passing,
@@ -56,6 +62,7 @@ export function suiteStats(): SuiteStats {
                 regression,
                 minted,
                 graduated,
+                quarantined,
                 saturated: tasks.length > 0 && passing === tasks.length,
         };
 }
