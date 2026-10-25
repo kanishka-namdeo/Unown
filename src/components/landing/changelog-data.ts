@@ -30,33 +30,55 @@ export interface ChangelogStop {
   groups: ChangelogGroup[];
 }
 
-export const CHANGELOG_TOTAL_ENTRIES = 282;
+export const CHANGELOG_TOTAL_ENTRIES = 285;
 
 export const CHANGELOG_TOTALS: Record<ChangelogBucket, number> = {
-  "Added": 125,
+  "Added": 126,
   "Changed": 19,
   "Deprecated": 0,
   "Removed": 3,
-  "Fixed": 105,
+  "Fixed": 107,
   "Security": 0,
   "Behavior": 30
 };
 
 export const CHANGELOG_STOPS: ChangelogStop[] = [
   {
-    "label": "Unreleased",
-    "date": null,
-    "total": 1,
+    "label": "0.0.18",
+    "date": "2026-10-25",
+    "total": 4,
     "counts": {
-      "Added": 0,
+      "Added": 1,
       "Changed": 1,
       "Deprecated": 0,
       "Removed": 0,
-      "Fixed": 0,
+      "Fixed": 2,
       "Security": 0,
       "Behavior": 0
     },
     "groups": [
+      {
+        "bucket": "Added",
+        "items": [
+          {
+            "title": "ci: the xplat lane — cross-platform testing an agent can drive",
+            "behavior": false
+          }
+        ]
+      },
+      {
+        "bucket": "Fixed",
+        "items": [
+          {
+            "title": "engine: a SQLite numeric separator only darwin-x64 could see",
+            "behavior": false
+          },
+          {
+            "title": "ci: the gitleaks allowlist had drifted behind the fixtures",
+            "behavior": false
+          }
+        ]
+      },
       {
         "bucket": "Changed",
         "items": [
