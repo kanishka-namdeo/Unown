@@ -80,7 +80,11 @@ class TmuxSession {
     // (modified Enter keys unreliable) — a config-less server (e.g. the
     // AppImage build, no ~/.tmux.conf) starts with it off and the warning
     // films into every session-2 boot. Set it server-side so it never does.
+    // Same for extended-keys-format: tmux defaults to "xterm" and the TUI
+    // warns "Pi works best with csi-u" — the 2026-10-25 subagent-explore
+    // audit caught that second warning filming into the shipped boot beats.
     try { await sh(TMUX_BIN, ["set-option", "-g", "extended-keys", "on"], { env: this.env() }); } catch {}
+    try { await sh(TMUX_BIN, ["set-option", "-g", "extended-keys-format", "csi-u"], { env: this.env() }); } catch {}
   }
   async text() {
     return sh(TMUX_BIN, ["capture-pane", "-t", this.name, "-p"], { env: this.env() });

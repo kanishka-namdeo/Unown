@@ -191,7 +191,11 @@ const s4 = {
   name: "overlays", cwd: DEMO_DIR, port: 7613, env: {},
   steps: [
     { t: "waitReady" },
+    // 2026-10-25 (SOTA re-cut): the shipped cut opened cold on /model — the
+    // video's first dwell read as an idle boot screen (VLM: "70% dead air").
+    // A fresh-session beat opens the story like every other session lane.
     { t: "linger", ms: 900 },
+    { t: "still", name: "01-fresh-session" },
     { t: "prompt", s: "/model", cps: 30 },
     { t: "wait", include: ["Enter to select"], timeout: 20_000, desc: "model picker open" },
     { t: "linger", ms: 1400 },
@@ -209,11 +213,11 @@ const s4 = {
     { t: "still", name: "03-model-switched" },
     { t: "prompt", s: "/permissions", cps: 30 },
     { t: "wait", include: ["unown permissions"], timeout: 30_000, desc: "permissions status" },
-    { t: "linger", ms: 1500 },
+    { t: "linger", ms: 1800 },
     { t: "still", name: "04-permissions" },
     { t: "prompt", s: "/hooks", cps: 30 },
     { t: "wait", include: ["hooks configured", "User hooks"], mode: "any", timeout: 30_000, desc: "hooks status" },
-    { t: "linger", ms: 1500 },
+    { t: "linger", ms: 1800 },
     { t: "still", name: "05-hooks" },
   ],
 };
@@ -290,7 +294,11 @@ const s7 = {
   name: "wiki", cwd: DEMO_DIR, port: 7616, env: {},
   steps: [
     { t: "waitReady" },
+    // 2026-10-25 (SOTA re-cut): the shipped cut never showed the session the
+    // user works in (VLM: "the initial ask is invisible"). A fresh-session
+    // beat anchors the story before the /wiki round starts.
     { t: "linger", ms: 900 },
+    { t: "still", name: "01-fresh-session" },
     { t: "fn", desc: "clean wiki for a fresh generate", fn: async (s) => {
       await s.exec(`rm -rf ${DEMO_DIR}/.unown/wiki`);
     }},
@@ -608,6 +616,13 @@ const s13 = {
     { t: "linger", ms: 1500 },
     { t: "still", name: "02-search-running" },
     { t: "fn", desc: "turn complete", fn: (s) => waitTurnIdle(s, 300_000, "websearch turn complete") },
+    // 2026-10-25 (SOTA re-cut): the shipped cut's closing beat could land on
+    // the tool-output tail while the answer sat below the fold (VLM: "no
+    // concluding answer"). Soft-anchor the answer itself before the still —
+    // the stable-forever question pins the wording (Ryan Dahl / 2009).
+    { t: "fn", desc: "answer on screen", fn: async (s) => {
+      await s.wait({ include: ["Ryan Dahl", "2009"], mode: "any", timeout: 30_000, desc: "answer text visible" }).catch(() => {});
+    }},
     { t: "linger", ms: 2000 },
     { t: "still", name: "03-answer-with-sources" },
   ],
@@ -625,7 +640,10 @@ const s14 = {
   name: "mcp", cwd: DEMO_DIR, port: 7623, env: {},
   steps: [
     { t: "waitReady" },
-    { t: "prompt", s: "Use the dice MCP server to roll a d20 and tell me the result.", cps: 30 },
+    // 2026-10-25 (SOTA re-cut): the bare "roll a d20" ask read as a toy
+    // command (VLM: "arbitrary for a coding agent"). The dev-real frame —
+    // picking a random port for a test server — is the same tool call.
+    { t: "prompt", s: "I need a random port number for the test fixture server. Use the dice MCP server to roll a d20 and tell me the result.", cps: 30 },
     { t: "wait", include: ["dice MCP server"], timeout: 30_000, desc: "prompt echoed" },
     { t: "linger", ms: 1000 },
     { t: "still", name: "01-session-with-ask" },
@@ -681,10 +699,13 @@ const s16 = {
     { t: "fn", desc: "clean output-style state", fn: async (s) => {
       await s.exec("rm -f .unown/output-style.json").catch(() => {});
     }},
-    // one real turn: context for /btw, material for the auto-title
-    { t: "prompt", s: "Reply with exactly: the parity round is live", cps: 30 },
+    // one real turn: context for /btw, material for the auto-title.
+    // 2026-10-25 (SOTA re-cut): the shipped "Reply with exactly: …" context
+    // turn was a harness test-case, not a dev ask (VLM: "a test case, not a
+    // dev task"). A docs question is real work and feeds /btw the same way.
+    { t: "prompt", s: "Read docs/usage.md and answer in one sentence: what does the /btw command do?", cps: 30 },
     { t: "fn", desc: "context turn", fn: async (s) => {
-      await s.wait({ include: ["the parity round is live"], timeout: 120_000, desc: "reply landed" }).catch(() => {});
+      await s.wait({ include: ["btw"], timeout: 120_000, desc: "answer landed" }).catch(() => {});
       await waitTurnIdle(s, 120_000, "context turn complete").catch(() => {});
     }},
     { t: "prompt", s: "/output-style", cps: 30 },
@@ -695,7 +716,7 @@ const s16 = {
     { t: "wait", include: ["Output style set: concise"], timeout: 20_000, desc: "style set" },
     { t: "linger", ms: 1000 },
     { t: "still", name: "02-style-set" },
-    { t: "prompt", s: "/btw what did I just ask you to reply with?", cps: 30 },
+    { t: "prompt", s: "/btw what did I just ask you about?", cps: 30 },
     // the /btw side-channel rides the bridge's BACKGROUND lane (the same
     // lane AutoDream uses) — when the engine is draining a dream queue the
     // overlay waits its turn behind it. 300s covers a full queue; the video
@@ -921,8 +942,17 @@ const s22 = {
       await s.still("03-files-dock");
     }},
     { t: "fn", desc: "turn complete", fn: (s) => waitTurnIdle(s, 420_000, "split-view turn complete") },
-    { t: "linger", ms: 2000 },
+    { t: "linger", ms: 1800 },
     { t: "still", name: "04-response-transcript" },
+    // 2026-10-25 (SOTA re-cut): the shipped cut ended on the answer with a
+    // failed-then-fixed test pair unresolved mid-story (VLM: "bash fails, final
+    // shows success — inconsistent"). The repo's own closing convention — the
+    // user's flake-guard re-run — closes the arc with the green tally visible
+    // in split view.
+    { t: "prompt", s: "!bun test", cps: 24 },
+    { t: "wait", include: [" 0 fail"], timeout: 90_000, desc: "suite green in split view" },
+    { t: "linger", ms: 1800 },
+    { t: "still", name: "05-suite-green" },
   ],
 };
 
@@ -1090,9 +1120,12 @@ const s24 = {
       await s.still("06-exported-markdown");
     }},
     // The machine-wide view: every project's sessions, one flag away.
+    // 2026-10-25 (SOTA re-cut): the shipped cut's closing frame caught the
+    // list mid-render (VLM: "the sessions list cuts off abruptly") — settle
+    // the listing before the closing beat so the full table reads.
     { t: "prompt", s: "/sessions list --all", cps: 30 },
     { t: "wait", include: ["Sessions on this machine"], timeout: 60_000, desc: "machine-wide listing" },
-    { t: "linger", ms: 1800 },
+    { t: "linger", ms: 2200 },
     { t: "still", name: "07-all-machine-sessions" },
   ],
 };
