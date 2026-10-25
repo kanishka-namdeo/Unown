@@ -30,11 +30,11 @@ export interface ChangelogStop {
   groups: ChangelogGroup[];
 }
 
-export const CHANGELOG_TOTAL_ENTRIES = 301;
+export const CHANGELOG_TOTAL_ENTRIES = 302;
 
 export const CHANGELOG_TOTALS: Record<ChangelogBucket, number> = {
   "Added": 132,
-  "Changed": 22,
+  "Changed": 23,
   "Deprecated": 0,
   "Removed": 3,
   "Fixed": 114,
@@ -46,10 +46,10 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
   {
     "label": "0.0.23",
     "date": "2026-10-26",
-    "total": 3,
+    "total": 4,
     "counts": {
       "Added": 1,
-      "Changed": 1,
+      "Changed": 2,
       "Deprecated": 0,
       "Removed": 0,
       "Fixed": 1,
@@ -80,6 +80,10 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
         "items": [
           {
             "title": "landing: the memory-eval round pays its own scroll bill",
+            "behavior": false
+          },
+          {
+            "title": "landing: the SOTA re-cut — thirteen dex reels re-filmed",
             "behavior": false
           }
         ]

@@ -36,7 +36,7 @@ The marketing surfaces: the landing page — a single Next.js 16 App Router rout
 - `bun run build` — exit 0; `/` and `/blog` + every post + their OG images must prerender, and the standalone server must answer 200 on `/` (CI's build job does this smoke on a scratch port).
 - The e2e lane is landing- and blog-scoped (`e2e/`): axe-core a11y in both motion states, the scroll budget, the dex video decode gate, the SEO surface, and `blog.spec.ts` (index, feed, article SEO, the generated card, the 404).
 - Landing work additionally requires a visual pass against a production build, a reduced-motion pass, and the palette gates — see `src/components/landing/AGENTS.md` (Verification) and `scripts/AGENTS.md`.
-- After any push to `main`, `bun scripts/verify-deploy.mjs` asserts the live Vercel deployment (routes, SEO surface, signature content, the blog + feed).
+- After any push to `main`, `bun scripts/verify-deploy.mjs` asserts the live Vercel deployment (routes, SEO surface, signature content, the blog + feed, and every landing media URL the SSR DOM references — 200 + exact content type + byte-range 206 + the long CDN cache).
 
 ## Child DOX Index
 

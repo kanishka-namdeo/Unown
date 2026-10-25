@@ -610,7 +610,7 @@ jobs:
         run: bun run build
       - name: Chromium for Playwright
         run: bunx playwright install chromium --with-deps
-      - name: "E2E: a11y + budget + dex video + SEO + blog (13 tests)"
+      - name: "E2E: a11y + budget + dex video + SEO + blog (14 tests)"
         # testing-strategy.md §6 gate 16. Covers: axe-core WCAG 2.0/2.1 A+AA
         # scans of the landing page in both theme modes plus the scroll-
         # performance budget spec. The axe half of this gate already paid for
