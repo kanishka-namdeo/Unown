@@ -55,6 +55,7 @@ param(
   [switch]$Force,
   [switch]$Experimental,
   [switch]$NoModifyPath,
+  [switch]$Inspect,
   [switch]$Help
 )
 
@@ -89,6 +90,8 @@ unown installer (Windows)
   -Force         replace an install recorded in the other mode
   -Experimental  allow windows-arm64 (no CI runtime smoke)
   -NoModifyPath  do not append the shim directory to the user PATH (binary mode)
+  -Inspect       print the install record this installer reads from
+                 $HOME\.unown\install.json (read-only: no download, no build, no PATH change)
   -Help          this help
 
 Version policy: without -Version the default binary mode installs the release
@@ -109,6 +112,84 @@ use a flag, download the script first and run it (review-before-running).
 
 function Fail([string]$Message) {
   throw "install.ps1: $Message"
+}
+
+function Resolve-UnownHome {
+  if ($env:UNOWN_HOME) {
+    return [IO.Path]::GetFullPath($env:UNOWN_HOME)
+  }
+  return [IO.Path]::GetFullPath((Join-Path $HOME '.unown'))
+}
+
+function Read-InstallMeta([string]$Path) {
+  # The install record is the one thing that tells an installer (and
+  # `unown update`) which channel owns this machine, so all three readers of it
+  # — here, install.sh and install-layout.ts — accept it the same way: schema 1
+  # with a mode of checkout or binary ('source' is the pre-release spelling of
+  # checkout), and nothing is inferred when a field does not answer.
+  # Status: none (no record) | ok | foreign (a record this installer cannot read).
+  $result = [pscustomobject]@{
+    Status = 'none'
+    Schema = ''
+    Mode = ''
+    Version = ''
+    Shim = ''
+    Prev = ''
+  }
+  if (-not (Test-Path -LiteralPath $Path)) {
+    return $result
+  }
+  $json = $null
+  try {
+    $json = Get-Content -Raw -LiteralPath $Path | ConvertFrom-Json
+  } catch {
+    $json = $null
+  }
+  if ($null -eq $json) {
+    $result.Status = 'foreign'
+    return $result
+  }
+  $result.Schema = [string]$json.schema
+  if ($json.mode) { $result.Mode = [string]$json.mode }
+  if ($json.version) { $result.Version = [string]$json.version }
+  if ($json.shim) { $result.Shim = [string]$json.shim }
+  if ($json.previousVersion) { $result.Prev = [string]$json.previousVersion }
+  if ($result.Mode -eq 'source') { $result.Mode = 'checkout' }
+  if ($result.Schema -eq '1' -and $result.Mode) {
+    $result.Status = 'ok'
+  } else {
+    $result.Status = 'foreign'
+  }
+  return $result
+}
+
+function Show-InstallMeta([string]$Path) {
+  # Print what Read-InstallMeta saw, in the same keys install.sh --inspect uses,
+  # then leave: 2 when a record is present but does not answer, 0 otherwise.
+  $probe = Read-InstallMeta $Path
+  Write-Host ('install.json: ' + $Path)
+  if ($probe.Status -eq 'none') {
+    Write-Host 'status: none (no install record yet)'
+    return 0
+  }
+  Write-Host ('status: ' + $probe.Status)
+  $fields = [ordered]@{
+    schema = $probe.Schema
+    mode = $probe.Mode
+    version = $probe.Version
+    previousVersion = $probe.Prev
+    shim = $probe.Shim
+  }
+  foreach ($key in $fields.Keys) {
+    $value = $fields[$key]
+    if (-not $value) { $value = 'none' }
+    Write-Host ($key + ': ' + $value)
+  }
+  if ($probe.Status -eq 'foreign') {
+    Write-Host 'expected: schema 1 with a mode of checkout or binary (the installer refuses to guess)'
+    return 2
+  }
+  return 0
 }
 
 function Normalize-Version([string]$Value) {
@@ -522,13 +603,7 @@ function Install-Binary {
     }
 
     # Metadata: ~/.unown/install.json (or $env:UNOWN_HOME), temp + rename.
-    $unownHome = ''
-    if ($env:UNOWN_HOME) {
-      $unownHome = $env:UNOWN_HOME
-    } else {
-      $unownHome = Join-Path $HOME '.unown'
-    }
-    $unownHome = [IO.Path]::GetFullPath($unownHome)
+    $unownHome = Resolve-UnownHome
     try {
       New-Item -ItemType Directory -Force -Path $unownHome | Out-Null
     } catch {
@@ -646,6 +721,16 @@ function Main {
   $mode = 'binary'
   if ($sourceMode) { $mode = 'checkout' }
 
+  $unownHome = Resolve-UnownHome
+  $metaPath = Join-Path $unownHome 'install.json'
+
+  # Read-only diagnostic, before the admin refusal: -Inspect answers "what does
+  # this installer actually see in install.json?" with no download, no build and
+  # no PATH change, so an elevated context can still ask why a run refused.
+  if ($Inspect) {
+    exit (Show-InstallMeta $metaPath)
+  }
+
   # refuse admin: builds + PATH shims belong to a user account
   $principal = New-Object Security.Principal.WindowsPrincipal([Security.Principal.WindowsIdentity]::GetCurrent())
   if ($principal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator) -and $env:UNOWN_INSTALL_ALLOW_ROOT -ne '1') {
@@ -653,43 +738,27 @@ function Main {
   }
 
   # Existing install metadata: a mode change needs -Force.
-  $unownHome = ''
-  if ($env:UNOWN_HOME) {
-    $unownHome = $env:UNOWN_HOME
-  } else {
-    $unownHome = Join-Path $HOME '.unown'
+  $probe = Read-InstallMeta $metaPath
+  if ($probe.Status -eq 'foreign' -and -not $Force) {
+    $seen = 'none'
+    if ($probe.Schema) { $seen = $probe.Schema }
+    Fail "cannot read a usable install record from $metaPath (schema $seen; this installer writes schema 1 with a mode of checkout or binary). Refusing to guess; pass -Force to install the $mode mode anyway, or remove that file."
   }
-  $unownHome = [IO.Path]::GetFullPath($unownHome)
-  $metaPath = Join-Path $unownHome 'install.json'
-  if (Test-Path -LiteralPath $metaPath) {
-    $meta = $null
-    try {
-      $meta = Get-Content -Raw -LiteralPath $metaPath | ConvertFrom-Json
-    } catch {
-      $meta = $null
-    }
-    if ($null -eq $meta -or -not $meta.mode) {
-      if (-not $Force) {
-        Fail "cannot read the install mode from $metaPath. Refusing to guess; pass -Force to install the $mode mode anyway, or remove that file."
+  if ($probe.Status -eq 'ok') {
+    $script:ExistingMode = $probe.Mode
+    $script:ExistingVersion = $probe.Version
+    $script:ExistingShim = $probe.Shim
+    $script:ExistingPrev = $probe.Prev
+    if ($script:ExistingMode -ne $mode -and -not $Force) {
+      $where = ''
+      if ($script:ExistingShim) { $where = " at $($script:ExistingShim)" }
+      $hint = ''
+      if ($mode -eq 'binary') {
+        $hint = ' To keep the existing source install, re-run with -Source.'
+      } else {
+        $hint = ' To update the existing binary install, re-run without -Source.'
       }
-    } else {
-      $script:ExistingMode = [string]$meta.mode
-      # The runtime writes "checkout"; accept the task's "source" spelling too.
-      if ($script:ExistingMode -eq 'source') { $script:ExistingMode = 'checkout' }
-      if ($meta.version) { $script:ExistingVersion = [string]$meta.version }
-      if ($meta.shim) { $script:ExistingShim = [string]$meta.shim }
-      if ($meta.previousVersion) { $script:ExistingPrev = [string]$meta.previousVersion }
-      if ($script:ExistingMode -ne $mode -and -not $Force) {
-        $where = ''
-        if ($script:ExistingShim) { $where = " at $($script:ExistingShim)" }
-        $hint = ''
-        if ($mode -eq 'binary') {
-          $hint = ' To keep the existing source install, re-run with -Source.'
-        } else {
-          $hint = ' To update the existing binary install, re-run without -Source.'
-        }
-        Fail "an existing $($script:ExistingMode) install is recorded$where ($metaPath); refusing to install the $mode mode over it.$hint Re-run with -Force to replace it, or uninstall the $($script:ExistingMode) install first."
-      }
+      Fail "an existing $($script:ExistingMode) install is recorded$where ($metaPath); refusing to install the $mode mode over it.$hint Re-run with -Force to replace it, or uninstall the $($script:ExistingMode) install first."
     }
   }
 

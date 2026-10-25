@@ -215,12 +215,18 @@ function isString(v: unknown): v is string {
         return typeof v === "string" && v.length > 0;
 }
 
-/** Validate shape and schema; null for corrupt/missing/foreign versions. */
+/** Validate shape and schema; null for corrupt/missing/foreign versions.
+ *  Acceptance rule shared with the two installer readers: schema must be 1 and
+ *  the mode must name a known channel. `source` is the pre-release spelling of
+ *  `checkout` — install.sh and install.ps1 already fold it, and a record that
+ *  old installer wrote has to resolve here too, or `unown update` reports it
+ *  cannot determine the install mode on a machine that installs fine. */
 export function validateInstallMetadata(raw: unknown): InstallMetadata | null {
         if (!raw || typeof raw !== "object" || Array.isArray(raw)) return null;
         const o = raw as Record<string, unknown>;
         if (o.schema !== 1) return null;
-        if (o.mode !== "checkout" && o.mode !== "binary") return null;
+        if (o.mode !== "checkout" && o.mode !== "binary" && o.mode !== "source") return null;
+        const mode: InstallMode = o.mode === "source" ? "checkout" : o.mode;
         if (!isString(o.version) || !parseSemver(o.version) || !isString(o.root) || !isString(o.bin) || !isString(o.shim))
                 return null;
         if (!isString(o.installedAt)) return null;
@@ -229,7 +235,7 @@ export function validateInstallMetadata(raw: unknown): InstallMetadata | null {
         if (isString(o.previousVersion) && !parseSemver(o.previousVersion)) return null;
         return {
                 schema: 1,
-                mode: o.mode,
+                mode,
                 version: o.version,
                 ...(o.platform ? { platform: o.platform } : {}),
                 root: o.root,

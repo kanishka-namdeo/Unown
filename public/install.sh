@@ -53,6 +53,7 @@ MAIN=0
 SOURCE=0
 BINARY=0
 FORCE=0
+INSPECT=0
 REPO="https://github.com/kanishka-namdeo/Unown.git"
 RELEASES_BASE_URL="${UNOWN_RELEASES_BASE_URL:-https://github.com/kanishka-namdeo/Unown/releases}"
 case "$RELEASES_BASE_URL" in
@@ -66,6 +67,13 @@ EXISTING_MODE=""
 EXISTING_VERSION=""
 EXISTING_SHIM=""
 EXISTING_PREV=""
+META_SCHEMA=""
+# 0 = a usable record was read, 1 = no record yet, 2 = a record that does not
+# answer for this installer (foreign schema, or no readable mode). The default
+# is 2, not 1: a path that reaches the mode-change guard without calling
+# load_install_meta must refuse the install rather than read the silence as
+# "fresh machine" and walk over someone else's channel.
+META_STATUS=2
 PREVIOUS_VERSION=""
 
 cleanup() {
@@ -95,6 +103,8 @@ unown installer
   --dest         source clone directory (default: ./Unown; not valid with binary)
   --force        replace an install recorded in the other mode
   --experimental accepted for install.ps1 parity (Windows arm64 only; no effect here)
+  --inspect      print the install record this installer reads from ~/.unown/install.json
+                 (read-only: no download, no build, no PATH change)
   --help         this help
 
 Version policy: without --version the default binary mode installs the release
@@ -124,35 +134,94 @@ normalize_version() {
   TAG="v$NORM"
 }
 
-check_install_meta() {
-  # $1 = mode we are about to install (checkout|binary)
-  META="$UNOWN_HOME/install.json"
+meta_value() {
+  # $1 = install.json path, $2 = member name. Prints the scalar of a top-level
+  # member of the flat install.json record; empty when it is absent or the file
+  # does not parse. A JSON string must escape its newlines, so a raw newline is
+  # always structural whitespace: collapsing newlines and tabs first makes the
+  # read independent of key order and of which installer pretty-printed the
+  # file. Spaces stay — paths contain them. The two strips anchor on the quoted
+  # KEY so a colon inside a value (`C:\Users\…`) cannot be mistaken for the
+  # separator; a value holding an escaped quote truncates, which is why only
+  # schema/mode/version (never quote-bearing) decide anything here.
+  sed -e ':a' -e 'N' -e '$!ba' -e 's/[\r\n\t]//g' "$1" 2>/dev/null |
+    grep -o -e "\"$2\"[[:space:]]*:[[:space:]]*\"\{0,1\}[^\",}]*" |
+    head -n 1 |
+    sed -e 's/^"[^"]*"[[:space:]]*:[[:space:]]*"//' -e 's/^"[^"]*"[[:space:]]*:[[:space:]]*//' -e 's/"$//'
+}
+
+load_install_meta() {
+  # $1 = install.json path. Fills EXISTING_* / META_SCHEMA / META_STATUS.
+  # This record is the one thing that tells an installer (and `unown update`)
+  # which channel owns the machine, so the three readers of it — here,
+  # install.ps1 and install-layout.ts — accept it the same way: schema 1, mode
+  # of checkout or binary (`source` is the pre-release spelling of checkout),
+  # and nothing is inferred when a field does not answer.
   EXISTING_MODE=""
   EXISTING_VERSION=""
   EXISTING_SHIM=""
   EXISTING_PREV=""
+  META_SCHEMA=""
+  if [ ! -f "$1" ]; then
+    META_STATUS=1
+    return 0
+  fi
+  META_SCHEMA=$(meta_value "$1" schema)
+  EXISTING_MODE=$(meta_value "$1" mode)
+  EXISTING_VERSION=$(meta_value "$1" version)
+  EXISTING_SHIM=$(meta_value "$1" shim)
+  EXISTING_PREV=$(meta_value "$1" previousVersion)
+  if [ "$EXISTING_MODE" = "source" ]; then
+    EXISTING_MODE="checkout"
+  fi
+  if [ "$META_SCHEMA" = "1" ] && [ -n "$EXISTING_MODE" ]; then
+    META_STATUS=0
+  else
+    META_STATUS=2
+  fi
+}
 
-  if [ ! -f "$META" ]; then
+inspect_install_meta() {
+  # $1 = install.json path. Prints what load_install_meta can read, then exits:
+  # 0 when the record answers (or there is none yet), 2 when a file is there but
+  # does not. This is the reader under test, so the shape stays one key per line.
+  load_install_meta "$1"
+  echo "install.json: $1"
+  if [ "$META_STATUS" = "1" ]; then
+    echo "status: none (no install record yet)"
+    exit 0
+  fi
+  if [ "$META_STATUS" = "0" ]; then
+    echo "status: ok"
+  else
+    echo "status: foreign"
+  fi
+  echo "schema: ${META_SCHEMA:-none}"
+  echo "mode: ${EXISTING_MODE:-none}"
+  echo "version: ${EXISTING_VERSION:-none}"
+  echo "previousVersion: ${EXISTING_PREV:-none}"
+  echo "shim: ${EXISTING_SHIM:-none}"
+  if [ "$META_STATUS" != "0" ]; then
+    echo "expected: schema 1 with a mode of checkout or binary (the installer refuses to guess)"
+    exit 2
+  fi
+  exit 0
+}
+
+check_install_meta() {
+  # $1 = mode we are about to install (checkout|binary)
+  META="$UNOWN_HOME/install.json"
+  load_install_meta "$META"
+  if [ "$META_STATUS" = "1" ]; then
     return 0
   fi
 
-  EXISTING_MODE=$(sed -n 's/.*"mode"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' "$META" | head -n 1)
-  EXISTING_VERSION=$(sed -n 's/.*"version"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' "$META" | head -n 1)
-  EXISTING_SHIM=$(sed -n 's/.*"shim"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' "$META" | head -n 1)
-  EXISTING_PREV=$(sed -n 's/.*"previousVersion"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' "$META" | head -n 1)
-
-  if [ -z "$EXISTING_MODE" ]; then
+  if [ "$META_STATUS" = "2" ]; then
     if [ "$FORCE" != "1" ]; then
-      fail "cannot read the install mode from $META. Refusing to guess; pass --force to install the $1 mode anyway, or remove that file."
+      fail "cannot read a usable install record from $META (schema ${META_SCHEMA:-none}; this installer writes schema 1 with a mode of checkout or binary). Refusing to guess; pass --force to install the $1 mode anyway, or remove that file."
     fi
     return 0
   fi
-
-  # The runtime writes "checkout"; accept the task's "source" spelling too so a
-  # pre-release record cannot block a normal source reinstall.
-  case "$EXISTING_MODE" in
-    source|checkout) EXISTING_MODE="checkout" ;;
-  esac
 
   if [ "$EXISTING_MODE" != "$1" ]; then
     if [ "$FORCE" != "1" ]; then
@@ -622,6 +691,7 @@ main() {
       --binary) BINARY=1; shift ;;
       --force) FORCE=1; shift ;;
       --experimental) shift ;; # Windows installer only; accepted for flag parity
+      --inspect) INSPECT=1; shift ;;
       --help|-h) usage; exit 0 ;;
       *) fail "unknown argument: $1 (see --help)" ;;
     esac
@@ -648,16 +718,24 @@ main() {
     fail "--main and --version are mutually exclusive: pick the edge branch or a pinned release"
   fi
 
-  # refuse root: builds + PATH shims belong to a user account
-  if [ "$(id -u)" = "0" ] && [ "${UNOWN_INSTALL_ALLOW_ROOT:-}" != "1" ]; then
-    fail "refusing to run as root (override: UNOWN_INSTALL_ALLOW_ROOT=1)"
-  fi
-
   UNOWN_HOME="${UNOWN_HOME:-$HOME/.unown}"
   case "$UNOWN_HOME" in
     /*) ;;
     *) UNOWN_HOME="$(pwd)/$UNOWN_HOME" ;;
   esac
+
+  # Read-only diagnostic, before the root refusal: --inspect answers "what does
+  # this installer actually see in install.json?" with no download, no build and
+  # no PATH write, so a container running as root can ask why a run refused.
+  if [ "$INSPECT" = "1" ]; then
+    inspect_install_meta "$UNOWN_HOME/install.json"
+  fi
+
+  # refuse root: builds + PATH shims belong to a user account
+  if [ "$(id -u)" = "0" ] && [ "${UNOWN_INSTALL_ALLOW_ROOT:-}" != "1" ]; then
+    fail "refusing to run as root (override: UNOWN_INSTALL_ALLOW_ROOT=1)"
+  fi
+
   trap cleanup EXIT
   trap 'cleanup; exit 1' HUP INT TERM
 

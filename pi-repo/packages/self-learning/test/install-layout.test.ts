@@ -83,6 +83,29 @@ describe("install metadata", () => {
                 expect(validateInstallMetadata({ ...sample(), version: "../../evil" })).toBeNull();
         });
 
+        test("the pre-release `source` spelling resolves as checkout", () => {
+                // install.sh and install.ps1 have always folded this spelling;
+                // the runtime reader used to reject it, which left a machine with
+                // an old record and no mode for `unown update` to act on.
+                expect(validateInstallMetadata({ ...sample(), mode: "source" })?.mode).toBe("checkout");
+                const home = fresh();
+                writeFileSync(installMetadataPath(home), JSON.stringify({ ...sample(), mode: "source" }));
+                expect(readInstallMetadata(home)?.mode).toBe("checkout");
+                // Folding must not become accepting: an unknown channel is still null.
+                expect(validateInstallMetadata({ ...sample(), mode: "portable" })).toBeNull();
+        });
+
+        test("one record, three readers: a minified file parses like a pretty one", () => {
+                // The POSIX and PowerShell installers write the pretty shape and
+                // the runtime writes the same fields; a reader that only answers
+                // for one layout is how the mode-change guard starts disagreeing
+                // with the updater. Pin the runtime side of the parity that
+                // install-meta-readers.test.ts proves across all three.
+                const home = fresh();
+                writeFileSync(installMetadataPath(home), JSON.stringify(sample()));
+                expect(readInstallMetadata(home)).toEqual(sample());
+        });
+
         test("writes atomically: repeated writes replace the file and leave no temp files", () => {
                 const home = fresh();
                 writeInstallMetadata(home, sample({ version: "0.0.2" }));
