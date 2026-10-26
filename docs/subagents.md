@@ -116,7 +116,7 @@ Load order is built-in → global → project; a definition with the same `name`
 | `fallbackModels` | no | Ordered fallback models for provider-style failures (see [Fallback models](#fallback-models)) |
 | `context` | no | `fresh` (default) or `summary` — `summary` prepends a distilled brief of the parent session to the task (see [Context briefs](#context-briefs)) |
 | `contextBrief` | no | Role-directed instruction shaping the summary brief (what it keeps) — only used with `context: summary` |
-| `timeoutMs` | no | Per-agent wall-clock budget for one spawn — `600000`, `"10m"` and `"90s"` all parse; clamped to 30s–30min. Default 300000 (5 min); the `browser` builtin ships 600000. Also `timeout_ms` / `timeout`. Session-wide override: `UNOWN_SUBAGENT_TIMEOUT_MS` (a per-agent value always wins) |
+| `timeoutMs` | no | Per-agent wall-clock budget for one spawn — `600000`, `"10m"` and `"90s"` all parse; clamped to 30s–30min. Default 300000 (5 min); the `browser` builtin ships 600000. Also `timeout_ms` / `timeout`. Session-wide override: `UNOWN_SUBAGENT_TIMEOUT_MS` (a per-agent value always wins). Applies in BOTH lanes — in the async fleet it replaces the 900 s fleet default for that child (2026-10-26 stress round: the docs promised the composition, the watchdog had ignored it) |
 | `maxTurns` | no | Cap on completed model turns for one spawn — routed to the child as `--max-turns`; a turn is ONE model call. Default none (timeout is the only bound). Also `max_turns`. Session-wide override: `UNOWN_SUBAGENT_MAX_TURNS` (a per-agent value always wins) |
 
 The Markdown **body (everything after the closing `---`) becomes the subagent's system prompt**. Files without valid `name` and `description` frontmatter are skipped silently. Invalid values for the routing fields are dropped, never thrown. Other frontmatter fields are ignored. Run `/agents` in a session to list everything discovered, with source and toolset.
@@ -268,7 +268,7 @@ Parallel results are separated by `---` and returned in the order they were requ
 
 Everything above is the **synchronous lane**: the `task` call blocks until every child finishes, and the report lands in the tool result. The fleet is the second lane — **`async: true`** — where the call returns an immediate ack and the subagent runs in the background as a live member of your session. It is a port of [amosblomqvist/pi-interactive-subagents](https://github.com/amosblomqvist/pi-interactive-subagents) rebuilt without tmux on plain subprocesses and atomic control files, so the lane is identical on Windows, macOS and Linux — no PTY, no OS-specific terminal plumbing.
 
-The two lanes compose with everything the sync lane has: agent definitions and routing (`--model`/`--effort`/`--mcp-servers`), the [BLOCKED protocol](#the-blocked-protocol), the [completion guard](#the-completion-guard), [fallback models](#fallback-models) and [worktree isolation](#worktree-isolation). What changes is the delivery model:
+The two lanes compose with everything the sync lane has: agent definitions and routing (`--model`/`--effort`/`--mcp-servers`), the [BLOCKED protocol](#the-blocked-protocol), the [completion guard](#the-completion-guard), [fallback models](#fallback-models), [worktree isolation](#worktree-isolation) and the per-agent `timeoutMs` budget. What changes is the delivery model:
 
 | | Sync lane (default) | Async lane (`async: true`) |
 |---|---|---|
@@ -404,27 +404,29 @@ The fleet keeps its runtime state in `<project>/.unown/fleet/` (gitignored — p
 
 The **registry** is what makes `task_control steer` work across sessions: name → session file, status, finish time and a one-line summary, bounded to the 32 most-recent entries. The **loadout sidecar** is the resume contract — everything needed to relaunch the same child later; resume refuses rather than guess when it is missing. Registry and inbox files are atomic-written and fail closed (a corrupt file reads as empty, never throws).
 
-Print-mode orchestrators (`unown -p`) are not left behind: the run appends an untypeable sentinel message the fleet's input handler intercepts, and the process **waits (up to the fleet timeout) for all children to finish AND for the model to answer the last delivered result** — the drain tracks result delivery and turn activity (agent_start/agent_settled) through a grace window, so async results arrive as real turns while the process is alive and the final synthesis actually prints (the pre-fix behavior exited between a child's terminal status and its result's answering turn, printing nothing).
+Print-mode orchestrators (`unown -p`) are not left behind: the run appends an untypeable sentinel message the fleet's input handler intercepts, and the process **waits (up to the fleet timeout) for all children to finish AND for the model to answer the last delivered result** — the drain tracks result delivery and turn activity (agent_start/agent_settled) through a grace window, so async results arrive as real turns while the process is alive and the final synthesis actually prints (the pre-fix behavior exited between a child's terminal status and its result's answering turn, printing nothing). The exit guards are fleet-aware the same way (2026-10-26 stress round): the hard-exit grace timer re-arms while any child is live or a delivered result's turn is still running, and the stall watchdog counts fleet liveness as session liveness — a slow child can no longer orphan the run (the pre-fix parent hard-exited at the 15 s grace with exit 0, zero result deliveries, and an orphaned tree) or trip the 180 s stall budget mid-drain.
 
 **Limits** (the honest table):
 
 | Limit | Value | Override |
 |---|---|---|
-| Hard cap on one async child | 900 s | `UNOWN_FLEET_TIMEOUT_MS` (values < 1000 fall back to the default) |
-| Completion batching window | 150 ms debounce / 1 s max wait | — || Stall watchdog (no child activity) | 120 s | — |
+| Hard cap on one async child | 900 s | `UNOWN_FLEET_TIMEOUT_MS` (values < 1000 fall back to the default); a per-agent frontmatter `timeoutMs` (same 30 s–30 min clamp as the sync lane) replaces it for that child |
+| Live async children per session | 8 | `UNOWN_FLEET_MAX_CONCURRENT` (0 = unlimited; junk falls back to the default) — the overflow is a typed spawn failure that tells the model to wait or stop first, never a silent drop |
+| Completion batching window | 150 ms debounce / 1 s max wait | — |
+| Stall watchdog (no child activity) | 120 s | — |
 | ask_question park timeout | 600 s | — |
 | Watcher cadence / control poll | 1 s / 250 ms | — |
-| Result body / question / stderr caps | 16,000 / 4,000 / 2,000 chars | — |
+| Result body / question / stderr caps | 16,000 / 4,000 / 2,000 chars | — (a result cut at the 16k cap carries a visible truncation note naming the cap and the remedy) |
 | Registry size / `list` / `/tasks` rows | 32 / 16 / 10 | — |
 | Widget rows (then `+N more`) | 8 | — |
 
 ## What subagents cannot do
 
-- **No nesting.** Subagents run with `UNOWN_SUBAGENT=1`, which unregisters the `task` tool inside them — a subagent cannot spawn further subagents.
+- **No nesting.** Subagents run with `UNOWN_SUBAGENT=1`, which unregisters the `task` tool inside them — a subagent cannot spawn further subagents. The fleet control channel is likewise private: processes a child spawns through its bash tool never inherit `UNOWN_FLEET_*` (2026-10-26 stress round — pre-fix, a nested CLI grandchild raced the rightful child to consume steer/stop commands and silently dropped the ones it stole), mirroring the `PI_*` session-env stripping the bash tool already did.
 - **No interactive human.** A subagent cannot ask *you* questions — it can refuse honestly via the [BLOCKED protocol](#the-blocked-protocol) instead of improvising. (An [async fleet child](#questions-mid-task-ask_question) can ask the *orchestrating agent* — that channel exists, and parks, and times out; the human is never prompted.)
-- **Restricted tools.** The definition's `tools` list is passed as `--tools` to the subprocess; the built-in `explore` agent, for example, physically cannot write.
-- **Time limit.** Sync-lane subagents are killed after 300 seconds (SIGTERM, then SIGKILL). Async fleet children get 900 s (see the [limits table](#fleet-state-on-disk)).
-- **Output caps.** The final report is capped at 16,000 characters; stderr at 2,000.
+- **Restricted tools.** The definition's `tools` list is passed as `--tools` to the subprocess; the built-in `explore` agent, for example, physically cannot write. A task that needs a tool the child lacks is a BLOCKED shape — the boundary instructions tell the child to check its tools against the task FIRST and refuse with what it lacks (2026-10-26 stress round: a read-only child handed a writing task burned 42 turns attempting the impossible before dying at the wall-clock cap).
+- **Time limit.** Sync-lane subagents are killed after 300 seconds (SIGTERM, then SIGKILL); the section header names the cause and budget (`timeout; killed at 300s budget`) and flags the answer-so-far as mid-work, not a final report. Async fleet children get 900 s or their own frontmatter `timeoutMs` (see the [limits table](#fleet-state-on-disk)); a watchdog stop's reason rides the delivered result.
+- **Output caps.** The final report is capped at 16,000 characters; stderr at 2,000. A report cut at the cap carries a visible truncation note in both lanes — the parent is told the report was cut and how to get the rest (compress, or write the full report to a file and return the path).
 - **No persisted sessions (sync lane).** Sync subagents run with `--no-session` — their runs leave notes, not session files. Async children are the exception: each keeps a full session file under `.unown/fleet/sessions/`, which is exactly what [resume](#steering-and-control-task_control) replays.
 - **No pre-flight probe.** The endpoint check runs in the parent only.
 

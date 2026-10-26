@@ -316,3 +316,96 @@ describe("task tool — injection shield on subagent reports (2026-10-25 stress 
                 LONG,
         );
 });
+
+// ---------------------------------------------------------------------------
+// 2026-10-26 stress round TWO — end-to-end pins (live findings R2-F3, R2-F4,
+// R2-F5): silent 16k truncation, the print-mode hard-exit orphaning a live
+// fleet, and the fleet control-inbox env leak into bash-spawned grandchildren.
+// ---------------------------------------------------------------------------
+describe("task tool — stress-round-2 regressions (2026-10-26 live findings)", () => {
+        // R2-F3 (live): a child report cut at the 16k output cap passed as
+        // whole — the parent model had to infer the cut from the mid-word
+        // ending (and miscounted the size by 12k). The section now carries a
+        // visible truncation note naming the cap and the remedy.
+        test(
+                "a child report over the 16k cap carries a visible truncation note",
+                async () => {
+                        const taskText = `Report everything. JSONREPLY ${JSON.stringify({ report: `A".repeat(1)`.repeat(1) + "B".repeat(20_000) })}`;
+                        const prompt = `TOOLCALL task ${JSON.stringify({ task: taskText })}`;
+                        const run = await unown(["--mode", "json", "-p", prompt], { bridge, env: { UNOWN_NO_PREFLIGHT: "1" } });
+                        expect(run.exitCode).toBe(0);
+                        const events = parseJsonl(run.stdout);
+                        const taskResult = events.find(
+                                (e) => e?.type === "tool_execution_end" && e.toolName === "task",
+                        );
+                        const text = String(taskResult?.result?.content?.[0]?.text ?? "");
+                        // The report body arrived (truncated at the cap)…
+                        expect(text).toContain("BBBB");
+                        // …and the cut is NAMED, not silent.
+                        expect(text).toContain("report truncated at 16,000 characters");
+                        expect(text).toContain("full report was longer");
+                        run.release();
+                },
+                LONG,
+        );
+
+        // R2-F5 (live): a fleet child's bash tool handed the fleet control
+        // channel (UNOWN_FLEET_CONTROL et al) to every process it spawned —
+        // a nested `unown` grandchild then raced the rightful child to
+        // consume steer/stop commands and silently dropped the ones it stole
+        // (measured live: markers consumed, delivered nowhere). The shell
+        // spawn env now strips the four UNOWN_FLEET_* vars.
+        test(
+                "a fleet child's bash commands do NOT inherit the fleet control env",
+                async () => {
+                        const childTask =
+                                'TOOLCALL bash {"command":"env | grep ^UNOWN_FLEET_ > fleet-env-probe.txt; echo GREP_EXIT=$? >> fleet-env-probe.txt"}';
+                        const prompt = `TOOLCALL task ${JSON.stringify({ task: childTask, async: true, name: "envprobe" })}`;
+                        const run = await unown(["--mode", "json", "-p", prompt], { bridge, env: { UNOWN_NO_PREFLIGHT: "1" } });
+                        expect(run.exitCode).toBe(0);
+                        // The async child ran (its result reached the parent).
+                        expect(run.stdout).toContain("Subagent envprobe");
+                        // The probe file the child's bash wrote (cwd = project dir).
+                        const probe = join(run.projDir, "fleet-env-probe.txt");
+                        expect(existsSync(probe)).toBe(true);
+                        const probeText = readFileSync(probe, "utf8");
+                        // grep found NO fleet vars in the bash child env (exit 1);
+                        // pre-fix it listed all four (UNOWN_FLEET_CONTROL=… etc).
+                        expect(probeText).toContain("GREP_EXIT=1");
+                        run.release();
+                },
+                LONG,
+        );
+
+        // R2-F4 (critical, live): print mode hard-exited at the exit grace
+        // (15 s default; 2 s here to make the race sharp) after the SPAWNED
+        // turn's agent_end while the fleet child was still mid-bash — exit 0,
+        // zero result deliveries, orphaned tree, "success" to the caller.
+        // The hard-exit timer now consults isFleetBusy() and re-arms while
+        // the fleet is live; the process must survive to deliver + answer.
+        test(
+                "print mode stays alive past the exit grace while an async child works, then delivers its result",
+                async () => {
+                        const childTask = 'TOOLCALL bash {"command":"sleep 6"}';
+                        const prompt = `TOOLCALL task ${JSON.stringify({ task: childTask, async: true, name: "sleeper" })}`;
+                        const run = await unown(
+                                ["--mode", "json", "-p", prompt],
+                                { bridge, env: { UNOWN_NO_PREFLIGHT: "1", PI_PRINT_EXIT_GRACE_MS: "2000" } },
+                        );
+                        expect(run.exitCode).toBe(0);
+                        // Pre-fix: the process died at ~+2 s — the child's result
+                        // (arriving at ~+6 s) never landed. Post-fix: the result
+                        // custom message is in the event stream, and a final
+                        // assistant answer follows it.
+                        expect(run.stdout).toContain("unown-subagent-result");
+                        expect(run.stdout).toContain("Subagent sleeper");
+                        // The run took LONGER than the exit grace — proof the
+                        // guard held the process open for the live child.
+                        const events = parseJsonl(run.stdout);
+                        const resultEvent = events.find((e) => String(JSON.stringify(e)).includes("unown-subagent-result"));
+                        expect(resultEvent).toBeDefined();
+                        run.release();
+                },
+                LONG,
+        );
+});

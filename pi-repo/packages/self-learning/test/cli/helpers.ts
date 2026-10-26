@@ -78,6 +78,17 @@ export interface MockBridgeOptions {
 export function startMockBridge(opts: MockBridgeOptions = {}): MockBridge {
         const requests: MockChatRequest[] = [];
         let seq = 0;
+        // 2026-10-26 (stress round 2): scripts fire ONCE per user text. The
+        // async-fleet lane delivers results as steer messages that land in the
+        // MODEL REQUEST as user-role content — so a follow-up turn still has
+        // lastIsUser=true with the ORIGINAL scripted prompt in its history,
+        // and the old any-userText matcher re-fired the tool call forever (a
+        // scripted `TOOLCALL task {"async":true…}` looped: spawn → result →
+        // re-match → spawn…). A fired script's user text answers plainly on
+        // every later sighting. Distinct texts (the structured-output retry
+        // lane appends defect notes) still fire — retries are unaffected, and
+        // the sync lane's follow-ups (toolResult last) never re-matched anyway.
+        const firedScripts = new Set<string>();
         const state: MockBridge = { port: 0, url: "", requests, close: () => {} };
 
         const server = Bun.serve({
@@ -133,17 +144,32 @@ export function startMockBridge(opts: MockBridgeOptions = {}): MockBridge {
                                                                         : "";
                                         });
                                 // Scan every user message for a TOOLCALL script (the user prompt may
-                                // not be the last user message — the CLI appends context after it).
-                                const script = lastIsUser
-                                        ? userTexts.map((t) => t.match(/TOOLCALL (\w+) (\{.*\})\s*$/)).find(Boolean)
-                                        : null;
+                                // not be the last user message — the CLI appends context after it) —
+                                // but only the FIRST time that exact text is seen (see firedScripts).
+                                const scriptMatch = lastIsUser
+                                        ? userTexts.map((t) => ({ t, m: t.match(/TOOLCALL (\w+) (\{.*\})\s*$/) })).find((x) => x.m)
+                                        : undefined;
+                                let script: RegExpMatchArray | null = null;
+                                if (scriptMatch?.m) {
+                                        if (!firedScripts.has(scriptMatch.t)) {
+                                                firedScripts.add(scriptMatch.t);
+                                                script = scriptMatch.m;
+                                        }
+                                }
                                 // JSONREPLY script: the (subagent) task text embeds
                                 // `JSONREPLY <json>` — the mock replies with exactly that JSON
                                 // (for task-tool structured-output tests: schema-valid/invalid
-                                // replies are scripted per test).
-                                const jsonReply = userTexts
-                                        .map((t) => t.match(/JSONREPLY (\{[\s\S]*\}|\[[\s\S]*\])\s*$/))
-                                        .find(Boolean);
+                                // replies are scripted per test). Same once-per-text rule.
+                                const jsonMatch = userTexts
+                                        .map((t) => ({ t, m: t.match(/JSONREPLY (\{[\s\S]*\}|\[[\s\S]*\])\s*$/) }))
+                                        .find((x) => x.m);
+                                let jsonReply: RegExpMatchArray | null = null;
+                                if (jsonMatch?.m) {
+                                        if (!firedScripts.has(`json:${jsonMatch.t}`)) {
+                                                firedScripts.add(`json:${jsonMatch.t}`);
+                                                jsonReply = jsonMatch.m;
+                                        }
+                                }
 
                                 requests.push({
                                         ts: Date.now(),
