@@ -421,8 +421,8 @@ export function Hero() {
         <div className="rise mt-10 sm:mt-14">
           <SessionReplay />
           <p className="mt-3 text-center font-mono text-[11px] text-faint">
-            a real session: the memory banner, hook log and note template are formats
-            Unown writes
+            a real session: the memory banner, hook log and note template Unown
+            writes
           </p>
         </div>
       </div>

@@ -61,7 +61,7 @@ export function ShowcaseSection() {
                     className="w-full"
                   />
                   <figcaption className="border-t border-line px-3.5 py-2 text-[11.5px] leading-relaxed text-faint">
-                    The Overview screen: KPI band, task table and the live activity rail.
+                    Overview: KPI band, task table, live activity rail.
                   </figcaption>
                 </figure>
               </TerminalWindow>
@@ -77,7 +77,7 @@ export function ShowcaseSection() {
                       className="w-full"
                     />
                     <figcaption className="border-t border-line px-3.5 py-2 text-[11.5px] leading-relaxed text-faint">
-                      The Memory screen: tiers, budget meter, provenance.
+                      Memory: tiers, budget meter, provenance.
                     </figcaption>
                   </figure>
                 </TerminalWindow>
@@ -99,9 +99,8 @@ export function ShowcaseSection() {
               </div>
               <p className="mt-3 text-[11px] text-faint">
                 Stills from real <span className="font-mono">unown dashboard</span>{" "}
-                sessions against a running engine — runs, dreams, notes and hook
-                decisions, streamed over SSE from{" "}
-                <span className="font-mono">:3030</span>. Every screen works
+                sessions — runs, dreams, notes and hook decisions streamed over SSE from{" "}
+                <span className="font-mono">:3030</span>. Every screen is
                 read-only until you spend tokens on a button ({" "}
                 <span className="font-mono">bun run agent:start</span>, then{" "}
                 <span className="font-mono">unown dashboard</span>).

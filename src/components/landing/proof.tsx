@@ -103,7 +103,7 @@ export function ProofSection() {
             kicker="Proof"
             lead={
               <>
-                Every number is generated from the receipts and re-checked in CI —
+                Every number is generated from receipts and re-checked in CI —
                 including the ones where memory made things worse.
               </>
             }

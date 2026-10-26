@@ -286,7 +286,7 @@ export function BenchmarksPane() {
         <TrackCard
           icon={Swords}
           name="LiveCodeBench v6 — the contamination-aware headline"
-          source="50-problem stratified subset of LiveCodeBench's release_v6 increment · contests 2025-01-04 → 2025-04-06 · after every model's cutoff · official LCB prompt + grader · greedy pass@1 · four models: the Dashscope trio (2026-10-17) + agnes-3.0-flash on the Agnes AI upstream (2026-10-21) · receipts under benchmarks/livecodebench/results/"
+          source="50-problem stratified subset of LiveCodeBench's release_v6 increment · contests 2025-01-04 → 2025-04-06 · after every model's cutoff · official LCB prompt + grader · greedy pass@1 · four models: the Dashscope trio (2026-10-17) + agnes-3.0-flash on Agnes AI (2026-10-21)"
         >
           {LIVECODEBENCH.map((r, i) => (
             <div key={r.model} className="flex items-center gap-3">
@@ -297,7 +297,7 @@ export function BenchmarksPane() {
             </div>
           ))}
           <p className="mt-1 font-mono text-[10px] leading-relaxed text-faint">
-            Every problem was published after these models&apos; training cutoffs.
+            Every problem postdates these models&apos; training cutoffs.
             Easy sweeps for three of four (13/13, 12/13, 12/13); hard is where it
             ends (4/23, 1/23, 1/23, 0/23).{" "}
             <span className="text-gold">no_code is the honest failure mode</span>:
@@ -318,18 +318,17 @@ export function BenchmarksPane() {
         <TrackCard
           icon={Target}
           name="Edit accuracy"
-          source="oh-my-pi typescript-edit-benchmark · 106 fixtures · byte-exact scoring · full Unown agent in the loop · Dashscope trio: 2026-10-17 fresh-checkout rerun · agnes-3.0-flash: 2026-10-21 Agnes AI upstream rerun (97.2% at n=1, inside the trio's band)"
+          source="oh-my-pi typescript-edit-benchmark · 106 fixtures · byte-exact scoring · full Unown agent in the loop · Dashscope trio: 2026-10-17 fresh-checkout rerun · agnes-3.0-flash: 2026-10-21 Agnes AI rerun (97.2% at n=1, in the trio's band)"
         >
           {EDIT_BENCH.map((r, i) => (
             <BarRow key={r.model} label={r.model} pct={r.pct} delay={i * 0.1} />
           ))}
           <div className="mt-2 space-y-1.5 border border-line bg-canvas/50 p-3">
             <p className="font-mono text-[10.5px] leading-relaxed text-dim">
-              <span className="text-gold">head-to-head</span> against the oh-my-pi agent
-              itself, same 106 fixtures, 3 runs per task:{" "}
+              <span className="text-gold">head-to-head</span> against the oh-my-pi agent,
+              same 106 fixtures, 3 runs per task:{" "}
               <span className="text-ink">identical best-of-3 scores on every model</span>{" "}
-              — and <span className="text-gold">2.4–5.4× fewer input tokens</span> per
-              task.
+              — and <span className="text-gold">2.4–5.4× fewer input tokens</span>.
             </p>
           </div>
         </TrackCard>
@@ -362,7 +361,7 @@ export function BenchmarksPane() {
             fresh memory), then warm: a new workspace carrying only the memory dreamed
             from its cold pass. Bars are input tokens, normalized per model; the
             scale runs to {LIFT_SCALE}% — recomputed from these receipts, so the models
-            that spent more widen the axis and are never cropped.
+            that spent more widen the axis, never cropped.
           </p>
 
           <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1.5 font-mono text-[10px] text-faint">
@@ -405,10 +404,10 @@ export function BenchmarksPane() {
 
           <p className="mt-4 font-mono text-[10.5px] leading-relaxed text-dim">
             <span className="text-gold">Pass-rate lift is 0pp</span> across all
-            four models: three of four spent <em>more</em> input tokens with memory
-            in the loop — agnes-3.0-flash most of all (+197%, the dreamed user-tier
-            memory injected into every warm session) while still finishing 26%
-            faster — and kimi-k2.5 finished 35% faster; qwen3.6-plus took both wins.
+            four models: three of four spent <em>more</em> input tokens with memory —
+            agnes-3.0-flash most of all (+197%, dreamed user-tier memory injected
+            into every warm session) while finishing 26% faster — and kimi-k2.5
+            finished 35% faster; qwen3.6-plus took both wins.
             On tasks the model can already solve, memory buys efficiency, not
             correctness.
           </p>
@@ -420,13 +419,13 @@ export function BenchmarksPane() {
             <p className="mt-2 font-mono text-[10.5px] leading-relaxed text-canvas">
               v1 (thin session notes only): −25.6% input, 64s → 34s warm, with an{" "}
               <span className="font-medium text-canvas">unchanged memory file</span> —
-              that saving is upstream prompt caching, not memory, and v1 is kept as the
-              control arm that isolates the confound. v3 (six sequential sessions, one
+              that saving is upstream prompt caching, not memory; v1 stays as the
+              control arm isolating the confound. v3 (six sequential sessions, one
               evolving repo, real dreams): 6/6 with memory, 6/6 without, 6/6 with
               wrong-domain memory — learned memory cost +36% billed input tokens,
-              irrelevant memory +30% and bought nothing. The memory system itself now
+              irrelevant memory +30% and bought nothing. The memory system now
               has a live suite — injection proven by a unique marker in the captured
-              upstream request, real dream + canary + rollback roundtrips, and a
+              upstream request, real dream + canary + rollback roundtrips, a
               ten-variant poisoning corpus: every adversarial note flagged at the input
               layer, 0/10 attacker rules planted into dreamed memory, 0 shipped —
               receipts in{" "}
@@ -474,7 +473,7 @@ export function BenchmarksPane() {
             </div>
             <p className="mt-3 font-mono text-[10px] leading-relaxed text-faint">
               predates these models, so it cannot separate ability from memorization —
-              LiveCodeBench above is the headline for exactly that reason.
+              exactly why LiveCodeBench above is the headline.
             </p>
           </div>
 
@@ -498,8 +497,8 @@ export function BenchmarksPane() {
             </div>
             <p className="mt-3 font-mono text-[10px] leading-relaxed text-faint">
               first published polyglot numbers for the Dashscope trio (2026-10-17
-              rerun reproduces the committed run exactly) · agnes-3.0-flash row
-              from the 2026-10-21 Agnes AI campaign: 90% @1 / 96% @2
+              rerun reproduces the committed run) · agnes-3.0-flash from the
+              2026-10-21 Agnes AI campaign: 90% @1 / 96% @2
             </p>
           </div>
 
@@ -510,7 +509,7 @@ export function BenchmarksPane() {
             </div>
             <p className="mt-1.5 font-mono text-[10.5px] leading-relaxed text-faint">
               one hard multi-file contract change, 11-module TypeScript app · n=1 ·
-              scored on the file diff
+              scored on the diff
             </p>
             <div className="mt-3 space-y-1.5">
               {LONGHORIZON.map((r) => (
@@ -524,10 +523,9 @@ export function BenchmarksPane() {
             </div>
             <p className="mt-3 font-mono text-[10px] leading-relaxed text-faint">
               all four solved it — agnes-3.0-flash left the greenest as-is suite
-              (42/0) — and <span className="text-gold">the separation is
-              cost</span>: qwen3.6-plus spent 1.2M input tokens with zero cache reads
+              (42/0); <span className="text-gold">the separation is cost</span>: qwen3.6-plus spent 1.2M input tokens with zero cache reads
               (28× kimi), while agnes-3.0-flash rode 1.07M of cache reads, the
-              strongest prompt-reuse profile measured on this track.{" "}
+              strongest prompt-reuse profile measured.{" "}
               <a
                 href={`${BENCH_URL}/longhorizon/results`}
                 target="_blank"
@@ -558,8 +556,8 @@ export function BenchmarksPane() {
           </div>
           <p className="mt-3 max-w-3xl text-[13px] leading-relaxed text-dim">
             A self-improving agent regresses its own harness first: a bad memory ship
-            looks exactly like a better model. The loop sits on a locked suite that
-            must stay green while everything above it evolves — anti-tamper scoring
+            looks like a better model. The loop sits on a locked suite that
+            stays green while everything above it evolves — anti-tamper scoring
             (tests restored before scoring), pinned datasets and
             harness versions, official harnesses only, per-task JSONL receipts under{" "}
             <a
@@ -601,7 +599,7 @@ export function BenchmarksPane() {
             <span className="text-gold">not measured here</span> — SWE-bench Verified and
             Terminal-Bench 2.0 are quoted from vendor reports, never our own runs. The
             one eval that scores zero (our extension-authoring eval, 0.0 for every
-            model) sits beside the gates in{" "}
+            model) sits in{" "}
             {/* deep link, not just a section jump: the zero lives inside the
                 Integrity PANE, which is `hidden` until its tab activates —
                 proof.tsx reads this hash and switches the tab on arrival. */}

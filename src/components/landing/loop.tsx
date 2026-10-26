@@ -67,7 +67,7 @@ const BEATS: Beat[] = [
     label: "Work",
     caption: "you chat",
     title: "The session ends by writing something down.",
-    lead: "Every session hands the engine a templated note. A down engine gets it from the outbox later — learning never depends on the loop being up.",
+    lead: "Every session hands the engine a templated note. A down engine gets it from the outbox — learning never depends on the loop being up.",
     filename: "~/.unown/notes/outbox/1757...-checkout.md",
     body: [
       "Terminal session outcome in ~/code/checkout:",
@@ -77,7 +77,7 @@ const BEATS: Beat[] = [
       "14 tool call(s) (read, grep, edit, bash), 3 min.",
     ].join("\n"),
     caption2:
-      "The literal note template — outcome first (that is the knowledge), counts and duration demoted to a labeled data-only line. A subagent session gets a [subagent] tag in the same header, so the engine knows where it came from.",
+      "The literal note template — outcome first (that is the knowledge), counts and duration demoted to a data-only line. A subagent session gets a [subagent] tag in the same header, so the engine knows its origin.",
   },
   {
     key: "learn",
@@ -131,7 +131,7 @@ const TWO = [
   {
     glyph: "A" as const,
     title: "The terminal agent",
-    body: "pi's TUI in your project with the memory stack loaded. Alone: a good coding agent that forgets everything at midnight.",
+    body: "pi's TUI in your project, memory stack loaded. Alone: a good coding agent that forgets everything at midnight.",
     lines: ["unown", "unown --plan", "unown doctor"],
   },
   {
@@ -177,8 +177,7 @@ export function LoopSection() {
             Most agents forget. This one has to prove it remembered.
           </SectionHead>
           <p className="mt-4 text-pretty leading-relaxed text-dim">
-            Three steps the engine runs continuously — each tab shows its
-            file.
+            Three steps, run continuously — each tab shows its file.
           </p>
         </FadeUp>
 

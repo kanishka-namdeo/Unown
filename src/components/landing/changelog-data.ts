@@ -30,11 +30,11 @@ export interface ChangelogStop {
   groups: ChangelogGroup[];
 }
 
-export const CHANGELOG_TOTAL_ENTRIES = 310;
+export const CHANGELOG_TOTAL_ENTRIES = 311;
 
 export const CHANGELOG_TOTALS: Record<ChangelogBucket, number> = {
   "Added": 137,
-  "Changed": 24,
+  "Changed": 25,
   "Deprecated": 0,
   "Removed": 3,
   "Fixed": 115,
@@ -43,6 +43,31 @@ export const CHANGELOG_TOTALS: Record<ChangelogBucket, number> = {
 };
 
 export const CHANGELOG_STOPS: ChangelogStop[] = [
+  {
+    "label": "Unreleased",
+    "date": null,
+    "total": 1,
+    "counts": {
+      "Added": 0,
+      "Changed": 1,
+      "Deprecated": 0,
+      "Removed": 0,
+      "Fixed": 0,
+      "Security": 0,
+      "Behavior": 0
+    },
+    "groups": [
+      {
+        "bucket": "Changed",
+        "items": [
+          {
+            "title": "landing: the orphan round's cut pays its scroll bill",
+            "behavior": false
+          }
+        ]
+      }
+    ]
+  },
   {
     "label": "0.0.27",
     "date": "2026-10-26",
@@ -61,7 +86,7 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
         "bucket": "Added",
         "items": [
           {
-            "title": "subagents: stress round four — the sync lane's pid-kill orphans get the journal the fleet already had",
+            "title": "subagents: stress round four — the sync lane's pid-kill orphans",
             "behavior": false
           },
           {
@@ -99,7 +124,7 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
         "bucket": "Added",
         "items": [
           {
-            "title": "subagents: stress round three — the edges the chaos round wrote down and refused to forget",
+            "title": "subagents: stress round three — the ledger's unpaid edges",
             "behavior": false
           }
         ]

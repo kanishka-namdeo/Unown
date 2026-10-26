@@ -783,8 +783,8 @@ export function DexSection() {
           </SectionHead>
           <p className="mt-4 text-pretty leading-relaxed text-dim">
             Session tools, engine mechanisms, workflows, configurable
-            surfaces — one numbered spine, whole or screen-by-screen. Play a cry,
-            watch the capture. {TALLY_SENTENCE}
+            surfaces — one numbered spine. Play a cry, watch the capture.{" "}
+            {TALLY_SENTENCE}
           </p>
         </FadeUp>
 
@@ -948,7 +948,7 @@ export function DexSection() {
               <p className="mt-3 font-mono text-[10px] leading-relaxed text-faint">
                 ↑ ↓ walk the list · ◀ ▶ switch screens · type to filter · esc
                 clears · <span aria-hidden="true">●</span> filmed{" "}
-                <span aria-hidden="true">○</span> pending · captures come only
+                <span aria-hidden="true">○</span> pending · captures only
                 from{" "}
                 <code className="font-mono text-dim">scripts/tui-capture/</code>
               </p>
@@ -991,9 +991,8 @@ export function DexSection() {
           <p className="mt-4 text-[11px] leading-relaxed text-faint">
             The {TALLY.videos} movies
             {TALLY.stills > 0 ? <> and the {TALLY.stills} still set</> : null}{" "}
-            were captured across the 2026-10 rounds by the harness from real
-            unown sessions at 128 × 36 and audited still by still; each poster
-            is one of them.{" "}
+            were captured across the 2026-10 rounds from real unown sessions at
+            128 × 36, audited still by still; each poster is one of them.{" "}
             {TALLY.pending > 0 ? <>{TALLY.pending} entries have no capture yet.</> : null}
           </p>
 
@@ -1003,8 +1002,8 @@ export function DexSection() {
           <details className="group mt-3 max-w-xl border border-line bg-panel-2/40">
             <summary className="flex cursor-pointer list-none items-center gap-2 px-3 py-2 font-mono text-[11px] text-dim transition-colors hover:text-ink focus:outline-none focus-visible:ring-2 focus-visible:ring-gold [&::-webkit-details-marker]:hidden">
               <span className="gb-label text-[9px] text-gold">/split</span>
-              the display commands ({COMMANDS.length}) — the split-view
-              mode&apos;s keyboard surface
+              the display commands ({COMMANDS.length}) — split-view's
+              keyboard surface
               <span aria-hidden="true" className="ml-auto text-faint group-open:hidden">
                 +
               </span>

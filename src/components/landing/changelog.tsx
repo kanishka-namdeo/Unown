@@ -231,8 +231,8 @@ export function ChangelogRail() {
                 <>
                   <span className="font-mono text-ink">{CHANGELOG_TOTAL_ENTRIES} entries</span>, read
                   out of <span className="font-mono text-ink">CHANGELOG.md</span>, the file{" "}
-                  <span className="font-mono text-ink">unown changelog</span> prints. Dates and
-                  titles come from its headings and bullets; nothing here was written for the page.
+                  <span className="font-mono text-ink">unown changelog</span> prints. Dates from
+                  its headings, titles from its bullets; nothing written for the page.
                 </>
               }
             >
@@ -319,8 +319,7 @@ export function ChangelogRail() {
         </FadeUp>
 
         <p className="gb-term mt-4 text-[15px] leading-snug text-faint">
-          Newest left; cut releases recede right. Scroll or use
-          ◀ ▶.
+          Newest left; cut releases recede right. Scroll or ◀ ▶.
         </p>
       </div>
     </section>

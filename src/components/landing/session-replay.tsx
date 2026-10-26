@@ -312,8 +312,7 @@ export function SessionReplay({ script = SESSION }: { script?: Line[] }) {
           ))}
         </ol>
         <p>
-          The session ends by queueing a note in ~/.unown/notes/outbox for
-          AutoDream.
+          The session ends by queueing a note for AutoDream.
         </p>
       </figcaption>
 

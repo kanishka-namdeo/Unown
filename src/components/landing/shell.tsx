@@ -951,8 +951,8 @@ export function Footer({ anchorPrefix = "" }: { anchorPrefix?: string }) {
               <span className="gb-label text-[11px]">unown</span>
             </div>
             <p className="gb-term mt-3 text-[17px] leading-snug text-faint">
-              A terminal coding agent that turns sessions into notes, and notes into
-              verified memory.
+              A terminal coding agent: sessions into notes, notes into verified
+              memory.
             </p>
             {/* The stage, restated at the bottom: the footer is where a reader
                 who scrolled everything still gets the status before the legal
@@ -1010,8 +1010,8 @@ export function Footer({ anchorPrefix = "" }: { anchorPrefix?: string }) {
             , MIT licensed. Unown is an independent open-source project — not affiliated
             with, endorsed by or sponsored by Nintendo, Game Freak, Creatures Inc. or The
             Pokémon Company. Pokémon and Unown are trademarks of their respective owners.
-            No official art ships here: every glyph, box and bar on this page is
-            drawn in code, and every creature is an original render.
+            No official art ships here: every glyph, box and bar is drawn in code,
+            every creature an original render.
           </p>
         </div>
       </div>
