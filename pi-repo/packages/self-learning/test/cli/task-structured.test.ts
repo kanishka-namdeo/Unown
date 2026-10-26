@@ -499,8 +499,60 @@ describe("fleet crash sweep (round-3 live finding R3-F4, end-to-end)", () => {
                                 }
                                 expect(spawnedEntry).toBeDefined();
                                 expect(typeof spawnedEntry.pid).toBe("number");
-                                // Let the child get INTO its bash sleep.
-                                await new Promise((r) => setTimeout(r, 6_000));
+                                // Let the child get INTO its bash sleep — the crash must land
+                                // in the quiet phase, not mid-event-stream (an orphan dies at
+                                // its next stdout write when the dead parent's pipe EPIPEs it —
+                                // the round-4 e2e measured this race live, so this stop-gap
+                                // sleep became a grandchild gate too: poll until the bash
+                                // grandchild exists, then settle).
+                                if (process.platform !== "win32") {
+                                        let inBash = false;
+                                        let psFailure = "";
+                                        for (let i = 0; i < 100 && !inBash; i++) {
+                                                await new Promise((r) => setTimeout(r, 300));
+                                                try {
+                                                        const kids = execFileSync(
+                                                                "ps",
+                                                                ["-o", "pid=", "--ppid", String(spawnedEntry.pid)],
+                                                                { encoding: "utf8" },
+                                                        );
+                                                        inBash = kids
+                                                                .split("\n")
+                                                                .map((l) => Number(l.trim()))
+                                                                .filter((n) => n > 0)
+                                                                .some((kid) => {
+                                                                        try {
+                                                                                const cmd = execFileSync("ps", ["-o", "command=", "-p", String(kid)], {
+                                                                                        encoding: "utf8",
+                                                                                });
+                                                                                return /\bsleep\b/.test(cmd);
+                                                                        } catch {
+                                                                                return false;
+                                                                        }
+                                                                });
+                                                } catch (e: any) {
+                                                        // ps exits 1 for a DEAD --ppid — do NOT break the
+                                                        // poll on it (a slow boot can transiently confuse
+                                                        // the listing); remember the last failure for the
+                                                        // diagnostic instead.
+                                                        psFailure = String(e?.status ?? e?.message ?? e);
+                                                }
+                                        }
+                                        if (!inBash) {
+                                                let alive = false;
+                                                try {
+                                                        process.kill(spawnedEntry.pid, 0);
+                                                        alive = true;
+                                                } catch {}
+                                                throw new Error(
+                                                        `fleet child never reached its bash quiet phase (pid ${spawnedEntry.pid} alive=${alive}, last ps failure: ${psFailure || "none"}); ` +
+                                                                `journal:\n${readFileSync(journalFile, "utf8")}`,
+                                                );
+                                        }
+                                        await new Promise((r) => setTimeout(r, 1_000));
+                                } else {
+                                        await new Promise((r) => setTimeout(r, 6_000));
+                                }
 
                                 // 3. THE CRASH: SIGKILL the PARENT ONLY (pid kill — no group).
                                 parent.kill("SIGKILL");
@@ -690,6 +742,57 @@ describe("sync-lane crash sweep (round-4 live finding R4-F1, end-to-end)", () =>
                                 expect(hb.pid).toBe(spawnedEntry.pid);
                                 expect(Date.now() - hb.ts).toBeLessThan(5_000);
 
+                                // The crash must land in the child's QUIET phase — mid-bash —
+                                // not while it is still emitting its boot/event stream: an
+                                // orphan dies at its NEXT stdout write when the dead parent's
+                                // pipe EPIPEs it (the R3-documented death mode, measured here
+                                // live: kill-during-emit → the child EPIPEs, its exit hook
+                                // removes the heartbeat, and the sweep honestly records
+                                // "already gone" instead of the live reap this regression
+                                // pins). So gate the kill on the bash grandchild existing
+                                // (POSIX); Windows has no cheap child listing, so a grace
+                                // window stands in.
+                                if (process.platform !== "win32") {
+                                        let inBash = false;
+                                        let quietPhasePsFailure = "";
+                                        for (let i = 0; i < 100 && !inBash; i++) {
+                                                await new Promise((r) => setTimeout(r, 300));
+                                                try {
+                                                        const kids = execFileSync(
+                                                                "ps",
+                                                                ["-o", "pid=", "--ppid", String(spawnedEntry.pid)],
+                                                                { encoding: "utf8" },
+                                                        );
+                                                        inBash = kids
+                                                                .split("\n")
+                                                                .map((l) => Number(l.trim()))
+                                                                .filter((n) => n > 0)
+                                                                .some((kid) => {
+                                                                        try {
+                                                                                const cmd = execFileSync("ps", ["-o", "command=", "-p", String(kid)], {
+                                                                                        encoding: "utf8",
+                                                                                });
+                                                                                return /\bsleep\b/.test(cmd);
+                                                                        } catch {
+                                                                                return false;
+                                                                        }
+                                                                });
+                                                } catch (e: any) {
+                                                        // ps exits 1 for a DEAD --ppid — keep polling
+                                                        // (bounded), remember the failure for diagnostics.
+                                                        quietPhasePsFailure = String(e?.status ?? e?.message ?? e);
+                                                }
+                                        }
+                                        expect(inBash).toBe(true);
+                                        await new Promise((r) => setTimeout(r, 1_000));
+                                } else {
+                                        await new Promise((r) => setTimeout(r, 4_000));
+                                }
+                                // Still beating inside the quiet phase (the loop is alive —
+                                // pi's bash tool is an async spawn).
+                                const hbQuiet = JSON.parse(readFileSync(hbFile, "utf8"));
+                                expect(Date.now() - hbQuiet.ts).toBeLessThan(5_000);
+
                                 // 3. THE CRASH: SIGKILL the PARENT ONLY (pid kill — no group).
                                 //    Pre-fix shape (live-measured): the sync orphan survives
                                 //    this with ZERO trace on disk.
@@ -717,6 +820,35 @@ describe("sync-lane crash sweep (round-4 live finding R4-F1, end-to-end)", () =>
                                         (e) => (e.op === "reaped" || e.op === "abandoned") && e.id === spawnedEntry.id,
                                 );
                                 expect(terminal).toBeDefined();
+                                if (process.platform !== "win32" && (!terminal || terminal.op !== "reaped")) {
+                                        // Failure diagnostics (POSIX only — on Windows an
+                                        // "abandoned" trace is the honest EXPECTED outcome, no
+                                        // cmdline probe exists): which sweep arm produced the
+                                        // disposition, and what does the child look like NOW?
+                                        let childAlive = false;
+                                        try {
+                                                process.kill(spawnedEntry.pid, 0);
+                                                childAlive = true;
+                                        } catch {}
+                                        let hbNow: { pid: number; ts: number } | null = null;
+                                        try {
+                                                hbNow = JSON.parse(readFileSync(hbFile, "utf8"));
+                                        } catch {}
+                                        let psOut = "";
+                                        try {
+                                                psOut = execFileSync("ps", ["-p", String(spawnedEntry.pid), "-o", "command="], {
+                                                        encoding: "utf8",
+                                                });
+                                        } catch {
+                                                psOut = "(ps: process gone)";
+                                        }
+                                        throw new Error(
+                                                `sync-lane sweep disposition was ${terminal?.op} (${terminal?.reason}); ` +
+                                                        `childAlive=${childAlive} hb=${JSON.stringify(hbNow)} ` +
+                                                        `psHasPromptFile=${psOut.includes(spawnedEntry.promptFile)}; ` +
+                                                        `run2 stderr tail: ${run2.stderr.split("\n").slice(-3).join(" | ")}`,
+                                        );
+                                }
                                 if (process.platform !== "win32") {
                                         // Heartbeat-fresh + cmdline-verified (the prompt file is in
                                         // the child's argv) → REAPED, and dead for real.
