@@ -2370,19 +2370,25 @@ export class BrowserSession {
 
 	/** Click a Turnstile/reCAPTCHA checkbox at input level (native tier). */
 	private async captchaNativeClick(challenge: DetectedChallenge): Promise<{ clicked: boolean; note: string }> {
-		const box = await this.pageEval(`(() => {
-                        let el = null;
-                        if (${JSON.stringify(challenge.type)} === "cloudflare-turnstile") {
-                                el = document.querySelector('iframe[src*="challenges.cloudflare.com"]') || document.querySelector(".cf-turnstile");
-                        } else if (${JSON.stringify(challenge.type)} === "recaptcha-v2") {
-                                el = document.querySelector('iframe[title="reCAPTCHA"], iframe[src*="recaptcha/api2/anchor"]');
-                        } else if (${JSON.stringify(challenge.type)} === "hcaptcha") {
-                                el = document.querySelector('iframe[src*="hcaptcha.com"], .h-captcha');
-                        }
-                        if (!el) return null;
-                        const r = el.getBoundingClientRect();
-                        return [Math.round(r.x), Math.round(r.y), Math.round(r.width), Math.round(r.height)];
-                })()`);
+		// js/bad-code-sanitization: challenge.type is page-derived data — it
+		// crosses as a CDP JSON argument (pageCall), never interpolated into
+		// evaluated source. Static declaration, data argument.
+		const box = await this.pageCall(
+			`(t) => {
+                                let el = null;
+                                if (t === "cloudflare-turnstile") {
+                                        el = document.querySelector('iframe[src*="challenges.cloudflare.com"]') || document.querySelector(".cf-turnstile");
+                                } else if (t === "recaptcha-v2") {
+                                        el = document.querySelector('iframe[title="reCAPTCHA"], iframe[src*="recaptcha/api2/anchor"]');
+                                } else if (t === "hcaptcha") {
+                                        el = document.querySelector('iframe[src*="hcaptcha.com"], .h-captcha");
+                                }
+                                if (!el) return null;
+                                const r = el.getBoundingClientRect();
+                                return [Math.round(r.x), Math.round(r.y), Math.round(r.width), Math.round(r.height)];
+                        }`,
+			[challenge.type],
+		);
 		if (!Array.isArray(box)) return { clicked: false, note: "no widget box found for the native click" };
 		// the checkbox sits at the left edge, vertically centered
 		const cx = box[0] + Math.max(14, Math.min(28, Math.round(box[2] * 0.12)));
@@ -2396,8 +2402,9 @@ export class BrowserSession {
 				: challenge.type === "hcaptcha"
 					? 'textarea[name="h-captcha-response"]'
 					: 'input[name="cf-turnstile-response"], textarea[name="cf-turnstile-response"]';
-		const val = await this.pageEval(
-			`(() => { const el = document.querySelector(${JSON.stringify(field)}); return el ? String(el.value || "").length : 0; })()`,
+		const val = await this.pageCall(
+			'(sel) => { const el = document.querySelector(sel); return el ? String(el.value || "").length : 0; }',
+			[field],
 		).catch(() => 0);
 		const solved = Number(val) > 20;
 		return {
