@@ -269,3 +269,87 @@ describe("worktree lifecycle (real git)", () => {
                 }
         });
 });
+
+// ---------------------------------------------------------------------------
+// Round 3 (2026-10-26 stress round THREE) — the name-collision seam (R3-F3,
+// live): `slice(0, 48)` on a long agent name stripped the caller's
+// `-<ts36>-<rand6>` suffix, so at ≥ 47 chars of name the safeId had ZERO
+// entropy — every spawn of that agent targeted ONE path (same-batch spawn
+// REJECTED; a kept dirty tree LIVES OUT the agent until manual remove). The
+// truncation now keeps the name's head + the id's last 16 chars (where the
+// entropy lives); the 48-char cap itself stays for MAX_PATH headroom.
+// ---------------------------------------------------------------------------
+
+describe("safeId entropy survives long names (R3-F3, live 2026-10-26)", () => {
+        const LONG_NAME = "pangram-quick-jinx-ford-vex-bad-zany-luck-mix-gowk"; // exactly 50 chars
+        const SUFFIX = "-mvp0xicc-76hndc"; // 16 chars: -<ts36>-<rand6>
+
+        test("a >48-char id keeps its entropy tail: head-32 + last-16, cap 48", async () => {
+                if (!HAS_GIT) return;
+                const repo = makeRepo();
+                const id = `${LONG_NAME}${SUFFIX}`; // 66 chars — the live collider shape
+                const created = await createWorktree(repo, id);
+                expect(created.ok).toBe(true);
+                if (!created.ok) return;
+                const raw = id.replace(/[^a-zA-Z0-9._-]+/g, "-");
+                expect(created.handle.id.length).toBe(48);
+                expect(created.handle.id.startsWith(raw.slice(0, 32))).toBe(true);
+                // The entropy tail SURVIVED (pre-fix: 48 chars of pure name).
+                expect(created.handle.id.endsWith(SUFFIX)).toBe(true);
+                const cleanup = await cleanupWorktree(created.handle);
+                expect(cleanup.action).toBe("removed");
+        });
+
+        test("two same-name spawns with fresh suffixes NEVER collide (pre-fix: deterministic path)", async () => {
+                if (!HAS_GIT) return;
+                const repo = makeRepo();
+                const first = await createWorktree(repo, `${LONG_NAME}-aaaaaaa-111111`);
+                const second = await createWorktree(repo, `${LONG_NAME}-aaaaaaa-222222`);
+                expect(first.ok).toBe(true);
+                expect(second.ok).toBe(true);
+                if (!first.ok || !second.ok) return;
+                expect(first.handle.path).not.toBe(second.handle.path);
+                const cleanup1 = await cleanupWorktree(first.handle);
+                const cleanup2 = await cleanupWorktree(second.handle);
+                expect(cleanup1.action).toBe("removed");
+                expect(cleanup2.action).toBe("removed");
+        });
+
+        test("a KEPT dirty tree no longer LIVES OUT a long-named agent (the livelock)", async () => {
+                if (!HAS_GIT) return;
+                const repo = makeRepo();
+                // First spawn: the child leaves work behind → tree KEPT on disk.
+                const first = await createWorktree(repo, `${LONG_NAME}-bbbbbbb-111111`);
+                expect(first.ok).toBe(true);
+                if (!first.ok) return;
+                writeFileSync(join(first.handle.path, "left-behind.txt"), "child work");
+                const cleanup = await cleanupWorktree(first.handle);
+                expect(cleanup.action).toBe("kept");
+                // Pre-fix: the agent's NEXT spawn re-derived the SAME deterministic
+                // path and was REJECTED ("worktree path already exists") forever.
+                // Post-fix: a fresh suffix lands on a fresh path — no livelock.
+                const second = await createWorktree(repo, `${LONG_NAME}-bbbbbbb-999999`);
+                expect(second.ok).toBe(true);
+                if (second.ok) {
+                        await cleanupWorktree(second.handle);
+                }
+                // Force-remove the kept tree (this test owns it).
+                try {
+                        await runGit(repo, ["worktree", "remove", "--force", first.handle.path]);
+                        await runGit(repo, ["worktree", "prune"]);
+                } catch {
+                        /* best effort */
+                }
+        });
+
+        test("short ids pass through unchanged (<= 48 keeps the old shape)", async () => {
+                if (!HAS_GIT) return;
+                const repo = makeRepo();
+                const created = await createWorktree(repo, "scout-mvp0xicc-76hndc");
+                expect(created.ok).toBe(true);
+                if (!created.ok) return;
+                expect(created.handle.id).toBe("scout-mvp0xicc-76hndc");
+                const cleanup = await cleanupWorktree(created.handle);
+                expect(cleanup.action).toBe("removed");
+        });
+});

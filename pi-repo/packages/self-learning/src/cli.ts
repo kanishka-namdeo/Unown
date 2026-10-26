@@ -55,6 +55,7 @@ import { readSpawnState } from "./engine-supervisor.ts";
 import { agentGitSha, codeMtimeMs, compareEngineBuild } from "./engine-version.ts";
 import { createFleetChildExtension } from "./fleet-child.ts";
 import { FLEET_DRAIN_SENTINEL, isFleetBusy } from "./fleet-runtime.ts";
+import { sweepStaleFleetChildren } from "./fleet-reaper.ts";
 import { createFirstFlightsExtension } from "./flights.ts";
 import { IMPORT_USAGE, runImportCommand } from "./import-cli.ts";
 import { cmdInfo } from "./info.ts";
@@ -1061,6 +1062,20 @@ async function bootRuntime(cwd: string, verbose: boolean, bootOpts: BootOptions 
         // SIGTERM→SIGKILL on process exit and SIGINT/SIGTERM — idempotent, so every
         // bootRuntime call (TUI, print, subagents) re-installs it harmlessly.
         installChildReaper();
+        // Round 3 (2026-10-26) — fleet crash sweep (fleet-reaper.ts): children
+        // whose parent died without finalize leave journal entries open; reap
+        // the live (heartbeat-verified) ones, trace the dead ones, clean the
+        // rotting control/ask channels, and mark adopted worktrees orphaned.
+        // No-op without a journal (the common boot), never runs inside
+        // subagents, kill-switch UNOWN_FLEET_REAPER=0, and never throws — a
+        // corrupt journal must not cost anyone a boot.
+        try {
+                sweepStaleFleetChildren(cwd, {
+                        log: (message) => console.error(`[unown] ${message}`),
+                });
+        } catch {
+                /* best effort */
+        }
         const checkpointsExtension = createCheckpointsExtension({ cwd, verbose });
         const mcpExtension = createMcpExtension({ cwd, verbose });
         // One permission gate shared by the terminal hook seam (tool_call)

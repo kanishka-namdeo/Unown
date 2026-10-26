@@ -37,50 +37,50 @@
  */
 
 import { existsSync, mkdirSync, readFileSync, renameSync, rmSync, writeFileSync } from "node:fs";
-import { basename, join } from "node:path";
+import { basename, dirname, join } from "node:path";
 import { runGit as runGitHardened } from "./gittools.ts";
 
 /** Where worktrees live inside a repo (gitignored via the checkpoints
  *  extension's self-healing .unown/.gitignore — added in the same change). */
 export function worktreeRoot(repoRoot: string): string {
-	return join(repoRoot, ".unown", "worktrees");
+        return join(repoRoot, ".unown", "worktrees");
 }
 
 /** The append-only lifecycle journal (muse's worktree event log analog). */
 function registryPath(repoRoot: string): string {
-	return join(worktreeRoot(repoRoot), "registry.jsonl");
+        return join(worktreeRoot(repoRoot), "registry.jsonl");
 }
 
 export interface WorktreeRecord {
-	/** Event: spawned | kept | removed | quarantined | failed */
-	op: string;
-	id: string;
-	path: string;
-	baseCommit: string;
-	/** cleanup policy in force (always remove_if_clean today). */
-	policy: "remove_if_clean";
-	ts: number;
-	/** present on kept/quarantined/failed: why. */
-	reason?: string;
+        /** Event: spawned | kept | removed | quarantined | failed */
+        op: string;
+        id: string;
+        path: string;
+        baseCommit: string;
+        /** cleanup policy in force (always remove_if_clean today). */
+        policy: "remove_if_clean";
+        ts: number;
+        /** present on kept/quarantined/failed: why. */
+        reason?: string;
 }
 
 export type WorktreeOp = WorktreeRecord["op"];
 
 function appendRecord(repoRoot: string, record: WorktreeRecord): void {
-	const dir = worktreeRoot(repoRoot);
-	mkdirSync(dir, { recursive: true });
-	writeFileSync(registryPath(repoRoot), `${JSON.stringify(record)}\n`, { flag: "a" });
+        const dir = worktreeRoot(repoRoot);
+        mkdirSync(dir, { recursive: true });
+        writeFileSync(registryPath(repoRoot), `${JSON.stringify(record)}\n`, { flag: "a" });
 }
 
 export function readRegistry(repoRoot: string): WorktreeRecord[] {
-	try {
-		return readFileSync(registryPath(repoRoot), "utf8")
-			.split("\n")
-			.filter((l) => l.trim().length > 0)
-			.map((l) => JSON.parse(l) as WorktreeRecord);
-	} catch {
-		return [];
-	}
+        try {
+                return readFileSync(registryPath(repoRoot), "utf8")
+                        .split("\n")
+                        .filter((l) => l.trim().length > 0)
+                        .map((l) => JSON.parse(l) as WorktreeRecord);
+        } catch {
+                return [];
+        }
 }
 
 // ---------------------------------------------------------------------------
@@ -88,9 +88,9 @@ export function readRegistry(repoRoot: string): WorktreeRecord[] {
 // ---------------------------------------------------------------------------
 
 export interface GitResult {
-	code: number;
-	stdout: string;
-	stderr: string;
+        code: number;
+        stdout: string;
+        stderr: string;
 }
 
 /** Run git with the FULL hardened read-only probe set (hooks disabled,
@@ -105,15 +105,15 @@ export interface GitResult {
  *  GitResult is a structural superset (gitMissing/timedOut are optional) —
  *  worktree callers only ever look at code/stdout/stderr. */
 export function runGit(cwd: string, args: string[]): Promise<GitResult> {
-	return runGitHardened(cwd, args, { readOnly: true });
+        return runGitHardened(cwd, args, { readOnly: true });
 }
 
 /** Repo toplevel for a directory, or null (not a repo / git missing). */
 export async function findGitRepo(cwd: string): Promise<string | null> {
-	const res = await runGit(cwd, ["rev-parse", "--show-toplevel"]);
-	if (res.code !== 0) return null;
-	const top = res.stdout.trim();
-	return top.length > 0 ? top : null;
+        const res = await runGit(cwd, ["rev-parse", "--show-toplevel"]);
+        if (res.code !== 0) return null;
+        const top = res.stdout.trim();
+        return top.length > 0 ? top : null;
 }
 
 // ---------------------------------------------------------------------------
@@ -121,85 +121,129 @@ export async function findGitRepo(cwd: string): Promise<string | null> {
 // ---------------------------------------------------------------------------
 
 export interface WorktreeHandle {
-	id: string;
-	path: string;
-	repoRoot: string;
-	baseCommit: string;
+        id: string;
+        path: string;
+        repoRoot: string;
+        baseCommit: string;
 }
 
 export type WorktreeCreateResult =
-	| { ok: true; handle: WorktreeHandle }
-	| { ok: false; reason: "not_a_git_repo" | "git_unavailable" | "create_failed" | "disabled"; detail: string };
+        | { ok: true; handle: WorktreeHandle }
+        | { ok: false; reason: "not_a_git_repo" | "git_unavailable" | "create_failed" | "disabled"; detail: string };
 
 /** Isolation enabled? Env gate `UNOWN_WORKTREE_ISOLATION` (default on; the
  *  kill-switch follows the repo's UNOWN_LSP/UNOWN_MCP boolean convention:
  *  0/false/no disables, anything else (incl. empty) leaves it on). */
 export function worktreeIsolationEnabled(env: NodeJS.ProcessEnv = process.env): boolean {
-	return !/^(0|false|no)$/i.test(env.UNOWN_WORKTREE_ISOLATION ?? "");
+        return !/^(0|false|no)$/i.test(env.UNOWN_WORKTREE_ISOLATION ?? "");
 }
 
 /** Create an isolated worktree for `id` at the parent repo's HEAD.
  *  Fail-closed: every failure is a typed reason — the caller must surface
  *  it to the model instead of falling back to the shared checkout. */
 export async function createWorktree(cwd: string, id: string): Promise<WorktreeCreateResult> {
-	if (!worktreeIsolationEnabled()) {
-		return { ok: false, reason: "disabled", detail: "worktree isolation is disabled (UNOWN_WORKTREE_ISOLATION=0)" };
-	}
-	const repoRoot = await findGitRepo(cwd);
-	if (repoRoot === null) {
-		return {
-			ok: false,
-			reason: "not_a_git_repo",
-			detail: "worktree isolation requires a git repository (cwd is not inside one)",
-		};
-	}
-	const head = await runGit(repoRoot, ["rev-parse", "HEAD"]);
-	if (head.code !== 0 || !head.stdout.trim()) {
-		return {
-			ok: false,
-			reason: "create_failed",
-			detail: `could not resolve HEAD: ${head.stderr.trim().slice(0, 200)}`,
-		};
-	}
-	const baseCommit = head.stdout.trim();
-	const safeId = id.replace(/[^a-zA-Z0-9._-]+/g, "-").slice(0, 48) || "child";
-	const path = join(worktreeRoot(repoRoot), safeId);
-	if (existsSync(path)) {
-		return {
-			ok: false,
-			reason: "create_failed",
-			detail: `worktree path already exists: ${basename(path)} (retry the spawn for a fresh id)`,
-		};
-	}
-	const created = await runGit(repoRoot, ["worktree", "add", "--detach", path, baseCommit]);
-	if (created.code !== 0) {
-		appendRecord(repoRoot, {
-			op: "failed",
-			id: safeId,
-			path,
-			baseCommit,
-			policy: "remove_if_clean",
-			ts: Date.now(),
-			reason: created.stderr.trim().slice(0, 300),
-		});
-		return {
-			ok: false,
-			reason: "create_failed",
-			detail: `git worktree add failed: ${created.stderr.trim().slice(0, 300)}`,
-		};
-	}
-	appendRecord(repoRoot, { op: "spawned", id: safeId, path, baseCommit, policy: "remove_if_clean", ts: Date.now() });
-	return { ok: true, handle: { id: safeId, path, repoRoot, baseCommit } };
+        if (!worktreeIsolationEnabled()) {
+                return { ok: false, reason: "disabled", detail: "worktree isolation is disabled (UNOWN_WORKTREE_ISOLATION=0)" };
+        }
+        const repoRoot = await findGitRepo(cwd);
+        if (repoRoot === null) {
+                return {
+                        ok: false,
+                        reason: "not_a_git_repo",
+                        detail: "worktree isolation requires a git repository (cwd is not inside one)",
+                };
+        }
+        const head = await runGit(repoRoot, ["rev-parse", "HEAD"]);
+        if (head.code !== 0 || !head.stdout.trim()) {
+                return {
+                        ok: false,
+                        reason: "create_failed",
+                        detail: `could not resolve HEAD: ${head.stderr.trim().slice(0, 200)}`,
+                };
+        }
+        const baseCommit = head.stdout.trim();
+        // Entropy-preserving truncation (R3-F3, live 2026-10-26): the old
+        // `raw.slice(0, 48)` could strip the caller's `-<ts36>-<rand6>` suffix
+        // from a long agent name — at ≥ 47 chars of name the id became a pure
+        // function of the name (ZERO entropy: every spawn of that agent
+        // targeted ONE path; a same-batch pair collided, and a kept dirty tree
+        // LIVES OUT the agent until manual `unown worktrees remove`). Keep the
+        // name's HEAD and the id's LAST 16 chars — where the ts+random suffix
+        // lives — so uniqueness survives any name length; the 48-char cap
+        // itself stays (Windows MAX_PATH headroom).
+        const raw = id.replace(/[^a-zA-Z0-9._-]+/g, "-");
+        const SAFE_ID_MAX = 48;
+        const safeId =
+                raw.length <= SAFE_ID_MAX
+                        ? raw || "child"
+                        : `${raw.slice(0, SAFE_ID_MAX - 16)}${raw.slice(-16)}`;
+        const path = join(worktreeRoot(repoRoot), safeId);
+        if (existsSync(path)) {
+                return {
+                        ok: false,
+                        reason: "create_failed",
+                        detail: `worktree path already exists: ${basename(path)} (retry the spawn for a fresh id)`,
+                };
+        }
+        const created = await runGit(repoRoot, ["worktree", "add", "--detach", path, baseCommit]);
+        if (created.code !== 0) {
+                appendRecord(repoRoot, {
+                        op: "failed",
+                        id: safeId,
+                        path,
+                        baseCommit,
+                        policy: "remove_if_clean",
+                        ts: Date.now(),
+                        reason: created.stderr.trim().slice(0, 300),
+                });
+                return {
+                        ok: false,
+                        reason: "create_failed",
+                        detail: `git worktree add failed: ${created.stderr.trim().slice(0, 300)}`,
+                };
+        }
+        appendRecord(repoRoot, { op: "spawned", id: safeId, path, baseCommit, policy: "remove_if_clean", ts: Date.now() });
+        return { ok: true, handle: { id: safeId, path, repoRoot, baseCommit } };
+}
+
+/** Round 3 (fleet-reaper.ts): mark an adopted worktree whose fleet child was
+ *  orphaned by a crashed parent. The tree itself stays ON DISK — the kept-tree
+ *  rule applies (possible child work is human territory; `unown worktrees
+ *  remove` is the ending) — this only writes the visible journal record so
+ *  `unown worktrees list` shows why it is still there. Reuses the spawned
+ *  record's baseCommit so the list's merge guidance keeps working. */
+export function appendWorktreeOrphanRecord(
+        path: string,
+        reason = "fleet child orphaned by a crashed parent (kept for review — unown worktrees remove after merging)",
+): void {
+        try {
+                // path = <repoRoot>/.unown/worktrees/<id> — three dirnames up.
+                const repoRoot = dirname(dirname(dirname(path)));
+                const prior = readRegistry(repoRoot)
+                        .filter((r) => r.path === path && r.op === "spawned")
+                        .pop();
+                appendRecord(repoRoot, {
+                        op: "orphaned",
+                        id: basename(path),
+                        path,
+                        baseCommit: prior?.baseCommit ?? "",
+                        policy: "remove_if_clean",
+                        ts: Date.now(),
+                        reason,
+                });
+        } catch {
+                /* best effort — the sweep must never throw on journal trouble */
+        }
 }
 
 export interface WorktreeStatus {
-	/** Modified/untracked files per `git status --porcelain`. */
-	dirtyFiles: string[];
-	/** Commits made in the tree since its base. */
-	newCommits: number;
-	/** HEAD of the tree right now (== base when nothing committed). */
-	headCommit: string;
-	error?: string;
+        /** Modified/untracked files per `git status --porcelain`. */
+        dirtyFiles: string[];
+        /** Commits made in the tree since its base. */
+        newCommits: number;
+        /** HEAD of the tree right now (== base when nothing committed). */
+        headCommit: string;
+        error?: string;
 }
 
 /** Optional status filter (2026-10-24 session-worktree round): a predicate
@@ -207,41 +251,41 @@ export interface WorktreeStatus {
  *  state (memory scaffold, receipts) so a session that produced no work
  *  still cleans up; the subagent lane passes nothing (unchanged semantics). */
 export interface WorktreeStatusOptions {
-	ignore?: (file: string) => boolean;
+        ignore?: (file: string) => boolean;
 }
 
 /** Probe a tree: dirtiness + commits since base. Never throws. */
 export async function worktreeStatus(
-	handle: WorktreeHandle,
-	opts: WorktreeStatusOptions = {},
+        handle: WorktreeHandle,
+        opts: WorktreeStatusOptions = {},
 ): Promise<WorktreeStatus> {
-	const status = await runGit(handle.path, ["status", "--porcelain"]);
-	const head = await runGit(handle.path, ["rev-parse", "HEAD"]);
-	if (status.code !== 0 || head.code !== 0) {
-		return {
-			dirtyFiles: [],
-			newCommits: 0,
-			headCommit: "",
-			error: "git status/rev-parse failed (worktree missing or corrupt)",
-		};
-	}
-	const dirtyFiles = status.stdout
-		.split(/\r?\n/)
-		.map((l) => l.slice(3).trim())
-		.filter((l) => l.length > 0)
-		.filter((l) => !opts.ignore?.(l));
-	const headCommit = head.stdout.trim();
-	let newCommits = 0;
-	if (headCommit !== handle.baseCommit) {
-		const count = await runGit(handle.path, ["rev-list", "--count", `${handle.baseCommit}..${headCommit}`]);
-		newCommits = count.code === 0 ? Number.parseInt(count.stdout.trim(), 10) || 0 : 0;
-	}
-	return { dirtyFiles, newCommits, headCommit };
+        const status = await runGit(handle.path, ["status", "--porcelain"]);
+        const head = await runGit(handle.path, ["rev-parse", "HEAD"]);
+        if (status.code !== 0 || head.code !== 0) {
+                return {
+                        dirtyFiles: [],
+                        newCommits: 0,
+                        headCommit: "",
+                        error: "git status/rev-parse failed (worktree missing or corrupt)",
+                };
+        }
+        const dirtyFiles = status.stdout
+                .split(/\r?\n/)
+                .map((l) => l.slice(3).trim())
+                .filter((l) => l.length > 0)
+                .filter((l) => !opts.ignore?.(l));
+        const headCommit = head.stdout.trim();
+        let newCommits = 0;
+        if (headCommit !== handle.baseCommit) {
+                const count = await runGit(handle.path, ["rev-list", "--count", `${handle.baseCommit}..${headCommit}`]);
+                newCommits = count.code === 0 ? Number.parseInt(count.stdout.trim(), 10) || 0 : 0;
+        }
+        return { dirtyFiles, newCommits, headCommit };
 }
 
 export interface CleanupResult {
-	action: "removed" | "kept" | "quarantined" | "left";
-	detail: string;
+        action: "removed" | "kept" | "quarantined" | "left";
+        detail: string;
 }
 
 // ---------------------------------------------------------------------------
@@ -249,10 +293,10 @@ export interface CleanupResult {
 // ---------------------------------------------------------------------------
 
 export interface MergePreview {
-	status: "clean" | "conflicts" | "fast_forward" | "already_merged" | "unavailable";
-	detail: string;
-	/** Conflicted paths when status === "conflicts". */
-	conflicts: string[];
+        status: "clean" | "conflicts" | "fast_forward" | "already_merged" | "unavailable";
+        detail: string;
+        /** Conflicted paths when status === "conflicts". */
+        conflicts: string[];
 }
 
 /** Compute a REAL merge preview for a kept worktree against the parent
@@ -265,60 +309,60 @@ export interface MergePreview {
  *  exit 1 lists the conflicted paths. Older git degrades to "unavailable",
  *  as does any git failure: the preview never blocks disposition. */
 export async function previewMergeIntoParent(handle: WorktreeHandle, treeHead: string): Promise<MergePreview> {
-	if (!treeHead) return { status: "unavailable", detail: "tree HEAD unknown", conflicts: [] };
-	const parent = await runGit(handle.repoRoot, ["rev-parse", "HEAD"]);
-	if (parent.code !== 0) {
-		return { status: "unavailable", detail: "parent HEAD unresolvable", conflicts: [] };
-	}
-	const parentHead = parent.stdout.trim();
-	if (parentHead === treeHead) {
-		return { status: "already_merged", detail: "tree HEAD is the parent HEAD (already merged)", conflicts: [] };
-	}
-	const ancestor = await runGit(handle.repoRoot, ["merge-base", "--is-ancestor", treeHead, parentHead]);
-	if (ancestor.code === 0) {
-		return {
-			status: "already_merged",
-			detail: "tree commits are already contained in the parent HEAD",
-			conflicts: [],
-		};
-	}
-	if (parentHead === handle.baseCommit) {
-		return {
-			status: "fast_forward",
-			detail: `parent HEAD is still the spawn base (${parentHead.slice(0, 10)}) — merging this tree is a fast-forward`,
-			conflicts: [],
-		};
-	}
-	const res = await runGit(handle.repoRoot, ["merge-tree", "--write-tree", "--name-only", parentHead, treeHead]);
-	if (res.code === 0) {
-		return {
-			status: "clean",
-			detail: "git merge-tree: merging this tree into the current HEAD resolves cleanly",
-			conflicts: [],
-		};
-	}
-	if (res.code === 1) {
-		// Line 1 is the merged tree OID; the conflicted paths follow,
-		// one per line, up to the first blank line (git >= 2.38 format).
-		const lines = res.stdout.split(/\r?\n/);
-		const conflicts: string[] = [];
-		for (const line of lines.slice(1)) {
-			const trimmed = line.trim();
-			if (!trimmed) break;
-			conflicts.push(trimmed);
-		}
-		const shown = conflicts.slice(0, 8).join(", ");
-		return {
-			status: "conflicts",
-			detail: `git merge-tree: merging this tree into the current HEAD CONFLICTS in ${conflicts.length} file(s): ${shown}${conflicts.length > 8 ? " …" : ""}`,
-			conflicts,
-		};
-	}
-	return {
-		status: "unavailable",
-		detail: `git merge-tree failed (exit ${res.code}; git >= 2.38 required)`,
-		conflicts: [],
-	};
+        if (!treeHead) return { status: "unavailable", detail: "tree HEAD unknown", conflicts: [] };
+        const parent = await runGit(handle.repoRoot, ["rev-parse", "HEAD"]);
+        if (parent.code !== 0) {
+                return { status: "unavailable", detail: "parent HEAD unresolvable", conflicts: [] };
+        }
+        const parentHead = parent.stdout.trim();
+        if (parentHead === treeHead) {
+                return { status: "already_merged", detail: "tree HEAD is the parent HEAD (already merged)", conflicts: [] };
+        }
+        const ancestor = await runGit(handle.repoRoot, ["merge-base", "--is-ancestor", treeHead, parentHead]);
+        if (ancestor.code === 0) {
+                return {
+                        status: "already_merged",
+                        detail: "tree commits are already contained in the parent HEAD",
+                        conflicts: [],
+                };
+        }
+        if (parentHead === handle.baseCommit) {
+                return {
+                        status: "fast_forward",
+                        detail: `parent HEAD is still the spawn base (${parentHead.slice(0, 10)}) — merging this tree is a fast-forward`,
+                        conflicts: [],
+                };
+        }
+        const res = await runGit(handle.repoRoot, ["merge-tree", "--write-tree", "--name-only", parentHead, treeHead]);
+        if (res.code === 0) {
+                return {
+                        status: "clean",
+                        detail: "git merge-tree: merging this tree into the current HEAD resolves cleanly",
+                        conflicts: [],
+                };
+        }
+        if (res.code === 1) {
+                // Line 1 is the merged tree OID; the conflicted paths follow,
+                // one per line, up to the first blank line (git >= 2.38 format).
+                const lines = res.stdout.split(/\r?\n/);
+                const conflicts: string[] = [];
+                for (const line of lines.slice(1)) {
+                        const trimmed = line.trim();
+                        if (!trimmed) break;
+                        conflicts.push(trimmed);
+                }
+                const shown = conflicts.slice(0, 8).join(", ");
+                return {
+                        status: "conflicts",
+                        detail: `git merge-tree: merging this tree into the current HEAD CONFLICTS in ${conflicts.length} file(s): ${shown}${conflicts.length > 8 ? " …" : ""}`,
+                        conflicts,
+                };
+        }
+        return {
+                status: "unavailable",
+                detail: `git merge-tree failed (exit ${res.code}; git >= 2.38 required)`,
+                conflicts: [],
+        };
 }
 
 /** Cleanup per policy `remove_if_clean`:
@@ -331,128 +375,128 @@ export async function previewMergeIntoParent(handle: WorktreeHandle, treeHead: s
  *   - probe fails (tree missing/corrupt, ownership unproven) → quarantine:
  *     rename aside rather than delete. */
 export async function cleanupWorktree(
-	handle: WorktreeHandle,
-	opts: WorktreeStatusOptions = {},
+        handle: WorktreeHandle,
+        opts: WorktreeStatusOptions = {},
 ): Promise<CleanupResult> {
-	const status = await worktreeStatus(handle, opts);
-	if (status.error) {
-		// Ownership cannot be proven — quarantine, never delete.
-		try {
-			const quarantined = `${handle.path}.quarantined-${Date.now()}`;
-			renameSync(handle.path, quarantined);
-			appendRecord(handle.repoRoot, {
-				op: "quarantined",
-				id: handle.id,
-				path: quarantined,
-				baseCommit: handle.baseCommit,
-				policy: "remove_if_clean",
-				ts: Date.now(),
-				reason: status.error,
-			});
-			return {
-				action: "quarantined",
-				detail: `worktree state unprovable (${status.error}); kept at ${quarantined}`,
-			};
-		} catch {
-			appendRecord(handle.repoRoot, {
-				op: "left",
-				id: handle.id,
-				path: handle.path,
-				baseCommit: handle.baseCommit,
-				policy: "remove_if_clean",
-				ts: Date.now(),
-				reason: `quarantine rename failed: ${status.error}`,
-			});
-			return { action: "left", detail: `could not quarantine ${handle.path} (${status.error}); left on disk` };
-		}
-	}
-	if (status.dirtyFiles.length > 0 || status.newCommits > 0) {
-		const why = [
-			status.dirtyFiles.length > 0 ? `${status.dirtyFiles.length} uncommitted file(s)` : null,
-			status.newCommits > 0 ? `${status.newCommits} commit(s) ahead of ${handle.baseCommit.slice(0, 10)}` : null,
-		]
-			.filter(Boolean)
-			.join(" + ");
-		let mergeNote = "";
-		if (status.newCommits > 0 && status.headCommit) {
-			const preview = await previewMergeIntoParent(handle, status.headCommit);
-			mergeNote = ` · merge preview: ${preview.detail}`;
-		}
-		appendRecord(handle.repoRoot, {
-			op: "kept",
-			id: handle.id,
-			path: handle.path,
-			baseCommit: handle.baseCommit,
-			policy: "remove_if_clean",
-			ts: Date.now(),
-			reason: why,
-		});
-		return {
-			action: "kept",
-			detail: `${why}; worktree kept for review/merge at ${handle.path}${mergeNote} (nothing was merged automatically — review and merge via your normal source-control workflow, then git worktree remove)`,
-		};
-	}
-	const removeWorktree = () => runGit(handle.repoRoot, ["worktree", "remove", handle.path]);
-	let removed = await removeWorktree();
-	if (removed.code !== 0) {
-		// Transient locks (Defender/indexer handles on Windows, runner-FS
-		// quirks): one retry after a beat — measured on CI runs 39158504170 /
-		// 39159196773 where the clean-remove lifecycle failed on windows AND
-		// macos legs while the identical suite passed on linux (the dirty-kept
-		// and commit-kept siblings pass everywhere, so create/status/registry
-		// are healthy — only the remove invocation fails there).
-		await new Promise((r) => setTimeout(r, 250));
-		removed = await removeWorktree();
-	}
-	if (removed.code !== 0) {
-		// The tree is PROVEN clean with zero commits (checked above), so a
-		// direct delete cannot lose any work — git's remove can refuse for
-		// lock reasons while the tree is still deletable. Fall back to
-		// rmSync + prune; only keep the tree if even that fails.
-		try {
-			rmSync(handle.path, { recursive: true, force: true });
-			await runGit(handle.repoRoot, ["worktree", "prune"]);
-		} catch {
-			/* fall through to the kept path */
-		}
-		if (!existsSync(handle.path)) {
-			appendRecord(handle.repoRoot, {
-				op: "removed",
-				id: handle.id,
-				path: handle.path,
-				baseCommit: handle.baseCommit,
-				policy: "remove_if_clean",
-				ts: Date.now(),
-				reason: `git worktree remove failed (${removed.stderr.trim().slice(0, 120)}); tree proven clean — deleted directly + pruned`,
-			});
-			return {
-				action: "removed",
-				detail:
-					"worktree was clean with no new commits; removed (git remove failed, direct delete + prune fallback)",
-			};
-		}
-		appendRecord(handle.repoRoot, {
-			op: "kept",
-			id: handle.id,
-			path: handle.path,
-			baseCommit: handle.baseCommit,
-			policy: "remove_if_clean",
-			ts: Date.now(),
-			reason: `worktree remove failed: ${removed.stderr.trim().slice(0, 200)}`,
-		});
-		return {
-			action: "kept",
-			detail: `worktree was clean but removal failed (${removed.stderr.trim().slice(0, 200)}); kept at ${handle.path}`,
-		};
-	}
-	await runGit(handle.repoRoot, ["worktree", "prune"]);
-	appendRecord(handle.repoRoot, {
-		op: "removed",
-		id: handle.id,
-		path: handle.path,
-		baseCommit: handle.baseCommit,
-		policy: "remove_if_clean",
-		ts: Date.now(),
-	});
-	return { action: "removed", detail: "worktree was clean with no new commits; removed" };
+        const status = await worktreeStatus(handle, opts);
+        if (status.error) {
+                // Ownership cannot be proven — quarantine, never delete.
+                try {
+                        const quarantined = `${handle.path}.quarantined-${Date.now()}`;
+                        renameSync(handle.path, quarantined);
+                        appendRecord(handle.repoRoot, {
+                                op: "quarantined",
+                                id: handle.id,
+                                path: quarantined,
+                                baseCommit: handle.baseCommit,
+                                policy: "remove_if_clean",
+                                ts: Date.now(),
+                                reason: status.error,
+                        });
+                        return {
+                                action: "quarantined",
+                                detail: `worktree state unprovable (${status.error}); kept at ${quarantined}`,
+                        };
+                } catch {
+                        appendRecord(handle.repoRoot, {
+                                op: "left",
+                                id: handle.id,
+                                path: handle.path,
+                                baseCommit: handle.baseCommit,
+                                policy: "remove_if_clean",
+                                ts: Date.now(),
+                                reason: `quarantine rename failed: ${status.error}`,
+                        });
+                        return { action: "left", detail: `could not quarantine ${handle.path} (${status.error}); left on disk` };
+                }
+        }
+        if (status.dirtyFiles.length > 0 || status.newCommits > 0) {
+                const why = [
+                        status.dirtyFiles.length > 0 ? `${status.dirtyFiles.length} uncommitted file(s)` : null,
+                        status.newCommits > 0 ? `${status.newCommits} commit(s) ahead of ${handle.baseCommit.slice(0, 10)}` : null,
+                ]
+                        .filter(Boolean)
+                        .join(" + ");
+                let mergeNote = "";
+                if (status.newCommits > 0 && status.headCommit) {
+                        const preview = await previewMergeIntoParent(handle, status.headCommit);
+                        mergeNote = ` · merge preview: ${preview.detail}`;
+                }
+                appendRecord(handle.repoRoot, {
+                        op: "kept",
+                        id: handle.id,
+                        path: handle.path,
+                        baseCommit: handle.baseCommit,
+                        policy: "remove_if_clean",
+                        ts: Date.now(),
+                        reason: why,
+                });
+                return {
+                        action: "kept",
+                        detail: `${why}; worktree kept for review/merge at ${handle.path}${mergeNote} (nothing was merged automatically — review and merge via your normal source-control workflow, then git worktree remove)`,
+                };
+        }
+        const removeWorktree = () => runGit(handle.repoRoot, ["worktree", "remove", handle.path]);
+        let removed = await removeWorktree();
+        if (removed.code !== 0) {
+                // Transient locks (Defender/indexer handles on Windows, runner-FS
+                // quirks): one retry after a beat — measured on CI runs 39158504170 /
+                // 39159196773 where the clean-remove lifecycle failed on windows AND
+                // macos legs while the identical suite passed on linux (the dirty-kept
+                // and commit-kept siblings pass everywhere, so create/status/registry
+                // are healthy — only the remove invocation fails there).
+                await new Promise((r) => setTimeout(r, 250));
+                removed = await removeWorktree();
+        }
+        if (removed.code !== 0) {
+                // The tree is PROVEN clean with zero commits (checked above), so a
+                // direct delete cannot lose any work — git's remove can refuse for
+                // lock reasons while the tree is still deletable. Fall back to
+                // rmSync + prune; only keep the tree if even that fails.
+                try {
+                        rmSync(handle.path, { recursive: true, force: true });
+                        await runGit(handle.repoRoot, ["worktree", "prune"]);
+                } catch {
+                        /* fall through to the kept path */
+                }
+                if (!existsSync(handle.path)) {
+                        appendRecord(handle.repoRoot, {
+                                op: "removed",
+                                id: handle.id,
+                                path: handle.path,
+                                baseCommit: handle.baseCommit,
+                                policy: "remove_if_clean",
+                                ts: Date.now(),
+                                reason: `git worktree remove failed (${removed.stderr.trim().slice(0, 120)}); tree proven clean — deleted directly + pruned`,
+                        });
+                        return {
+                                action: "removed",
+                                detail:
+                                        "worktree was clean with no new commits; removed (git remove failed, direct delete + prune fallback)",
+                        };
+                }
+                appendRecord(handle.repoRoot, {
+                        op: "kept",
+                        id: handle.id,
+                        path: handle.path,
+                        baseCommit: handle.baseCommit,
+                        policy: "remove_if_clean",
+                        ts: Date.now(),
+                        reason: `worktree remove failed: ${removed.stderr.trim().slice(0, 200)}`,
+                });
+                return {
+                        action: "kept",
+                        detail: `worktree was clean but removal failed (${removed.stderr.trim().slice(0, 200)}); kept at ${handle.path}`,
+                };
+        }
+        await runGit(handle.repoRoot, ["worktree", "prune"]);
+        appendRecord(handle.repoRoot, {
+                op: "removed",
+                id: handle.id,
+                path: handle.path,
+                baseCommit: handle.baseCommit,
+                policy: "remove_if_clean",
+                ts: Date.now(),
+        });
+        return { action: "removed", detail: "worktree was clean with no new commits; removed" };
 }

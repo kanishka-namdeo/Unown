@@ -163,3 +163,162 @@ describe("steer resolves a parked ask_question (live-regression: the child deadl
                 expect(fake.userMessages.length).toBe(0);
         });
 });
+
+// ---------------------------------------------------------------------------
+// Round 3 (2026-10-26 stress round THREE) — the ask-park edges the chaos
+// round's "not covered" section promised, now pinned at the child seam: a
+// stop while parked UN-PARKS with a typed cancellation (R3-F1, live: the
+// parked child used to linger until the parent's tree-kill backstop SIGTERM'd
+// it, exit 143, ask file rot), and the ask payload carries the instance seq
+// the parent dedups on (R3-F2).
+// ---------------------------------------------------------------------------
+
+describe("stop un-parks a parked ask_question (R3-F1, live 2026-10-26)", () => {
+        test("a stop while parked resolves the waiter with a typed cancellation, verbatim — never a fabricated answer", async () => {
+                const { extension, controlFile, askFile } = setup();
+                const fake = makeFakePi();
+                extension.factory(fake.pi);
+                const tool = fake.tools.get("ask_question");
+                const pending = tool.execute("t1", { question: "Which branch?" });
+                await new Promise((r) => setTimeout(r, 40));
+                expect(existsSync(askFile)).toBe(true);
+                appendControlCommand(controlFile, { kind: "stop" });
+                const result = await pending;
+                // Verbatim cancellation: the model reads "no answer will come" —
+                // NOT a fabricated "[orchestrator's answer]" (the interrupt-
+                // fabricates-an-answer anti-pattern, Claude Code #87179).
+                expect(result.content[0].text).toContain("[stop requested by the orchestrator]");
+                expect(result.content[0].text).toContain("No answer will come");
+                expect(result.content[0].text).not.toContain("[orchestrator's answer]");
+                // The child un-parked itself and cleaned up its own ask file
+                // (pre-fix: the file rotted until the tree-kill, and beyond).
+                expect(existsSync(askFile)).toBe(false);
+                // Nothing was queued as a user message — the parked tool result
+                // IS the delivery (a queued steer could never drain mid-tool).
+                expect(fake.userMessages.length).toBe(0);
+        });
+
+        test("an UN-parked child still gets the wrap-up instruction as a message", async () => {
+                const { extension, controlFile } = setup();
+                const fake = makeFakePi();
+                extension.factory(fake.pi);
+                appendControlCommand(controlFile, { kind: "stop" });
+                await new Promise((r) => setTimeout(r, 60));
+                expect(fake.userMessages.length).toBe(1);
+                expect(fake.userMessages[0].text).toContain("[stop requested by the orchestrator]");
+        });
+});
+
+describe("ask instances carry a monotonic seq (R3-F2 — the identity the parent dedups on)", () => {
+        test("an identical-text re-ask is a NEW instance: seq increments even at the same ms", async () => {
+                const { extension, controlFile, askFile } = setup();
+                const fake = makeFakePi();
+                extension.factory(fake.pi);
+                const tool = fake.tools.get("ask_question");
+                const first = tool.execute("t1", { question: "Same question?" });
+                await new Promise((r) => setTimeout(r, 40));
+                const p1 = JSON.parse(readFileSync(askFile, "utf8"));
+                expect(typeof p1.seq).toBe("number");
+                appendControlCommand(controlFile, { kind: "answer", text: "one" });
+                await first;
+                // The re-ask: identical text, new instance.
+                const second = tool.execute("t2", { question: "Same question?" });
+                await new Promise((r) => setTimeout(r, 40));
+                const p2 = JSON.parse(readFileSync(askFile, "utf8"));
+                expect(p2.question).toBe(p1.question);
+                expect(p2.seq).toBe(p1.seq + 1);
+                appendControlCommand(controlFile, { kind: "answer", text: "two" });
+                const result = await second;
+                expect(result.content[0].text).toContain("[orchestrator's answer] two");
+                expect(existsSync(askFile)).toBe(false);
+        });
+});
+
+describe("fleet-child heartbeat (R3-F4 — the crash sweeper's identity signal)", () => {
+        test("the poller self-writes <id>.hb.json with pid + fresh ts; session_shutdown removes it", async () => {
+                const { extension, controlFile } = setup();
+                const fake = makeFakePi();
+                extension.factory(fake.pi);
+                const hbFile = controlFile.replace(/\.control\.json$/, ".hb.json");
+                // pollMs=10 in setup() → every 4th poll ≈ 40ms.
+                await new Promise((r) => setTimeout(r, 200));
+                expect(existsSync(hbFile)).toBe(true);
+                const hb = JSON.parse(readFileSync(hbFile, "utf8"));
+                expect(hb.pid).toBe(process.pid);
+                expect(typeof hb.ts).toBe("number");
+                expect(Date.now() - hb.ts).toBeLessThan(5_000);
+                // Shutdown removes the heartbeat — a fresh-looking orphan file
+                // is exactly what the next boot's sweeper would misread.
+                for (const h of fake.handlers.get("session_shutdown") ?? []) await h({});
+                expect(existsSync(hbFile)).toBe(false);
+        });
+});
+
+describe("concurrent ask_question parks queue their waiters (R3-F2 follow-up, live 2026-10-26)", () => {
+        test("concurrent asks with different texts: the STANDING asker is answered; the other keeps its turn", async () => {
+                const { extension, controlFile, askFile } = setup();
+                const fake = makeFakePi();
+                extension.factory(fake.pi);
+                const tool = fake.tools.get("ask_question");
+                // The runtime executes both calls from ONE assistant message —
+                // pre-fix the second park CLOBBERED the first waiter (lost
+                // forever) and the first resolve deleted the file out from
+                // under the still-parked sibling.
+                const first = tool.execute("t1", { question: "First: which branch?" });
+                const second = tool.execute("t2", { question: "Second: which runner?" });
+                await new Promise((r) => setTimeout(r, 40));
+                expect(existsSync(askFile)).toBe(true);
+                // The file shows the LATEST pending question — the one the parent saw.
+                expect(JSON.parse(readFileSync(askFile, "utf8")).question).toBe("Second: which runner?");
+                // The answer satisfies the asker of the STANDING question…
+                appendControlCommand(controlFile, { kind: "answer", text: "answer-the-standing" });
+                const r2 = await second;
+                expect(r2.content[0].text).toContain("[orchestrator's answer] answer-the-standing");
+                // …and the ask file SURVIVES for the still-parked sibling.
+                await new Promise((r) => setTimeout(r, 40));
+                expect(existsSync(askFile)).toBe(true);
+                // A second answer falls back to the remaining asker (FIFO); NOW
+                // the file goes.
+                appendControlCommand(controlFile, { kind: "answer", text: "answer-the-rest" });
+                const r1 = await first;
+                expect(r1.content[0].text).toContain("[orchestrator's answer] answer-the-rest");
+                expect(existsSync(askFile)).toBe(false);
+        });
+
+        test("concurrent IDENTICAL asks: ONE answer resolves every sibling (an answer to a question answers all its copies)", async () => {
+                const { extension, controlFile, askFile } = setup();
+                const fake = makeFakePi();
+                extension.factory(fake.pi);
+                const tool = fake.tools.get("ask_question");
+                // The live P2b shape: two ask_question calls with the SAME text
+                // in one message — pre-fix one waiter was lost forever and the
+                // child never completed.
+                const first = tool.execute("t1", { question: "Same question?" });
+                const second = tool.execute("t2", { question: "Same question?" });
+                await new Promise((r) => setTimeout(r, 40));
+                expect(existsSync(askFile)).toBe(true);
+                appendControlCommand(controlFile, { kind: "answer", text: "one answer for both" });
+                const [r1, r2] = await Promise.all([first, second]);
+                expect(r1.content[0].text).toContain("[orchestrator's answer] one answer for both");
+                expect(r2.content[0].text).toContain("[orchestrator's answer] one answer for both");
+                expect(existsSync(askFile)).toBe(false);
+        });
+
+        test("a stop cancels EVERY parked ask, not just the loudest one", async () => {
+                const { extension, controlFile, askFile } = setup();
+                const fake = makeFakePi();
+                extension.factory(fake.pi);
+                const tool = fake.tools.get("ask_question");
+                const first = tool.execute("t1", { question: "First?" });
+                const second = tool.execute("t2", { question: "Second?" });
+                await new Promise((r) => setTimeout(r, 40));
+                appendControlCommand(controlFile, { kind: "stop" });
+                const [r1, r2] = await Promise.all([first, second]);
+                for (const r of [r1, r2]) {
+                        expect(r.content[0].text).toContain("[stop requested by the orchestrator]");
+                        expect(r.content[0].text).not.toContain("[orchestrator's answer]");
+                }
+                expect(existsSync(askFile)).toBe(false);
+                expect(fake.userMessages.length).toBe(0);
+        });
+});

@@ -48,6 +48,7 @@ import {
         FLEET_CONTROL_ENV,
         FLEET_ID_ENV,
         FLEET_SESSION_ENV,
+        FLEET_STOP_KILL_GRACE_MS,
         type FleetChildState,
         type FleetLoadout,
         type FleetStatus,
@@ -65,6 +66,8 @@ import {
         writeLoadout,
 } from "./fleet.ts";
 import { annotateToolOutput } from "./shield.ts";
+import { registerChild } from "./child-reaper.ts";
+import { recordFleetChildFinish, recordFleetChildSpawn, recordFleetChildWorktree } from "./fleet-reaper.ts";
 import { CHILD_BOUNDARY_INSTRUCTIONS } from "./subagent-catalog.ts";
 import { compactTokens, humanizeToolLabel } from "./subagent-progress.ts";
 import { buildSubagentArgs, resolveSubagentTimeoutMs, type SubagentRoutingFields } from "./subagent-routing.ts";
@@ -80,6 +83,9 @@ export interface FleetManagerOptions {
         fleetDir?: string;
         /** Timeout override (tests). */
         timeoutMs?: number;
+        /** Stop→tree-kill grace override (tests; default
+         *  FLEET_STOP_KILL_GRACE_MS — see fleet.ts for why it grew). */
+        stopKillDelayMs?: number;
         /** How the unown binary is invoked (mirrors tools.ts's seam). */
         invocation: (args: string[]) => { command: string; args: string[] };
         /** Minimal logger. */
@@ -113,7 +119,6 @@ interface FleetProc {
         stdoutBuffer: string;
         stderrBuffer: string;
         watchdog: ReturnType<typeof setTimeout>;
-        askSeen: boolean;
         exited: boolean;
 }
 
@@ -131,6 +136,11 @@ export class FleetManager {
         } | null = null;
         private deliver: ((content: string, details: unknown, kind: "result" | "question" | "status") => void) | null = null;
         private readonly timeoutMs: number;
+        private readonly stopKillDelayMs: number;
+        /** finalize() idempotence guard (R3-F1b: stop() finalizes, then the
+         *  child's close re-finalized and the result double-delivered —
+         *  measured live, two identical "stopped" messages). */
+        private readonly finalized = new Set<string>();
         private readonly spawnProc: typeof spawn;
         private readonly invocation: (args: string[]) => { command: string; args: string[] };
         /** Worktrees adopted from the task tool's isolation lane, disposed on finalize. */
@@ -144,6 +154,7 @@ export class FleetManager {
                 this.fleetDir = opts.fleetDir ?? join(opts.cwd, ".unown", "fleet");
                 this.log = opts.log ?? (() => {});
                 this.timeoutMs = opts.timeoutMs ?? resolveFleetTimeoutMs();
+                this.stopKillDelayMs = opts.stopKillDelayMs ?? FLEET_STOP_KILL_GRACE_MS;
                 this.spawnProc = opts.spawnProc ?? spawn;
                 this.invocation = opts.invocation;
                 fleetManagers().add(this);
@@ -167,6 +178,14 @@ export class FleetManager {
          *  finalizes, and the disposition lands in the result message. */
         adoptWorktree(id: string, tree: WorktreeHandle): void {
                 this.worktrees.set(id, tree);
+                // R3: the amendment lets the crash sweeper (fleet-reaper.ts)
+                // correlate an orphaned child with its tree and mark it — the
+                // tree itself is never auto-removed (kept-tree rule).
+                try {
+                        recordFleetChildWorktree(this.fleetDir, id, tree.path);
+                } catch {
+                        /* best effort */
+                }
         }
 
         /** Names currently taken (running + reserved). */
@@ -333,11 +352,34 @@ export class FleetManager {
                                 () => this.stop(id, `timed out after ${effectiveTimeoutMs / 1000}s`),
                                 effectiveTimeoutMs,
                         ),
-                        askSeen: false,
                         exited: false,
                 };
                 if (typeof entry.watchdog.unref === "function") entry.watchdog.unref();
                 this.procs.set(id, entry);
+                // R3-F4 (live 2026-10-26) — reaper registration + durable trace.
+                // Fleet children ride the same last-resort signal/exit hygiene
+                // as LSP/MCP servers (child-reaper.ts: a SIGINT/SIGTERM/exit of
+                // the parent now SIGTERM→SIGKILLs them), and the journal entry
+                // gives a crashed parent's orphans the trace the next boot
+                // sweeps (fleet-reaper.ts). Measured live: a SIGKILLed parent
+                // left a mid-bash orphan ALIVE with zero registry trace, the
+                // worktree journaled "spawned" forever.
+                try {
+                        registerChild(proc);
+                } catch {
+                        /* spawn-harness fakes without ChildProcess shape — skip */
+                }
+                recordFleetChildSpawn(this.fleetDir, {
+                        id,
+                        name,
+                        agent: request.agent,
+                        pid: typeof proc.pid === "number" ? proc.pid : null,
+                        parentPid: process.pid,
+                        sessionFile,
+                        controlFile,
+                        askFile,
+                        ts: Date.now(),
+                });
 
                 const touch = (kind: Parameters<typeof nextFleetStatus>[1], extra?: Partial<FleetChildState>) => {
                         const next = nextFleetStatus(state, kind);
@@ -410,6 +452,7 @@ export class FleetManager {
                         state.status = "failed";
                         state.stderr = (entry.stderrBuffer + "\nfailed to spawn fleet child").slice(0, 2000);
                         state.endedAt = Date.now();
+                        this.cleanupChildFiles(id);
                         this.finalize(id);
                 });
                 proc.on("close", (code) => {
@@ -430,6 +473,7 @@ export class FleetManager {
                         if (!state.lastText && entry.stderrBuffer.trim()) {
                                 state.stderr = entry.stderrBuffer.slice(0, 2000);
                         }
+                        this.cleanupChildFiles(id);
                         this.finalize(id);
                 });
 
@@ -509,8 +553,20 @@ export class FleetManager {
                 child.endedAt = Date.now();
                 child.stopReason = reason;
                 // Grace window, then tree kill (taskkill /F /T on win32 — same
-                // approach as the sync lane's killSubagentTree).
-                setTimeout(() => this.killTree(proc.proc), 3000);
+                // approach as the sync lane's killSubagentTree). R3: 3s → the
+                // stop-un-parks-a-parked-child grace (12s default) and UNREF'd —
+                // a wrapping-up child needs a model round trip for its
+                // one-sentence exit (3s killed it mid-sentence: R3-F1, exit 143,
+                // ask-file rot), but a backstop must never hold a draining
+                // parent open; if the parent exits first, the boot sweep
+                // (fleet-reaper.ts) is the backstop of the backstop. The
+                // channel files go WITH the kill: the child needed them to see
+                // the stop, and past the kill they are rot.
+                const backstop = setTimeout(() => {
+                        this.cleanupChildFiles(child.id);
+                        this.killTree(proc.proc);
+                }, this.stopKillDelayMs);
+                if (typeof backstop.unref === "function") backstop.unref();
                 this.finalize(child.id);
                 this.log(`fleet child ${child.name} stopped: ${reason}`);
                 return { ok: true };
@@ -564,6 +620,20 @@ export class FleetManager {
 
         private controlFileOf(id: string): string {
                 return join(this.fleetDir, `${id}.control.json`);
+        }
+
+        /** Best-effort removal of a child's channel files (ask/control/
+         *  heartbeat). Called from the EXIT paths (the child is gone) and the
+         *  stop backstop — NEVER from stop() itself, whose child still needs
+         *  the control file to receive the stop command (R3-F1's rot). */
+        private cleanupChildFiles(id: string): void {
+                for (const suffix of [".ask.json", ".control.json", ".hb.json"]) {
+                        try {
+                                rmSync(join(this.fleetDir, `${id}${suffix}`), { force: true });
+                        } catch {
+                                /* best effort */
+                        }
+                }
         }
 
         private readLoadoutFor(child: FleetChildState): FleetLoadout | null {
@@ -625,8 +695,9 @@ export class FleetManager {
                         // Stall classification (never overrides waiting-for-answer).
                         child.status = classifyFleetStatus(child, now);
                         // Ask polling: the child wrote its ask file. Deliver the
-                        // question ONCE per distinct ask (pendingQuestion tracks the
-                        // delivered one; it clears when the child removes the file).
+                        // question ONCE per ask INSTANCE (pendingAskKey tracks the
+                        // delivered (ts, seq) pair; it clears when the child
+                        // removes the file).
                         // Re-delivering on every status flip looped the parent
                         // (measured live: steer → active → tick re-asks → ad
                         // infinitum) — the file PERSISTING while the child is
@@ -634,9 +705,25 @@ export class FleetManager {
                         const askFile = join(this.fleetDir, `${child.id}.ask.json`);
                         if (existsSync(askFile)) {
                                 try {
-                                        const payload = JSON.parse(readFileSync(askFile, "utf8")) as { question?: string };
+                                        const payload = JSON.parse(readFileSync(askFile, "utf8")) as {
+                                                question?: string;
+                                                ts?: number;
+                                                seq?: number;
+                                        };
                                         if (payload?.question) {
-                                                if (child.pendingQuestion !== payload.question) {
+                                                // R3-F2 (live 2026-10-26): dedup on the ask INSTANCE —
+                                                // the payload's (ts, seq) pair — NEVER on question
+                                                // text. The child stamps a monotonic seq per ask, so
+                                                // an identical-text re-ask is a NEW question (pre-fix
+                                                // a same-message double-ask was swallowed whole: one
+                                                // delivery, the child parked 600s on a question the
+                                                // parent never saw). Legacy payloads without seq fall
+                                                // back to ts alone. The file PERSISTING with the same
+                                                // key is the steady state, not a new question — the
+                                                // round-2 re-ask-loop regression stays fixed.
+                                                const askKey = `${payload.ts ?? 0}:${payload.seq ?? 0}`;
+                                                if (child.pendingAskKey !== askKey) {
+                                                        child.pendingAskKey = askKey;
                                                         child.pendingQuestion = payload.question;
                                                         this.deliverQuestion(child, payload.question);
                                                 }
@@ -649,6 +736,7 @@ export class FleetManager {
                                 }
                         } else if (child.pendingQuestion) {
                                 child.pendingQuestion = undefined;
+                                child.pendingAskKey = undefined;
                         }
                 }
                 this.refreshUi();
@@ -661,6 +749,11 @@ export class FleetManager {
         }
 
         private async finalize(id: string): Promise<void> {
+                // Idempotent per child (R3-F1b, live 2026-10-26): stop() finalizes,
+                // then the tree-killed child's close handler re-finalized — two
+                // identical "stopped" result messages to the parent model.
+                if (this.finalized.has(id)) return;
+                this.finalized.add(id);
                 const child = this.children.get(id);
                 const proc = this.procs.get(id);
                 if (proc) {
@@ -703,6 +796,10 @@ export class FleetManager {
                 } catch {
                         /* best effort */
                 }
+                // R3-F4: the journal terminal record — this is the trace a
+                // crashed parent never writes, and exactly what the boot sweep
+                // (fleet-reaper.ts) looks for.
+                recordFleetChildFinish(this.fleetDir, id, child.status);
                 // Deliver the result — with completion batching (cciotti port):
                 // successes coalesce (150ms debounce, 1s max wait) so a fan-out of
                 // N children wakes the parent ONCE, not N times; failures and
@@ -830,8 +927,16 @@ export class FleetManager {
                 // Deliver anything still buffered (successes wait in the batch
                 // window; a shutdown must not swallow them).
                 this.flushPendingResults();
-                for (const proc of this.procs.values()) {
+                for (const [id, proc] of this.procs.entries()) {
                         clearTimeout(proc.watchdog);
+                        // R3: the channel files die with the kill — the child
+                        // cannot consume anything anymore, and rot is what the
+                        // crash sweep exists to prevent. The JOURNAL entry is
+                        // deliberately left OPEN: we killed without observing
+                        // the outcome, so the next boot's sweep (fleet-reaper.ts)
+                        // records the honest terminal trace (reaped/abandoned)
+                        // instead of us guessing "finished".
+                        this.cleanupChildFiles(id);
                         this.killTree(proc.proc);
                 }
                 this.procs.clear();

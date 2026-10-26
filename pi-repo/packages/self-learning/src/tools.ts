@@ -54,6 +54,7 @@ import { foregroundTodosForGoalGate } from "./addons/todo.ts";
 import { formatIdleCompactNotice, shouldIdleCompact } from "./auto-compact.ts";
 import { maybeAutoTitleSession } from "./auto-title.ts";
 import { blameFile, blameSummary, formatBlameJson, formatBlameReport } from "./blame.ts";
+import { registerChild } from "./child-reaper.ts";
 import { registerBrowserTools } from "./browser/tools.ts";
 import { answerBtw, btwHeader } from "./btw.ts";
 import { BtwOverlay } from "./btw-overlay.ts";
@@ -783,6 +784,13 @@ async function runSubagentOnce(
                                 stdio: ["ignore", "pipe", "pipe"],
                                 env: { ...process.env, UNOWN_SUBAGENT: "1" },
                         });
+                        // R3 (2026-10-26): sync subagents ride the last-resort reaper
+                        // too (child-reaper.ts) — a SIGINT/SIGTERM/exit of the parent
+                        // now SIGTERM→SIGKILLs them instead of orphaning whatever
+                        // survived the signal path, the same hygiene LSP/MCP servers
+                        // and fleet children already get. The parent-side watchdog
+                        // below remains the primary budget enforcement.
+                        registerChild(proc);
                         let buffer = "";
                         let stderrBuffer = "";
                         let lastText = "";

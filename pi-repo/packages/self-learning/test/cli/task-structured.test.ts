@@ -17,11 +17,11 @@
 // the local mock bridge. The bridge's JSONREPLY / TOOLCALL conventions
 // (helpers.ts) script the child subagent's behavior.
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
-import { execFileSync } from "node:child_process";
+import { execFileSync, spawn } from "node:child_process";
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { parseJsonl, startMockBridge, unown, type MockBridge } from "./helpers.ts";
+import { DEAD_URL, parseJsonl, startMockBridge, UNOWN_BIN, unown, type MockBridge } from "./helpers.ts";
 
 const LONG = { timeout: 180_000 } as const;
 
@@ -407,5 +407,172 @@ describe("task tool — stress-round-2 regressions (2026-10-26 live findings)", 
                         run.release();
                 },
                 LONG,
+        );
+});
+
+// ---------------------------------------------------------------------------
+// Round THREE (2026-10-26) — R3-F4 end-to-end: a CRASHED parent leaves a
+// live orphan with zero trace (live-reproduced: kill -9 mid-bash, child
+// alive +12s, no registry entry, no journal, worktree "spawned" forever).
+// The fix wiring under test: the fleet journal (spawned at spawn, finished at
+// finalize), the child's ~1x/s heartbeat, and the BOOT SWEEP the next
+// unown invocation runs — reap the live orphan (heartbeat-verified), write
+// the terminal record the dead parent could not, clean the rotting control/
+// ask channels, and mark the adopted worktree orphaned (kept on disk).
+// ---------------------------------------------------------------------------
+describe("fleet crash sweep (round-3 live finding R3-F4, end-to-end)", () => {
+        /** Sanitized env for a MANUALLY spawned run (mirrors helpers.runUnown). */
+        function crashEnv(root: string): Record<string, string> {
+                const env: Record<string, string> = {};
+                for (const [k, v] of Object.entries(process.env)) {
+                        if (v === undefined) continue;
+                        if (/^(UNOWN_|PI_|BRIDGE_)/.test(k)) continue;
+                        env[k] = v;
+                }
+                env.UNOWN_HOME = join(root, "home");
+                env.UNOWN_ENGINE_URL = DEAD_URL;
+                env.PI_BRIDGE_URL = bridge.url;
+                env.PI_SELFLEARNING_DB = join(root, "db", "selflearning.db");
+                env.PI_SELFLEARNING_DATA = join(root, "data");
+                env.PI_DISABLE_ENGINE_SPAWN = "1";
+                env.UNOWN_NO_PREFLIGHT = "1";
+                return env;
+        }
+
+        test(
+                "kill -9 the parent mid-child: the next boot sweeps the orphan, traces it, cleans the channels, marks the worktree",
+                async () => {
+                        const root = mkdtempSync(join(tmpdir(), "unown-crash-e2e-"));
+                        const proj = join(root, "proj");
+                        mkdirSync(proj, { recursive: true });
+                        const gitEnv = { ...process.env, GIT_CONFIG_GLOBAL: "/dev/null", GIT_CONFIG_SYSTEM: "/dev/null" };
+                        const git = (args: string[]) => execFileSync("git", args, { cwd: proj, env: gitEnv, stdio: "ignore" });
+                        git(["init", "--initial-branch=main"]);
+                        git(["config", "user.email", "test@unown"]);
+                        git(["config", "user.name", "unown test"]);
+                        writeFileSync(join(proj, "seed.txt"), "seed\n");
+                        git(["add", "."]);
+                        git(["commit", "-m", "seed"]);
+                        try {
+                                // 1. The parent spawns an async, worktree-isolated child whose
+                                //    bash sleeps 25s — the quiet phase where the live orphan
+                                //    lingers (its next stdout write would EPIPE it, but a parked
+                                //    child would burn the full 600s).
+                                const childTask = 'TOOLCALL bash {"command":"sleep 25"}';
+                                const prompt = `TOOLCALL task ${JSON.stringify({
+                                        task: childTask,
+                                        async: true,
+                                        name: "crashkid",
+                                        worktree_isolation: true,
+                                })}`;
+                                const useBun = process.platform === "win32";
+                                const parent = useBun
+                                        ? spawn("bun", [UNOWN_BIN, "--mode", "json", "-p", prompt], {
+                                                  cwd: proj,
+                                                  env: crashEnv(root),
+                                                  stdio: ["ignore", "pipe", "pipe"],
+                                          })
+                                        : spawn(UNOWN_BIN, ["--mode", "json", "-p", prompt], {
+                                                  cwd: proj,
+                                                  env: crashEnv(root),
+                                                  stdio: ["ignore", "pipe", "pipe"],
+                                          });
+                                parent.stdout.on("data", () => {}); // drain: never backpressure the crash
+                                parent.stderr.on("data", () => {});
+
+                                // 2. The journal records the spawn (the trace that did not exist
+                                //    pre-fix) with the child pid + the owning parent pid.
+                                const journalFile = join(proj, ".unown", "fleet", "journal.jsonl");
+                                let spawnedEntry: any = null;
+                                for (let i = 0; i < 120 && !spawnedEntry; i++) {
+                                        await new Promise((r) => setTimeout(r, 300));
+                                        try {
+                                                spawnedEntry =
+                                                        readFileSync(journalFile, "utf8")
+                                                                .split("\n")
+                                                                .filter((l) => l.trim())
+                                                                .map((l) => JSON.parse(l))
+                                                                .find((e) => e.op === "spawned") ?? null;
+                                        } catch {
+                                                /* not yet */
+                                        }
+                                }
+                                expect(spawnedEntry).toBeDefined();
+                                expect(typeof spawnedEntry.pid).toBe("number");
+                                // Let the child get INTO its bash sleep.
+                                await new Promise((r) => setTimeout(r, 6_000));
+
+                                // 3. THE CRASH: SIGKILL the PARENT ONLY (pid kill — no group).
+                                parent.kill("SIGKILL");
+                                await new Promise((r) => setTimeout(r, 500));
+                                // Pre-fix shape (live-measured): the orphan is still alive here,
+                                // with zero trace on disk beyond the session file.
+
+                                // 4. The next boot sweeps. Run #2 is a plain 1-turn session in
+                                //    the same repo — its bootRuntime runs sweepStaleFleetChildren.
+                                const run2 = await unown(["--mode", "json", "-p", "Reply with the single word OK."], {
+                                        bridge,
+                                        root,
+                                        env: { UNOWN_NO_PREFLIGHT: "1" },
+                                });
+                                expect(run2.exitCode).toBe(0);
+                                // The sweep reported what it did.
+                                expect(run2.stderr).toContain("fleet crash sweep");
+
+                                // 5. The journal carries the terminal record the crashed parent
+                                //    could not write — the round's headline contract.
+                                const entries = readFileSync(journalFile, "utf8")
+                                        .split("\n")
+                                        .filter((l) => l.trim())
+                                        .map((l) => JSON.parse(l));
+                                const terminal = entries.find(
+                                        (e) => (e.op === "reaped" || e.op === "abandoned") && e.id === spawnedEntry.id,
+                                );
+                                expect(terminal).toBeDefined();
+                                // On POSIX the orphan was mid-bash with a fresh heartbeat and a
+                                // cmdline that names its session file — REAPED, and dead.
+                                if (process.platform !== "win32") {
+                                        expect(terminal.op).toBe("reaped");
+                                        let alive = true;
+                                        try {
+                                                process.kill(spawnedEntry.pid, 0);
+                                        } catch {
+                                                alive = false;
+                                        }
+                                        expect(alive).toBe(false);
+                                }
+
+                                // 6. The crash's rotting channels are cleaned.
+                                const fleetDir = join(proj, ".unown", "fleet");
+                                expect(existsSync(join(fleetDir, `${spawnedEntry.id}.control.json`))).toBe(false);
+                                expect(existsSync(join(fleetDir, `${spawnedEntry.id}.ask.json`))).toBe(false);
+
+                                // 7. The adopted worktree is marked orphaned and KEPT on disk.
+                                const wtReg = join(proj, ".unown", "worktrees", "registry.jsonl");
+                                const wtRecords = readFileSync(wtReg, "utf8")
+                                        .split("\n")
+                                        .filter((l) => l.trim())
+                                        .map((l) => JSON.parse(l));
+                                const orphaned = wtRecords.find((r) => r.op === "orphaned");
+                                expect(orphaned).toBeDefined();
+                                expect(existsSync(orphaned.path)).toBe(true);
+
+                                // Cleanup: this test owns the orphaned tree.
+                                try {
+                                        git(["worktree", "remove", "--force", orphaned.path]);
+                                        git(["worktree", "prune"]);
+                                } catch {
+                                        /* best effort */
+                                }
+                                run2.release();
+                        } finally {
+                                try {
+                                        rmSync(root, { recursive: true, force: true });
+                                } catch {
+                                        /* best effort */
+                                }
+                        }
+                },
+                { timeout: 120_000 } as const,
         );
 });

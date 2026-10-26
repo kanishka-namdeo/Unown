@@ -90,6 +90,16 @@ export function resolveFleetTimeoutMs(env: NodeJS.ProcessEnv = process.env): num
  *  proceed with best judgment (the parent may simply be unattended). */
 export const FLEET_ASK_TIMEOUT_MS = 600_000;
 
+/** Grace between a stop command and the tree-kill backstop (R3, 2026-10-26:
+ *  was 3s). A stopped child that was parked on ask_question now UN-PARKS
+ *  with a typed cancellation and needs one model round trip to land its
+ *  wrap-up sentence — 3s killed it mid-sentence (measured live: exit 143,
+ *  ask file rot). 12s covers a flash-tier wrap-up turn; the timer is unref'd
+ *  so it never holds a draining parent open, and the boot sweep
+ *  (fleet-reaper.ts) is the backstop of the backstop if the parent exits
+ *  first. Overridable per manager (tests). */
+export const FLEET_STOP_KILL_GRACE_MS = 12_000;
+
 /** Fleet-wide concurrency cap (2026-10-26 stress round): the maximum number
  *  of LIVE (non-terminal) async children one manager may run. The batch cap
  *  bounds a single call (4); this bounds the STACK of async calls a model can
@@ -153,6 +163,13 @@ export interface FleetChildState {
         steerCount: number;
         /** Question currently parked with the parent (ask file written). */
         pendingQuestion?: string;
+        /** Identity of the DELIVERED ask instance — the ask payload's
+         *  (ts, seq) pair, NOT the question text (R3-F2, 2026-10-26: the
+         *  text-keyed dedup swallowed a legitimate identical-text re-ask
+         *  whose rm+rewrite landed inside one watcher tick; the consensus —
+         *  Gemini CLI #29026 is the same bug — is dedup on message ids,
+         *  never on content). */
+        pendingAskKey?: string;
         endedAt?: number;
         /** Why a stopped child stopped (timeout watchdog vs orchestrator
          *  request) — delivered with the result so the parent can re-plan;
