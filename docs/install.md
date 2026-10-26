@@ -4,7 +4,7 @@ The two install modes — the default standalone CLI binary and a full source ch
 
 - [Two install modes](#two-install-modes)
 - [One-line installer](#one-line-installer)
-- [Binary install (default, CLI only)](#binary-install-default-cli-only)
+- [Binary install (default)](#binary-install-default)
 - [Manual source install (git clone)](#manual-source-install-git-clone)
 - [Standalone per-OS binaries](#standalone-per-os-binaries)
 - [What the source installer does](#what-the-source-installer-does)
@@ -25,7 +25,7 @@ Related pages: [quickstart](quickstart.md) · [updating](updating.md) · [config
 | Updates | `unown update` (verified release download) | `unown update` (git tag to tag) |
 | On disk | a versioned root + a PATH shim that sets `UNOWN_INSTALL_ROOT` | your clone; the PATH shim runs `bun <repo>/bin/unown` |
 
-The binary is the CLI only. It has no engine, no bridge and no dashboard data source; the learning stack (session notes, AutoDream, harness, mission control) runs from a source checkout. It is the default because it needs no toolchain and installs in one verified download; use `--source` when you want the learning stack.
+The binary ships the CLI **and** an on-demand engine: `unown engine start` serves the same REST+SSE API on `:3030`, with its state under `~/.unown` (`UNOWN_HOME`) rather than a repo `data/` + `db/`. What it does not ship is the **llm-bridge** — an archive is `unown`, `VERSION`, `LICENSE`, `INSTALL.txt` and nothing else — and the **always-on OS service**. So the jobs that call a model (AutoDream, the harness, task-mint) need a bridge reachable at `PI_BRIDGE_URL`, which in practice means one running from a source checkout, and booting the engine at logon stays a `--source` install feature. The binary is the default because it needs no toolchain and installs in one verified download; use `--source` when you want the whole learning stack running unattended.
 
 ## One-line installer
 
@@ -95,7 +95,7 @@ sh install.sh            # binary (default); add --source for the stack
 
 Both run their whole body as one `main` call after argument parsing (with `set -eu` on POSIX and `$ErrorActionPreference = 'Stop'` on Windows), so a truncated or mid-stream-mutated download cannot execute half an install. Integrity of what lands on disk comes from the transport and the release: an exact SHA-256 from the release's `sha256sums.txt` for the default binary lane, and an HTTPS clone from GitHub for the source lane.
 
-## Binary install (default, CLI only)
+## Binary install (default)
 
 ```bash
 curl -fsSL https://unown-nine.vercel.app/install.sh | sh
@@ -177,7 +177,7 @@ unown --version                          # prints the release version
 unown setup                              # connect a model provider
 ```
 
-`VERSION` is the plain release version, and `INSTALL.txt` is versioned per archive: it names that platform's checksum command, the update/uninstall commands for both install modes, and the CLI-only boundary.
+`VERSION` is the plain release version, and `INSTALL.txt` is versioned per archive: it names that platform's checksum command, the update/uninstall commands for both install modes, and the engine/bridge boundary.
 
 ### Verify what you downloaded
 
@@ -226,6 +226,8 @@ The binary is the terminal agent only. The self-learning engine and `llm-bridge`
 7. links the root `.env` into both mini-services (`mini-services/llm-bridge/.env` and `mini-services/agent-service/.env` → `../../.env`) — bun auto-loads `.env` only from a process's own CWD, so a supervisor that starts a service from its own directory would otherwise miss the root config; idempotent, and a stray regular file that would shadow the root config is replaced
 8. puts `unown` on your PATH: a shim into `~/.local/bin` on macOS/Linux (or the first writable dir of `~/bin`, `/usr/local/bin`), `%USERPROFILE%\.local\bin\unown.cmd` + `unown.ps1` on Windows, and records the active install in `~/.unown/install.json` (mode `checkout`). The shim points INTO the checkout — that is what makes `unown update` a plain git operation later; if a binary install is still recorded there, link.ts warns that this checkout now owns the PATH shim and leaves the binary's files for its own uninstall.
 9. installs the **always-on engine service** (`unown engine install --auto`): a per-user systemd unit / launchd LaunchAgent / Windows logon task (or a per-user HKCU-Run PowerShell watchdog when Windows denies task registration without admin) that runs `unown engine serve`, so memory, AutoDream and routines keep working after a reboot with no agent invoked. Idempotent (an update re-runs it, repairing a moved checkout and restarting the engine onto the new build) and never fatal: CI runs, `UNOWN_ENGINE_AUTOSTART=0`, `UNOWN_NO_ENGINE_SERVICE=1`, and a recorded `unown engine uninstall` all skip it, and a machine without a service manager gets a warning with the manual command. See [routines · always-on](routines.md#always-on-the-engine-service).
+
+The binary installers run the same `unown engine install --auto` once at the end of an install — never to start a service from a binary install (that stays a source-install feature), but to **reconcile one a previous source install left behind**. A compiled install writes no service definition, so any definition on the machine is residue pointing at an old checkout, and that checkout's memory database is not the one this install reads. Leaving it means every logon silently boots a second, divergent engine. The reconcile removes it, prints what it removed and why, and deliberately records no opt-out marker — a mode change is not your decision to make, and the marker would suppress the service on a later `--source` install.
 
 ## Requirements
 

@@ -39,9 +39,10 @@
  *      task (and, when Task Scheduler is ACL-gated for a standard Windows
  *      account, a hidden Startup-folder launcher with the same restart
  *      policy) — uninstallable by the user alone.
- *   5. Compile-time refusal in binary installs (the engine stack is a
- *      source-install feature — docs/install.md): a clear error, not a
- *      half-working service.
+ *   5. Compile-time refusal in binary installs (the always-on SERVICE is a
+ *      source-install feature — docs/install.md; a binary install still runs
+ *      `engine start`, it just registers no logon service): a clear error, not
+ *      a half-working service.
  *   6. Auto lane (`--auto`, run by scripts/install.ts on install AND update):
  *      the service is the DEFAULT, not an opt-in command — skipping it in CI
  *      (no login session), after `unown engine uninstall` (a remembered
@@ -150,7 +151,7 @@ export function resolveServiceBunPath(input: ServiceSpecInput = {}): string {
 }
 
 /** Resolve this checkout's service spec. Throws in compiled-binary installs —
- *  the engine stack needs the source install (rule 5). */
+ *  the always-on service is the source lane's (rule 5), not a missing engine. */
 export function resolveServiceSpec(
 	repoRoot: string,
 	compiled: boolean = IS_COMPILED_BINARY,
@@ -158,8 +159,9 @@ export function resolveServiceSpec(
 ): ServiceSpec {
 	if (compiled) {
 		throw new Error(
-			"the self-learning engine stack (engine + bridge) is a source-install feature — " +
-				"binary installs have no engine to keep alive (docs/install.md). " +
+			"the always-on engine SERVICE is a source-install feature — a binary install has an " +
+				"engine to run (`unown engine start`) but ships no llm-bridge and registers no logon " +
+				"service (docs/install.md). " +
 				"Reinstall with: curl -fsSL https://unown-nine.vercel.app/install.sh | sh -s -- --source",
 		);
 	}
@@ -232,7 +234,7 @@ export function describeServiceAutoSkip(
 ): string {
 	switch (reason) {
 		case "compiled":
-			return "engine service: skipped (binary installs have no engine — the source lane owns it)";
+			return "engine service: skipped (the always-on service is a source-install feature)";
 		case "no-manager":
 			return `engine service: skipped (no supported service manager on ${platform})`;
 		case "opt-out":
@@ -652,6 +654,10 @@ export interface InstallEngineServiceOptions {
 	auto?: boolean;
 	/** Env for the auto gate (defaults to process.env). */
 	env?: NodeJS.ProcessEnv;
+	/** Test seam for the compiled verdict (the real call measures the process). */
+	compiled?: boolean;
+	/** Test seam for the residue reconcile. */
+	reconcile?: typeof reconcileStaleService;
 }
 
 /** Remember a deliberate `unown engine uninstall` so the installer never
@@ -680,9 +686,14 @@ export async function installEngineService(
 ): Promise<number> {
 	const env = opts.env ?? process.env;
 	if (opts.auto) {
-		const decision = decideAutoServiceInstall({ env });
+		const decision = decideAutoServiceInstall({ env, compiled: opts.compiled });
 		if (!decision.install) {
 			out(describeServiceAutoSkip(decision.reason ?? "ci"));
+			// The one skip that can strand a definition: this install is compiled
+			// and a PREVIOUS source install registered one. Every other skip (CI,
+			// a kill switch, a remembered opt-out) describes this process, not the
+			// machine's history, so it must leave a real service alone.
+			if (decision.reason === "compiled") await (opts.reconcile ?? reconcileStaleService)(out, env);
 			return 0;
 		}
 	}
@@ -867,14 +878,23 @@ export async function installEngineService(
 export async function uninstallEngineService(
 	out: (s: string) => void,
 	env: NodeJS.ProcessEnv = process.env,
+	opts: { remember?: boolean } = {},
 ): Promise<number> {
+	// The opt-out marker answers a decision the user made. A reconcile after an
+	// install-mode change makes no such decision, so it passes remember:false —
+	// otherwise a superseded source install would silently suppress the service
+	// on every later source install of the same machine.
+	const remember = opts.remember !== false;
+	const markOptOut = (): void => {
+		if (remember) markServiceUninstalled(env);
+	};
 	const kind = detectServiceManager();
 	if (kind === "systemd-user") {
 		const unit = systemdUnitPath();
 		if (!existsSync(unit)) {
 			out("engine service: not installed (nothing to remove)");
-			markServiceUninstalled(env);
-			out("  noted: the installer will not add it back (unown engine install re-enables it)");
+			markOptOut();
+			if (remember) out("  noted: the installer will not add it back (unown engine install re-enables it)");
 			return 0;
 		}
 		runCaptured("systemctl", ["--user", "stop", ENGINE_SERVICE_NAME], 20_000);
@@ -890,8 +910,8 @@ export async function uninstallEngineService(
 		else runCaptured("launchctl", ["unload", "-w", plist], 20_000);
 		if (!existsSync(plist)) {
 			out("engine service: not installed (nothing to remove)");
-			markServiceUninstalled(env);
-			out("  noted: the installer will not add it back (unown engine install re-enables it)");
+			markOptOut();
+			if (remember) out("  noted: the installer will not add it back (unown engine install re-enables it)");
 			return 0;
 		}
 		rmSync(plist, { force: true });
@@ -904,8 +924,8 @@ export async function uninstallEngineService(
 		const taskQuery = runCaptured("schtasks", ["/Query", "/TN", ENGINE_SERVICE_NAME], 5000);
 		if (!taskQuery.ok && !hadLauncher && !hadRunValue) {
 			out("engine service: not installed (nothing to remove)");
-			markServiceUninstalled(env);
-			out("  noted: the installer will not add it back (unown engine install re-enables it)");
+			markOptOut();
+			if (remember) out("  noted: the installer will not add it back (unown engine install re-enables it)");
 			return 0;
 		}
 		let ok = true;
@@ -940,8 +960,44 @@ export async function uninstallEngineService(
 		out(`engine service: no service manager on ${process.platform} — nothing installed`);
 		return 0;
 	}
-	markServiceUninstalled(env);
-	out("  noted: install/update will not add it back (unown engine install re-enables it)");
+	markOptOut();
+	if (remember) out("  noted: install/update will not add it back (unown engine install re-enables it)");
 	out("  the engine stays down until: unown engine start  (or the next note/session touchpoint)");
 	return 0;
+}
+
+export interface ReconcileSeams {
+	status?: () => Promise<ServiceStatus>;
+	remove?: (out: (s: string) => void, env: NodeJS.ProcessEnv, opts: { remember?: boolean }) => Promise<number>;
+}
+
+/**
+ * Reconcile an OS autostart left behind by a superseded install mode.
+ *
+ * A compiled binary install writes NO service definition — `resolveServiceSpec`
+ * refuses it and the binary installers point the always-on lane at `--source`.
+ * So any definition found on a machine whose install is compiled is residue
+ * from an earlier source install, and it is not inert: it boots an engine at
+ * every logon rooted at that checkout, whose memory database is a DIFFERENT store
+ * from this install's UNOWN_HOME. Two engines, two brains, whichever wins :3030
+ * serves one and the other's notes land where nobody reads them.
+ *
+ * Removal is reported, never silent, and records no opt-out marker — a mode
+ * change is not a user decision, and the marker would suppress the service on
+ * every later source install of this machine.
+ */
+export async function reconcileStaleService(
+	out: (s: string) => void,
+	env: NodeJS.ProcessEnv = process.env,
+	seams: ReconcileSeams = {},
+): Promise<boolean> {
+	if (!(await (seams.status ?? serviceStatus)()).installed) return false;
+	out(
+		"  reconciling: a logon service left by an earlier SOURCE install would boot a second engine\n" +
+			"    against a different memory database than this one — removing it (unown engine install re-adds one).",
+	);
+	// remember:false is the load-bearing argument: see the note on
+	// uninstallEngineService's opts.
+	await (seams.remove ?? uninstallEngineService)(out, env, { remember: false });
+	return true;
 }

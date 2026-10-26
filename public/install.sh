@@ -11,8 +11,8 @@
 #     its SHA-256 against the SAME release's sha256sums.txt, and installs the
 #     CLI atomically under ${UNOWN_INSTALL_ROOT:-$XDG_DATA_HOME/unown}/versions/
 #     <version>/ with a PATH shim and ~/.unown/install.json metadata. No git
-#     and no bun are required. The binary is the CLI only - the engine and
-#     learning stack need --source.
+#     and no bun are required. This lane ships the CLI plus an on-demand
+#     engine; the llm-bridge and the always-on service need --source.
 #
 #   --source - checks git, checks/installs bun (bun's own installer), clones the
 #     newest STABLE release tag (vX.Y.Z, no prerelease suffix), and runs the
@@ -645,6 +645,15 @@ install_binary() {
 
   write_binary_metadata
 
+  # Reconcile the logon autostart. A previous SOURCE install registered one, and
+  # this binary install never writes a replacement — leaving it means every
+  # logon boots an engine rooted at that old checkout, against a memory database
+  # this install never reads. The CLI's own --auto lane owns that decision (and
+  # prints what it removed); it can never start a service from here.
+  if [ -x "$FINAL/unown" ]; then
+    "$FINAL/unown" engine install --auto </dev/null || true
+  fi
+
   case ":$PATH:" in
     *":$BIN_DIR:"*) ;;
     *)
@@ -667,7 +676,8 @@ install_binary() {
   echo "  unown doctor                # verify the chat path end to end"
   echo "  unown update                # update this binary install"
   echo ""
-  echo "note: this is the CLI only - the engine/learning stack needs the source install:"
+  echo "note: the engine runs on demand here (unown engine start) - but the llm-bridge"
+  echo "      and the always-on service ship with the source install:"
   echo "  sh install.sh --source"
   echo ""
   echo "the release binaries are unsigned (no code-signing certificate)."

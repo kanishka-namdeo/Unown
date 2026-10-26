@@ -56,7 +56,7 @@ bun run agent:install
 
 (Plain `git clone` gives you `main` — the edge lane.)
 
-Only want the CLI? That is the default one-liner — a verified release download installed under a versioned root with a PATH shim, no git or bun. It has no engine, bridge or dashboard data source; the learning stack needs the `--source` install above ([details](install.md)).
+Only want the CLI? That is the default one-liner — a verified release download installed under a versioned root with a PATH shim, no git or bun. It ships the CLI plus an on-demand engine (`unown engine start`), but no llm-bridge and no always-on OS service, so the unattended learning stack needs the `--source` install above ([details](install.md)).
 
 The `--source` install runs `bun install --frozen-lockfile` at the repo root and in the vendored pi monorepo (`pi-repo/`), builds it — hydrating its provider model data on first run (that directory is gitignored upstream, so fresh clones fetch it once, ~1–2 min) — creates `.env` from `.env.example` if you don't have one, and puts the `unown` command on your PATH via a shim (`~/.local/bin/unown` → this checkout; on Windows: `%USERPROFILE%\.local\bin\unown.cmd` + `unown.ps1`). If your PATH misses it, the installer tells you exactly what to add — or re-run `bun run agent:link` anytime.
 
@@ -118,7 +118,7 @@ Every step has a default (blank = take it), Ctrl+C cancels with `nothing written
 
 ## 4. Start the stack (optional but recommended)
 
-These two services ship with the `--source` install. A standalone binary install has no engine or bridge to start.
+These two services ship with the `--source` install. A standalone binary install ships no bridge to start; its engine can still be started on demand with `unown engine start`, but the jobs that call a model need a bridge to reach.
 
 The bridge + self-learning engine are what make unown *learn* (session notes → AutoDream → project memory + skills). Chat works without them — notes just queue locally until the engine returns. Mission control is not a web service: `unown dashboard` (or `/dashboard` inside a session) is a fullscreen TUI client of the engine, so the launcher starts no third server.
 

@@ -17,6 +17,15 @@
  *   Windows compiled  import.meta.dir = `B:\~BUN\root`         (url `file:///B:/%7EBUN/root/…`)
  *   source, both OSes import.meta.dir = the real module directory
  *
+ * `process.argv` is NOT the same signal, and the difference is a trap. Both
+ * compiled platforms report `["bun", "<virtual entry path>", …args]` (measured
+ * on bun 1.4.2: `B:\~BUN\root\…` on Windows, `/$bunfs/root/…` on Linux) —
+ * argv[0] is the literal `"bun"`, not the executable. So the argv-shape guess
+ * "argv[1] missing, or argv[1] === argv[0]" never matched a compiled binary on
+ * ANY platform, and both the Windows and the POSIX spawn prepended the virtual
+ * path as the script argument. Ask
+ * `isBunVirtualPath(import.meta.url)` instead.
+ *
  * `process.execPath` is a real path in BOTH shapes — the bun binary when run
  * from source, the executable itself when compiled — so it is the only safe
  * anchor for anything shipped beside a standalone binary.

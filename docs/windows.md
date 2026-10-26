@@ -87,7 +87,7 @@ No git and no bun are required. The installer downloads `unown-windows-x64.zip` 
 
 The shims set `UNOWN_INSTALL_ROOT`; `~/.unown/install.json` records the active version. To check an archive you downloaded by hand, compare `Get-FileHash .\unown-windows-x64.zip -Algorithm SHA256` with its line in `sha256sums.txt`. The builds are unsigned, so SmartScreen may warn on first run (`Unblock-File unown.exe` clears it). Update with `unown update` — it reads the `release.json` manifest, verifies the Windows asset's size and SHA-256 and keeps the previous version for `unown update --rollback` — and remove with `unown uninstall`. Windows locks the running `unown.exe`, so uninstall removes the shims and the install record immediately and deletes the versioned folder from a background helper as the command exits; run it from outside the install directory and it needs no follow-up.
 
-The binary is the **CLI only** — the engine and bridge need the `-Source` install. Windows arm64 is opt-in with `-Experimental` because no GitHub arm64 Windows runner exists to execute that archive in CI.
+This lane ships the CLI and an on-demand engine (`unown engine start`, state under `%USERPROFILE%\.unown`); it ships no llm-bridge and no always-on OS service, so the model-calling jobs need a bridge from a source checkout and logon autostart needs `-Source`. Windows arm64 is opt-in with `-Experimental` because no GitHub arm64 Windows runner exists to execute that archive in CI.
 
 What the source installer does on Windows (same as elsewhere, plus three Windows specifics):
 

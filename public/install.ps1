@@ -12,8 +12,8 @@
 #     release's sha256sums.txt, and installs the CLI atomically under
 #     ${env:UNOWN_INSTALL_ROOT} (default %LOCALAPPDATA%\unown)\versions\
 #     <version>\ with PATH shims and %USERPROFILE%\.unown\install.json
-#     metadata. No git and no bun are required. The binary is the CLI only -
-#     the engine and learning stack need -Source.
+#     metadata. No git and no bun are required. This lane ships the CLI plus an
+#     on-demand engine; the llm-bridge and the always-on service need -Source.
 #
 #   -Source - checks git, checks/installs bun (bun's own PowerShell installer),
 #     clones the newest STABLE release tag (vX.Y.Z, no prerelease suffix), and
@@ -666,6 +666,21 @@ function Install-Binary {
       Write-Host 'install.ps1: restart your terminal (new window) before running unown.'
     }
 
+    # Reconcile the logon autostart. A previous SOURCE install registered one,
+    # and this binary install never writes a replacement - leaving it means every
+    # logon boots an engine rooted at that old checkout, against a memory
+    # database this install never reads. The CLI's own --auto lane owns that
+    # decision (and prints what it removed); it can never start a service here.
+    if (Test-Path -LiteralPath $exeFinal) {
+      $reconcileExit = $LASTEXITCODE
+      try {
+        & $exeFinal engine install --auto | Out-Host
+      } catch {
+        Write-Host "install.ps1: engine service reconcile skipped ($($_.Exception.Message))"
+      }
+      $LASTEXITCODE = $reconcileExit
+    }
+
     Write-Host ''
     Write-Host "unown $installVersion installed (binary)"
     Write-Host "  binary: $exeFinal"
@@ -676,7 +691,8 @@ function Install-Binary {
     Write-Host '  unown doctor                # verify the chat path end to end'
     Write-Host '  unown update                # update this binary install'
     Write-Host ''
-    Write-Host 'note: this is the CLI only - the engine/learning stack needs the source install:'
+    Write-Host 'note: the engine runs on demand here (unown engine start) - but the llm-bridge'
+    Write-Host '      and the always-on service ship with the source install:'
     Write-Host '  .\install.ps1 -Source'
     Write-Host ''
     Write-Host 'the release binaries are unsigned (no code-signing certificate).'

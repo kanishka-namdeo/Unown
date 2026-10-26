@@ -36,7 +36,7 @@ import {
 import { join, resolve } from "node:path";
 import { probeEngine, type EngineBlockedKind, type EngineProbe, type EngineProbeKind } from "./engine-probe.ts";
 import type { EngineBuildRef } from "./engine-version.ts";
-import { stateRoot } from "./packaging.ts";
+import { IS_COMPILED_BINARY, stateRoot } from "./packaging.ts";
 
 /** Engine base URL (same resolution as term.ts ENGINE_URL). */
 function engineUrl(): string {
@@ -496,9 +496,24 @@ export interface WindowsEngineSpawnSpec {
 export function buildWindowsEngineSpawnSpec(execPath: string, serveArgs: string[]): WindowsEngineSpawnSpec {
         return {
                 command: "cmd",
-                args: ["/c", "start", "/b", "", `"${execPath}"`, ...serveArgs],
+                args: ["/c", "start", "/b", '""', `"${execPath}"`, ...serveArgs],
                 verbatim: true,
         };
+}
+
+/**
+ * The argv the detached engine child runs. A compiled binary IS the entry, so
+ * it takes the subcommand directly; a source run must name its script.
+ *
+ * `compiled` must come from `IS_COMPILED_BINARY`, never from argv: every
+ * compiled platform reports `process.argv` as `["bun", "<virtual entry path>",
+ * …args]` (measured, bun 1.4.2 — `B:\~BUN\root\unown.exe` on Windows,
+ * `/$bunfs/root/…` on Linux). The argv-shape guess that used to live in
+ * `spawnEngineProcess` therefore matched nothing, and a binary install on any
+ * OS handed the engine child Bun's virtual path as its first argument.
+ */
+export function buildEngineServeArgv(argv: string[], compiled: boolean): string[] {
+        return compiled ? ["engine", "serve"] : [argv[1] ?? "bin/unown", "engine", "serve"];
 }
 
 /**
@@ -562,9 +577,8 @@ async function spawnEngineProcess(): Promise<boolean> {
                         const env = { ...process.env, ...loadEnvValues(envFile) };
                         // Entry: this CLI's own executable (works for `bin/unown`, the
                         // compiled binary, and `bun scripts` shapes alike).
-                        const isCompiled = !process.argv[1] || process.argv[1] === process.argv[0];
+                        const args = buildEngineServeArgv(process.argv, IS_COMPILED_BINARY);
                         const command = process.execPath;
-                        const args = isCompiled ? ["engine", "serve"] : [process.argv[1] ?? "bin/unown", "engine", "serve"];
                         mkdirSync(runDir(), { recursive: true });
                         // M6: rotate the previous generation's log BEFORE opening the append
                         // fd — no writer holds the file yet, this is the clean rotation point.

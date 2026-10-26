@@ -222,8 +222,10 @@ export function installNotes(p: Platform, version: string): string {
         "First run: `unown setup` connects a model provider, then `unown` starts a",
         "session in the current directory. `unown doctor` checks the whole path.",
         "",
-        "This channel ships the CLI only. The learning engine, llm-bridge and the",
-        "dashboard's data source run from the repository: see README.md + docs/install.md.",
+        "This channel ships the CLI and an on-demand engine (`unown engine start`,",
+        "state under ~/.unown). It ships no llm-bridge and no always-on OS service,",
+        "so the jobs that call a model need a bridge to reach and logon autostart",
+        "needs the source install: see README.md + docs/install.md.",
         "",
     );
     return lines.join("\n");

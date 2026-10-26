@@ -12,8 +12,8 @@
  *     single-instance lock or undo `unown engine stop`);
  *   - every generated path survives spaces (quoted where the manager's
  *     parser needs it, argv-array where it does not);
- *   - binary installs refuse with the documented reason (the engine stack
- *     is a source-install feature);
+ *   - binary installs refuse the SERVICE with the documented reason (the
+ *     always-on lane is a source-install feature; the engine itself runs);
  *   - the same identity (unown-engine / ai.unown.engine) is used by install,
  *     status and uninstall on every platform.
  */
@@ -35,6 +35,7 @@ import {
         describeServiceAutoSkip,
         detectServiceManager,
         installEngineService,
+        reconcileStaleService,
         resolveServiceBunPath,
         resolveServiceSpec,
         serviceDisabledMarker,
@@ -43,6 +44,7 @@ import {
         windowsLegacyLauncherPath,
         windowsStartupDir,
         type ServiceSpec,
+        type ServiceStatus,
 } from "../src/engine-service.ts";
 
 const SPEC: ServiceSpec = {
@@ -76,7 +78,7 @@ describe("resolveServiceSpec", () => {
                 expect(spec.envFile).toBe(join("/repo/unown", ".env"));
                 expect(spec.serveArgs).toEqual(["engine", "serve"]);
         });
-        test("compiled binary: refuses (the engine stack is a source feature) with the fix in the message", () => {
+        test("compiled binary: refuses the service (the always-on lane is a source feature) with the fix in the message", () => {
                 expect(() => resolveServiceSpec("/x", true)).toThrow(/source-install/);
                 expect(() => resolveServiceSpec("/x", true)).toThrow(/--source/);
         });
@@ -311,7 +313,7 @@ describe("decideAutoServiceInstall", () => {
                         expect(decideAutoServiceInstall({ ...BASE_INPUT, platform })).toEqual({ install: true });
                 }
         });
-        test("compiled binary → skip (the engine stack is a source-install feature)", () => {
+        test("compiled binary → skip (the always-on service is a source-install feature)", () => {
                 expect(decideAutoServiceInstall({ ...BASE_INPUT, compiled: true })).toEqual({
                         install: false,
                         reason: "compiled",
@@ -433,5 +435,94 @@ describe("temp-home isolation sanity", () => {
                 const dir = mkdtempSync(join(tmpdir(), "unown-svc-test-"));
                 expect(dir.length).toBeGreaterThan(0);
                 rmSync(dir, { recursive: true, force: true });
+        });
+});
+
+describe("reconcileStaleService — a superseded install mode must not keep a logon engine", () => {
+        // A compiled install writes NO service definition, so one found on such a
+        // machine came from an earlier source install — and it boots an engine at
+        // every logon rooted at that checkout, against a memory database this
+        // install never reads. Live-caught 2026-10-26: install.json said
+        // `mode: binary` while HKCU\…\Run still launched a watchdog that ran
+        // `<bun> D:\path\to\checkout\bin\unown engine serve`.
+        const statusWith = (installed: boolean) => async (): Promise<ServiceStatus> => ({
+                installed,
+                kind: "schtasks",
+                detail: installed ? "registered" : "not installed",
+        });
+
+        test("compiled + a definition on disk → removed, and NOT recorded as an opt-out", async () => {
+                const removals: Array<{ remember?: boolean }> = [];
+                const lines: string[] = [];
+                const reconciled = await reconcileStaleService((s) => lines.push(s), {}, {
+                        status: statusWith(true),
+                        remove: async (_out, _env, opts) => {
+                                removals.push(opts);
+                                return 0;
+                        },
+                });
+                expect(reconciled).toBe(true);
+                // remember:false is the whole point: writing the marker would make
+                // this cleanup look like the user's own opt-out, and then a later
+                // source install would skip the service forever.
+                expect(removals).toEqual([{ remember: false }]);
+                // Reported, never silent — an autostart that vanishes must be
+                // explainable to whoever set it up.
+                expect(lines.join("\n")).toContain("reconciling");
+                // NOTE what this does NOT cover: the marker write itself lives
+                // behind uninstallEngineService's OS calls, which are E2E-only.
+                // This pins that the reconcile lane passes remember:false.
+        });
+
+        test("compiled + nothing on disk → silent no-op", async () => {
+                const lines: string[] = [];
+                let removed = false;
+                const hit = await reconcileStaleService((s) => lines.push(s), {}, {
+                        status: statusWith(false),
+                        remove: async () => {
+                                removed = true;
+                                return 0;
+                        },
+                });
+                expect(hit).toBe(false);
+                expect(removed).toBe(false);
+                expect(lines).toEqual([]);
+        });
+
+        test("installEngineService reconciles the COMPILED skip and nothing else", async () => {
+                // Every other skip reason describes THIS process (a CI runner, a
+                // kill switch, a remembered opt-out) and not the machine's history.
+                // Tearing down a real service over one of those would be the worse
+                // bug: the user asked for no autostart in this shell, not none ever.
+                for (const [label, env] of [
+                        ["ci", { CI: "1" }],
+                        ["autostart-off", { UNOWN_ENGINE_AUTOSTART: "0" }],
+                        ["opt-out", { UNOWN_NO_ENGINE_SERVICE: "1" }],
+                ] as const) {
+                        let called = false;
+                        const code = await installEngineService("/repo", () => {}, {
+                                auto: true,
+                                env,
+                                compiled: false,
+                                reconcile: async () => {
+                                        called = true;
+                                        return false;
+                                },
+                        });
+                        expect(code).toBe(0);
+                        if (called) throw new Error(`the ${label} skip must not reconcile a service`);
+                }
+                let called = false;
+                const code = await installEngineService("/repo", () => {}, {
+                        auto: true,
+                        env: {},
+                        compiled: true,
+                        reconcile: async () => {
+                                called = true;
+                                return true;
+                        },
+                });
+                expect(code).toBe(0);
+                expect(called).toBe(true);
         });
 });

@@ -47,7 +47,7 @@ curl -fsSL https://unown-nine.vercel.app/install.sh | sh
 # pin a release: curl -fsSL https://unown-nine.vercel.app/install.sh | sh -s -- --version vX.Y.Z
 ```
 
-This downloads `unown-darwin-arm64.tar.gz` (an x64 shell under Rosetta gets the arm64 build), verifies its exact SHA-256 against the release's `sha256sums.txt`, checks `VERSION` and `unown --version`, and installs under `~/.local/share/unown/versions/<version>/unown` with a `~/.local/bin/unown` shim and `~/.unown/install.json` metadata (`UNOWN_INSTALL_ROOT`, `UNOWN_BIN_DIR` and `UNOWN_HOME` override those paths). No git and no bun are required. It is the **CLI only** — the engine and bridge need the `--source` install.
+This downloads `unown-darwin-arm64.tar.gz` (an x64 shell under Rosetta gets the arm64 build), verifies its exact SHA-256 against the release's `sha256sums.txt`, checks `VERSION` and `unown --version`, and installs under `~/.local/share/unown/versions/<version>/unown` with a `~/.local/bin/unown` shim and `~/.unown/install.json` metadata (`UNOWN_INSTALL_ROOT`, `UNOWN_BIN_DIR` and `UNOWN_HOME` override those paths). No git and no bun are required. This lane ships the CLI and an on-demand engine (`unown engine start`, state under `~/.unown`); it ships no llm-bridge and no always-on OS service, so the model-calling jobs need a bridge from a source checkout and logon autostart needs `--source`.
 
 If you downloaded an archive by hand, verify it with the macOS-specific form (the manifest also covers files you may not have):
 
