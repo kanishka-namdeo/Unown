@@ -34,15 +34,16 @@
  * Safety rules, in priority order:
  *   - A LIVE parent always wins (its children are not ours to touch — a
  *     reused parentPid can only ever make this check skip, never kill).
- *   - Never kill a pid we cannot identify: POSIX requires the /proc cmdline
- *     to name our session file; Windows (no cheap cmdline probe) only kills
- *     heartbeat-fresh children and traces the rest.
+ *   - Never kill a pid we cannot identify: macOS+Linux require the process's
+ *     own `ps` cmdline to name our session file; Windows (no cheap cmdline
+ *     probe) only kills heartbeat-fresh children and traces the rest.
  *   - Never sweep from inside a subagent (UNOWN_SUBAGENT/UNOWN_FLEET_CONTROL)
  *     — a child must not reap its siblings; kill-switch UNOWN_FLEET_REAPER=0.
  *
  * Cross-platform by construction: fs + process.kill on POSIX, tasklist/
- * taskkill on win32, no signals-as-protocol, no Unix-only paths outside the
- * /proc identity probe (guarded by platform).
+ * taskkill on win32, no signals-as-protocol — and the `ps -o command=`
+ * identity probe is the one cmdline read that works on macOS AND Linux
+ * (learned live on the v0.0.26 release run: macOS has no /proc).
  */
 
 import { spawn, spawnSync } from "node:child_process";
@@ -143,12 +144,19 @@ export function isPidAlive(pid: number | null | undefined): boolean {
         }
 }
 
-/** POSIX identity: /proc/<pid>/cmdline must name our session file — the
- *  strongest pre-heartbeat check available (the session path is unique per
- *  child and present in the child's argv). */
-function posixChildIdentityMatches(pid: number, sessionFile: string): boolean {
+/** Identity: the process's own command line must name our session file —
+ *  the strongest pre-heartbeat check available (the session path is unique
+ *  per child and present in the child's argv). Portability (learned the hard
+ *  way on the v0.0.26 release run): macOS has NO /proc, so the probe is
+ *  `ps -p <pid> -o command=` — the one cheap cmdline read that works on both
+ *  macOS and Linux. Windows has neither and stays heartbeat-only. */
+function childIdentityMatches(pid: number, sessionFile: string): boolean {
         try {
-                return readFileSync(`/proc/${pid}/cmdline`, "utf8").includes(sessionFile);
+                const res = spawnSync("ps", ["-p", String(pid), "-o", "command="], {
+                        encoding: "utf8",
+                        timeout: 5_000,
+                });
+                return res.status === 0 && String(res.stdout).includes(sessionFile);
         } catch {
                 return false;
         }
@@ -285,7 +293,7 @@ export function sweepStaleFleetChildren(cwd: string, opts: FleetSweepOptions = {
                 const fresh = hb !== null && now - hb.ts <= HEARTBEAT_STALE_MS;
                 let disposition: "reaped" | "abandoned";
                 let reason: string;
-                if (fresh && hb!.pid > 0 && (process.platform === "win32" || posixChildIdentityMatches(hb!.pid, spawn.sessionFile))) {
+                if (fresh && hb!.pid > 0 && (process.platform === "win32" || childIdentityMatches(hb!.pid, spawn.sessionFile))) {
                         // Fresh heartbeat = our child, alive, self-identified. The
                         // strongest identity signal there is without a daemon.
                         killPid(hb!.pid);
@@ -301,7 +309,7 @@ export function sweepStaleFleetChildren(cwd: string, opts: FleetSweepOptions = {
                         spawn.pid &&
                         isPidAlive(spawn.pid) &&
                         process.platform !== "win32" &&
-                        posixChildIdentityMatches(spawn.pid, spawn.sessionFile)
+                        childIdentityMatches(spawn.pid, spawn.sessionFile)
                 ) {
                         // Pre-heartbeat child (a 0.0.25 fleet child orphaned mid-upgrade):
                         // alive and cmdline-verified on POSIX.

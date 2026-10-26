@@ -53,21 +53,28 @@ describe("reaper registration (R3-F4): subagent children ride the last-resort re
                                 spawnProc: spawn,
                                 timeoutMs: 30_000,
                         });
-                        const ack = manager.spawnFleetChild({
-                                agent: "prober",
-                                task: "sleep briefly",
-                                routing: {},
-                                systemPrompt: "p",
-                        });
-                        expect(ack.ok).toBe(true);
-                        // Registered AT SPAWN: a SIGINT/SIGTERM/exit of the parent now
-                        // SIGTERM→SIGKILLs this child (pre-fix: only LSP/MCP servers
-                                // registered — subagents were second-class citizens).
-                        expect(trackedChildrenCount()).toBe(before + 1);
-                        // Natural exit → auto-untracked (no leak in the reaper set).
-                        await new Promise((r) => setTimeout(r, 1_500));
-                        expect(trackedChildrenCount()).toBe(before);
-                        manager.dispose();
+                        try {
+                                const ack = manager.spawnFleetChild({
+                                        agent: "prober",
+                                        task: "sleep briefly",
+                                        routing: {},
+                                        systemPrompt: "p",
+                                });
+                                expect(ack.ok).toBe(true);
+                                // Registered AT SPAWN: a SIGINT/SIGTERM/exit of the parent
+                                // now SIGTERM→SIGKILLs this child (pre-fix: only LSP/MCP
+                                // servers registered — subagents were second-class
+                                // citizens).
+                                expect(trackedChildrenCount()).toBe(before + 1);
+                                // Natural exit → auto-untracked (no leak in the reaper set).
+                                await new Promise((r) => setTimeout(r, 1_500));
+                                expect(trackedChildrenCount()).toBe(before);
+                        } finally {
+                                // The suite shares ONE process: a throw before dispose()
+                                // leaks a manager into the Symbol registry and poisons
+                                // every later drain pin (the v0.0.26 release-run lesson).
+                                manager.dispose();
+                        }
                 },
                 { timeout: 20_000 } as const,
         );

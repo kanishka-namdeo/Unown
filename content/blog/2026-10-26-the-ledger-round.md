@@ -135,9 +135,11 @@ the rotting channels cleaned, and an adopted worktree marked `orphaned` in the
 worktree journal — kept on disk for manual recovery, the same rule as any kept
 tree. The safety ordering matters more than the mechanics: a live parent
 always wins (its children are not ours to touch), never kill a pid you cannot
-identify (on POSIX the `/proc` cmdline must name the child's session file; on
-Windows, where no cheap cmdline probe exists, an unverifiable orphan is traced
-honestly rather than killed), and the sweep never runs inside a subagent. A
+identify (the process's own `ps` command line must name the child's session
+file on macOS and Linux — a probe the release run itself taught us to
+port, since macOS has no `/proc`; on Windows, where no cheap cmdline probe
+exists, an unverifiable orphan is traced honestly rather than killed), and
+the sweep never runs inside a subagent. A
 kill-switch ships with it: `UNOWN_FLEET_REAPER=0`.
 
 The live replay is the round's favorite receipt: crash the parent, boot any

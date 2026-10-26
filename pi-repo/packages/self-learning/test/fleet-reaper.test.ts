@@ -147,13 +147,13 @@ describe("sweepStaleFleetChildren — the decision table", () => {
                 expect(killed).toHaveLength(0);
         });
 
-        test(
+        test.skipIf(process.platform === "win32")(
                 "dead parent + fresh heartbeat on a LIVE cmdline-verified child → REAPED",
                 () => {
                         const repoRoot = freshRepo();
                         const fleetDir = fleetDirOf(repoRoot);
                         const sessionFile = join(fleetDir, "sessions", "crashkid-kid-1.jsonl");
-                        // A real live process whose /proc cmdline names the session file —
+                        // A real live process whose ps cmdline names the session file —
                         // exactly what a heartbeat-fresh fleet child looks like.
                         const child = spawn("bash", ["-c", `sleep 30; true # ${sessionFile}`]);
                         writeJournal(repoRoot, [spawnEntry({ pid: child.pid, sessionFile })]);
@@ -172,7 +172,7 @@ describe("sweepStaleFleetChildren — the decision table", () => {
                 { timeout: 20_000 } as const,
         );
 
-        test(
+        test.skipIf(process.platform === "win32")(
                 "dead parent + live cmdline-verified pid WITHOUT heartbeat → REAPED (pre-0.0.26 child, POSIX)",
                 () => {
                         const repoRoot = freshRepo();

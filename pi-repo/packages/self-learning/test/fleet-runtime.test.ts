@@ -612,23 +612,32 @@ describe("fleet lifecycle journal (R3-F4 — the crash trace a dead parent canno
                 const harness = new SpawnHarness();
                 const dir = freshDir();
                 const { manager } = makeManager(harness, dir);
-                const ack = manager.spawnFleetChild({ ...REQUEST, name: "mapper" }) as { ok: true; id: string };
-                const journalFile = join(dir, "journal.jsonl");
-                const entries = () =>
-                        readFileSync(journalFile, "utf8")
-                                .split("\n")
-                                .filter((l) => l.trim())
-                                .map((l) => JSON.parse(l));
-                const spawned = entries().find((e) => e.op === "spawned" && e.id === ack.id);
-                expect(spawned).toBeDefined();
-                expect(spawned.parentPid).toBe(process.pid);
-                expect(spawned.sessionFile).toContain("sessions/mapper-");
-                // Natural exit → the terminal record the boot sweep looks for.
-                harness.procs[0].emitLine({ type: "message_end", message: { role: "assistant", content: [{ type: "text", text: "done" }] } });
-                harness.procs[0].emit("close", 0);
-                await new Promise((r) => setTimeout(r, 250));
-                expect(entries().some((e) => e.op === "finished" && e.id === ack.id && e.status === "done")).toBe(true);
-                manager.dispose();
+                // try/finally dispose (the v0.0.26 release run's lesson): this
+                // suite shares ONE process, and a pin that throws before
+                // dispose() leaks a manager with a NON-TERMINAL child into the
+                // Symbol registry — every later drain/isFleetBusy pin in OTHER
+                // files then inherits a permanently busy orphan and times out.
+                try {
+                        const ack = manager.spawnFleetChild({ ...REQUEST, name: "mapper" }) as { ok: true; id: string };
+                        const journalFile = join(dir, "journal.jsonl");
+                        const entries = () =>
+                                readFileSync(journalFile, "utf8")
+                                        .split("\n")
+                                        .filter((l) => l.trim())
+                                        .map((l) => JSON.parse(l));
+                        const spawned = entries().find((e) => e.op === "spawned" && e.id === ack.id);
+                        expect(spawned).toBeDefined();
+                        expect(spawned.parentPid).toBe(process.pid);
+                        // Platform-neutral path check (join picks the separator).
+                        expect(spawned.sessionFile).toContain(join("sessions", "mapper-"));
+                        // Natural exit → the terminal record the boot sweep looks for.
+                        harness.procs[0].emitLine({ type: "message_end", message: { role: "assistant", content: [{ type: "text", text: "done" }] } });
+                        harness.procs[0].emit("close", 0);
+                        await new Promise((r) => setTimeout(r, 250));
+                        expect(entries().some((e) => e.op === "finished" && e.id === ack.id && e.status === "done")).toBe(true);
+                } finally {
+                        manager.dispose();
+                }
         });
 
         test("adoptWorktree journals the pairing the sweeper correlates later", () => {
