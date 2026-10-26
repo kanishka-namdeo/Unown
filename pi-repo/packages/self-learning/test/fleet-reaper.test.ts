@@ -12,7 +12,7 @@
 // is pinned as trace-only in the code comments and docs).
 import { afterAll, describe, expect, test } from "bun:test";
 import { execFileSync, spawn } from "node:child_process";
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { startSyncSubagentHeartbeat, subagentJournalDir, sweepStaleSubagentChildren } from "../src/fleet-reaper.ts";
@@ -435,8 +435,14 @@ describe("subagentJournalDir — where the journal lives (round 4)", () => {
                         }
                         const subdir = join(repoRoot, "packages", "deep", "deeper");
                         mkdirSync(subdir, { recursive: true });
-                        expect(subagentJournalDir(subdir)).toBe(join(repoRoot, ".unown", "fleet"));
-                        expect(subagentJournalDir(repoRoot)).toBe(join(repoRoot, ".unown", "fleet"));
+                        // macOS: tmpdir() is /var/… while `git rev-parse
+                        // --show-toplevel` realpaths through the /private/var
+                        // symlink — the SAME directory, a different string —
+                        // so the expectation is built from the canonical path
+                        // (the repo's own test/_env.ts documents the pattern).
+                        const canonical = realpathSync(repoRoot);
+                        expect(subagentJournalDir(subdir)).toBe(join(canonical, ".unown", "fleet"));
+                        expect(subagentJournalDir(repoRoot)).toBe(join(canonical, ".unown", "fleet"));
                 },
         );
 

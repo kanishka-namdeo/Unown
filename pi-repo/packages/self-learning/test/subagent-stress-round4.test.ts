@@ -19,7 +19,7 @@
 //      identity token) — what the sweep's parser keys off.
 import { describe, expect, test } from "bun:test";
 import { execFileSync } from "node:child_process";
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -92,12 +92,16 @@ describe("round 4 — the sync-lane crash-sweep contracts", () => {
                         }
                         const subdir = join(repoRoot, "packages", "app");
                         mkdirSync(subdir, { recursive: true });
+                        // macOS canonicalizes /var → /private/var in git's
+                        // toplevel — compare the realpath (test/_env.ts's own
+                        // documented pattern), never the literal spelling.
+                        const canonical = realpathSync(repoRoot);
                         const manager = new FleetManager({
                                 cwd: subdir,
                                 invocation: () => ({ command: "unown", args: [] }),
                         });
                         try {
-                                expect(manager.fleetDirPath()).toBe(join(repoRoot, ".unown", "fleet"));
+                                expect(manager.fleetDirPath()).toBe(join(canonical, ".unown", "fleet"));
                                 expect(manager.fleetDirPath()).toBe(subagentJournalDir(subdir));
                         } finally {
                                 manager.dispose();
