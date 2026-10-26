@@ -30,10 +30,10 @@ export interface ChangelogStop {
   groups: ChangelogGroup[];
 }
 
-export const CHANGELOG_TOTAL_ENTRIES = 309;
+export const CHANGELOG_TOTAL_ENTRIES = 310;
 
 export const CHANGELOG_TOTALS: Record<ChangelogBucket, number> = {
-  "Added": 136,
+  "Added": 137,
   "Changed": 24,
   "Deprecated": 0,
   "Removed": 3,
@@ -44,11 +44,11 @@ export const CHANGELOG_TOTALS: Record<ChangelogBucket, number> = {
 
 export const CHANGELOG_STOPS: ChangelogStop[] = [
   {
-    "label": "Unreleased",
-    "date": null,
-    "total": 2,
+    "label": "0.0.27",
+    "date": "2026-10-26",
+    "total": 3,
     "counts": {
-      "Added": 1,
+      "Added": 2,
       "Changed": 0,
       "Deprecated": 0,
       "Removed": 0,
@@ -60,6 +60,10 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
       {
         "bucket": "Added",
         "items": [
+          {
+            "title": "subagents: stress round four — the sync lane's pid-kill orphans get the journal the fleet already had",
+            "behavior": false
+          },
           {
             "title": "ci: a gate for the live page, and the red-CI-on-main case is now named",
             "behavior": false
