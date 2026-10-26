@@ -136,6 +136,20 @@ so too. The sweep rides sessions, not version prints.
   now says what the boot line says: the heartbeat and the sweep belong to
   both lanes, and the journal lives at the repo toplevel.
 
+Three release rounds, three real finds — the 3-OS assertion (the same gate
+that caught v0.0.26's portability bugs before anything shipped) rejected the
+first tag on two macOS-only pins comparing git's realpathed toplevel against
+the literal `/var` spelling (the `/private/var` symlink — same directory,
+different string); the re-cut on the round's own e2e killing the parent
+while the sync child was still emitting its boot stream — an orphan dies at
+its next stdout write when the dead parent's pipe EPIPEs it, so the sweep's
+honest "already gone" record was correct and the test's moment was wrong
+(the crash now lands mid-bash, gated on the bash grandchild existing); and
+the third on the gate's own portability: `ps --ppid` is a Linux procps
+extension, BSD ps has no such selection, so the macOS poll never saw a
+grandchild it was staring at. All three ride the 0.0.27 changelog entry —
+the assertion doing precisely the job it exists for.
+
 ## What this round did not cover
 
 The failure-cascade shape remains as designed (bounded by the batch cap; not
