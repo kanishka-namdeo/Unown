@@ -32,6 +32,7 @@ import {
         removeEngineTokenFile,
         requestToken,
         resolveAuthPolicy,
+        sharedEngineTokenPath,
         tokenExempt,
         tokenMatches,
         writeEngineTokenFile,
@@ -290,6 +291,12 @@ describe("engineFetch (M7 client)", () => {
 
         beforeEach(() => {
                 invalidateEngineToken();
+                // H6 (2026-10-26): "no token file and no env" means NEITHER discovery
+                // side — bun test runs every file in ONE process and an earlier
+                // suite's in-process startServer (automations-events' HTTP lane)
+                // leaves the $UNOWN_HOME shared mirror behind on platforms whose
+                // file order differs (live-caught on the ubuntu CI leg).
+                removeEngineTokenFile(sharedEngineTokenPath());
                 rewriteTo = null;
                 rejectFirst = false;
                 const seen: Array<{ auth: string | null }> = [];
@@ -311,6 +318,7 @@ describe("engineFetch (M7 client)", () => {
                 echo.stop();
                 invalidateEngineToken();
                 removeEngineTokenFile(engineTokenPath());
+                removeEngineTokenFile(sharedEngineTokenPath());
                 delete process.env.UNOWN_ENGINE_TOKEN;
         });
 

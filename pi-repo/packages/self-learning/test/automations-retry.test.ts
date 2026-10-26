@@ -39,7 +39,7 @@ import {
 	spawnAutomationRun,
 	updateAutomation,
 } from "../src/automations.ts";
-import { engineTokenPath } from "../src/engine-auth.ts";
+import { engineTokenPath, removeEngineTokenFile, sharedEngineTokenPath } from "../src/engine-auth.ts";
 import { startServer } from "../src/index.ts";
 import { router } from "../src/router.ts";
 import { automationsScheduler } from "../src/server.ts";
@@ -655,6 +655,16 @@ describe("webhook lane — the reserved routine.* namespace", () => {
 			/* best effort */
 		}
 		automationsScheduler.setDispatcher(spawnAutomationRun); // restore the real seam
+		// H6 hygiene: this in-process boot wrote the cross-install discovery
+		// mirror ($UNOWN_HOME/engine.token) at token-commit — remove BOTH
+		// discovery sides so later suites in this shared process keep their
+		// "no token discoverable" semantics (the ubuntu CI leg caught the leak).
+		try {
+			removeEngineTokenFile(engineTokenPath());
+			removeEngineTokenFile(sharedEngineTokenPath());
+		} catch {
+			/* best effort */
+		}
 		try {
 			if (existsSync(join(DATA_DIR, "engine.lock"))) rmSync(join(DATA_DIR, "engine.lock"));
 		} catch {

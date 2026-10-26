@@ -51,7 +51,7 @@ import {
         type AutomationRow,
 } from "../src/automations.ts";
 import { subscribe } from "../src/bus.ts";
-import { engineTokenPath } from "../src/engine-auth.ts";
+import { engineTokenPath, removeEngineTokenFile, sharedEngineTokenPath } from "../src/engine-auth.ts";
 import { router } from "../src/router.ts";
 import { automationsScheduler, startServer } from "../src/server.ts";
 import { store, DATA_DIR } from "../src/store.ts";
@@ -710,6 +710,18 @@ describe("webhook endpoint (POST /api/hooks/:hookId) + local event-dispatch", ()
                         /* best effort */
                 }
                 automationsScheduler.setDispatcher(spawnAutomationRun); // restore the real seam
+                // H6 hygiene (live-caught on the ubuntu CI leg): this in-process boot
+                // wrote the cross-install discovery mirror ($UNOWN_HOME/engine.token)
+                // at token-commit — bun test runs every later file in this same
+                // process, and a leaked discoverable token breaks their
+                // "no token discoverable" semantics (engine-auth's plain-fetch
+                // shape). Remove BOTH discovery sides when the engine leaves.
+                try {
+                        removeEngineTokenFile(engineTokenPath());
+                        removeEngineTokenFile(sharedEngineTokenPath());
+                } catch {
+                        /* best effort */
+                }
                 try {
                         if (existsSync(LOCK)) rmSync(LOCK);
                 } catch {
