@@ -30,7 +30,7 @@ export interface ChangelogStop {
   groups: ChangelogGroup[];
 }
 
-export const CHANGELOG_TOTAL_ENTRIES = 318;
+export const CHANGELOG_TOTAL_ENTRIES = 322;
 
 export const CHANGELOG_TOTALS: Record<ChangelogBucket, number> = {
   "Added": 139,
@@ -38,11 +38,48 @@ export const CHANGELOG_TOTALS: Record<ChangelogBucket, number> = {
   "Deprecated": 0,
   "Removed": 3,
   "Fixed": 117,
-  "Security": 1,
+  "Security": 5,
   "Behavior": 30
 };
 
 export const CHANGELOG_STOPS: ChangelogStop[] = [
+  {
+    "label": "0.0.30",
+    "date": "2026-10-27",
+    "total": 4,
+    "counts": {
+      "Added": 0,
+      "Changed": 0,
+      "Deprecated": 0,
+      "Removed": 0,
+      "Fixed": 0,
+      "Security": 4,
+      "Behavior": 0
+    },
+    "groups": [
+      {
+        "bucket": "Security",
+        "items": [
+          {
+            "title": "deps: the security round — every Dependabot alert closes",
+            "behavior": false
+          },
+          {
+            "title": "engine: every CodeQL finding closes",
+            "behavior": false
+          },
+          {
+            "title": "ci: three actions bumps, SHA-verified",
+            "behavior": false
+          },
+          {
+            "title": "deps: bun.lock stays on the CI-pinned generator",
+            "behavior": false
+          }
+        ]
+      }
+    ]
+  },
   {
     "label": "0.0.29",
     "date": "2026-10-26",
@@ -61,7 +98,7 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
         "bucket": "Added",
         "items": [
           {
-            "title": "engine: browser dialog — native dialogs can finally be ANSWERED",
+            "title": "engine: browser dialog — native dialogs become answerable",
             "behavior": false
           }
         ]
@@ -103,7 +140,7 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
         "bucket": "Added",
         "items": [
           {
-            "title": "engine: the hardening round — the detached engine's verdict, and six honest-failure lanes",
+            "title": "engine: the hardening round — the detached engine's verdict",
             "behavior": false
           }
         ]
@@ -150,7 +187,7 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
         "bucket": "Added",
         "items": [
           {
-            "title": "subagents: stress round four — the sync lane's pid-kill orphans",
+            "title": "subagents: stress round four — sync-lane pid-kill orphans",
             "behavior": false
           },
           {
@@ -231,7 +268,7 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
         "bucket": "Added",
         "items": [
           {
-            "title": "subagents: stress round two — the chaos scenarios, seven live findings, and the fleet that no longer lies…",
+            "title": "subagents: stress round two — chaos scenarios, seven live findings, and a fleet that no longer lies, leaks…",
             "behavior": false
           }
         ]
