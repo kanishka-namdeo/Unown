@@ -41,7 +41,7 @@ The cross-platform lifecycle scripts (install/start/stop/link), the release buil
 - `landing_og_shots.mjs` — regenerates the tracked `public/landing/landing-{hero,full,mobile}.png` against a production build (asserts `--color-canvas === #102039` first).
 - `landing_audit.mjs` (`audit:landing`) — scroll/text density; `--budget` enforces <= 13 viewports / <= 3,200 words / <= 3vh per band.
 - `landing_shots.mjs` / `contrast_audit.mjs` / `theme_toggle_check.mjs` — visual verification against a production build (both schemes, reduced motion, mobile; WCAG AA on every visible text node; the real toggle).
-- `verify-deploy.mjs` — the live-deployment gate over `https://unown-nine.vercel.app` (routes incl. `/blog` + `/feed.xml`, SEO surface, signature content, the blog + feed); runs after any push to `main`.
+- `verify-deploy.mjs` — the live-deployment gate over `https://unown-nine.vercel.app` (routes incl. `/blog` + `/feed.xml`, SEO surface, signature content, the blog + feed); runs after any push to `main`, and automatically from `.github/workflows/deploy-verify.yml` (on CI completion, daily on a schedule, on dispatch). Plain node, zero deps — which is why that lane needs no install.
 - `agnes_review.mjs` (`review:vlm`) — VLM design critique through the Agnes lane; a reviewer's aid, not a gate.
 - `websearch-live.mjs` / `webcache-bench.mjs` — live provider verification and web-cache perf receipts (outputs under `benchmarks/`).
 
