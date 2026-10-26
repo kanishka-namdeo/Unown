@@ -38,13 +38,7 @@ import { Database } from "bun:sqlite";
 import { existsSync, readFileSync, renameSync, statSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { engineFetch, engineTokenPath } from "./engine-auth.ts";
-import {
-	describeEngineOwner,
-	endpointPort,
-	type EngineProbe,
-	portOwnerPid,
-	probeEngine,
-} from "./engine-probe.ts";
+import { describeEngineOwner, type EngineProbe, endpointPort, portOwnerPid, probeEngine } from "./engine-probe.ts";
 import { autoServiceEnv, installEngineService, serviceStatus, uninstallEngineService } from "./engine-service.ts";
 import { describeSpawnCircuit } from "./engine-status.ts";
 import {
@@ -349,9 +343,7 @@ async function cmdStatus(out: (s: string) => void): Promise<number> {
 			out("  start it with: unown engine start");
 		} else {
 			blockedLines(probe, out);
-			out(
-				`  pidfile ${enginePidFile()}: ${pf.pid ? `pid ${pf.pid} (${pf.alive ? "alive" : "dead"})` : "absent"}`,
-			);
+			out(`  pidfile ${enginePidFile()}: ${pf.pid ? `pid ${pf.pid} (${pf.alive ? "alive" : "dead"})` : "absent"}`);
 			out(
 				`  outbox: ${stats.queued} note(s) queued locally${stats.dropped > 0 ? ` · ${stats.dropped} dropped while offline` : ""}`,
 			);
@@ -614,7 +606,9 @@ async function cmdRestart(out: (s: string) => void, flags: RestartFlags): Promis
 	if (pre.kind === "unauthorized" || pre.kind === "occupied" || pre.kind === "incompatible") {
 		if (!flags.takeOwnership) {
 			blockedLines(pre, out);
-			out("  refusing to restart an engine this CLI does not own; re-run with --take-ownership to stop it and start ours.");
+			out(
+				"  refusing to restart an engine this CLI does not own; re-run with --take-ownership to stop it and start ours.",
+			);
 			return 1;
 		}
 		const port = endpointPort(ENGINE_URL);
@@ -714,7 +708,9 @@ async function cmdRepair(out: (s: string) => void): Promise<number> {
 	const pf = enginePidFromPidfile();
 	if (lockPid || pf.alive) {
 		const pid = lockPid ?? pf.pid;
-		out(`engine: a live engine (pid ${pid}) holds this data dir — stop it first (unown engine stop), then re-run repair`);
+		out(
+			`engine: a live engine (pid ${pid}) holds this data dir — stop it first (unown engine stop), then re-run repair`,
+		);
 		return 1;
 	}
 	const db = DB_PATH;

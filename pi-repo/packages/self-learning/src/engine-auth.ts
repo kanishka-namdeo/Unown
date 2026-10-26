@@ -57,7 +57,7 @@ export const ENGINE_TOKEN_FILE = "engine.token";
 /** Where the per-boot token lives — inside the engine's data dir, which tests
  *  redirect via PI_SELFLEARNING_DATA and installs redirect via UNOWN_HOME. */
 export function engineTokenPath(): string {
-        return join(DATA_DIR, ENGINE_TOKEN_FILE);
+	return join(DATA_DIR, ENGINE_TOKEN_FILE);
 }
 
 // ---------------------------------------------------------------------------
@@ -69,7 +69,7 @@ export const HOOKS_TOKEN_FILE = "hooks.token";
 /** Where the per-install hook id lives — same data-dir resolution as the
  *  engine token, so redirects (tests, UNOWN_HOME installs) cover it too. */
 export function hooksTokenPath(): string {
-        return join(DATA_DIR, HOOKS_TOKEN_FILE);
+	return join(DATA_DIR, HOOKS_TOKEN_FILE);
 }
 
 /** The hook id for POST /api/hooks/<id>: 32 hex chars generated ONCE and
@@ -81,51 +81,51 @@ export function hooksTokenPath(): string {
  *  the comparison is timing-safe. Rotate by deleting the file and
  *  restarting — docs/routines.md "Event routines" documents the flow. */
 export function ensureHooksToken(): string {
-        try {
-                const existing = readFileSync(hooksTokenPath(), "utf8").trim();
-                if (/^[a-f0-9]{32}$/.test(existing)) return existing;
-        } catch {
-                /* missing or unreadable — generate below */
-        }
-        const token = randomBytes(16).toString("hex");
-        try {
-                mkdirSync(join(hooksTokenPath(), ".."), { recursive: true });
-                writeFileSync(hooksTokenPath(), token, { mode: 0o600 });
-        } catch {
-                /* read-only fs — the in-memory id still serves this boot */
-        }
-        return token;
+	try {
+		const existing = readFileSync(hooksTokenPath(), "utf8").trim();
+		if (/^[a-f0-9]{32}$/.test(existing)) return existing;
+	} catch {
+		/* missing or unreadable — generate below */
+	}
+	const token = randomBytes(16).toString("hex");
+	try {
+		mkdirSync(join(hooksTokenPath(), ".."), { recursive: true });
+		writeFileSync(hooksTokenPath(), token, { mode: 0o600 });
+	} catch {
+		/* read-only fs — the in-memory id still serves this boot */
+	}
+	return token;
 }
 
 export interface AuthPolicy {
-        /** "token" (default) or "off" — the UNOWN_ENGINE_AUTH mode. */
-        mode: "token" | "off";
-        /** The token to require, or null when mode is off / not pinned. */
-        token: string | null;
-        /** True when the bind host is non-loopback (token becomes mandatory). */
-        widenedBind: boolean;
-        /** Extra DNS hostnames allowed in the Host header (UNOWN_ENGINE_HOSTS). */
-        hostsAllow: string[];
-        /** Boot must be refused: non-loopback bind with auth disabled. */
-        refuse: boolean;
-        /** Human-readable reason when refuse is true. */
-        refuseReason: string | null;
+	/** "token" (default) or "off" — the UNOWN_ENGINE_AUTH mode. */
+	mode: "token" | "off";
+	/** The token to require, or null when mode is off / not pinned. */
+	token: string | null;
+	/** True when the bind host is non-loopback (token becomes mandatory). */
+	widenedBind: boolean;
+	/** Extra DNS hostnames allowed in the Host header (UNOWN_ENGINE_HOSTS). */
+	hostsAllow: string[];
+	/** Boot must be refused: non-loopback bind with auth disabled. */
+	refuse: boolean;
+	/** Human-readable reason when refuse is true. */
+	refuseReason: string | null;
 }
 
 /** Is `host` an IP literal (v4 or v6, bare or bracketed)? */
 function isIpLiteral(host: string): boolean {
-        const bare = host.replace(/^\[|\]$/g, "");
-        if (/^(\d{1,3}\.){3}\d{1,3}$/.test(bare)) return true; // IPv4
-        return bare.includes(":"); // IPv6 (contains at least one colon)
+	const bare = host.replace(/^\[|\]$/g, "");
+	if (/^(\d{1,3}\.){3}\d{1,3}$/.test(bare)) return true; // IPv4
+	return bare.includes(":"); // IPv6 (contains at least one colon)
 }
 
 /** Loopback hostname? (127/8, ::1, localhost — the bind's default family.) */
 export function isLoopbackHost(host: string): boolean {
-        const bare = host.replace(/^\[|\]$/g, "");
-        if (bare === "localhost" || bare.endsWith(".localhost")) return true;
-        if (bare === "::1") return true;
-        if (/^127(\.\d{1,3}){3}$/.test(bare)) return true;
-        return false;
+	const bare = host.replace(/^\[|\]$/g, "");
+	if (bare === "localhost" || bare.endsWith(".localhost")) return true;
+	if (bare === "::1") return true;
+	if (/^127(\.\d{1,3}){3}$/.test(bare)) return true;
+	return false;
 }
 
 /**
@@ -141,25 +141,25 @@ export function isLoopbackHost(host: string): boolean {
  *                       read here only to decide loopback-ness)
  */
 export function resolveAuthPolicy(env: NodeJS.ProcessEnv): AuthPolicy {
-        const mode = (env.UNOWN_ENGINE_AUTH ?? "").trim() === "off" ? "off" : "token";
-        const pinned = (env.UNOWN_ENGINE_TOKEN ?? "").trim() || null;
-        const bindHost = (env.UNOWN_ENGINE_HOST ?? "").trim();
-        const widenedBind = bindHost !== "" && !isLoopbackHost(bindHost);
-        const hostsAllow = (env.UNOWN_ENGINE_HOSTS ?? "")
-                .split(",")
-                .map((s) => s.trim().toLowerCase())
-                .filter(Boolean);
-        const refuse = mode === "off" && widenedBind;
-        return {
-                mode,
-                token: mode === "token" ? pinned : null,
-                widenedBind,
-                hostsAllow,
-                refuse,
-                refuseReason: refuse
-                        ? `UNOWN_ENGINE_HOST=${bindHost} binds the engine off loopback, and UNOWN_ENGINE_AUTH=off would leave the whole learning surface (notes, memory, providers, automations) unauthenticated on the network. Either remove UNOWN_ENGINE_AUTH=off or require the token (default).`
-                        : null,
-        };
+	const mode = (env.UNOWN_ENGINE_AUTH ?? "").trim() === "off" ? "off" : "token";
+	const pinned = (env.UNOWN_ENGINE_TOKEN ?? "").trim() || null;
+	const bindHost = (env.UNOWN_ENGINE_HOST ?? "").trim();
+	const widenedBind = bindHost !== "" && !isLoopbackHost(bindHost);
+	const hostsAllow = (env.UNOWN_ENGINE_HOSTS ?? "")
+		.split(",")
+		.map((s) => s.trim().toLowerCase())
+		.filter(Boolean);
+	const refuse = mode === "off" && widenedBind;
+	return {
+		mode,
+		token: mode === "token" ? pinned : null,
+		widenedBind,
+		hostsAllow,
+		refuse,
+		refuseReason: refuse
+			? `UNOWN_ENGINE_HOST=${bindHost} binds the engine off loopback, and UNOWN_ENGINE_AUTH=off would leave the whole learning surface (notes, memory, providers, automations) unauthenticated on the network. Either remove UNOWN_ENGINE_AUTH=off or require the token (default).`
+			: null,
+	};
 }
 
 // ---------------------------------------------------------------------------
@@ -168,7 +168,7 @@ export function resolveAuthPolicy(env: NodeJS.ProcessEnv): AuthPolicy {
 
 /** Generate a per-boot token: 64 hex chars, no new deps (node:crypto). */
 export function generateEngineToken(): string {
-        return randomBytes(32).toString("hex");
+	return randomBytes(32).toString("hex");
 }
 
 /**
@@ -182,9 +182,9 @@ export function generateEngineToken(): string {
  * docs/detached-engine-architecture.md for the Windows notes).
  */
 export function writeEngineTokenFile(path: string, token: string): void {
-        rmSync(path, { force: true }); // never resurrect a previous boot's token
-        mkdirSync(join(path, ".."), { recursive: true });
-        writeFileSync(path, token, { mode: 0o600 });
+	rmSync(path, { force: true }); // never resurrect a previous boot's token
+	mkdirSync(join(path, ".."), { recursive: true });
+	writeFileSync(path, token, { mode: 0o600 });
 }
 
 /** Remove the token file at drain time (mirrors Jupyter's runtime-file
@@ -198,15 +198,15 @@ export function writeEngineTokenFile(path: string, token: string): void {
  *  THIS instance's token; a file with different content belongs to a newer
  *  boot and is left alone. */
 export function removeEngineTokenFile(path: string, expected?: string): void {
-        if (expected !== undefined) {
-                try {
-                        const onDisk = readFileSync(path, "utf8").trim();
-                        if (onDisk !== expected) return; // a newer boot owns the file now
-                } catch {
-                        /* unreadable/missing — the force-rm below is a no-op then */
-                }
-        }
-        rmSync(path, { force: true });
+	if (expected !== undefined) {
+		try {
+			const onDisk = readFileSync(path, "utf8").trim();
+			if (onDisk !== expected) return; // a newer boot owns the file now
+		} catch {
+			/* unreadable/missing — the force-rm below is a no-op then */
+		}
+	}
+	rmSync(path, { force: true });
 }
 
 /** Re-write the token file when it went missing under a live engine
@@ -218,20 +218,20 @@ export function removeEngineTokenFile(path: string, expected?: string): void {
  *  dir and is never clobbered. The maintenance tick calls this; rewriting is
  *  idempotent (same token, mode 0600 preserved). */
 export function healEngineTokenFile(path: string, token: string): boolean {
-        let present: string | null = null;
-        try {
-                present = readFileSync(path, "utf8").trim() || null;
-        } catch {
-                present = null; // missing/unreadable — the only case we rewrite
-        }
-        if (present === token) return false; // intact
-        if (present !== null) return false; // a newer boot owns this file
-        try {
-                writeEngineTokenFile(path, token);
-                return true;
-        } catch {
-                return false; // read-only fs etc. — the in-memory token still works for env-pinned clients
-        }
+	let present: string | null = null;
+	try {
+		present = readFileSync(path, "utf8").trim() || null;
+	} catch {
+		present = null; // missing/unreadable — the only case we rewrite
+	}
+	if (present === token) return false; // intact
+	if (present !== null) return false; // a newer boot owns this file
+	try {
+		writeEngineTokenFile(path, token);
+		return true;
+	} catch {
+		return false; // read-only fs etc. — the in-memory token still works for env-pinned clients
+	}
 }
 
 // ---------------------------------------------------------------------------
@@ -246,13 +246,13 @@ export function healEngineTokenFile(path: string, token: string): boolean {
  * CORS never applies at all.
  */
 export function hostHeaderAllowed(req: Request, policy: Pick<AuthPolicy, "hostsAllow">): boolean {
-        const host = (req.headers.get("host") ?? "").toLowerCase();
-        if (host === "") return false;
-        const hostname = host.replace(/:\d+$/, "").trim(); // strip port (no IPv6 colon damage: [::1]:3030 → [::1])
-        if (hostname === "" ) return false;
-        if (isLoopbackHost(hostname)) return true;
-        if (isIpLiteral(hostname)) return true;
-        return policy.hostsAllow.includes(hostname);
+	const host = (req.headers.get("host") ?? "").toLowerCase();
+	if (host === "") return false;
+	const hostname = host.replace(/:\d+$/, "").trim(); // strip port (no IPv6 colon damage: [::1]:3030 → [::1])
+	if (hostname === "") return false;
+	if (isLoopbackHost(hostname)) return true;
+	if (isIpLiteral(hostname)) return true;
+	return policy.hostsAllow.includes(hostname);
 }
 
 /**
@@ -264,33 +264,33 @@ export function hostHeaderAllowed(req: Request, policy: Pick<AuthPolicy, "hostsA
  * one definition (allowedCorsOrigin in server.ts).
  */
 export function originAllowed(req: Request, allowedOrigin: string | null): boolean {
-        const origin = req.headers.get("origin");
-        if (!origin) return true; // non-browser client
-        if (origin === "null") return false; // sandboxed iframe / opaque origin — no legitimate engine client
-        return allowedOrigin !== null;
+	const origin = req.headers.get("origin");
+	if (!origin) return true; // non-browser client
+	if (origin === "null") return false; // sandboxed iframe / opaque origin — no legitimate engine client
+	return allowedOrigin !== null;
 }
 
 /** Extract the presented token: `Authorization: Bearer <t>`, plus the narrow
  *  `?token=` exception for `/api/events` ONLY (EventSource cannot set headers). */
 export function requestToken(req: Request, url: URL): string | null {
-        const auth = req.headers.get("authorization") ?? "";
-        const m = /^Bearer\s+(.+)$/i.exec(auth.trim());
-        if (m) return m[1].trim();
-        if (url.pathname === "/api/events") {
-                const q = url.searchParams.get("token");
-                if (q) return q.trim();
-        }
-        return null;
+	const auth = req.headers.get("authorization") ?? "";
+	const m = /^Bearer\s+(.+)$/i.exec(auth.trim());
+	if (m) return m[1].trim();
+	if (url.pathname === "/api/events") {
+		const q = url.searchParams.get("token");
+		if (q) return q.trim();
+	}
+	return null;
 }
 
 /** Constant-time token comparison (length mismatch short-circuits — the only
  *  leak is the token LENGTH, which is public knowledge: 64 hex). */
 export function tokenMatches(presented: string | null, expected: string): boolean {
-        if (!presented) return false;
-        const a = Buffer.from(presented, "utf8");
-        const b = Buffer.from(expected, "utf8");
-        if (a.length !== b.length) return false;
-        return timingSafeEqual(a, b);
+	if (!presented) return false;
+	const a = Buffer.from(presented, "utf8");
+	const b = Buffer.from(expected, "utf8");
+	if (a.length !== b.length) return false;
+	return timingSafeEqual(a, b);
 }
 
 /** Should this request skip the token gate? The plain-text liveness root
@@ -305,10 +305,10 @@ export function tokenMatches(presented: string | null, expected: string): boolea
  *  hook id, so it stays behind the engine token). Everything else under
  *  /api/hooks/ answers 404 before touching any state. */
 export function tokenExempt(method: string, pathname: string): boolean {
-        if (method === "OPTIONS") return true;
-        if (pathname === "/") return true;
-        if (method === "POST" && /^\/api\/hooks\/(?!info$)[^/]+$/.test(pathname)) return true;
-        return false;
+	if (method === "OPTIONS") return true;
+	if (pathname === "/") return true;
+	if (method === "POST" && /^\/api\/hooks\/(?!info$)[^/]+$/.test(pathname)) return true;
+	return false;
 }
 
 // ---------------------------------------------------------------------------
@@ -320,30 +320,30 @@ let cachedToken: string | null | undefined;
 /** The token this process should present: UNOWN_ENGINE_TOKEN (remote engines /
  *  CI pins) beats the local token file. Cached; re-read via invalidate. */
 export function engineToken(): string | null {
-        if (cachedToken !== undefined) return cachedToken;
-        const env = (process.env.UNOWN_ENGINE_TOKEN ?? "").trim();
-        if (env) {
-                cachedToken = env;
-                return cachedToken;
-        }
-        try {
-                cachedToken = readFileSync(engineTokenPath(), "utf8").trim() || null;
-        } catch {
-                cachedToken = null; // engine down / never booted / remote — fine
-        }
-        return cachedToken;
+	if (cachedToken !== undefined) return cachedToken;
+	const env = (process.env.UNOWN_ENGINE_TOKEN ?? "").trim();
+	if (env) {
+		cachedToken = env;
+		return cachedToken;
+	}
+	try {
+		cachedToken = readFileSync(engineTokenPath(), "utf8").trim() || null;
+	} catch {
+		cachedToken = null; // engine down / never booted / remote — fine
+	}
+	return cachedToken;
 }
 
 /** Forget the cached token (called after a 401 — the engine may have rebooted
  *  with a fresh per-boot token; one re-read, then one retry). */
 export function invalidateEngineToken(): void {
-        cachedToken = undefined;
+	cachedToken = undefined;
 }
 
 export interface EngineFetchInit extends Omit<RequestInit, "headers"> {
-        headers?: HeadersInit;
-        /** Internal: guards the single 401 retry (per-boot rotation). */
-        __engineAuthRetry?: boolean;
+	headers?: HeadersInit;
+	/** Internal: guards the single 401 retry (per-boot rotation). */
+	__engineAuthRetry?: boolean;
 }
 
 /**
@@ -357,17 +357,17 @@ export interface EngineFetchInit extends Omit<RequestInit, "headers"> {
  * the agent works engine-down).
  */
 export async function engineFetch(url: string, init: EngineFetchInit = {}): Promise<Response> {
-        const headers = new Headers(init.headers ?? undefined);
-        const tok = engineToken();
-        if (tok && !headers.has("Authorization")) headers.set("Authorization", `Bearer ${tok}`);
-        const res = await fetch(url, { ...init, headers });
-        if (res.status !== 401 || init.__engineAuthRetry) return res;
-        // Per-boot rotation: the engine we were talking to rebooted with a new
-        // token. Re-read once (env pin stays; the file may have changed) and
-        // retry once. A second 401 is a real "not our engine" and flows back
-        // to the caller's engine-down handling.
-        invalidateEngineToken();
-        const fresh = engineToken();
-        if (fresh && fresh === tok) return res; // pinned token didn't change — genuine reject
-        return engineFetch(url, { ...init, __engineAuthRetry: true });
+	const headers = new Headers(init.headers ?? undefined);
+	const tok = engineToken();
+	if (tok && !headers.has("Authorization")) headers.set("Authorization", `Bearer ${tok}`);
+	const res = await fetch(url, { ...init, headers });
+	if (res.status !== 401 || init.__engineAuthRetry) return res;
+	// Per-boot rotation: the engine we were talking to rebooted with a new
+	// token. Re-read once (env pin stays; the file may have changed) and
+	// retry once. A second 401 is a real "not our engine" and flows back
+	// to the caller's engine-down handling.
+	invalidateEngineToken();
+	const fresh = engineToken();
+	if (fresh && fresh === tok) return res; // pinned token didn't change — genuine reject
+	return engineFetch(url, { ...init, __engineAuthRetry: true });
 }

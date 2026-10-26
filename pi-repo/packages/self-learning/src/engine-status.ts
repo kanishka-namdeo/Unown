@@ -73,6 +73,7 @@
  */
 
 import { readFileSync } from "node:fs";
+import { type EngineProbe, type EngineProbeKind, probeEngine } from "./engine-probe.ts";
 import {
 	autoStartDisabled,
 	type DreamNews,
@@ -93,7 +94,6 @@ import {
 	type EngineBuildRef,
 	formatDuration,
 } from "./engine-version.ts";
-import { probeEngine, type EngineProbe, type EngineProbeKind } from "./engine-probe.ts";
 import { ENGINE_URL, outboxStats, projectMemoryPath, readProjectProvenance, slugifyPath } from "./term.ts";
 
 export type EngineState = "unknown" | "up" | "starting" | "down" | "paused" | "blocked";
@@ -202,7 +202,13 @@ export function engineFooterText(info: EngineStatusInfo, memoryBar?: string): st
 		case "blocked": {
 			const kind = info.probe?.kind;
 			const label =
-				kind === "unauthorized" ? "token" : kind === "occupied" ? "port" : kind === "incompatible" ? "version" : "no answer";
+				kind === "unauthorized"
+					? "token"
+					: kind === "occupied"
+						? "port"
+						: kind === "incompatible"
+							? "version"
+							: "no answer";
 			return `memory: blocked · ${label}`;
 		}
 		default:
@@ -511,7 +517,10 @@ export function startEngineStatusLoop(hooks: EngineStatusHooks = {}): EngineStat
 	const probe =
 		hooks.probe ??
 		(async () => {
-			const p = await probeEngine({ endpoint: process.env.UNOWN_ENGINE_URL || ENGINE_URL, timeoutMs: probeTimeoutMs() });
+			const p = await probeEngine({
+				endpoint: process.env.UNOWN_ENGINE_URL || ENGINE_URL,
+				timeoutMs: probeTimeoutMs(),
+			});
 			if (p.kind !== "ok") return { up: false, kind: p.kind, probe: p };
 			const body = p.body;
 			return {
