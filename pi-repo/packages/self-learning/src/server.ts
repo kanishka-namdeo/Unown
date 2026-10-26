@@ -30,6 +30,7 @@ import {
 	removeEngineTokenFile,
 	requestToken,
 	resolveAuthPolicy,
+	sharedEngineTokenPath,
 	tokenExempt,
 	tokenMatches,
 	writeEngineTokenFile,
@@ -138,10 +139,14 @@ export function apiErrorMessage(err: unknown): string {
 // ALWAYS answer the guard's 409 shape. Exported for unit tests
 // (test/server-busy.test.ts).
 // ---------------------------------------------------------------------------
-/** Does this error mean the router mutex is held by another job? (withBusy: "engine is busy…"; execute: "router is busy…" — one class, one contract.) */
+/** Does this error mean the router mutex is held by another job? (withBusy: "engine is busy…"; execute: "router is busy…" — one class, one contract.) The H4 draining conflict ("router is draining for shutdown") joins the class: it is the same not-now answer, and the 409 shape tells the client why. */
 export function isEngineBusyError(err: unknown): boolean {
 	const message = err instanceof Error ? err.message : String(err ?? "");
-	return message === "engine is busy with another job" || message === "router is busy with another job";
+	return (
+		message === "engine is busy with another job" ||
+		message === "router is busy with another job" ||
+		message === "router is draining for shutdown"
+	);
 }
 
 /** The 409 response every engine-busy surface answers with — same shape as the cycleTriggerGuard conflicts. */
@@ -466,6 +471,31 @@ export async function handleApi(req: ApiRequest): Promise<Response> {
 		}
 
 		// ------------------------------------------------------------------
+		// Health (H3, 2026-10-26 hardening round) — the cheap lifecycle probe.
+		// /api/overview costs a 500-run scan + a bridge health fetch; a
+		// supervisor (scripts/stop.ts, engine-cli, a future systemd
+		// WatchdogSec lane) needs a probe that answers in one read with the
+		// one fact it acts on: which lifecycle PHASE the engine is in. The
+		// OpenAI codex-app-server-daemon precedent: a liveness endpoint that
+		// reports warming/ready/draining so a stopper can wait out the drain
+		// instead of racing it. Token-gated like every /api route (it is on
+		// the far side of the auth middleware); HEAD answers too — a bare
+		// liveness poll should not need a body (/api/version's contract).
+		// ------------------------------------------------------------------
+		if ((method === "GET" || method === "HEAD") && path === "/api/health") {
+			const bootedAt = (globalThis as any).__unown_engine_booted_at ?? Date.now();
+			(globalThis as any).__unown_engine_booted_at = bootedAt;
+			return json({
+				ok: true,
+				phase: engineLifecyclePhaseNow(),
+				pid: process.pid,
+				uptimeMs: Date.now() - bootedAt,
+				drainBudgetMs: ENGINE_DRAIN_BUDGET_MS,
+				version: engineVersionInfo(),
+			});
+		}
+
+		// ------------------------------------------------------------------
 		// Version (M8) — the version-skew handshake block. GET and HEAD both
 		// answer (ollama's /api/version accepts both; a bare liveness poll
 		// should not need a body). Cheaper than /api/overview for version
@@ -523,6 +553,10 @@ export async function handleApi(req: ApiRequest): Promise<Response> {
 				pid: process.pid,
 				bootedAt,
 				uptimeMs: Date.now() - bootedAt,
+				// H3 lifecycle phase + drain budget (additive fields —
+				// /api/health is the cheap dedicated probe).
+				phase: engineLifecyclePhaseNow(),
+				drainBudgetMs: ENGINE_DRAIN_BUDGET_MS,
 				agent: {
 					name: "pi (badlogic/pi-mono)",
 					// NEVER a literal: the MCP handshake once claimed 0.1.0 while the
@@ -1171,6 +1205,11 @@ export async function startServer(port: number = PORT) {
 	// unattended LLM spend; the shared llm.ts client is inert in CLI processes
 	// without this flag (governor.ts, the M2 detachment contract).
 	markEngineProcess();
+	// H3: every boot starts in warming; the phase flips to ready only after
+	// the port answers and the token is committed (the single assignment
+	// below). A re-import in a long-lived test process re-runs startServer —
+	// the phase must never leak "draining" from a previous drain cycle.
+	setEngineLifecyclePhase("warming");
 	// ---------------------------------------------------------- authentication (M7)
 	// Resolve BEFORE binding: a non-loopback bind with auth disabled must
 	// refuse to boot (an Ollama-style accidental 0.0.0.0-with-no-auth must
@@ -1417,17 +1456,38 @@ export async function startServer(port: number = PORT) {
 	// bind→write window is covered client-side: engineFetch re-reads and
 	// retries once on 401; a probe that lands there degrades for one
 	// cycle, exactly like an engine-down blip).
-	if (engineToken) writeEngineTokenFile(engineTokenPath(), engineToken);
+	if (engineToken) {
+		writeEngineTokenFile(engineTokenPath(), engineToken);
+		// H6 (2026-10-26 hardening round): mirror the same per-boot token to the
+		// cross-install discovery path ($UNOWN_HOME/engine.token) — same commit
+		// point (post-bind, the port owner writes), same drain-time removal with
+		// ownership check, same maintenance self-heal. Closes resilience.md R11's
+		// binary↔source token split: a binary CLI probing a source-repo engine (or
+		// the reverse) discovers the running engine's token instead of presenting
+		// its own data dir's stale one and reporting `blocked · token` forever.
+		try {
+			writeEngineTokenFile(sharedEngineTokenPath(), engineToken);
+		} catch {
+			/* read-only $UNOWN_HOME — own-data-dir discovery still works */
+		}
+	}
+	// H3: the port answers and the token is committed — the engine is READY.
+	setEngineLifecyclePhase("ready");
 	console.log(
 		`[agent-service] REST+SSE API on http://${process.env.UNOWN_ENGINE_HOST || "127.0.0.1"}:${server.port}` +
-			(engineToken ? ` — auth: bearer token (${engineTokenPath()})` : " — auth: disabled"),
+			(engineToken
+				? ` — auth: bearer token (${engineTokenPath()}; discovery mirror ${sharedEngineTokenPath()})`
+				: " — auth: disabled"),
 	);
 	installGracefulShutdown(
 		server,
 		lock.release,
 		engineToken ? () => removeEngineTokenFile(engineTokenPath(), engineToken) : undefined,
+		engineToken ? () => removeEngineTokenFile(sharedEngineTokenPath(), engineToken) : undefined,
 	);
-	startMaintenance(engineToken ? { token: engineToken, path: engineTokenPath() } : undefined);
+	startMaintenance(
+		engineToken ? { token: engineToken, path: engineTokenPath(), sharedPath: sharedEngineTokenPath() } : undefined,
+	);
 	return server;
 }
 
@@ -1517,6 +1577,43 @@ function acquireEngineLock(): { ok: true; release: () => void } | { ok: false; r
 let shutdownInstalled = false;
 let activeShutdown: (() => void) | null = null;
 
+// ---------------------------------------------------------------------------
+// H3 (2026-10-26 hardening round) — engine lifecycle phase + drain budget.
+// The OpenAI codex-app-server-daemon contract: a stopper must be able to TELL
+// "the engine is going away cleanly" from "the engine is wedged", and wait
+// out the drain instead of racing it. The phase is reported by /api/health
+// (the cheap probe) and /api/overview (additive field), and the drain budget
+// bounds how long shutdown waits for the in-flight router job (H4) before the
+// store closes under it (the pre-existing behavior — bounded loss, next boot's
+// recoverOrphans heals).
+// ---------------------------------------------------------------------------
+
+let engineLifecyclePhase: "warming" | "ready" | "draining" = "warming";
+
+/** The engine's lifecycle phase — warming (booting), ready (serving), draining
+ *  (shutdown in progress: no new router jobs, in-flight work finishing).
+ *  CLI processes that import server.ts without startServer report "warming"
+ *  and never serve /api/health, so the value is only meaningful engine-side. */
+export function engineLifecyclePhaseNow(): "warming" | "ready" | "draining" {
+	return engineLifecyclePhase;
+}
+
+/** Set the phase (module-private mutator; startServer and the drain own it). */
+function setEngineLifecyclePhase(phase: "warming" | "ready" | "draining"): void {
+	engineLifecyclePhase = phase;
+}
+
+/** How long graceful shutdown waits for the in-flight router job before the
+ *  store closes under it. UNOWN_ENGINE_DRAIN_BUDGET_MS (floor 500ms, default
+ *  10s — the OpenAI daemon's shutdownGraceSeconds default is 60s, but our
+ *  jobs are already bounded by the 20-min watchdog and the note outbox makes
+ *  lost work recoverable, so 10s is the deliberate trade). Exported for the
+ *  health payload + tests. */
+export const ENGINE_DRAIN_BUDGET_MS = (() => {
+	const raw = Number(process.env.UNOWN_ENGINE_DRAIN_BUDGET_MS);
+	return Number.isFinite(raw) && raw >= 500 ? Math.floor(raw) : 10_000;
+})();
+
 /**
  * Graceful drain (M3): stop accepting, let in-flight requests finish (Bun's
  * server.stop() waits for them), stop the router and the automations
@@ -1525,11 +1622,28 @@ let activeShutdown: (() => void) | null = null;
  * POST /api/shutdown endpoint (signals cannot drain on Windows — TerminateProcess
  * skips JS handlers — so the HTTP path is the portable drain).
  */
-function installGracefulShutdown(server: any, releaseLock: () => void, removeToken?: () => void): void {
+function installGracefulShutdown(
+	server: any,
+	releaseLock: () => void,
+	removeToken?: () => void,
+	removeSharedToken?: () => void,
+): void {
 	if (shutdownInstalled) return;
 	shutdownInstalled = true;
 	const shutdown = async (signal: string) => {
 		console.log(`[agent-service] ${signal} — draining…`);
+		// H3: the phase flips FIRST — every /api/health poll during the drain
+		// window (in-flight HTTP still answers while server.stop() waits for
+		// them) sees "draining", not a lie of "ready".
+		setEngineLifecyclePhase("draining");
+		// H4: no NEW router jobs may start while the store is about to close.
+		// The HTTP drain window below still answers requests; a trigger that
+		// lands in it would start work the close would kill mid-flight.
+		try {
+			router.beginDraining();
+		} catch {
+			/* ignore — the drain proceeds regardless */
+		}
 		try {
 			await server.stop(); // drain in-flight requests
 		} catch {
@@ -1541,12 +1655,42 @@ function installGracefulShutdown(server: any, releaseLock: () => void, removeTok
 		} catch {
 			/* ignore */
 		}
+		// H4 (2026-10-26 hardening round): WAIT for the in-flight router job,
+		// bounded by the drain budget. Pre-hardening, a SIGTERM under a
+		// live dream/harness cycle closed the store under it — the dream row
+		// stayed 'running' until the NEXT boot's recoverOrphans healed it,
+		// and the half-finished work was lost (notes stay undreamed — safe,
+		// but the cycle was wasted). The drain lets it FINISH: a deliberate
+		// stop now costs nothing but a bounded wait. Cognee's background-task
+		// registry is the published precedent.
+		try {
+			const drained = await router.drainInFlight(ENGINE_DRAIN_BUDGET_MS);
+			if (drained.job !== "") {
+				console.log(
+					`[agent-service] drain: in-flight job '${drained.job}' ${drained.drained ? "finished" : `still running after ${ENGINE_DRAIN_BUDGET_MS}ms budget — closing under it (next boot's orphan recovery heals)`}`,
+				);
+			}
+		} catch {
+			/* ignore — the budget is the bound */
+		}
 		// M7: remove the per-boot token file when the engine leaves
 		// deliberately (drain/stop) — mirrors Jupyter's runtime-file
 		// lifecycle. Crash paths leave it; the next boot rewrites it.
 		if (removeToken) {
 			try {
 				removeToken();
+			} catch {
+				/* ignore */
+			}
+		}
+		// H6: the cross-install discovery mirror leaves with the same
+		// ownership check — a stale shared token must not outlive the engine
+		// that wrote it (a later foreign-install engine would otherwise be
+		// probed with THIS dead boot's token before its own commit rewrote
+		// the file).
+		if (removeSharedToken) {
+			try {
+				removeSharedToken();
 			} catch {
 				/* ignore */
 			}
@@ -1576,7 +1720,7 @@ let maintenanceTimer: ReturnType<typeof setInterval> | null = null;
  * long-lived reader can otherwise grow it without bound) and prune the
  * governor's spend ledger past its 24h window. Unref'd: never blocks exit.
  */
-function startMaintenance(auth?: { token: string; path: string }): void {
+function startMaintenance(auth?: { token: string; path: string; sharedPath?: string }): void {
 	if (maintenanceTimer) return;
 	let ticks = 0;
 	maintenanceTimer = setInterval(() => {
@@ -1598,7 +1742,9 @@ function startMaintenance(auth?: { token: string; path: string }): void {
 		// can leave this live engine with no discoverable token file
 		// — every client then 401s. Rewriting the SAME token is
 		// idempotent; checked every tick (60 s worst case) because
-		// the failure mode is total API lockout.
+		// the failure mode is total API lockout. H6: the cross-install
+		// mirror heals with the same ownership rules (only when missing
+		// or matching — never clobbers a newer boot's file).
 		if (auth) {
 			try {
 				if (healEngineTokenFile(auth.path, auth.token)) {
@@ -1608,6 +1754,15 @@ function startMaintenance(auth?: { token: string; path: string }): void {
 				}
 			} catch {
 				/* ignore — the in-memory token still serves env-pinned clients */
+			}
+			if (auth.sharedPath) {
+				try {
+					if (healEngineTokenFile(auth.sharedPath, auth.token)) {
+						console.warn("[agent-service] shared discovery token was missing under a live engine — rewritten");
+					}
+				} catch {
+					/* ignore — the own-data-dir file still serves discovery */
+				}
 			}
 		}
 	}, 60_000);

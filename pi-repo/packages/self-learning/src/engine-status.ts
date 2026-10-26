@@ -109,6 +109,8 @@ export interface EngineStatusInfo {
 	activeJob?: string;
 	queuedNotes: number;
 	droppedNotes: number;
+	/** H1 (2026-10-26): notes dead-lettered to notes/dead/ after exhausting ingest attempts. */
+	deadNotes: number;
 	/** The supervisor's crash-loop circuit, for /engine + doctor diagnosis. */
 	spawn: SpawnState;
 	/** M8: the engine's reported build (the /api/overview version block) —
@@ -465,6 +467,7 @@ function snapshotOf(state: EngineState, extra?: Partial<EngineStatusInfo>): Engi
 		activeJob: extra?.activeJob,
 		queuedNotes: stats.queued,
 		droppedNotes: stats.dropped,
+		deadNotes: stats.dead,
 		spawn: readSpawnState(),
 		engineVersion: extra?.engineVersion,
 		buildVerdict: extra?.buildVerdict,

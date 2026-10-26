@@ -47,6 +47,7 @@ import { randomBytes, timingSafeEqual } from "node:crypto";
 import { mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { DATA_DIR } from "./store.ts";
+import { resolveUnownHome } from "./unown-home.ts";
 
 // ---------------------------------------------------------------------------
 // Config resolution (server side)
@@ -58,6 +59,24 @@ export const ENGINE_TOKEN_FILE = "engine.token";
  *  redirect via PI_SELFLEARNING_DATA and installs redirect via UNOWN_HOME. */
 export function engineTokenPath(): string {
 	return join(DATA_DIR, ENGINE_TOKEN_FILE);
+}
+
+/** The cross-install discovery path (2026-10-26 hardening round, H6 — the
+ *  resilience.md R11 binary↔source token split). A source checkout keeps its
+ *  engine state under <repo>/data/self-learning while a standalone binary
+ *  keeps its under $UNOWN_HOME/data/self-learning — so a binary CLI probing a
+ *  source-repo engine (or the reverse) reads its OWN data dir's token, gets
+ *  401, and reports `blocked · token` forever even though the same user owns
+ *  both installs. The engine now ALSO mirrors its per-boot token to this
+ *  well-known shared location — $UNOWN_HOME/engine.token, one tree every
+ *  install shape resolves identically — and engineToken() falls back to it
+ *  when the own-data-dir token is absent or rejected. Two engines can never
+ *  race on the file: one port, one single-instance lock per data dir means at
+ *  most one engine answers, and the file carries the PORT OWNER's token
+ *  (written at token-commit after bind, ownership-checked at drain — the same
+ *  semantics as the DATA_DIR file). */
+export function sharedEngineTokenPath(): string {
+	return join(resolveUnownHome(), ENGINE_TOKEN_FILE);
 }
 
 // ---------------------------------------------------------------------------
@@ -315,35 +334,72 @@ export function tokenExempt(method: string, pathname: string): boolean {
 // Client side — same-user discovery + the shared fetch helper
 // ---------------------------------------------------------------------------
 
-let cachedToken: string | null | undefined;
-
-/** The token this process should present: UNOWN_ENGINE_TOKEN (remote engines /
- *  CI pins) beats the local token file. Cached; re-read via invalidate. */
-export function engineToken(): string | null {
-	if (cachedToken !== undefined) return cachedToken;
-	const env = (process.env.UNOWN_ENGINE_TOKEN ?? "").trim();
-	if (env) {
-		cachedToken = env;
-		return cachedToken;
-	}
-	try {
-		cachedToken = readFileSync(engineTokenPath(), "utf8").trim() || null;
-	} catch {
-		cachedToken = null; // engine down / never booted / remote — fine
-	}
-	return cachedToken;
+/** The two discoverable token files, read as a pair so the 401-retry lane can
+ *  tell "the engine rebooted" (either file changed) from "genuine reject"
+ *  (neither changed). Env pin beats both (remote engines / CI pins). */
+interface TokenPair {
+	own: string | null;
+	shared: string | null;
 }
 
-/** Forget the cached token (called after a 401 — the engine may have rebooted
- *  with a fresh per-boot token; one re-read, then one retry). */
+let cachedPair: TokenPair | undefined;
+
+function readTokenPair(): TokenPair {
+	let own: string | null = null;
+	try {
+		own = readFileSync(engineTokenPath(), "utf8").trim() || null;
+	} catch {
+		own = null; // never booted / remote engine / different install shape
+	}
+	let shared: string | null = null;
+	try {
+		shared = readFileSync(sharedEngineTokenPath(), "utf8").trim() || null;
+	} catch {
+		shared = null; // no cross-install mirror (engine predates H6, or never wrote one)
+	}
+	return { own, shared };
+}
+
+/** The token this process should present: UNOWN_ENGINE_TOKEN (remote engines /
+ *  CI pins) beats the discoverable pair. Own data dir first, then the shared
+ *  cross-install mirror (H6). Cached; re-read via invalidate. */
+export function engineToken(): string | null {
+	const env = (process.env.UNOWN_ENGINE_TOKEN ?? "").trim();
+	if (env) return env;
+	if (cachedPair === undefined) cachedPair = readTokenPair();
+	return cachedPair.own ?? cachedPair.shared;
+}
+
+/** Which file a presented token came from — the 401-retry lane diffs the pair
+ *  and re-presents whichever side CHANGED (own-file rotation = same-install
+ *  reboot; shared-file rotation = the other install shape's engine took the
+ *  port, e.g. a binary CLI talking to a source-repo engine). Exported for
+ *  engine-cli's status diagnostics. */
+export function engineTokenSource(): "env" | "own" | "shared" | null {
+	const env = (process.env.UNOWN_ENGINE_TOKEN ?? "").trim();
+	if (env) return "env";
+	if (cachedPair === undefined) cachedPair = readTokenPair();
+	if (cachedPair.own) return "own";
+	if (cachedPair.shared) return "shared";
+	return null;
+}
+
+/** Forget the cached pair (called after a 401 — the engine may have rebooted
+ *  with a fresh per-boot token, or the running engine belongs to the other
+ *  install shape and only the shared mirror carries its token). One re-read,
+ *  then one retry. */
 export function invalidateEngineToken(): void {
-	cachedToken = undefined;
+	cachedPair = undefined;
 }
 
 export interface EngineFetchInit extends Omit<RequestInit, "headers"> {
 	headers?: HeadersInit;
 	/** Internal: guards the single 401 retry (per-boot rotation). */
 	__engineAuthRetry?: boolean;
+	/** Internal: the token the retry should present (the 401 lane's pick —
+	 *  the rotated file's fresh value, or the OTHER install's mirror token).
+	 *  Callers never set this. */
+	__engineAuthToken?: string;
 }
 
 /**
@@ -358,16 +414,37 @@ export interface EngineFetchInit extends Omit<RequestInit, "headers"> {
  */
 export async function engineFetch(url: string, init: EngineFetchInit = {}): Promise<Response> {
 	const headers = new Headers(init.headers ?? undefined);
-	const tok = engineToken();
+	const tok = init.__engineAuthToken ?? engineToken();
 	if (tok && !headers.has("Authorization")) headers.set("Authorization", `Bearer ${tok}`);
 	const res = await fetch(url, { ...init, headers });
 	if (res.status !== 401 || init.__engineAuthRetry) return res;
-	// Per-boot rotation: the engine we were talking to rebooted with a new
-	// token. Re-read once (env pin stays; the file may have changed) and
-	// retry once. A second 401 is a real "not our engine" and flows back
-	// to the caller's engine-down handling.
+	// The 401 heal, two cases, ONE retry:
+	//   1. per-boot rotation — the engine we were talking to rebooted and
+	//      either token file CHANGED on re-read; present the changed side;
+	//   2. cross-install ownership (H6, the R11 binary↔source split) — nothing
+	//      rotated, but the engine on the port belongs to the OTHER install
+	//      shape and only the side we did NOT present carries its token; a
+	//      binary CLI holding a stale own-data-dir token re-presents the
+	//      shared mirror's CURRENT token and heals instead of reporting
+	//      `blocked · token` forever.
+	// Neither case yields a new token (or the env pin is set) = genuine
+	// reject, and the 401 flows back to the caller's engine-down handling.
+	const envPinned = (process.env.UNOWN_ENGINE_TOKEN ?? "").trim() !== "";
+	if (envPinned) return res;
+	const oldPair: TokenPair = cachedPair ?? readTokenPair();
+	const presentedOwn = oldPair.own !== null && oldPair.own === tok;
 	invalidateEngineToken();
-	const fresh = engineToken();
-	if (fresh && fresh === tok) return res; // pinned token didn't change — genuine reject
-	return engineFetch(url, { ...init, __engineAuthRetry: true });
+	const freshPair: TokenPair = readTokenPair();
+	let fresh: string | null;
+	if (freshPair.own !== oldPair.own)
+		fresh = freshPair.own; // own file rotated (or appeared)
+	else if (freshPair.shared !== oldPair.shared)
+		fresh = freshPair.shared; // shared file rotated
+	else if (presentedOwn && freshPair.shared !== null && freshPair.shared !== tok)
+		fresh = freshPair.shared; // foreign install's engine
+	else if (!presentedOwn && freshPair.own !== null && freshPair.own !== tok)
+		fresh = freshPair.own; // our engine took the port back
+	else fresh = null;
+	if (fresh === null || fresh === tok) return res; // nothing new to present — genuine reject
+	return engineFetch(url, { ...init, __engineAuthToken: fresh, __engineAuthRetry: true });
 }

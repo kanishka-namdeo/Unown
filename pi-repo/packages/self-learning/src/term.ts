@@ -56,6 +56,14 @@ export const UNOWN_MEMORY_DIR = join(UNOWN_HOME, "memory");
 export const UNOWN_NOTES_DIR = join(UNOWN_HOME, "notes");
 export const UNOWN_OUTBOX_DIR = join(UNOWN_NOTES_DIR, "outbox");
 export const UNOWN_NOTES_DONE_DIR = join(UNOWN_NOTES_DIR, "done");
+// H1 (2026-10-26 hardening round): the dead-letter lane. A note file whose
+// ingest keeps failing (poisoned content path, persistent DB error) used to
+// be retried every drain pass forever, silently — the MemOS AutoDroppingQueue
+// dead-letter precedent and Graphiti's 202-then-drop failure (#1707) say every
+// dropped/failed job must leave a queryable record. Dead files land here with
+// a .reason.txt sidecar; they are NEVER deleted (the note text survives for
+// manual recovery — `cat` it, fix it, `mv` it back into outbox/).
+export const UNOWN_NOTES_DEAD_DIR = join(UNOWN_NOTES_DIR, "dead");
 // All env defaults below use `||`, never `??`: bun auto-loads the repo-root
 // .env (and scripts/start.ts exports it to every child), where optional vars
 // ship EMPTY ("KEY=") — an empty string must mean "unset", not override the
@@ -826,21 +834,35 @@ export const OUTBOX_MAX = (() => {
 	return Number.isFinite(n) && n >= 0 ? Math.floor(n) : 200;
 })();
 
-/** Where the dropped-while-offline counter lives (next to the outbox). */
+/** Where the dropped-while-offline counter lives (next to the outbox). The
+ *  H1 dead-letter round grows the same file: `dead` counts notes that were
+ *  moved to notes/dead/ after exhausting their ingest attempts, and
+ *  `attempts` maps outbox filename → {n, lastError, lastAt} for the files
+ *  still working through their budget. Entries are cleaned when the file
+ *  leaves the outbox (archived or dead-lettered), so the map stays bounded by
+ *  the live queue depth. */
 const OUTBOX_STATE_FILE = join(UNOWN_NOTES_DIR, "outbox-state.json");
 
 export interface OutboxStats {
 	queued: number;
 	dropped: number;
+	/** H1: notes moved to notes/dead/ after exhausting ingest attempts. */
+	dead: number;
 }
 
-/** Queued + lifetime-dropped counts for the footer, /engine, doctor and `engine status`. */
+/** Queued + lifetime-dropped + dead counts for the footer, /engine, doctor and `engine status`. */
 export function outboxStats(): OutboxStats {
 	let queued = 0;
 	try {
 		for (const name of readdirSync(UNOWN_OUTBOX_DIR)) if (name.endsWith(".md")) queued++;
 	} catch {
 		/* no outbox dir yet */
+	}
+	let dead = 0;
+	try {
+		for (const name of readdirSync(UNOWN_NOTES_DEAD_DIR)) if (name.endsWith(".md")) dead++;
+	} catch {
+		/* no dead dir yet */
 	}
 	let dropped = 0;
 	try {
@@ -849,7 +871,101 @@ export function outboxStats(): OutboxStats {
 	} catch {
 		/* no counter yet */
 	}
-	return { queued, dropped };
+	return { queued, dropped, dead };
+}
+
+/** The on-disk state shape (best-effort counters + the H1 attempt tracker). */
+interface OutboxState {
+	dropped: number;
+	dead?: number;
+	lastDeadAt?: number;
+	lastDroppedAt?: number;
+	attempts?: Record<string, { n: number; lastError: string; lastAt: number }>;
+}
+
+/** Read the whole state file (best effort) — the H1 attempt tracker's storage. */
+function readOutboxState(): OutboxState {
+	try {
+		return JSON.parse(readFileSync(OUTBOX_STATE_FILE, "utf8"));
+	} catch {
+		return { dropped: 0 };
+	}
+}
+
+/** Write the whole state file (best effort — read-only home keeps defaults). */
+function writeOutboxState(state: OutboxState): void {
+	try {
+		mkdirSync(UNOWN_NOTES_DIR, { recursive: true });
+		writeFileSync(OUTBOX_STATE_FILE, JSON.stringify(state), "utf8");
+	} catch {
+		/* cosmetic counters only */
+	}
+}
+
+/** H1: how many ingest attempts an outbox file gets before it is
+ *  dead-lettered to notes/dead/. UNOWN_OUTBOX_MAX_ATTEMPTS (default 5 — at
+ *  the 5-minute note-sync cadence that is ~25 minutes of honest retries;
+ *  `||` per the .env convention: an EMPTY value means the default). A file
+ *  that cannot even be PARSED skips straight to dead on the first pass. */
+export const OUTBOX_MAX_ATTEMPTS = (() => {
+	const raw = process.env.UNOWN_OUTBOX_MAX_ATTEMPTS || "";
+	if (raw === "") return 5;
+	const n = Number(raw);
+	return Number.isFinite(n) && n >= 1 ? Math.floor(n) : 5;
+})();
+
+/** H1: record one failed ingest attempt for an outbox file. Returns the
+ *  attempt number just recorded (1-based). Best effort — a read-only state
+ *  dir means the counter degrades to 1-per-pass, never a lost note. */
+export function recordOutboxAttempt(file: string, error: string): number {
+	const state = readOutboxState();
+	const attempts = state.attempts ?? {};
+	const name = basename(file);
+	const prev = attempts[name];
+	const n = (prev?.n ?? 0) + 1;
+	attempts[name] = { n, lastError: String(error).slice(0, 500), lastAt: Date.now() };
+	writeOutboxState({ ...state, attempts });
+	return n;
+}
+
+/** H1: clear the attempt tracker for a file that left the outbox (archived
+ *  after successful ingest — attempts are for files still fighting). */
+export function clearOutboxAttempts(file: string): void {
+	const state = readOutboxState();
+	const attempts = state.attempts ?? {};
+	const name = basename(file);
+	if (!(name in attempts)) return;
+	delete attempts[name];
+	writeOutboxState({ ...state, attempts });
+}
+
+/** H1: move an outbox file to notes/dead/ with a .reason.txt sidecar — the
+ *  bounded-retry terminal state. The note file itself is PRESERVED (never
+ *  deleted — manual recovery is `mv` back into outbox/ after fixing whatever
+ *  poisoned it); the dead counter increments. Returns true when the move
+ *  happened (a failed move leaves the file in outbox/ for the next pass —
+ *  dead-lettering must never DELETE a note). */
+export function deadLetterOutboxNote(file: string, reason: string): boolean {
+	try {
+		mkdirSync(UNOWN_NOTES_DEAD_DIR, { recursive: true });
+		const name = basename(file);
+		renameSync(file, join(UNOWN_NOTES_DEAD_DIR, name));
+		try {
+			writeFileSync(
+				join(UNOWN_NOTES_DEAD_DIR, `${name}.reason.txt`),
+				`${new Date().toISOString()}\n${reason}\n`,
+				"utf8",
+			);
+		} catch {
+			/* the reason sidecar is diagnostic; the move already succeeded */
+		}
+		const state = readOutboxState();
+		writeOutboxState({ ...state, dead: (Number(state.dead) || 0) + 1, lastDeadAt: Date.now() });
+		clearOutboxAttempts(file);
+		return true;
+	} catch {
+		return false; // move failed — the file stays queued, next pass retries
+	}
 }
 
 /** Bump the dropped counter (best effort — read-only home keeps count 0). */
@@ -913,6 +1029,18 @@ const NOTE_DELIVERY_BUDGET_MS = (() => {
 	return Number.isFinite(n) && n >= 500 ? Math.floor(n) : 2_500;
 })();
 
+/** H2 (2026-10-26 hardening round): the ONE bounded retry a NETWORK-failed
+ *  POST gets before the outbox fallback. The engine-restart window
+ *  (`unown engine restart`, an update's stop-then-start, the supervisor's
+ *  crash backoff) is exactly long enough for a session-shutdown note to miss
+ *  once — pre-hardening that note outboxed and waited for the 5-minute
+ *  note-sync drain even though the engine came back 600ms later. The Letta
+ *  client contract (bounded retries with backoff before the durable
+ *  fallback) is the precedent; ONE retry keeps the worst-case latency
+ *  additive ~600ms under the same 2.5s delivery budget. HTTP error STATUSES
+ *  are never retried — an answering engine is a deliberate response. */
+const NOTE_DELIVERY_RETRY_MS = 600;
+
 /**
  * Deliver a terminal note: POST to the engine, fall back to the outbox file.
  *
@@ -962,13 +1090,34 @@ export async function deliverTerminalNote(
 			writeOutboxNote(note);
 			return { delivered: false, via: "outbox" as const, detail };
 		} catch (err: any) {
-			const detail = err instanceof Error ? err.message : String(err);
-			writeOutboxNote(note);
-			return {
-				delivered: false,
-				via: "outbox" as const,
-				detail: spawnedEngine ? `${detail} (engine spawn kicked)` : detail,
-			};
+			// H2: one bounded retry on a NETWORK failure — the engine-restart
+			// window is a refusal that heals in ~1s; a note that lands NOW
+			// skips the 5-minute outbox drain. Only the fetch-THROW lane
+			// retries (connection refused/reset/timeout): an HTTP status is
+			// an answering engine's deliberate answer and is never retried.
+			try {
+				await Bun.sleep(NOTE_DELIVERY_RETRY_MS);
+				const retry = await engineFetch(`${ENGINE_URL}/api/notes`, {
+					method: "POST",
+					headers: { "Content-Type": "application/json" },
+					body: JSON.stringify({ content: note.content, project_path: note.projectPath }),
+					signal: AbortSignal.timeout(4000),
+				});
+				if (retry.ok) return { delivered: true, via: "engine" as const, detail: "delivered on retry" };
+				const detail = `engine responded ${retry.status} on retry`;
+				writeOutboxNote(note);
+				return { delivered: false, via: "outbox" as const, detail };
+			} catch (retryErr: any) {
+				const first = err instanceof Error ? err.message : String(err);
+				const detail =
+					retryErr instanceof Error ? `${first}; retry: ${retryErr.message}` : `${first}; retry failed`;
+				writeOutboxNote(note);
+				return {
+					delivered: false,
+					via: "outbox" as const,
+					detail: spawnedEngine ? `${detail} (engine spawn kicked)` : detail,
+				};
+			}
 		}
 	})();
 	// The budget never swallows the note: whichever side of the race wins,

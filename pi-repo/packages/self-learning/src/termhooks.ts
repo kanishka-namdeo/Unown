@@ -1068,7 +1068,7 @@ export function createTerminalExtension(opts: TerminalHookOptions) {
 							lines.push("  status: unknown (first probe pending)");
 						}
 						lines.push(
-							`  outbox: ${info.queuedNotes} queued${info.droppedNotes > 0 ? ` · ${info.droppedNotes} dropped while offline (oldest-first, cap ${"UNOWN_OUTBOX_MAX"})` : ""}`,
+							`  outbox: ${info.queuedNotes} queued${info.droppedNotes > 0 ? ` · ${info.droppedNotes} dropped while offline (oldest-first, cap ${"UNOWN_OUTBOX_MAX"})` : ""}${info.deadNotes > 0 ? ` · ${info.deadNotes} dead-lettered (notes/dead/ — read the .reason.txt, fix, mv back to outbox/)` : ""}`,
 						);
 						lines.push(`  auto-start: ${describeSpawnCircuit(info.spawn)}`);
 						if (info.state !== "up") {

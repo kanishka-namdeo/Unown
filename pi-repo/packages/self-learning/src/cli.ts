@@ -2004,6 +2004,17 @@ async function cmdDoctor(jsonMode: boolean): Promise<number> {
 			`${detail} — learning paused, chat unaffected; notes queue in ${UNOWN_HOME}/notes/outbox (${stats.queued} pending; ${hint})`,
 			"warn",
 		);
+		// H1 (2026-10-26): dead-lettered notes are the outbox's honest failure
+		// lane — a note that failed ingest too many times is preserved in
+		// notes/dead/ with a reason instead of silently retrying forever.
+		if (stats.dead > 0) {
+			check(
+				"outbox dead-letter",
+				false,
+				`${stats.dead} note(s) exhausted their ingest attempts — inspect ${UNOWN_HOME}/notes/dead/ (each has a .reason.txt; fix and mv back into outbox/ to retry)`,
+				"warn",
+			);
+		}
 		// M6: the crash-loop circuit explains WHY auto-start isn't fixing
 		// this — surfaced here because doctor is the first place users look.
 		const circuit = readSpawnState();

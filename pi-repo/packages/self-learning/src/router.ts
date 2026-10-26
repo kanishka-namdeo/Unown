@@ -175,6 +175,10 @@ export class Router {
 	private busy = false;
 	/** When the current job started (0 = idle) — feeds /api/overview router.busyMs and doctor's wedged-mutex warning (F4). */
 	private busySince = 0;
+	/** H4 drain registry: the promise of the work currently holding the mutex (null = idle). */
+	private inFlightWork: Promise<unknown> | null = null;
+	/** H4: set by beginDraining() during engine shutdown — every new job refuses to start. */
+	private draining = false;
 	/** The job currently holding the mutex ('' = idle) — the dream-check self-trigger guard reads it. */
 	private activeJobId = "";
 	/** Last dream-check execution (ms epoch) — collapses re-trigger storms to one per cooldown window (F1). */
@@ -340,6 +344,7 @@ export class Router {
 
 	/** Runs a job by id (manual trigger allowed). */
 	async execute(jobId: string, payload?: any): Promise<any> {
+		if (this.draining) throw new Error("router is draining for shutdown");
 		if (this.busy) throw new Error("router is busy with another job");
 		return this.withBusy(async () => {
 			this.activeJobId = jobId;
@@ -487,15 +492,33 @@ export class Router {
 
 	/** Run arbitrary engine work under the busy mutex (used by API triggers). */
 	async withBusy<T>(fn: () => Promise<T>): Promise<T> {
+		if (this.draining) throw new Error("router is draining for shutdown");
 		if (this.busy) throw new Error("engine is busy with another job");
 		this.busy = true;
 		this.busySince = Date.now();
-		try {
-			return await fn();
-		} finally {
-			this.busy = false;
-			this.busySince = 0;
-		}
+		// H4 (2026-10-26 hardening round) — the drain registry: the promise of
+		// the work currently holding the mutex. Graceful shutdown awaits it
+		// (bounded by UNOWN_ENGINE_DRAIN_BUDGET_MS) BEFORE closing the store,
+		// so a deliberate stop lets a mid-flight dream/harness cycle FINISH
+		// instead of orphaning its 'running' rows for the next boot's
+		// recoverOrphans sweep. Tracked here — the single choke point every
+		// job holder goes through (execute, the mint/cycle withBusy lanes,
+		// startFireAndForget) — never at each call site. The finally clears
+		// the slot UNCONDITIONALLY: the busy=false immediately above it is in
+		// the same synchronous snippet (no await between), so no new job can
+		// have registered itself in between — the mutex guarantees this slot's
+		// owner is the only writer while busy holds.
+		const work = (async () => {
+			try {
+				return await fn();
+			} finally {
+				this.busy = false;
+				this.busySince = 0;
+				this.inFlightWork = null;
+			}
+		})();
+		this.inFlightWork = work;
+		return work;
 	}
 
 	/**
@@ -514,6 +537,7 @@ export class Router {
 	 * closed by construction instead.
 	 */
 	startFireAndForget<T>(fn: () => Promise<T>): Promise<T> {
+		if (this.draining) throw new Error("router is draining for shutdown");
 		if (this.busy) throw new Error("engine is busy with another job");
 		return this.withBusy(fn);
 	}
@@ -530,6 +554,42 @@ export class Router {
 	/** The job currently holding the mutex ('' = idle) — self-trigger guard + overview reporting. */
 	activeJob(): string {
 		return this.activeJobId;
+	}
+
+	/** H4: mark the router as draining for shutdown. Every subsequent
+	 *  execute()/withBusy()/startFireAndForget() refuses with the draining
+	 *  conflict — the HTTP drain window cannot START work the store close
+	 *  would kill mid-flight. Idempotent. */
+	beginDraining(): void {
+		this.draining = true;
+		this.pendingEvents = []; // queued event jobs die with the drain, not after it
+	}
+
+	/** H4: the promise of the job currently holding the mutex (null = idle). */
+	inFlightJob(): Promise<unknown> | null {
+		return this.inFlightWork;
+	}
+
+	/** H4: await the in-flight job (if any) for at most `budgetMs`. The
+	 *  promise settles on completion OR rejection (a failed job is still a
+	 *  FINISHED job — its rows are finalized, nothing left orphaned); the
+	 *  budget is the hard bound (the watchdog already bounds the job itself
+	 *  at PI_JOB_TIMEOUT_MS, but shutdown must not wait 20 minutes for it).
+	 *  Returns what the drain saw. */
+	async drainInFlight(budgetMs: number): Promise<{ job: string; drained: boolean }> {
+		const job = this.activeJobId;
+		const work = this.inFlightWork;
+		if (!work) return { job: "", drained: true };
+		const settled = work.then(
+			() => "done" as const,
+			() => "done" as const, // rejected = finalized, not orphaned
+		);
+		const budget = new Promise<"budget">((resolve) => {
+			const t = setTimeout(() => resolve("budget"), budgetMs);
+			t.unref?.();
+		});
+		const winner = await Promise.race([settled, budget]);
+		return { job, drained: winner === "done" };
 	}
 
 	private async runJobInternal(jobId: string, _payload?: any): Promise<any> {

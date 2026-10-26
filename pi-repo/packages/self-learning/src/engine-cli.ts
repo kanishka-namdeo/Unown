@@ -330,7 +330,7 @@ async function cmdStatus(out: (s: string) => void): Promise<number> {
 				`  pidfile ${enginePidFile()}: ${pf.pid ? `pid ${pf.pid} (${pf.alive ? "alive — wedged beyond HTTP?" : "dead"})` : "absent"}`,
 			);
 			out(
-				`  outbox: ${stats.queued} note(s) queued locally${stats.dropped > 0 ? ` · ${stats.dropped} dropped while offline` : ""}`,
+				`  outbox: ${stats.queued} note(s) queued locally${stats.dropped > 0 ? ` · ${stats.dropped} dropped while offline` : ""}${stats.dead > 0 ? ` · ${stats.dead} dead-lettered (notes/dead/ — read the .reason.txt, fix, mv back to outbox/)` : ""}`,
 			);
 			out(`  auto-start: ${describeSpawnCircuit(circuit)}`);
 			if (circuit.gaveUp)
@@ -345,7 +345,7 @@ async function cmdStatus(out: (s: string) => void): Promise<number> {
 			blockedLines(probe, out);
 			out(`  pidfile ${enginePidFile()}: ${pf.pid ? `pid ${pf.pid} (${pf.alive ? "alive" : "dead"})` : "absent"}`);
 			out(
-				`  outbox: ${stats.queued} note(s) queued locally${stats.dropped > 0 ? ` · ${stats.dropped} dropped while offline` : ""}`,
+				`  outbox: ${stats.queued} note(s) queued locally${stats.dropped > 0 ? ` · ${stats.dropped} dropped while offline` : ""}${stats.dead > 0 ? ` · ${stats.dead} dead-lettered (notes/dead/ — read the .reason.txt, fix, mv back to outbox/)` : ""}`,
 			);
 			out(`  auto-start: ${describeSpawnCircuit(circuit)}`);
 			out(

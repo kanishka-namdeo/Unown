@@ -109,6 +109,61 @@ export function enginePidFile(): string {
 }
 
 // ---------------------------------------------------------------------------
+// H5 (2026-10-26 hardening round) — Windows pidfile recovery.
+//
+// The win32 detach lane (`cmd /c start /b`, the bun#31603 escape hatch) never
+// learns the ENGINE's pid: cmd.exe exits right after `start` returns, so the
+// child pid is wrong and the pidfile was simply never written. Health probing
+// stayed authoritative, but `engine status`'s pidfile verdict and `engine
+// stop`'s SIGTERM target were Windows-blind. The recovery mirrors what
+// scripts/start.ts already does for the dev lane (netstat -ano port→pid) but
+// over HTTP — poll until the engine answers, then write the pidfile from
+// /api/overview's pid (the same source the probe taxonomy trusts).
+// ---------------------------------------------------------------------------
+
+/** Injectable seam for the H5 pid recovery poll (unit tests drive the loop
+ *  without spawning anything). `probe` should resolve to the probe taxonomy's
+ *  result; only `kind === "ok"` with a numeric `body.pid` writes the file. */
+export async function recoverWindowsEnginePid(opts: {
+	probe: () => Promise<EngineProbe>;
+	writePid: (pid: number) => void;
+	stepMs?: number;
+	deadlineMs?: number;
+	sleep?: (ms: number) => Promise<void>;
+}): Promise<{ wrotePid: boolean; pid?: number; attempts: number }> {
+	const stepMs = opts.stepMs ?? 500;
+	const deadlineMs = opts.deadlineMs ?? 15_000;
+	const sleep = opts.sleep ?? ((ms: number) => Bun.sleep(ms));
+	const deadline = Date.now() + deadlineMs;
+	let attempts = 0;
+	for (;;) {
+		attempts++;
+		try {
+			const probe = await opts.probe();
+			const pid = Number(probe.body?.pid);
+			if (probe.kind === "ok" && Number.isFinite(pid) && pid > 0) {
+				try {
+					opts.writePid(pid);
+				} catch {
+					/* best effort — health probing stays authoritative */
+				}
+				return { wrotePid: true, pid, attempts };
+			}
+			// A foreign/occupied/incompatible port is NOT our spawn coming up —
+			// stop polling (the probe taxonomy's own rule: never spawn or wait
+			// on someone else's engine).
+			if (probe.kind !== "ok" && probe.kind !== "refused" && probe.kind !== "unreachable") {
+				return { wrotePid: false, attempts };
+			}
+		} catch {
+			/* probe errors are retried until the deadline */
+		}
+		if (Date.now() + stepMs >= deadline) return { wrotePid: false, attempts };
+		await sleep(stepMs);
+	}
+}
+
+// ---------------------------------------------------------------------------
 // Cross-process spawn state (M6) — the crash-loop circuit.
 //
 // PROBLEM (M6 recon): the in-process single-flight latch only dedupes spawns
@@ -610,8 +665,20 @@ async function spawnEngineProcess(): Promise<boolean> {
 			});
 			child.unref();
 			// cmd.exe's own pid is NOT the engine's pid (it exits right after
-			// `start` returns) — no pidfile write on this branch; health
-			// probing and /api/overview's pid are the source of truth.
+			// `start` returns). H5 (2026-10-26 hardening round): the pidfile used to
+			// be simply NEVER written on this lane — `engine status`'s pidfile
+			// verdict and `engine stop`'s SIGTERM target were Windows-blind, and
+			// only the health probe owned the truth. scripts/start.ts already
+			// recovers the pid from the port table (netstat -ano); the supervisor
+			// now does the same over HTTP instead — poll the engine after the
+			// spawn, and when it answers, write the pidfile from /api/overview's
+			// pid (the same source of truth the probe taxonomy trusts). Bounded
+			// (15s), fire-and-forget, best-effort: a boot slower than the bound
+			// leaves the pre-H5 behavior (no pidfile — probing is authoritative).
+			void recoverWindowsEnginePid({
+				probe: () => probeEngine({ endpoint: engineUrl(), timeoutMs: 900 }),
+				writePid: (pid) => writeFileSync(enginePidFile(), String(pid)),
+			});
 			closeSync(logFd);
 		} else {
 			const child = spawn(command, args, {
