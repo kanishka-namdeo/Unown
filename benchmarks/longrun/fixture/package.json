@@ -1,0 +1,7 @@
+{
+  "name": "ledgerlog",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "ledgerlog - a tiny expense ledger CLI. Fixture project for the longrun endurance bench (benchmarks/longrun)."
+}
