@@ -16,6 +16,15 @@
       <category>release</category>
     </item>
     <item>
+      <title>&quot;The hardening round: the verdict on the detached engine&quot;</title>
+      <link>https://unown-nine.vercel.app/blog/2026-10-26-the-hardening-round</link>
+      <guid isPermaLink="true">https://unown-nine.vercel.app/blog/2026-10-26-the-hardening-round</guid>
+      <pubDate>Mon, 26 Oct 2026 00:00:00 GMT</pubDate>
+      <description>&quot;We re-litigated the core USP&apos;s architecture against ten competitor repos and 54 sources. The detached engine stays; six honest-failure lanes ship in v0.0.28.&quot;</description>
+      <category>engine</category>
+      <category>release</category>
+    </item>
+    <item>
       <title>&quot;The ledger round: the seams the chaos round wrote down&quot;</title>
       <link>https://unown-nine.vercel.app/blog/2026-10-26-the-ledger-round</link>
       <guid isPermaLink="true">https://unown-nine.vercel.app/blog/2026-10-26-the-ledger-round</guid>
