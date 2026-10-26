@@ -192,6 +192,11 @@ function resolveSpawnContext(
         delete env.UNOWN_FLEET_ASK;
         delete env.UNOWN_FLEET_ID;
         delete env.UNOWN_FLEET_SESSION;
+        // R4 (2026-10-26): same rule for the sync lane's heartbeat path — a
+        // sync child running `unown -p ...` via bash would otherwise let the
+        // grandchild keep beating OUR <id>.hb.json under its own pid, lying
+        // to the crash sweep about which process is the orphan.
+        delete env.UNOWN_SYNC_HEARTBEAT;
         if (exposeSessionEnvironment && ctx) {
                 const model = ctx.model;
                 env.PI_SESSION_ID = ctx.sessionManager.getSessionId();

@@ -55,7 +55,7 @@ import { readSpawnState } from "./engine-supervisor.ts";
 import { agentGitSha, codeMtimeMs, compareEngineBuild } from "./engine-version.ts";
 import { createFleetChildExtension } from "./fleet-child.ts";
 import { FLEET_DRAIN_SENTINEL, isFleetBusy } from "./fleet-runtime.ts";
-import { sweepStaleFleetChildren } from "./fleet-reaper.ts";
+import { startSyncSubagentHeartbeat, sweepStaleSubagentChildren } from "./fleet-reaper.ts";
 import { createFirstFlightsExtension } from "./flights.ts";
 import { IMPORT_USAGE, runImportCommand } from "./import-cli.ts";
 import { cmdInfo } from "./info.ts";
@@ -1062,16 +1062,25 @@ async function bootRuntime(cwd: string, verbose: boolean, bootOpts: BootOptions 
         // SIGTERM→SIGKILL on process exit and SIGINT/SIGTERM — idempotent, so every
         // bootRuntime call (TUI, print, subagents) re-installs it harmlessly.
         installChildReaper();
-        // Round 3 (2026-10-26) — fleet crash sweep (fleet-reaper.ts): children
-        // whose parent died without finalize leave journal entries open; reap
-        // the live (heartbeat-verified) ones, trace the dead ones, clean the
-        // rotting control/ask channels, and mark adopted worktrees orphaned.
-        // No-op without a journal (the common boot), never runs inside
-        // subagents, kill-switch UNOWN_FLEET_REAPER=0, and never throws — a
-        // corrupt journal must not cost anyone a boot.
+        // Round 4 (2026-10-26) — sync-lane subagent heartbeat (fleet-reaper.ts):
+        // a sync child spawned by runSubagentOnce carries UNOWN_SYNC_HEARTBEAT (the
+        // <id>.hb.json path beside the lifecycle journal); beating ~1x/s gives the
+        // crash sweep the same fresh + self-reported identity fleet children get
+        // from their control poller. Self-gating: a no-op (zero cost) for every
+        // other boot — ordinary sessions and fleet children never carry the env.
+        startSyncSubagentHeartbeat();
+        // Round 3 (2026-10-26, widened in round 4) — subagent crash sweep
+        // (fleet-reaper.ts): children of BOTH lanes whose parent died without a
+        // terminal record leave journal entries open; reap the live
+        // (heartbeat-verified) ones, trace the dead ones, clean the rotting
+        // control/ask channels and orphan heartbeat files, and mark adopted
+        // worktrees orphaned. No-op without a journal (the common boot), never
+        // runs inside subagents, kill-switch UNOWN_FLEET_REAPER=0 (gates both
+        // lanes), and never throws — a corrupt journal must not cost anyone a
+        // boot.
         try {
-                sweepStaleFleetChildren(cwd, {
-                        log: (message) => console.error(`[unown] ${message}`),
+                sweepStaleSubagentChildren(cwd, {
+                        log: (message: string) => console.error(`[unown] ${message}`),
                 });
         } catch {
                 /* best effort */

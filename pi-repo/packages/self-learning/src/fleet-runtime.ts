@@ -67,7 +67,7 @@ import {
 } from "./fleet.ts";
 import { annotateToolOutput } from "./shield.ts";
 import { registerChild } from "./child-reaper.ts";
-import { recordFleetChildFinish, recordFleetChildSpawn, recordFleetChildWorktree } from "./fleet-reaper.ts";
+import { recordFleetChildFinish, recordFleetChildSpawn, recordFleetChildWorktree, subagentJournalDir } from "./fleet-reaper.ts";
 import { CHILD_BOUNDARY_INSTRUCTIONS } from "./subagent-catalog.ts";
 import { compactTokens, humanizeToolLabel } from "./subagent-progress.ts";
 import { buildSubagentArgs, resolveSubagentTimeoutMs, type SubagentRoutingFields } from "./subagent-routing.ts";
@@ -151,7 +151,12 @@ export class FleetManager {
         private batchDeadline: ReturnType<typeof setTimeout> | null = null;
 
         constructor(private readonly opts: FleetManagerOptions) {
-                this.fleetDir = opts.fleetDir ?? join(opts.cwd, ".unown", "fleet");
+                // R4: the journal lives at the git repo TOPLEVEL's .unown/fleet
+                // (subagentJournalDir), not the literal cwd's — a session booted
+                // from a subdirectory must journal where a boot from the repo
+                // root sweeps. The boot sweep checks the literal path too, so
+                // 0.0.26-era journals stay findable.
+                this.fleetDir = opts.fleetDir ?? subagentJournalDir(opts.cwd);
                 this.log = opts.log ?? (() => {});
                 this.timeoutMs = opts.timeoutMs ?? resolveFleetTimeoutMs();
                 this.stopKillDelayMs = opts.stopKillDelayMs ?? FLEET_STOP_KILL_GRACE_MS;

@@ -509,7 +509,7 @@ describe("fleet crash sweep (round-3 live finding R3-F4, end-to-end)", () => {
                                 // with zero trace on disk beyond the session file.
 
                                 // 4. The next boot sweeps. Run #2 is a plain 1-turn session in
-                                //    the same repo — its bootRuntime runs sweepStaleFleetChildren.
+                                //    the same repo — its bootRuntime runs sweepStaleSubagentChildren.
                                 const run2 = await unown(["--mode", "json", "-p", "Reply with the single word OK."], {
                                         bridge,
                                         root,
@@ -517,7 +517,7 @@ describe("fleet crash sweep (round-3 live finding R3-F4, end-to-end)", () => {
                                 });
                                 expect(run2.exitCode).toBe(0);
                                 // The sweep reported what it did.
-                                expect(run2.stderr).toContain("fleet crash sweep");
+                                expect(run2.stderr).toContain("subagent crash sweep");
 
                                 // 5. The journal carries the terminal record the crashed parent
                                 //    could not write — the round's headline contract.
@@ -574,5 +574,193 @@ describe("fleet crash sweep (round-3 live finding R3-F4, end-to-end)", () => {
                         }
                 },
                 { timeout: 120_000 } as const,
+        );
+});
+
+describe("sync-lane crash sweep (round-4 live finding R4-F1, end-to-end)", () => {
+        /** Sanitized env for a MANUALLY spawned run (mirrors helpers.runUnown). */
+        function crashEnv(root: string): Record<string, string> {
+                const env: Record<string, string> = {};
+                for (const [k, v] of Object.entries(process.env)) {
+                        if (v === undefined) continue;
+                        if (/^(UNOWN_|PI_|BRIDGE_)/.test(k)) continue;
+                        env[k] = v;
+                }
+                env.UNOWN_HOME = join(root, "home");
+                env.UNOWN_ENGINE_URL = DEAD_URL;
+                env.PI_BRIDGE_URL = bridge.url;
+                env.PI_SELFLEARNING_DB = join(root, "db", "selflearning.db");
+                env.PI_SELFLEARNING_DATA = join(root, "data");
+                env.PI_DISABLE_ENGINE_SPAWN = "1";
+                env.UNOWN_NO_PREFLIGHT = "1";
+                return env;
+        }
+
+        test(
+                "kill -9 the parent mid-SYNC-child: the child was journaled + heartbeating, the next boot sweeps it, the worktree is orphan-marked",
+                async () => {
+                        const root = mkdtempSync(join(tmpdir(), "unown-crash-sync-e2e-"));
+                        const proj = join(root, "proj");
+                        mkdirSync(proj, { recursive: true });
+                        const gitEnv = { ...process.env, GIT_CONFIG_GLOBAL: "/dev/null", GIT_CONFIG_SYSTEM: "/dev/null" };
+                        const git = (args: string[]) => execFileSync("git", args, { cwd: proj, env: gitEnv, stdio: "ignore" });
+                        git(["init", "--initial-branch=main"]);
+                        git(["config", "user.email", "test@unown"]);
+                        git(["config", "user.name", "unown test"]);
+                        writeFileSync(join(proj, "seed.txt"), "seed\n");
+                        git(["add", "."]);
+                        git(["commit", "-m", "seed"]);
+                        try {
+                                // 1. The parent runs the DEFAULT (synchronous) task lane — no
+                                //    async:true — with a worktree-isolated child whose bash
+                                //    sleeps long enough that even a slow boot stays inside the
+                                //    quiet phase where the orphan would linger pre-fix with
+                                //    zero trace (the round-4 live receipt).
+                                const childTask = 'TOOLCALL bash {"command":"sleep 60"}';
+                                const prompt = `TOOLCALL task ${JSON.stringify({
+                                        task: childTask,
+                                        name: "crashkid-sync",
+                                        worktree_isolation: true,
+                                })}`;
+                                const useBun = process.platform === "win32";
+                                const parent = useBun
+                                        ? spawn("bun", [UNOWN_BIN, "--mode", "json", "-p", prompt], {
+                                                  cwd: proj,
+                                                  env: crashEnv(root),
+                                                  stdio: ["ignore", "pipe", "pipe"],
+                                          })
+                                        : spawn(UNOWN_BIN, ["--mode", "json", "-p", prompt], {
+                                                  cwd: proj,
+                                                  env: crashEnv(root),
+                                                  stdio: ["ignore", "pipe", "pipe"],
+                                          });
+                                parent.stdout.on("data", () => {}); // drain: never backpressure the crash
+                                parent.stderr.on("data", () => {});
+
+                                // 2. The journal records the SYNC spawn (lane-tagged, the trace
+                                //    that did not exist pre-fix) with the prompt-file identity
+                                //    token; the child is beating its heartbeat.
+                                const journalFile = join(proj, ".unown", "fleet", "journal.jsonl");
+                                let spawnedEntry: any = null;
+                                for (let i = 0; i < 160 && !spawnedEntry; i++) {
+                                        await new Promise((r) => setTimeout(r, 300));
+                                        try {
+                                                spawnedEntry =
+                                                        readFileSync(journalFile, "utf8")
+                                                                .split("\n")
+                                                                .filter((l) => l.trim())
+                                                                .map((l) => JSON.parse(l))
+                                                                .find((e) => e.op === "spawned" && e.lane === "sync") ?? null;
+                                        } catch {
+                                                /* not yet */
+                                        }
+                                }
+                                expect(spawnedEntry).toBeDefined();
+                                expect(typeof spawnedEntry.pid).toBe("number");
+                                expect(typeof spawnedEntry.promptFile).toBe("string");
+                                expect(spawnedEntry.promptFile.length).toBeGreaterThan(0);
+                                // The worktree amendment is journaled for the sweep to correlate.
+                                const fleetDir = join(proj, ".unown", "fleet");
+                                const hbFile = join(fleetDir, `${spawnedEntry.id}.hb.json`);
+                                // The child boots and starts beating — but "booted" is not
+                                // instantaneous (bun cold start under suite load), so POLL for
+                                // the first beat instead of guessing a fixed grace.
+                                let hb: { pid: number; ts: number } | null = null;
+                                for (let i = 0; i < 120 && !hb; i++) {
+                                        await new Promise((r) => setTimeout(r, 500));
+                                        try {
+                                                hb = JSON.parse(readFileSync(hbFile, "utf8"));
+                                        } catch {
+                                                /* not yet */
+                                        }
+                                }
+                                if (!hb) {
+                                        // Diagnostics for the timing contract: what does the
+                                        // child actually look like right now?
+                                        let alive = false;
+                                        try {
+                                                process.kill(spawnedEntry.pid, 0);
+                                                alive = true;
+                                        } catch {}
+                                        throw new Error(
+                                                `sync child never heartbeated within 60 s (pid ${spawnedEntry.pid} alive=${alive}); ` +
+                                                        `journal:\n${readFileSync(journalFile, "utf8")}`,
+                                        );
+                                }
+                                expect(hb.pid).toBe(spawnedEntry.pid);
+                                expect(Date.now() - hb.ts).toBeLessThan(5_000);
+
+                                // 3. THE CRASH: SIGKILL the PARENT ONLY (pid kill — no group).
+                                //    Pre-fix shape (live-measured): the sync orphan survives
+                                //    this with ZERO trace on disk.
+                                parent.kill("SIGKILL");
+                                await new Promise((r) => setTimeout(r, 500));
+
+                                // 4. The next boot sweeps both lanes. Run #2 is a plain 1-turn
+                                //    session in the same repo.
+                                const run2 = await unown(["--mode", "json", "-p", "Reply with the single word OK."], {
+                                        bridge,
+                                        root,
+                                        env: { UNOWN_NO_PREFLIGHT: "1" },
+                                });
+                                expect(run2.exitCode).toBe(0);
+                                expect(run2.stderr).toContain("subagent crash sweep");
+                                expect(run2.stderr).toContain("sync");
+
+                                // 5. The journal carries the terminal record the crashed parent
+                                //    could not write — and the lane says which lane it was.
+                                const entries = readFileSync(journalFile, "utf8")
+                                        .split("\n")
+                                        .filter((l) => l.trim())
+                                        .map((l) => JSON.parse(l));
+                                const terminal = entries.find(
+                                        (e) => (e.op === "reaped" || e.op === "abandoned") && e.id === spawnedEntry.id,
+                                );
+                                expect(terminal).toBeDefined();
+                                if (process.platform !== "win32") {
+                                        // Heartbeat-fresh + cmdline-verified (the prompt file is in
+                                        // the child's argv) → REAPED, and dead for real.
+                                        expect(terminal.op).toBe("reaped");
+                                        expect(terminal.reason).toContain("sync-lane");
+                                        let alive = true;
+                                        try {
+                                                process.kill(spawnedEntry.pid, 0);
+                                        } catch {
+                                                alive = false;
+                                        }
+                                        expect(alive).toBe(false);
+                                }
+
+                                // 6. The orphan's heartbeat file is cleaned with the kill.
+                                expect(existsSync(hbFile)).toBe(false);
+
+                                // 7. The sync child's isolated worktree is marked orphaned and
+                                //    KEPT on disk (the kept-tree rule — one lane over from R3).
+                                const wtReg = join(proj, ".unown", "worktrees", "registry.jsonl");
+                                const wtRecords = readFileSync(wtReg, "utf8")
+                                        .split("\n")
+                                        .filter((l) => l.trim())
+                                        .map((l) => JSON.parse(l));
+                                const orphaned = wtRecords.find((r) => r.op === "orphaned");
+                                expect(orphaned).toBeDefined();
+                                expect(existsSync(orphaned.path)).toBe(true);
+
+                                // Cleanup: this test owns the orphaned tree.
+                                try {
+                                        git(["worktree", "remove", "--force", orphaned.path]);
+                                        git(["worktree", "prune"]);
+                                } catch {
+                                        /* best effort */
+                                }
+                                run2.release();
+                        } finally {
+                                try {
+                                        rmSync(root, { recursive: true, force: true });
+                                } catch {
+                                        /* best effort */
+                                }
+                        }
+                },
+                { timeout: 180_000 } as const,
         );
 });

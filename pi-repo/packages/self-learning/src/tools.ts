@@ -68,6 +68,13 @@ import { auditInstructionSet, renderInstructionAudit, summarizeInstructionAudit 
 import { engineFetch } from "./engine-auth.ts";
 import { getEngineStatusInfo } from "./engine-status.ts";
 import { FleetManager, type FleetSpawnRequest, registerFleetSurface } from "./fleet-runtime.ts";
+import {
+        recordFleetChildFinish,
+        recordFleetChildWorktree,
+        recordSyncSubagentSpawn,
+        subagentJournalDir,
+        SYNC_HEARTBEAT_ENV,
+} from "./fleet-reaper.ts";
 import { registerGitTools } from "./gittools.ts";
 import {
         checkGoalCompletion,
@@ -452,6 +459,17 @@ export interface StructuredRunOptions {
         schemaMode?: "permissive" | "strict";
         /** Live progress of the in-flight child (see SubagentProgress). */
         onProgress?: SubagentProgressFn;
+        /** R4 (2026-10-26): where the sync child's lifecycle journal lives.
+         *  The task tool passes the SESSION-derived dir (a worktree-isolated
+         *  child runs with cwd = the tree, whose literal .unown would land
+         *  inside the disposable tree); other callers fall back to
+         *  subagentJournalDir(cwd). */
+        journalDir?: string;
+        /** R4: the managed worktree this child runs in, when isolated —
+         *  journaled as an op:"worktree" amendment per attempt so the crash
+         *  sweep can orphan-mark the tree of whichever attempt was live at
+         *  the crash. */
+        worktreePath?: string;
 }
 
 /**
@@ -698,14 +716,21 @@ function killSubagentTree(proc: KillableProc): void {
  *  validate the final reply. Shared by the original run and the corrective
  *  re-runs. `modelOverride` (fallback-model lane, pi-cciotti port) replaces
  *  the agent's model for THIS attempt only — used by runSubagent's rotation
- *  after a provider-style failure. */
+ *  after a provider-style failure.
+ *
+ *  R4 (2026-10-26): every attempt is a full lifecycle in the subagent
+ *  journal — `sync-`-prefixed id (never collides with a fleet id), spawned
+ *  entry at process creation, `finished` on the observed exit (status
+ *  done/failed/timeout/aborted/spawn_error). A parent killed with SIGKILL
+ *  writes no terminal record; the next boot's sweep owns the orphan from
+ *  there — the exact fleet-lane contract from round 3, one lane over. */
 async function runSubagentOnce(
         agent: SubagentConfig,
         task: string,
         cwd: string,
         signal: AbortSignal | undefined,
         modelOverride?: string,
-        onProgress?: SubagentProgressFn,
+        runOpts: StructuredRunOptions = {},
 ): Promise<SubagentRunResult> {
         const result: SubagentRunResult = {
                 agent: agent.name,
@@ -716,6 +741,7 @@ async function runSubagentOnce(
                 toolResults: 0,
                 usage: { input: 0, output: 0, turns: 0 },
         };
+        const onProgress = runOpts.onProgress;
         // Live progress: the counters below are the SAME ones the final result
         // carries, published as they move. A missing/unparsable event never
         // produces a progress frame, and a progress frame never throws into the
@@ -762,9 +788,10 @@ async function runSubagentOnce(
                 // "success" out of the parent's transcript.
                 const basePrompt = agent.systemPrompt.trim();
                 const systemPrompt = basePrompt ? `${basePrompt}\n\n${CHILD_BOUNDARY_INSTRUCTIONS}` : CHILD_BOUNDARY_INSTRUCTIONS;
+                let promptFile = "";
                 if (systemPrompt) {
                         promptDir = mkdtempSync(join(tmpdir(), "unown-subagent-"));
-                        const promptFile = join(promptDir, "system-prompt.md");
+                        promptFile = join(promptDir, "system-prompt.md");
                         writeFileSync(promptFile, systemPrompt, { encoding: "utf8", mode: 0o600 });
                         args.push("--append-system-prompt", promptFile);
                 }
@@ -776,13 +803,26 @@ async function runSubagentOnce(
                 // PI_MODEL_ID + UNOWN_MCP_SERVERS + UNOWN_NO_AGENTS_MD env
                 // overrides before bootRuntime. No env mutation here: the
                 // child owns its own env (single source of truth).
+                //
+                // R4 — the durable lifecycle trace (fleet-reaper.ts): the
+                // journal dir is session-derived (a worktree-isolated child's
+                // cwd is the disposable tree), the id is per-attempt, and the
+                // heartbeat env hands the child its <id>.hb.json path so the
+                // next boot's sweep can prove a live orphan is OURS before it
+                // kills anything.
+                const journalDir = runOpts.journalDir ?? subagentJournalDir(cwd);
+                const journalId = `sync-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+                const hbFile = join(journalDir, `${journalId}.hb.json`);
+                const worktreePath = runOpts.worktreePath;
+                let spawnFailed = false;
+                let aborted = false;
                 await new Promise<void>((resolve) => {
                         const invocation = getUnownInvocation(args);
                         const proc = spawn(invocation.command, invocation.args, {
                                 cwd,
                                 shell: false,
                                 stdio: ["ignore", "pipe", "pipe"],
-                                env: { ...process.env, UNOWN_SUBAGENT: "1" },
+                                env: { ...process.env, UNOWN_SUBAGENT: "1", [SYNC_HEARTBEAT_ENV]: hbFile },
                         });
                         // R3 (2026-10-26): sync subagents ride the last-resort reaper
                         // too (child-reaper.ts) — a SIGINT/SIGTERM/exit of the parent
@@ -791,6 +831,26 @@ async function runSubagentOnce(
                         // and fleet children already get. The parent-side watchdog
                         // below remains the primary budget enforcement.
                         registerChild(proc);
+                        // R4 — the spawned entry is written the moment the child
+                        // exists: a parent that dies one line later still leaves the
+                        // trace the sweep needs. The prompt file path is the identity
+                        // token (unique per attempt, in the child's own argv).
+                        recordSyncSubagentSpawn(journalDir, {
+                                id: journalId,
+                                name: agent.name,
+                                agent: agent.name,
+                                pid: typeof proc.pid === "number" ? proc.pid : null,
+                                parentPid: process.pid,
+                                promptFile,
+                                worktreePath,
+                                ts: Date.now(),
+                        });
+                        if (worktreePath) {
+                                // Per-attempt worktree amendment: whichever attempt
+                                // is open at a crash correlates the tree for
+                                // orphan-marking (fleet-reaper.ts sweep).
+                                recordFleetChildWorktree(journalDir, journalId, worktreePath);
+                        }
                         let buffer = "";
                         let stderrBuffer = "";
                         let lastText = "";
@@ -803,6 +863,20 @@ async function runSubagentOnce(
                                 result.outputTruncated = lastText.length > SUBAGENT_OUTPUT_CAP;
                                 result.output = lastText.slice(0, SUBAGENT_OUTPUT_CAP);
                                 result.stderr = stderrBuffer.slice(0, SUBAGENT_STDERR_CAP);
+                                // R4 — the terminal record for an OBSERVED exit. The
+                                // parent watched this child end (close/error), so the
+                                // status is honest, not guessed; a parent death
+                                // mid-run writes nothing here and the sweep traces it.
+                                const status = spawnFailed
+                                        ? "spawn_error"
+                                        : result.timedOut
+                                          ? "timeout"
+                                          : aborted
+                                            ? "aborted"
+                                            : result.exitCode === 0
+                                              ? "done"
+                                              : "failed";
+                                recordFleetChildFinish(journalDir, journalId, status);
                                 resolve();
                         };
 
@@ -865,6 +939,7 @@ async function runSubagentOnce(
                         });
                         proc.on("error", () => {
                                 result.exitCode = 1;
+                                spawnFailed = true;
                                 stderrBuffer += "failed to spawn subagent process";
                                 finish();
                         });
@@ -889,6 +964,7 @@ async function runSubagentOnce(
                         }, timeoutMs);
 
                         const killProc = () => {
+                                aborted = true;
                                 stderrBuffer += "\n(subagent aborted)";
                                 killSubagentTree(proc);
                         };
@@ -902,7 +978,8 @@ async function runSubagentOnce(
                         try {
                                 rmSync(promptDir, { recursive: true, force: true });
                         } catch {
-                                /* best effort */
+                                /* best effort — the argv string (the sweep's identity
+                                 * token) survives the file's deletion anyway */
                         }
                 }
         }
@@ -932,10 +1009,10 @@ async function runSubagentWithRetries(
         opts: StructuredRunOptions,
         modelOverride: string | undefined,
 ): Promise<SubagentRunResult> {
-        if (!opts.outputSchema) return runSubagentOnce(agent, task, cwd, signal, modelOverride, opts.onProgress);
+        if (!opts.outputSchema) return runSubagentOnce(agent, task, cwd, signal, modelOverride, opts);
         const schema = opts.outputSchema;
         let attempts = 0;
-        let result = await runSubagentOnce(agent, task, cwd, signal, modelOverride, opts.onProgress);
+        let result = await runSubagentOnce(agent, task, cwd, signal, modelOverride, opts);
         // usage/toolResults accumulate ACROSS retries (the caller bills and
         // reports the whole structured-output contract, not the last try).
         let usage = { ...result.usage };
@@ -992,7 +1069,10 @@ async function runSubagentWithRetries(
                                         tokensOut: p.tokensOut + offsetOut,
                                 });
                         });
-                const retry = await runSubagentOnce(agent, currentTask, cwd, signal, modelOverride, offsetProgress);
+                const retry = await runSubagentOnce(agent, currentTask, cwd, signal, modelOverride, {
+                        ...opts,
+                        onProgress: offsetProgress,
+                });
                 usage = {
                         input: usage.input + retry.usage.input,
                         output: usage.output + retry.usage.output,
@@ -1971,6 +2051,12 @@ export function createUnownToolsExtension(opts: UnownToolsOptions) {
                                                 pushProgress();
                                         };
                                         const maxConcurrency = 4;
+                                        // R4: the lifecycle journal dir, derived ONCE from the SESSION
+                                        // cwd (not a worktree child's run cwd — that .unown would
+                                        // die with the disposable tree). Passed down to every
+                                        // runSubagent attempt so spawned/finished land beside the
+                                        // fleet journal the boot sweep already reads.
+                                        const journalDir = subagentJournalDir(opts.cwd);
                                         const queue = jobs.map((job, index) => ({ job, index }));
                                         const workers = Array.from({ length: Math.min(maxConcurrency, queue.length) }, async () => {
                                                 while (queue.length > 0) {
@@ -2035,6 +2121,8 @@ export function createUnownToolsExtension(opts: UnownToolsOptions) {
                                                                 {
                                                                         outputSchema: job.outputSchema,
                                                                         schemaMode: job.schemaMode,
+                                                                        journalDir,
+                                                                        worktreePath: tree ? tree.path : undefined,
                                                                         onProgress: (p) => {
                                                                                 live.set(index, p);
                                                                                 pushProgress();
