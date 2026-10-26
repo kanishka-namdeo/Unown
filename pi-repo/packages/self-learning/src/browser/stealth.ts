@@ -37,7 +37,7 @@
  * Pure module (node builtins only) so every decision is unit-testable.
  */
 
-import { type ChildProcess, execFile } from "node:child_process";
+import { execFile } from "node:child_process";
 
 // ---------------------------------------------------------------------------
 // identities
@@ -98,15 +98,17 @@ export function readChromeVersion(
 			versionCache.set(executablePath, v);
 			resolve(v);
 		};
-		const exec = opts.exec ?? ((cmd: string, args: string[], cb: (err: Error | null, stdout: string) => void) => {
-			try {
-				execFile(cmd, args, { timeout: 5_000 }, (err: Error | null, stdout: string | Buffer) => {
-					cb(err, String(stdout ?? ""));
-				});
-			} catch {
-				done(FALLBACK_CHROME_VERSION);
-			}
-		});
+		const exec =
+			opts.exec ??
+			((cmd: string, args: string[], cb: (err: Error | null, stdout: string) => void) => {
+				try {
+					execFile(cmd, args, { timeout: 5_000 }, (err: Error | null, stdout: string | Buffer) => {
+						cb(err, String(stdout ?? ""));
+					});
+				} catch {
+					done(FALLBACK_CHROME_VERSION);
+				}
+			});
 		exec(executablePath, ["--version"], (err, stdout) => {
 			// "Google Chrome 143.0.7499.4" / "Chromium 143.0.x" / "HeadlessChrome/143..."
 			const m = /(\d+)\.(\d+)\.(\d+)\.(\d+)/.exec(stdout ?? "");
@@ -133,7 +135,11 @@ const NOT_A_BRAND_VERSION = "24";
  * acceptLanguage) matches what a real Chrome of that version on that OS
  * would report.
  */
-export function buildIdentity(os: StealthOs, version: ChromeVersion, overrides: Partial<ResolvedIdentity> = {}): ResolvedIdentity {
+export function buildIdentity(
+	os: StealthOs,
+	version: ChromeVersion,
+	overrides: Partial<ResolvedIdentity> = {},
+): ResolvedIdentity {
 	const maj = String(version.major);
 	const full = version.full;
 	const brands = [
@@ -155,9 +161,16 @@ export function buildIdentity(os: StealthOs, version: ChromeVersion, overrides: 
 				userAgent: `Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/${maj}.0.0.0 Safari/537.36`,
 				platform: "MacIntel",
 				uaMetadata: {
-					brands, fullVersionList, fullVersion: full,
-					platform: "macOS", platformVersion: "14.5.0",
-					architecture: "x86", model: "", mobile: false, bitness: "64", wow64: false,
+					brands,
+					fullVersionList,
+					fullVersion: full,
+					platform: "macOS",
+					platformVersion: "14.5.0",
+					architecture: "x86",
+					model: "",
+					mobile: false,
+					bitness: "64",
+					wow64: false,
 				},
 				acceptLanguage: "en-US,en;q=0.9",
 				locale: "en-US",
@@ -176,9 +189,16 @@ export function buildIdentity(os: StealthOs, version: ChromeVersion, overrides: 
 				userAgent: `Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/${maj}.0.0.0 Safari/537.36`,
 				platform: "Linux x86_64",
 				uaMetadata: {
-					brands, fullVersionList, fullVersion: full,
-					platform: "Linux", platformVersion: "6.8.0",
-					architecture: "x86", model: "", mobile: false, bitness: "64", wow64: false,
+					brands,
+					fullVersionList,
+					fullVersion: full,
+					platform: "Linux",
+					platformVersion: "6.8.0",
+					architecture: "x86",
+					model: "",
+					mobile: false,
+					bitness: "64",
+					wow64: false,
 				},
 				acceptLanguage: "en-US,en;q=0.9",
 				locale: "en-US",
@@ -187,16 +207,22 @@ export function buildIdentity(os: StealthOs, version: ChromeVersion, overrides: 
 				viewport: { width: 1440, height: 900 },
 			};
 			break;
-		case "windows":
 		default:
 			base = {
 				os: "windows",
 				userAgent: `Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/${maj}.0.0.0 Safari/537.36`,
 				platform: "Win32",
 				uaMetadata: {
-					brands, fullVersionList, fullVersion: full,
-					platform: "Windows", platformVersion: "15.0.0", // Win11
-					architecture: "x86", model: "", mobile: false, bitness: "64", wow64: false,
+					brands,
+					fullVersionList,
+					fullVersion: full,
+					platform: "Windows",
+					platformVersion: "15.0.0", // Win11
+					architecture: "x86",
+					model: "",
+					mobile: false,
+					bitness: "64",
+					wow64: false,
 				},
 				acceptLanguage: "en-US,en;q=0.9",
 				locale: "en-US",
@@ -293,18 +319,19 @@ export function resolveStealthConfig(o: {
 	version?: ChromeVersion;
 }): StealthConfig {
 	const osRaw = (o.overrides.os ?? "").trim().toLowerCase();
-	const os: StealthOs = osRaw === "macos" || osRaw === "mac" || osRaw === "darwin" ? "macos"
-		: osRaw === "linux" ? "linux"
-			: "windows";
+	const os: StealthOs =
+		osRaw === "macos" || osRaw === "mac" || osRaw === "darwin" ? "macos" : osRaw === "linux" ? "linux" : "windows";
 	const screen = parseScreen(o.overrides.screen) ?? undefined;
 	const timezone = validTimezone(o.overrides.timezone);
 	const identity = buildIdentity(os, o.version ?? FALLBACK_CHROME_VERSION, {
 		...(o.overrides.userAgent?.trim() ? { userAgent: o.overrides.userAgent.trim() } : {}),
-		...(o.overrides.locale?.trim() ? { locale: o.overrides.locale.trim(), acceptLanguage: `${o.overrides.locale.trim()},en;q=0.9` } : {}),
+		...(o.overrides.locale?.trim()
+			? { locale: o.overrides.locale.trim(), acceptLanguage: `${o.overrides.locale.trim()},en;q=0.9` }
+			: {}),
 		...(timezone ? { timezone } : {}),
 		...(screen ? { screen } : {}),
 	});
-	const humanize = o.overrides.humanize?.trim() === "0" ? false : true;
+	const humanize = o.overrides.humanize?.trim() !== "0";
 	const proxy = parseProxy(o.overrides.proxy);
 	return { enabled: o.enabled, identity, humanize, proxy };
 }
@@ -391,7 +418,7 @@ export function humanPath(
 	for (let i = 1; i <= steps; i++) {
 		const t = i / steps;
 		// ease-in-out so the cursor accelerates then settles
-		const e = t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
+		const e = t < 0.5 ? 2 * t * t : 1 - (-2 * t + 2) ** 2 / 2;
 		const inv = 1 - e;
 		let x = inv * inv * from.x + 2 * inv * e * cx + e * e * to.x;
 		let y = inv * inv * from.y + 2 * inv * e * cy + e * e * to.y;

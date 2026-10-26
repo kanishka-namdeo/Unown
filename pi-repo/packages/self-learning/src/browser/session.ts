@@ -20,12 +20,14 @@ import {
 	CAPTCHA_PROBE_SRC,
 	CapSolverClient,
 	type CaptchaConfig,
+	capSolverJobFor,
 	type DetectedChallenge,
 	formatChallenges,
 	injectTokenExpression,
 	resolveCaptchaConfig,
 	TwoCaptchaClient,
 	tiersFor,
+	twoCaptchaJobFor,
 	visionReadCaptcha,
 } from "./captcha.ts";
 import { CdpConnection, modifierBits, parseKeyCombo } from "./cdp.ts";
@@ -33,6 +35,7 @@ import {
 	BROWSER_NAV_TIMEOUT_MS,
 	BROWSER_SETTLE_MS,
 	BROWSER_SNAPSHOT_MAX,
+	BROWSER_SNAPSHOT_MAX_CHARS,
 	BROWSER_VIEWPORT,
 	type BrowserEnv,
 	browserEnv,
@@ -42,10 +45,12 @@ import {
 	urlAllowed,
 } from "./config.ts";
 import {
+	type ChromeVersion,
 	humanKeyGap,
 	humanPath,
 	humanTypeDelays,
 	mulberry32,
+	parseProxy,
 	readChromeVersion,
 	resolveStealthConfig,
 	type StealthConfig,
@@ -85,6 +90,16 @@ export interface DownloadEntry {
 	filename: string;
 	state: "inprogress" | "completed" | "canceled";
 	ts: number;
+	/** CDP downloadId — concurrent downloads update by id, not by slot. */
+	id?: string;
+}
+
+export interface DialogEntry {
+	message: string;
+	type: string;
+	ts: number;
+	/** How the dialog was resolved ("auto-dismissed", "accepted", …). */
+	outcome: string;
 }
 
 export interface SessionInfo {
@@ -140,9 +155,12 @@ export class BrowserSession {
 	private requestsById = new Map<string, RequestEntry>();
 	private downloads: DownloadEntry[] = [];
 	private lastDialog: { message: string; type: string; ts: number } | null = null;
+	/** Ring of recent native dialogs + how each was resolved. */
+	private dialogRing: DialogEntry[] = [];
+	/** One-shot policy for the NEXT native dialog (browser dialog accept|dismiss). */
+	private pendingDialogPolicy: { accept: boolean; promptText?: string; ts: number } | null = null;
 	private pendingChooser: { backendNodeId?: number; nodeId?: number; ts: number } | null = null;
 	private refs = new Map<string, RefEntry>();
-	private snapshotCount = 0;
 	private viewport = { ...BROWSER_VIEWPORT };
 	private info: SessionInfo | null = null;
 	private tempProfileUsed: string | null = null;
@@ -152,6 +170,10 @@ export class BrowserSession {
 	private readonly maxRequests = 200;
 	private downloadDir: string | null = null;
 	private disposers: Array<() => void> = [];
+	/** Per-page event taps, disposed when the target detaches (leak fix). */
+	private pageDisposers = new Map<string, Array<() => void>>();
+	/** In-flight explicit attaches — dedupes targetCreated vs getTargets racing. */
+	private attachingTargets = new Set<string>();
 	private stopped = false;
 	// ---- v2 stealth/captcha state ----
 	/** Resolved stealth config — set at start(), read-only after. */
@@ -225,12 +247,26 @@ export class BrowserSession {
 			// attach mode: launch flags are the remote browser's business, but
 			// the protocol-level stealth tier (no Runtime.enable, isolated
 			// worlds, fingerprint overrides) still applies per page.
+			const conn = await CdpConnection.attach(this.env.cdpUrl);
+			this.conn = conn;
+			// honest engine version for the stealth identity: ask the browser
+			// (Browser.getVersion → product "Chrome/143.0.7499.4") instead of
+			// over-claiming the fallback major on an older attached engine.
+			let attachVersion: ChromeVersion | undefined;
+			try {
+				const v = await conn.send("Browser.getVersion");
+				const full = String(v?.product ?? "").replace(/^[^/]+\//, ""); // "Chrome/143.0…" → "143.0…"
+				const major = Number(full.split(".")[0]);
+				if (Number.isFinite(major) && major > 0) attachVersion = { major, full };
+			} catch {
+				/* older engines: the fallback identity applies */
+			}
 			this.stealthCfg = resolveStealthConfig({
 				enabled: this.explicitStealth ?? this.env.stealth,
 				overrides: this.stealthOverridesFromEnv(),
+				version: attachVersion,
 			});
-			const conn = await CdpConnection.attach(this.env.cdpUrl);
-			this.conn = conn;
+			this.downloadDir = this.cwd;
 			this.info = {
 				mode: "attach",
 				wsUrl: conn.wsUrl,
@@ -243,6 +279,13 @@ export class BrowserSession {
 		}
 
 		const stealthOn = this.explicitStealth ?? this.env.stealth;
+		// a malformed proxy must fail LOUDLY, not launch unproxied (the user
+		// set the env var precisely because their IP must not go out)
+		if (this.env.proxy && parseProxy(this.env.proxy) === undefined) {
+			throw new Error(
+				`UNOWN_BROWSER_PROXY=${JSON.stringify(this.env.proxy)} is not a usable proxy spec (expected scheme://host:port or host:port) — refusing to launch unproxied rather than silently exposing your IP`,
+			);
+		}
 		// stealth needs the REAL engine version before the identity is built
 		const found = discoverBrowser({ allowHeadlessShell: !stealthOn });
 		const chromeVersion = stealthOn ? await readChromeVersion(found.path) : undefined;
@@ -342,25 +385,39 @@ export class BrowserSession {
 		this.disposers.push(
 			conn.on("Target.attachedToTarget", (_m, p) => this.onTargetAttached(p)),
 			conn.on("Target.detachedFromTarget", (_m, p) => this.onTargetDetached(p)),
+			conn.on("Target.targetCreated", (_m, p) => this.onTargetDiscovered(p, "created")),
+			conn.on("Target.targetInfoChanged", (_m, p) => this.onTargetDiscovered(p, "changed")),
+			conn.on("Target.targetDestroyed", (_m, p) => this.onTargetDestroyed(p)),
 		);
 
-		// ---- downloads: route to the project cwd (D12)
-		if (this.info!.mode === "launch") {
-			await conn
-				.send("Browser.setDownloadBehavior", {
-					behavior: "allow",
-					downloadPath: this.downloadDir ?? this.cwd,
-					eventsEnabled: true,
-				})
-				.catch(() => undefined); // older chromes: per-page Page.setDownloadBehavior
-		}
+		// ---- downloads: route to the project cwd (D12) — BOTH modes. In
+		// attach mode this is what makes "where did my file land" answerable
+		// (and the behavior is a runtime setting, not a persistent one).
+		await conn
+			.send("Browser.setDownloadBehavior", {
+				behavior: "allow",
+				downloadPath: this.downloadDir ?? this.cwd,
+				eventsEnabled: true,
+			})
+			.catch(() => undefined); // older chromes: per-page Page.setDownloadBehavior
 
-		// auto-attach to every page target (flatten → sessionIds on messages)
-		await conn.send("Target.setAutoAttach", {
-			autoAttach: true,
-			waitForDebuggerOnStart: false,
-			flatten: true,
-		});
+		// Target DISCOVERY + explicit attach — never Target.setAutoAttach.
+		// The stress round's live finding (Chrome for Testing 143): with
+		// auto-attach armed, a popup opened by window.open() during trusted
+		// input dispatch stalls at about:blank forever and the
+		// Input.dispatchMouseEvent ack hangs for its full 30 s timeout —
+		// even with waitForDebuggerOnStart:false and zero commands sent to
+		// the new session (Runtime.run does not help). Discover + explicit
+		// attach leaves popup navigation alone: 19 ms acks, popup navigates.
+		await conn.send("Target.setDiscoverTargets", { discover: true });
+
+		// attach to the pages that already exist (about:blank on a fresh
+		// launch; real tabs when attaching to a running browser)
+		const existing = await conn.send("Target.getTargets").catch(() => ({ targetInfos: [] }));
+		for (const t of existing.targetInfos ?? []) {
+			if (t.type !== "page") continue;
+			void this.ensureAttached(String(t.targetId)).catch(() => undefined);
+		}
 
 		// wait briefly for the initial page(s)
 		const deadline = Date.now() + 10_000;
@@ -375,6 +432,59 @@ export class BrowserSession {
 		}
 		if (!this.activeSessionId) {
 			this.activeSessionId = this.pages.keys().next().value ?? null;
+		}
+	}
+
+	/** Explicitly attach to one page target (flatten mode → sessionIds). */
+	private async attachToTarget(targetId: string): Promise<void> {
+		const conn = this.requireConn();
+		await conn.send("Target.attachToTarget", { targetId, flatten: true });
+	}
+
+	/** Attach exactly once per target (dedupes targetCreated vs getTargets). */
+	private async ensureAttached(targetId: string): Promise<void> {
+		if (this.findSessionForTarget(targetId) || this.attachingTargets.has(targetId)) return;
+		this.attachingTargets.add(targetId);
+		try {
+			await this.attachToTarget(targetId);
+		} finally {
+			this.attachingTargets.delete(targetId);
+		}
+	}
+
+	/** Target.targetCreated / targetInfoChanged — attach to new pages, refresh urls. */
+	private onTargetDiscovered(params: any, kind: "created" | "changed"): void {
+		const { targetInfo } = params ?? {};
+		if (!targetInfo || targetInfo.type !== "page") return;
+		const tid = String(targetInfo.targetId);
+		if (kind === "created") {
+			// new tabs (window.open, target=_blank, tabs new) flow through here
+			void this.ensureAttached(tid).catch(() => undefined);
+		}
+		// url/title straight from the browser — correct even for targets whose
+		// session-level frameNavigated we missed (the popup-stall class)
+		const sid = this.findSessionForTarget(tid);
+		if (sid) {
+			const page = this.pages.get(sid);
+			if (page) {
+				if (targetInfo.url) page.url = String(targetInfo.url);
+				if (targetInfo.title !== undefined && targetInfo.title !== "") page.title = String(targetInfo.title);
+			}
+		}
+	}
+
+	/** Target.targetDestroyed — drop the page even if no detach event arrives. */
+	private onTargetDestroyed(params: any): void {
+		const tid = String(params?.targetId ?? "");
+		if (!tid) return;
+		const sid = this.findSessionForTarget(tid);
+		if (sid) {
+			this.pages.delete(sid);
+			this.isolatedWorlds.delete(sid);
+			this.runPageDisposers(sid);
+			if (this.activeSessionId === sid) {
+				this.activeSessionId = this.pages.keys().next().value ?? null;
+			}
 		}
 	}
 
@@ -398,7 +508,7 @@ export class BrowserSession {
 		// 'fixture booted' went missing exactly this way).
 		void (async () => {
 			try {
-				this.disposers.push(
+				const taps: Array<() => void> = [
 					this.conn!.on("Runtime.consoleAPICalled", (_m, p, sid) => {
 						if (sid !== sessionId) return;
 						this.pushConsole({
@@ -435,20 +545,7 @@ export class BrowserSession {
 					}),
 					this.conn!.on("Page.javascriptDialogOpening", (_m, p, sid) => {
 						if (sid !== sessionId) return;
-						this.lastDialog = {
-							message: String(p?.message ?? ""),
-							type: String(p?.type ?? "alert"),
-							ts: Date.now(),
-						};
-						this.pushConsole({
-							source: "dialog",
-							level: "warn",
-							text: `${this.lastDialog.type} dialog (auto-dismissed): ${this.lastDialog.message.slice(0, 200)}`,
-							ts: Date.now(),
-						});
-						void this.conn!.send("Page.handleJavaScriptDialog", { accept: false }, { sessionId: sid }).catch(
-							() => undefined,
-						);
+						this.handleDialogOpening(sessionId, p);
 					}),
 					this.conn!.on("Page.downloadWillBegin", (_m, p, sid) => {
 						if (sid !== sessionId) return;
@@ -457,13 +554,14 @@ export class BrowserSession {
 							filename: String(p?.suggestedFilename ?? "download"),
 							state: "inprogress",
 							ts: Date.now(),
+							id: p?.downloadId !== undefined ? String(p.downloadId) : undefined,
 						});
 					}),
 					this.conn!.on("Page.downloadProgress", (_m, p, sid) => {
 						if (sid !== sessionId) return;
 						const state =
 							p?.state === "completed" ? "completed" : p?.state === "canceled" ? "canceled" : "inprogress";
-						this.updateDownload(state);
+						this.updateDownload(state, p?.downloadId !== undefined ? String(p.downloadId) : undefined);
 					}),
 					this.conn!.on("Page.fileChooserOpened", (_m, p, sid) => {
 						if (sid !== sessionId) return;
@@ -501,7 +599,10 @@ export class BrowserSession {
 						const entry = this.requestsById.get(String(p?.requestId ?? ""));
 						if (entry) entry.failed = true;
 					}),
-				);
+				];
+				// per-page taps are disposed on detach — a session with tab churn
+				// must not accumulate no-op handlers forever (leak fix)
+				this.pageDisposers.set(sessionId, taps);
 				// domains AFTER handlers are live — the race window is closed
 				await this.conn!.send("Page.enable", {}, { sessionId });
 				if (this.stealthCfg?.enabled) {
@@ -522,10 +623,50 @@ export class BrowserSession {
 						{ sessionId },
 					).catch(() => undefined);
 				}
-			} catch {
-				/* page may close mid-setup */
+			} catch (err) {
+				// a page that closes mid-setup is expected; a SYSTEMATIC
+				// failure (engine mismatch, non-standard target) must not be a
+				// silent debugging black hole — surface it in the console ring
+				this.pushConsole({
+					source: "log",
+					level: "error",
+					text: `page setup failed: ${err instanceof Error ? err.message : String(err)}`,
+					ts: Date.now(),
+				});
 			}
 		})();
+	}
+
+	/** Resolve one native dialog per the armed policy (default: auto-dismiss). */
+	private handleDialogOpening(sessionId: string, p: any): void {
+		const armed =
+			this.pendingDialogPolicy && Date.now() - this.pendingDialogPolicy.ts < 120_000
+				? this.pendingDialogPolicy
+				: null;
+		this.pendingDialogPolicy = null; // one-shot — the next dialog auto-dismisses again
+		const params: Record<string, unknown> = { accept: armed ? armed.accept : false };
+		if (armed?.promptText !== undefined) params.promptText = armed.promptText;
+		const outcome = armed
+			? armed.accept
+				? armed.promptText !== undefined
+					? `accepted with text ${JSON.stringify(armed.promptText)}`
+					: "accepted"
+				: "dismissed (armed policy)"
+			: "auto-dismissed";
+		this.lastDialog = {
+			message: String(p?.message ?? ""),
+			type: String(p?.type ?? "alert"),
+			ts: Date.now(),
+		};
+		this.dialogRing.push({ ...this.lastDialog, outcome });
+		if (this.dialogRing.length > 20) this.dialogRing.shift();
+		this.pushConsole({
+			source: "dialog",
+			level: "warn",
+			text: `${this.lastDialog.type} dialog (${outcome}): ${this.lastDialog.message.slice(0, 200)}`,
+			ts: Date.now(),
+		});
+		void this.conn!.send("Page.handleJavaScriptDialog", params, { sessionId }).catch(() => undefined);
 	}
 
 	private onTargetDetached(params: any) {
@@ -533,8 +674,22 @@ export class BrowserSession {
 		if (!sessionId) return;
 		this.isolatedWorlds.delete(sessionId);
 		this.pages.delete(sessionId);
+		this.runPageDisposers(sessionId);
 		if (this.activeSessionId === sessionId) {
 			this.activeSessionId = this.pages.keys().next().value ?? null;
+		}
+	}
+
+	private runPageDisposers(sessionId: string): void {
+		const taps = this.pageDisposers.get(sessionId);
+		if (!taps) return;
+		this.pageDisposers.delete(sessionId);
+		for (const off of taps) {
+			try {
+				off();
+			} catch {
+				/* already gone */
+			}
 		}
 	}
 
@@ -553,13 +708,13 @@ export class BrowserSession {
 		if (this.downloads.length > 50) this.downloads.shift();
 	}
 
-	private updateDownload(state: DownloadEntry["state"]) {
-		for (let i = this.downloads.length - 1; i >= 0; i--) {
-			if (this.downloads[i].state === "inprogress") {
-				this.downloads[i].state = state;
-				return;
-			}
-		}
+	private updateDownload(state: DownloadEntry["state"], downloadId?: string) {
+		// concurrent downloads update BY ID; legacy engines without one fall
+		// back to the newest in-progress entry
+		const target = downloadId
+			? this.downloads.find((d) => d.id === downloadId)
+			: [...this.downloads].reverse().find((d) => d.state === "inprogress");
+		if (target) target.state = state;
 	}
 
 	// ------------------------------------------------------------- accessors
@@ -588,8 +743,14 @@ export class BrowserSession {
 
 	consoleEntries(level?: string): ConsoleEntry[] {
 		if (!level) return [...this.consoleRing];
-		const want = level.toLowerCase();
-		return this.consoleRing.filter((e) => e.level.toLowerCase() === want);
+		// "warn" and "warning" are the same level in two spellings (Log-domain
+		// entries carry "warning", console entries "warn") — filtering by one
+		// must not silently hide the other
+		const want = level.toLowerCase() === "warn" ? "warning" : level.toLowerCase();
+		return this.consoleRing.filter((e) => {
+			const l = e.level.toLowerCase();
+			return l === want || (want === "warning" && l === "warn");
+		});
 	}
 
 	requestEntries(): RequestEntry[] {
@@ -602,6 +763,11 @@ export class BrowserSession {
 
 	lastDialogInfo() {
 		return this.lastDialog;
+	}
+
+	/** Recent native dialogs + how each was resolved (browser dialog list). */
+	dialogEntries(): DialogEntry[] {
+		return [...this.dialogRing];
 	}
 
 	private requireConn(): CdpConnection {
@@ -704,6 +870,25 @@ export class BrowserSession {
 		await sleep(ms);
 	}
 
+	/**
+	 * Bounded readyState wait — the load EVENT can fire before our listener
+	 * is armed (a tab created mid-suite attaches after its navigation began),
+	 * but document.readyState is always queryable and always truthful.
+	 */
+	private async waitForPageReady(sessionId: string, timeoutMs = 5_000): Promise<boolean> {
+		const deadline = Date.now() + timeoutMs;
+		while (Date.now() < deadline) {
+			const rs = await this.pageEval("document.readyState", { sessionId }).catch(() => undefined);
+			if (rs === "complete") return true;
+			if (rs === "interactive") {
+				// interactive counts for our purposes — DOM is addressable
+				return true;
+			}
+			await sleep(120);
+		}
+		return false;
+	}
+
 	/** Take a snapshot, refresh the ref registry, return {snap, text}. */
 	private async takeSnapshot(opts: { includeBoxes?: boolean } = {}): Promise<{ snap: Snapshot; text: string }> {
 		const raw = await this.pageEval(
@@ -722,7 +907,16 @@ export class BrowserSession {
 			page.url = snap.url;
 			page.title = snap.title;
 		}
-		return { snap, text: formatSnapshot(snap) };
+		// the char budget the docs always promised (UNOWN_BROWSER_SNAPSHOT_MAX_CHARS,
+		// default 60k): a 400-element page with long names/values can otherwise
+		// blow far past it straight into the model's context
+		let text = formatSnapshot(snap);
+		if (text.length > BROWSER_SNAPSHOT_MAX_CHARS) {
+			text =
+				text.slice(0, BROWSER_SNAPSHOT_MAX_CHARS) +
+				`\n… [snapshot truncated at ${BROWSER_SNAPSHOT_MAX_CHARS} chars of ${text.length} — narrow with browser find, or html for a targeted subtree]`;
+		}
+		return { snap, text };
 	}
 
 	/** Resolve a ref to its current box, scrolling it into view first. */
@@ -744,18 +938,51 @@ export class BrowserSession {
 	}
 
 	/**
-	 * Scroll an element into view and return its fresh viewport box
-	 * (D5 — trusted input needs real coordinates).
+	 * Scroll an element into view and return its fresh VIEWPORT box
+	 * (D5 — trusted input needs real coordinates). Resolution pierces open
+	 * shadow roots and same-origin iframes — the snapshot walker mints
+	 * refs in there, so clicks must reach them too. Iframe content boxes
+	 * are offset-compensated so Input coordinates land in the right spot.
 	 */
 	private async prepElement(selector: string): Promise<number[] | null> {
 		const prepped = await this.pageEval(`(() => {
-			const el = document.querySelector(${JSON.stringify(selector)});
-			if (!el) return null;
-			try { el.scrollIntoView({ block: "center", inline: "center" }); } catch (e) {}
-			const r = el.getBoundingClientRect();
-			if (r.width === 0 && r.height === 0) return null;
-			return [Math.round(r.x), Math.round(r.y), Math.round(r.width), Math.round(r.height)];
-		})()`);
+                        const sel = ${JSON.stringify(selector)};
+                        function findIn(root) {
+                                let el = null;
+                                try { el = root.querySelector(sel); } catch (e) { return null; }
+                                if (el) return { el: el, frames: [] };
+                                for (const k of Array.from(root.querySelectorAll("*"))) {
+                                        if (k.shadowRoot) {
+                                                const hit = findIn(k.shadowRoot);
+                                                if (hit) return hit;
+                                        }
+                                }
+                                for (const f of Array.from(root.querySelectorAll("iframe"))) {
+                                        try {
+                                                const doc = f.contentDocument;
+                                                if (doc && doc.body) {
+                                                        const hit = findIn(doc);
+                                                        if (hit) return { el: hit.el, frames: [f].concat(hit.frames) };
+                                                }
+                                        } catch (e) { /* cross-origin */ }
+                                }
+                                return null;
+                        }
+                        const hit = findIn(document);
+                        if (!hit) return null;
+                        try { hit.el.scrollIntoView({ block: "center", inline: "center" }); } catch (e) {}
+                        for (const f of hit.frames) {
+                                try { f.scrollIntoView({ block: "center", inline: "center" }); } catch (e) {}
+                        }
+                        const r = hit.el.getBoundingClientRect();
+                        if (r.width === 0 && r.height === 0) return null;
+                        let x = r.x, y = r.y;
+                        for (const f of hit.frames) {
+                                const fr = f.getBoundingClientRect();
+                                x += fr.x; y += fr.y;
+                        }
+                        return [Math.round(x), Math.round(y), Math.round(r.width), Math.round(r.height)];
+                })()`);
 		return Array.isArray(prepped) ? prepped : null;
 	}
 
@@ -829,17 +1056,13 @@ export class BrowserSession {
 			);
 			return;
 		}
-		// Combos (Ctrl+A, cmd+shift+p): modifier key events bracket a
-		// rawKeyDown for the final key — carrying `text` on it turns the
-		// shortcut into a character insertion and Ctrl+A stops selecting.
-		let mods = 0;
-		const held: string[] = [];
-		for (const p of parts) {
-			if (isModifier(p.key)) {
-				mods = modifierBits([p.key]);
-				held.push(p.key);
-			}
-		}
+		// Combos (Ctrl+A, cmd+shift+p, Control+Shift+p): modifier key
+		// events bracket a rawKeyDown for the final key — carrying `text` on
+		// it turns the shortcut into a character insertion and Ctrl+A stops
+		// selecting. Modifier bits ACCUMULATE: Control+Shift+p must press
+		// with both bits set, not whichever modifier parsed last.
+		const mods = parts.filter((p) => isModifier(p.key)).reduce((acc, p) => acc | modifierBits([p.key]), 0);
+		let modsNow = 0;
 		for (const p of parts) {
 			const mod = isModifier(p.key);
 			const payload: Record<string, unknown> = {
@@ -848,14 +1071,16 @@ export class BrowserSession {
 				code: p.code,
 				windowsVirtualKeyCode: p.vk,
 				nativeVirtualKeyCode: p.vk,
-				modifiers: mods,
+				modifiers: mod ? modsNow : mods,
 			};
+			if (mod) modsNow |= modifierBits([p.key]);
 			if (!mod && p.text && mods === 0) {
 				payload.text = p.text;
 				payload.unmodifiedText = p.text;
 			}
 			await conn.send("Input.dispatchKeyEvent", payload, { sessionId });
 		}
+		let modsRel = mods;
 		for (const p of [...parts].reverse()) {
 			await conn.send(
 				"Input.dispatchKeyEvent",
@@ -865,10 +1090,11 @@ export class BrowserSession {
 					code: p.code,
 					windowsVirtualKeyCode: p.vk,
 					nativeVirtualKeyCode: p.vk,
-					modifiers: mods,
+					modifiers: modsRel,
 				},
 				{ sessionId },
 			);
+			if (isModifier(p.key)) modsRel &= ~modifierBits([p.key]);
 		}
 	}
 
@@ -962,9 +1188,18 @@ export class BrowserSession {
 			const { currentIndex, entries } = history;
 			const to = dir === "back" ? currentIndex - 1 : currentIndex + 1;
 			if (to < 0 || to >= entries.length) throw new Error(`cannot go ${dir} — no ${dir} history entry`);
+			// the deny-list gates EVERY navigation path — history included
+			// (tabs new and eval location.href complete the set)
+			const dest = String(entries[to].url ?? "");
+			if (dest && !/^about:/i.test(dest)) {
+				const gate = urlAllowed(dest, this.env.blockList);
+				if (!gate.ok)
+					throw new Error(`navigation blocked by UNOWN_BROWSER_BLOCK (pattern ${gate.blockedBy}): ${dest}`);
+			}
 			await conn.send("Page.navigateToHistoryEntry", { entryId: entries[to].id }, { sessionId });
 		}
-		await this.waitForLoad(sessionId);
+		await this.waitForLoad(sessionId, 2_000).catch(() => undefined);
+		await this.waitForPageReady(sessionId, 5_000);
 		await this.settle();
 		const { snap, text } = await this.takeSnapshot();
 		return { summary: `${dir} → ${snap.url}`, snapshot: text, url: snap.url, title: snap.title };
@@ -1053,6 +1288,21 @@ export class BrowserSession {
 		const loc = await this.locate(opts);
 		const conn = this.requireConn();
 		const sessionId = this.requireSessionId();
+		// humanized approach in stealth — and the cursor ORIGIN moves here, so
+		// the next humanized click path starts from reality, not a stale point
+		if (this.stealthCfg?.enabled && this.stealthCfg.humanize) {
+			for (const pt of humanPath(this.mousePos, loc.center, this.humanRng)) {
+				await conn
+					.send(
+						"Input.dispatchMouseEvent",
+						{ type: "mouseMoved", x: pt.x, y: pt.y, pointerType: "mouse" },
+						{ sessionId },
+					)
+					.catch(() => undefined);
+				await sleep(pt.delayMs);
+			}
+		}
+		this.mousePos = { x: loc.center.x, y: loc.center.y };
 		await conn.send(
 			"Input.dispatchMouseEvent",
 			{ type: "mouseMoved", x: Math.round(loc.center.x), y: Math.round(loc.center.y), pointerType: "mouse" },
@@ -1068,6 +1318,66 @@ export class BrowserSession {
 		};
 	}
 
+	/** Select-all key combo for the HOST platform (Cmd+A on macOS — Ctrl+A
+	 *  there is line-start, and clear/type would append instead of replace). */
+	private selectAllCombo(): string {
+		return process.platform === "darwin" ? "Meta+a" : "Control+a";
+	}
+
+	/** Insert text: instant paste classically, per-char humanized in stealth. */
+	private async insertText(text: string): Promise<void> {
+		const conn = this.requireConn();
+		const sessionId = this.requireSessionId();
+		if (this.stealthCfg?.enabled && this.stealthCfg.humanize) {
+			const delays = humanTypeDelays(text, this.humanRng);
+			for (let i = 0; i < text.length; i++) {
+				const ch = text[i];
+				await sleep(delays[i]);
+				if (ch === "\n") {
+					await conn.send(
+						"Input.dispatchKeyEvent",
+						{
+							type: "keyDown",
+							key: "Enter",
+							code: "Enter",
+							windowsVirtualKeyCode: 13,
+							text: "\r",
+							unmodifiedText: "\r",
+						},
+						{ sessionId },
+					);
+					await sleep(humanKeyGap(this.humanRng));
+					await conn.send(
+						"Input.dispatchKeyEvent",
+						{ type: "keyUp", key: "Enter", code: "Enter", windowsVirtualKeyCode: 13 },
+						{ sessionId },
+					);
+					continue;
+				}
+				const vk = ch.toUpperCase().charCodeAt(0);
+				const code = /^[a-zA-Z]$/.test(ch)
+					? `Key${ch.toUpperCase()}`
+					: /^[0-9]$/.test(ch)
+						? `Digit${ch}`
+						: undefined;
+				await conn.send(
+					"Input.dispatchKeyEvent",
+					{ type: "keyDown", key: ch, code, windowsVirtualKeyCode: vk, text: ch, unmodifiedText: ch },
+					{ sessionId },
+				);
+				await sleep(humanKeyGap(this.humanRng));
+				await conn.send(
+					"Input.dispatchKeyEvent",
+					{ type: "keyUp", key: ch, code, windowsVirtualKeyCode: vk },
+					{ sessionId },
+				);
+			}
+		} else {
+			// insertText fires real input events (works with React/Vue controlled inputs)
+			await conn.send("Input.insertText", { text }, { sessionId });
+		}
+	}
+
 	async type(opts: {
 		ref?: string;
 		selector?: string;
@@ -1076,68 +1386,17 @@ export class BrowserSession {
 		clear?: boolean;
 	}): Promise<ActionReport> {
 		await this.ensureStarted();
-		const conn = this.requireConn();
-		const sessionId = this.requireSessionId();
 		if (opts.ref || opts.selector) {
 			const loc = await this.locate(opts);
 			// focus the element with a trusted click at its center
 			await this.dispatchClick(loc.center.x, loc.center.y);
 		}
 		if (opts.clear) {
-			await this.pressKeyCombo("Control+a");
+			await this.pressKeyCombo(this.selectAllCombo());
 			await this.pressKeyCombo("Backspace");
 		}
 		if (opts.text.length > 0) {
-			if (this.stealthCfg?.enabled && this.stealthCfg.humanize) {
-				// humanized typing: per-character key events with jittered
-				// delays (insertText is an instant paste - a behavioral tell)
-				const delays = humanTypeDelays(opts.text, this.humanRng);
-				for (let i = 0; i < opts.text.length; i++) {
-					const ch = opts.text[i];
-					await sleep(delays[i]);
-					if (ch === "\n") {
-						await conn.send(
-							"Input.dispatchKeyEvent",
-							{
-								type: "keyDown",
-								key: "Enter",
-								code: "Enter",
-								windowsVirtualKeyCode: 13,
-								text: "\r",
-								unmodifiedText: "\r",
-							},
-							{ sessionId },
-						);
-						await sleep(humanKeyGap(this.humanRng));
-						await conn.send(
-							"Input.dispatchKeyEvent",
-							{ type: "keyUp", key: "Enter", code: "Enter", windowsVirtualKeyCode: 13 },
-							{ sessionId },
-						);
-						continue;
-					}
-					const vk = ch.toUpperCase().charCodeAt(0);
-					const code = /^[a-zA-Z]$/.test(ch)
-						? `Key${ch.toUpperCase()}`
-						: /^[0-9]$/.test(ch)
-							? `Digit${ch}`
-							: undefined;
-					await conn.send(
-						"Input.dispatchKeyEvent",
-						{ type: "keyDown", key: ch, code, windowsVirtualKeyCode: vk, text: ch, unmodifiedText: ch },
-						{ sessionId },
-					);
-					await sleep(humanKeyGap(this.humanRng));
-					await conn.send(
-						"Input.dispatchKeyEvent",
-						{ type: "keyUp", key: ch, code, windowsVirtualKeyCode: vk },
-						{ sessionId },
-					);
-				}
-			} else {
-				// insertText fires real input events (works with React/Vue controlled inputs)
-				await conn.send("Input.insertText", { text: opts.text }, { sessionId });
-			}
+			await this.insertText(opts.text);
 		}
 		if (opts.submit) {
 			await this.pressKeyCombo("Enter");
@@ -1171,14 +1430,32 @@ export class BrowserSession {
 			// dropdown open and mangles the page's input state):
 			//   select → native value set + change event
 			//   checkbox/radio → trusted toggle click
-			//   everything else → click to focus, clear, insertText
+			//   everything else → click to focus, clear, insert text
+			// The kind probe pierces shadow roots + same-origin iframes —
+			// refs minted in there must fill, not just render.
 			const kind = await this.pageEval(`(() => {
-				const el = document.querySelector(${JSON.stringify(selector)});
-				if (!el) return null;
-				if (el.tagName === "SELECT") return "select";
-				if (el.tagName === "INPUT" && (el.type === "checkbox" || el.type === "radio")) return "toggle";
-				return "text";
-			})()`);
+                                const sel = ${JSON.stringify(selector)};
+                                function findIn(root) {
+                                        let el = null;
+                                        try { el = root.querySelector(sel); } catch (e) { return null; }
+                                        if (el) return el;
+                                        for (const k of Array.from(root.querySelectorAll("*"))) {
+                                                if (k.shadowRoot) { const hit = findIn(k.shadowRoot); if (hit) return hit; }
+                                        }
+                                        for (const f of Array.from(root.querySelectorAll("iframe"))) {
+                                                try {
+                                                        const doc = f.contentDocument;
+                                                        if (doc && doc.body) { const hit = findIn(doc); if (hit) return hit; }
+                                                } catch (e) {}
+                                        }
+                                        return null;
+                                }
+                                const el = findIn(document);
+                                if (!el) return null;
+                                if (el.tagName === "SELECT") return "select";
+                                if (el.tagName === "INPUT" && (el.type === "checkbox" || el.type === "radio")) return "toggle";
+                                return "text";
+                        })()`);
 			if (kind === null) throw new Error(`fill_form: no element for ${f.ref ? `[${f.ref}]` : f.selector}`);
 			if (kind === "select") {
 				await this.selectOption({ ref: f.ref, selector: f.selector, values: [f.value] });
@@ -1193,9 +1470,12 @@ export class BrowserSession {
 			}
 			const loc = await this.locate(f);
 			await this.dispatchClick(loc.center.x, loc.center.y);
-			await this.pressKeyCombo("Control+a");
+			await this.pressKeyCombo(this.selectAllCombo());
 			await this.pressKeyCombo("Backspace");
-			await this.conn!.send("Input.insertText", { text: f.value }, { sessionId: this.requireSessionId() });
+			// humanized per-char typing in stealth — an instant paste is the
+			// exact behavioral tell type() carefully avoids; fill_form must
+			// not reintroduce it in the very mode that promises humanize
+			await this.insertText(f.value);
 			notes.push(`${f.ref ? `[${f.ref}]` : f.selector} = ${JSON.stringify(f.value.slice(0, 40))}`);
 		}
 		await this.settle();
@@ -1211,34 +1491,50 @@ export class BrowserSession {
 
 	async selectOption(opts: { ref?: string; selector?: string; values: string[] }): Promise<ActionReport> {
 		await this.ensureStarted();
-		const target = opts.ref ? this.refs.get(opts.ref)?.selector : opts.selector;
 		const selector = opts.ref ? `[data-unown-ref="${opts.ref}"]` : opts.selector;
 		if (!selector) throw new Error("select_option needs a ref or selector");
-		// native setter + change events (React-safe)
+		// native setter + change events (React-safe) — resolution pierces
+		// shadow roots + same-origin iframes like every other ref action
 		const applied = await this.pageEval(`(() => {
-			const el = document.querySelector(${JSON.stringify(selector)});
-			if (!el) return null;
-			const values = ${JSON.stringify(opts.values)};
-			let hit = 0;
-			if (el.tagName === "SELECT") {
-				const setter = Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, "value").set;
-				for (const opt of el.options) {
-					opt.selected = values.includes(opt.value) || values.includes(opt.label) || values.includes(opt.textContent.trim());
-					if (opt.selected) hit++;
-				}
-				setter.call(el, el.selectedIndex >= 0 ? el.options[el.selectedIndex].value : "");
-				el.dispatchEvent(new Event("input", { bubbles: true }));
-				el.dispatchEvent(new Event("change", { bubbles: true }));
-				return { tag: "select", hit };
-			}
-			if (el.tagName === "INPUT" && (el.type === "radio" || el.type === "checkbox")) {
-				el.checked = values.includes(el.value) || values.includes("true");
-				el.dispatchEvent(new Event("input", { bubbles: true }));
-				el.dispatchEvent(new Event("change", { bubbles: true }));
-				return { tag: "input", hit: el.checked ? 1 : 0 };
-			}
-			return { tag: el.tagName.toLowerCase(), hit: 0 };
-		})()`);
+                        const sel = ${JSON.stringify(selector)};
+                        function findIn(root) {
+                                let el = null;
+                                try { el = root.querySelector(sel); } catch (e) { return null; }
+                                if (el) return el;
+                                for (const k of Array.from(root.querySelectorAll("*"))) {
+                                        if (k.shadowRoot) { const hit = findIn(k.shadowRoot); if (hit) return hit; }
+                                }
+                                for (const f of Array.from(root.querySelectorAll("iframe"))) {
+                                        try {
+                                                const doc = f.contentDocument;
+                                                if (doc && doc.body) { const hit = findIn(doc); if (hit) return hit; }
+                                        } catch (e) {}
+                                }
+                                return null;
+                        }
+                        const el = findIn(document);
+                        if (!el) return null;
+                        const values = ${JSON.stringify(opts.values)};
+                        let hit = 0;
+                        if (el.tagName === "SELECT") {
+                                const setter = Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, "value").set;
+                                for (const opt of el.options) {
+                                        opt.selected = values.includes(opt.value) || values.includes(opt.label) || values.includes(opt.textContent.trim());
+                                        if (opt.selected) hit++;
+                                }
+                                setter.call(el, el.selectedIndex >= 0 ? el.options[el.selectedIndex].value : "");
+                                el.dispatchEvent(new Event("input", { bubbles: true }));
+                                el.dispatchEvent(new Event("change", { bubbles: true }));
+                                return { tag: "select", hit };
+                        }
+                        if (el.tagName === "INPUT" && (el.type === "radio" || el.type === "checkbox")) {
+                                el.checked = values.includes(el.value) || values.includes("true");
+                                el.dispatchEvent(new Event("input", { bubbles: true }));
+                                el.dispatchEvent(new Event("change", { bubbles: true }));
+                                return { tag: "input", hit: el.checked ? 1 : 0 };
+                        }
+                        return { tag: el.tagName.toLowerCase(), hit: 0 };
+                })()`);
 		if (applied === null) throw new Error(`select_option: no element for ${opts.ref ?? opts.selector}`);
 		if (applied.hit === 0 && applied.tag === "select") {
 			throw new Error(`select_option: none of ${JSON.stringify(opts.values)} matched an option`);
@@ -1267,13 +1563,13 @@ export class BrowserSession {
 		if (opts.ref || opts.selector) {
 			// scroll an element into view (Playwright scroll_into_view semantics)
 			const loc = await this.locate(opts);
-			const box = await this.pageEval(`(() => {
-				const el = document.querySelector(${JSON.stringify(loc.selector)});
-				if (!el) return null;
-				el.scrollIntoView({ block: "center" });
-				const r = el.getBoundingClientRect();
-				return [Math.round(r.x), Math.round(r.y), Math.round(r.width), Math.round(r.height)];
-			})()`);
+			const _box = await this.pageEval(`(() => {
+                                const el = document.querySelector(${JSON.stringify(loc.selector)});
+                                if (!el) return null;
+                                el.scrollIntoView({ block: "center" });
+                                const r = el.getBoundingClientRect();
+                                return [Math.round(r.x), Math.round(r.y), Math.round(r.width), Math.round(r.height)];
+                        })()`);
 			const { snap, text } = await this.takeSnapshot();
 			return {
 				summary: `scrolled ${opts.ref ? `[${opts.ref}]` : opts.selector} into view`,
@@ -1331,27 +1627,43 @@ export class BrowserSession {
 			{ ...base, type: "mousePressed", x: Math.round(start.center.x), y: Math.round(start.center.y) },
 			{ sessionId },
 		);
-		const steps = 8;
-		for (let i = 1; i <= steps; i++) {
-			await conn.send(
-				"Input.dispatchMouseEvent",
-				{
-					type: "mouseMoved",
-					x: Math.round(start.center.x + ((end.center.x - start.center.x) * i) / steps),
-					y: Math.round(start.center.y + ((end.center.y - start.center.y) * i) / steps),
-					button: "left",
-					buttons: 1,
-					pointerType: "mouse",
-				},
-				{ sessionId },
-			);
-			await sleep(16);
+		if (this.stealthCfg?.enabled && this.stealthCfg.humanize) {
+			// a human drag is a curved, eased path — a straight 8-step line is
+			// exactly the robotic signature humanPath exists to avoid
+			for (const pt of humanPath(start.center, end.center, this.humanRng)) {
+				await conn
+					.send(
+						"Input.dispatchMouseEvent",
+						{ type: "mouseMoved", x: pt.x, y: pt.y, button: "left", buttons: 1, pointerType: "mouse" },
+						{ sessionId },
+					)
+					.catch(() => undefined);
+				await sleep(pt.delayMs);
+			}
+		} else {
+			const steps = 8;
+			for (let i = 1; i <= steps; i++) {
+				await conn.send(
+					"Input.dispatchMouseEvent",
+					{
+						type: "mouseMoved",
+						x: Math.round(start.center.x + ((end.center.x - start.center.x) * i) / steps),
+						y: Math.round(start.center.y + ((end.center.y - start.center.y) * i) / steps),
+						button: "left",
+						buttons: 1,
+						pointerType: "mouse",
+					},
+					{ sessionId },
+				);
+				await sleep(16);
+			}
 		}
 		await conn.send(
 			"Input.dispatchMouseEvent",
 			{ ...base, type: "mouseReleased", x: Math.round(end.center.x), y: Math.round(end.center.y) },
 			{ sessionId },
 		);
+		this.mousePos = { x: end.center.x, y: end.center.y };
 		await this.settle();
 		const { snap, text } = await this.takeSnapshot();
 		return {
@@ -1449,14 +1761,22 @@ export class BrowserSession {
 	): Promise<ActionReport> {
 		await this.ensureStarted();
 		const conn = this.requireConn();
-		const list = () => Array.from(this.pages.values()).map((p, i) => `${i}: ${p.title || p.url || "(untitled)"}`);
+		const list = () =>
+			Array.from(this.pages.values()).map((p, i) => `${i}: ${p.title || "(untitled)"}${p.url ? ` — ${p.url}` : ""}`);
 		if (action === "list") {
 			return { summary: `${this.pages.size} tab(s)`, details: list() };
 		}
 		if (action === "new") {
 			const url = opts.url ? normalizeUrl(opts.url) : "about:blank";
+			if (opts.url) {
+				// the deny-list gates every navigation path — tabs new
+				// included, not just navigate
+				const gate = urlAllowed(url, this.env.blockList);
+				if (!gate.ok)
+					throw new Error(`navigation blocked by UNOWN_BROWSER_BLOCK (pattern ${gate.blockedBy}): ${url}`);
+			}
 			const { targetId } = await conn.send("Target.createTarget", { url });
-			// wait for auto-attach to hand us the session
+			// wait for discovery + explicit attach to hand us the session
 			const deadline = Date.now() + 5_000;
 			let sid: string | null = null;
 			while (Date.now() < deadline) {
@@ -1467,7 +1787,11 @@ export class BrowserSession {
 			if (sid) {
 				this.activeSessionId = sid;
 				if (opts.url) {
-					await this.waitForLoad(sid).catch(() => undefined);
+					// short event wait + readyState fallback: the load event may
+					// have fired before our attach armed the listener (a 30 s
+					// waitForLoad here was the stress round's tabs-new stall)
+					await this.waitForLoad(sid, 2_000).catch(() => undefined);
+					await this.waitForPageReady(sid, 5_000);
 					await this.settle();
 					const { snap, text } = await this.takeSnapshot();
 					return { summary: `opened tab → ${snap.url}`, snapshot: text, url: snap.url, title: snap.title };
@@ -1556,13 +1880,32 @@ export class BrowserSession {
 			}
 		}
 		if (opts.download) {
+			// Semantics (the trigger-then-wait contract): satisfied when the
+			// most recent download is completed — a small file can finish
+			// entirely during the triggering click's settle — or when a
+			// download transitions to completed while we poll. Concurrent
+			// downloads are tracked BY ID, so both files of a pair report.
+			const startState = new Map(this.downloads.map((d) => [d, d.state]));
 			while (Date.now() < deadline) {
+				const inprogress = this.downloads.filter((d) => d.state === "inprogress");
 				const last = this.downloads[this.downloads.length - 1];
-				if (last && last.state === "completed") {
+				const becameDone = this.downloads.filter(
+					(d) => d.state === "completed" && startState.get(d) !== "completed",
+				);
+				const becameCanceled = this.downloads.filter(
+					(d) => d.state === "canceled" && startState.get(d) !== "canceled",
+				);
+				if (!inprogress.length && last && last.state === "completed") {
 					notes.push(`download complete: ${last.filename}`);
 					break;
 				}
-				if (last && last.state === "canceled") throw new Error(`download canceled: ${last.filename}`);
+				if (!inprogress.length && becameDone.length) {
+					notes.push(`download complete: ${becameDone.map((d) => d.filename).join(", ")}`);
+					break;
+				}
+				if (!inprogress.length && becameCanceled.length) {
+					throw new Error(`download canceled: ${becameCanceled.map((d) => d.filename).join(", ")}`);
+				}
 				await sleep(250);
 				if (Date.now() >= deadline) throw new Error(`wait timed out after ${timeoutMs}ms: no completed download`);
 			}
@@ -1586,15 +1929,43 @@ export class BrowserSession {
 			params.screenHeight = id.screen.height;
 			params.screenOrientation = { angle: 0, type: "landscapePrimary" };
 		}
-		await this.conn!.send("Emulation.setDeviceMetricsOverride", params, { sessionId: this.requireSessionId() }).catch(
-			() =>
-				this.conn!.send(
-					"Emulation.setDeviceMetricsOverride",
-					{ width, height, deviceScaleFactor: 1, mobile: false },
-					{ sessionId: this.requireSessionId() },
-				).catch(() => undefined),
+		const sessionId = this.requireSessionId();
+		await this.conn!.send("Emulation.setDeviceMetricsOverride", params, { sessionId }).catch(() =>
+			this.conn!.send(
+				"Emulation.setDeviceMetricsOverride",
+				{ width, height, deviceScaleFactor: 1, mobile: false },
+				{ sessionId },
+			).catch(() => undefined),
 		);
 		return { summary: `viewport ${width}x${height}` };
+	}
+
+	/**
+	 * Native-dialog policy (the stress round's s5 finding: prompt() dialogs
+	 * could never be ANSWERED — every dialog was auto-dismissed, so “type
+	 * green into the prompt” was impossible). `list` shows the dialog ring;
+	 * `accept`/`dismiss` arm a one-shot policy for the NEXT dialog — then
+	 * trigger it (the click that opens it) and the dialog resolves your way.
+	 */
+	async dialog(action: "list" | "accept" | "dismiss", opts: { text?: string } = {}): Promise<ActionReport> {
+		if (action === "list") {
+			const entries = this.dialogEntries();
+			return {
+				summary: `${entries.length} dialog(s)`,
+				details: entries.length
+					? entries.map((d) => `[${d.type}] ${d.message} → ${d.outcome}`)
+					: ["(no dialogs yet)"],
+			};
+		}
+		this.pendingDialogPolicy = {
+			accept: action === "accept",
+			promptText: opts.text,
+			ts: Date.now(),
+		};
+		return {
+			summary: `next dialog will be ${action === "accept" ? "accepted" : "dismissed"}${opts.text !== undefined ? ` with text ${JSON.stringify(opts.text)}` : ""}`,
+			details: ["the policy is one-shot — now trigger the dialog (e.g. click the button that opens it)"],
+		};
 	}
 
 	async uploadFiles(paths: string[], opts: { ref?: string; selector?: string } = {}): Promise<ActionReport> {
@@ -1621,13 +1992,49 @@ export class BrowserSession {
 			return abs;
 		});
 		paths = jailed;
-		// 1) explicit input element
+		// 1) explicit input element — resolution pierces shadow roots and
+		// same-origin iframes (refs minted in there must upload too); the
+		// element is resolved to a Runtime objectId, then DOM.requestNode
+		// mints the nodeId DOM.setFileInputFiles needs
 		if (opts.ref || opts.selector) {
 			const selector = opts.ref ? `[data-unown-ref="${opts.ref}"]` : opts.selector!;
-			const { root } = await conn.send("DOM.getDocument", { depth: 0 }, { sessionId });
-			const { nodeId } = await conn.send("DOM.querySelector", { nodeId: root.nodeId, selector }, { sessionId });
-			if (!nodeId) throw new Error(`upload: no element for ${opts.ref ?? opts.selector}`);
-			await conn.send("DOM.setFileInputFiles", { files: paths, nodeId }, { sessionId });
+			const res = await conn.send(
+				"Runtime.evaluate",
+				{
+					expression: `(() => {
+                                                const sel = ${JSON.stringify(selector)};
+                                                function findIn(root) {
+                                                        let el = null;
+                                                        try { el = root.querySelector(sel); } catch (e) { return null; }
+                                                        if (el) return el;
+                                                        for (const k of Array.from(root.querySelectorAll("*"))) {
+                                                                if (k.shadowRoot) { const hit = findIn(k.shadowRoot); if (hit) return hit; }
+                                                        }
+                                                        for (const f of Array.from(root.querySelectorAll("iframe"))) {
+                                                                try {
+                                                                        const doc = f.contentDocument;
+                                                                        if (doc && doc.body) { const hit = findIn(doc); if (hit) return hit; }
+                                                                } catch (e) {}
+                                                        }
+                                                        return null;
+                                                }
+                                                const el = findIn(document);
+                                                if (!el || el.tagName !== "INPUT" || el.type !== "file") return null;
+                                                return el;
+                                        })()`,
+					returnByValue: false,
+					userGesture: true,
+				},
+				{ sessionId },
+			);
+			const objectId = res?.result?.objectId;
+			if (!objectId) throw new Error(`upload: no file input for ${opts.ref ?? opts.selector}`);
+			// DOM.getDocument arms the DOM agent — requestNode without it
+			// answers an empty payload (measured on Chrome 143)
+			await conn.send("DOM.getDocument", { depth: 0 }, { sessionId }).catch(() => undefined);
+			const node = await conn.send("DOM.requestNode", { objectId }, { sessionId });
+			if (!node?.nodeId) throw new Error(`upload: cannot resolve a DOM node for ${opts.ref ?? opts.selector}`);
+			await conn.send("DOM.setFileInputFiles", { files: paths, nodeId: node.nodeId }, { sessionId });
 			return { summary: `uploaded ${paths.length} file(s) to ${opts.ref ? `[${opts.ref}]` : opts.selector}` };
 		}
 		// 2) a file chooser is open from a recent click
@@ -1853,12 +2260,13 @@ export class BrowserSession {
 
 	/** Report the stealth + captcha tier configuration. */
 	async stealthStatus(): Promise<ActionReport> {
-		this.captchaCfg ?? (this.captchaCfg = resolveCaptchaConfig(this.env));
-		this.stealthCfg ??
-			(this.stealthCfg = resolveStealthConfig({
+		if (!this.captchaCfg) this.captchaCfg = resolveCaptchaConfig(this.env);
+		if (!this.stealthCfg) {
+			this.stealthCfg = resolveStealthConfig({
 				enabled: this.env.stealth,
 				overrides: this.stealthOverridesFromEnv(),
-			}));
+			});
+		}
 		const st = this.stealthCfg;
 		const cc = this.captchaCfg;
 		const details: string[] = [
@@ -1892,25 +2300,25 @@ export class BrowserSession {
 			};
 		}
 		const fp = await this.pageEval(`(() => {
-			const uad = (typeof navigator.userAgentData === "undefined") ? null : {
-				platform: navigator.userAgentData.platform,
-				mobile: navigator.userAgentData.mobile,
-				brands: navigator.userAgentData.brands.map((b) => b.brand + ":" + b.version).join(","),
-			};
-			return {
-				webdriver: navigator.webdriver,
-				ua: navigator.userAgent,
-				platform: navigator.platform,
-				uad,
-				tz: Intl.DateTimeFormat().resolvedOptions().timeZone,
-				locale: Intl.DateTimeFormat().resolvedOptions().locale,
-				screen: [screen.width, screen.height],
-				inner: [innerWidth, innerHeight],
-				plugins: navigator.plugins.length,
-				chrome: typeof window.chrome,
-				notification: (typeof Notification !== "undefined") ? Notification.permission : "absent",
-			};
-		})()`);
+                        const uad = (typeof navigator.userAgentData === "undefined") ? null : {
+                                platform: navigator.userAgentData.platform,
+                                mobile: navigator.userAgentData.mobile,
+                                brands: navigator.userAgentData.brands.map((b) => b.brand + ":" + b.version).join(","),
+                        };
+                        return {
+                                webdriver: navigator.webdriver,
+                                ua: navigator.userAgent,
+                                platform: navigator.platform,
+                                uad,
+                                tz: Intl.DateTimeFormat().resolvedOptions().timeZone,
+                                locale: Intl.DateTimeFormat().resolvedOptions().locale,
+                                screen: [screen.width, screen.height],
+                                inner: [innerWidth, innerHeight],
+                                plugins: navigator.plugins.length,
+                                chrome: typeof window.chrome,
+                                notification: (typeof Notification !== "undefined") ? Notification.permission : "absent",
+                        };
+                })()`);
 		const id = st.identity;
 		const checks: Array<[string, boolean, string]> = [];
 		checks.push(["navigator.webdriver is false", fp.webdriver === false, String(fp.webdriver)]);
@@ -1963,18 +2371,18 @@ export class BrowserSession {
 	/** Click a Turnstile/reCAPTCHA checkbox at input level (native tier). */
 	private async captchaNativeClick(challenge: DetectedChallenge): Promise<{ clicked: boolean; note: string }> {
 		const box = await this.pageEval(`(() => {
-			let el = null;
-			if (${JSON.stringify(challenge.type)} === "cloudflare-turnstile") {
-				el = document.querySelector('iframe[src*="challenges.cloudflare.com"]') || document.querySelector(".cf-turnstile");
-			} else if (${JSON.stringify(challenge.type)} === "recaptcha-v2") {
-				el = document.querySelector('iframe[title="reCAPTCHA"], iframe[src*="recaptcha/api2/anchor"]');
-			} else if (${JSON.stringify(challenge.type)} === "hcaptcha") {
-				el = document.querySelector('iframe[src*="hcaptcha.com"], .h-captcha');
-			}
-			if (!el) return null;
-			const r = el.getBoundingClientRect();
-			return [Math.round(r.x), Math.round(r.y), Math.round(r.width), Math.round(r.height)];
-		})()`);
+                        let el = null;
+                        if (${JSON.stringify(challenge.type)} === "cloudflare-turnstile") {
+                                el = document.querySelector('iframe[src*="challenges.cloudflare.com"]') || document.querySelector(".cf-turnstile");
+                        } else if (${JSON.stringify(challenge.type)} === "recaptcha-v2") {
+                                el = document.querySelector('iframe[title="reCAPTCHA"], iframe[src*="recaptcha/api2/anchor"]');
+                        } else if (${JSON.stringify(challenge.type)} === "hcaptcha") {
+                                el = document.querySelector('iframe[src*="hcaptcha.com"], .h-captcha');
+                        }
+                        if (!el) return null;
+                        const r = el.getBoundingClientRect();
+                        return [Math.round(r.x), Math.round(r.y), Math.round(r.width), Math.round(r.height)];
+                })()`);
 		if (!Array.isArray(box)) return { clicked: false, note: "no widget box found for the native click" };
 		// the checkbox sits at the left edge, vertically centered
 		const cx = box[0] + Math.max(14, Math.min(28, Math.round(box[2] * 0.12)));
@@ -2000,7 +2408,7 @@ export class BrowserSession {
 		};
 	}
 
-	/** The full solve pipeline for one challenge type. */
+	/** The full solve pipeline — every detected challenge when no type is given. */
 	async captchaSolve(opts: {
 		type?: string;
 		attempt?: "all" | "native" | "service" | "vision";
@@ -2011,66 +2419,82 @@ export class BrowserSession {
 		const raw = await this.pageEval(CAPTCHA_PROBE_SRC, { awaitPromise: false });
 		const challenges = (raw?.challenges ?? []) as DetectedChallenge[];
 		if (!challenges.length) return { summary: "no captcha detected - nothing to solve" };
-		const target = (opts.type ? challenges.find((c) => c.type === opts.type) : challenges[0]) ?? challenges[0];
-		const tiers = tiersFor(target.type);
+		const targets = (opts.type ? challenges.filter((c) => c.type === opts.type) : challenges).slice(0, 3);
+		if (!targets.length)
+			return { summary: `no ${opts.type} challenge detected (found: ${challenges.map((c) => c.type).join(", ")})` };
 		const pageUrl = String(await this.pageEval(`location.href`));
 		const attempts: string[] = [];
-		let solved = false;
+		let solvedCount = 0;
+		for (const target of targets) {
+			const tiers = tiersFor(target.type);
+			let solved = false;
 
-		// tier 1: native click
-		if (tiers.native && attempt !== "service" && attempt !== "vision") {
-			try {
-				const r = await this.captchaNativeClick(target);
-				attempts.push(`native-click: ${r.note}`);
-				solved = /solved it/.test(r.note);
-			} catch (err: any) {
-				attempts.push(`native-click failed: ${err instanceof Error ? err.message : String(err)}`);
-			}
-		}
-
-		// tier 2: solver service
-		if (
-			!solved &&
-			tiers.service !== "none" &&
-			cfg.solver !== "none" &&
-			attempt !== "native" &&
-			attempt !== "vision"
-		) {
-			if (!target.sitekey) {
-				attempts.push(`service: skipped - no sitekey derivable for ${target.type}`);
-			} else {
+			// tier 1: native click
+			if (tiers.native && attempt !== "service" && attempt !== "vision") {
 				try {
-					const token = await this.serviceSolve(target, pageUrl);
-					const injected = await this.pageEval(injectTokenExpression(target.type, token));
-					const n = Number(injected?.injected ?? 0);
-					attempts.push(`service (${cfg.solver}): token received, injected into ${n} field(s)`);
-					solved = n > 0;
+					const r = await this.captchaNativeClick(target);
+					attempts.push(`${target.type} native-click: ${r.note}`);
+					solved = /solved it/.test(r.note);
 				} catch (err: any) {
-					attempts.push(`service (${cfg.solver}) failed: ${err instanceof Error ? err.message : String(err)}`);
+					attempts.push(`${target.type} native-click failed: ${err instanceof Error ? err.message : String(err)}`);
 				}
 			}
-		}
 
-		// tier 3: vision OCR (image captchas)
-		if (!solved && tiers.vision && target.type === "image-captcha" && attempt !== "native" && attempt !== "service") {
-			try {
-				const answer = await this.visionSolveImage(target);
-				attempts.push(`vision OCR: answer ${JSON.stringify(answer)}`);
-				solved = !!answer;
-			} catch (err: any) {
-				attempts.push(`vision OCR failed: ${err instanceof Error ? err.message : String(err)}`);
+			// tier 2: solver service — image-captcha and datadome derive their submit
+			// params differently (image body / captcha url), not via sitekey
+			if (
+				!solved &&
+				tiers.service !== "none" &&
+				cfg.solver !== "none" &&
+				attempt !== "native" &&
+				attempt !== "vision"
+			) {
+				if (!target.sitekey && target.type !== "image-captcha" && target.type !== "datadome") {
+					attempts.push(`${target.type} service: skipped - no sitekey derivable`);
+				} else {
+					try {
+						const token = await this.serviceSolve(target, pageUrl);
+						const injected = await this.pageEval(injectTokenExpression(target.type, token));
+						const n = Number(injected?.injected ?? 0);
+						attempts.push(`${target.type} service (${cfg.solver}): token received, injected into ${n} field(s)`);
+						solved = n > 0;
+					} catch (err: any) {
+						attempts.push(
+							`${target.type} service (${cfg.solver}) failed: ${err instanceof Error ? err.message : String(err)}`,
+						);
+					}
+				}
 			}
+
+			// tier 3: vision OCR (image captchas)
+			if (
+				!solved &&
+				tiers.vision &&
+				target.type === "image-captcha" &&
+				attempt !== "native" &&
+				attempt !== "service"
+			) {
+				try {
+					const answer = await this.visionSolveImage(target);
+					attempts.push(`${target.type} vision OCR: answer ${JSON.stringify(answer)}`);
+					solved = !!answer;
+				} catch (err: any) {
+					attempts.push(`${target.type} vision OCR failed: ${err instanceof Error ? err.message : String(err)}`);
+				}
+			}
+
+			if (!solved && tiers.service === "none" && !tiers.native && !tiers.vision) {
+				attempts.push(
+					`${target.type}: no tier applies (vendor support gap - see the note in browser captcha detect)`,
+				);
+			}
+			if (solved) solvedCount++;
 		}
 
-		if (!solved && tiers.service === "none" && !tiers.native && !tiers.vision) {
-			attempts.push(`${target.type}: no tier applies (vendor support gap - see the note in browser captcha detect)`);
-		}
-
-		// verify: re-detect
 		const after = await this.pageEval(CAPTCHA_PROBE_SRC, { awaitPromise: false });
 		const remaining = ((after?.challenges ?? []) as DetectedChallenge[]).map((c) => c.type);
 		return {
-			summary: `${target.type}: ${solved ? "SOLVED" : "not solved"}${remaining.length ? ` - still detected: ${remaining.join(", ")}` : " - challenge no longer detected"}`,
+			summary: `${targets.length === 1 ? targets[0].type : `${solvedCount}/${targets.length} challenge(s)`}: ${solvedCount ? "SOLVED" : "not solved"}${remaining.length ? ` - still detected: ${remaining.join(", ")}` : " - challenge no longer detected"}`,
 			details: attempts,
 			warnings: solved
 				? undefined
@@ -2080,18 +2504,37 @@ export class BrowserSession {
 		};
 	}
 
-	/** Service solve dispatch (2captcha or capsolver per config). */
+	/** Service solve dispatch (2captcha or capsolver per config) — every
+	 *  challenge type maps to its OWN wire format (the stress round's fix:
+	 *  nearly everything previously submitted as a turnstile job, so the
+	 *  documented datadome/awswaf/image/v3 service tiers never worked).
+	 *  Job mappers live in captcha.ts where they are unit-testable. */
 	private async serviceSolve(challenge: DetectedChallenge, pageUrl: string): Promise<string> {
 		const cfg = this.captchaCfg!;
+		if (!cfg.solver || cfg.solver === "none") {
+			throw new Error("no solver service configured (UNOWN_CAPTCHA_SOLVER / keys)");
+		}
+		// image-captcha needs the image body; capture it here once
+		let imageBodyB64: string | undefined;
+		if (challenge.type === "image-captcha" && challenge.imageSelector) {
+			const shot = await this.screenshot({ selector: challenge.imageSelector, format: "png" });
+			imageBodyB64 = shot.image!.data;
+		}
 		if (cfg.solver === "2captcha") {
-			const client = new TwoCaptchaClient(cfg.twoCaptchaKey!);
-			const kind: "recaptcha-v2" | "turnstile" = challenge.type === "recaptcha-v2" ? "recaptcha-v2" : "turnstile";
-			return client.solve({ kind, sitekey: challenge.sitekey!, pageUrl });
+			if (!cfg.twoCaptchaKey) {
+				throw new Error("UNOWN_CAPTCHA_SOLVER=2captcha but UNOWN_CAPTCHA_2CAPTCHA_KEY is not set");
+			}
+			const job = twoCaptchaJobFor(challenge, pageUrl, imageBodyB64);
+			if (!job) throw new Error(`2captcha has no wire format for ${challenge.type}`);
+			return new TwoCaptchaClient(cfg.twoCaptchaKey).solve(job);
 		}
 		if (cfg.solver === "capsolver") {
-			const client = new CapSolverClient(cfg.capSolverKey!);
-			const kind: "recaptcha-v2" | "turnstile" = challenge.type === "recaptcha-v2" ? "recaptcha-v2" : "turnstile";
-			return client.solve({ kind, sitekey: challenge.sitekey!, pageUrl });
+			if (!cfg.capSolverKey) {
+				throw new Error("UNOWN_CAPTCHA_SOLVER=capsolver but UNOWN_CAPTCHA_CAPSOLVER_KEY is not set");
+			}
+			const job = capSolverJobFor(challenge, pageUrl, imageBodyB64);
+			if (!job) throw new Error(`capsolver has no wire format for ${challenge.type}`);
+			return new CapSolverClient(cfg.capSolverKey).solve(job);
 		}
 		throw new Error(`no solver service configured (UNOWN_CAPTCHA_SOLVER / keys)`);
 	}
@@ -2170,8 +2613,15 @@ export class BrowserSession {
 		return { summary: wasRunning ? "browser stopped" : "browser was not running" };
 	}
 
-	/** Sync-safe teardown for process exit hooks. */
+	/** Sync-safe teardown for process exit hooks — a direct SIGKILL to the
+	 *  child beats an unflushed Browser.close when the process is already
+	 *  dying (the zombie-Chromium leak the stress round caught live). */
 	syncKill(): void {
+		try {
+			this.conn?.killChildNow();
+		} catch {
+			/* ignore */
+		}
 		try {
 			this.conn?.close();
 		} catch {

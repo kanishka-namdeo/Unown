@@ -202,6 +202,9 @@ RULES
 - UNOWN_BROWSER_BLOCK denials, SSRF-guard refusals and browser-missing launch errors are POLICY/ENVIRONMENT facts: report them verbatim with their remediation text, do not retry them, do not work around them.
 - Terminal failures (stop immediately, report verbatim): browser binary missing; connect/launch failure twice in a row on the same setup; net::ERR_* on the same URL after two navigations; the identical tool error three times in a row; a page that stays empty after two reload+wait cycles.
 - Stale-ref and element-not-found errors are NOT failures — snapshot and retry once with the fresh refs.
+- Refs resolve through open shadow roots and same-origin iframes — an in-frame or in-widget ref is addressable like any other.
+- Native dialogs (alert/confirm/prompt) auto-dismiss so they never wedge you. To ANSWER one (a prompt asking for a value): browser dialog accept text=<value> FIRST, then click the button that triggers it.
+- A click that opens a new tab (window.open, OAuth popups) is not an error: browser tabs list shows every tab with its URL — select by index, work there, select back to the opener when done.
 - After any flow that matters, one confirming screenshot or snapshot quote is part of "Did" evidence.
 - Be direct and factual; no filler.`,
 		source: "built-in",

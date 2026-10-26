@@ -99,6 +99,10 @@ export interface DetectedChallenge {
 	note?: string;
 	/** for image-captcha: a CSS selector for the image element */
 	imageSelector?: string;
+	/** for datadome: the captcha-delivery iframe URL the service needs */
+	iframeUrl?: string;
+	/** for recaptcha-v3: the site's action name (grecaptcha.render action) */
+	action?: string;
 	/** for image-captcha: a CSS selector for the answer input */
 	inputSelector?: string;
 }
@@ -113,31 +117,43 @@ function captchaProbe(): any {
 	const push = (o: any) => out.push(o);
 
 	// --- Cloudflare Turnstile (widget) ---
-	let ts: any = doc.querySelector('.cf-turnstile[data-sitekey], [data-sitekey].cf-turnstile');
+	let ts: any = doc.querySelector(".cf-turnstile[data-sitekey], [data-sitekey].cf-turnstile");
 	if (!ts) {
-		for (const el of doc.querySelectorAll('.cf-turnstile')) { ts = el; break; }
+		for (const el of doc.querySelectorAll(".cf-turnstile")) {
+			ts = el;
+			break;
+		}
 	}
 	const tsIframe = doc.querySelector('iframe[src*="challenges.cloudflare.com"]');
 	const tsInput = doc.querySelector('input[name="cf-turnstile-response"], textarea[name="cf-turnstile-response"]');
 	if (ts || tsIframe || tsInput) {
-		const key = (ts && ts.getAttribute("data-sitekey")) || "";
+		const key = ts?.getAttribute("data-sitekey") || "";
 		if (key) push({ type: "cloudflare-turnstile", sitekey: key });
 		else push({ type: "cloudflare-turnstile", note: "sitekey not in DOM (managed/invisible)" });
 	}
 
 	// --- Cloudflare full-page challenge / WAF block ---
-	const cfChallenge = doc.querySelector("#challenge-running, #challenge-stage, #cf-challenge-running, [class*='cf-browser-verification']");
-	const justAMoment = /just a moment|checking your browser|verify you are human/i.test(doc.title + " " + (doc.body ? doc.body.innerText.slice(0, 800) : ""));
+	const cfChallenge = doc.querySelector(
+		"#challenge-running, #challenge-stage, #cf-challenge-running, [class*='cf-browser-verification']",
+	);
+	const justAMoment = /just a moment|checking your browser|verify you are human/i.test(
+		`${doc.title} ${doc.body ? doc.body.innerText.slice(0, 800) : ""}`,
+	);
 	if (cfChallenge || (justAMoment && (tsIframe || tsInput))) {
-		push({ type: "cloudflare-challenge", note: "full-page interstitial — usually clears itself when the fingerprint is coherent; wait, then re-check" });
+		push({
+			type: "cloudflare-challenge",
+			note: "full-page interstitial — usually clears itself when the fingerprint is coherent; wait, then re-check",
+		});
 	}
 
 	// --- reCAPTCHA v2 (checkbox/invisible widget) ---
 	const gWidget = doc.querySelector(".g-recaptcha[data-sitekey], #recaptcha[data-sitekey]");
 	const gResponse = doc.querySelector("#g-recaptcha-response, textarea.g-recaptcha-response");
-	const gAnchor = doc.querySelector('iframe[src*="google.com/recaptcha/api2/anchor"], iframe[src*="google.com/recaptcha/"], iframe[title="reCAPTCHA"]');
+	const gAnchor = doc.querySelector(
+		'iframe[src*="google.com/recaptcha/api2/anchor"], iframe[src*="google.com/recaptcha/"], iframe[title="reCAPTCHA"]',
+	);
 	if (gWidget || gResponse || gAnchor) {
-		const key = (gWidget && gWidget.getAttribute("data-sitekey")) || "";
+		const key = gWidget?.getAttribute("data-sitekey") || "";
 		if (key) push({ type: "recaptcha-v2", sitekey: key });
 		else push({ type: "recaptcha-v2", note: "sitekey not found in widget attributes" });
 	}
@@ -146,21 +162,37 @@ function captchaProbe(): any {
 	const g3 = doc.querySelector('script[src*="recaptcha/api.js"][src*="render="]');
 	if (g3 && !gWidget && !gAnchor) {
 		const m = /render=([0-9A-Za-z_-]{20,})/.exec(g3.getAttribute("src") || "");
-		push(m ? { type: "recaptcha-v3", sitekey: m[1], note: "score-based — no widget; token comes from a solver service" }
-			: { type: "recaptcha-v3", note: "score-based" });
+		push(
+			m
+				? {
+						type: "recaptcha-v3",
+						sitekey: m[1],
+						note: "score-based — no widget; token comes from a solver service",
+					}
+				: { type: "recaptcha-v3", note: "score-based" },
+		);
 	}
 
 	// --- hCaptcha ---
 	const hWidget = doc.querySelector(".h-captcha[data-sitekey], [data-hcaptcha-widget-id]");
 	const hIframe = doc.querySelector('iframe[src*="hcaptcha.com"]');
 	if (hWidget || hIframe) {
-		const key = (hWidget && hWidget.getAttribute("data-sitekey")) || "";
-		push({ type: "hcaptcha", sitekey: key, note: "major solving services dropped hCaptcha in 2026 — native click or human takeover only" });
+		const key = hWidget?.getAttribute("data-sitekey") || "";
+		push({
+			type: "hcaptcha",
+			sitekey: key,
+			note: "major solving services dropped hCaptcha in 2026 — native click or human takeover only",
+		});
 	}
 
 	// --- DataDome ---
-	if (doc.querySelector('iframe[src*="captcha-delivery.com"], script[src*="captcha-delivery.com"]')) {
-		push({ type: "datadome", note: "2captcha supports DataDome via the captcha page URL" });
+	const ddFrame = doc.querySelector('iframe[src*="captcha-delivery.com"]');
+	if (ddFrame || doc.querySelector('script[src*="captcha-delivery.com"]')) {
+		push({
+			type: "datadome",
+			note: "service tier needs the captcha-delivery URL",
+			iframeUrl: ddFrame ? ddFrame.src : location.href,
+		});
 	}
 
 	// --- AWS WAF ---
@@ -184,19 +216,34 @@ function captchaProbe(): any {
 	for (const form of forms) {
 		const img = form.querySelector("img");
 		if (!img) continue;
-		const sig = ((img.id || '') + ' ' + (img.className || '') + ' ' + (img.getAttribute('name') || '') + ' ' + (img.getAttribute('src') || '') + ' ' + (img.alt || '')).toLowerCase();
+		const sig = (
+			(img.id || "") +
+			" " +
+			(img.className || "") +
+			" " +
+			(img.getAttribute("name") || "") +
+			" " +
+			(img.getAttribute("src") || "") +
+			" " +
+			(img.alt || "")
+		).toLowerCase();
 		if (!/captcha|verif|secur|kode|kaptcha|challenge/.test(sig)) continue;
 		const input = form.querySelector('input[type="text"], input:not([type])');
 		if (!input) continue;
 		const mk = (el: any) => {
-			if (el.id) return "#" + el.id;
+			if (el.id) return `#${el.id}`;
 			if (el.getAttribute("name")) return `[name="${el.getAttribute("name")}"]`;
 			return null;
 		};
 		const imageSelector = mk(img);
 		const inputSelector = mk(input);
 		if (imageSelector && inputSelector) {
-			push({ type: "image-captcha", imageSelector, inputSelector, note: "heuristic match — vision OCR or solver image-to-text tier applies" });
+			push({
+				type: "image-captcha",
+				imageSelector,
+				inputSelector,
+				note: "heuristic match — vision OCR or solver image-to-text tier applies",
+			});
 		}
 		break;
 	}
@@ -212,7 +259,79 @@ export const CAPTCHA_PROBE_SRC = `(${captchaProbe.toString()})()`;
 // solver clients (transport-injectable)
 // ---------------------------------------------------------------------------
 
-export type FetchLike = (url: string, init?: { method?: string; headers?: Record<string, string>; body?: string; signal?: AbortSignal }) => Promise<{ ok: boolean; status: number; text: () => Promise<string> }>;
+export type FetchLike = (
+	url: string,
+	init?: { method?: string; headers?: Record<string, string>; body?: string; signal?: AbortSignal },
+) => Promise<{ ok: boolean; status: number; text: () => Promise<string> }>;
+
+// ---------------------------------------------------------------
+// challenge → solver job mappers (pure — pinned by unit tests)
+//
+// The stress round's fix: every challenge type used to submit as a
+// "turnstile" job (recaptcha-v3, datadome, awswaf and image-captcha
+// included), so the documented service tiers never actually worked.
+// These mappers are the ONE place the wire formats are decided.
+// ---------------------------------------------------------------
+
+/** Map a detected challenge onto a 2captcha submit job (null: no wire format). */
+export function twoCaptchaJobFor(
+	challenge: DetectedChallenge,
+	pageUrl: string,
+	imageBodyB64?: string,
+): TwoCaptchaSubmit | null {
+	switch (challenge.type) {
+		case "recaptcha-v2":
+			return { kind: "recaptcha-v2", sitekey: challenge.sitekey ?? "", pageUrl };
+		case "recaptcha-v3":
+			return { kind: "recaptcha-v3", sitekey: challenge.sitekey ?? "", pageUrl, action: challenge.action };
+		case "cloudflare-turnstile":
+			return { kind: "turnstile", sitekey: challenge.sitekey ?? "", pageUrl };
+		case "awswaf":
+			return { kind: "awswaf", sitekey: challenge.sitekey ?? "", pageUrl };
+		case "datadome":
+			return {
+				kind: "datadome",
+				sitekey: challenge.sitekey ?? "",
+				pageUrl,
+				captchaUrl: challenge.iframeUrl ?? pageUrl,
+			};
+		case "image-captcha":
+			if (!imageBodyB64) return null;
+			return { kind: "image", sitekey: "", pageUrl, imageBodyB64 };
+		default:
+			return null;
+	}
+}
+
+/** Map a detected challenge onto a capsolver submit job (null: no wire format). */
+export function capSolverJobFor(
+	challenge: DetectedChallenge,
+	pageUrl: string,
+	imageBodyB64?: string,
+): CapSolverSubmit | null {
+	switch (challenge.type) {
+		case "recaptcha-v2":
+			return { kind: "recaptcha-v2", sitekey: challenge.sitekey ?? "", pageUrl };
+		case "recaptcha-v3":
+			return { kind: "recaptcha-v3", sitekey: challenge.sitekey ?? "", pageUrl, action: challenge.action };
+		case "cloudflare-turnstile":
+			return { kind: "turnstile", sitekey: challenge.sitekey ?? "", pageUrl };
+		case "awswaf":
+			return { kind: "awswaf", sitekey: challenge.sitekey ?? "", pageUrl };
+		case "datadome":
+			return {
+				kind: "datadome",
+				sitekey: challenge.sitekey ?? "",
+				pageUrl,
+				captchaUrl: challenge.iframeUrl ?? pageUrl,
+			};
+		case "image-captcha":
+			if (!imageBodyB64) return null;
+			return { kind: "image", sitekey: "", pageUrl, imageBodyB64 };
+		default:
+			return null;
+	}
+}
 
 export class CaptchaServiceError extends Error {
 	readonly service: string;
@@ -228,13 +347,17 @@ const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 // ----------------------------- 2Captcha -------------------------------------
 
 export interface TwoCaptchaSubmit {
-	kind: "recaptcha-v2" | "turnstile" | "image" | "datadome" | "awswaf";
+	kind: "recaptcha-v2" | "recaptcha-v3" | "turnstile" | "image" | "datadome" | "awswaf";
 	sitekey: string;
 	pageUrl: string;
 	/** base64 image body for kind=image */
 	imageBodyB64?: string;
 	/** the captcha-delivery URL for kind=datadome */
 	captchaUrl?: string;
+	/** the action for kind=recaptcha-v3 */
+	action?: string;
+	/** the score floor for kind=recaptcha-v3 (default 0.3) */
+	minScore?: number;
 }
 
 /**
@@ -256,12 +379,23 @@ export class TwoCaptchaClient {
 	}
 
 	async submit(job: TwoCaptchaSubmit): Promise<string> {
-		const form = new Map<string, string>([["key", this.apiKey], ["json", "1"]]);
+		const form = new Map<string, string>([
+			["key", this.apiKey],
+			["json", "1"],
+		]);
 		switch (job.kind) {
 			case "recaptcha-v2":
 				form.set("method", "userrecaptcha");
 				form.set("googlekey", job.sitekey);
 				form.set("pageurl", job.pageUrl);
+				break;
+			case "recaptcha-v3":
+				form.set("method", "userrecaptcha");
+				form.set("googlekey", job.sitekey);
+				form.set("pageurl", job.pageUrl);
+				form.set("version", "v3");
+				form.set("action", job.action ?? "");
+				form.set("min_score", String(job.minScore ?? 0.3));
 				break;
 			case "turnstile":
 				form.set("method", "turnstile");
@@ -293,7 +427,10 @@ export class TwoCaptchaClient {
 		try {
 			json = JSON.parse(text);
 		} catch {
-			throw new CaptchaServiceError(`2captcha in.php returned non-JSON (${res.status}): ${text.slice(0, 160)}`, "2captcha");
+			throw new CaptchaServiceError(
+				`2captcha in.php returned non-JSON (${res.status}): ${text.slice(0, 160)}`,
+				"2captcha",
+			);
 		}
 		if (json.status !== 1) {
 			throw new CaptchaServiceError(`2captcha submit rejected: ${json.request ?? text.slice(0, 160)}`, "2captcha");
@@ -315,7 +452,10 @@ export class TwoCaptchaClient {
 			try {
 				json = JSON.parse(text);
 			} catch {
-				throw new CaptchaServiceError(`2captcha res.php returned non-JSON (${res.status}): ${text.slice(0, 160)}`, "2captcha");
+				throw new CaptchaServiceError(
+					`2captcha res.php returned non-JSON (${res.status}): ${text.slice(0, 160)}`,
+					"2captcha",
+				);
 			}
 			if (json.status === 1) return String(json.request);
 			if (json.request !== "CAPCHA_NOT_READY") {
@@ -333,10 +473,14 @@ export class TwoCaptchaClient {
 // ----------------------------- CapSolver ------------------------------------
 
 export interface CapSolverSubmit {
-	kind: "recaptcha-v2" | "turnstile" | "image" | "awswaf";
+	kind: "recaptcha-v2" | "recaptcha-v3" | "turnstile" | "image" | "awswaf" | "datadome";
 	sitekey: string;
 	pageUrl: string;
 	imageBodyB64?: string;
+	/** the captcha-delivery URL for kind=datadome */
+	captchaUrl?: string;
+	/** the action for kind=recaptcha-v3 */
+	action?: string;
 }
 
 /** CapSolver client: createTask → getTaskResult. https://docs.capsolver.com */
@@ -363,10 +507,16 @@ export class CapSolverClient {
 		try {
 			json = JSON.parse(text);
 		} catch {
-			throw new CaptchaServiceError(`capsolver ${endpoint} returned non-JSON (${res.status}): ${text.slice(0, 160)}`, "capsolver");
+			throw new CaptchaServiceError(
+				`capsolver ${endpoint} returned non-JSON (${res.status}): ${text.slice(0, 160)}`,
+				"capsolver",
+			);
 		}
 		if (json.errorId && json.errorId !== 0) {
-			throw new CaptchaServiceError(`capsolver ${endpoint}: ${json.errorDescription ?? json.errorCode ?? "unknown error"}`, "capsolver");
+			throw new CaptchaServiceError(
+				`capsolver ${endpoint}: ${json.errorDescription ?? json.errorCode ?? "unknown error"}`,
+				"capsolver",
+			);
 		}
 		return json;
 	}
@@ -383,6 +533,12 @@ export class CapSolverClient {
 				break;
 			case "awswaf":
 				task = { type: "AntiAwsWafTaskProxyLess", ...base };
+				break;
+			case "recaptcha-v3":
+				task = { type: "RecaptchaV3TaskProxyLess", ...base, action: job.action ?? "" };
+				break;
+			case "datadome":
+				task = { type: "DataDomeTaskProxyLess", ...base, captchaUrl: job.captchaUrl ?? job.pageUrl };
 				break;
 			case "image":
 				task = { type: "ImageToTextTask", body: job.imageBodyB64 ?? "" };
@@ -453,7 +609,8 @@ export async function visionReadCaptcha(
 		signal,
 	});
 	const text = await res.text();
-	if (!res.ok) throw new CaptchaServiceError(`vision endpoint responded ${res.status}: ${text.slice(0, 200)}`, "vision");
+	if (!res.ok)
+		throw new CaptchaServiceError(`vision endpoint responded ${res.status}: ${text.slice(0, 200)}`, "vision");
 	let json: any;
 	try {
 		json = JSON.parse(text);
@@ -464,7 +621,9 @@ export async function visionReadCaptcha(
 	if (!content) throw new CaptchaServiceError("vision endpoint returned no content", "vision");
 	// strip to the plausible answer: the model is told to answer with only
 	// the characters, but strip quotes/periods anyway
-	return String(content).replace(/^["'`\s]+|["'`.\s]+$/g, "").trim();
+	return String(content)
+		.replace(/^["'`\s]+|["'`.\s]+$/g, "")
+		.trim();
 }
 
 // ---------------------------------------------------------------------------
@@ -483,19 +642,25 @@ function injectTokenFn(type: string, token: string): any {
 		collect("#g-recaptcha-response, textarea.g-recaptcha-response, [name='g-recaptcha-response']");
 	}
 	if (type === "cloudflare-turnstile") {
-		collect('input[name="cf-turnstile-response"], textarea[name="cf-turnstile-response"], [name="cf-turnstile-response"]');
+		collect(
+			'input[name="cf-turnstile-response"], textarea[name="cf-turnstile-response"], [name="cf-turnstile-response"]',
+		);
 	}
 	if (type === "hcaptcha") {
 		collect('textarea[name="h-captcha-response"], [name="h-captcha-response"]');
 	}
 	let injected = 0;
 	for (const el of fields) {
-		const proto = (el.tagName === 'TEXTAREA' ? (globalThis as any).HTMLTextAreaElement : (globalThis as any).HTMLInputElement).prototype;
+		const proto = (
+			el.tagName === "TEXTAREA" ? (globalThis as any).HTMLTextAreaElement : (globalThis as any).HTMLInputElement
+		).prototype;
 		const desc = Object.getOwnPropertyDescriptor(proto, "value");
 		try {
 			el.value = token;
-			if (desc && desc.set) desc.set.call(el, token);
-		} catch { /* best effort */ }
+			if (desc?.set) desc.set.call(el, token);
+		} catch {
+			/* best effort */
+		}
 		el.dispatchEvent(new Event("input", { bubbles: true }));
 		el.dispatchEvent(new Event("change", { bubbles: true }));
 		injected++;
@@ -515,9 +680,11 @@ export function injectTokenExpression(type: string, token: string): string {
 // ---------------------------------------------------------------------------
 
 /** Which solver tiers apply to a challenge type — the honest capability map. */
-export function tiersFor(
-	type: DetectedChallenge["type"],
-): { native: boolean; service: "2captcha" | "capsolver" | "both" | "none"; vision: boolean } {
+export function tiersFor(type: DetectedChallenge["type"]): {
+	native: boolean;
+	service: "2captcha" | "capsolver" | "both" | "none";
+	vision: boolean;
+} {
 	switch (type) {
 		case "cloudflare-turnstile":
 			return { native: true, service: "both", vision: false };
@@ -545,7 +712,8 @@ export function tiersFor(
 
 /** Render the challenge list for a tool result. */
 export function formatChallenges(challenges: DetectedChallenge[], blocked: boolean): string {
-	if (!challenges.length) return blocked ? "page looks blocked (challenge interstitial) but no widget matched" : "no captcha detected";
+	if (!challenges.length)
+		return blocked ? "page looks blocked (challenge interstitial) but no widget matched" : "no captcha detected";
 	const lines = challenges.map((c) => {
 		const parts: string[] = [c.type];
 		if (c.sitekey) parts.push(`sitekey=${c.sitekey}`);
