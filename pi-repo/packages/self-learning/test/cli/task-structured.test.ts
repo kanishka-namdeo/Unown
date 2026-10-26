@@ -420,6 +420,44 @@ describe("task tool — stress-round-2 regressions (2026-10-26 live findings)", 
 // the terminal record the dead parent could not, clean the rotting control/
 // ask channels, and mark the adopted worktree orphaned (kept on disk).
 // ---------------------------------------------------------------------------
+/** Command lines of a pid's direct children, cross-platform: BSD ps
+ *  (macOS) has no `--ppid` SELECTION option — measured on the third
+ *  v0.0.27 release attempt, where the Linux-only spelling exit-1'd
+ *  every poll — so list pid+ppid+command for all processes and filter
+ *  by parent. One call, no per-kid probe. */
+function childCommandLines(ppid: number): string[] {
+        try {
+                const out = execFileSync("ps", ["-axo", "pid=,ppid=,command="], { encoding: "utf8" });
+                return out
+                        .split("\n")
+                        .map((l) => l.trim())
+                        .filter(Boolean)
+                        .map((l) => {
+                                const m = l.match(/^(\d+)\s+(\d+)\s+(.+)$/);
+                                return m && Number(m[2]) === ppid ? m[3] : null;
+                        })
+                        .filter((c): c is string => c !== null);
+        } catch {
+                return [];
+        }
+}
+
+/** True once the crash-child has reached its QUIET phase (mid-bash):
+ *  an orphan killed while still EMITTING its boot/event stream dies at
+ *  its next stdout write when the dead parent's pipe EPIPEs it — the
+ *  R3-documented death mode, measured live on the round-4 e2e — and
+ *  the sweep then honestly records "already gone" instead of the live
+ *  reap the regression pins. Bounded 30 s poll; survives a transiently
+ *  failing ps (an unreadable listing just reads as "not yet"). */
+async function waitForBashQuietPhase(childPid: number): Promise<boolean> {
+        for (let i = 0; i < 100; i++) {
+                await new Promise((r) => setTimeout(r, 300));
+                const cmds = childCommandLines(childPid);
+                if (cmds.some((cmd) => /\bsleep\b/.test(cmd))) return true;
+        }
+        return false;
+}
+
 describe("fleet crash sweep (round-3 live finding R3-F4, end-to-end)", () => {
         /** Sanitized env for a MANUALLY spawned run (mirrors helpers.runUnown). */
         function crashEnv(root: string): Record<string, string> {
@@ -506,38 +544,7 @@ describe("fleet crash sweep (round-3 live finding R3-F4, end-to-end)", () => {
                                 // sleep became a grandchild gate too: poll until the bash
                                 // grandchild exists, then settle).
                                 if (process.platform !== "win32") {
-                                        let inBash = false;
-                                        let psFailure = "";
-                                        for (let i = 0; i < 100 && !inBash; i++) {
-                                                await new Promise((r) => setTimeout(r, 300));
-                                                try {
-                                                        const kids = execFileSync(
-                                                                "ps",
-                                                                ["-o", "pid=", "--ppid", String(spawnedEntry.pid)],
-                                                                { encoding: "utf8" },
-                                                        );
-                                                        inBash = kids
-                                                                .split("\n")
-                                                                .map((l) => Number(l.trim()))
-                                                                .filter((n) => n > 0)
-                                                                .some((kid) => {
-                                                                        try {
-                                                                                const cmd = execFileSync("ps", ["-o", "command=", "-p", String(kid)], {
-                                                                                        encoding: "utf8",
-                                                                                });
-                                                                                return /\bsleep\b/.test(cmd);
-                                                                        } catch {
-                                                                                return false;
-                                                                        }
-                                                                });
-                                                } catch (e: any) {
-                                                        // ps exits 1 for a DEAD --ppid — do NOT break the
-                                                        // poll on it (a slow boot can transiently confuse
-                                                        // the listing); remember the last failure for the
-                                                        // diagnostic instead.
-                                                        psFailure = String(e?.status ?? e?.message ?? e);
-                                                }
-                                        }
+                                        const inBash = await waitForBashQuietPhase(spawnedEntry.pid);
                                         if (!inBash) {
                                                 let alive = false;
                                                 try {
@@ -545,7 +552,7 @@ describe("fleet crash sweep (round-3 live finding R3-F4, end-to-end)", () => {
                                                         alive = true;
                                                 } catch {}
                                                 throw new Error(
-                                                        `fleet child never reached its bash quiet phase (pid ${spawnedEntry.pid} alive=${alive}, last ps failure: ${psFailure || "none"}); ` +
+                                                        `fleet child never reached its bash quiet phase (pid ${spawnedEntry.pid} alive=${alive}); ` +
                                                                 `journal:\n${readFileSync(journalFile, "utf8")}`,
                                                 );
                                         }
@@ -753,36 +760,7 @@ describe("sync-lane crash sweep (round-4 live finding R4-F1, end-to-end)", () =>
                                 // (POSIX); Windows has no cheap child listing, so a grace
                                 // window stands in.
                                 if (process.platform !== "win32") {
-                                        let inBash = false;
-                                        let quietPhasePsFailure = "";
-                                        for (let i = 0; i < 100 && !inBash; i++) {
-                                                await new Promise((r) => setTimeout(r, 300));
-                                                try {
-                                                        const kids = execFileSync(
-                                                                "ps",
-                                                                ["-o", "pid=", "--ppid", String(spawnedEntry.pid)],
-                                                                { encoding: "utf8" },
-                                                        );
-                                                        inBash = kids
-                                                                .split("\n")
-                                                                .map((l) => Number(l.trim()))
-                                                                .filter((n) => n > 0)
-                                                                .some((kid) => {
-                                                                        try {
-                                                                                const cmd = execFileSync("ps", ["-o", "command=", "-p", String(kid)], {
-                                                                                        encoding: "utf8",
-                                                                                });
-                                                                                return /\bsleep\b/.test(cmd);
-                                                                        } catch {
-                                                                                return false;
-                                                                        }
-                                                                });
-                                                } catch (e: any) {
-                                                        // ps exits 1 for a DEAD --ppid — keep polling
-                                                        // (bounded), remember the failure for diagnostics.
-                                                        quietPhasePsFailure = String(e?.status ?? e?.message ?? e);
-                                                }
-                                        }
+                                        const inBash = await waitForBashQuietPhase(spawnedEntry.pid);
                                         expect(inBash).toBe(true);
                                         await new Promise((r) => setTimeout(r, 1_000));
                                 } else {
