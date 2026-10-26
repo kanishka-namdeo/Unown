@@ -1,11 +1,12 @@
 # CodeQL SAST — weekly + on push/PR (OpenSSF SAST check).
 #
-# javascript-typescript with build-mode: none (source extraction; the repo
-# has no npm build step — bun installs + Next build are not needed for JS
-# analysis). The vendored pi-repo/ is included: packages/self-learning is
-# Unowned first-party agent code; the upstream siblings get the same scan
-# (they ship in the product). node_modules/dist are excluded by CodeQL
-# defaults plus the config below.
+# Two languages: javascript-typescript with build-mode: none (source
+# extraction; the repo has no npm build step — bun installs + Next build are
+# not needed for JS analysis), and `actions` for the workflow files themselves.
+# The vendored pi-repo/ is included: packages/self-learning is Unowned
+# first-party agent code; the upstream siblings get the same scan (they ship in
+# the product). node_modules/dist are excluded by CodeQL defaults plus the
+# config below.
 name: CodeQL
 
 on:
@@ -25,16 +26,31 @@ concurrency:
 
 jobs:
   analyze:
-    name: Analyze (javascript-typescript)
+    name: Analyze (${{ matrix.language }})
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    strategy:
+      # fail-fast off: a red `actions` leg must never hide a JS finding, or
+      # the other way round. Neither leg is a required status context.
+      fail-fast: false
+      matrix:
+        # `actions` is the language that reads .github/workflows/*.ql-style
+        # injection patterns (unpinned third-party steps, script interpolation
+        # of untrusted input, elevated tokens). For this repo the workflows are
+        # the product's supply chain — one of them publishes the release — so
+        # scanning only the JavaScript left the publish path itself unread.
+        language: [javascript-typescript, actions]
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
       - uses: github/codeql-action/init@ce5e7eeac396d720fe2d802714996c8ce561e311 # v3
         with:
-          languages: javascript-typescript
+          languages: ${{ matrix.language }}
+          # Ignored for `actions` (nothing to build); for JS it is the
+          # declaration that source extraction needs no compile step.
           build-mode: none
           config-file: ./.github/codeql-config.yml
       - uses: github/codeql-action/analyze@ce5e7eeac396d720fe2d802714996c8ce561e311 # v3
         with:
-          category: "/language:javascript-typescript"
+          category: "/language:${{ matrix.language }}"

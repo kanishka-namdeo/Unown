@@ -1,0 +1,107 @@
+# Deploy verify — the CD half of the push path.
+#
+# WHY THIS EXISTS. Everything else in this repo proves the CHECKOUT. The page
+# users actually read is proven by `scripts/verify-deploy.mjs` (routes, SEO
+# surface, the blog + feed, every landing media URL the SSR DOM references, the
+# no-JS net, the palette/CSS contracts) — and until now that script ran only
+# when a human or an agent remembered to invoke it. Meanwhile Vercel deploys
+# `main` on push, in parallel with CI, and `main` is not protected against an
+# admin push (`enforce_admins: false`), so a red commit reaches production:
+# commit 839600e (2026-10-26T07:37Z) landed four failing jobs, two of them
+# required contexts (`Unit tests (landing)`, `Build + test (windows-latest)`),
+# and stayed live for ~59 minutes until aa9a955 went green. Nothing said so.
+#
+# WHAT IT DOES.
+#   - `workflow_run` after CI finishes on main: names the CI conclusion, then
+#     asserts the live page. A red CI on main is reported as its own failure —
+#     deliberately, so "the site looks fine" can never bury "the commit that
+#     shipped failed its gates".
+#   - daily `schedule`: catches the drift no push can — a CDN/alias change, an
+#     expired asset, a rollback that quietly re-pointed production.
+#   - `workflow_dispatch`: run it against any origin on demand.
+#
+# WHAT IT CANNOT PROVE. It asserts the integrity of whatever production is
+# SERVING, not that this commit is the thing being served — the script has no
+# build-id to compare against, and Vercel's deployment identity is not
+# repository state. In practice CI completes (~10 min) long after the deploy
+# lands (~2-4 min), so the lane reads the new deployment; a deploy that FAILED
+# on the Vercel side leaves the previous production live, which is why the CI
+# conclusion step exists beside the page check rather than inside it.
+#
+# PREVENTION is a different lever and it is not in this file: Vercel's project
+# setting "Skipped Commit Checks" (Git → Deployment Protection) can hold a
+# deploy until named status contexts pass. That is a dashboard setting, so the
+# lane detects; closing that gap is a one-click change in the Vercel project.
+name: Deploy verify
+
+on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+    branches: [main]
+  schedule:
+    # 07:17 UTC — after the weekly Monday CodeQL/Scorecard pair (06:27/06:30)
+    # and off the :00 rush, so a scheduled red is easy to attribute.
+    - cron: "17 7 * * *"
+  workflow_dispatch:
+    inputs:
+      url:
+        description: "Origin to verify (blank = the production default baked into the script)"
+        type: string
+        required: false
+        default: ""
+
+run-name: >-
+  deploy verify · ${{ github.event_name }}${{ inputs.url && format(' · {0}', inputs.url) || '' }}
+
+# The script is read-only HTTP against a public origin; the checkout only needs
+# to hand it the file. No credential is written into the tree.
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy-verify
+  cancel-in-progress: true
+
+jobs:
+  verify-live:
+    name: Live production check
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Name the CI conclusion this run follows
+        # Only the workflow_run leg has a conclusion to read; a schedule or a
+        # manual dispatch has none, and inventing a pass there would be worse
+        # than skipping the step.
+        if: ${{ github.event_name == 'workflow_run' }}
+        shell: bash
+        env:
+          CONCLUSION: ${{ github.event.workflow_run.conclusion }}
+          HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
+          RUN_URL: ${{ github.event.workflow_run.html_url }}
+        run: |
+          set -euo pipefail
+          echo "CI for ${HEAD_SHA} concluded: ${CONCLUSION} (${RUN_URL})"
+          if [ "${CONCLUSION}" != "success" ]; then
+            echo "::error::main's CI was ${CONCLUSION} and Vercel deploys main on push — production may be serving a commit that failed its own gates"
+            exit 1
+          fi
+
+      - name: Verify the live deployment
+        # Plain node (the script is dependency-free ESM over global fetch) —
+        # no bun install, no build, so the lane costs seconds and cannot fail
+        # for a reason unrelated to the deployed page.
+        shell: bash
+        env:
+          DEPLOY_URL: ${{ inputs.url }}
+        run: |
+          set -euo pipefail
+          if [ -n "${DEPLOY_URL:-}" ]; then
+            node scripts/verify-deploy.mjs "$DEPLOY_URL"
+          else
+            node scripts/verify-deploy.mjs
+          fi

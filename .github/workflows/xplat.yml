@@ -359,8 +359,23 @@ jobs:
       - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
         with:
           bun-version: "1.4.3"
-      - name: Advisory audit (root, production deps only)
-        run: bun audit --prod
+      - name: Advisory audit (every installed manifest, production deps)
+        # Mirrored from ci.yml's security job by the maintenance contract above:
+        # root `bun audit` plus the nested manifest the nonllm bench lane
+        # installs. Same guard — a listed dir with no committed lockfile is a
+        # failure, not a silent skip.
+        shell: bash
+        run: |
+          set -euo pipefail
+          bun audit --prod
+          for dir in benchmarks/nonllm; do
+            if [ ! -f "$dir/package-lock.json" ]; then
+              echo "::error::$dir is on the audit list but has no committed package-lock.json"
+              exit 1
+            fi
+            echo "npm audit --omit=dev in $dir"
+            (cd "$dir" && npm audit --omit=dev --audit-level=high)
+          done
 
   sandbox-smoke:
     name: Sandbox smoke (bwrap profile)

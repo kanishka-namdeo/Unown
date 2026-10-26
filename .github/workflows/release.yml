@@ -62,10 +62,15 @@ on:
   push:
     tags: ["v*.*.*"]
 
+# Least-privilege by default, elevated only where the job needs it. Five of the
+# six jobs read the checkout and nothing more — the verify matrix hydrates
+# provider data over the network and the smoke legs install PUBLISHED release
+# assets, neither of which has any business holding a writable token.
+# Attestation identity belongs to `build`; release writing belongs to
+# `publish-release`. (OpenSSF Token-Permissions measures the workflow AND the
+# job, and a workflow-wide `contents: write` caps the score at medium.)
 permissions:
-  contents: write
-  attestations: write
-  id-token: write
+  contents: read
 
 concurrency:
   group: release-${{ github.ref }}
@@ -169,6 +174,12 @@ jobs:
   build:
     name: Production build + per-OS artifacts + SBOM
     needs: verify
+    # The only job that mints attestations: OIDC identity for the provenance
+    # statements, and the write scope to register them.
+    permissions:
+      contents: read
+      attestations: write
+      id-token: write
     runs-on: ubuntu-latest
     timeout-minutes: 40
     steps:
@@ -237,12 +248,32 @@ jobs:
       - name: SBOM (SPDX) of the dependency tree
         # syft scans the installed node_modules + vendored pi-repo tree (the
         # runtime dependency surface a clone-to-install user actually gets).
-        # Installed explicitly rather than via anchore/sbom-action so the
-        # SPDX JSON lands at a KNOWN path and is attached to the release
-        # deterministically (the action's artifact upload raced the release
-        # creation — one run attached the SBOM, the next did not).
+        # Pinned to a release and checksum-verified rather than piped through
+        # `curl …/syft/main/install.sh | sh`: this job holds the OIDC identity
+        # that signs the release, so a build tool fetched from a MOVING branch
+        # with no digest was an unpinned dependency sitting on the release path
+        # while every `uses:` in the repo is SHA-pinned. The checksum file is
+        # fetched from the same tag as the binary, and `--strict` plus the
+        # one-line guard mean a stale pin or a wrong asset fails loudly instead
+        # of substituting silently. Bump SYFT_VERSION deliberately.
+        env:
+          SYFT_VERSION: "1.55.0"
         run: |
-          curl -sSfL https://raw.githubusercontent.com/anchore/syft/main/install.sh | sh -s -- -b /usr/local/bin
+          set -euo pipefail
+          base="https://github.com/anchore/syft/releases/download/v${SYFT_VERSION}"
+          asset="syft_${SYFT_VERSION}_linux_amd64.tar.gz"
+          sums="syft_${SYFT_VERSION}_checksums.txt"
+          curl -fsSLO "${base}/${asset}"
+          curl -fsSLO "${base}/${sums}"
+          # One line, exact member match — not `grep $asset`, which would also
+          # accept a renamed sibling.
+          awk -v want="$asset" '$2 == want { print $1 "  " $2 }' "$sums" > syft.sha256
+          if [ "$(grep -c . syft.sha256)" != "1" ]; then
+            echo "::error::the ${sums} asset does not name exactly one ${asset} line"; exit 1; fi
+          sha256sum --strict --check syft.sha256
+          tar -xzf "$asset" syft
+          install -m 0755 syft /usr/local/bin/syft
+          rm -f "$asset" syft syft.sha256 "$sums"
           syft dir:. -o spdx-json=release-assets/sbom-spdx.json
           ls -la release-assets/sbom-spdx.json
       - name: Build provenance attestation (six archives)
@@ -477,6 +508,10 @@ jobs:
     needs:
       - build
       - smoke-artifacts
+    # Creating the release and uploading its thirteen assets is the one place
+    # the workflow writes to the repository.
+    permissions:
+      contents: write
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:

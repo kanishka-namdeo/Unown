@@ -23,6 +23,13 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
+# Every step below is keyless and credential-free: an npm install, model
+# weights over anonymous HTTPS, and node. This was the one lane family where
+# the block had drifted — complementary-probe.yml declared it, these two did
+# not, so they ran on whatever the repository default hands out.
+permissions:
+  contents: read
+
 jobs:
   probe:
     name: probe (${{ matrix.os }})
@@ -34,6 +41,8 @@ jobs:
     timeout-minutes: 25
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
 
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:

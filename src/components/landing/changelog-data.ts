@@ -30,19 +30,53 @@ export interface ChangelogStop {
   groups: ChangelogGroup[];
 }
 
-export const CHANGELOG_TOTAL_ENTRIES = 307;
+export const CHANGELOG_TOTAL_ENTRIES = 309;
 
 export const CHANGELOG_TOTALS: Record<ChangelogBucket, number> = {
-  "Added": 135,
+  "Added": 136,
   "Changed": 24,
   "Deprecated": 0,
   "Removed": 3,
   "Fixed": 115,
-  "Security": 0,
+  "Security": 1,
   "Behavior": 30
 };
 
 export const CHANGELOG_STOPS: ChangelogStop[] = [
+  {
+    "label": "Unreleased",
+    "date": null,
+    "total": 2,
+    "counts": {
+      "Added": 1,
+      "Changed": 0,
+      "Deprecated": 0,
+      "Removed": 0,
+      "Fixed": 0,
+      "Security": 1,
+      "Behavior": 0
+    },
+    "groups": [
+      {
+        "bucket": "Added",
+        "items": [
+          {
+            "title": "ci: a gate for the live page, and the red-CI-on-main case is now named",
+            "behavior": false
+          }
+        ]
+      },
+      {
+        "bucket": "Security",
+        "items": [
+          {
+            "title": "ci: the release path stops trusting a moving upstream, and the token…",
+            "behavior": false
+          }
+        ]
+      }
+    ]
+  },
   {
     "label": "0.0.26",
     "date": "2026-10-26",

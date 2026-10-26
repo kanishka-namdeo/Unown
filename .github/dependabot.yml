@@ -1,6 +1,6 @@
 # Dependabot — weekly version updates (OpenSSF Dependency-Update-Tool).
 #
-# Three update streams, deliberately narrow to keep PRs reviewable:
+# Four update streams, deliberately narrow to keep PRs reviewable:
 #   - github-actions: the workflows/ tree (kept 1 PR/batch)
 #   - bun (root): dashboard + CLI deps — bun.lock IS supported natively
 #     (github docs: "The bun.lock file is supported in version 1.1.39 and
@@ -8,6 +8,8 @@
 #   - bun (pi-repo): the vendored pi-mono workspace — its updates are
 #     upstream-sync decisions, not routine bumps, so the PR limit is 1 and
 #     reviewers treat them as sync candidates.
+#   - npm (benchmarks/nonllm): the bench lane CI installs from its own manifest
+#     — see the entry for why the root stream cannot reach it.
 #
 # Security updates (advisory-driven) are on by GitHub defaults and are not
 # limited by open-pull-requests-limit.
@@ -46,3 +48,25 @@ updates:
     commit-message:
       prefix: "chore(pi-repo)"
     labels: ["dependencies", "upstream-sync"]
+
+  # The nonllm bench lane is a fourth stream because it is a fourth TREE:
+  # package.json declares no workspaces, so the root `bun` entry above never
+  # sees it, and CI installs it on every probe run (transformers.js + a
+  # prebuilt onnxruntime-node). Its committed package-lock.json is what makes
+  # both the CI advisory audit (ci.yml security job) and this entry real.
+  # Majors are ignored on purpose: they move the encoder that the H9 latency
+  # receipts were measured with, so a bump is a re-run decision, not a bump.
+  # edit-bench stays out until it commits a lockfile — npm version updates and
+  # `npm audit` both require one.
+  - package-ecosystem: "npm"
+    directory: "/benchmarks/nonllm"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 3
+    commit-message:
+      prefix: "chore(bench)"
+    labels: ["dependencies", "benchmarks"]
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]

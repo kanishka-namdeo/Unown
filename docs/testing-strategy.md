@@ -202,7 +202,8 @@ suite's path-semantics differ per OS and the differences are load-bearing
 | `pi-repo/*` (upstream vendored) | `npm run test` per workspace with pinned model-catalog snapshots | pre-merge Linux receipt: 4,809 pass / 0 fail / 13 skip `[V: benchmarks/snapshots/track1-rerun-2026-10-17/summary.json]` | Out of our scope by policy (§13); receipt needs re-measuring post-merge on the Linux box |
 | Benchmarks | Tracks 1-9 (`benchmarks/README.md`) | re-verified 2026-10-17 with receipts `[C: benchmarks/RESULTS.md]` | No time-horizon ladder, no judge calibration, no external memory benchmark |
 | Sandbox | `bwrap_smoke.sh` (25 checks), `verify_sandbox.mjs` (12 checks) | In CI as the `sandbox-smoke` job (ubuntu) `[V: ci.yml]`; trajectory across runs: red 10/11/1 at `afd962b` (launcher dies) `[V: 39069143075]` -> profile step green 21/0/1, engine step red 10/2 at `ae7b01b` `[V: 39071373372]` -> **fully green** (both steps) at `a13cf9d` `[V: 39072290887]` | the launcher-vs-engine split diagnosed itself across the three runs; the record keeps the per-step receipts (§7.5) |
-| CI (`.github/workflows/ci.yml`) | lint-shell, `build-test` (3-OS real-installer matrix + engine + integration suites + CLI smokes — the TUI dashboard's suites ride here), `sandbox-smoke` (ubuntu), bridge (gate 11), build (gate 14, `Production build (landing)`), lint (`Lint (landing)`), typecheck (`Typecheck (landing)`), `bun test src` (`Unit tests (landing)`), coverage gate, docs gate, theme, GBA palette + landing claims, security (gitleaks + `bun audit --prod`), mermaid (gate 15), e2e (gate 16, `E2E + a11y (landing)` — 3 tests) | 15 jobs `[V: ci.yml, 2026-10-21]` — the src-scoped jobs were RENAMED landing-scoped at D7, not rebuilt: same commands, no prisma generate, no dashboard smokes | No Lighthouse, no load/soak; at run 39072290887 (`a13cf9d`, pre-D7): `sandbox-smoke` fully green, all dashboard gates green, engine legs red (ubuntu 735/37/1, windows 689/80/3, macos 729/41/3) |
+| CI (`.github/workflows/ci.yml`) | lint-shell, `build-test` (3-OS real-installer matrix + engine + integration suites + CLI smokes — the TUI dashboard's suites ride here), `sandbox-smoke` (ubuntu), bridge (gate 11), build (gate 14, `Production build (landing)`), lint (`Lint (landing)`), typecheck (`Typecheck (landing)`), `bun test src` (`Unit tests (landing)`), coverage gate, docs gate, instruction-chars, theme, GBA palette + generated-data gates, security (gitleaks + the every-manifest advisory audit, gate 8), mermaid (gate 15), e2e (gate 16, `E2E + a11y (landing)` — 3 tests) | 16 jobs `[V: ci.yml, 2026-10-26]` — the src-scoped jobs were RENAMED landing-scoped at D7, not rebuilt: same commands, no prisma generate, no dashboard smokes | No Lighthouse, no load/soak; at run 39072290887 (`a13cf9d`, pre-D7): `sandbox-smoke` fully green, all dashboard gates green, engine legs red (ubuntu 735/37/1, windows 689/80/3, macos 729/41/3) |
+| Deploy verify (`.github/workflows/deploy-verify.yml`) | `scripts/verify-deploy.mjs` against the live production origin + the CI conclusion it follows | 1 job × 3 triggers `[V: 2026-10-26]` — `workflow_run` on CI completion, daily `schedule`, manual dispatch | Detects, does not prevent: Vercel deploys `main` on push in parallel with CI (gate 20) |
 
 ### 3.1 Reconciling the test counts
 
@@ -231,7 +232,7 @@ global figure.
 
 ### 3.2 What CI actually gates today
 
-`[V: .github/workflows/ci.yml, 2026-10-21]` fifteen jobs: `lint-shell` (bash -n over
+`[V: .github/workflows/ci.yml, 2026-10-26]` sixteen jobs: `lint-shell` (bash -n over
 `scripts/*.sh`), `build-test` (ubuntu/macos/windows matrix: the real installer
 `bun scripts/install.ts` with model-data hydration, then the engine suite
 `bun test test/` plus the integration suite (`PI_TEST_SCOPE=integration`,
@@ -243,12 +244,19 @@ the production build + standalone-server smoke (gate 14, `Production build
 `db:generate` since prisma left with the web dashboard), landing unit tests
 (`Unit tests (landing)`, `bun test src`), the changed-line coverage gate
 (`scripts/check_coverage.mjs --run`), the docs link/anchor gate
-(`scripts/check_docs.mjs docs/*.md`), theme schema, landing GBA palette +
-claims gates, the `security` job (gitleaks full-history secret scan +
-`bun audit --prod`; the three GHSA `--ignore` flags are prisma-era pins left
-vestigial by D7 — prisma is no longer a dependency), mermaid byte-identity
+(`scripts/check_docs.mjs docs/*.md`), the instruction-set invisible-unicode
+lint (`scripts/check_instruction_chars.mjs` + its own pin suite), theme schema,
+landing GBA palette + generated-data gates, the `security` job (gitleaks
+full-history secret scan + the every-manifest advisory audit of gate 8),
+mermaid byte-identity
 (gate 15), and Playwright E2E + axe-core (gate 16, the `E2E + a11y (landing)`
 job — 3 tests). A concurrency group cancels superseded runs.
+
+Outside this file's job list but part of the same pipeline: the release
+workflow's own DAG (§12), the agent-drivable `xplat.yml` lane (gate 19), and
+the `deploy-verify.yml` live-page lane (gate 20) — the last one exists because
+Vercel deploys `main` on push in parallel with these sixteen jobs, so a green
+CI is a precondition this repo does not yet enforce on the deploy itself.
 
 Still absent: only Lighthouse (§12 criterion 6's second half). The
 integration suite (gate 12), `bun run build` (gate 14) and E2E/axe (gate 16)
@@ -502,7 +510,7 @@ Notes on the two decisions that changed from the original proposal:
 | 5 | `bun scripts/check_theme.mjs` | SHIPPED | reads a `.ts` file from pi-repo, so it needs bun |
 | 6 | `bun scripts/gba_palette_check.mjs` | SHIPPED | browser-free, so it is a real gate not a caption |
 | 7 | gitleaks full-history secret scan | SHIPPED | |
-| 8 | `bun audit --prod` | SHIPPED | the three GHSA `--ignore` flags still carried in `ci.yml` are prisma-era pins left vestigial by D7 — prisma is gone from the dependency tree, so they can no longer fire |
+| 8 | Advisory audit over EVERY installed manifest — `bun audit --prod` (root) + `npm audit --omit=dev --audit-level=high` (`benchmarks/nonllm`) | SHIPPED | Root `bun audit` cannot see a nested manifest and `package.json` declares no `workspaces`, so the bench lane's own tree (transformers.js + a prebuilt onnxruntime-node, installed on every `nonllm-probe` run) had no advisory scan and no Dependabot stream. Now both, on that lane's committed `package-lock.json`; measured 0 vulnerabilities, so the gate is born green. A listed dir with no lockfile fails rather than silently skipping — `benchmarks/edit-bench` is out until it commits one (`npm audit` errors ENOLOCK without it). The three GHSA `--ignore` flags once carried in `ci.yml` were prisma-era pins left vestigial by D7 — prisma is gone from the dependency tree, so they can no longer fire |
 | 9 | Changed-line coverage >= 80% in `src/` | SHIPPED (this revision) | `bun test --coverage` + `scripts/check_coverage.mjs`; measured baseline 91.1% lines |
 | 10 | Engine suite `bun test test/` in `self-learning` | SHIPPED (upstream, `build-test` matrix) | ubuntu green; post-`ae7b01b` (run 39071373372): windows 687/79/3, macos 726/40/4; locally on Windows 600/79/25 - 22 of the local 25 pass on the runner (privilege environment), 3 are real (§7.2). Hermetic means green on **every** runner |
 | 11 | Bridge suite `bun test pure.test.ts` | **SHIPPED** (this revision, round three) | 95 tests, sub-second, no deps/network — dedicated `bridge` CI job | 
@@ -515,6 +523,8 @@ Notes on the two decisions that changed from the original proposal:
 
 | 18 | Browser automation suite (`test/browser.test.ts` + env-gated `test/browser-live.test.ts`) | **SHIPPED** (the browser capability) | 19 unit tests pin the pure contract (discovery per-OS with injectable fs, wildcard expansion newest-first, URL normalization incl. `localhost:3000/x`, host-glob gating, snapshot formatting + truncation, key parsing) and 31 live tests drive the full action surface against a real Chromium the module itself discovered — navigate/snapshot/find (incl. iframe + open shadow DOM), trusted clicks by ref and selector, type/fill_form/select/checkbox/press_key, eval, console + network capture, JPEG-magic-validated screenshots, element clips, tabs, waits (text/textGone), cookies, dialogs, downloads, upload jail (positive + rejection), storage round-trip, PDF, blocklist denial, stale-ref errors, and teardown. Runs in the 3-OS matrix via the engine suite; the live half is `UNOWN_BROWSER_LIVE=1`-gated and skips with a printed reason when no browser exists, so machines without one stay green (the memory-live convention) |
 | 19 | Agent-drivable cross-platform lane ([`xplat.yml`](../.github/workflows/xplat.yml) + [`scripts/xplat.mjs`](../scripts/xplat.mjs); the manual is [`docs/xplat-testing.md`](xplat-testing.md)) | **SHIPPED** (the on-demand lane) | A `workflow_dispatch` surface over the SAME steps this ledger already numbers — the installer (gate 10's lane), the integration suite (gate 12), the bridge suite (gate 11), the coverage/docs/instruction-chars/theme/palette gates (9, 17, 5, 6, 7-adjacent), the sandbox smoke (13), the build (14), E2E + axe (16), mermaid (15) — plus what NO push lane offers: on-demand OS targeting (`--os windows-latest`, the `macos-15-intel` darwin-x64 gap leg ci.yml's arm64 matrix cannot cover) and a release-verify scenario that boots all six per-OS binaries on their own runners, including `windows-11-arm`, which release.yml ships untested. The driver pins its own pure logic (`scripts/xplat.test.mjs`, 24 tests: remote parsing, matrix resolution, the exit-code contract 0/1/2/3, dispatch correlation) and resolves auth from the PAT in the git remote. This is the answer to "an agent mid-session cannot ask 'is this green on all three OSes?' without pushing" — the lane exists so the question costs a dispatch, not a commit |
+| 20 | Live production integrity ([`deploy-verify.yml`](../.github/workflows/deploy-verify.yml) running [`scripts/verify-deploy.mjs`](../scripts/verify-deploy.mjs)) | **SHIPPED** | The only gate that measures what users get rather than what the checkout says. Vercel deploys `main` on push IN PARALLEL with ci.yml, and `enforce_admins` is off, so a red commit can be production — and was: `839600e` landed four failing jobs (two required contexts) and stayed live ~59 min. The lane fires on `workflow_run` after CI completes, daily on `schedule` (for CDN/alias/asset drift no push can see), and on dispatch; its CI-conclusion step is a separate failure from the page check so "the site renders" cannot bury "the shipped commit failed its gates". It asserts the integrity of what production serves, not that this commit is what is served (no build-id to compare against; prevention would be Vercel's Skipped-Commit-Checks project setting). Green baseline measured before landing: every check ok against `https://unown-nine.vercel.app` |
+| 21 | CodeQL `actions` leg ([`codeql.yml`](../.github/workflows/codeql.yml) matrix) | **SHIPPED** | The JS-only scan could not read the publish path. `analyze` now runs a `javascript-typescript` + `actions` matrix (`fail-fast: false`, neither leg a required context), so unpinned third-party steps, script interpolation of untrusted input and over-broad token grants in `.github/workflows/*` get a real analyzer rather than a reviewer's habit |
 
 ## 7. Surface-by-surface backlog
 

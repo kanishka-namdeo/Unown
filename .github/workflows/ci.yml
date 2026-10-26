@@ -7,7 +7,9 @@ on:
 
 # Least-privilege token for the whole workflow (OpenSSF Token-Permissions):
 # every CI job only needs to read the checkout. Jobs needing more carry
-# their own block; release.yml keeps its own broader set.
+# their own block — which is now release.yml's shape too (workflow-wide
+# `contents: read`, elevated per job), so this line is a description of the
+# repo, not an exception carved out for the release path.
 permissions:
   contents: read
 
@@ -18,8 +20,13 @@ concurrency:
 
 # Required CI gates (docs/testing-strategy.md §3, §6): lint, typecheck, unit
 # tests, changed-line coverage, docs links/anchors, shell syntax, theme
-# contract, landing palette, secret scan, advisory audit, mermaid byte-identity
-# (gate 15), Playwright E2E + axe-core a11y (gate 16 — both this revision).
+# contract, landing palette, secret scan, advisory audit over EVERY installed
+# manifest, mermaid byte-identity (gate 15), Playwright E2E + axe-core a11y
+# (gate 16 — both this revision).
+# What this file does NOT cover: the live deployment. Vercel deploys `main` on
+# push, in parallel with these gates, so the page is proven by the Deploy
+# verify lane (deploy-verify.yml), which runs scripts/verify-deploy.mjs after
+# CI completes and daily on a schedule.
 # Still deferred: Lighthouse — see the trailing comments.
 #
 # Cross-platform legs (M4):
@@ -545,16 +552,37 @@ jobs:
         uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
         with:
           bun-version: "1.4.3"
-      - name: Advisory audit (root, production deps only)
+      - name: Advisory audit (every installed manifest, production deps)
         # `bun audit` exits non-zero on advisories; --prod keeps it to runtime
         # deps. Fail-open is NOT acceptable for known-exploited vulns, so a
         # finding here blocks the PR — triage by bumping the dependency.
+        #
+        # ROOT ONLY is not the whole dependency surface: package.json declares
+        # no `workspaces`, so `bun audit` at the root cannot see a nested
+        # manifest, and the nonllm bench lane installs its own
+        # @huggingface/transformers + onnxruntime-node on every run of that
+        # probe. Its package-lock.json is committed precisely so this audit is
+        # a measurement of the pinned tree rather than a fresh resolution.
+        # edit-bench is deliberately absent: it ships no lockfile, so npm audit
+        # errors out (ENOLOCK) rather than answering — commit one, add it to
+        # this list, and to dependabot, in the same change.
         #
         # (The 2026-10-17 triage list was three prisma-internal GHSA ignores —
         # deepmerge-ts via @prisma/config and two mysql2 advisories. D7 removed
         # the prisma scaffold from the dependency tree, so the ignores left with
         # it; the audit now runs clean of pinned exemptions.)
-        run: bun audit --prod
+        shell: bash
+        run: |
+          set -euo pipefail
+          bun audit --prod
+          for dir in benchmarks/nonllm; do
+            if [ ! -f "$dir/package-lock.json" ]; then
+              echo "::error::$dir is on the audit list but has no committed package-lock.json"
+              exit 1
+            fi
+            echo "npm audit --omit=dev in $dir"
+            (cd "$dir" && npm audit --omit=dev --audit-level=high)
+          done
 
   mermaid:
     name: Mermaid byte-identity (gate 15)
