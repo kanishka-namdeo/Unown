@@ -7,6 +7,15 @@
     <description>How each feature and release works, what it does, and the receipts behind it — the longhand record of the self-improving terminal coding agent Unown.</description>
     <language>en</language>
     <item>
+      <title>&quot;The chaos round: orphaned fleets, stolen steering, and the reports that lied&quot;</title>
+      <link>https://unown-nine.vercel.app/blog/2026-10-26-the-chaos-round</link>
+      <guid isPermaLink="true">https://unown-nine.vercel.app/blog/2026-10-26-the-chaos-round</guid>
+      <pubDate>Mon, 26 Oct 2026 00:00:00 GMT</pubDate>
+      <description>&quot;The chaos round: nested CLI calls, watchdog kills, oversized reports, slow children outliving the process. Seven findings, fixed and pinned.&quot;</description>
+      <category>subagents</category>
+      <category>release</category>
+    </item>
+    <item>
       <title>&quot;The SOTA memory-eval round: four suites, one real fix, and a bill paid&quot;</title>
       <link>https://unown-nine.vercel.app/blog/2026-10-26-the-sota-memory-eval-round</link>
       <guid isPermaLink="true">https://unown-nine.vercel.app/blog/2026-10-26-the-sota-memory-eval-round</guid>
