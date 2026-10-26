@@ -25,6 +25,15 @@
       <category>release</category>
     </item>
     <item>
+      <title>&quot;The orphan round: the lane with no ledger of its own&quot;</title>
+      <link>https://unown-nine.vercel.app/blog/2026-10-26-the-orphan-round</link>
+      <guid isPermaLink="true">https://unown-nine.vercel.app/blog/2026-10-26-the-orphan-round</guid>
+      <pubDate>Mon, 26 Oct 2026 00:00:00 GMT</pubDate>
+      <description>&quot;Round four paid the ledger&apos;s last IOU: the sync lane&apos;s kill -9 orphans — alive, unrecorded, swept by nobody — now journal, heartbeat, and sweep.&quot;</description>
+      <category>subagents</category>
+      <category>release</category>
+    </item>
+    <item>
       <title>&quot;The SOTA memory-eval round: four suites, one real fix, and a bill paid&quot;</title>
       <link>https://unown-nine.vercel.app/blog/2026-10-26-the-sota-memory-eval-round</link>
       <guid isPermaLink="true">https://unown-nine.vercel.app/blog/2026-10-26-the-sota-memory-eval-round</guid>
