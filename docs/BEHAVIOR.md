@@ -288,6 +288,18 @@ persists into every future session. Four gates landed together:
 
 The fail-closed sandbox knob that complements the set — `UNOWN_SANDBOX_REQUIRED=1` — is documented under [Sandbox model](#sandbox-model).
 
+## Engine lifecycle contract (2026-10-26)
+
+The detached engine now exposes an explicit lifecycle that agents and supervisors can act on, and note delivery makes one more honest attempt before falling back to durable queueing:
+
+- **`GET /api/health`** answers `{ok, phase, pid, uptimeMs, drainBudgetMs, version}` — the cheap lifecycle probe (no run scan, no bridge fetch). `phase` is `warming` (booting), `ready` (serving; flipped only after the port answers and the token is committed) or `draining` (shutdown in progress: no new router jobs, in-flight work finishing within the budget). `/api/overview` carries the same fields additively. A client that observes `draining` should treat the engine as going-away-cleanly — wait out the drain budget instead of racing it — not as wedged.
+- **Draining refuses new work**: `router.execute()` / `withBusy()` / `startFireAndForget()` throw the 409-class `router is draining for shutdown` conflict once shutdown begins, so an HTTP trigger that lands in the drain window answers the engine-busy shape instead of starting work the store close would kill mid-flight.
+- **Note delivery retries a network failure once** (~600 ms) before writing the outbox: a note landing inside the engine-restart window delivers directly. HTTP error statuses are never retried — an answering engine is a deliberate response; the outbox remains the durability guarantee.
+- **The outbox dead-letters honestly**: a note whose ingest keeps failing (5 attempts, `UNOWN_OUTBOX_MAX_ATTEMPTS`) moves to `notes/dead/` with a `.reason.txt` sidecar instead of retrying forever silently; unparseable files dead-letter on first sight. Dead notes are recoverable by hand (`mv` back into `outbox/`).
+- **Cross-install token discovery**: the engine mirrors its per-boot token to `$UNOWN_HOME/engine.token`, and clients present their own data dir's token first, the shared mirror second (rotating or re-presenting on a 401) — a binary CLI talking to a source-repo engine heals instead of reporting `blocked · token` forever.
+
+Filed under the 2026-10-26 hardening round ([decision record](detached-engine-hardening.md)); pinned by `test/engine-health.test.ts`, `test/note-delivery-retry.test.ts`, `test/outbox-deadletter.test.ts`, `test/engine-token-mirror.test.ts`.
+
 ## Behavior-change policy
 
 Any change to prompts, default models, routing, guard rules, hook policy, or memory injection must land with all three:

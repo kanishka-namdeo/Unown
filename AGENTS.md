@@ -21,6 +21,8 @@ The engine is also meant to outlive the terminal: a source install (`bun run age
 
 Data flow: TUI dashboard / CLI → engine REST+SSE → sandboxed pi agent runs → llm-bridge → upstream OpenAI-compatible endpoint (Agnes AI, `https://apihub.agnes-ai.com/v1`). The terminal agent `bin/unown` delivers session notes to the engine; AutoDream consolidates them into the project's `.unown/memory/project.md`.
 
+Engine lifecycle (the 2026-10-26 hardening round, [docs/detached-engine-hardening.md](docs/detached-engine-hardening.md)): the engine exposes `GET /api/health` — `{phase: warming|ready|draining, pid, drainBudgetMs, version}`, the cheap lifecycle probe; graceful shutdown flips the phase FIRST, refuses new router jobs (409-class draining conflict), and awaits the in-flight job bounded by `UNOWN_ENGINE_DRAIN_BUDGET_MS` (10 s default) before closing the store. Note delivery retries a NETWORK failure once (~600 ms) before the outbox; the outbox dead-letters a note after `UNOWN_OUTBOX_MAX_ATTEMPTS` (5) failed ingests into `$UNOWN_HOME/notes/dead/` with a `.reason.txt` sidecar (never deleted — `mv` back to retry; the dead count shows in `/engine`, doctor and `engine status`). The engine mirrors its per-boot token to `$UNOWN_HOME/engine.token` and clients resolve own-data-dir-first / shared-mirror-second, healing the binary↔source 401 split (resilience.md R11).
+
 Repo layout:
 
 - `bin/` — the `unown` launcher (Unix shebang script + `.cmd`/`.ps1` Windows twins)
