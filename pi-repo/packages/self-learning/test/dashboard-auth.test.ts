@@ -21,6 +21,7 @@ import {
         engineTokenPath,
         invalidateEngineToken,
         removeEngineTokenFile,
+        sharedEngineTokenPath,
         writeEngineTokenFile,
 } from "../src/engine-auth.ts";
 import { DashboardStore, EngineClient } from "../src/dashboard/dashboard-data.ts";
@@ -119,6 +120,13 @@ describe("TUI dashboard client authentication (M7 gap)", () => {
 
         beforeEach(() => {
                 removeEngineTokenFile(engineTokenPath());
+                // H6 (2026-10-26): "no token discoverable" now means NEITHER discovery
+                // side holds one — the own data-dir file NOR the $UNOWN_HOME shared
+                // mirror. bun test runs every file in one process, so a prior suite
+                // that exercised the mirror (engine-token-mirror.test.ts) would
+                // otherwise leak a discoverable token into this suite on platforms
+                // whose file order differs (live-caught on the macOS CI leg).
+                removeEngineTokenFile(sharedEngineTokenPath());
                 delete process.env.UNOWN_ENGINE_TOKEN;
                 invalidateEngineToken();
                 gate = startGateServer();
@@ -127,6 +135,7 @@ describe("TUI dashboard client authentication (M7 gap)", () => {
         afterEach(() => {
                 gate.stop();
                 removeEngineTokenFile(engineTokenPath());
+                removeEngineTokenFile(sharedEngineTokenPath());
                 delete process.env.UNOWN_ENGINE_TOKEN;
                 invalidateEngineToken();
         });
