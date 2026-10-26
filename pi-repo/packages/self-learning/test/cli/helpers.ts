@@ -156,6 +156,22 @@ export function startMockBridge(opts: MockBridgeOptions = {}): MockBridge {
                                                 script = scriptMatch.m;
                                         }
                                 }
+                                // TOOLCALLTEXT <text> <name> <json-args> (LR-1, 2026-10-27 long-run
+                                // round): text + a tool call in ONE assistant message — the
+                                // cap-with-answer shape (a capped run whose last assistant
+                                // message carries text must exit 0 per the print-mode exit
+                                // contract). Same once-per-text rule as TOOLCALL.
+                                const scriptTextMatch = lastIsUser
+                                        ? userTexts.map((t) => ({ t, m: t.match(/TOOLCALLTEXT \"([^\"]*)\" (\w+) (\{.*\})\s*$/) })).find((x) => x.m)
+                                        : undefined;
+                                let scriptText: RegExpMatchArray | null = null;
+                                if (scriptTextMatch?.m) {
+                                        if (!firedScripts.has(scriptTextMatch.t)) {
+                                                firedScripts.add(scriptTextMatch.t);
+                                                scriptText = scriptTextMatch.m;
+                                        }
+                                        if (scriptText) script = null; // TOOLCALLTEXT wins over a TOOLCALL in the same text
+                                }
                                 // JSONREPLY script: the (subagent) task text embeds
                                 // `JSONREPLY <json>` — the mock replies with exactly that JSON
                                 // (for task-tool structured-output tests: schema-valid/invalid
@@ -201,6 +217,29 @@ export function startMockBridge(opts: MockBridgeOptions = {}): MockBridge {
                                                 c.enqueue(frame([{ index: 0, delta: { role: "assistant" }, finish_reason: null }]));
                                                 if (script) {
                                                         const [, name, args] = script;
+                                                        c.enqueue(
+                                                                frame([
+                                                                        {
+                                                                                index: 0,
+                                                                                delta: {
+                                                                                        tool_calls: [
+                                                                                                { index: 0, id: `call-${seq}`, type: "function", function: { name, arguments: args } },
+                                                                                        ],
+                                                                                },
+                                                                                finish_reason: null,
+                                                                        },
+                                                                ]),
+                                                        );
+                                                        c.enqueue(
+                                                                frame([{ index: 0, delta: {}, finish_reason: "tool_calls" }], {
+                                                                        prompt_tokens: 11,
+                                                                        completion_tokens: 7,
+                                                                        total_tokens: 18,
+                                                                }),
+                                                        );
+                                                } else if (scriptText) {
+                                                        const [, text, name, args] = scriptText;
+                                                        c.enqueue(frame([{ index: 0, delta: { content: text }, finish_reason: null }]));
                                                         c.enqueue(
                                                                 frame([
                                                                         {

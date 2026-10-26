@@ -1,0 +1,39 @@
+{
+  "ts": "2026-10-26T23:22:31.295Z",
+  "model": "agnes-3.0-flash",
+  "scenario": "turn-cap",
+  "verdict": "pass",
+  "checks": {
+    "cappedFlag": true,
+    "exitClean": true,
+    "turnsRespected": true,
+    "answerPresent": true
+  },
+  "metrics": {
+    "wallS": 17,
+    "exitCode": 0,
+    "timedOut": false,
+    "capped": true,
+    "numTurns": 8,
+    "resultPreview": "Baseline green: 14 pass, 0 fail. Now **Feature 01 — category filter**.",
+    "envelope": {
+      "type": "result",
+      "subtype": "success",
+      "result": "Baseline green: 14 pass, 0 fail. Now **Feature 01 — category filter**.",
+      "session_id": "01a17a85-8d90-73b3-b5ca-ffa55a376289",
+      "model": "agnes-3.0-flash",
+      "usage": {
+        "input_tokens": 5289,
+        "output_tokens": 933,
+        "cache_read_input_tokens": 114944,
+        "cache_creation_input_tokens": 0
+      },
+      "cost_usd": 0,
+      "duration_ms": 15998,
+      "num_turns": 8,
+      "unown_version": "0.0.30",
+      "capped": true,
+      "capped_answer_recovered": true
+    }
+  }
+}

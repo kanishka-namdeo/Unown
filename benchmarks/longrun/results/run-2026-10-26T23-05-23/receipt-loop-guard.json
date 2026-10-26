@@ -1,0 +1,47 @@
+{
+  "ts": "2026-10-26T23:24:36.667Z",
+  "model": "agnes-3.0-flash",
+  "scenario": "loop-guard",
+  "verdict": "pass",
+  "checks": {
+    "terminatedWithinCap": true,
+    "contractExit": true,
+    "guardHonest": true,
+    "noHang": true
+  },
+  "metrics": {
+    "wallS": 110,
+    "exitCode": 0,
+    "timedOut": false,
+    "loopGuard": null,
+    "numTurns": 30,
+    "resultLength": 231,
+    "toolCallsByTool": {
+      "bash": 17,
+      "read": 3,
+      "write": 6,
+      "edit": 3,
+      "web_search": 1
+    },
+    "envelope": {
+      "type": "result",
+      "subtype": "success",
+      "result": "Preload does run in each file but the class-extends trick doesn't work. The problem is each test file gets a fresh realm so `globalThis.Date` reassignment doesn't propagate. Need a `beforeAll` inside the preload that runs per-file:",
+      "session_id": "01a17a86-09e3-738b-9324-eada93292ad6",
+      "model": "agnes-3.0-flash",
+      "usage": {
+        "input_tokens": 42705,
+        "output_tokens": 4233,
+        "cache_read_input_tokens": 512768,
+        "cache_creation_input_tokens": 0
+      },
+      "cost_usd": 0,
+      "duration_ms": 109536,
+      "num_turns": 30,
+      "unown_version": "0.0.30",
+      "capped": true,
+      "capped_answer_recovered": true
+    }
+  },
+  "note": "loop_guard fired OR graceful give-up — both are contract-honoring outcomes"
+}
