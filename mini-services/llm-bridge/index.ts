@@ -86,6 +86,7 @@ import {
         mergeCatalogIntoKnown,
         sseFrameSignalsContent,
         isDegenerateCompletion,
+        sanitizeMessages,
         MAX_ATTEMPTS,
         type BridgeLogEntry,
         type SseStats,
@@ -830,6 +831,15 @@ const server = Bun.serve({
                                 entry.messages = Array.isArray(body.messages) ? body.messages.length : 0;
                                 entry.tools = Array.isArray(body.tools) ? body.tools.length : 0;
 
+                                // Request-direction repair (the stress round's 400-wedge find):
+                                // an interrupted tool sequence can leave tool messages without
+                                // tool_call_id or orphaned from any assistant tool_call — a hard
+                                // 400 upstream, wedging every retry. Repair BEFORE routing shape.
+                                const sanitized = sanitizeMessages(body.messages);
+                                if (sanitized.dropped > 0 || sanitized.repairs > 0) {
+                                        body.messages = sanitized.messages;
+                                        entry.messages = sanitized.messages.length;
+                                }
                                 let upstreamBody = buildUpstreamBody(body, upstream, QWEN_THINKING);
                                 if (route === "local") upstreamBody = withLocalThinkingCompat(upstreamBody);
                                 // Primary dispatch with FAILOVER: when the primary lane fails

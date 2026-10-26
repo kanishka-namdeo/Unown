@@ -63,6 +63,15 @@
       <category>release</category>
     </item>
     <item>
+      <title>&quot;The stress round: what breaks when a real user drives the browser&quot;</title>
+      <link>https://unown-nine.vercel.app/blog/2026-10-26-the-stress-round</link>
+      <guid isPermaLink="true">https://unown-nine.vercel.app/blog/2026-10-26-the-stress-round</guid>
+      <pubDate>Mon, 26 Oct 2026 00:00:00 GMT</pubDate>
+      <description>&quot;Fifteen hostile scenarios and seven competitor repos exposed three browser-agent architecture bugs — all closed in v0.0.29.&quot;</description>
+      <category>browser</category>
+      <category>release</category>
+    </item>
+    <item>
       <title>&quot;The subagent stress round: what a real model found that the scripted tests could not&quot;</title>
       <link>https://unown-nine.vercel.app/blog/2026-10-26-the-subagent-stress-round</link>
       <guid isPermaLink="true">https://unown-nine.vercel.app/blog/2026-10-26-the-subagent-stress-round</guid>

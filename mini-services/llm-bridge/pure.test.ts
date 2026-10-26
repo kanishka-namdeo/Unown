@@ -38,6 +38,7 @@ import {
         isLocalModel,
         withLocalThinkingCompat,
         sanitizeToolCalls,
+        sanitizeMessages,
         laneForRequest,
         spacingWaitMs,
         upstreamTimeoutMs,
@@ -216,6 +217,64 @@ describe("sanitizeToolCalls", () => {
 // ---------------------------------------------------------------------------
 // buildUpstreamBody (incl. thinking resolution precedence)
 // ---------------------------------------------------------------------------
+
+describe("sanitizeMessages (the stress round's 400-wedge repair)", () => {
+        test("passes a healthy history through verbatim", () => {
+                const history = [
+                        { role: "system", content: "sys" },
+                        { role: "user", content: "hi" },
+                        { role: "assistant", content: "hello", tool_calls: [{ id: "call_1", type: "function", function: { name: "browser", arguments: "{}" } }] },
+                        { role: "tool", tool_call_id: "call_1", content: "ok" },
+                ];
+                const r = sanitizeMessages(history);
+                expect(r.messages).toEqual(history);
+                expect(r.repairs).toBe(0);
+                expect(r.dropped).toBe(0);
+        });
+
+        test("drops tool messages without tool_call_id (the live 400: 'missing field tool_call_id')", () => {
+                const history = [
+                        { role: "user", content: "hi" },
+                        { role: "tool", content: "orphan result" },
+                ];
+                const r = sanitizeMessages(history);
+                expect(r.messages).toHaveLength(1);
+                expect(r.dropped).toBe(1);
+        });
+
+        test("drops tool messages orphaned from any assistant tool_call", () => {
+                const history = [
+                        { role: "user", content: "hi" },
+                        { role: "assistant", content: null, tool_calls: [{ id: "call_1", type: "function", function: { name: "browser", arguments: "{}" } }] },
+                        { role: "tool", tool_call_id: "call_9", content: "orphan" },
+                        { role: "tool", tool_call_id: "call_1", content: "kept" },
+                ];
+                const r = sanitizeMessages(history);
+                expect(r.messages.map((m: any) => m.content)).toEqual(["hi", null, "kept"]);
+                expect(r.dropped).toBe(1);
+        });
+
+        test("id-fills assistant tool_calls and drops emptied assistant shells", () => {
+                const history = [
+                        { role: "user", content: "hi" },
+                        { role: "assistant", content: null, tool_calls: [{ type: "function", function: { name: "browser", arguments: "{}" } }] },
+                        { role: "assistant", content: null, tool_calls: [] },
+                        { role: "assistant", content: "done" },
+                ];
+                const r = sanitizeMessages(history);
+                expect(r.messages).toHaveLength(3);
+                const repaired = r.messages[1];
+                expect(Array.isArray(repaired.tool_calls)).toBe(true);
+                expect(repaired.tool_calls[0].id).toMatch(/^call_/);
+                expect(r.messages[2].content).toBe("done");
+        });
+
+        test("non-array input answers an empty list, never a crash", () => {
+                const r = sanitizeMessages(undefined);
+                expect(r.messages).toEqual([]);
+                expect(r.dropped).toBe(0);
+        });
+});
 
 describe("buildUpstreamBody", () => {
         test("qwen models get thinking disabled by default", () => {

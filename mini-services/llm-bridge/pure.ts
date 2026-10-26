@@ -400,6 +400,74 @@ export function sanitizeToolCalls(toolCalls: any[] | undefined): any[] | undefin
         return fixed;
 }
 
+/**
+ * Repair a REQUEST messages array before it goes upstream.
+ *
+ * The stress round's live find: an interrupted tool sequence can leave a
+ * role:"tool" message with no tool_call_id (or an assistant tool_call with
+ * no id) in the history, and OpenAI-compatible upstreams answer that with a
+ * hard 400 ("missing field `tool_call_id`") — every retry re-sends the same
+ * broken list, so the session is wedged at the provider, not the model.
+ * Three repairs, each counted:
+ *   1. tool messages without a usable tool_call_id are dropped;
+ *   2. tool messages whose tool_call_id matches no earlier assistant
+ *      tool_call are dropped (orphans — same 400 upstream);
+ *   3. assistant tool_calls entries are id-filled/deep-santized (via
+ *      sanitizeToolCalls), and an assistant message left with neither
+ *      content nor tool_calls is dropped.
+ * Verbatim passthrough is preserved when nothing needs repair.
+ */
+export function sanitizeMessages(messages: any): { messages: any[]; repairs: number; dropped: number } {
+        if (!Array.isArray(messages)) return { messages: [], repairs: 0, dropped: 0 };
+        const seenCallIds = new Set<string>();
+        const out: any[] = [];
+        let repairs = 0;
+        let dropped = 0;
+        for (const m of messages) {
+                if (!m || typeof m !== "object" || typeof m.role !== "string") {
+                        dropped++;
+                        continue;
+                }
+                if (m.role === "tool") {
+                        const id = typeof m.tool_call_id === "string" ? m.tool_call_id : "";
+                        if (!id || !seenCallIds.has(id)) {
+                                dropped++;
+                                continue;
+                        }
+                        out.push(m);
+                        continue;
+                }
+                if (m.role === "assistant" && Array.isArray(m.tool_calls) && m.tool_calls.length > 0) {
+                        const fixed = sanitizeToolCalls(m.tool_calls);
+                        if (fixed.length !== m.tool_calls.length) repairs++;
+                        for (const tc of fixed) seenCallIds.add(tc.id);
+                        const clone = { ...m, tool_calls: fixed };
+                        const hasContent = clone.content !== undefined && clone.content !== null && clone.content !== "";
+                        if (!hasContent && fixed.length === 0) {
+                                dropped++;
+                                continue;
+                        }
+                        out.push(clone);
+                        continue;
+                }
+                if (m.role === "assistant" && Array.isArray(m.tool_calls) && m.tool_calls.length === 0) {
+                        // an empty tool_calls array is itself a 400 on strict upstreams
+                        const clone = { ...m };
+                        delete clone.tool_calls;
+                        repairs++;
+                        const hasContent = clone.content !== undefined && clone.content !== null && clone.content !== "";
+                        if (!hasContent) {
+                                dropped++;
+                                continue;
+                        }
+                        out.push(clone);
+                        continue;
+                }
+                out.push(m);
+        }
+        return { messages: out, repairs, dropped };
+}
+
 // ---------------------------------------------------------------------------
 // Completion / SSE stats
 // ---------------------------------------------------------------------------

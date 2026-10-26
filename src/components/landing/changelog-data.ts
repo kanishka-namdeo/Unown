@@ -30,11 +30,11 @@ export interface ChangelogStop {
   groups: ChangelogGroup[];
 }
 
-export const CHANGELOG_TOTAL_ENTRIES = 315;
+export const CHANGELOG_TOTAL_ENTRIES = 318;
 
 export const CHANGELOG_TOTALS: Record<ChangelogBucket, number> = {
-  "Added": 138,
-  "Changed": 26,
+  "Added": 139,
+  "Changed": 28,
   "Deprecated": 0,
   "Removed": 3,
   "Fixed": 117,
@@ -46,10 +46,10 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
   {
     "label": "Unreleased",
     "date": null,
-    "total": 1,
+    "total": 4,
     "counts": {
-      "Added": 0,
-      "Changed": 1,
+      "Added": 1,
+      "Changed": 3,
       "Deprecated": 0,
       "Removed": 0,
       "Fixed": 0,
@@ -58,8 +58,25 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
     },
     "groups": [
       {
+        "bucket": "Added",
+        "items": [
+          {
+            "title": "engine: browser dialog — native dialogs can finally be ANSWERED",
+            "behavior": false
+          }
+        ]
+      },
+      {
         "bucket": "Changed",
         "items": [
+          {
+            "title": "engine: the stress round — popup tabs work, deep refs land, and fourteen more live findings close",
+            "behavior": false
+          },
+          {
+            "title": "bridge: interrupted tool histories no longer wedge the session at the upstream",
+            "behavior": false
+          },
           {
             "title": "landing: the orphan round's cut pays its scroll bill",
             "behavior": false

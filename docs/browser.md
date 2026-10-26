@@ -44,8 +44,15 @@ Five user journeys it is built for: drive and test a local dev server;
 extract data from a page that needs JavaScript; fill and submit a real form;
 log in once and keep the session across runs; and visually verify a deploy
 through a vision model's eyes (screenshots come back as images the model
-sees directly — the agnes-3.0-flash preset takes them). Since the v2 round
-two more tiers close the loop on sites that fight back: a **stealth mode**
+sees directly — the agnes-3.0-flash preset takes them). Since the stress
+round (2026-10-26) three more contracts hold: refs resolve through open
+shadow roots and same-origin iframes (a widget or frame field is addressable
+exactly like a light-DOM one), tabs opened by `window.open` / OAuth popups
+are tracked with their real URLs and drivable end-to-end, and native
+dialogs (`alert`/`confirm`/`prompt`) can be *answered*, not just dismissed
+(`browser dialog accept text=…`).
+
+Since the v2 round two more tiers close the loop on sites that fight back: a **stealth mode**
 (no CDP detection signal, a coherent fingerprint, humanized input) and a
 **CAPTCHA pipeline** (detect → classify → solve → verify, with native-click,
 solver-service and vision-OCR tiers) — see [stealth mode](#stealth-mode),
@@ -78,10 +85,16 @@ browser screenshot                (verify — the image comes back inline)
 
 Rules the tool enforces for you: refs are invalidated by navigation —
 re-snapshot instead of reusing them (a stale ref is an actionable error, not
-a silent misclick); `find` greps the current snapshot when a big SPA buries
-the target; `wait` supports `text`, `textGone`, `url`, a download
+a silent misclick); refs resolve through open shadow roots and same-origin
+iframes, so `ref=e46` minted inside a widget or a frame clicks with the same
+trusted input as any other; `find` greps the current snapshot when a big SPA
+buries the target; `wait` supports `text`, `textGone`, `url`, a download
 completing, or a bounded sleep (max 30 s) — never an unbounded "network
-idle".
+idle"; a native dialog that opens mid-action auto-dismisses so nothing
+wedges — arm an answer FIRST (`browser dialog accept text=green`) and then
+trigger it if the dialog's answer matters; a click that opens a new tab is
+not an error — `browser tabs list` shows it with its URL, select it by
+index, and select back.
 
 ## Element addressing
 
@@ -99,6 +112,13 @@ then real `Input.dispatchMouseEvent` / `dispatchKeyEvent` events land at its
 center. Sites that check `isTrusted` behave as if a human clicked. The
 snapshot walker also mints `data-unown-ref` attributes on elements while
 snapshotting, so a ref doubles as a stable selector for replay.
+
+Refs minted inside **open shadow roots** and **same-origin iframes** are
+first-class: the walker descends into both, and every ref action resolves
+through the same boundaries (iframe boxes are offset-compensated so the
+input coordinates land on the frame's element, and labels resolve in the
+element's own root — `<label for>` inside a widget names its field).
+Closed shadow roots remain out of scope (below).
 
 ## Stealth mode
 
@@ -257,12 +277,13 @@ the result names the tiers attempted and the reason each failed.
 | `drag` | `startRef`/`startSelector`, `endRef`/`endSelector` | Drag from one element to another |
 | `screenshot` | `fullPage`, `ref`/`selector`, `format`, `quality`, `filename` | Capture the page — comes back as an image the model sees; `filename` also saves it |
 | `eval` | `code`, `world` | Run JS in the page (expressions or async function bodies); `world: isolated` never touches page JS state; the result is returned |
-| `tabs` | `tabsAction`, `index`, `url` | `list` / `new` / `select` / `close` tabs |
+| `tabs` | `tabsAction`, `index`, `url` | `list` (with URLs) / `new` / `select` / `close` tabs — new tabs opened by the page (`window.open`, OAuth popups) are tracked automatically; `new` and history destinations pass the `UNOWN_BROWSER_BLOCK` gate like `navigate` |
+| `dialog` | `dialogAction`, `text` | Native-dialog policy: `list` (default) shows every dialog and how it resolved; `accept` / `dismiss` arm a ONE-SHOT policy for the next dialog (`text` answers a `prompt`) — then trigger it |
 | `wait` | `text`, `textGone`, `url`, `time`, `waitDownload`, `timeoutMs` | Bounded waits only — see [the work loop](#the-work-loop) |
 | `resize` | `width`, `height` | Set the viewport |
 | `console` | `level` | Console entries captured so far (filterable) |
 | `requests` | — | Network requests seen so far (method, status, type, URL) |
-| `cookies` | `cookiesAction`, `url`, `name`, `value` | `list` / `set` / `clear` |
+| `cookies` | `cookiesAction`, `url`, `name`, `value`, `domain` | `list` / `set` / `clear` (`domain` sets host-wide cookies, e.g. `.example.com`) |
 | `upload` | `paths`, `ref`/`selector` | Set files on a file input — paths jailed to the project root and system tmp |
 | `pdf` | `filename`, `landscape` | Print the page to a PDF file |
 | `storage` | `storageAction`, `path` | `save` / `load` cookies + current-origin localStorage as a JSON state file |
@@ -307,6 +328,12 @@ over your cookies. Chrome 136+ refuses to debug its own default profile dir,
 which is exactly why unown's profile is a separate directory it owns.
 
 ## Downloads and uploads
+
+Concurrent downloads are tracked by their CDP download id (not "the newest
+in-progress entry"), so two files landing at once each report their own
+state, and `wait {waitDownload}` settles on the trigger-then-wait contract:
+a small file that completes entirely during the triggering click's settle
+still counts.
 
 Downloads land in the session's project cwd, with the exact path reported in
 the result; `wait {waitDownload: true}` blocks until the file is complete
