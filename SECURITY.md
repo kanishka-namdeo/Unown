@@ -25,8 +25,9 @@ Out of scope:
 | Version | Supported |
 |---------|-----------|
 | `main` (HEAD) | yes |
+| `v0.0.x` tagged releases | latest only |
 
-No tagged releases exist yet. Fixes land on `main`; security-relevant fixes are recorded under **Security** in [CHANGELOG.md](CHANGELOG.md).
+Releases are tagged `v0.0.x` in patch order and the latest tag always equals `package.json`'s version (the release pipeline asserts it on three operating systems). Security-relevant fixes are recorded under **Security** in [CHANGELOG.md](CHANGELOG.md); each release's artifacts carry an SBOM and build-provenance attestations.
 
 ## Reporting a Vulnerability
 
@@ -35,7 +36,7 @@ Report privately via GitHub's Private Vulnerability Reporting: on
 
 Include, where you can:
 
-- the commit you ran — `git rev-parse HEAD` in your clone (`unown --version` is landing this milestone),
+- the commit you ran — `git rev-parse HEAD` in your clone, or `unown --version` (it always matches the running build's tag; on source checkouts it matches `package.json`),
 - the component (agent / engine / bridge / sandbox / hooks),
 - reproduction steps and the impact you assess,
 - relevant lines from `.run/*.log`, with secrets removed.
@@ -61,7 +62,7 @@ Unown is autonomous-adjacent: it consolidates untrusted text into memory it late
 8. **Repo-local git config execution (GitSpawn class).** A cloned project's `.git/config` can carry execution sinks — `core.fsmonitor` (git spawns the configured helper on a plain `git status`/`git add`), `core.sshCommand`, `core.askPass`, `core.pager` — that fire the moment the harness runs git in the working tree, before any approval prompt (September 2026 disclosure, shattered.io/gitspawn-ai-coding-agent-vulnerability-2026/; seven coding agents affected). Mitigations shipped 2026-10-22: every read-only probe neutralizes hooks + fsmonitor + sshCommand + askPass + pager with `-c` overrides (`readOnlyGitArgs()` in `pi-repo/packages/self-learning/src/gittools.ts`); the mutation path neutralizes fsmonitor + sshCommand while deliberately keeping the user's own hooks live (husky/lint-staged must gate agent commits like any other); a regression test plants a hostile `core.fsmonitor` and pins that the marker file never appears.
 9. **DNS-exfiltration commands.** Prompt injection + an allowlisted `ping`/`nslookup`/`dig`/`host` leaked `.env` contents via DNS subdomains without any user approval (Claude Code CVE-2025-55284). Unown's network deny rule was structurally blind to the same shape — resolution itself is the channel, with no HTTP/socket argv for the rule to match. Mitigations shipped 2026-10-22: the DNS-capable family (POSIX + PowerShell twins) is denied in the sandbox and strict-terminal lists with the loopback exemption preserved; these commands are never allowlisted in shipped defaults (`pi-repo/packages/self-learning/src/bash-policy.ts`).
 
-## Repository hardening posture (2026-10-22)
+## Repository hardening posture (2026-10-27, first audited 2026-10-22)
 
 GitHub-side controls, verified via the REST API on the date above:
 
@@ -69,7 +70,7 @@ GitHub-side controls, verified via the REST API on the date above:
 - **Branch protection on `main`**: pull requests required, one approving CODEOWNERS review required, stale reviews dismissed, seven required CI status checks (3-OS build+test, typecheck, unit, secret/advisory scan, production build), linear history, force-push and deletion blocked. Owner-action extras not yet enabled (the current fine-grained PAT lacks those toggles): `secret_scanning_non_provider_patterns`, `secret_scanning_validity_checks` — both recommended.
 - **Administrators are exempted from branch protection on purpose**: this is a solo-maintainer project and verified milestone landings push directly to `main` (every such push still runs the full CI matrix afterward; the exemption is the documented trade-off between gate rigor and the maintainer workflow). Non-admin collaborators — and any stolen non-admin credential — go through the full PR + review + CI gate. A compromised *admin* credential bypasses this gate; rotation guidance is below.
 - **`.github/CODEOWNERS`**: instruction files (AGENTS.md/CLAUDE.md/SKILL.md at any depth), the guard/gate sources (instruction-guard, bash-policy, guard, shield, permissions, hooks, termhooks, injection-scanner, config-trust), the sandbox and hardened-git sources (bwrap, sandbox, gittools, worktree), the CI workflows, the gitleaks config and the unicode lint all require owner review on every PR.
-- **Actions are SHA-pinned** with least-privilege `permissions:` per job; Dependabot covers actions + bun; CodeQL runs weekly; OpenSSF Scorecard is tracked; releases carry SBOM + build-provenance attestations.
+- **Actions are SHA-pinned** with least-privilege `permissions:` per job; Dependabot covers actions + bun; CodeQL runs weekly; OpenSSF Scorecard is tracked; releases carry SBOM + build-provenance attestations. The 2026-10-27 security round (v0.0.30) took the open advisory surface to zero — 11 Dependabot alerts and 3 CodeQL findings fixed at the source, `npm audit` at 0 vulnerabilities across the vendored tree, and both post-fix CodeQL runs green.
 - **PAT hygiene**: the repository is pushed through a git credential helper (`0600`), never a PAT-in-remote-URL. Fine-grained PATs with minimal scopes and short expiry are the standing recommendation for anyone cloning with write access; the October 2026 GhostAction campaign (1,900 accounts, 30k+ repos) started with exactly one shared token. If a token is suspected stolen: revoke **from a different machine** and snapshot first — the Shai-Hulud/Tensorlake worms wipe the home directory when they detect revocation.
 
 ## OWASP Top 10 for LLM Applications — control mapping

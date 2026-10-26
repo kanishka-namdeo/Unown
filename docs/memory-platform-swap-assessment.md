@@ -355,7 +355,13 @@ Layered, with the strongest property last:
 4. **Version pinning + shim surface drift** — `mem0ai@^3.3.1` under a
    `resolutions` override to a local shim that implements exactly today's
    better-sqlite3 surface. Upgrade deliberately: run the probe, then the
-   guard suites, then the engine.
+   guard suites, then the engine. The 2026-10-27 security round added a
+   second override on the same lever: `zod` is forced to 4.6.7 at the
+   monorepo root because it reaches the tree only transitively (through
+   `mem0ai` itself, `@anthropic-ai/sandbox-runtime` and the `openai` peer —
+   GHSA-mrhx-c7xc-m3w5) — the same drill applies: the call sites were read
+   for compatibility first, then the full engine suite re-ran green with the
+   memory tier on the overridden zod.
 5. **Test debt from the swap** — the deterministic suite currently reads
    3002 pass / 38 skip / **11 fail** (2026-10-22, this workspace): the
    failures are pre-swap expectations not yet updated for the async

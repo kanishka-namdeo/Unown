@@ -7,6 +7,15 @@
     <description>How each feature and release works, what it does, and the receipts behind it — the longhand record of the self-improving terminal coding agent Unown.</description>
     <language>en</language>
     <item>
+      <title>&quot;The security round: every open advisory, closed at the source&quot;</title>
+      <link>https://unown-nine.vercel.app/blog/2026-10-27-the-security-round</link>
+      <guid isPermaLink="true">https://unown-nine.vercel.app/blog/2026-10-27-the-security-round</guid>
+      <pubDate>Tue, 27 Oct 2026 00:00:00 GMT</pubDate>
+      <description>&quot;Eleven Dependabot alerts, three CodeQL findings, one lockfile incident — the advisory surface went to zero by fixing causes, not findings.&quot;</description>
+      <category>security</category>
+      <category>release</category>
+    </item>
+    <item>
       <title>&quot;The chaos round: orphaned fleets, stolen steering, and the reports that lied&quot;</title>
       <link>https://unown-nine.vercel.app/blog/2026-10-26-the-chaos-round</link>
       <guid isPermaLink="true">https://unown-nine.vercel.app/blog/2026-10-26-the-chaos-round</guid>
