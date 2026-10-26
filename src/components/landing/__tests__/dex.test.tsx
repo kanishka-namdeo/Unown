@@ -29,7 +29,10 @@
 //   - the media is exactly the TUI-capture lane's audited set, playback is an
 //     effect decision and never an `autoPlay` attribute, and every figure in
 //     the lead is read off DEX — the rules the feature carousel brought with it
-//     when the bands merged (docs/landing-research.md).
+//     when the bands merged (docs/landing-research.md);
+//   - a webm that fails to decode swaps to its mp4 sibling once and resumes
+//     (Chromium does not fall back between <source> children after a
+//     hardware VP9 decode error).
 //
 // Rendered under the global happy-dom preload (bunfig.toml [test] preload →
 // src/test-dom-setup.ts), same as the other landing component tests.
@@ -360,6 +363,9 @@ describe("landing DexSection", () => {
       for (const s of sources) {
         expect(s.getAttribute("src")).toContain("/landing/tui/");
       }
+      // The mp4 sibling is also carried as data for the decode-error fallback
+      // (Chromium does not walk to it after a <source> fails — see dex.tsx).
+      expect(v.getAttribute("data-mp4")).toMatch(/^\/landing\/tui\/.+\.mp4$/);
     }
     // Posters are a live-pane attribute: a `poster` on a hidden pane still
     // fetches (display:none does not stop it — measured: 9 eager fetches,
@@ -405,6 +411,34 @@ describe("landing DexSection", () => {
         (n.textContent ?? "").includes("Nothing here was captured by hand"),
       ).length,
     ).toBe(0);
+  });
+
+  test("a reel whose webm fails to decode swaps to its mp4 once, without a second click", () => {
+    const { container } = render(<DexSection />);
+    const video = shownPane(container)[0].querySelector("video");
+    expect(video).toBeTruthy();
+    const mp4 = video!.getAttribute("data-mp4");
+    expect(mp4).toMatch(/^\/landing\/tui\/.+\.mp4$/);
+    // happy-dom runs no source selection: name the webm as the source the
+    // browser had committed to when its decoder failed.
+    const webm = video!.querySelector('source[type="video/webm"]')!.getAttribute("src")!;
+    Object.defineProperty(video!, "currentSrc", { value: webm, configurable: true });
+    let plays = 0;
+    Object.defineProperty(video!, "play", {
+      value: () => {
+        plays++;
+        return Promise.resolve();
+      },
+      configurable: true,
+    });
+    fireEvent.error(video!);
+    // the visible reel retries once as the mp4 and resumes on its own
+    expect(video!.getAttribute("src")).toBe(mp4);
+    expect(plays).toBe(1);
+    // one-shot: a second error keeps the last source instead of re-loading
+    fireEvent.error(video!);
+    expect(video!.getAttribute("src")).toBe(mp4);
+    expect(plays).toBe(1);
   });
 
   test("the lead's media mix is read off the data, never typed", () => {

@@ -21,6 +21,11 @@ import { expect, test } from "@playwright/test";
  * decision), so this spec clicks through the picker exactly the way the
  * keyboard/screen-reader story does — selection follows focus, the shown
  * pane is the only thing that plays (the one-moving-picture rule).
+ *
+ * The fallback case below pins the other half of that promise: a webm that
+ * cannot be fetched (the shape a hardware VP9 decode error takes for the
+ * element — Chromium never walks to the next <source>) must leave the shown
+ * reel playing its mp4 sibling, not a frozen poster.
  */
 
 interface DecodeProof {
@@ -146,6 +151,27 @@ test("every filmed dex entry decodes and presents frames when selected", async (
   // means the picker walk silently matched nothing (label drift).
   expect(probed, "no filmed entries were probed — picker selector drifted").toBeGreaterThan(0);
   expect(mediaFailures, "media fetches failed").toEqual([]);
+});
+
+test("a failed webm falls back to the reel's mp4 and still presents frames", async ({
+  page,
+}) => {
+  const attempted: string[] = [];
+  await page.route("**/*.webm", (route) => {
+    attempted.push(route.request().url());
+    return route.abort();
+  });
+
+  await page.goto("/", { waitUntil: "domcontentloaded" });
+  await page.goto("/#dex-task", { waitUntil: "domcontentloaded" });
+  await page.waitForTimeout(1200);
+
+  const proof = await probeShownVideo(page);
+  expect(attempted.length, "the page never tried its webm source").toBeGreaterThan(0);
+  expect(proof.src, "the shown reel did not fall back to its mp4").toMatch(/\.mp4$/);
+  expect(proof.errorCode, `${proof.src}: MediaError after the fallback`).toBeNull();
+  expect(proof.readyState, `${proof.src}: never reached HAVE_ENOUGH_DATA`).toBeGreaterThanOrEqual(4);
+  expect(proof.currentTime, `${proof.src}: fallback never advanced — poster, not playback`).toBeGreaterThan(0);
 });
 
 test("the dex ships zero pending plates — every entry films, none mount a broken stage", async ({

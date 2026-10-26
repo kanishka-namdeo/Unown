@@ -9,6 +9,12 @@ otherwise specified; the release tag must always equal package.json's version.
 
 Repo conventions: measured claims cite their receipts (`docs/testing-strategy.md`, `benchmarks/memory-eval/*/RESULTS.md`). Changes to agent behavior — prompts, default models, routing, guard rules, hooks, memory injection — are filed under **Agent Behavior**; the policy lives in [docs/BEHAVIOR.md](docs/BEHAVIOR.md).
 
+## [Unreleased]
+
+### Fixed
+
+- **landing: a reel whose webm fails to decode falls back to its mp4** — Chromium commits to the first `<source>` it picks and does not try the next one after a media decode error, and a hardware VP9 decoder can reject these reels outright (reproduced on Windows Edge and Chrome with an older Intel UHD driver: `PIPELINE_ERROR_DECODE` at ~0.4s; `--disable-accelerated-video-decode` and the mp4 sibling both play). The dex now swaps a failing webm for its mp4 once — resuming the visible reel automatically rather than leaving the stage frozen on its poster — so the webm-first ordering keeps its bandwidth win without stranding those readers. Pinned by the dex unit suite (one-shot swap, no reload loop) and a new e2e case that aborts every webm on the production build and requires the shown reel to reach HAVE_ENOUGH_DATA and advance its clock on the mp4.
+
 ## [0.0.25] - 2026-10-26
 
 ### Added

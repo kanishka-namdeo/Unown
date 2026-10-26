@@ -30,19 +30,44 @@ export interface ChangelogStop {
   groups: ChangelogGroup[];
 }
 
-export const CHANGELOG_TOTAL_ENTRIES = 304;
+export const CHANGELOG_TOTAL_ENTRIES = 305;
 
 export const CHANGELOG_TOTALS: Record<ChangelogBucket, number> = {
   "Added": 134,
   "Changed": 23,
   "Deprecated": 0,
   "Removed": 3,
-  "Fixed": 114,
+  "Fixed": 115,
   "Security": 0,
   "Behavior": 30
 };
 
 export const CHANGELOG_STOPS: ChangelogStop[] = [
+  {
+    "label": "Unreleased",
+    "date": null,
+    "total": 1,
+    "counts": {
+      "Added": 0,
+      "Changed": 0,
+      "Deprecated": 0,
+      "Removed": 0,
+      "Fixed": 1,
+      "Security": 0,
+      "Behavior": 0
+    },
+    "groups": [
+      {
+        "bucket": "Fixed",
+        "items": [
+          {
+            "title": "landing: a reel whose webm fails to decode falls back to its mp4",
+            "behavior": false
+          }
+        ]
+      }
+    ]
+  },
   {
     "label": "0.0.25",
     "date": "2026-10-26",

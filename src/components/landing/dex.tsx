@@ -69,6 +69,17 @@ import { FadeUp, PixelCursor, SectionHead, TerminalWindow, toneAttr, useReducedM
  * stage keeps its poster and the explicit button does the starting; nothing
  * auto-advances, because the reader is the rotor.
  *
+ * TWO ENCODES, ONE FALLBACK (2026-10-26): every reel ships a webm (VP9, the
+ * smaller file) first and an mp4 (H.264) second. Chromium commits to the
+ * first <source> it picks and does NOT walk to the next one when that stream
+ * fails to decode — and a hardware VP9 decoder can reject a perfectly valid
+ * stream (reproduced in Edge and Chrome on a Windows box with an old Intel
+ * UHD driver: PIPELINE_ERROR_DECODE, while software decode and the mp4 both
+ * play). So a media `error` on a webm swaps that element to its mp4 sibling
+ * once, and resumes it if it is the reel the reader can see. The webm stays
+ * first for the bandwidth; the fallback keeps a decode failure from freezing
+ * the stage on a poster.
+ *
  * POSTERS ARE LAZY THE WAY THE PANE CONTRACT ALLOWS (2026-10-24): every reel
  * still mounts, but a `poster` attribute on a `<video>` fetches its image the
  * moment the element enters the DOM — `display:none` does not stop it, and
@@ -280,6 +291,7 @@ function CaptureStage({
   paused,
   onTogglePause,
   registerVideo,
+  onVideoError,
   live,
 }: {
   entry: DexEntry;
@@ -288,6 +300,7 @@ function CaptureStage({
   paused: boolean;
   onTogglePause: () => void;
   registerVideo: (no: string, i: number, el: HTMLVideoElement | null) => void;
+  onVideoError: (no: string, i: number, el: HTMLVideoElement) => void;
   /** Only the pane the reader can see mounts real `poster` attributes — see
    * the module comment. Inactive panes carry `data-poster`, and React swaps
    * it in the moment the pane is shown. */
@@ -336,6 +349,8 @@ function CaptureStage({
                   preload="none"
                   poster={live ? c.poster : undefined}
                   data-poster={c.poster}
+                  data-mp4={c.mp4}
+                  onError={(e) => onVideoError(entry.no, i, e.currentTarget)}
                   width={1600}
                   height={1074}
                 >
@@ -400,6 +415,7 @@ function DexDetail({
   paused,
   onTogglePause,
   registerVideo,
+  onVideoError,
 }: {
   entry: DexEntry;
   index: number;
@@ -409,6 +425,7 @@ function DexDetail({
   paused: boolean;
   onTogglePause: () => void;
   registerVideo: (no: string, i: number, el: HTMLVideoElement | null) => void;
+  onVideoError: (no: string, i: number, el: HTMLVideoElement) => void;
 }) {
   return (
     <article
@@ -480,6 +497,7 @@ function DexDetail({
         paused={paused}
         onTogglePause={onTogglePause}
         registerVideo={registerVideo}
+        onVideoError={onVideoError}
         live={shown}
       />
 
@@ -696,6 +714,27 @@ export function DexSection() {
     if (el) videoEls.current.set(key, el);
     else videoEls.current.delete(key);
   };
+
+  /** A webm decode failure retries the reel once as its mp4. Chromium does
+   * not fall back between <source> children after it has picked one, and a
+   * hardware VP9 decoder can reject the stream (see the module comment);
+   * without this the stage sits on its poster with no error the reader can
+   * act on. The swap is one-shot: a second error keeps the last source. */
+  function onVideoError(no: string, i: number, el: HTMLVideoElement) {
+    const mp4 = el.dataset.mp4;
+    if (!mp4 || el.dataset.fallback === "mp4") return;
+    if (el.currentSrc.endsWith(".mp4")) return;
+    el.dataset.fallback = "mp4";
+    el.src = mp4;
+    if (no === entry.no && i === reel && !reduced && !paused) {
+      try {
+        const p = el.play?.();
+        if (p && typeof p.catch === "function") p.catch(() => {});
+      } catch {
+        // a rejected play is the finished (paused) state
+      }
+    }
+  }
 
   function onListKey(e: React.KeyboardEvent) {
     if (!visible.length) return;
@@ -930,6 +969,7 @@ export function DexSection() {
                   paused={paused}
                   onTogglePause={() => setPaused((p) => !p)}
                   registerVideo={registerVideo}
+                  onVideoError={onVideoError}
                 />
               ))}
 
