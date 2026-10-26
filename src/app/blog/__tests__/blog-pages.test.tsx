@@ -108,7 +108,7 @@ describe("blog index (/blog)", () => {
 });
 
 describe("blog post (/blog/[slug])", () => {
-  test("the title is the h1, the body renders inside the prose wrapper", async () => {
+  test("the newest post's title is the h1 and its body renders inside the prose wrapper", async () => {
     const post = BLOG_POSTS[0];
     const { container } = await renderPost(post.slug);
     const h1 = container.querySelector("h1");
@@ -121,12 +121,24 @@ describe("blog post (/blog/[slug])", () => {
     const prose = container.querySelector(".prose-unown");
     expect(prose?.innerHTML.length).toBeGreaterThan(200);
     expect(prose?.querySelectorAll("h2").length).toBeGreaterThan(1);
-    expect(prose?.querySelector("table")).toBeTruthy();
-    expect(prose?.querySelector("pre code")).toBeTruthy();
     // The embeds the post declares actually render.
     if (post.media.some((m) => m.endsWith(".mp4"))) {
       expect(prose?.querySelector("video")).toBeTruthy();
     }
+  });
+
+  test("the markdown renderer's feature set is exercised on a post that carries it", async () => {
+    // This gate must not ride BLOG_POSTS[0]: a release post can legitimately
+    // land without a table (2026-10-26, the chaos round did, and the old
+    // newest-post coupling turned that into a red suite). The rich fixture is
+    // pinned by slug so an authoring choice cannot hollow the renderer gate.
+    const post = BLOG_POSTS.find((p) => p.slug === "2026-10-26-the-sota-memory-eval-round");
+    expect(post).toBeTruthy();
+    const { container } = await renderPost(post!.slug);
+    const prose = container.querySelector(".prose-unown");
+    expect(prose?.querySelectorAll("h2").length).toBeGreaterThan(1);
+    expect(prose?.querySelector("table")).toBeTruthy();
+    expect(prose?.querySelector("pre code")).toBeTruthy();
     expect(prose?.querySelector("img")).toBeTruthy();
     // And the rendered body is THIS post's: a distinctive sentence survives.
     expect(prose?.textContent).toContain("four-tier");
