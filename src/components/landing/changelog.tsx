@@ -229,12 +229,10 @@ export function ChangelogRail() {
               kicker="Changelog"
               lead={
                 <>
-                  <span className="font-mono text-ink">{CHANGELOG_TOTAL_ENTRIES} entries</span>{" "}
-                  so far, read out of{" "}
-                  <span className="font-mono text-ink">CHANGELOG.md</span>, the same file{" "}
-                  <span className="font-mono text-ink">unown changelog</span> prints in your
-                  terminal. Dates come from release headings, titles from the bullets under them,
-                  so nothing on this rail was written for the page.
+                  <span className="font-mono text-ink">{CHANGELOG_TOTAL_ENTRIES} entries</span>, read
+                  out of <span className="font-mono text-ink">CHANGELOG.md</span>, the file{" "}
+                  <span className="font-mono text-ink">unown changelog</span> prints. Dates and
+                  titles come from its headings and bullets; nothing here was written for the page.
                 </>
               }
             >

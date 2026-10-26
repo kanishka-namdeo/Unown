@@ -15,6 +15,10 @@ Repo conventions: measured claims cite their receipts (`docs/testing-strategy.md
 
 - **landing: a reel whose webm fails to decode falls back to its mp4** — Chromium commits to the first `<source>` it picks and does not try the next one after a media decode error, and a hardware VP9 decoder can reject these reels outright (reproduced on Windows Edge and Chrome with an older Intel UHD driver: `PIPELINE_ERROR_DECODE` at ~0.4s; `--disable-accelerated-video-decode` and the mp4 sibling both play). The dex now swaps a failing webm for its mp4 once — resuming the visible reel automatically rather than leaving the stage frozen on its poster — so the webm-first ordering keeps its bandwidth win without stranding those readers. Pinned by the dex unit suite (one-shot swap, no reload loop) and a new e2e case that aborts every webm on the production build and requires the shown reel to reach HAVE_ENOUGH_DATA and advance its clock on the mp4.
 
+### Changed
+
+- **landing: the v0.0.25 cut pays its landing bill** — the new cut stop pushed the page over the 3,200-word scroll gate (3,205 in CI); the changelog rail's authored lead is compressed by eleven words — no generated number or gated literal touched — and the page now measures 3,191 words in the e2e budget spec (12.3vh, every band ≤ 3vh). The same change un-reds the blog renderer test, whose table/code/image pins had ridden `BLOG_POSTS[0]`: the 2026-10-26 chaos-round post legitimately landed without a table, so the feature set is now pinned to a rich fixture by slug while the newest post keeps its h1/prose/wrapper checks.
+
 ## [0.0.25] - 2026-10-26
 
 ### Added
