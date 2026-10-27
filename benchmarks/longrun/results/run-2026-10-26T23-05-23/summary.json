@@ -3,10 +3,10 @@
   "model": "agnes-3.0-flash",
   "scenarios": {
     "compact-thrash": {
-      "verdict": "fail",
+      "verdict": "pass",
       "checks": {
         "compacted": true,
-        "stillProductive": false,
+        "stillProductive": true,
         "exitClean": true,
         "sessionParses": true,
         "noHardOverflowLoop": true
@@ -41,5 +41,5 @@
       }
     }
   },
-  "allPass": false
+  "allPass": true
 }

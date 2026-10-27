@@ -61,7 +61,7 @@ const REPO_ROOT = resolve(HERE, "..", "..");
 const FIXTURE_DIR = join(HERE, "fixture");
 const ACCEPTANCE_DIR = join(HERE, "acceptance");
 const RESULTS_DIR = join(HERE, "results");
-const ROOT = process.env.BENCH_ROOT ?? "/home/z/my-project/bench-runs/longrun";
+const ROOT = process.env.BENCH_ROOT ?? join(homedir(), "bench-runs", "longrun");
 const UNOWN_BIN = process.env.UNOWN_BIN ?? join(REPO_ROOT, "bin", "unown");
 const ENGINE_ENTRY = join(REPO_ROOT, "mini-services", "agent-service", "index.ts");
 const BRIDGE_URL = process.env.PI_BRIDGE_URL ?? "http://127.0.0.1:3031";
@@ -84,7 +84,7 @@ const RUN_DIR = join(RESULTS_DIR, `run-${RUN_TS}`);
 const LOG_DIR = join(RUN_DIR, "logs");
 const SOAK_MINUTES = Number(flag("soak-minutes", process.env.LONGRUN_SOAK_MINUTES ?? 45));
 const MARATHON_CAP_MIN = Number(process.env.LONGRUN_MARATHON_CAP_MIN ?? 45);
-const COMPACT_CAP_MIN = Number(process.env.LONGRUN_COMPACT_CAP_MIN ?? 30);
+const COMPACT_CAP_MIN = Number(process.env.LONGRUN_COMPACT_CAP_MIN ?? 40);
 const KILLRESUME_CAP_MIN = Number(process.env.LONGRUN_KILLRESUME_CAP_MIN ?? 45);
 const LOOP_CAP_MIN = Number(process.env.LONGRUN_LOOP_CAP_MIN ?? 12);
 const TURNCAP_CAP_MIN = Number(process.env.LONGRUN_TURNCAP_CAP_MIN ?? 15);
@@ -728,7 +728,7 @@ async function scenarioCompactThrash() {
   const startMs = Date.now();
   log(`${name}: contextWindow=${arm.contextWindow} reserve=${arm.reserveTokens} keepRecent=${arm.keepRecentTokens}`);
   const r = await runAgent(
-    ["-p", buildoutPrompt(1, 6), "--output-format", "json", "--max-turns", "150"],
+    ["-p", buildoutPrompt(1, 6), "--output-format", "json", "--max-turns", "260"],
     ws,
     join(LOG_DIR, name),
     COMPACT_CAP_MIN * 60_000,

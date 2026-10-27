@@ -30,33 +30,55 @@ export interface ChangelogStop {
   groups: ChangelogGroup[];
 }
 
-export const CHANGELOG_TOTAL_ENTRIES = 322;
+export const CHANGELOG_TOTAL_ENTRIES = 325;
 
 export const CHANGELOG_TOTALS: Record<ChangelogBucket, number> = {
-  "Added": 139,
+  "Added": 141,
   "Changed": 28,
   "Deprecated": 0,
   "Removed": 3,
-  "Fixed": 117,
+  "Fixed": 118,
   "Security": 5,
   "Behavior": 30
 };
 
 export const CHANGELOG_STOPS: ChangelogStop[] = [
   {
-    "label": "0.0.30",
+    "label": "0.0.31",
     "date": "2026-10-27",
-    "total": 4,
+    "total": 7,
     "counts": {
-      "Added": 0,
+      "Added": 2,
       "Changed": 0,
       "Deprecated": 0,
       "Removed": 0,
-      "Fixed": 0,
+      "Fixed": 1,
       "Security": 4,
       "Behavior": 0
     },
     "groups": [
+      {
+        "bucket": "Added",
+        "items": [
+          {
+            "title": "benchmarks: the long-run endurance round — nine duration scenarios…",
+            "behavior": false
+          },
+          {
+            "title": "engine: LR-2 — terminal mid-exchange auto-compact, the engine curve's terminal twin",
+            "behavior": false
+          }
+        ]
+      },
+      {
+        "bucket": "Fixed",
+        "items": [
+          {
+            "title": "cli: LR-1 — the --max-turns cap tells one story and honors the answer-so-far contract",
+            "behavior": false
+          }
+        ]
+      },
       {
         "bucket": "Security",
         "items": [
