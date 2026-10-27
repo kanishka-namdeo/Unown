@@ -30,14 +30,14 @@ export interface ChangelogStop {
   groups: ChangelogGroup[];
 }
 
-export const CHANGELOG_TOTAL_ENTRIES = 325;
+export const CHANGELOG_TOTAL_ENTRIES = 326;
 
 export const CHANGELOG_TOTALS: Record<ChangelogBucket, number> = {
   "Added": 141,
   "Changed": 28,
   "Deprecated": 0,
   "Removed": 3,
-  "Fixed": 118,
+  "Fixed": 119,
   "Security": 5,
   "Behavior": 30
 };
@@ -46,13 +46,13 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
   {
     "label": "0.0.31",
     "date": "2026-10-27",
-    "total": 7,
+    "total": 8,
     "counts": {
       "Added": 2,
       "Changed": 0,
       "Deprecated": 0,
       "Removed": 0,
-      "Fixed": 1,
+      "Fixed": 2,
       "Security": 4,
       "Behavior": 0
     },
@@ -61,7 +61,7 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
         "bucket": "Added",
         "items": [
           {
-            "title": "benchmarks: the long-run endurance round — nine duration scenarios…",
+            "title": "benchmarks: the long-run endurance round — eleven duration scenarios…",
             "behavior": false
           },
           {
@@ -73,6 +73,10 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
       {
         "bucket": "Fixed",
         "items": [
+          {
+            "title": "benchmarks: the long-run runner learns from its own first green runs — nine lane fixes and a deadlock",
+            "behavior": false
+          },
           {
             "title": "cli: LR-1 — the --max-turns cap tells one story and honors the answer-so-far contract",
             "behavior": false
@@ -290,7 +294,7 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
         "bucket": "Added",
         "items": [
           {
-            "title": "subagents: stress round two — chaos scenarios, seven live findings, and a fleet that no longer lies, leaks…",
+            "title": "subagents: stress round two — chaos scenarios, seven live findings",
             "behavior": false
           }
         ]
@@ -315,7 +319,7 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
         "bucket": "Added",
         "items": [
           {
-            "title": "subagents: the stress round — ten live scenarios, six real findings, six fixes, and the receipts",
+            "title": "subagents: the stress round — ten scenarios, six findings, six fixes",
             "behavior": false
           },
           {
@@ -420,7 +424,7 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
         "bucket": "Added",
         "items": [
           {
-            "title": "release: the second re-cut — v0.0.21 supersedes the failed v0.0.20 tag, and the true macOS root cause is found",
+            "title": "release: the second re-cut — the true macOS root cause is found",
             "behavior": false
           }
         ]
@@ -463,7 +467,7 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
         "bucket": "Added",
         "items": [
           {
-            "title": "release: the learning-integrity round re-cuts — v0.0.20 supersedes the failed v0.0.19 tag",
+            "title": "release: the learning-integrity round re-cuts",
             "behavior": false
           },
           {
@@ -688,7 +692,7 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
         "bucket": "Added",
         "items": [
           {
-            "title": "release: v0.0.15 — the media-completion round ships — every dex entry filmed, the atlas review PASS",
+            "title": "release: v0.0.15 — the media-completion round ships",
             "behavior": false
           },
           {
@@ -800,7 +804,7 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
         "bucket": "Added",
         "items": [
           {
-            "title": "release: the pending-plates round ships with the Windows release-gate fixes — v0.0.12 supersedes the failed…",
+            "title": "release: the pending-plates round ships with the Windows release-gate fixes",
             "behavior": false
           }
         ]
@@ -946,7 +950,7 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
         "bucket": "Added",
         "items": [
           {
-            "title": "landing: the memory, browser and dream lanes — three filmed gaps closed, the hard way",
+            "title": "landing: three filmed gaps closed, the hard way",
             "behavior": false
           },
           {
@@ -1387,7 +1391,7 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
         "bucket": "Added",
         "items": [
           {
-            "title": "onboarding 2.0 — the Hermes-patterned first run and setup wizard (masked keys, existing-key states…",
+            "title": "onboarding 2.0 — the Hermes-patterned first run and setup wizard",
             "behavior": false
           },
           {

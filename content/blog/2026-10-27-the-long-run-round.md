@@ -1,6 +1,6 @@
 ---
 title: "The long-run round: what breaks when the agent works for hours"
-description: "Nine endurance scenarios drove Unown through 150-turn buildouts, forced compaction and kill-resume torture — five layered defects found and fixed."
+description: "Eleven endurance scenarios, 150-turn buildouts, forced compaction and kill-resume torture — five layered defects fixed, ten more in the runner itself."
 date: 2026-10-27
 lastmod: 2026-10-27
 tags: [release, stress, memory]
@@ -34,14 +34,18 @@ bench, never enters the agent's workspace during the session, and is copied
 in only at scoring time. The agent cannot see, edit, or delete what grades
 it.
 
-Nine scenarios, each pinned to documented failure modes from other agents —
+Eleven scenarios, each pinned to documented failure modes from other agents —
 METR's time-horizon research, Terminal-Bench's timeout doctrine, tau-bench's
 repetition-consistency metric, k6's soak methodology, and the GitHub issues
 where Claude Code users watched auto-compact eat their sessions
 ([#105086](https://github.com/anthropics/claude-code/issues/105086)), Codex
 users watch it never fire ([#14447](https://github.com/openai/codex/issues/14447)),
-and Gemini CLI users watch a model think in circles for hours
-([#26116](https://github.com/google-gemini/gemini-cli/issues/26116)).
+Gemini CLI users watch a model think in circles for hours
+([#26116](https://github.com/google-gemini/gemini-cli/issues/26116)), a
+Claude Code session file corrupt mid-write under a kill
+([#52387](https://github.com/anthropics/claude-code/issues/52387)), and its
+RSS creep while sitting idle
+([#67433](https://github.com/anthropics/claude-code/issues/67433)).
 
 ## Finding LR-1: the cap that contradicted itself
 
@@ -107,8 +111,10 @@ layer of "why didn't that work" fixed:
    in flight, and a new `agent_start` cancels any armed exit timer: a
    running turn is not "finished".
 
-The post-fix run: **nine mid-run compactions, every one followed by a
-continuation round, 150 turns, exit 0, every committed feature intact.**
+The post-fix run: **thirteen mid-run compactions, each settling into an
+in-session continuation round, 256 turns, exit 0, all seven scored features
+green** (01–06 plus the store).
+
 The transcript shows the whole story — work, warn, compact, continue — and
 the session file resumes cleanly.
 
@@ -117,13 +123,72 @@ the session file resumes cleanly.
 The marathon (ten features, one session) passed at **9/10 features** — the
 one miss is a genuine agent defect the acceptance suite caught (CSV-import
 skip warnings on stdout; the spec says stderr). Turn-cap and loop-guard
-passed with the exit contract honest in both directions. Kill-and-resume,
-the notes storm, the 45-minute engine soak with live terminal traffic, the
-governor/breaker fidelity drill and the ralph chain round out the nine —
-receipts with verdicts, checks, and full metrics for each land under
+passed with the exit contract honest in both directions. Kill-and-resume
+(three staged SIGKILLs, zero orphan survivors, the same session resumed
+clean every time and finished the buildout at 8/9 acceptance), the notes
+storm (six queued notes, drained with zero dead letters, the dream lane
+consolidating), the 45-minute engine soak with live terminal traffic, the
+governor/breaker fidelity drill, the ralph chain, the torn-write
+crash-consistency drill and the idle soak round out the eleven — receipts
+with verdicts, checks, and full metrics for each land under
 `benchmarks/longrun/results/`.
 
 ![Mission control — the live-feed surface the endurance scenarios were observed against](/landing/tui/dashboard/stills/01-overview.png)
+
+## The runner was not exempt
+
+The bench scores the agent; nothing scores the bench. The resumed round
+surfaced the runner itself as a long-running task with its own failure
+modes, and every one of them had to be fixed before a receipt could be
+trusted:
+
+1. The **engine-boot poll** passed a null token into an endpoint that is
+   token-gated by design — every engine-booting scenario failed inside the
+   runner before the agent was ever stressed, at any deadline.
+2. The **kill-resume verdict math** read a gate-kill's SIGKILL as a cap
+   breach and hunted the session file under the bare UUID the envelope
+   reports — the agent aced the torture and the receipt said fail.
+3. The **ralph-chain task** omitted the persistent-store note every subset
+   prompt carries — the loop shipped both features, the reviewer said ship,
+   and acceptance scored 0/2 on cross-invocation tests no agent could ever
+   pass.
+4. The **budget-fidelity lane** watched a lane the governor never governs —
+   harness-cycle runs book tokens in the RUNS table while the governed mem0
+   lane sits at zero calls, so the throttle could never fire on traffic that
+   never happens. The dream lane is where the governor actually lives.
+5. And the **collector deadlocked on its own kill**: a signal-slain child
+   keeps a null exit code, and `close` fires before `collect()` attaches its
+   listener — the runner that tortures agents with SIGKILL could not
+   survive one itself.
+6. The **engine-soak lane** sabotaged its own thesis twice: the jobs prelude
+   toggled blindly (the endpoint is a flip, and jobs default ON — the soak
+   disabled the very learning jobs it meant to enable, so no dream or run
+   could ever happen and `learningHappened` was false by construction), and
+   the terminal-session slot never freed after `collect()` resolved, so a
+   forty-five-minute soak ran one of its eight planned sessions.
+7. And the **crash-consistency check** contradicted the lane's own torture:
+   the torn records it injects after each kill sit mid-file forever once the
+   next resume appends after them, so "only the final line may be torn"
+   could never pass — the check now catches only corruption the bench did
+   NOT inject, which is the real defect class all along.
+8. And both **soak lanes' slope math** lied a thousand-fold: a per-second
+   delta scaled by the 3,600,000 milliseconds in an hour (the idle receipt
+   said 41,784,000 "KB/h" for a true +7.5 MB/h plateau), and the warmup
+   skip ended before the first ten-minute job wave, whose one-time
+   worker-pool step read as a phantom leak — the slope is now taken over
+   the settled tail, by its own clock.
+9. And the **idle lane was never idle**: the engine's boot defaults enable
+   every job, so its own harness-cycle fired at the first ten-minute tick
+   and ran a full fizzbuzz cycle with real bridge spend, a sandbox spawn
+   and a post-run event wave — one-time allocations that stepped the RSS
+   twice mid-soak and read as phantom leaks. The lane now parks the
+   learning jobs state-aware (housekeeping on — the engine breathing, not
+   working), and the receipt proves they sat disabled, never ran.
+
+Ten fixes across eight lanes. The receipts under `results/` are written by
+a runner that has now been killed, crashed, resumed and starved alongside
+the agent it scores — resume-safety is a property it holds because it was
+tested for, not by accident.
 
 ## What this round did not cover
 
