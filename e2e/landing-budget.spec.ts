@@ -16,12 +16,20 @@ import { expect, test } from "@playwright/test";
  * Never settle a breach by deleting a generated number or a gated literal —
  * those are receipts. Compress: tabs, expanders, cut restated facts.
  *
+ * The 2026-10-28 amendment (13 → 13.5vh, 3,200 → 3,250w) carries the
+ * live-demo band — the page's first interactive-application frame (a
+ * running app in an iframe). The band pays for itself: lazy-mounted frame,
+ * one-line lead, receipt chips (68 words, 1.09vh measured); every other
+ * band kept its height. The increase is the frame's, not prose — the
+ * research's readability argument is about scroll-past copy, and an app
+ * frame is interactive surface.
+ *
  * `node scripts/landing_audit.mjs --budget` is the local, print-the-table
  * form of the same gate (it also writes download/landing/audit.json).
  */
 
-const MAX_PAGE_VH = 13;
-const MAX_WORDS = 3200;
+const MAX_PAGE_VH = 13.5;
+const MAX_WORDS = 3250;
 const MAX_BAND_VH = 3;
 
 // The contract measures at 1440x900 (landing AGENTS.md + the audit script).

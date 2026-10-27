@@ -98,10 +98,9 @@ export function ShowcaseSection() {
                 </TerminalWindow>
               </div>
               <p className="mt-3 text-[11px] text-faint">
-                Stills from real <span className="font-mono">unown dashboard</span>{" "}
-                sessions — runs, dreams, notes and hook decisions streamed over SSE from{" "}
-                <span className="font-mono">:3030</span>. Every screen is
-                read-only until you spend tokens on a button ({" "}
+                Real <span className="font-mono">unown dashboard</span> stills,
+                streamed over SSE from <span className="font-mono">:3030</span>{" "}
+                ({" "}
                 <span className="font-mono">bun run agent:start</span>, then{" "}
                 <span className="font-mono">unown dashboard</span>).
               </p>

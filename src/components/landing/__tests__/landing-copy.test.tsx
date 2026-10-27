@@ -349,7 +349,7 @@ describe("landing shell", () => {
   // single gold CTA. The record surfaces are still reachable — they are the
   // "More" panel's whole content — they just no longer share the row.
   const PRIMARY = ["How it learns", "Capability dex", "Proof", "FAQ"];
-  const MORE = ["Dashboard", "Alphabet", "Changelog", "Blog"];
+  const MORE = ["Dashboard", "Live demo", "Alphabet", "Changelog", "Blog"];
   const barText = (container: HTMLElement) =>
     Array.from(container.querySelectorAll('nav[aria-label="Main"] > a')).map((a) =>
       a.textContent?.trim(),

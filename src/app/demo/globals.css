@@ -1,0 +1,82 @@
+/*
+ * Sigil Focus — the /demo route's scoped stylesheet.
+ *
+ * Embedded inside the unown landing app, this file is imported ONLY by
+ * src/app/demo/layout.tsx, so Next injects it for /demo routes alone — the
+ * landing page never downloads it. Two embedding adaptations (the rest is
+ * the app's stylesheet verbatim, as the agent wrote it):
+ *
+ *   1. `@source` scoping — with two Tailwind v4 passes in one repo, this
+ *      file's pass must generate utilities for the SIGIL trees only
+ *      (components/sigil, lib/sigil, app/demo), never the landing's.
+ *   2. the standalone app's element-level `html`/`body` rules were dropped
+ *      — under the landing's root layout those elements are SHARED, and the
+ *      demo must not restyle the host. The `.sigil-scope` wrapper class the
+ *      demo layout renders carries the background/text/font/min-height
+ *      instead.
+ */
+@import "tailwindcss";
+
+@source "../../../components/sigil";
+@source "../../../lib/sigil";
+@source "../../demo";
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* The scope wrapper the demo layout renders (the standalone app put these
+ * on <body>; here it must not touch the landing's shared elements). */
+.sigil-scope {
+  background: var(--sf-bg);
+  color: var(--sf-text);
+  font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto,
+    "Helvetica Neue", Arial, sans-serif;
+  transition: background-color 150ms ease, color 150ms ease;
+}
+
+:root {
+  --sf-bg: #f6f7fb;
+  --sf-surface: #ffffff;
+  --sf-surface-2: #eef0f6;
+  --sf-border: #dde2ee;
+  --sf-text: #171c28;
+  --sf-text-dim: #5b6472;
+  --sf-accent: #5b5bd6;
+  --sf-accent-contrast: #ffffff;
+}
+
+.dark {
+  --sf-bg: #0d1017;
+  --sf-surface: #151a24;
+  --sf-surface-2: #1c2330;
+  --sf-border: #2a3243;
+  --sf-text: #e7eaf2;
+  --sf-text-dim: #8b94a7;
+  --sf-accent: #7c7cf2;
+  --sf-accent-contrast: #0d1017;
+}
+
+/* Reusable component classes that reference the theme vars */
+@utility bg-sf-bg {
+  background-color: var(--sf-bg);
+}
+@utility bg-sf-surface {
+  background-color: var(--sf-surface);
+}
+@utility bg-sf-surface-2 {
+  background-color: var(--sf-surface-2);
+}
+@utility border-sf-border {
+  border-color: var(--sf-border);
+}
+@utility text-sf {
+  color: var(--sf-text);
+}
+@utility text-sf-dim {
+  color: var(--sf-text-dim);
+}
+@utility bg-sf-accent {
+  background-color: var(--sf-accent);
+}
+@utility text-sf-accent {
+  color: var(--sf-accent);
+}

@@ -11,6 +11,7 @@ import { DexSection } from "@/components/landing/dex";
 import { FaqSection } from "@/components/landing/faq";
 import { FinaleSection } from "@/components/landing/finale";
 import { Hero } from "@/components/landing/hero";
+import { LiveDemoSection } from "@/components/landing/live-demo";
 import { LoopSection } from "@/components/landing/loop";
 import { ProofSection } from "@/components/landing/proof";
 import { ShowcaseSection } from "@/components/landing/showcase";
@@ -22,7 +23,7 @@ import { Footer, LandingMotion, Nav } from "@/components/landing/shell";
  * itself in `src/components/landing/`, and the contracts for that folder live
  * in its own AGENTS.md.
  *
- * Nine bands. The page ran fourteen sections / 21.5 viewports / 5,488 words
+ * Ten bands (the live demo joined 2026-10-28). The page ran fourteen sections / 21.5 viewports / 5,488 words
  * (2026-10-20), and visitors scrolled past most of it (see
  * docs/landing-research.md: ~57% of attention lands above the fold, 74%
  * within two screenfuls). The redesign kept every checkable claim and cut the
@@ -46,6 +47,11 @@ import { Footer, LandingMotion, Nav } from "@/components/landing/shell";
  *                                                     captures and the `/split*`
  *                                                     display-command table
  *   showcase (mission control)                        what the engine looks like
+ *   live demo (the agent-built app)                   what it BUILDS, running
+ *                                                     live in the visitor's
+ *                                                     browser — the /demo
+ *                                                     route iframed in
+ *                                                     browser chrome
  *   proof (benchmarks + integrity + models)           the receipts, one tabbed band
  *   alphabet (+ field notes)                          the identity: the wall, the
  *                                                     decode panel, the lexicon
@@ -96,6 +102,7 @@ export default function LandingPage() {
             <LoopSection />
             <DexSection />
             <ShowcaseSection />
+            <LiveDemoSection />
             <ProofSection />
             <AlphabetSection />
             <FaqSection />

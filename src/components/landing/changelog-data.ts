@@ -30,10 +30,10 @@ export interface ChangelogStop {
   groups: ChangelogGroup[];
 }
 
-export const CHANGELOG_TOTAL_ENTRIES = 330;
+export const CHANGELOG_TOTAL_ENTRIES = 329;
 
 export const CHANGELOG_TOTALS: Record<ChangelogBucket, number> = {
-  "Added": 143,
+  "Added": 142,
   "Changed": 28,
   "Deprecated": 0,
   "Removed": 3,
@@ -44,11 +44,11 @@ export const CHANGELOG_TOTALS: Record<ChangelogBucket, number> = {
 
 export const CHANGELOG_STOPS: ChangelogStop[] = [
   {
-    "label": "0.0.32",
-    "date": "2026-10-28",
-    "total": 3,
+    "label": "Unreleased",
+    "date": null,
+    "total": 2,
     "counts": {
-      "Added": 2,
+      "Added": 1,
       "Changed": 0,
       "Deprecated": 0,
       "Removed": 0,
@@ -61,11 +61,7 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
         "bucket": "Added",
         "items": [
           {
-            "title": "landing: the builder round — the whole-app lane filmed end to end, one prompt in and a full-stack app out",
-            "behavior": false
-          },
-          {
-            "title": "capture harness: the builder round's three harness lessons, fixed at the source",
+            "title": "landing + demo: the live preview round — the agent-built app runs on the landing page",
             "behavior": false
           }
         ]

@@ -58,4 +58,4 @@
 - The `src/` directory contains a Next.js 16 marketing web app; the landing page is at `/` with UI sections located in `src/components/landing/`.
 - The `/btw <question>` command in the Unown project displays side-question answers in a dismissible overlay without entering the transcript, receipts ledger, or AutoDream note mining, using only the last 12 text-only turns for context; users dismiss the answer by pressing Esc, Enter, or q
 
-<!-- unown: rendered 50/50 memories via Mem0 (backend: onnx) at 2026-10-27T17:53:25.227Z -->
+<!-- unown: rendered 50/50 memories via Mem0 (backend: onnx) at 2026-10-27T18:28:43.040Z -->
