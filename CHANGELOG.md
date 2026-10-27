@@ -9,6 +9,12 @@ otherwise specified; the release tag must always equal package.json's version.
 
 Repo conventions: measured claims cite their receipts (`docs/testing-strategy.md`, `benchmarks/memory-eval/*/RESULTS.md`). Changes to agent behavior — prompts, default models, routing, guard rules, hooks, memory injection — are filed under **Agent Behavior**; the policy lives in [docs/BEHAVIOR.md](docs/BEHAVIOR.md).
 
+## [Unreleased]
+
+### Fixed
+
+- **engine: the memory-platform seed race clears its loser — a healthy boot no longer cries "degraded"** — found live in the 2026-10-28 real-user round: the boot race between `seedMemoryIfEmpty()` and the `PI_ENGINE_SEED_BUDGET_MS` timer left the timer un-cleared when the seed won it, so a seed that settled in 1.4s still logged `memory platform seed did not settle within 30s — booting degraded` thirty seconds later — an operator-visible lie that sent a real session chasing a degradation that did not exist (the platform was live; a `GET /api/overview` probe said so the whole time). The timer is now cleared the moment the race settles; the degraded line prints only when the timer legitimately wins (a genuinely slow seed), and the healthy path — previously SILENT — now logs a positive `memory platform seed settled in Ns — memory platform live` so the fast boot confirms itself instead of relying on the absence of a future false alarm. Pinned by `test/engine-seed-budget.test.ts`: a fresh-subprocess boot with the budget at its 3s floor asserts the positive line lands AND the stale degraded line never does, even 8s past the budget (the exact moment the un-cleared timer fired pre-fix; red-green verified against the un-fixed server).
+
 ## [0.0.31] - 2026-10-27
 
 ### Added

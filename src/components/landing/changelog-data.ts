@@ -30,19 +30,44 @@ export interface ChangelogStop {
   groups: ChangelogGroup[];
 }
 
-export const CHANGELOG_TOTAL_ENTRIES = 327;
+export const CHANGELOG_TOTAL_ENTRIES = 328;
 
 export const CHANGELOG_TOTALS: Record<ChangelogBucket, number> = {
   "Added": 141,
   "Changed": 28,
   "Deprecated": 0,
   "Removed": 3,
-  "Fixed": 120,
+  "Fixed": 121,
   "Security": 5,
   "Behavior": 30
 };
 
 export const CHANGELOG_STOPS: ChangelogStop[] = [
+  {
+    "label": "Unreleased",
+    "date": null,
+    "total": 1,
+    "counts": {
+      "Added": 0,
+      "Changed": 0,
+      "Deprecated": 0,
+      "Removed": 0,
+      "Fixed": 1,
+      "Security": 0,
+      "Behavior": 0
+    },
+    "groups": [
+      {
+        "bucket": "Fixed",
+        "items": [
+          {
+            "title": "engine: the memory-platform seed race clears its loser — a healthy boot no longer cries \"degraded\"",
+            "behavior": false
+          }
+        ]
+      }
+    ]
+  },
   {
     "label": "0.0.31",
     "date": "2026-10-27",
