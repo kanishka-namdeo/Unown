@@ -79,9 +79,10 @@ a pane dump at every still — the audit's ground truth), `<scenario>.mp4`,
 | s22-split-view | /split mounts the band + dock, a live turn fills it (the filmed cut of the old PTY stills lane) | `default` |
 | s23-browser-subagent | the delegated browser flow END TO END: sync `task → browser` delegation → humanized live labels (`browser: navigate/fill_form/click`) → done row → child's report → async ◉ fleet widget → /tasks registry (the filmed cut of the old PTY stills lane; the lane serves its own form fixture) | — (repo) |
 | s24-sdlc | № 010 Parity's plate: one real task → /context → the session workflow — /sessions list → /sessions export --md → the exported markdown on disk → /sessions list --all | `default` |
+| s25-build-session | the builder round: one prompt into a fixture holding only `PRODUCT-BRIEF.md` → the agent plans, writes the whole app (store/api/server + vanilla frontend + 39-test suite), greens the suite, live-curl-verifies every endpoint, closes with the brief's summary (~12 min of real turns; the longest lane — budget the clock, launch the driver detached in tmux) | fresh empty dir with only the brief (`UNOWN_BUILD_DIR`; the receipts quote the file inventory, so the dir must start empty) |
 
 Scenarios share one port block (7610–7621 for s1–s12, 7622–7631 for
-s13–s22, 7632–7633 for s23–s24); run one at a time against the same fixture. The s17–s20 dashboard
+s13–s22, 7632–7633 for s23–s24, 7634 for s25); run one at a time against the same fixture. The s17–s20 dashboard
 lanes read the engine instead of driving turns and can run beside a session
 lane. `driver.js` closes gracefully on SIGTERM (time-box long scenarios with
 `timeout 575` and re-run on failure — never edit a failed frame).

@@ -7,6 +7,12 @@ Pacing model (8fps output, 125ms per frame):
   - spinner-idle runs (agent "Working..." with no content change): compress to 2+2 frames
   - static byte-identical runs (dwell/heartbeat duplicates): keep <= 8 frames (1s),
     final run <= 14 frames (1.75s) so the end state lingers
+  - trailing idle run (frames after the last active frame per frames-meta):
+    one final dwell (~2.2s) + the true final frame — the post-session tail
+    (e.g. the wait-burn after a still-time anchor misses and the harness
+    keeps recording an already-finished session) is harness time, not
+    story; footer-heartbeat deltas split it into many dwell runs that rule
+    2 alone kept as ~16s of dead ending (builder round, 2026-10-27)
   - everything else plays as captured
 """
 import hashlib
@@ -104,6 +110,26 @@ def main():
         elif run_len == 1:
             keep.add(i)
         i = j + 1
+
+    # 2b) trailing idle run: frames after the last active frame (meta
+    # changed|working) are post-session idle — harness time, not story. A
+    # footer heartbeat (the "memory:" chrome line refreshing every ~50s)
+    # keeps those frames byte-DISTINCT, so rule 2 sees many short dwell
+    # runs and kept ~16s of dead ending on the builder-round cut. Treat
+    # the whole tail as ONE dwell: keep its head (~2.2s) plus the true
+    # final frame, drop the middle. Skipped when meta has no active frame
+    # at all (legacy runs) or the capture ended mid-session.
+    last_active = -1
+    for i in range(n):
+        m = meta.get(i)
+        if m and (m.get("changed") or m.get("working")):
+            last_active = i
+    if 0 <= last_active < n - 1:
+        idle = {i for i in range(last_active + 1, n) if i in keep}
+        if idle:
+            head = sorted(idle)[:18]
+            for i in idle - set(head) - {n - 1}:
+                keep.discard(i)
 
     # 3) drop near-blank frames (page-reload resyncs between stills paint a
     # dark empty screen for ~2s — they are harness plumbing, not user-visible

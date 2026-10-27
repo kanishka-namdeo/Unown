@@ -7,6 +7,15 @@
     <description>How each feature and release works, what it does, and the receipts behind it — the longhand record of the self-improving terminal coding agent Unown.</description>
     <language>en</language>
     <item>
+      <title>&quot;The builder round: one prompt, a whole app, filmed end to end&quot;</title>
+      <link>https://unown-nine.vercel.app/blog/2026-10-27-the-builder-round</link>
+      <guid isPermaLink="true">https://unown-nine.vercel.app/blog/2026-10-27-the-builder-round</guid>
+      <pubDate>Tue, 27 Oct 2026 00:00:00 GMT</pubDate>
+      <description>&quot;One prompt into an empty directory; 47 tool calls later a full-stack app with a green 39-test suite and a live-verified API. The whole build, on film.&quot;</description>
+      <category>landing</category>
+      <category>media</category>
+    </item>
+    <item>
       <title>&quot;The long-run round: what breaks when the agent works for hours&quot;</title>
       <link>https://unown-nine.vercel.app/blog/2026-10-27-the-long-run-round</link>
       <guid isPermaLink="true">https://unown-nine.vercel.app/blog/2026-10-27-the-long-run-round</guid>

@@ -650,6 +650,30 @@ const RAW: readonly DexEntryInput[] = [
     // the /insights report, and the auto-titled session proven by /name.
     captures: [REEL("parity-round", "01-output-styles.png")],
   },
+  {
+    kind: "behavior",
+    id: "build-session",
+    screen: "workflow",
+    name: "The builder round",
+    summary: "one prompt in, a whole app out",
+    practice: [
+      "The honest uncut build: one prompt into an empty project holding nothing but a product brief, then the agent works alone — reads the brief, plans four todos, writes the whole Glyph Quests app (JSON store, REST API, Bun server, vanilla frontend, a 39-test suite), runs the tests until they are green, live-verifies every endpoint with curl (create, PATCH, delete, 404, 400, statics content-types), and ends with the closing summary the brief asks for. 47 tool calls, 4/4 todos, zero keystrokes after the prompt, ~12 minutes end to end.",
+    ],
+    receipts: [
+      ["capture workflow", DOC("docs/tui-capture-workflow.md")],
+      ["scenario spec", DOC("scripts/tui-capture/scenarios/index.js")],
+      ["the builder-round post", DOC("content/blog/2026-10-27-the-builder-round.md")],
+    ],
+    // The 2026-10-27 builder round — the catalog's first whole-app lane and
+    // its longest single-session story (~12 min of real turns, paced to an
+    // 81s cut). Filmed in a fresh fixture dir holding only PRODUCT-BRIEF.md;
+    // the one keystroke burst is the mission prompt itself. The lane is also
+    // the capture workflow's own stress test — the run-4 green-suite wait's
+    // exclude blocked its own match (bun renders " 0 fail" on a green piped
+    // run), still 06 was re-anchored on the frame record, and the assembled
+    // cut trims the harness's post-session idle to one final dwell.
+    captures: [REEL("build-session", "04-writing-the-app.png")],
+  },
 ];
 
 /** The numbered spine — `RAW` in walk order, each entry stamped with its

@@ -145,8 +145,15 @@ frame always). A video ships only when all samples read clean.
    (`cps: 26-30`). Wait on pane anchors that survive layout changes —
    tool-block prefixes ("read ", "edit "), state strings (" 2 fail",
    "VERDICT:", "Plan ready (", "Undid "), and prefer external state checks
-   (`waitForExternal` + `git diff --name-only`) over screen parsing for
-   tool-agnostic steps.
+   (`waitForExternal` + `git diff --name-only`, or the session receipt
+   `.unown/receipts/*.jsonl` itself) over screen parsing for
+   tool-agnostic steps. Two anchor classes the builder round (s25,
+   2026-10-27) proved can NEVER match a pane: an `exclude` that matches the
+   green state itself (bun renders ` 0 fail` on a green piped run —
+   excluding `" fail"` blocks your own match), and any command text inside
+   a multi-line bash script (the echoed tool row collapses the script to
+   its first line + "⋯ N earlier hidden"). The receipt is the agent's own
+   record of both — wait on it instead.
 3. **Budget the clock.** Real LLM turns cost 30-90s each; a scenario must fit
    ~9.5 minutes. Shrink the *task*, not the realism ("no new tests, just
    keep the suite green"), and make tail waits soft (`try/catch` around
@@ -175,7 +182,19 @@ frame always). A video ships only when all samples read clean.
 
 Outputs: `<name>.mp4` (H.264 CRF19, 1600px wide, faststart), `<name>.webm`
 (VP9, same geometry), `<name>.gif` (880px, bayer-dithered palette). VP9 is the
-slow encode (~1-4 minutes per video) — assemble one scenario per command.
+slow encode (~1-4 minutes per video) — assemble one scenario per command,
+and run it detached (a detached `tmux` session) when the frame count is
+four digits: the assembler outlived one 600 s tool cap on the builder
+round's 1514-frame set.
+
+The **trailing idle run** is trimmed too (rule 2b, builder round 2026-10-27):
+frames after the last active frame per `frames-meta.jsonl` (every frame
+`changed:false` and `working:false`) are post-session idle — the wait-burn
+after a still-time anchor misses and the harness keeps recording an
+already-finished session. A footer heartbeat (the "memory:" chrome line
+refreshing every ~50 s) keeps those frames byte-DISTINCT, so the dwell cap
+alone saw many short runs and kept ~16 s of dead ending. The whole tail is
+ONE dwell: its head (~2.2 s) plus the true final frame.
 
 ## Asset curation
 
@@ -200,7 +219,9 @@ until the asset set is superseded.
 | Solid block of repeated glyph tiles over content | canvas atlas corruption | Re-run the scenario; keep runs under ~15 min per session |
 | Pane rows have content, pixels don't (audit: rows_missing) | renderer dropped rows / clipping | Check geometry.json matches; re-run; switch renderer only with fresh calibration |
 | Shell stuck at `>` continuation prompt after typing | lone `;` swallowed by tmux (G5) | driver handles it; verify no other tool sends `send-keys -l ';'` |
-| Anchor never matches | wrapped line or text changed upstream | Re-read the feature's real output strings (`bun bin/unown doctor`, `/undo` toast) — anchor on stable substrings ("ready to chat", "Undid ") |
+| Anchor never matches | wrapped line or text changed upstream | Re-read the feature's real output strings (`bun bin/unown doctor`, `/undo` toast) — anchor on stable substrings ("ready to chat", "Undid ") — or drop pane text entirely for an external check (the session receipt, `git diff`) |
+| A wait's `exclude` matches the state it waits FOR (green suite: `exclude: [" fail"]` vs bun's green ` 0 fail` row) | the anchor excluded its own match | Anchor on the green-unique row itself (` 0 fail`), no exclude — or wait on the receipt; keep the miss soft and short so the next wait carries the beat |
+| Still-time waits burn past session end (stills 06/07 byte-identical idle summary) | an earlier soft wait's anchor could never match, then the following wait polls an already-finished pane | Fix the anchors; re-curate the still from the frame record (same pipeline, same geometry; VLM + the receipt timeline as the pane-truth substitute; document it — the builder round's `CURATION.md`); trim the trailing idle at assembly (rule 2b) |
 | Videos too short / unreadable | pacing compression | Bump scenario lingers; check the spinner/static caps in `assemble.py` |
 
 ## Machine wiring
@@ -214,7 +235,11 @@ workspace's root-installed tmux and ttyd).
 Host requirements: `bun`; the stack up (`bun scripts/start.ts`); `tmux`;
 `ttyd 1.7.7` (+ `ttyd-index.html` built by `make_ttyd_index.sh`); `ffmpeg`;
 Python 3 with `Pillow` and `numpy`; the repo's `node_modules/playwright`
-(Chromium); JetBrains Mono; the `z-ai` CLI for the VLM lanes.
+(Chromium); JetBrains Mono; the `z-ai` CLI for the VLM lanes. In sandboxes
+that reap the launching shell's process tree, launch the driver (and any
+multi-minute encode) inside a detached `tmux` session — the builder round
+lost two silent `nohup`/`setsid` launches (~8-17 s in, SIGKILL-class, no
+stderr) before the tmux lane survived.
 
 The harness is CommonJS inside a `type: module` package —
 `scripts/tui-capture/package.json` pins `"type": "commonjs"`.

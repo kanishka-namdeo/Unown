@@ -1177,6 +1177,159 @@ const s24 = {
   ],
 };
 
+/** s25-build-session — the builder round: one real session, one whole app.
+ *
+ * The landing page's live-preview band needs a build filmed end-to-end: a
+ * fresh empty project (just PRODUCT-BRIEF.md), one mission prompt, and the
+ * agent designing + writing + testing + verifying a complete fullstack app
+ * (Bun server + REST API + JSON store + vanilla frontend + bun test suite)
+ * without any human keystroke after the prompt. The scenario is long by
+ * design (~15-30 min of real turns; every other lane compresses a story
+ * into seconds — this one is the honest uncut build). The stills anchor on
+ * states that differ by construction (brief read, plan visible, backend
+ * files, frontend files, test run, curl verify, finished turn), and the
+ * frame recorder keeps the whole movie between them.
+ *
+ * Fixture: a fresh dir with ONLY the brief — no prep_demo.sh state. The
+ * app the session produces is the artifact the landing band embeds, so
+ * the dir must start empty (the receipts quote the file inventory).
+ */
+const S25_CWD = process.env.UNOWN_BUILD_DIR || "/home/z/my-project/glyphquests-filmed";
+const s25 = {
+  name: "build-session",
+  cwd: S25_CWD,
+  port: 7634,
+  env: {},
+  steps: [
+    { t: "waitReady", timeout: 120_000 },
+    { t: "linger", ms: 1200 },
+    { t: "still", name: "01-boot-empty-project" },
+    // The one and only keystroke burst a real user sends: the mission.
+    // No "!" / "@" / "/" inside the body (autocomplete-popup hygiene).
+    {
+      t: "prompt",
+      s: "Read PRODUCT-BRIEF.md in this directory and build exactly what it describes: the complete Glyph Quests app, tests included. Follow the brief's architecture contract and file layout precisely. Then run the tests until they all pass, verify the server endpoints with curl as the brief's mission section describes, fix everything you find broken, and end with the one-paragraph summary the brief asks for.",
+      cps: 30,
+    },
+    // Anchors are TOOL-ROW chrome, never prose: the first cut of this spec
+    // anchored on bare filenames ("store.ts", "app.js"…) mode:"any" and the
+    // stills fired on the model's PLAN TEXT minutes before the work; the
+    // second cut anchored on the todo panel HEADER ("Todos (N/M)") mode:all
+    // and died — the header scrolls off the 36-row fold while the panel's
+    // rows stay, so "all" could never match again (a hard wait timeout kills
+    // the whole ~20-minute session). This cut: (a) anchor on rendered row
+    // chrome ("✓  read <path>", "•  write …", "$ bun test", the todo rows'
+    // "├─ ○"/"◐" markers), (b) EVERY story wait is SOFT — a miss logs and
+    // captures the pane as-is, because a long real session is worth more
+    // than a perfect anchor, and (c) the closing still always fires.
+    { t: "fn", desc: "wait for the brief's read row (soft)", fn: async (s) => {
+      try {
+        await s.wait({ include: ["read ", "PRODUCT-BRIEF.md"], mode: "all", timeout: 240_000, desc: "the brief's read row" });
+      } catch { s.log("soft wait missed: brief read row — capturing the pane as-is"); }
+    }},
+    { t: "linger", ms: 1000 },
+    { t: "still", name: "02-reading-the-brief" },
+    // The plan: any todo panel row chrome (pending ○ / in-progress ◐ /
+    // completed ● markers ride every row; the header may have scrolled).
+    { t: "fn", desc: "wait for the todo plan (soft)", fn: async (s) => {
+      try {
+        await s.wait({ include: ["├─ ○", "└─ ○", "◐ in_progress", "● completed"], mode: "any", timeout: 360_000, desc: "todo panel rows visible" });
+      } catch { s.log("soft wait missed: todo rows — capturing the pane as-is"); }
+    }},
+    { t: "linger", ms: 900 },
+    { t: "still", name: "03-the-plan" },
+    // Files being written: a write/edit tool row (bullet or check form).
+    { t: "fn", desc: "wait for a write row (soft)", fn: async (s) => {
+      try {
+        await s.wait({ include: ["•  write", "✓  write", "•  edit", "✓  edit"], mode: "any", timeout: 420_000, desc: "a write or edit row on screen" });
+      } catch { s.log("soft wait missed: write rows — capturing the pane as-is"); }
+    }},
+    { t: "linger", ms: 900 },
+    { t: "still", name: "04-writing-the-app" },
+    // The suite runs: the bun test bash row, or bun test's own output
+    // markers ("Ran N tests", "(pass)" rows).
+    { t: "fn", desc: "wait for the test run (soft)", fn: async (s) => {
+      try {
+        await s.wait({ include: ["$ bun test", "Ran ", "pass)"], mode: "any", timeout: 600_000, desc: "bun test row or output" });
+      } catch { s.log("soft wait missed: test run — capturing the pane as-is"); }
+    }},
+    { t: "linger", ms: 1000 },
+    { t: "still", name: "05-tests-running" },
+    // Green suite (may take iterations — the agent fixes what fails).
+    // Fifth cut (2026-10-27, run-4 postmortem): the fourth cut's diagnosis
+    // was wrong — bun DOES render a fail-count row on a green piped run
+    // (run-4 pane dump @still 05: "  39 pass" / "  0 fail" / " Ran 39
+    // tests across 1 file."), so the exclude [" fail"] blocked its own
+    // match for the whole 600 s budget while the green summary sat in the
+    // fold, and the stills 06/07 captured the same idle summary twice.
+    // Anchor on the green-unique row itself, no exclude. A `| tail -1`
+    // render never shows the row (run 4's own later re-runs) — which is
+    // why this wait is SHORT: a miss hands the beat to the receipt-led
+    // verify wait below, not to a timeout.
+    { t: "fn", desc: "wait for the green suite (soft)", fn: async (s) => {
+      try {
+        await s.wait({ include: [" 0 fail"], mode: "any", timeout: 180_000, desc: "green summary row (0 fail)" });
+      } catch { s.log("soft wait missed: green suite row — the verify wait carries the beat"); }
+    }},
+    // Server verification round-trip — receipt-led. Fifth cut (run-4
+    // postmortem): the pane can NEVER anchor this beat. The echoed bash row
+    // collapses a multi-line script to its first line ("✓  $ cd …" + "⋯ N
+    // earlier hidden"), so "curl -s" inside the script body never renders,
+    // and by the time the fourth cut's 480 s pane wait started polling the
+    // round-trip had completed and scrolled off. The workflow contract's
+    // own rule applies: prefer EXTERNAL state checks over screen parsing.
+    // The session receipt (`.unown/receipts/*.jsonl`) is the agent's own
+    // record — a bash tool_call whose command mentions curl IS the verify
+    // phase starting, whatever pipe style the model chose, and its paired
+    // tool_result means the round-trip output block is on screen. The
+    // still's own G8 settle/repaint/verify pass does the pane-side timing.
+    { t: "fn", desc: "wait for curl verification (soft, receipt-led)", fn: async (s) => {
+      const fs = require("fs");
+      const readReceipt = () => {
+        try {
+          const dir = `${S25_CWD}/.unown/receipts`;
+          const files = fs.readdirSync(dir).filter((f) => f.endsWith(".jsonl"));
+          if (!files.length) return [];
+          const newest = files
+            .map((f) => ({ f, m: fs.statSync(`${dir}/${f}`).mtimeMs }))
+            .sort((a, b) => b.m - a.m)[0].f;
+          return fs.readFileSync(`${dir}/${newest}`, "utf8").split("\n")
+            .filter(Boolean)
+            .map((l) => { try { return JSON.parse(l); } catch { return null; } })
+            .filter(Boolean);
+        } catch { return []; }
+      };
+      try {
+        await s.waitForExternal({
+          timeout: 480_000, poll: 2_000,
+          desc: "curl round-trip in the session receipt (call + result)",
+          check: async () => {
+            const events = readReceipt();
+            let curlId = null;
+            for (const d of events) {
+              if (d.kind === "tool_call" && d.tool === "bash" &&
+                  ((d.input || {}).command || "").includes("curl")) curlId = d.id;
+            }
+            if (!curlId) return false;
+            return events.some((d) => d.kind === "tool_result" && d.id === curlId);
+          },
+        });
+      } catch { s.log("soft wait missed: curl receipt — capturing the pane as-is"); }
+    }},
+    { t: "linger", ms: 1000 },
+    { t: "still", name: "06-verifying-the-server" },
+    // The finished turn: closing summary, spinner gone. Soft too — the
+    // closing still fires regardless; the pane dump is the truth.
+    { t: "fn", desc: "wait for the final answer (soft)", fn: async (s) => {
+      try {
+        await waitTurnIdle(s, 900_000, "final answer");
+      } catch { s.log("soft wait missed: idle turn — capturing the pane as-is"); }
+    }},
+    { t: "linger", ms: 1600 },
+    { t: "still", name: "07-app-built" },
+  ],
+};
+
 module.exports = {
   "s1-hero-bugfix": s1,
   "s2-plan-mode": s2,
@@ -1202,4 +1355,5 @@ module.exports = {
   "s22-split-view": s22,
   "s23-browser-subagent": s23,
   "s24-sdlc": s24,
+  "s25-build-session": s25,
 };

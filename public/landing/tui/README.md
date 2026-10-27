@@ -60,6 +60,7 @@ superseded set is archived outside the repo in the capture root
 | goals | a real /goal run: the objective injection → todo-tracked work → the [GOAL:COMPLETE] gate passing on both kinds of cited evidence → the /goal status record (2026-10-24) | 4 stills + mp4/webm |
 | split-view | the split-view display mode FILMED: /split mounts the band + dock, a live turn fills the Thinking and Tool Usage panels while the files dock carries the edit diff, the response-only transcript + the user's flake-guard green tally close it (2026-10-25 re-cut) | 5 stills + mp4/webm |
 | sdlc | the № 010 Parity plate: a real read task → /context → the session workflow — /sessions list → /sessions export --md → the exported markdown on disk → /sessions list --all (2026-10-25 re-cut: the machine-wide listing settles before the closing beat) | 7 stills + mp4/webm |
+| build-session | one prompt, zero keystrokes after: an empty project (just the brief) → the agent reads the brief, plans 4 todos, writes the whole Glyph Quests app (store/api/server + vanilla frontend + test suite) → 39 tests green across fix iterations → the live curl round-trip on :8787 (201/PATCH/DELETE/404/400, statics content-types) → the brief's closing summary, 4/4 todos, 47 tool calls, 12 minutes uncut (2026-10-27) | 7 stills + mp4/webm |
 
 The memory-learn / browser-verify / dream-dashboard lanes were captured
 2026-10-23 against the live stack (bridge + engine, agnes-3.0-flash through
@@ -85,6 +86,23 @@ never showed what the poster's name claimed), and the closed lanes now
 capture distinct, pane-true beats — the review poster shows the actual
 uncommitted diff, the subagent poster the typed exploration ask, and the
 hero lane closes on the user's flake-guard re-run of the suite.
+
+The 2026-10-27 builder round — the catalog's first whole-app lane, and
+the longest single-session story it carries (~12 minutes of real turns,
+compressed to an 81s paced cut). Filmed against the live stack (bridge +
+engine, agnes-3.0-flash through the Agnes AI upstream) in a fresh fixture
+directory holding nothing but `PRODUCT-BRIEF.md`; the one keystroke burst
+is the mission prompt itself. The lane is also the capture workflow's
+stress test: four anchor cuts, two killed launch attempts (the sandbox
+reaps the launching process tree — the driver now runs detached in tmux),
+and a still-time lesson that changed the harness — the green-suite wait's
+`exclude: [" fail"]` blocked its own match (bun renders ` 0 fail` on a
+green piped run), and the run-4 stills 06/07 shipped identical until the
+still was re-anchored on the frame record (see the lane's `CURATION.md`
+in the capture root; the fifth-cut anchors wait on the session receipt,
+an external state check, instead of pane text). The assembled cut trims
+the post-session idle (the harness's own wait-burn) to one final dwell —
+`assemble.py` rule 2b, documented in `docs/tui-capture-workflow.md`.
 
 Stills are full-frame (128x36 grid, ~2214px wide, everything the user sees:
 header/transcript, input box, cwd + model status). Videos are paced (8fps,
