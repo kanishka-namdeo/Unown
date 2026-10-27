@@ -84,7 +84,16 @@ describe("note delivery retry (H2)", () => {
 			// The note never touched the outbox.
 			// Slug-scoped: this note hitting the outbox fails the test; a
 				// parallel file's write is not this test's verdict.
-				const after = readdirSync(UNOWN_OUTBOX_DIR).filter((f) => f.endsWith("-retry-proj.md") && !new Set(beforeFiles).has(f));
+				// An ABSENT dir is the empty verdict (a worker where no earlier
+				// test ever wrote a note never had the dir — the unguarded
+				// readdir failed the v0.0.33 release run's ubuntu lottery on
+				// ENOENT; same pin, third ordering race).
+				let after: string[] = [];
+				try {
+					after = readdirSync(UNOWN_OUTBOX_DIR).filter((f) => f.endsWith("-retry-proj.md") && !new Set(beforeFiles).has(f));
+				} catch {
+					/* no dir — nothing new */
+				}
 			expect(after).toEqual([]);
 		} finally {
 			globalThis.fetch = realFetch;
@@ -117,7 +126,16 @@ describe("note delivery retry (H2)", () => {
 			expect(postCalls).toBe(2); // initial + ONE retry
 			// Slug-scoped: the durable write happened exactly once — this note's
 				// file; a parallel file's write is not this test's verdict.
-				const after = readdirSync(UNOWN_OUTBOX_DIR).filter((f) => f.endsWith("-retry-stays-down.md") && !new Set(beforeFiles).has(f));
+				// An ABSENT dir is the empty verdict (a worker where no earlier
+				// test ever wrote a note never had the dir — the unguarded
+				// readdir failed the v0.0.33 release run's ubuntu lottery on
+				// ENOENT; same pin, third ordering race).
+				let after: string[] = [];
+				try {
+					after = readdirSync(UNOWN_OUTBOX_DIR).filter((f) => f.endsWith("-retry-stays-down.md") && !new Set(beforeFiles).has(f));
+				} catch {
+					/* no dir — nothing new */
+				}
 			expect(after).toHaveLength(1); // the durable write happened exactly once
 		} finally {
 			globalThis.fetch = realFetch;
