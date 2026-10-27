@@ -276,6 +276,41 @@ KEYS = {
 # current build (same fix as driver.js waitReady).
 READY_ANCHOR = "── Themes ──"
 
+# The first-flights catalog (flights-core.ts) — a FOCUSED component riding
+# the boot of a fresh session. While focused it consumes keypresses: a
+# printable char is "none" (the keystroke is eaten — a prompt typed too
+# early loses characters), and stray 'x' latches never-again PERSISTENTLY
+# (any later prompt containing an 'x' — "exactly", "fix"… — would flip the
+# user's config). The PTY lane therefore dismisses it before typing
+# anything; the catalog only auto-shows on fresh sessions (dismiss is
+# per-session, never-again is a persisted latch we never send).
+FIRST_FLIGHT_ANCHORS = ["How unown's memory works", "Generate an AGENTS.md"]
+
+
+def dismiss_first_flights(session, log, attempts=3):
+    """Dismiss the boot-time first-flights catalog if it is on the pane.
+
+    Sends Esc until an anchor leaves the pane; a no-op when the catalog is
+    not shown (resumed sessions, latched never-again). Returns True when a
+    dismissal happened, False when it was not needed, and logs loudly when
+    the catalog refuses to leave (keys after it may be eaten).
+    """
+    for i in range(attempts):
+        session.pump(0.4)
+        pane = session.pane_text()
+        if not any(a in pane for a in FIRST_FLIGHT_ANCHORS):
+            if i == 0:
+                return False  # not shown — nothing to do, not even a log line
+            log("first-flights catalog dismissed")
+            return True
+        session.key("Esc", delay=0.3)
+        session.pump(0.8)
+    if any(a in session.pane_text() for a in FIRST_FLIGHT_ANCHORS):
+        log("WARN: first-flights catalog still on pane after Esc x3 — keystrokes may be eaten")
+        return False
+    log("first-flights catalog dismissed")
+    return True
+
 
 class PaneTimeout(Exception):
     pass

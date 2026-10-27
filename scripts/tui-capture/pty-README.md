@@ -75,3 +75,24 @@ the select instead of the input box. Typing prompts uses the
 Esc-before-Enter protocol (closes the debounced autocomplete popup first —
 without it Enter can race the popup's stale prefix and submit a mangled
 completion like `/addaddons`).
+
+## The round-session driver (2026-10-28)
+
+`pty_round_session.py` drives ONE long real working session (a build / review
+/ QA round — the sessions behind the landing page's live-demo band) through
+this lane: boots the TUI in the round's project dir, types the round's
+prompt, rides the long turns with SOFT pane anchors (the s25 lessons, all of
+them), captures milestone stills + pane dumps, heartbeats a `status.json`
+for detached polling, and closes through the real `/quit` path (session
+persistence + note delivery). Env knobs and outputs: see its module
+docstring. Run it detached (`nohup … &`) — a round session runs 10–25 min.
+
+### The first-flights fix (2026-10-28)
+
+The "First flights" onboarding catalog (a FOCUSED component riding every
+fresh session's boot since 017c109) eats typed keystrokes while mounted —
+the lane hung its first wait 20 s on exactly this, and a stray `x` in a
+typed prompt would latch never-again PERSISTENTLY. Both lanes now dismiss
+it before typing: `dismiss_first_flights()` in `pty_common.py` (PTY lane)
+and `Session.dismissFirstFlights()` after `waitReady` in `driver.js` (tmux
+lane). Per-session dismiss only — the never-again latch is never sent.

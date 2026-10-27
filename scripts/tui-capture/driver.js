@@ -406,6 +406,34 @@ class CaptureSession {
     const ready = this.ready || { include: ["── Themes ──"], desc: "TUI ready" };
     await this.wait({ ...ready, timeout, desc: ready.desc || "ready" });
     await this.linger(700);
+    await this.dismissFirstFlights();
+  }
+
+  /** Dismiss the "First flights" onboarding catalog when it rides this boot.
+   *  A focused component: while mounted it EATS typed keystrokes (a prompt
+   *  typed too early loses characters — the PTY lane hung its first wait 20s
+   *  on exactly this, 2026-10-28) and a stray 'x' latches never-again
+   *  PERSISTENTLY (any prompt containing an 'x' would flip the user config).
+   *  It only auto-shows on fresh sessions (per-session dismiss; the never-
+   *  again latch is never sent) — this is a no-op when it is not on screen.
+   *  Shared anchors with pty_common.dismiss_first_flights. */
+  async dismissFirstFlights(attempts = 3) {
+    const anchors = ["How unown's memory works", "Generate an AGENTS.md"];
+    const onScreen = async () => {
+      const pane = await this.tmux.text();
+      return anchors.some((a) => pane.includes(a));
+    };
+    if (!(await onScreen())) return false; // not shown — nothing to do
+    for (let i = 0; i < attempts; i++) {
+      await this.tmux.sendKey("Escape");
+      await this.linger(500);
+      if (!(await onScreen())) {
+        this.log("first-flights catalog dismissed");
+        return true;
+      }
+    }
+    this.log("WARN: first-flights catalog still on pane after Esc x3 — keystrokes may be eaten");
+    return false;
   }
 
   async type(s, { cps = 28, chunk = 1 } = {}) {

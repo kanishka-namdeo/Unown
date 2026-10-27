@@ -39,6 +39,7 @@ from pty_common import (  # noqa: E402
     AddonsJsonGuard,
     OUT_DIR,
     UnownPty,
+    dismiss_first_flights,
     exit_code,
     make_logger,
     print_summary,
@@ -69,6 +70,11 @@ def main() -> int:
         try:
             s.wait_ready()
             s.wait_idle(timeout=30)
+            # The first-flights catalog (a focused component on fresh boots)
+            # eats typed keystrokes — dismiss it before any command. This is
+            # the 2026-10-28 lane fix: the catalog shipped after this lane
+            # was written and hung its first wait (/todos) for 20 s.
+            dismiss_first_flights(s, log)
 
             # 01 — /todos empty state
             command(s, "/todos")
@@ -198,6 +204,8 @@ def main() -> int:
         try:
             s2.wait_ready()
             s2.wait_idle(timeout=30)
+            # Fresh session → the first-flights catalog rides this boot too.
+            dismiss_first_flights(s2, log)
             command(s2, "/advisor status")
             s2.wait_for(
                 ["advisor: enabled", "advisor: idle (no reviews yet)"],
