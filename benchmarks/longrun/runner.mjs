@@ -1381,6 +1381,36 @@ async function scenarioEngineSoak() {
 
 // ── scenario: budget-fidelity (governor throttle + breaker open/recover) ────
 
+/** Seed terminal notes into an engine (dream fuel — the governed-LLM lane). */
+async function seedNotes(engine, projectPath, count, tag) {
+  let ok = 0;
+  for (let i = 0; i < count; i++) {
+    const r = await engineFetch(engine.url, engine.token, "/api/notes", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        content: `budget-fidelity ${tag} note ${i + 1}: the ledger CLI parses amounts as integer cents; entries round-trip through the persistent store; bun test stays green; never weaken a test.`,
+        project_path: projectPath,
+      }),
+      timeoutMs: 10_000,
+    });
+    if (r?.ok) ok++;
+  }
+  return ok;
+}
+
+/**
+ * The calibration lesson (2026-10-27, run 1 of the resume): harness-cycle is
+ * the WRONG traffic source for this scenario. On a fresh engine the minted
+ * task short-circuits "already-passing" — the baseline agent run's tokens
+ * land in the RUNS table (tokensHour moves, measured 9047 → 20303) but the
+ * GOVERNED llm.ts/mem0 lane is never touched (callsHour stays 0, the llm_ledger
+ * has zero rows), so the calls-limit throttle can never fire and a dead
+ * bridge never fails a governed call. The engine-side governed traffic is
+ * the DREAM lane: runProjectDream consolidates terminal notes through the
+ * mem0 platform's GovernedLlm — every op lands in the ledger (success or
+ * failure) and feeds the breaker. So: seed notes, trigger auto-dream.
+ */
 async function scenarioBudgetFidelity() {
   const name = "budget-fidelity";
   const runRoot = join(ROOT, name);
@@ -1389,8 +1419,8 @@ async function scenarioBudgetFidelity() {
   const unownHome = join(runRoot, "unown-home");
   await ensureHome(unownHome, MODEL);
 
-  // (a) Governor: a 3-call/hour ceiling throttles the second harness-cycle.
-  log(`${name}: engine A — PI_ENGINE_MAX_CALLS_HOUR=3, expect the 2nd cycle throttled`);
+  // (a) Governor: a 3-call/hour ceiling throttles a later dream trigger.
+  log(`${name}: engine A — PI_ENGINE_MAX_CALLS_HOUR=3, dream traffic, expect budget:throttled`);
   const engineA = await bootBenchEngine(`${name}-a`, {
     port: Number(process.env.LONGRUN_BUDGET_PORT_A ?? 3042),
     dataDir: join(runRoot, "engine-a-data"),
@@ -1399,36 +1429,70 @@ async function scenarioBudgetFidelity() {
     unownHome,
     env: { PI_ENGINE_MAX_CALLS_HOUR: "3", PI_ENGINE_MAX_TOKENS_HOUR: "100000" },
   });
-  const trigA1 = await engineFetch(engineA.url, engineA.token, "/api/jobs/harness-cycle/trigger", { method: "POST", timeoutMs: 120_000 });
-  await new Promise((r) => setTimeout(r, 30_000)); // let the job land in the feed
-  const govA1 = await engineFetch(engineA.url, engineA.token, "/api/overview");
-  const trigA2 = await engineFetch(engineA.url, engineA.token, "/api/jobs/harness-cycle/trigger", { method: "POST", timeoutMs: 60_000 });
-  await new Promise((r) => setTimeout(r, 20_000));
+  const projA = join(runRoot, "proj-governor");
+  const triggerResults = [];
+  let governorAfterFirst = null;
+  let throttleSeen = null;
+  let seededA = await seedNotes(engineA, projA, 3, "governor");
+  for (let round = 1; round <= 4; round++) {
+    const trig = await engineFetch(engineA.url, engineA.token, "/api/jobs/auto-dream/trigger", { method: "POST", timeoutMs: 240_000 });
+    if (!governorAfterFirst) {
+      governorAfterFirst = (await engineFetch(engineA.url, engineA.token, "/api/overview"))?.governor ?? null;
+    }
+    const skip = String(trig?.result?.skipped ?? "");
+    triggerResults.push({ round, kind: "dream", ok: trig?.ok ?? null, skipped: skip || null, dream: trig?.result?.dream ?? null, projects: trig?.result?.projects ?? null });
+    if (/budget:throttled/i.test(skip)) {
+      throttleSeen = skip;
+      break;
+    }
+    seededA += await seedNotes(engineA, projA, 2, `governor-r${round}`);
+  }
   const jobsA = await engineFetch(engineA.url, engineA.token, "/api/jobs");
-  const govA2 = await engineFetch(engineA.url, engineA.token, "/api/overview");
+  const govAFinal = (await engineFetch(engineA.url, engineA.token, "/api/overview"))?.governor ?? null;
   await engineA.stop();
 
-  // (b) Breaker: a dead bridge trips it; a restart recovers.
-  log(`${name}: engine B — dead bridge, expect breaker open then skip`);
+  // (b) Breaker: a dead bridge fails governed dream calls; the breaker opens.
+  log(`${name}: engine B — dead bridge, dream traffic, expect the breaker open`);
   const engineB = await bootBenchEngine(`${name}-b`, {
     port: Number(process.env.LONGRUN_BUDGET_PORT_B ?? 3043),
     dataDir: join(runRoot, "engine-b-data"),
     dbPath: join(runRoot, "engine-b-db", "selflearning.db"),
     runDir: join(runRoot, "engine-b-run"),
     unownHome,
-    env: { PI_BRIDGE_URL: "http://127.0.0.1:9", PI_LLM_BREAKER_THRESHOLD: "2", PI_LLM_BACKOFF_BASE_MS: "5000" },
+    env: { PI_BRIDGE_URL: "http://127.0.0.1:9", PI_LLM_BREAKER_THRESHOLD: "2", PI_LLM_BACKOFF_BASE_MS: "30000" },
   });
-  const trigB1 = await engineFetch(engineB.url, engineB.token, "/api/jobs/harness-cycle/trigger", { method: "POST", timeoutMs: 120_000 });
-  await new Promise((r) => setTimeout(r, 45_000));
-  const overviewB1 = await engineFetch(engineB.url, engineB.token, "/api/overview");
-  const trigB2 = await engineFetch(engineB.url, engineB.token, "/api/jobs/harness-cycle/trigger", { method: "POST", timeoutMs: 60_000 });
-  await new Promise((r) => setTimeout(r, 20_000));
+  const projB = join(runRoot, "proj-breaker");
+  await seedNotes(engineB, projB, 3, "breaker");
+  const breakerSamples = [];
+  let sawOpen = false;
+  let backoffSkip = null;
+  for (let round = 1; round <= 3; round++) {
+    const trig = await engineFetch(engineB.url, engineB.token, "/api/jobs/auto-dream/trigger", { method: "POST", timeoutMs: 240_000 });
+    const skip = String(trig?.result?.skipped ?? "");
+    triggerResults.push({ round, kind: "breaker", ok: trig?.ok ?? null, skipped: skip || null, projects: trig?.result?.projects ?? null });
+    if (/backoff|breaker|upstream/i.test(skip)) {
+      backoffSkip = skip; // the guard refused the job while the breaker was open
+      sawOpen = true;
+      break;
+    }
+    // The backoff window (base 30 s, full-jitter 15–30 s; x4 per trip) is
+    // live right after the failed dream — sample it at 2 s cadence.
+    for (let i = 0; i < 20 && !sawOpen; i++) {
+      const gov = (await engineFetch(engineB.url, engineB.token, "/api/overview"))?.governor ?? null;
+      breakerSamples.push(gov?.breaker ?? null);
+      if (gov?.breaker?.open === true) {
+        sawOpen = true;
+        break;
+      }
+      await new Promise((r) => setTimeout(r, 2_000));
+    }
+    if (!sawOpen) await seedNotes(engineB, projB, 2, `breaker-r${round}`);
+  }
   const jobsB = await engineFetch(engineB.url, engineB.token, "/api/jobs");
-  const breakerSnapshot = overviewB1?.governor?.breaker ?? null;
   await engineB.stop();
 
-  // (c) Recovery: fresh engine, live bridge, the cycle runs again.
-  log(`${name}: engine C — live bridge again, expect a healthy cycle`);
+  // (c) Recovery: fresh engine, live bridge, the dream lane works again.
+  log(`${name}: engine C — live bridge again, expect a governed dream to run`);
   const engineC = await bootBenchEngine(`${name}-c`, {
     port: Number(process.env.LONGRUN_BUDGET_PORT_C ?? 3044),
     dataDir: join(runRoot, "engine-c-data"),
@@ -1436,33 +1500,35 @@ async function scenarioBudgetFidelity() {
     runDir: join(runRoot, "engine-c-run"),
     unownHome,
   });
-  const trigC1 = await engineFetch(engineC.url, engineC.token, "/api/jobs/harness-cycle/trigger", { method: "POST", timeoutMs: 120_000 });
-  await new Promise((r) => setTimeout(r, 30_000));
+  const projC = join(runRoot, "proj-recovery");
+  await seedNotes(engineC, projC, 3, "recovery");
+  const trigC1 = await engineFetch(engineC.url, engineC.token, "/api/jobs/auto-dream/trigger", { method: "POST", timeoutMs: 240_000 });
   const overviewC = await engineFetch(engineC.url, engineC.token, "/api/overview");
+  const jobsC = await engineFetch(engineC.url, engineC.token, "/api/jobs");
   await engineC.stop();
 
-  const jobsText = JSON.stringify({ jobsA, jobsB });
-  const throttleSkip =
-    /budget:throttled/i.test(String(trigA2?.result?.skipped ?? "")) || /budget:throttled/i.test(jobsText);
-  const breakerSkip =
-    /backoff|breaker|upstream/i.test(String(trigB2?.result?.skipped ?? "")) || /backoff|breaker|upstream/i.test(jobsText);
   const metrics = {
-    governorA: { afterFirst: govA1?.governor ?? null, beforeSecond: govA2?.governor ?? null },
-    secondTriggerResult: trigA2?.result ?? null,
-    breakerB: breakerSnapshot,
-    overviewC: overviewC ? { governor: overviewC.governor ?? null, kpis: overviewC.kpis ?? null } : null,
+    seededNotes: { governor: seededA },
+    governorA: { afterFirst: governorAfterFirst, final: govAFinal },
+    throttleSeen,
+    triggerResults,
+    breakerSamples: breakerSamples.filter(Boolean),
+    backoffSkip,
     jobsA: (jobsA?.jobs ?? []).map((j) => ({ id: j.id, status: j.status ?? null, lastOk: j.last_ok ?? null, lastError: j.last_error ?? null })),
     jobsB: (jobsB?.jobs ?? []).map((j) => ({ id: j.id, status: j.status ?? null, lastOk: j.last_ok ?? null, lastError: j.last_error ?? null })),
-    triggerReceipts: { trigA1: trigA1?.ok ?? null, trigA2: trigA2?.ok ?? null, trigB1: trigB1?.ok ?? null, trigB2: trigB2?.ok ?? null, trigC1: trigC1?.ok ?? null },
+    overviewC: overviewC ? { governor: overviewC.governor ?? null, kpis: overviewC.kpis ?? null } : null,
+    jobsC: (jobsC?.jobs ?? []).map((j) => ({ id: j.id, lastOk: j.last_ok ?? null, lastError: j.last_error ?? null })),
+    triggerReceipts: { trigC1: trigC1?.ok ?? null },
   };
   const checks = {
-    governorRecords: Boolean(metrics.governorA.afterFirst),
-    secondCycleThrottled: throttleSkip,
-    breakerReacted: Boolean(breakerSnapshot?.open === true) || breakerSkip || /breaker|backoff/i.test(String(trigB2?.result?.skipped ?? "")),
-    recoveredAfterRestart: Boolean(overviewC?.governor?.breaker?.open === false),
+    governorRecords: Boolean(governorAfterFirst) && (govAFinal?.budget?.callsHour ?? 0) >= 1,
+    throttleFired: throttleSeen !== null,
+    breakerReacted: sawOpen,
+    recoveredAfterRestart:
+      overviewC?.governor?.breaker?.open === false && (overviewC?.governor?.budget?.callsHour ?? 0) >= 1,
   };
   const verdict = Object.values(checks).every(Boolean) ? "pass" : "fail";
-  writeReceipt(name, { verdict, checks, metrics });
+  writeReceipt(name, { verdict, checks, metrics, note: "dream-lane traffic (seeded terminal notes → auto-dream): the governed LLM path — harness-cycle short-circuits 'already-passing' and never touches the ledger (measured: callsHour 0 while tokensHour 9047)" });
 }
 
 // ── scenario: ralph-chain ────────────────────────────────────────────────────
