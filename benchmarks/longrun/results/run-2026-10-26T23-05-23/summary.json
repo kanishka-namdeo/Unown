@@ -2,6 +2,15 @@
   "run": "2026-10-26T23-05-23",
   "model": "agnes-3.0-flash",
   "scenarios": {
+    "budget-fidelity": {
+      "verdict": "pass",
+      "checks": {
+        "governorRecords": true,
+        "throttleFired": true,
+        "breakerReacted": true,
+        "recoveredAfterRestart": true
+      }
+    },
     "compact-thrash": {
       "verdict": "pass",
       "checks": {
@@ -10,6 +19,53 @@
         "exitClean": true,
         "sessionParses": true,
         "noHardOverflowLoop": true
+      }
+    },
+    "crash-consistency": {
+      "verdict": "pass",
+      "checks": {
+        "killsLanded": true,
+        "everyResumeContract": true,
+        "noParseCrash": true,
+        "noOrphanSurvivors": true,
+        "tornAllInjected": true,
+        "prefixNeverLost": true,
+        "taskProgressHonest": true,
+        "noCapBreach": true
+      }
+    },
+    "engine-soak": {
+      "verdict": "pass",
+      "checks": {
+        "engineUpThroughout": true,
+        "learningHappened": true,
+        "rssSlopeBounded": true,
+        "fdStable": true,
+        "walBounded": true,
+        "bridgeAlive": true,
+        "gracefulShutdown": true
+      }
+    },
+    "idle-soak": {
+      "verdict": "pass",
+      "checks": {
+        "engineUpThroughout": true,
+        "idleRssFlat": true,
+        "idleFdFlat": true,
+        "walQuiet": true,
+        "learningParked": true,
+        "gracefulShutdown": true
+      }
+    },
+    "kill-resume": {
+      "verdict": "pass",
+      "checks": {
+        "killsLanded": true,
+        "resumesTook": true,
+        "sessionNeverCorrupt": true,
+        "noOrphanSurvivors": true,
+        "taskCompletedAfterTorture": true,
+        "noCapBreach": true
       }
     },
     "loop-guard": {
@@ -29,6 +85,25 @@
         "featuresPassed": true,
         "sessionParses": true,
         "noContextWedge": true
+      }
+    },
+    "notes-storm": {
+      "verdict": "pass",
+      "checks": {
+        "outboxFilled": true,
+        "drained": true,
+        "noDeadLetters": true,
+        "noLoss": true,
+        "dreamRan": true
+      }
+    },
+    "ralph-chain": {
+      "verdict": "pass",
+      "checks": {
+        "terminatedWithinCap": true,
+        "contractExit": true,
+        "ralphStatePresent": true,
+        "noCrashArtifacts": true
       }
     },
     "turn-cap": {

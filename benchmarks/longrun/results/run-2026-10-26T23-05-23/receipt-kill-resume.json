@@ -1,0 +1,157 @@
+{
+  "ts": "2026-10-27T11:15:53.902Z",
+  "model": "agnes-3.0-flash",
+  "scenario": "kill-resume",
+  "verdict": "pass",
+  "checks": {
+    "killsLanded": true,
+    "resumesTook": true,
+    "sessionNeverCorrupt": true,
+    "noOrphanSurvivors": true,
+    "taskCompletedAfterTorture": true,
+    "noCapBreach": true
+  },
+  "metrics": {
+    "legs": [
+      {
+        "leg": 1,
+        "resumed": false,
+        "killed": true,
+        "orphanSurvivors": 0,
+        "exitCode": -1,
+        "timedOut": false,
+        "wallS": 205,
+        "featuresAtEnd": 2,
+        "sessionFile": {
+          "exists": true,
+          "valid": true,
+          "lines": 121,
+          "bytes": 134719
+        },
+        "envelopeTurns": null,
+        "sessionId": "2026-10-27T10-50-43-936Z_01a17cfb-df60-7258-92d0-286f46368638"
+      },
+      {
+        "leg": 2,
+        "resumed": true,
+        "killed": true,
+        "orphanSurvivors": 0,
+        "exitCode": -1,
+        "timedOut": false,
+        "wallS": 165,
+        "featuresAtEnd": 4,
+        "sessionFile": {
+          "exists": true,
+          "valid": true,
+          "lines": 159,
+          "bytes": 176036
+        },
+        "envelopeTurns": null,
+        "sessionId": "2026-10-27T10-50-43-936Z_01a17cfb-df60-7258-92d0-286f46368638"
+      },
+      {
+        "leg": 3,
+        "resumed": true,
+        "killed": true,
+        "orphanSurvivors": 0,
+        "exitCode": -1,
+        "timedOut": false,
+        "wallS": 325,
+        "featuresAtEnd": 6,
+        "sessionFile": {
+          "exists": true,
+          "valid": true,
+          "lines": 271,
+          "bytes": 316508
+        },
+        "envelopeTurns": null,
+        "sessionId": "2026-10-27T10-50-43-936Z_01a17cfb-df60-7258-92d0-286f46368638"
+      },
+      {
+        "leg": 4,
+        "resumed": true,
+        "killed": false,
+        "orphanSurvivors": 0,
+        "exitCode": 0,
+        "timedOut": false,
+        "wallS": 813,
+        "featuresAtEnd": 10,
+        "sessionFile": {
+          "exists": true,
+          "valid": true,
+          "lines": 541,
+          "bytes": 699607
+        },
+        "envelopeTurns": 130,
+        "sessionId": "2026-10-27T10-50-43-936Z_01a17cfb-df60-7258-92d0-286f46368638"
+      }
+    ],
+    "kills": 3,
+    "resumes": 3,
+    "wallS": 1511,
+    "featuresCommitted": 10,
+    "featuresPassed": 8,
+    "featuresScored": 9,
+    "perFeature": {
+      "feature-01": {
+        "pass": 4,
+        "fail": 0,
+        "exitCode": 0,
+        "green": true
+      },
+      "feature-02": {
+        "pass": 3,
+        "fail": 1,
+        "exitCode": 1,
+        "green": false
+      },
+      "feature-03": {
+        "pass": 3,
+        "fail": 0,
+        "exitCode": 0,
+        "green": true
+      },
+      "feature-04": {
+        "pass": 4,
+        "fail": 0,
+        "exitCode": 0,
+        "green": true
+      },
+      "feature-05": {
+        "pass": 3,
+        "fail": 0,
+        "exitCode": 0,
+        "green": true
+      },
+      "feature-06": {
+        "pass": 4,
+        "fail": 0,
+        "exitCode": 0,
+        "green": true
+      },
+      "feature-07": {
+        "pass": 4,
+        "fail": 0,
+        "exitCode": 0,
+        "green": true
+      },
+      "feature-08": {
+        "pass": 4,
+        "fail": 0,
+        "exitCode": 0,
+        "green": true
+      },
+      "feature-10": {
+        "pass": 6,
+        "fail": 0,
+        "exitCode": 0,
+        "green": true
+      }
+    },
+    "sessionCompactions": 0,
+    "sessionBytes": 699607,
+    "jsonlCorruptLines": 0,
+    "tokensIn": 245745,
+    "tokensOut": 66665
+  }
+}

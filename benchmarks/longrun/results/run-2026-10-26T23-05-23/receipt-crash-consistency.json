@@ -1,0 +1,155 @@
+{
+  "ts": "2026-10-27T13:26:50.075Z",
+  "model": "agnes-3.0-flash",
+  "scenario": "crash-consistency",
+  "verdict": "pass",
+  "checks": {
+    "killsLanded": true,
+    "everyResumeContract": true,
+    "noParseCrash": true,
+    "noOrphanSurvivors": true,
+    "tornAllInjected": true,
+    "prefixNeverLost": true,
+    "taskProgressHonest": true,
+    "noCapBreach": true
+  },
+  "metrics": {
+    "killsRequested": 5,
+    "tornInjectCount": 5,
+    "legs": [
+      {
+        "leg": 1,
+        "killed": true,
+        "tornInjected": true,
+        "orphanCount": 0,
+        "orphanSurvivors": 0,
+        "exitCode": -1,
+        "timedOut": false,
+        "wallS": 95,
+        "validLines": 30,
+        "parseCrashInStderr": false,
+        "sessionId": "2026-10-27T13-09-27-086Z_01a17d7a-dfae-7b6b-aca3-aec04e989566"
+      },
+      {
+        "leg": 2,
+        "killed": true,
+        "tornInjected": true,
+        "orphanCount": 0,
+        "orphanSurvivors": 0,
+        "exitCode": -1,
+        "timedOut": false,
+        "wallS": 100,
+        "validLines": 73,
+        "parseCrashInStderr": false,
+        "sessionId": "2026-10-27T13-09-27-086Z_01a17d7a-dfae-7b6b-aca3-aec04e989566"
+      },
+      {
+        "leg": 3,
+        "killed": true,
+        "tornInjected": true,
+        "orphanCount": 0,
+        "orphanSurvivors": 0,
+        "exitCode": -1,
+        "timedOut": false,
+        "wallS": 60,
+        "validLines": 90,
+        "parseCrashInStderr": false,
+        "sessionId": "2026-10-27T13-09-27-086Z_01a17d7a-dfae-7b6b-aca3-aec04e989566"
+      },
+      {
+        "leg": 4,
+        "killed": true,
+        "tornInjected": true,
+        "orphanCount": 0,
+        "orphanSurvivors": 0,
+        "exitCode": -1,
+        "timedOut": false,
+        "wallS": 80,
+        "validLines": 113,
+        "parseCrashInStderr": false,
+        "sessionId": "2026-10-27T13-09-27-086Z_01a17d7a-dfae-7b6b-aca3-aec04e989566"
+      },
+      {
+        "leg": 5,
+        "killed": true,
+        "tornInjected": true,
+        "orphanCount": 0,
+        "orphanSurvivors": 0,
+        "exitCode": -1,
+        "timedOut": false,
+        "wallS": 75,
+        "validLines": 148,
+        "parseCrashInStderr": false,
+        "sessionId": "2026-10-27T13-09-27-086Z_01a17d7a-dfae-7b6b-aca3-aec04e989566"
+      },
+      {
+        "leg": 6,
+        "killed": false,
+        "tornInjected": false,
+        "orphanCount": 0,
+        "orphanSurvivors": 0,
+        "exitCode": 0,
+        "timedOut": false,
+        "wallS": 632,
+        "validLines": 308,
+        "parseCrashInStderr": false,
+        "sessionId": "2026-10-27T13-09-27-086Z_01a17d7a-dfae-7b6b-aca3-aec04e989566"
+      }
+    ],
+    "wallS": 1044,
+    "featuresCommitted": [
+      9,
+      8,
+      7,
+      5,
+      1,
+      4,
+      3,
+      2,
+      1
+    ],
+    "featuresPassed": 5,
+    "featuresScored": 5,
+    "perFeature": {
+      "feature-01": {
+        "pass": 4,
+        "fail": 0,
+        "exitCode": 0,
+        "green": true
+      },
+      "feature-02": {
+        "pass": 4,
+        "fail": 0,
+        "exitCode": 0,
+        "green": true
+      },
+      "feature-03": {
+        "pass": 3,
+        "fail": 0,
+        "exitCode": 0,
+        "green": true
+      },
+      "feature-04": {
+        "pass": 4,
+        "fail": 0,
+        "exitCode": 0,
+        "green": true
+      },
+      "feature-10": {
+        "pass": 6,
+        "fail": 0,
+        "exitCode": 0,
+        "green": true
+      }
+    },
+    "finalValidLines": 308,
+    "prefixFloor": 148,
+    "sessionBytes": 472528,
+    "assistantMessages": 143,
+    "jsonlCorruptLines": 5,
+    "tokensIn": 174030,
+    "tokensOut": 48230,
+    "usageTimeline": []
+  },
+  "note": "random-offset SIGKILL torture + torn-tail injection + orphan sweep — the claude-code#52387/#96625, codex#37311 analogs"
+}

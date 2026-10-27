@@ -1,0 +1,43 @@
+{
+  "ts": "2026-10-27T12:16:31.847Z",
+  "model": "agnes-3.0-flash",
+  "scenario": "ralph-chain",
+  "verdict": "pass",
+  "checks": {
+    "terminatedWithinCap": true,
+    "contractExit": true,
+    "ralphStatePresent": true,
+    "noCrashArtifacts": true
+  },
+  "metrics": {
+    "wallS": 620,
+    "exitCode": 0,
+    "timedOut": false,
+    "ralphRecord": null,
+    "ralphRunDirs": [
+      "ralph-mvqn3da4-dvbd"
+    ],
+    "featuresPassed": 2,
+    "perFeature": {
+      "feature-01": {
+        "pass": 4,
+        "fail": 0,
+        "exitCode": 0,
+        "green": true
+      },
+      "feature-02": {
+        "pass": 4,
+        "fail": 0,
+        "exitCode": 0,
+        "green": true
+      },
+      "feature-10": {
+        "pass": 5,
+        "fail": 1,
+        "exitCode": 1,
+        "green": false
+      }
+    },
+    "stdoutTail": " 53,\n        \"tokensIn\": 87502,\n        \"tokensOut\": 30829\n      },\n      \"reviewer\": {\n        \"exitCode\": 0,\n        \"turns\": 29,\n        \"tokensIn\": 46624,\n        \"tokensOut\": 3329\n      },\n      \"verdict\": \"ship\",\n      \"verdictExplicit\": true,\n      \"startedAt\": 1793102771480,\n      \"endedAt\": 1793103391227\n    }\n  ],\n  \"final\": \"ship\",\n  \"dir\": \"/home/z/bench-runs/longrun/ralph-chain/workspace/.unown/ralph/ralph-mvqn3da4-dvbd\",\n  \"baseline\": \"9005627736c1f07713ed1ffbd45664bc63e736af\",\n  \"startedAt\": 1793102771480,\n  \"endedAt\": 1793103391228,\n  \"tokensIn\": 134126,\n  \"tokensOut\": 34158\n}\n"
+  }
+}

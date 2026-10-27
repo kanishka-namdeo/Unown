@@ -1,0 +1,424 @@
+{
+  "ts": "2026-10-27T14:05:21.260Z",
+  "model": "agnes-3.0-flash",
+  "scenario": "idle-soak",
+  "verdict": "pass",
+  "checks": {
+    "engineUpThroughout": true,
+    "idleRssFlat": true,
+    "idleFdFlat": true,
+    "walQuiet": true,
+    "learningParked": true,
+    "gracefulShutdown": true
+  },
+  "metrics": {
+    "idleMinutes": 20,
+    "samples": 40,
+    "rssSlopeKbPerH": 7168,
+    "rssWarmupS": 720,
+    "rssTailSamples": 16,
+    "rssTailSpanS": 450,
+    "fdDrift": 1,
+    "maxWalBytes": 650992,
+    "rssStartKb": 152252,
+    "rssEndKb": 124588,
+    "gracefulStopOk": true,
+    "healthAfterStop": null,
+    "jobsEnabled": {
+      "dream-check": false,
+      "regression-on-ship": true,
+      "auto-dream": false,
+      "db-retention": true,
+      "harness-cycle": false,
+      "note-sync": true,
+      "sandbox-gc": true,
+      "task-mint": false,
+      "watch-scan": true
+    },
+    "learningJobs": [
+      {
+        "id": "dream-check",
+        "enabled": false,
+        "runs": 0
+      },
+      {
+        "id": "auto-dream",
+        "enabled": false,
+        "runs": 0
+      },
+      {
+        "id": "harness-cycle",
+        "enabled": false,
+        "runs": 0
+      },
+      {
+        "id": "task-mint",
+        "enabled": false,
+        "runs": 0
+      }
+    ],
+    "sampleSeries": [
+      {
+        "tS": 0,
+        "phase": "ready",
+        "pid": 19728,
+        "rssKb": 152252,
+        "fds": 17,
+        "threads": 9,
+        "walBytes": 650992
+      },
+      {
+        "tS": 30,
+        "phase": "ready",
+        "pid": 19728,
+        "rssKb": 133692,
+        "fds": 16,
+        "threads": 6,
+        "walBytes": 650992
+      },
+      {
+        "tS": 60,
+        "phase": "ready",
+        "pid": 19728,
+        "rssKb": 133548,
+        "fds": 16,
+        "threads": 7,
+        "walBytes": 0
+      },
+      {
+        "tS": 90,
+        "phase": "ready",
+        "pid": 19728,
+        "rssKb": 133700,
+        "fds": 16,
+        "threads": 6,
+        "walBytes": 0
+      },
+      {
+        "tS": 120,
+        "phase": "ready",
+        "pid": 19728,
+        "rssKb": 128940,
+        "fds": 16,
+        "threads": 9,
+        "walBytes": 49472
+      },
+      {
+        "tS": 150,
+        "phase": "ready",
+        "pid": 19728,
+        "rssKb": 128188,
+        "fds": 16,
+        "threads": 6,
+        "walBytes": 49472
+      },
+      {
+        "tS": 180,
+        "phase": "ready",
+        "pid": 19728,
+        "rssKb": 128848,
+        "fds": 16,
+        "threads": 7,
+        "walBytes": 0
+      },
+      {
+        "tS": 210,
+        "phase": "ready",
+        "pid": 19728,
+        "rssKb": 128836,
+        "fds": 16,
+        "threads": 6,
+        "walBytes": 0
+      },
+      {
+        "tS": 240,
+        "phase": "ready",
+        "pid": 19728,
+        "rssKb": 128888,
+        "fds": 16,
+        "threads": 7,
+        "walBytes": 8272
+      },
+      {
+        "tS": 270,
+        "phase": "ready",
+        "pid": 19728,
+        "rssKb": 128276,
+        "fds": 16,
+        "threads": 5,
+        "walBytes": 8272
+      },
+      {
+        "tS": 300,
+        "phase": "ready",
+        "pid": 19728,
+        "rssKb": 128696,
+        "fds": 16,
+        "threads": 7,
+        "walBytes": 8272
+      },
+      {
+        "tS": 330,
+        "phase": "ready",
+        "pid": 19728,
+        "rssKb": 125660,
+        "fds": 16,
+        "threads": 5,
+        "walBytes": 8272
+      },
+      {
+        "tS": 360,
+        "phase": "ready",
+        "pid": 19728,
+        "rssKb": 125724,
+        "fds": 16,
+        "threads": 6,
+        "walBytes": 8272
+      },
+      {
+        "tS": 390,
+        "phase": "ready",
+        "pid": 19728,
+        "rssKb": 125908,
+        "fds": 16,
+        "threads": 5,
+        "walBytes": 8272
+      },
+      {
+        "tS": 420,
+        "phase": "ready",
+        "pid": 19728,
+        "rssKb": 125188,
+        "fds": 16,
+        "threads": 5,
+        "walBytes": 0
+      },
+      {
+        "tS": 450,
+        "phase": "ready",
+        "pid": 19728,
+        "rssKb": 125832,
+        "fds": 16,
+        "threads": 6,
+        "walBytes": 0
+      },
+      {
+        "tS": 480,
+        "phase": "ready",
+        "pid": 19728,
+        "rssKb": 125212,
+        "fds": 16,
+        "threads": 5,
+        "walBytes": 0
+      },
+      {
+        "tS": 510,
+        "phase": "ready",
+        "pid": 19728,
+        "rssKb": 125892,
+        "fds": 16,
+        "threads": 7,
+        "walBytes": 8272
+      },
+      {
+        "tS": 540,
+        "phase": "ready",
+        "pid": 19728,
+        "rssKb": 125204,
+        "fds": 16,
+        "threads": 5,
+        "walBytes": 0
+      },
+      {
+        "tS": 570,
+        "phase": "ready",
+        "pid": 19728,
+        "rssKb": 125676,
+        "fds": 16,
+        "threads": 6,
+        "walBytes": 0
+      },
+      {
+        "tS": 600,
+        "phase": "ready",
+        "pid": 19728,
+        "rssKb": 123620,
+        "fds": 16,
+        "threads": 7,
+        "walBytes": 0
+      },
+      {
+        "tS": 630,
+        "phase": "ready",
+        "pid": 19728,
+        "rssKb": 124452,
+        "fds": 16,
+        "threads": 6,
+        "walBytes": 16512
+      },
+      {
+        "tS": 660,
+        "phase": "ready",
+        "pid": 19728,
+        "rssKb": 123704,
+        "fds": 16,
+        "threads": 6,
+        "walBytes": 0
+      },
+      {
+        "tS": 690,
+        "phase": "ready",
+        "pid": 19728,
+        "rssKb": 124456,
+        "fds": 16,
+        "threads": 7,
+        "walBytes": 0
+      },
+      {
+        "tS": 720,
+        "phase": "ready",
+        "pid": 19728,
+        "rssKb": 123692,
+        "fds": 16,
+        "threads": 5,
+        "walBytes": 0
+      },
+      {
+        "tS": 750,
+        "phase": "ready",
+        "pid": 19728,
+        "rssKb": 124344,
+        "fds": 16,
+        "threads": 6,
+        "walBytes": 8272
+      },
+      {
+        "tS": 780,
+        "phase": "ready",
+        "pid": 19728,
+        "rssKb": 123620,
+        "fds": 16,
+        "threads": 5,
+        "walBytes": 0
+      },
+      {
+        "tS": 810,
+        "phase": "ready",
+        "pid": 19728,
+        "rssKb": 124320,
+        "fds": 16,
+        "threads": 8,
+        "walBytes": 0
+      },
+      {
+        "tS": 840,
+        "phase": "ready",
+        "pid": 19728,
+        "rssKb": 123932,
+        "fds": 16,
+        "threads": 5,
+        "walBytes": 0
+      },
+      {
+        "tS": 870,
+        "phase": "ready",
+        "pid": 19728,
+        "rssKb": 124648,
+        "fds": 16,
+        "threads": 6,
+        "walBytes": 8272
+      },
+      {
+        "tS": 900,
+        "phase": "ready",
+        "pid": 19728,
+        "rssKb": 124116,
+        "fds": 16,
+        "threads": 5,
+        "walBytes": 0
+      },
+      {
+        "tS": 930,
+        "phase": "ready",
+        "pid": 19728,
+        "rssKb": 124784,
+        "fds": 16,
+        "threads": 6,
+        "walBytes": 16512
+      },
+      {
+        "tS": 960,
+        "phase": "ready",
+        "pid": 19728,
+        "rssKb": 124044,
+        "fds": 16,
+        "threads": 7,
+        "walBytes": 0
+      },
+      {
+        "tS": 990,
+        "phase": "ready",
+        "pid": 19728,
+        "rssKb": 124728,
+        "fds": 16,
+        "threads": 6,
+        "walBytes": 8272
+      },
+      {
+        "tS": 1020,
+        "phase": "ready",
+        "pid": 19728,
+        "rssKb": 123968,
+        "fds": 16,
+        "threads": 6,
+        "walBytes": 0
+      },
+      {
+        "tS": 1050,
+        "phase": "ready",
+        "pid": 19728,
+        "rssKb": 124676,
+        "fds": 16,
+        "threads": 6,
+        "walBytes": 0
+      },
+      {
+        "tS": 1080,
+        "phase": "ready",
+        "pid": 19728,
+        "rssKb": 123972,
+        "fds": 16,
+        "threads": 5,
+        "walBytes": 0
+      },
+      {
+        "tS": 1110,
+        "phase": "ready",
+        "pid": 19728,
+        "rssKb": 124656,
+        "fds": 16,
+        "threads": 6,
+        "walBytes": 8272
+      },
+      {
+        "tS": 1140,
+        "phase": "ready",
+        "pid": 19728,
+        "rssKb": 123908,
+        "fds": 16,
+        "threads": 5,
+        "walBytes": 0
+      },
+      {
+        "tS": 1170,
+        "phase": "ready",
+        "pid": 19728,
+        "rssKb": 124588,
+        "fds": 16,
+        "threads": 6,
+        "walBytes": 0
+      }
+    ]
+  },
+  "note": "zero-traffic idle engine, learning lanes parked state-aware (boot defaults self-run harness cycles — measured live) — the claude-code#67433/#18859 idle-leak analog; k6 soak doctrine, idle variant"
+}

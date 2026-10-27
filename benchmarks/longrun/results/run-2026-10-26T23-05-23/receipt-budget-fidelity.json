@@ -1,0 +1,479 @@
+{
+  "ts": "2026-10-27T12:06:10.051Z",
+  "model": "agnes-3.0-flash",
+  "scenario": "budget-fidelity",
+  "verdict": "pass",
+  "checks": {
+    "governorRecords": true,
+    "throttleFired": true,
+    "breakerReacted": true,
+    "recoveredAfterRestart": true
+  },
+  "metrics": {
+    "seededNotes": {
+      "governor": 5
+    },
+    "governorA": {
+      "afterFirst": {
+        "budget": {
+          "callsHour": 3,
+          "callsDay": 3,
+          "tokensHour": 1902,
+          "tokensDay": 1902,
+          "limits": {
+            "callsHour": 3,
+            "tokensHour": 100000,
+            "tokensDay": 2000000
+          },
+          "overBudget": true,
+          "reason": "budget:throttled 3 engine LLM calls in the last hour (limit 3)"
+        },
+        "breaker": {
+          "open": false,
+          "consecutiveFailures": 0,
+          "threshold": 3,
+          "retryInMs": 0
+        }
+      },
+      "final": {
+        "budget": {
+          "callsHour": 3,
+          "callsDay": 3,
+          "tokensHour": 1902,
+          "tokensDay": 1902,
+          "limits": {
+            "callsHour": 3,
+            "tokensHour": 100000,
+            "tokensDay": 2000000
+          },
+          "overBudget": true,
+          "reason": "budget:throttled 3 engine LLM calls in the last hour (limit 3)"
+        },
+        "breaker": {
+          "open": false,
+          "consecutiveFailures": 0,
+          "threshold": 3,
+          "retryInMs": 0
+        }
+      }
+    },
+    "throttleSeen": "budget:throttled 3 engine LLM calls in the last hour (limit 3)",
+    "triggerResults": [
+      {
+        "round": 1,
+        "kind": "dream",
+        "ok": true,
+        "skipped": null,
+        "dream": null,
+        "projects": [
+          {
+            "slug": "proj-governor-a6e6f4",
+            "projectPath": "/home/z/bench-runs/longrun/budget-fidelity/proj-governor",
+            "notesIn": 3,
+            "status": "done",
+            "version": 1,
+            "note": "memory -> v1 · guard: clean (2 unprovenanced new line(s))",
+            "skills": [],
+            "guard": {
+              "action": "ship",
+              "flags": [],
+              "summary": "guard: clean (2 unprovenanced new line(s))"
+            }
+          }
+        ]
+      },
+      {
+        "round": 2,
+        "kind": "dream",
+        "ok": true,
+        "skipped": "budget:throttled 3 engine LLM calls in the last hour (limit 3)",
+        "dream": null,
+        "projects": null
+      },
+      {
+        "round": 1,
+        "kind": "breaker",
+        "ok": true,
+        "skipped": null,
+        "projects": [
+          {
+            "slug": "proj-breaker-9ef3ce",
+            "projectPath": "/home/z/bench-runs/longrun/budget-fidelity/proj-breaker",
+            "notesIn": 3,
+            "status": "error",
+            "error": "LLM extraction failed: Error: Connection error."
+          }
+        ]
+      },
+      {
+        "round": 2,
+        "kind": "breaker",
+        "ok": true,
+        "skipped": null,
+        "projects": [
+          {
+            "slug": "proj-breaker-9ef3ce",
+            "projectPath": "/home/z/bench-runs/longrun/budget-fidelity/proj-breaker",
+            "notesIn": 5,
+            "status": "error",
+            "error": "LLM extraction failed: Error: Connection error."
+          }
+        ]
+      },
+      {
+        "round": 3,
+        "kind": "breaker",
+        "ok": true,
+        "skipped": "upstream backoff: 2 consecutive LLM failures, retry in 22s",
+        "projects": null
+      }
+    ],
+    "breakerSamples": [
+      {
+        "open": false,
+        "consecutiveFailures": 1,
+        "threshold": 2,
+        "retryInMs": 0
+      },
+      {
+        "open": false,
+        "consecutiveFailures": 1,
+        "threshold": 2,
+        "retryInMs": 0
+      },
+      {
+        "open": false,
+        "consecutiveFailures": 1,
+        "threshold": 2,
+        "retryInMs": 0
+      },
+      {
+        "open": false,
+        "consecutiveFailures": 1,
+        "threshold": 2,
+        "retryInMs": 0
+      },
+      {
+        "open": false,
+        "consecutiveFailures": 1,
+        "threshold": 2,
+        "retryInMs": 0
+      },
+      {
+        "open": false,
+        "consecutiveFailures": 1,
+        "threshold": 2,
+        "retryInMs": 0
+      },
+      {
+        "open": false,
+        "consecutiveFailures": 1,
+        "threshold": 2,
+        "retryInMs": 0
+      },
+      {
+        "open": false,
+        "consecutiveFailures": 1,
+        "threshold": 2,
+        "retryInMs": 0
+      },
+      {
+        "open": false,
+        "consecutiveFailures": 1,
+        "threshold": 2,
+        "retryInMs": 0
+      },
+      {
+        "open": false,
+        "consecutiveFailures": 1,
+        "threshold": 2,
+        "retryInMs": 0
+      },
+      {
+        "open": false,
+        "consecutiveFailures": 1,
+        "threshold": 2,
+        "retryInMs": 0
+      },
+      {
+        "open": false,
+        "consecutiveFailures": 1,
+        "threshold": 2,
+        "retryInMs": 0
+      },
+      {
+        "open": false,
+        "consecutiveFailures": 1,
+        "threshold": 2,
+        "retryInMs": 0
+      },
+      {
+        "open": false,
+        "consecutiveFailures": 1,
+        "threshold": 2,
+        "retryInMs": 0
+      },
+      {
+        "open": false,
+        "consecutiveFailures": 1,
+        "threshold": 2,
+        "retryInMs": 0
+      },
+      {
+        "open": false,
+        "consecutiveFailures": 1,
+        "threshold": 2,
+        "retryInMs": 0
+      },
+      {
+        "open": false,
+        "consecutiveFailures": 1,
+        "threshold": 2,
+        "retryInMs": 0
+      },
+      {
+        "open": false,
+        "consecutiveFailures": 1,
+        "threshold": 2,
+        "retryInMs": 0
+      },
+      {
+        "open": false,
+        "consecutiveFailures": 1,
+        "threshold": 2,
+        "retryInMs": 0
+      },
+      {
+        "open": false,
+        "consecutiveFailures": 1,
+        "threshold": 2,
+        "retryInMs": 0
+      },
+      {
+        "open": true,
+        "consecutiveFailures": 2,
+        "threshold": 2,
+        "retryInMs": 21620
+      }
+    ],
+    "backoffSkip": "upstream backoff: 2 consecutive LLM failures, retry in 22s",
+    "jobsA": [
+      {
+        "id": "dream-check",
+        "status": "idle",
+        "lastOk": null,
+        "lastError": null
+      },
+      {
+        "id": "regression-on-ship",
+        "status": "idle",
+        "lastOk": null,
+        "lastError": null
+      },
+      {
+        "id": "auto-dream",
+        "status": "idle",
+        "lastOk": 1,
+        "lastError": null
+      },
+      {
+        "id": "db-retention",
+        "status": "idle",
+        "lastOk": null,
+        "lastError": null
+      },
+      {
+        "id": "harness-cycle",
+        "status": "idle",
+        "lastOk": null,
+        "lastError": null
+      },
+      {
+        "id": "note-sync",
+        "status": "idle",
+        "lastOk": null,
+        "lastError": null
+      },
+      {
+        "id": "sandbox-gc",
+        "status": "idle",
+        "lastOk": null,
+        "lastError": null
+      },
+      {
+        "id": "task-mint",
+        "status": "idle",
+        "lastOk": null,
+        "lastError": null
+      },
+      {
+        "id": "watch-scan",
+        "status": "idle",
+        "lastOk": null,
+        "lastError": null
+      }
+    ],
+    "jobsB": [
+      {
+        "id": "dream-check",
+        "status": "idle",
+        "lastOk": null,
+        "lastError": null
+      },
+      {
+        "id": "regression-on-ship",
+        "status": "idle",
+        "lastOk": null,
+        "lastError": null
+      },
+      {
+        "id": "auto-dream",
+        "status": "idle",
+        "lastOk": 1,
+        "lastError": null
+      },
+      {
+        "id": "db-retention",
+        "status": "idle",
+        "lastOk": null,
+        "lastError": null
+      },
+      {
+        "id": "harness-cycle",
+        "status": "idle",
+        "lastOk": null,
+        "lastError": null
+      },
+      {
+        "id": "note-sync",
+        "status": "idle",
+        "lastOk": null,
+        "lastError": null
+      },
+      {
+        "id": "sandbox-gc",
+        "status": "idle",
+        "lastOk": null,
+        "lastError": null
+      },
+      {
+        "id": "task-mint",
+        "status": "idle",
+        "lastOk": null,
+        "lastError": null
+      },
+      {
+        "id": "watch-scan",
+        "status": "idle",
+        "lastOk": null,
+        "lastError": null
+      }
+    ],
+    "overviewC": {
+      "governor": {
+        "budget": {
+          "callsHour": 3,
+          "callsDay": 3,
+          "tokensHour": 1900,
+          "tokensDay": 1900,
+          "limits": {
+            "callsHour": 60,
+            "tokensHour": 200000,
+            "tokensDay": 2000000
+          },
+          "overBudget": false,
+          "reason": null
+        },
+        "breaker": {
+          "open": false,
+          "consecutiveFailures": 0,
+          "threshold": 3,
+          "retryInMs": 0
+        }
+      },
+      "kpis": {
+        "totalRuns": 0,
+        "passed": 0,
+        "failed": 0,
+        "errors": 0,
+        "passRate": 0,
+        "tasks": 5,
+        "improvementsShipped": 0,
+        "dreams": 1,
+        "notes": {
+          "total": 3,
+          "pending": 0
+        },
+        "hooks": {
+          "total": 0,
+          "denies": 0
+        },
+        "suite": {
+          "total": 5,
+          "passing": 0,
+          "capability": 0,
+          "regression": 5,
+          "minted": 0,
+          "graduated": 0,
+          "quarantined": 0,
+          "saturated": false
+        },
+        "tokens": {
+          "in": 0,
+          "out": 0
+        }
+      }
+    },
+    "jobsC": [
+      {
+        "id": "dream-check",
+        "lastOk": null,
+        "lastError": null
+      },
+      {
+        "id": "regression-on-ship",
+        "lastOk": null,
+        "lastError": null
+      },
+      {
+        "id": "auto-dream",
+        "lastOk": 1,
+        "lastError": null
+      },
+      {
+        "id": "db-retention",
+        "lastOk": null,
+        "lastError": null
+      },
+      {
+        "id": "harness-cycle",
+        "lastOk": null,
+        "lastError": null
+      },
+      {
+        "id": "note-sync",
+        "lastOk": null,
+        "lastError": null
+      },
+      {
+        "id": "sandbox-gc",
+        "lastOk": null,
+        "lastError": null
+      },
+      {
+        "id": "task-mint",
+        "lastOk": null,
+        "lastError": null
+      },
+      {
+        "id": "watch-scan",
+        "lastOk": null,
+        "lastError": null
+      }
+    ],
+    "triggerReceipts": {
+      "trigC1": true
+    }
+  },
+  "note": "dream-lane traffic (seeded terminal notes → auto-dream): the governed LLM path — harness-cycle short-circuits 'already-passing' and never touches the ledger (measured: callsHour 0 while tokensHour 9047)"
+}

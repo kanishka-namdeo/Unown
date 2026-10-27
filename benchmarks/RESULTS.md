@@ -187,3 +187,86 @@ committed:
 Per-suite RESULTS.md files carry the full honest-limitations sections; the
 scratch engines ran the real `startServer()` (fm-02 concurrency + fm-08
 dead-bridge recovery are real process-level receipts, not mocks).
+
+## The 2026-10-26/27 long-run endurance round
+
+Eleven scenarios in [`longrun/`](longrun/README.md) — the duration axis
+(METR's time-horizon finding), research-grounded per lane (the bench README
+carries the grounding table with links) — all run live on agnes-3.0-flash
+through the shared bridge (the metered ~20 RPM upstream is part of the
+stress), one run resumed and extended across two sessions, machine receipts
+committed per scenario:
+
+- **marathon** — one 150-turn session, ten staged features: **9/10**
+  features, exit 0 with `capped: true` + `capped_answer_recovered: true`,
+  agent RSS slope bounded — the miss is a genuine agent defect the
+  acceptance suite caught (CSV-import skip warnings on stdout; spec says
+  stderr).
+- **compact-thrash** — 40k window + tightened reserves: **13 mid-run
+  compactions** across **256 turns**, 7/7 scored features (01–06 + the
+  store), exit 0, session parses — the LR-2 five-layer fix under thrash.
+- **kill-resume** — SIGKILL at three staged gates (205 s / 165 s / 325 s),
+  the same session resumed every time: session file valid at every leg, **0
+  orphan survivors** per kill, final leg exit 0, **8/9 acceptance** (bar
+  ≥ 5/8).
+- **loop-guard** — impossible read-only lure + `--max-tool-repetitions 6`:
+  contract exit 0 at 30 turns, `capped: true`, no hang — the guard honest.
+- **turn-cap** — `--max-turns 8`: **exactly 8 turns in 17 s**, exit 0,
+  `capped: true`, the partial answer recovered (LR-1's exit contract).
+- **notes-storm** — engine DOWN, six real terminal sessions: outbox peak
+  **6 → 0 drained**, **0 dead letters**, 0 note loss, the dream lane
+  consolidated.
+- **budget-fidelity** — the governed dream lane, three engines: engine A
+  (`PI_ENGINE_MAX_CALLS_HOUR=3`) ran seeded-note dreams to **callsHour 3/3 —
+  `budget:throttled`**; engine B (dead bridge) drove the breaker to backoff
+  ("2 consecutive LLM failures, retry in 22s"); engine C (live bridge)
+  recovered the dream lane with **overBudget=false** under the same
+  governor.
+- **engine-soak** — 75 minutes with all four learning lanes on and a
+  terminal session every 5 min (8/8 ran): **23 runs + 9 dreams** of
+  autonomous self-improvement, engine ready throughout, fd drift 2,
+  WAL ≤ 0.67 MB, graceful shutdown, RSS slope **+28.8 MB/h ≤ the 30 MB/h
+  budget** over the settled tail. Honest nuance, recorded from the
+  receipts: the tail grows with WORK, not time — ~+30 MB over 63 minutes
+  of continuous learning (wave-stepped ~1–2 MB per run/dream; the parked
+  idle baseline is flat at +7 MB/h), and the k6-canonical 8-hour
+  extension stays the next round's open knob (`--soak-minutes`).
+- **ralph-chain** — the unattended worker/reviewer loop: contract exit,
+  ralph state present, no crash artifacts, and the loop ran to the
+  reviewer's explicit **"ship"** verdict (622 s; the final iteration's
+  worker 87.5k in / 30.8k out tokens, reviewer 29 turns, exit 0).
+- **crash-consistency** — 5 random-offset SIGKILLs (95/100/60/80/75 s) with
+  a torn half-written record injected after each kill, the same session
+  `--resume`d every time: valid-line count grew monotonically
+  30→73→90→113→148→**308**, every corrupt line was one the bench itself
+  injected (foreign corruption — the claude-code#52387 class — is what the
+  check catches), **0 orphan survivors** at every kill, **5/5 features**
+  (bar ≥ 2/5), final leg exit 0.
+- **idle-soak** — the learning lanes parked state-aware (the receipt's
+  `learningParked` proves all four sat disabled with `run_count` 0 while
+  housekeeping kept running — watch-scan 9×, note-sync 3×, sandbox-gc 1×),
+  zero terminal traffic for 20 min: idle RSS slope **+7.0 MB/h** (budget
+  15), fd drift 1, WAL quiet, engine ready throughout.
+
+The round's defects are part of its record: LR-1 (the `--max-turns` cap's
+contradictory messages + the unreachable answer-so-far contract), the LR-2
+five-layer chain (terminal mid-exchange auto-compact), and ten runner
+fixes the runs themselves surfaced — the engine-boot token poll, the
+kill-resume verdict math ("killed is not capped"), the ralph-chain store
+prerequisite, the budget-fidelity dream lane, a kill-before-collect
+deadlock in the runner's own collector, engine-soak's blind jobs toggle
+(the endpoint is a flip and jobs default ON) plus its never-freed session
+slot, crash-consistency's torn-record check that contradicted the
+lane's own injection design (every torn line must be the bench's own
+injected fragment — settled torn lines stay tolerated mid-file forever),
+both soak lanes' slope math that read 1000x hot (a per-second delta
+scaled by the milliseconds in an hour, with a warmup window that ended
+before the first housekeeping wave — whose one-time worker-pool step read
+as a phantom leak), and idle-soak's self-driving learning: boot defaults
+enable every job, and an "idle" engine measured live self-ran a full
+harness cycle with real bridge spend — the lane now parks the learning
+jobs state-aware and the receipt proves they sat disabled, never ran.
+Honest limitations live in the bench README: one model, one OS, one
+2 CPU / 4 GB box; the lane default is 45 minutes and the shipped
+engine-soak receipt ran the 75-minute window (`--soak-minutes` — the
+verdict math is duration-independent).

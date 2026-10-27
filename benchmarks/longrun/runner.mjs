@@ -24,7 +24,7 @@
  * Scenarios (node runner.mjs --scenario <list|all> --model <id>):
  *   marathon        one headless session, 10 features, --max-turns 150,
  *                   45-min wall cap — the many-turn single-session drill
- *   compact-thrash  the same buildout with a 24k-token contextWindow and
+ *   compact-thrash  the same buildout with a 40k-token contextWindow and
  *                   tightened compaction reserves — auto-compact fires
  *                   repeatedly; the claude-code#105086 / codex#14447 analog
  *   kill-resume     SIGKILL the agent at three staged points, --resume the
@@ -51,8 +51,9 @@
  *                   #96625/#104308 (orphaned background processes) and
  *                   codex #37311/#37374 (zombie children) analogs
  *   idle-soak       (2026-10-27 resume) a zero-traffic engine soak — the
- *                   claude-code #67433/#18859 idle-leak analog; RSS/fd/WAL
- *                   plateau asserts with no traffic at all
+ *                   claude-code #67433/#18859 idle-leak analog; the learning
+ *                   lanes parked state-aware, housekeeping on: RSS/fd/WAL
+ *                   plateau asserts with the engine breathing, not working
  *
  * Every scenario writes results/run-<ts>/receipt-<scenario>.json with a
  * machine verdict + metrics, plus logs/. --resume <ts> skips scenarios that
@@ -60,7 +61,7 @@
  */
 
 import { spawn } from "node:child_process";
-import { appendFileSync, cpSync, existsSync, mkdirSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from "node:fs";
+import { appendFileSync, cpSync, existsSync, mkdirSync, readFileSync, readdirSync, renameSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { homedir, tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 
@@ -285,8 +286,11 @@ function spawnAgent(agentArgs, cwd, env = {}) {
   };
   const collect = (logBase = null, timeoutMs = null) =>
     new Promise((resolveCollect) => {
+      let settled = false;
       const timer = timeoutMs ? setTimeout(() => kill(), timeoutMs) : null;
       const done = (code, signal) => {
+        if (settled) return;
+        settled = true;
         if (timer) clearTimeout(timer);
         setTimeout(() => {
           try {
@@ -317,7 +321,18 @@ function spawnAgent(agentArgs, cwd, env = {}) {
           pid: child.pid,
         });
       };
+      // The kill-before-collect race (found live, run 2026-10-27 10:22): a
+      // torture gate group-SIGKILLs the child while the runner is still in
+      // its 5 s orphan sweep — by the time collect() is called the 'close'
+      // event has ALREADY fired (late listeners never fire) and a
+      // signal-killed child keeps exitCode null forever (only signalCode is
+      // set), so the old `exitCode !== null` check fell through to a
+      // listener that never fires and the runner deadlocked past every
+      // deadline (the timer's kill() on the dead group throws and resolves
+      // nothing). The child-gone check must read BOTH fields, and done()
+      // must be idempotent for the timer-vs-close overlap.
       if (child.exitCode !== null) done(child.exitCode, null);
+      else if (child.signalCode !== null) done(null, child.signalCode);
       else child.on("close", done);
     });
   return { child, pid: child.pid, kill, collect };
@@ -564,7 +579,13 @@ async function scoreAcceptance(ws, features = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]) {
 
 function writeReceipt(scenario, record) {
   mkdirSync(RUN_DIR, { recursive: true });
-  writeFileSync(join(RUN_DIR, `receipt-${scenario}.json`), JSON.stringify({ ts: new Date().toISOString(), model: MODEL, scenario, ...record }, null, 2));
+  // tmp+rename: receipts are read by any concurrently finishing runner's
+  // writeSummary() (the final round re-runs crash-consistency + idle-soak in
+  // parallel), and a torn mid-write read would poison the summary.
+  const final = join(RUN_DIR, `receipt-${scenario}.json`);
+  const tmp = `${final}.tmp`;
+  writeFileSync(tmp, JSON.stringify({ ts: new Date().toISOString(), model: MODEL, scenario, ...record }, null, 2));
+  renameSync(tmp, final);
   log(`receipt ${scenario}: verdict=${record.verdict}`);
 }
 
@@ -1228,6 +1249,44 @@ async function scenarioNotesStorm() {
   writeReceipt(name, { verdict, checks, metrics });
 }
 
+/** The engine's learning jobs (the LLM-spending lanes): engine-soak drives
+ *  them ON with live terminal traffic; idle-soak parks them — an "idle"
+ *  engine at boot defaults self-runs harness cycles (measured live, run
+ *  2026-10-27 13:09: a full 8-minute fizzbuzz cycle with real bridge spend
+ *  fired at the first 10-minute tick), which is engine WORKING, not engine
+ *  breathing. */
+const LEARNING_JOBS = ["harness-cycle", "auto-dream", "task-mint", "dream-check"];
+
+/** Soak-tail RSS slope in true KB/h (found in run 2026-10-26T23-05-23's
+ *  receipts: both soak lanes printed "KB/h" numbers 1000x hot — a per-SECOND
+ *  delta scaled by the 3,600,000 MILLISECONDS in an hour, the marathon
+ *  formula's ms-unit factor copied onto a seconds-unit divisor — and divided
+ *  by half the CONFIGURED window instead of the tail's real elapsed time;
+ *  idle-soak's receipt said 41,784,000 "KB/h" for a true +7.7 MB/h plateau).
+ *  The warmup skip must clear boot churn AND the first wave of interval jobs
+ *  (seeded at boot, first fire ~10 min in): that wave takes a one-time
+ *  worker-pool step the idle receipt measured at ~10 MB (plateau 126-129 MB
+ *  pre-wave, flat 135.6-138.9 MB post-wave), so a slope baseline that lands
+ *  mid-step turns a one-time allocation into a phantom leak. Windows of at
+ *  least 20 min (both defaults) clear the wave; shorter env-tuned windows are
+ *  smoke runs — the soak lanes own the slope verdict. The #67433 idle-leak
+ *  class this guards against burns 400-500 MB/MIN, four orders of magnitude
+ *  over the KB/h budgets, so honest math loses nothing. */
+function soakRssSlope(samples, minutes) {
+  const warmupS = Math.min(12 * 60, Math.floor(minutes * 60 * 0.6));
+  const tail = samples.filter((s) => typeof s.rssKb === "number" && s.tS >= warmupS);
+  if (tail.length < 2) return { slopeKbPerH: 0, warmupS, tailSamples: tail.length, tailSpanS: 0 };
+  const first = tail[0];
+  const last = tail[tail.length - 1];
+  const spanS = Math.max(30, last.tS - first.tS);
+  return {
+    slopeKbPerH: Math.round(((last.rssKb - first.rssKb) / spanS) * 3_600),
+    warmupS,
+    tailSamples: tail.length,
+    tailSpanS: spanS,
+  };
+}
+
 // ── scenario: engine-soak (k6 soak doctrine, engine + terminal traffic) ─────
 
 async function scenarioEngineSoak() {
@@ -1249,9 +1308,19 @@ async function scenarioEngineSoak() {
     runDir: join(runRoot, "engine-run"),
     unownHome,
   });
-  // Enable the learning jobs (mirrors detached-engine soak).
-  for (const jobId of ["harness-cycle", "auto-dream", "task-mint", "dream-check"]) {
-    await engineFetch(engine.url, engine.token, `/api/jobs/${jobId}/toggle`, { method: "POST" });
+  // Enable the learning jobs (mirrors detached-engine soak). Jobs default to
+  // ENABLED in the engine's store (jobs.enabled INTEGER DEFAULT 1) and the
+  // endpoint is a toggle (a flip, not a set) — blindly toggling an
+  // already-on job turns it OFF. The first soak run disabled the very lanes
+  // it meant to drive (dreamsDelta 0, runsDelta 0, learningHappened false),
+  // so toggle only the jobs that do not already sit in the wanted state.
+  const jobsBefore = await engineFetch(engine.url, engine.token, "/api/jobs");
+  for (const j of jobsBefore?.jobs ?? []) {
+    const want = LEARNING_JOBS.includes(j.id);
+    const isOn = j.enabled === 1 || j.enabled === true;
+    if (want !== isOn) {
+      await engineFetch(engine.url, engine.token, `/api/jobs/${j.id}/toggle`, { method: "POST" });
+    }
   }
   const jobsAfterToggle = await engineFetch(engine.url, engine.token, "/api/jobs");
   const jobsEnabled = {};
@@ -1287,6 +1356,7 @@ async function scenarioEngineSoak() {
       const idx = sessionIdx;
       runningAgent.collect(join(LOG_DIR, `${name}-s${idx + 1}`), 8 * 60_000).then((r) => {
         sessions.push({ i: idx + 1, exitCode: r.code, turns: r.envelope?.num_turns ?? null });
+        runningAgent = null; // free the slot — the next 5-minute session can spawn
       });
       sessionIdx++;
       nextSessionAt = Date.now() + SOAK_SESSION_EVERY_MIN * 60_000;
@@ -1329,12 +1399,9 @@ async function scenarioEngineSoak() {
   await engine.stop().catch(() => {});
 
   // Verdict math (k6 soak doctrine: stable-or-within-expected-variation).
-  const rss = samples.map((s) => s.rssKb).filter((v) => typeof v === "number");
   const fds = samples.map((s) => s.fds).filter((v) => typeof v === "number" && v >= 0);
-  const skipWarmup = Math.max(0, Math.floor(samples.length / 6)); // ~first sixth = warmup
-  const rssTail = rss.slice(skipWarmup);
-  const rssSlopeKbPerH =
-    rssTail.length >= 2 ? Math.round(((rssTail[rssTail.length - 1] - rssTail[0]) / Math.max(30, SOAK_MINUTES * 60 / 2)) * 3_600_000) : 0;
+  const rssSlope = soakRssSlope(samples, SOAK_MINUTES);
+  const rssSlopeKbPerH = rssSlope.slopeKbPerH;
   const fdDrift = fds.length ? Math.max(...fds) - Math.min(...fds) : -1;
   const maxWal = Math.max(0, ...samples.map((s) => s.walBytes ?? 0));
   const dreamsDelta = (() => {
@@ -1354,6 +1421,9 @@ async function scenarioEngineSoak() {
     samples: samples.length,
     sessions,
     rssSlopeKbPerH,
+    rssWarmupS: rssSlope.warmupS,
+    rssTailSamples: rssSlope.tailSamples,
+    rssTailSpanS: rssSlope.tailSpanS,
     fdDrift,
     maxWalBytes: maxWal,
     dreamsDelta,
@@ -1614,18 +1684,28 @@ function validLineCount(p) {
   return valid;
 }
 
-/** Only the FINAL line may be torn (a mid-write kill); anything earlier is
- *  real corruption (claude-code#52387 — "resume fails with JSON parse error"
- *  was a whole-file refusal). Tolerated tail garbage that pi's loader skips
- *  stays skipped forever; the settled prefix must never shrink. */
-function tailTornOnly(p) {
+/** The torn record the crash-consistency lane injects after each kill — a
+ *  half-written JSONL line with no trailing newline, the deterministic
+ *  analog of a SIGKILL landing between an append's open and its write. */
+const TORN_FRAGMENT = '{"type":"message","message":{"role":"toolResult","content":"to';
+
+/** Every JSON-corrupt line in the final session file is one the bench itself
+ *  injected after a kill. An injected fragment sits mid-file forever once the
+ *  next --resume appends after it, so "only the final line may be torn" is
+ *  the wrong invariant for this lane: the loader must skip SETTLED torn
+ *  lines on every resume, not just the first (the claude-code#52387
+ *  whole-file-refusal class is guarded by noParseCrash +
+ *  everyResumeContract, and data loss by prefixNeverLost). Corruption the
+ *  bench did NOT inject — a foreign artifact, the actual #52387 class — is
+ *  what this check exists to catch. */
+function tornAllInjected(p) {
   if (!existsSync(p)) return true;
   const lines = readFileSync(p, "utf8").split("\n").filter((l) => l.trim());
-  for (let i = 0; i < lines.length - 1; i++) {
+  for (const l of lines) {
     try {
-      JSON.parse(lines[i]);
+      JSON.parse(l);
     } catch {
-      return false;
+      if (!l.startsWith(TORN_FRAGMENT)) return false;
     }
   }
   return true;
@@ -1684,6 +1764,7 @@ async function scenarioCrashConsistency() {
   const runStart = Date.now();
   const legs = [];
   let prefixFloor = 0; // valid-line floor the session must never drop below
+  let tornInjectCount = 0; // torn fragments the bench injected (the only corruption allowed)
 
   for (let leg = 0; leg <= kills; leg++) {
     const isKillLeg = leg < kills;
@@ -1729,8 +1810,9 @@ async function scenarioCrashConsistency() {
       if (existsSync(sessFile)) {
         const before = validLineCount(sessFile);
         prefixFloor = Math.max(prefixFloor, before);
-        appendFileSync(sessFile, '{"type":"message","message":{"role":"toolResult","content":"to');
+        appendFileSync(sessFile, TORN_FRAGMENT);
         tornInjected = true;
+        tornInjectCount++;
       }
     }
     const sessFile = sessionId ? join(unownHome, "agent", "sessions", `${sessionId}.jsonl`) : null;
@@ -1759,6 +1841,7 @@ async function scenarioCrashConsistency() {
   const feats = await featureCommits(ws);
   const metrics = {
     killsRequested: kills,
+    tornInjectCount,
     legs,
     wallS: Math.round((Date.now() - runStart) / 1000),
     featuresCommitted: feats,
@@ -1780,7 +1863,7 @@ async function scenarioCrashConsistency() {
     everyResumeContract: legs.every((l) => l.skipped || l.exitCode === 0 || l.exitCode === 1 || l.killed),
     noParseCrash: legs.every((l) => !l.parseCrashInStderr),
     noOrphanSurvivors: legs.every((l) => (l.orphanSurvivors ?? 0) === 0),
-    tailTornOnly: sessFile ? tailTornOnly(sessFile) : false,
+    tornAllInjected: sessFile ? tornAllInjected(sessFile) : false,
     prefixNeverLost: finalValid >= prefixFloor,
     taskProgressHonest: acceptance.passed >= 2,
     noCapBreach: legs.every((l) => !l.timedOut || l.killed),
@@ -1799,7 +1882,7 @@ async function scenarioIdleSoak() {
   const unownHome = join(runRoot, "unown-home");
   await ensureHome(unownHome, MODEL);
 
-  log(`${name}: booting bench engine for a ${IDLE_MINUTES}-minute IDLE soak (jobs off, zero traffic)`);
+  log(`${name}: booting bench engine for a ${IDLE_MINUTES}-minute IDLE soak (learning parked, zero traffic)`);
   const engine = await bootBenchEngine(name, {
     port: Number(process.env.LONGRUN_IDLE_PORT ?? 3045),
     dataDir: join(runRoot, "engine-data"),
@@ -1807,8 +1890,26 @@ async function scenarioIdleSoak() {
     runDir: join(runRoot, "engine-run"),
     unownHome,
   });
-  // Jobs stay DISABLED (the boot default) and no terminal session ever
-  // connects: the only activity is the engine's own housekeeping.
+  // Park the learning lanes (state-aware, the engine-soak pattern inverted):
+  // boot defaults enable ALL jobs, and the second idle run measured live what
+  // that means — harness-cycle fired at its first 10-minute tick and ran a
+  // full 8-minute fizzbuzz cycle with REAL bridge spend (2,178 tokens in), a
+  // bwrap sandbox spawn, then a post-run event wave (auto-dream, note-sync,
+  // watch-scan, sandbox-gc) — one-time allocations that stepped the RSS twice
+  // mid-soak (+8.9 MB cycle start, +5 MB cycle end + WAL burst) and read as
+  // phantom leaks in the tail slope. The #67433/#18859 idle-leak analog is
+  // the engine BREATHING (housekeeping intervals on: watch-scan, note-sync,
+  // sandbox-gc, db-retention), not the engine WORKING (autonomous learning —
+  // that soak is engine-soak's lane). The receipt proves the parking:
+  // learningParked asserts every learning job sat disabled with run_count 0.
+  const jobsBefore = await engineFetch(engine.url, engine.token, "/api/jobs");
+  for (const j of jobsBefore?.jobs ?? []) {
+    const want = !LEARNING_JOBS.includes(j.id); // housekeeping ON, learning OFF
+    const isOn = j.enabled === 1 || j.enabled === true;
+    if (want !== isOn) {
+      await engineFetch(engine.url, engine.token, `/api/jobs/${j.id}/toggle`, { method: "POST" });
+    }
+  }
 
   const samples = [];
   const soakStart = Date.now();
@@ -1828,6 +1929,13 @@ async function scenarioIdleSoak() {
     });
     await new Promise((r) => setTimeout(r, 30_000));
   }
+  // The parking proof, read before the shutdown drains the API.
+  const finalJobs = await engineFetch(engine.url, engine.token, "/api/jobs");
+  const jobsEnabled = {};
+  for (const j of finalJobs?.jobs ?? []) jobsEnabled[j.id] = j.enabled === 1 || j.enabled === true;
+  const learningJobs = (finalJobs?.jobs ?? [])
+    .filter((j) => LEARNING_JOBS.includes(j.id))
+    .map((j) => ({ id: j.id, enabled: jobsEnabled[j.id] ?? null, runs: j.run_count ?? 0 }));
   const gracefulStop = await engineFetch(engine.url, engine.token, "/api/shutdown", { method: "POST", timeoutMs: 15_000 });
   await new Promise((r) => setTimeout(r, 5_000));
   const healthAfterStop = await engineFetch(engine.url, engine.token, "/api/health");
@@ -1835,24 +1943,25 @@ async function scenarioIdleSoak() {
 
   const rss = samples.map((s) => s.rssKb).filter((v) => typeof v === "number");
   const fds = samples.map((s) => s.fds).filter((v) => typeof v === "number" && v >= 0);
-  const skipWarmup = Math.max(0, Math.floor(samples.length / 6));
-  const rssTail = rss.slice(skipWarmup);
-  const rssSlopeKbPerH =
-    rssTail.length >= 2
-      ? Math.round(((rssTail[rssTail.length - 1] - rssTail[0]) / Math.max(30, IDLE_MINUTES * 60 / 2)) * 3_600_000)
-      : 0;
+  const rssSlope = soakRssSlope(samples, IDLE_MINUTES);
+  const rssSlopeKbPerH = rssSlope.slopeKbPerH;
   const fdDrift = fds.length ? Math.max(...fds) - Math.min(...fds) : -1;
   const maxWal = Math.max(0, ...samples.map((s) => s.walBytes ?? 0));
   const metrics = {
     idleMinutes: IDLE_MINUTES,
     samples: samples.length,
     rssSlopeKbPerH,
+    rssWarmupS: rssSlope.warmupS,
+    rssTailSamples: rssSlope.tailSamples,
+    rssTailSpanS: rssSlope.tailSpanS,
     fdDrift,
     maxWalBytes: maxWal,
     rssStartKb: rss[0] ?? null,
     rssEndKb: rss[rss.length - 1] ?? null,
     gracefulStopOk: gracefulStop?.ok ?? Boolean(gracefulStop),
     healthAfterStop,
+    jobsEnabled,
+    learningJobs,
     sampleSeries: samples,
   };
   const checks = {
@@ -1860,10 +1969,18 @@ async function scenarioIdleSoak() {
     idleRssFlat: rssSlopeKbPerH <= 15_360, // ≤ ~15 MB/h idle (no traffic — the #67433 class leaks 400-500 MB/min)
     idleFdFlat: fdDrift <= 10,
     walQuiet: maxWal <= 16 * 1024 * 1024,
+    learningParked: LEARNING_JOBS.every(
+      (id) => jobsEnabled[id] === false && !(learningJobs.find((j) => j.id === id)?.runs > 0),
+    ),
     gracefulShutdown: (gracefulStop?.ok ?? Boolean(gracefulStop)) && healthAfterStop === null,
   };
   const verdict = Object.values(checks).every(Boolean) ? "pass" : "fail";
-  writeReceipt(name, { verdict, checks, metrics, note: "zero-traffic idle engine — the claude-code#67433/#18859 idle-leak analog; k6 soak doctrine, idle variant" });
+  writeReceipt(name, {
+    verdict,
+    checks,
+    metrics,
+    note: "zero-traffic idle engine, learning lanes parked state-aware (boot defaults self-run harness cycles — measured live) — the claude-code#67433/#18859 idle-leak analog; k6 soak doctrine, idle variant",
+  });
 }
 
 // ── rescore: re-run bench-owned scoring against an EXISTING scenario workspace ─
