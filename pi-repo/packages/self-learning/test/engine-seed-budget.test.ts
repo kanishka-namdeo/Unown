@@ -8,17 +8,18 @@
 // The contract pinned here, in a fresh subprocess (same determinism argument
 // as engine-health's phase probe — bun test runs files in one process, and
 // any earlier suite that booted startServer would race this one):
-//   1. a seed that settles WITHIN budget prints the positive
-//      "settled in Ns — memory platform live" line, and
-//   2. it NEVER prints the stale "did not settle within Ns" line, even after
-//      the budget has elapsed past it (the un-cleared timer fired at exactly
-//      that moment pre-fix).
-//
-// The slow-seed branch (a genuine >budget seed prints the degraded line and
-// the late-settlement lift when it lands) is not puppeteered here: making the
-// platform init deterministically slow needs a controllable hang the engine
-// does not expose; that branch's behavior is unchanged by the fix (the timer
-// still fires when it legitimately wins the race).
+//   1. a healthy boot SETTLES and says so — "settled in Ns — memory platform
+//      live" when the seed wins the race, or "settled late (Ns > Ns budget)
+//      — the degraded-boot state is lifted" when a slow runner's boot
+//      outruns the budget floor (the v0.0.33 windows release leg measured
+//      the late form at 5s on a cold 2-core runner — a healthy boot, not a
+//      regression; the engine lifts the degraded state either way), and
+//   2. NOTHING stale follows the settle: the un-cleared timer's "did not
+//      settle within Ns — booting degraded" line never lands AFTER the
+//      settle line (pre-fix it fired at exactly that point). A slow boot's
+//      own honest degraded line — the timer legitimately winning the race,
+//      printing BEFORE the late settle — is not the bug; the pin slices
+//      from the settle and asserts the silence after it.
 import { describe, expect, test } from "bun:test";
 import { spawn } from "node:child_process";
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
@@ -29,7 +30,7 @@ const SRC = join(import.meta.dir.slice(0, -5), "src");
 
 describe("memory platform seed budget race (2026-10-28)", () => {
         test(
-                "a fast seed prints the positive settle line and never the stale degraded line",
+                "a healthy boot settles — fast or late — and the stale degraded line never follows the settle",
                 async () => {
                         const root = mkdtempSync(join(tmpdir(), "unown-seed-"));
                         const dataDir = join(root, "data");
@@ -41,9 +42,10 @@ describe("memory platform seed budget race (2026-10-28)", () => {
                         const script = `import { startServer } from ${JSON.stringify(join(SRC, "index.ts"))};
 const server = await startServer(${port});
 if (!server) process.exit(3);
-// Outlive the seed budget (3s floor) long enough for a stale, un-cleared
-// timer to fire if the fix regressed — then leave cleanly.
-setTimeout(() => process.exit(0), 12_000);
+// Outlive the seed budget (3s floor) AND the post-settle silence window
+// (8s) even on a slow runner whose boot settles late — a stale, un-cleared
+// timer that regresses fires within that window; then leave cleanly.
+setTimeout(() => process.exit(0), 35_000);
 `;
                         const probePath = join(root, "probe.ts");
                         writeFileSync(probePath, script);
@@ -76,18 +78,27 @@ setTimeout(() => process.exit(0), 12_000);
                         child.stdout.on("data", (d) => (out += d));
                         child.stderr.on("data", (d) => (out += d));
                         try {
-                                // Wait for the positive line (the seed settles fast) …
+                                // Wait for the settle — EITHER form is a healthy boot (a warm
+                                // runner settles within budget; a cold one settles late and
+                                // lifts). Which form lands is the runner's call, not the
+                                // contract's.
+                                const settled = /memory platform seed settled (in \d+s|late)/;
                                 const t0 = Date.now();
-                                while (!out.includes("memory platform seed settled in") && Date.now() - t0 < 20_000) {
+                                while (!settled.test(out) && Date.now() - t0 < 25_000) {
                                         await new Promise((r) => setTimeout(r, 250));
                                         if (child.exitCode !== null) break;
                                 }
-                                expect(out).toContain("memory platform seed settled in");
-                                // … then wait PAST the budget + margin: the un-cleared timer
-                                // fired at exactly this point pre-fix.
+                                expect(out).toMatch(settled);
+                                const settleAt = out.match(settled)!.index ?? 0;
+                                // … then wait PAST the budget + margin: pre-fix, the un-cleared
+                                // timer fired the stale degraded line at exactly this point
+                                // after the settle. The pin slices from the settle line — a
+                                // slow boot's own honest degraded line printed BEFORE its late
+                                // settle stays outside the verdict.
                                 await new Promise((r) => setTimeout(r, 8_000));
-                                expect(out).not.toContain("did not settle within");
-                                expect(out).not.toContain("booting degraded");
+                                const afterSettle = out.slice(settleAt);
+                                expect(afterSettle).not.toContain("did not settle within");
+                                expect(afterSettle).not.toContain("booting degraded");
                         } finally {
                                 child.kill("SIGKILL");
                                 // windows-latest taught this teardown the hard
@@ -114,6 +125,6 @@ setTimeout(() => process.exit(0), 12_000);
                                 }
                         }
                 },
-                40_000,
+                45_000,
         );
 });
