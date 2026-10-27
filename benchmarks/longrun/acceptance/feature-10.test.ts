@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { cli, state, readJson, writeJson, exists, read } from "./_helpers";
 import { join } from "node:path";
-import { writeFileSync } from "node:fs";
+import { mkdirSync, writeFileSync } from "node:fs";
 
 describe("feature 10 - persistent store v2", () => {
   test("entries persist across invocations", () => {
@@ -49,6 +49,7 @@ describe("feature 10 - persistent store v2", () => {
 
   test("bad JSON in the store is fatal", () => {
     const c = state();
+    mkdirSync(join(c, ".ledger"), { recursive: true });
     writeFileSync(join(c, ".ledger", "store.json"), "{not json");
     const r = cli(["balance"], c);
     expect(r.code).toBe(1);

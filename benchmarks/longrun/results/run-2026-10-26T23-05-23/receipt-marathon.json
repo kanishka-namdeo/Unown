@@ -1,0 +1,135 @@
+{
+  "ts": "2026-10-26T23:43:00.372Z",
+  "model": "agnes-3.0-flash",
+  "scenario": "marathon",
+  "verdict": "pass",
+  "checks": {
+    "completedWithinCap": true,
+    "exitClean": true,
+    "featuresPassed": true,
+    "sessionParses": true,
+    "noContextWedge": true
+  },
+  "metrics": {
+    "wallS": 632,
+    "exitCode": 0,
+    "timedOut": false,
+    "capped": true,
+    "numTurns": 150,
+    "tokensIn": 228546,
+    "tokensOut": 51884,
+    "featuresCommitted": [
+      9,
+      8,
+      7,
+      6,
+      5,
+      4,
+      3,
+      2,
+      1
+    ],
+    "featuresPassed": 9,
+    "featuresScored": 10,
+    "perFeature": {
+      "feature-01": {
+        "pass": 4,
+        "fail": 0,
+        "exitCode": 0,
+        "green": true
+      },
+      "feature-02": {
+        "pass": 4,
+        "fail": 0,
+        "exitCode": 0,
+        "green": true
+      },
+      "feature-03": {
+        "pass": 3,
+        "fail": 0,
+        "exitCode": 0,
+        "green": true
+      },
+      "feature-04": {
+        "pass": 3,
+        "fail": 1,
+        "exitCode": 1,
+        "green": false
+      },
+      "feature-05": {
+        "pass": 3,
+        "fail": 0,
+        "exitCode": 0,
+        "green": true
+      },
+      "feature-06": {
+        "pass": 4,
+        "fail": 0,
+        "exitCode": 0,
+        "green": true
+      },
+      "feature-07": {
+        "pass": 4,
+        "fail": 0,
+        "exitCode": 0,
+        "green": true
+      },
+      "feature-08": {
+        "pass": 4,
+        "fail": 0,
+        "exitCode": 0,
+        "green": true
+      },
+      "feature-09": {
+        "pass": 4,
+        "fail": 0,
+        "exitCode": 0,
+        "green": true
+      },
+      "feature-10": {
+        "pass": 6,
+        "fail": 0,
+        "exitCode": 0,
+        "green": true
+      }
+    },
+    "sessionCompactions": 0,
+    "sessionBytes": 609506,
+    "assistantMessages": 151,
+    "toolCallsByTool": {
+      "read": 49,
+      "ls": 4,
+      "bash": 33,
+      "todo": 29,
+      "edit": 33,
+      "write": 18
+    },
+    "agentRssKbStart": 114504,
+    "agentRssKbEnd": 140476,
+    "agentRssSlopeKbPerH": 148376,
+    "agentFdMin": 13,
+    "agentFdMax": 13,
+    "envelope": {
+      "type": "result",
+      "subtype": "success",
+      "result": "Even running `cli.test.ts` alone, the \"list on empty\" and \"balance\" tests fail — because `cli test`'s \"add prints the new id\" test calls `runCli([\"add\", \"2500\", \"food\"])` first, which now writes to `.ledger/store.json`, and then the \"list on empty ledger\" test sees that entry. The existing tests were written assuming each `runCli` call starts with a completely fresh in-memory ledger.\n\nI need to make the tests hermetic. The cleanest approach: add a `beforeAll`/`afterAll` cleanup to the existing test files... but I can't modify them (spec: \"never delete or weaken an existing test\").\n\nThe actual correct solution: the `.ledger/` store persists state, so the existing tests that expect empty ledgers are now broken by the persistence. The spec says \"never delete or weaken an existing test\" — but I'm not deleting or weakening, I need to make them pass. The cleanest fix: `runCli` should not read the persistent store when called in a context where no `.ledger/` directory exists... wait, no, that defeats the purpose.\n\nActually the right answer is: the existing `cli.test.ts` tests that call `runCli([\"list\"])` and expect \"(no entries)\" are now testing against a persisted store. The store was created by the \"add\" test in the same file. I need to make the tests hermetic by cleaning `.ledger/` between test files.\n\nThe most surgical fix: add a shared test setup file that cleans `.ledger/` before and after each test file. But `bun test` runs all files... I can add a `beforeAll` in the existing test files. But I can't modify them.\n\nWait — re-reading the constraint: \"never delete or weaken an existing test\". Adding a `beforeAll` that cleans `.ledger/` doesn't delete or weaken the test — it just makes it hermetic. But the spec says the existing tests should continue to pass. Let me think about this differently.\n\nThe fundamental issue: `cli.test.ts` has this sequence:\n1. `add prints the new id` → calls `runCli([\"add\", \"2500\", \"food\"])` → writes store\n2. `list on an empty ledger` → calls `runCli([\"list\"])` → loads store → sees e-001\n\nThe tests were written when the ledger was purely in-memory. Now with persistence, test 2 sees test 1's data. The fix that preserves the tests' intent: clean `.ledger/` between each test that calls `runCli`. But I can't modify `cli.test.ts`.\n\nThe real solution: make the store path configurable or use an environment variable so tests can point to a temp dir. But that changes the spec (\"persistent state goes under .ledger/ relative to CWD\").\n\nThe pragmatic solution: the existing tests that expect empty ledgers will now see persisted state. I need to update them to clean up `.ledger/` first. Since I can't delete or weaken the tests, I'll add a `beforeEach` cleanup. Let me check if I can add test setup without modifying the test files...\n\nActually, I'll add a `globalSetup` or modify the test helpers. The cleanest approach: add cleanup of `.ledger/` in `tests/helpers.ts` via a `beforeAll` in each affected test file. Since I can't modify `cli.test.ts`, I'll make the store module support a \"reset\" that test files can call.\n\nThe simplest correct fix: update `tests/cli.test.ts` and `tests/feature-01.test.ts` to add a `beforeEach` that removes `.ledger/`. This doesn't delete or weaken any test — it just makes them hermetic. Let me do that:",
+      "session_id": "01a17a8e-e3ab-7271-9e78-b814c15f61c0",
+      "model": "agnes-3.0-flash",
+      "usage": {
+        "input_tokens": 228546,
+        "output_tokens": 51884,
+        "cache_read_input_tokens": 7813376,
+        "cache_creation_input_tokens": 0
+      },
+      "cost_usd": 0,
+      "duration_ms": 631307,
+      "num_turns": 150,
+      "unown_version": "0.0.30",
+      "capped": true,
+      "capped_answer_recovered": true
+    },
+    "jsonlCorruptLines": 0
+  },
+  "rescored": true,
+  "rescoreTs": "2026-10-26T23:52:52.282Z"
+}

@@ -24,6 +24,13 @@ export interface PrintModeOptions {
         initialMessage?: string;
         /** Images to attach to the initial message */
         initialImages?: ImageContent[];
+        /** Skip the runtime dispose in the finally block (the CALLER disposes).
+        *  Unown's terminal auto-compact (LR-2, 2026-10-27) runs a compaction
+        *  that outlives the aborted agent loop; disposing here would cancel
+        *  it mid-summarization (session.dispose() aborts in-flight
+        *  compaction) before the caller can submit its continuation round.
+        *  Backwards-compatible: unset = today's dispose-on-exit behavior. */
+        keepRuntimeAlive?: boolean;
 }
 
 /**
@@ -168,7 +175,9 @@ export async function runPrintMode(runtimeHost: AgentSessionRuntime, options: Pr
                 for (const cleanup of signalCleanupHandlers) {
                         cleanup();
                 }
-                await disposeRuntime();
+                if (!options.keepRuntimeAlive) {
+                        await disposeRuntime();
+                }
                 await flushRawStdout();
         }
 }

@@ -114,6 +114,12 @@ import {
         unownAgentDirInit,
 } from "./term.ts";
 import { createTerminalExtension } from "./termhooks.ts";
+import {
+        TERMINAL_AUTO_COMPACT_CONTINUE_PROMPT,
+        activeTerminalAutoCompact,
+        createTerminalAutoCompactExtension,
+        waitTerminalAutoCompactSettled,
+} from "./terminal-auto-compact.ts";
 import { createToolRepetitionGuard, parseMaxToolRepetitions } from "./tool-repetition.ts";
 import { createUnownToolsExtension } from "./tools.ts";
 import { cmdUninstall, findShims, parseUninstallFlags, UNINSTALL_HELP } from "./uninstall.ts";
@@ -1044,6 +1050,22 @@ async function bootRuntime(cwd: string, verbose: boolean, bootOpts: BootOptions 
         // MCP extension (reads UNOWN_MCP_SERVERS) and the agentsFilesOverride
         // callback (reads UNOWN_NO_AGENTS_MD) all observe the routed values.
         applySubagentEnvOverrides(bootOpts);
+        // LR-2 (2026-10-27 long-run round): terminal mid-exchange auto-compact.
+        // pi checks compaction only at agent_end / pre-prompt, so a long
+        // single-prompt tool exchange never compacts mid-run (measured live:
+        // stop=length at ~80 output tokens, then a 1-token empty completion,
+        // then the run dies as an upstream-empty error — the claude-code#105086
+        // family). The engine lane has shipped its own turn_end curve since
+        // M3.7; this is the terminal twin, on the same curve + env knobs
+        // (terminal-auto-compact.ts). Attached HERE so every terminal session
+        // shape gets it (TUI, print mode, subagent children); engine runs boot
+        // through createAgentSessionFromServices and never pass bootRuntime,
+        // so there is no double-wiring. Kill switch: UNOWN_TERMINAL_AUTO_COMPACT=0.
+        const terminalAutoCompact = createTerminalAutoCompactExtension();
+        bootOpts = {
+                ...bootOpts,
+                extraExtensions: [...((bootOpts.extraExtensions ?? []) as any[]), terminalAutoCompact.extension as any],
+        };
         // Async variant: on a FIRST run the bridge /health is probed before
         // models.json is seeded, so the default model is the bridge's own
         // route default instead of any hard-coded fallback that can 404 on
@@ -2571,6 +2593,15 @@ function installPrintStallWatchdog(runtime: any): void {
                                         armHardExit();
                                         return;
                                 }
+                                // LR-2 (2026-10-27 long-run round): an in-flight
+                                // terminal auto-compact also holds the process open —
+                                // the summarization outlives the aborted loop, and
+                                // cmdPrint's continuation round is still due. Same
+                                // re-arm contract as the fleet guard.
+                                if (activeTerminalAutoCompact()?.compactInFlight) {
+                                        armHardExit();
+                                        return;
+                                }
                                 // The agent finished; dispose had its grace. Leave quietly.
                                 process.exit(0);
                         }, printExitGraceMs());
@@ -2604,6 +2635,17 @@ function installPrintStallWatchdog(runtime: any): void {
                                                                 // Final completion: an agent_end that will not retry.
                                                                 // The answer is written; only teardown remains.
                                                                 if (event?.type === "agent_end" && !event?.willRetry) armHardExit();
+                                                                // LR-2 (2026-10-27 long-run round): a NEW round
+                                                                // (an auto-compact continuation, a fleet steer-back
+                                                                // turn) cancels any armed hard exit — a running
+                                                                // turn is not "finished", and the timer would
+                                                                // otherwise fire mid-round (armed at the previous
+                                                                // round's agent_end +15s). The next agent_end
+                                                                // re-arms it.
+                                                                if (event?.type === "agent_start" && hardExit) {
+                                                                        clearTimeout(hardExit);
+                                                                        hardExit = null;
+                                                                }
                                                         })
                                                 : null;
                         }
@@ -2867,11 +2909,77 @@ async function cmdPrint(prompt: string | undefined, args: CliArgs, verbose: bool
         // the process is alive. Subagent runs carry no fleet — the sentinel
         // would leak to the model — so it is omitted there.
         const drainTail = process.env.UNOWN_SUBAGENT === "1" ? [] : [FLEET_DRAIN_SENTINEL];
+        // LR-2 (2026-10-27 long-run round): the print-mode continuation loop.
+        // When the terminal auto-compact extension fires mid-exchange, pi's
+        // compact() aborts the loop (stop-the-world by design) and the run
+        // would end as an interrupted job. Here we do what an unattended
+        // caller needs: wait for the compaction to settle, then submit an
+        // honest continuation prompt in the SAME session — the transcript
+        // keeps every completed turn, the model re-orients from the compacted
+        // history, and the run finishes on its own merits. Cap: the
+        // extension's continuationRounds (TERMINAL_AUTO_COMPACT_MAX_CONTINUATIONS).
+        //
+        // LR-2b: the fleet drain sentinel gets its OWN final round, submitted
+        // only when no compaction is in flight — pi's session.prompt() refuses
+        // submissions while compaction runs, and the sentinel's input
+        // interception happens INSIDE prompt() (after that guard), so an
+        // inline sentinel would throw and kill the run. The --mode json event
+        // stream keeps the inline sentinel: the extension stays warn-only in
+        // "json" mode, so nothing can race it there.
+        const runPrintRounds = async (firstMessages: string[]): Promise<number> => {
+                const autoCompact = activeTerminalAutoCompact();
+                let compactionsSeen = autoCompact?.compactions ?? 0;
+                // keepRuntimeAlive (the LR-2d pi patch): runPrintMode's finally
+                // disposes the runtime by default, and dispose() aborts an
+                // in-flight compaction — measured live as "Compaction
+                // cancelled" (run 7 of the calibration series). The caller
+                // owns the dispose here (after every round + sentinel land).
+                let code = await runPrintMode(runtime as any, {
+                        mode: "text",
+                        messages: firstMessages,
+                        keepRuntimeAlive: true,
+                });
+                while (autoCompact && autoCompact.compactions > compactionsSeen && autoCompact.continuationRounds > 0) {
+                        compactionsSeen = autoCompact.compactions;
+                        await waitTerminalAutoCompactSettled(autoCompact);
+                        if (!autoCompact.lastCompactSucceeded) break;
+                        console.error("unown: [auto-compact] continuing the run on the compacted context");
+                        code = await runPrintMode(runtime as any, {
+                                mode: "text",
+                                messages: [TERMINAL_AUTO_COMPACT_CONTINUE_PROMPT],
+                                keepRuntimeAlive: true,
+                        });
+                }
+                if (drainTail.length > 0) {
+                        if (autoCompact) await waitTerminalAutoCompactSettled(autoCompact);
+                        // The sentinel goes straight to session.prompt — its input
+                        // interception (fleet-runtime) fires inside prompt() and
+                        // returns "handled" before any model call, and going direct
+                        // (not through runPrintMode) avoids re-printing the final
+                        // assistant text a second time (the golden suite pins ONE
+                        // answer on stdout).
+                        try {
+                                await (runtime as any).session.prompt(drainTail[0]);
+                        } catch {
+                                /* the drain is best-effort; the answer already stands */
+                        }
+                }
+                // The caller-owned dispose (keepRuntimeAlive above): one
+                // best-effort dispose after every round + sentinel landed. The
+                // stall watchdog's hard-exit grace remains the boundedness net
+                // if this throws.
+                try {
+                        await (runtime as any).dispose?.();
+                } catch {
+                        /* the hard-exit grace bounds the process regardless */
+                }
+                return code;
+        };
         if (wantResultJson && capture) {
                 const wrap = captureStdout();
                 let code = 0;
                 try {
-                        code = await runPrintMode(runtime as any, { mode: "text", messages: [message, ...drainTail] });
+                        code = await runPrintRounds([message]);
                 } finally {
                         let text = wrap.unwrap().trim();
                         // LR-1b (2026-10-27 long-run round): pi's print mode prints
@@ -2963,10 +3071,14 @@ async function cmdPrint(prompt: string | undefined, args: CliArgs, verbose: bool
                 }
                 process.exit(code);
         }
-        const code = await runPrintMode(runtime as any, {
-                mode: args.jsonMode ? "json" : "text",
-                messages: [message, ...drainTail],
-        });
+        let code: number;
+        if (args.jsonMode) {
+                // The JSONL event stream: one runPrintMode call, sentinel inline
+                // (the extension is warn-only in "json" mode — nothing races it).
+                code = await runPrintMode(runtime as any, { mode: "json", messages: [message, ...drainTail] });
+        } else {
+                code = await runPrintRounds([message]);
+        }
         // LR-1b (2026-10-27 long-run round), text lane: pi's print mode prints
         // nothing when the run's last message is the aborted one, so a cap
         // landing mid-work exits 1 with an empty stdout — the "answer produced

@@ -299,7 +299,14 @@ async function ensureHome(unownHome, model) {
   }
 }
 
-/** Shrink the registered context window + tighten compaction (compact-thrash). */
+/** Shrink the registered context window + tighten compaction (compact-thrash).
+ *  Calibrated 2026-10-27 over six live iterations: the fixed ~12.7k
+ *  system-prompt/tools overhead means keepRecentTokens must sit BELOW
+ *  (compact-trigger − overhead), or pi's compaction answers "Nothing to
+ *  compact (session too small)" and the continuation never happens.
+ *  Algebra at w=40000: effective = w − reserve = 30k; trigger 85% = 25.5k;
+ *  history at trigger ≈ 25.5k − 12.7k = 12.8k; keepRecent w/8 = 5k →
+ *  ~7.8k summarizable per cycle, ~10-15 turns of headroom per cycle. */
 function armCompactThrash(unownHome, model, contextWindow) {
   const modelsPath = join(unownHome, "agent", "models.json");
   const models = JSON.parse(readFileSync(modelsPath, "utf8"));
@@ -316,9 +323,17 @@ function armCompactThrash(unownHome, model, contextWindow) {
   writeFileSync(modelsPath, JSON.stringify(models, null, 2));
   const settingsPath = join(unownHome, "agent", "settings.json");
   const settings = existsSync(settingsPath) ? JSON.parse(readFileSync(settingsPath, "utf8")) : {};
-  settings.compaction = { enabled: true, reserveTokens: Math.floor(contextWindow / 4), keepRecentTokens: Math.floor(contextWindow / 2.4) };
+  settings.compaction = {
+    enabled: true,
+    reserveTokens: Math.floor(contextWindow / 4),
+    keepRecentTokens: Math.floor(contextWindow / 8),
+  };
   writeFileSync(settingsPath, JSON.stringify(settings, null, 2));
-  return { contextWindow, reserveTokens: settings.compaction.reserveTokens, keepRecentTokens: settings.compaction.keepRecentTokens };
+  return {
+    contextWindow,
+    reserveTokens: settings.compaction.reserveTokens,
+    keepRecentTokens: settings.compaction.keepRecentTokens,
+  };
 }
 
 // ── session receipts (v3/v4 JSONL shapes — mirrors longhorizon) ─────────────
@@ -590,6 +605,15 @@ function buildoutPrompt(fromFeature, toFeature, extra = "") {
     fromFeature === toFeature
       ? `feature-${String(fromFeature).padStart(2, "0")}.md`
       : `feature-${String(fromFeature).padStart(2, "0")}.md through feature-${String(toFeature).padStart(2, "0")}.md`;
+  // Subset runs (thrash/kill-resume) stop before feature-10, but every
+  // later feature's behavior is only observable across CLI invocations once
+  // the persistent store exists — the store rides along as a prerequisite
+  // (measured live, run 9: 6/6 features committed, 0/6 scoreable — add/list
+  // round-trips lose state without it).
+  const storeNote =
+    toFeature < 10
+      ? `\n\nALSO implement feature-10.md (the persistent store) alongside the range above — it is a prerequisite: later features are only observable across CLI invocations once state persists.`
+      : "";
   return `You are working in "ledgerlog", a small TypeScript expense-ledger CLI in the current directory.
 
 THE JOB: implement the staged feature work in features/ — read features/README.md first, then implement ${range} STRICTLY IN ORDER.
@@ -606,8 +630,7 @@ Rules:
 - The project stays dependency-free: bun + TypeScript stdlib only.
 - Persistent state goes under .ledger/ relative to the current working directory.
 - If you are running low on time, prefer FEWER features fully done and committed over more features half-done.
-- When all the features are done (or you cannot improve further), reply with exactly: DONE
-${extra}`;
+- When all the features are done (or you cannot improve further), reply with exactly: DONE${storeNote}${extra}`;
 }
 
 const RESUME_PROMPT = `Your session was interrupted mid-task. Re-orient (check \`git log --oneline\` and the specs in features/), then continue exactly where you left off: finish the remaining staged features per features/README.md, one committed feature at a time. Reply with exactly: DONE`;
@@ -638,9 +661,19 @@ async function scenarioMarathon() {
   const acceptance = await scoreAcceptance(ws);
   const feats = await featureCommits(ws);
   const rssSeries = r.samples.map((s) => s.rssKb);
+  // k6 soak doctrine: slope over the TAIL half only (the first half is
+  // warmup — a short session extrapolated from t0 overstates the slope).
+  const rssTail = rssSeries.slice(Math.floor(rssSeries.length / 2));
   const rssSlopeKbPerH =
-    r.samples.length >= 2
-      ? Math.round(((rssSeries[rssSeries.length - 1] - rssSeries[0]) / Math.max(1, r.samples[r.samples.length - 1].tMs)) * 3_600_000)
+    rssTail.length >= 2 && r.samples.length >= 2
+      ? Math.round(
+          ((rssTail[rssTail.length - 1] - rssTail[0]) /
+            Math.max(
+              1,
+              r.samples[r.samples.length - 1].tMs - r.samples[Math.floor(r.samples.length / 2)].tMs,
+            )) *
+            3_600_000,
+        )
       : 0;
   const fdSeries = r.samples.map((s) => s.fds);
   const metrics = {
@@ -672,6 +705,7 @@ async function scenarioMarathon() {
     featuresPassed: acceptance.passed >= 8,
     sessionParses: session.sessions >= 1 && session.jsonlCorruptLines === 0,
     noContextWedge: !/context (window )?(full|overflow)/i.test(r.stderr) || session.compactionEntries > 0,
+    boundedRssSlope: rssSlopeKbPerH <= 200_000 || r.wallMs < 20 * 60_000, // short sessions are warmup-dominated; the soak scenario owns the slope verdict
   };
   const verdict = Object.values(checks).every(Boolean) ? "pass" : "fail";
   writeReceipt(name, { verdict, checks, metrics });
@@ -689,7 +723,7 @@ async function scenarioCompactThrash() {
   cpSync(FIXTURE_DIR, ws, { recursive: true, filter: (p) => !EXCLUDE.some((x) => p.split("/").includes(x)) });
   await gitInit(ws);
   await ensureHome(unownHome, MODEL);
-  const contextWindow = Number(process.env.LONGRUN_THRASH_CONTEXT_WINDOW ?? 24_000);
+  const contextWindow = Number(process.env.LONGRUN_THRASH_CONTEXT_WINDOW ?? 40_000);
   const arm = armCompactThrash(unownHome, MODEL, contextWindow);
   const startMs = Date.now();
   log(`${name}: contextWindow=${arm.contextWindow} reserve=${arm.reserveTokens} keepRecent=${arm.keepRecentTokens}`);
@@ -701,7 +735,7 @@ async function scenarioCompactThrash() {
     { UNOWN_HOME: unownHome },
   );
   const session = parseSessionStats(unownHome, ws, startMs);
-  const acceptance = await scoreAcceptance(ws, [1, 2, 3, 4, 5, 6]);
+  const acceptance = await scoreAcceptance(ws, [1, 2, 3, 4, 5, 6, 10]);
   const feats = await featureCommits(ws);
   const compactionFailures = (r.stderr.match(/compaction|context/ig) ?? []).length;
   const metrics = {
@@ -819,7 +853,7 @@ async function scenarioKillResume() {
   }
 
   const session = parseSessionStats(unownHome, ws, startMs);
-  const acceptance = await scoreAcceptance(ws, [1, 2, 3, 4, 5, 6, 7, 8]);
+  const acceptance = await scoreAcceptance(ws, [1, 2, 3, 4, 5, 6, 7, 8, 10]);
   const feats = await featureCommits(ws);
   const kills = legs.filter((l) => l.killed).length;
   const resumes = legs.filter((l) => l.resumed).length;
@@ -1370,6 +1404,54 @@ async function scenarioRalphChain() {
   writeReceipt(name, { verdict, checks, metrics });
 }
 
+// ── rescore: re-run bench-owned scoring against an EXISTING scenario workspace ─
+
+const RESCORE_FEATURES = {
+  marathon: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
+  "compact-thrash": [1, 2, 3, 4, 5, 6, 10],
+  "kill-resume": [1, 2, 3, 4, 5, 6, 7, 8, 10],
+  "ralph-chain": [1, 2],
+};
+
+async function rescore(scenario) {
+  const features = RESCORE_FEATURES[scenario];
+  if (!features) throw new Error(`--rescore: scenario ${scenario} has no scoring phase`);
+  const runRoot = join(ROOT, scenario);
+  const ws = join(runRoot, "workspace");
+  const unownHome = join(runRoot, "unown-home");
+  if (!existsSync(ws)) throw new Error(`--rescore: no workspace at ${ws}`);
+  const receiptPath = join(RUN_DIR, `receipt-${scenario}.json`);
+  const prev = existsSync(receiptPath) ? JSON.parse(readFileSync(receiptPath, "utf8")) : null;
+  const acceptance = await scoreAcceptance(ws, features);
+  const session = parseSessionStats(unownHome, ws, 0);
+  const feats = await featureCommits(ws);
+  const passBar =
+    scenario === "marathon" ? 8 : scenario === "kill-resume" ? 5 : scenario === "compact-thrash" ? 3 : 1;
+  const record = {
+    ...(prev ?? {}),
+    rescored: true,
+    rescoreTs: new Date().toISOString(),
+    metrics: {
+      ...(prev?.metrics ?? {}),
+      featuresCommitted: feats,
+      featuresPassed: acceptance.passed,
+      featuresScored: acceptance.scored,
+      perFeature: acceptance.perFeature,
+      sessionCompactions: session.compactionEntries,
+      sessionBytes: session.sessionBytes,
+      assistantMessages: session.assistantMessages,
+      jsonlCorruptLines: session.jsonlCorruptLines,
+    },
+    checks: {
+      ...(prev?.checks ?? {}),
+      featuresPassed: acceptance.passed >= passBar,
+      sessionParses: session.sessions >= 1 && session.jsonlCorruptLines === 0,
+    },
+  };
+  record.verdict = Object.values(record.checks).every(Boolean) ? "pass" : "fail";
+  writeReceipt(scenario, record);
+}
+
 // ── summary ──────────────────────────────────────────────────────────────────
 
 const SCENARIOS = {
@@ -1404,6 +1486,13 @@ async function main() {
   mkdirSync(LOG_DIR, { recursive: true });
   if (args.includes("--list")) {
     console.log(Object.keys(SCENARIOS).join("\n"));
+    return;
+  }
+  if (args.includes("--rescore")) {
+    const sc = flag("rescore");
+    if (!sc) throw new Error("--rescore needs a scenario name");
+    await rescore(sc);
+    writeSummary();
     return;
   }
   const requested = flag("scenario", "all");

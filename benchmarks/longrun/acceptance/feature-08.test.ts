@@ -15,16 +15,20 @@ describe("feature 08 - audit log", () => {
     expect(log.split("\n").filter(Boolean)).toHaveLength(1);
   });
 
-  test("audit prints in append order, capped at 20, ellipsis when older exist", () => {
+  test("audit prints in append order, capped at 20 entries, ellipsis when older exist", () => {
     const c = state();
     for (let i = 0; i < 25; i++) cli(["add", "100", "food", "--date", "2026-01-02"], c);
     const r = cli(["audit"], c);
     expect(r.code).toBe(0);
     const lines = r.stdout.trim().split("\n");
-    expect(lines[0]).toBe("…");
-    expect(lines).toHaveLength(21); // ellipsis + 20 entries
-    expect(lines[1]).toContain("e-001");
-    expect(lines[20]).toContain("e-025");
+    // Shape-tolerant (LR calibration, 2026-10-27): the ellipsis may share the
+    // first entry's line (a prefix) or stand alone — the spec pins "at most 20
+    // entries shown, prefixed with …", not the line layout.
+    const entryLines = lines.filter((l) => / ADD e-\d+ /.test(l));
+    expect(entryLines.length).toBe(20);
+    expect(lines.some((l) => l.startsWith("…"))).toBe(true);
+    expect(entryLines[0]).toContain("e-006");
+    expect(entryLines[19]).toContain("e-025");
   });
 
   test("empty journal prints placeholder exit 0", () => {
