@@ -30,14 +30,14 @@ export interface ChangelogStop {
   groups: ChangelogGroup[];
 }
 
-export const CHANGELOG_TOTAL_ENTRIES = 326;
+export const CHANGELOG_TOTAL_ENTRIES = 327;
 
 export const CHANGELOG_TOTALS: Record<ChangelogBucket, number> = {
   "Added": 141,
   "Changed": 28,
   "Deprecated": 0,
   "Removed": 3,
-  "Fixed": 119,
+  "Fixed": 120,
   "Security": 5,
   "Behavior": 30
 };
@@ -46,13 +46,13 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
   {
     "label": "0.0.31",
     "date": "2026-10-27",
-    "total": 8,
+    "total": 9,
     "counts": {
       "Added": 2,
       "Changed": 0,
       "Deprecated": 0,
       "Removed": 0,
-      "Fixed": 2,
+      "Fixed": 3,
       "Security": 4,
       "Behavior": 0
     },
@@ -79,6 +79,10 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
           },
           {
             "title": "cli: LR-1 — the --max-turns cap tells one story and honors the answer-so-far contract",
+            "behavior": false
+          },
+          {
+            "title": "ci: the xplat driver's remote parser learns the username:PAT form",
             "behavior": false
           }
         ]

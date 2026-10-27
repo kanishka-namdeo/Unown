@@ -163,16 +163,27 @@ export function isCorrelatedRun(run, { t0, branch, runId }) {
 
 // Parse a git remote URL into owner/repo (+ PAT when embedded).
 // Handles: https://x-access-token:PAT@github.com/o/r.git
+//          https://USER:PAT@github.com/o/r.git   (git credential stores)
 //          https://PAT@github.com/o/r.git
 //          https://github.com/o/r.git
 //          git@github.com:o/r.git
 export function parseRemote(url) {
   const u = String(url || "").trim();
-  // Greedy (.+) up to the LAST @github.com: PATs are opaque and may contain
-  // colons, slashes or even '@' — the host separator, not the token, is the
-  // only trustworthy boundary.
-  let m = u.match(/^https:\/\/(?:x-access-token:|)(.+)@github\.com\/([^\/]+)\/([^\/#?]+?)(?:\.git)?$/);
-  if (m) return { token: m[1], owner: m[2], repo: m[3] };
+  // Greedy (.+) up to the LAST @github.com: the host separator, not the
+  // token, is the only trustworthy boundary. The userinfo, when present,
+  // is either a bare PAT or a credential PAIR (x-access-token:PAT from
+  // checkout actions, USER:PAT from git credential stores — found live
+  // 2026-10-27: the USER:PAT form fed "USER:PAT" whole into the
+  // Authorization header and every driver dispatch 401'd). GitHub never
+  // issues PATs containing ':', so a colon in the userinfo splits user
+  // from token at the FIRST colon; a bare colon-less PAT passes through
+  // unchanged.
+  let m = u.match(/^https:\/\/(.+)@github\.com\/([^\/]+)\/([^\/#?]+?)(?:\.git)?$/);
+  if (m) {
+    const userinfo = m[1];
+    const token = userinfo.includes(":") ? userinfo.slice(userinfo.indexOf(":") + 1) : userinfo;
+    return { token, owner: m[2], repo: m[3] };
+  }
   m = u.match(/^https:\/\/github\.com\/([^\/]+)\/([^\/#?]+?)(?:\.git)?$/);
   if (m) return { token: null, owner: m[1], repo: m[2] };
   m = u.match(/^git@github\.com:([^\/]+)\/([^\/#?]+?)(?:\.git)?$/);

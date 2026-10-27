@@ -40,6 +40,15 @@ test("parseRemote: x-access-token form (this repo's convention)", () => {
   assert.equal(r.repo, "Unown");
 });
 
+test("parseRemote: username:PAT form (git credential stores) — the username never rides into the token", () => {
+  // Found live 2026-10-27: a username:PAT remote fed "username:PAT" whole
+  // into the Authorization header and every driver dispatch 401'd.
+  const r = parseRemote("https://kanishka-namdeo:github_pat_xyz@github.com/kanishka-namdeo/Unown.git");
+  assert.equal(r.token, "github_pat_xyz");
+  assert.equal(r.owner, "kanishka-namdeo");
+  assert.equal(r.repo, "Unown");
+});
+
 test("parseRemote: bare PAT form", () => {
   const r = parseRemote("https://github_pat_abc@github.com/o/r.git");
   assert.equal(r.token, "github_pat_abc");
