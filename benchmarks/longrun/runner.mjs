@@ -1468,8 +1468,14 @@ async function scenarioRalphChain() {
   await gitInit(ws);
   await ensureHome(unownHome, MODEL);
   const reviewer = process.env.LONGRUN_RALPH_REVIEWER ?? "agnes-2.5-flash";
+  // The store note is the subset-run prerequisite every buildoutPrompt carries
+  // (measured live, run 9 of the calibration: 6/6 features committed, 0/6
+  // scoreable — add/list round-trips lose state without the persistent store,
+  // so acceptance's cross-invocation tests cannot pass). The first 2026-10-27
+  // ralph run hit exactly that: both features committed, reviewer verdict
+  // "ship", acceptance 0/2 — a fixture artifact, not agent capability.
   const task =
-    "Read features/README.md, then implement feature-01.md and feature-02.md of ledgerlog (category filter + date-range filter). Keep `bun test` green and commit each feature.";
+    "Read features/README.md, then implement feature-01.md and feature-02.md of ledgerlog (category filter + date-range filter), ALSO implementing feature-10.md (the persistent store) alongside them — it is a prerequisite: features are only observable across CLI invocations once state persists. Keep `bun test` green and commit each feature.";
   log(`${name}: 6-iteration ralph loop, reviewer=${reviewer}`);
   const r = await runAgent(
     ["ralph", task, "--iterations", "6", "--model", MODEL, "--reviewer-model", reviewer, "--workspace", ws, "--json"],
@@ -1491,7 +1497,7 @@ async function scenarioRalphChain() {
   const ralphDirs = existsSync(join(ws, ".unown", "ralph"))
     ? readdirSync(join(ws, ".unown", "ralph"))
     : [];
-  const acceptance = await scoreAcceptance(ws, [1, 2]);
+  const acceptance = await scoreAcceptance(ws, [1, 2, 10]);
   const metrics = {
     wallS: Math.round(r.wallMs / 1000),
     exitCode: r.code,
@@ -1791,7 +1797,7 @@ const RESCORE_FEATURES = {
   "compact-thrash": [1, 2, 3, 4, 5, 6, 10],
   "kill-resume": [1, 2, 3, 4, 5, 6, 7, 8, 10],
   "crash-consistency": [1, 2, 3, 4, 10],
-  "ralph-chain": [1, 2],
+  "ralph-chain": [1, 2, 10],
 };
 
 async function rescore(scenario) {

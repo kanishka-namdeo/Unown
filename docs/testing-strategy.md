@@ -392,8 +392,9 @@ task length at which the agent succeeds 50% (or 80%) of the time `[C:
 arXiv 2503.14499; METR time-horizon pages, 2026]`. The trend measure is the
 doubling time (~196 days in TH1.0; ~131 days post-2023 in TH1.1).
 
-Two consequences for Unown's Track 8, which is currently n=1 on a single task
-where all three models passed:
+Three consequences for Unown's Track 8, which is currently n=1 on a single task
+where all three models passed — and one of them the 2026-10-27 long-run round
+already answered:
 
 - A single task cannot produce a horizon, and a passing n=1 run cannot separate
   models. The cheap fix is a **task-length ladder**: the same task at three time
@@ -409,6 +410,15 @@ where all three models passed:
   rewrites tasks that were "confusing, or easy to reward-hack, or [had] scoring
   functions with errors" `[C]` - which is the same advice as §8, arrived at
   independently.
+- The **duration axis** is now covered by `benchmarks/longrun/` (the 2026-10-27
+  endurance round, resumed + extended the same day): eleven scenarios that drive
+  many-turn single sessions (150-turn staged buildouts), forced compaction
+  cycles, SIGKILL/resume torture, torn-write crash consistency, soaks under load
+  AND idle, budget/breaker fidelity, and unattended ralph chains — each with
+  per-scenario machine receipts. That is reliability-over-duration (the METR
+  time-horizon finding), not a horizon curve: it answers "does the agent stay
+  correct and honest for hours", not "at what task length does P(success) cross
+  50%". The ladder above remains the open method gap.
 
 Also worth internalising: a time horizon is a measure of *task difficulty*, not
 of how long an agent can safely run unattended, and human baseline estimates
@@ -460,7 +470,7 @@ carry large noise `[C]`.
 | Verifier integrity / anti-contamination | verifier boundary, reward-hack flagging, trial auditing | none | **Behind, and unpriced** |
 | Judge calibration for graded metrics | judge id + rubric + FPR probe published | none | **Behind, and cheap to fix** |
 | Coverage as a gate | routine | targets stated, no gate (gate added in this revision) | **Fixed here** |
-| Long-horizon measurement | time-horizon curves, 6-8 runs/task | n=1, all models pass | **Behind on method** |
+| Long-horizon measurement | time-horizon curves, 6-8 runs/task | Track 8 still n=1; BUT the duration axis is covered since 2026-10-27 by `benchmarks/longrun/` (eleven endurance scenarios, machine receipts, research-grounded: METR time-horizon/RE-Bench, Terminal-Bench 2.x, tau-bench pass^k, k6 soak doctrine, and the documented long-session failure modes of Claude Code/Codex/Gemini CLI) | **Split verdict: endurance shipped, horizon curves still behind (the §4.3 ladder remains open)** |
 | Memory-quality axes (contradiction, forgetting, interference) | the field's acknowledged frontier | untested | **Behind, and it is our differentiator** |
 | Dashboard/component testing | component + E2E + a11y | TUI dashboard suites in the engine's own tree (`dashboard-render`/`-store`/`-auth` + the D6 mock engine) + the landing component suite + Playwright E2E + axe-core a11y for the landing page (§6 gate 16) | **Level** (keyboard-only nav + visual regression still open, §7.1) |
 | Failure taxonomy + memory-version bisection | rare outside vendor-internal work | present since the first revision | **Ahead** |
