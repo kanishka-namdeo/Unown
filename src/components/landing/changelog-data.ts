@@ -86,7 +86,7 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
         "bucket": "Added",
         "items": [
           {
-            "title": "landing: the builder round — the whole-app lane filmed end to end, one prompt in and a full-stack app out",
+            "title": "landing: the builder round — one prompt, one whole app, on film",
             "behavior": false
           },
           {

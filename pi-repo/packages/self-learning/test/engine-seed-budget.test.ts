@@ -90,7 +90,28 @@ setTimeout(() => process.exit(0), 12_000);
                                 expect(out).not.toContain("booting degraded");
                         } finally {
                                 child.kill("SIGKILL");
-                                rmSync(root, { recursive: true, force: true });
+                                // windows-latest taught this teardown the hard
+                                // way (release run v0.0.32, 2026-10-28): a
+                                // killed child's handles on the temp root (its
+                                // cwd, its runtime dir) are released
+                                // asynchronously on Windows, so an rmSync
+                                // immediately after kill races EBUSY (errno
+                                // -4082, resource busy or locked). Wait for
+                                // the actual exit, then remove — with one
+                                // retry for the post-exit handle-drain window.
+                                if (child.exitCode === null) {
+                                        await new Promise<void>((resolve) => {
+                                                child.once("exit", () => resolve());
+                                                child.once("error", () => resolve());
+                                                setTimeout(resolve, 5_000);
+                                        });
+                                }
+                                try {
+                                        rmSync(root, { recursive: true, force: true });
+                                } catch {
+                                        await new Promise((r) => setTimeout(r, 1_000));
+                                        rmSync(root, { recursive: true, force: true });
+                                }
                         }
                 },
                 40_000,

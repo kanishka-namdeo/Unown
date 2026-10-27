@@ -657,7 +657,7 @@ const RAW: readonly DexEntryInput[] = [
     name: "The builder round",
     summary: "one prompt in, a whole app out",
     practice: [
-      "The honest uncut build: one prompt into an empty project holding nothing but a product brief, then the agent works alone — reads the brief, plans four todos, writes the whole Glyph Quests app (JSON store, REST API, Bun server, vanilla frontend, a 39-test suite), runs the tests until they are green, live-verifies every endpoint with curl (create, PATCH, delete, 404, 400, statics content-types), and ends with the closing summary the brief asks for. 47 tool calls, 4/4 todos, zero keystrokes after the prompt, ~12 minutes end to end.",
+      "The honest uncut build: one prompt into an empty project holding only a product brief, then the agent works alone — plans four todos, writes the whole Glyph Quests app (JSON store, REST API, Bun server, vanilla frontend, a 39-test suite), greens the tests, live-verifies every endpoint with curl (create, PATCH, delete, 404, 400, statics), and ends with the brief's closing summary. 47 tool calls, 4/4 todos, zero keystrokes after, ~12 minutes.",
     ],
     receipts: [
       ["capture workflow", DOC("docs/tui-capture-workflow.md")],
