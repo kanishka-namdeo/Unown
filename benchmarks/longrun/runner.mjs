@@ -644,17 +644,27 @@ async function bootBenchEngine(name, { port, dataDir, dbPath, runDir, unownHome,
       process.kill(-child.pid, "SIGKILL");
     } catch {}
   };
-  // Cold-boot anatomy (measured 2026-10-27, run resume of 2026-10-26T23-05-23):
-  // model hydration + memory-platform seed (30 s PI_ENGINE_SEED_BUDGET_MS, an
-  // LLM round behind the metered upstream — measured 57 s live on a healthy
-  // Agnes under load) + router + API bind. A 90 s deadline failed a perfectly
-  // healthy engine that reached ready at ~2.5 min; the engine boots degraded
-  // and NEVER hangs by design (server.ts seed bound), so the bench must
-  // simply out-wait the seed. Env-tunable like every other cap.
+  // Cold-boot anatomy (measured 2026-10-27, resuming run 2026-10-26T23-05-23):
+  // TWO defects made every engine-booting scenario of the first session fail
+  // its own runner before the agent was ever stressed — (1) the health poll
+  // passed a null token into a token-gated endpoint (fixed above: the poll
+  // now reads the token file fresh each iteration), and (2) the 90 s deadline
+  // ignored the cold-boot curve: model hydration + memory-platform seed
+  // (PI_ENGINE_SEED_BUDGET_MS, an LLM round behind the metered upstream —
+  // measured 57 s live on a healthy Agnes under load) + router + API bind.
+  // The engine boots degraded and NEVER hangs by design (server.ts seed
+  // bound); the bench simply out-waits the seed. Env-tunable like every cap.
   const bootBudgetMs = Number(process.env.LONGRUN_ENGINE_BOOT_MS ?? 300_000);
   const deadline = Date.now() + bootBudgetMs;
   while (Date.now() < deadline) {
-    const h = await engineFetch(url, null, "/api/health");
+    // /api/health is token-gated by design (M7: "token-gated like every
+    // /api route") — a null-token poll gets {"error":"missing or invalid
+    // engine token"} forever, at ANY deadline. The engine writes its token
+    // file early in boot, so read it fresh each poll.
+    const tok = existsSync(join(dataDir, "engine.token"))
+      ? readFileSync(join(dataDir, "engine.token"), "utf8").trim()
+      : null;
+    const h = await engineFetch(url, tok, "/api/health");
     if (h?.ok && h.phase === "ready") {
       const token = existsSync(join(dataDir, "engine.token"))
         ? readFileSync(join(dataDir, "engine.token"), "utf8").trim()
