@@ -45,6 +45,14 @@
  *                   the breaker opens (dead bridge) and recovers (restart)
  *   ralph-chain     a 6-iteration worker/reviewer loop, fresh context each
  *                   iteration, cross-model review
+ *   crash-consistency (2026-10-27 resume) random-offset SIGKILL torture +
+ *                   torn-tail injection + orphan sweep — the claude-code
+ *                   #52387 (session JSONL corrupted by non-atomic append),
+ *                   #96625/#104308 (orphaned background processes) and
+ *                   codex #37311/#37374 (zombie children) analogs
+ *   idle-soak       (2026-10-27 resume) a zero-traffic engine soak — the
+ *                   claude-code #67433/#18859 idle-leak analog; RSS/fd/WAL
+ *                   plateau asserts with no traffic at all
  *
  * Every scenario writes results/run-<ts>/receipt-<scenario>.json with a
  * machine verdict + metrics, plus logs/. --resume <ts> skips scenarios that
@@ -52,7 +60,7 @@
  */
 
 import { spawn } from "node:child_process";
-import { cpSync, existsSync, mkdirSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from "node:fs";
+import { appendFileSync, cpSync, existsSync, mkdirSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { homedir, tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 
@@ -91,6 +99,9 @@ const TURNCAP_CAP_MIN = Number(process.env.LONGRUN_TURNCAP_CAP_MIN ?? 15);
 const RALPH_CAP_MIN = Number(process.env.LONGRUN_RALPH_CAP_MIN ?? 45);
 const NOTES_SESSIONS = Number(process.env.LONGRUN_NOTES_SESSIONS ?? 6);
 const SOAK_SESSION_EVERY_MIN = Number(process.env.LONGRUN_SOAK_SESSION_EVERY_MIN ?? 5);
+const CRASH_CAP_MIN = Number(process.env.LONGRUN_CRASH_CAP_MIN ?? 30);
+const CRASH_KILLS = Number(process.env.LONGRUN_CRASH_KILLS ?? 5);
+const IDLE_MINUTES = Number(process.env.LONGRUN_IDLE_MINUTES ?? 20);
 
 const EXCLUDE = [".unown", "node_modules", ".git", ".DS_Store", ".ledger", "bun.lock"];
 
@@ -198,6 +209,53 @@ function killAgentGroup(childPid) {
   } catch {
     return false;
   }
+}
+
+/** Is a pid alive? (orphan sweep) */
+function pidAlive(pid) {
+  try {
+    process.kill(pid, 0);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Snapshot every living descendant of a pid (BFS over /proc PPid).
+ * The orphan-sweep contract (claude-code#96625 / #104308, codex#37311 —
+ * leaked background shells, pty hosts and bun spinners after a crash):
+ * record the tree BEFORE the kill; after it, none may survive.
+ */
+function descendantPids(rootPid) {
+  const childrenOf = new Map();
+  try {
+    for (const f of readdirSync("/proc")) {
+      if (!/^\d+$/.test(f)) continue;
+      try {
+        const status = readFileSync(`/proc/${f}/status`, "utf8");
+        const ppid = Number(/^PPid:\s+(\d+)/m.exec(status)?.[1] ?? 0);
+        if (ppid > 0) {
+          if (!childrenOf.has(ppid)) childrenOf.set(ppid, []);
+          childrenOf.get(ppid).push(Number(f));
+        }
+      } catch {}
+    }
+  } catch {}
+  const out = [];
+  const queue = [rootPid];
+  const seen = new Set([rootPid]);
+  while (queue.length) {
+    const p = queue.shift();
+    for (const c of childrenOf.get(p) ?? []) {
+      if (!seen.has(c)) {
+        seen.add(c);
+        out.push(c);
+        queue.push(c);
+      }
+    }
+  }
+  return out;
 }
 
 /**
@@ -560,7 +618,23 @@ async function bootBenchEngine(name, { port, dataDir, dbPath, runDir, unownHome,
   });
   child.unref();
   const url = { port };
-  const deadline = Date.now() + 90_000;
+  // Orphan guard: a boot that fails (exit early / never ready) must not leak
+  // the scratch engine — it holds the scenario's dedicated port, and a
+  // --force rerun would hit "port in use" forever. Kill the group on throw.
+  const killOrphan = () => {
+    try {
+      process.kill(-child.pid, "SIGKILL");
+    } catch {}
+  };
+  // Cold-boot anatomy (measured 2026-10-27, run resume of 2026-10-26T23-05-23):
+  // model hydration + memory-platform seed (30 s PI_ENGINE_SEED_BUDGET_MS, an
+  // LLM round behind the metered upstream — measured 57 s live on a healthy
+  // Agnes under load) + router + API bind. A 90 s deadline failed a perfectly
+  // healthy engine that reached ready at ~2.5 min; the engine boots degraded
+  // and NEVER hangs by design (server.ts seed bound), so the bench must
+  // simply out-wait the seed. Env-tunable like every other cap.
+  const bootBudgetMs = Number(process.env.LONGRUN_ENGINE_BOOT_MS ?? 300_000);
+  const deadline = Date.now() + bootBudgetMs;
   while (Date.now() < deadline) {
     const h = await engineFetch(url, null, "/api/health");
     if (h?.ok && h.phase === "ready") {
@@ -592,10 +666,14 @@ async function bootBenchEngine(name, { port, dataDir, dbPath, runDir, unownHome,
         },
       };
     }
-    if (child.exitCode !== null) throw new Error(`bench engine ${name} exited early (code ${child.exitCode}) — see ${logPath}`);
+    if (child.exitCode !== null) {
+      killOrphan();
+      throw new Error(`bench engine ${name} exited early (code ${child.exitCode}) — see ${logPath}`);
+    }
     await new Promise((r) => setTimeout(r, 1_000));
   }
-  throw new Error(`bench engine ${name} did not become ready in 90s — see ${logPath}`);
+  killOrphan();
+  throw new Error(`bench engine ${name} did not become ready in ${Math.round(bootBudgetMs / 1000)}s — see ${logPath}`);
 }
 
 // ── prompts ──────────────────────────────────────────────────────────────────
@@ -820,6 +898,7 @@ async function scenarioKillResume() {
     const handle = spawnAgent(legArgs, ws, { UNOWN_HOME: unownHome });
     const legStart = Date.now();
     let killed = false;
+    let orphanSurvivors = 0;
     if (gate) {
       const deadline = legStart + gate.maxWaitS * 1000;
       while (Date.now() < deadline && Date.now() - runStart < capMs) {
@@ -828,8 +907,13 @@ async function scenarioKillResume() {
         if (feats.length >= gate.minFeatures) break;
       }
       const feats = await featureCommits(ws);
+      // Orphan sweep (claude-code#96625 / codex#37311): record descendants
+      // before the group kill; 5 s later none may survive.
+      const orphans = descendantPids(handle.pid);
       killed = handle.kill();
-      log(`${name}: leg ${leg + 1} killed after ${Math.round((Date.now() - legStart) / 1000)}s at ${feats.length} features (killed=${killed})`);
+      await new Promise((r) => setTimeout(r, 5_000));
+      orphanSurvivors = orphans.filter((p) => pidAlive(p)).length;
+      log(`${name}: leg ${leg + 1} killed after ${Math.round((Date.now() - legStart) / 1000)}s at ${feats.length} features (killed=${killed}, descendants=${orphans.length}, survivors=${orphanSurvivors})`);
     }
     const remaining = capMs - (Date.now() - runStart);
     const r = await handle.collect(join(LOG_DIR, `${name}-leg${leg + 1}`), Math.max(60_000, remaining));
@@ -841,6 +925,7 @@ async function scenarioKillResume() {
       leg: leg + 1,
       resumed: leg > 0,
       killed,
+      orphanSurvivors,
       exitCode: r.code,
       timedOut: r.timedOut,
       wallS: Math.round((Date.now() - legStart) / 1000),
@@ -876,6 +961,7 @@ async function scenarioKillResume() {
     killsLanded: kills >= 2, // at least 2 of the 3 gates fired (timing tolerance)
     resumesTook: resumes >= 2 && legs.slice(1).every((l) => l.sessionFile?.exists),
     sessionNeverCorrupt: legs.every((l) => !l.sessionFile?.exists || l.sessionFile.valid),
+    noOrphanSurvivors: legs.every((l) => (l.orphanSurvivors ?? 0) === 0),
     taskCompletedAfterTorture: acceptance.passed >= 5,
     noCapBreach: legs.every((l) => !l.timedOut),
   };
@@ -1404,12 +1490,284 @@ async function scenarioRalphChain() {
   writeReceipt(name, { verdict, checks, metrics });
 }
 
+// ── scenario: crash-consistency (torn-write torture + orphan sweep) ─────────
+
+/** Valid-JSONL-line count of a session file (torn-tail prefix check). */
+function validLineCount(p) {
+  if (!existsSync(p)) return 0;
+  let valid = 0;
+  let lastLineValid = false;
+  for (const line of readFileSync(p, "utf8").split("\n")) {
+    if (!line.trim()) continue;
+    try {
+      JSON.parse(line);
+      valid++;
+      lastLineValid = true;
+    } catch {
+      lastLineValid = false;
+    }
+  }
+  return valid;
+}
+
+/** Only the FINAL line may be torn (a mid-write kill); anything earlier is
+ *  real corruption (claude-code#52387 — "resume fails with JSON parse error"
+ *  was a whole-file refusal). Tolerated tail garbage that pi's loader skips
+ *  stays skipped forever; the settled prefix must never shrink. */
+function tailTornOnly(p) {
+  if (!existsSync(p)) return true;
+  const lines = readFileSync(p, "utf8").split("\n").filter((l) => l.trim());
+  for (let i = 0; i < lines.length - 1; i++) {
+    try {
+      JSON.parse(lines[i]);
+    } catch {
+      return false;
+    }
+  }
+  return true;
+}
+
+/** Per-assistant-message input-token timeline from the session JSONL — the
+ *  token-fidelity observability lane (claude-code#104543 re-transmission
+ *  blowups show as a step change; recorded, not verdict-gated, because
+ *  legitimate resume context growth is session-shaped). */
+function usageTimeline(unownHome, workspace) {
+  const sessDir = join(unownHome, "agent", "sessions");
+  const out = [];
+  if (!existsSync(sessDir)) return out;
+  for (const f of readdirSync(sessDir)) {
+    if (!f.endsWith(".jsonl")) continue;
+    const p = join(sessDir, f);
+    try {
+      const header = JSON.parse(readFileSync(p, "utf8").split("\n")[0] ?? "{}");
+      if (header?.cwd !== workspace) continue;
+    } catch {
+      continue;
+    }
+    let lastUsage = null;
+    for (const line of readFileSync(p, "utf8").split("\n")) {
+      if (!line.trim()) continue;
+      let d;
+      try {
+        d = JSON.parse(line);
+      } catch {
+        continue;
+      }
+      if (d.type === "usage" && d.usage) lastUsage = d.usage.input ?? null;
+      if (d.type === "message" && (d.message?.role ?? "") === "assistant") {
+        out.push(lastUsage);
+        lastUsage = null;
+      }
+    }
+  }
+  return out;
+}
+
+async function scenarioCrashConsistency() {
+  const name = "crash-consistency";
+  const runRoot = join(ROOT, name);
+  rmSync(runRoot, { recursive: true, force: true });
+  mkdirSync(runRoot, { recursive: true });
+  const ws = join(runRoot, "workspace");
+  const unownHome = join(runRoot, "unown-home");
+  cpSync(FIXTURE_DIR, ws, { recursive: true, filter: (p) => !EXCLUDE.some((x) => p.split("/").includes(x)) });
+  await gitInit(ws);
+  await ensureHome(unownHome, MODEL);
+  const startMs = Date.now();
+  const capMs = CRASH_CAP_MIN * 60_000;
+  const kills = Math.max(1, CRASH_KILLS);
+  let sessionId = null;
+  const runStart = Date.now();
+  const legs = [];
+  let prefixFloor = 0; // valid-line floor the session must never drop below
+
+  for (let leg = 0; leg <= kills; leg++) {
+    const isKillLeg = leg < kills;
+    const legArgs =
+      leg === 0
+        ? ["-p", buildoutPrompt(1, 4), "--output-format", "json", "--max-turns", "150"]
+        : ["--resume", sessionId, "-p", RESUME_PROMPT, "--output-format", "json", "--max-turns", "150"];
+    if (leg > 0 && !sessionId) {
+      legs.push({ leg: leg + 1, skipped: true, reason: "no session discovered" });
+      break;
+    }
+    const handle = spawnAgent(legArgs, ws, { UNOWN_HOME: unownHome });
+    const legStart = Date.now();
+    let killed = false;
+    let orphans = [];
+    let orphanSurvivors = 0;
+    let tornInjected = false;
+    if (isKillLeg) {
+      // Random offset (45-100 s): the kill lands at an arbitrary moment —
+      // mid tool-call, mid append, between turns — not at a tidy gate.
+      const waitMs = (45 + Math.floor(Math.random() * 55)) * 1000;
+      const deadline = Math.min(legStart + waitMs, runStart + capMs - 60_000);
+      while (Date.now() < deadline) await new Promise((r) => setTimeout(r, 5_000));
+      orphans = descendantPids(handle.pid);
+      killed = handle.kill();
+      // Orphan sweep: 5 s after the group kill, no recorded descendant lives.
+      await new Promise((r) => setTimeout(r, 5_000));
+      orphanSurvivors = orphans.filter((p) => pidAlive(p)).length;
+      log(`${name}: leg ${leg + 1} killed after ${Math.round((Date.now() - legStart) / 1000)}s (killed=${killed}, descendants=${orphans.length}, survivors=${orphanSurvivors})`);
+    }
+    const remaining = capMs - (Date.now() - runStart);
+    const r = await handle.collect(join(LOG_DIR, `${name}-leg${leg + 1}`), Math.max(60_000, remaining));
+    const sid = r.envelope?.session_id ?? sessionId;
+    if (sid) sessionId = sid;
+    if (!sessionId) sessionId = newestSessionId(unownHome, ws, startMs);
+
+    // Torn-tail injection on kill legs: append a HALF-WRITTEN record (no
+    // trailing newline) — the deterministic analog of a SIGKILL landing
+    // between appendFileSync's open and its write. The NEXT --resume leg
+    // proves the loader tolerates it (skips the tail, keeps the prefix).
+    if (isKillLeg && killed && sessionId) {
+      const sessFile = join(unownHome, "agent", "sessions", `${sessionId}.jsonl`);
+      if (existsSync(sessFile)) {
+        const before = validLineCount(sessFile);
+        prefixFloor = Math.max(prefixFloor, before);
+        appendFileSync(sessFile, '{"type":"message","message":{"role":"toolResult","content":"to');
+        tornInjected = true;
+      }
+    }
+    const sessFile = sessionId ? join(unownHome, "agent", "sessions", `${sessionId}.jsonl`) : null;
+    legs.push({
+      leg: leg + 1,
+      killed,
+      tornInjected,
+      orphanCount: orphans.length,
+      orphanSurvivors,
+      exitCode: r.code,
+      timedOut: r.timedOut,
+      wallS: Math.round((Date.now() - legStart) / 1000),
+      validLines: sessFile ? validLineCount(sessFile) : 0,
+      parseCrashInStderr: /SyntaxError|Unexpected token|JSON\.parse/i.test(r.stderr),
+      sessionId: sessionId ?? null,
+    });
+    if (r.code === 0 && !killed && r.envelope?.result) break; // finished on its own
+  }
+
+  const session = parseSessionStats(unownHome, ws, startMs);
+  const acceptance = await scoreAcceptance(ws, [1, 2, 3, 4, 10]);
+  const timeline = usageTimeline(unownHome, ws);
+  const sessFile = sessionId ? join(unownHome, "agent", "sessions", `${sessionId}.jsonl`) : null;
+  const finalValid = sessFile ? validLineCount(sessFile) : 0;
+  const feats = await featureCommits(ws);
+  const metrics = {
+    killsRequested: kills,
+    legs,
+    wallS: Math.round((Date.now() - runStart) / 1000),
+    featuresCommitted: feats,
+    featuresPassed: acceptance.passed,
+    featuresScored: acceptance.scored,
+    perFeature: acceptance.perFeature,
+    finalValidLines: finalValid,
+    prefixFloor,
+    sessionBytes: session.sessionBytes,
+    assistantMessages: session.assistantMessages,
+    jsonlCorruptLines: session.jsonlCorruptLines,
+    tokensIn: session.input,
+    tokensOut: session.output,
+    usageTimeline: timeline.filter((v) => typeof v === "number"),
+  };
+  const killLegs = legs.filter((l) => l.killed);
+  const checks = {
+    killsLanded: killLegs.length >= Math.max(1, kills - 1), // one-timing tolerance
+    everyResumeContract: legs.every((l) => l.skipped || l.exitCode === 0 || l.exitCode === 1 || l.killed),
+    noParseCrash: legs.every((l) => !l.parseCrashInStderr),
+    noOrphanSurvivors: legs.every((l) => (l.orphanSurvivors ?? 0) === 0),
+    tailTornOnly: sessFile ? tailTornOnly(sessFile) : false,
+    prefixNeverLost: finalValid >= prefixFloor,
+    taskProgressHonest: acceptance.passed >= 2,
+    noCapBreach: legs.every((l) => !l.timedOut || l.killed),
+  };
+  const verdict = Object.values(checks).every(Boolean) ? "pass" : "fail";
+  writeReceipt(name, { verdict, checks, metrics, note: "random-offset SIGKILL torture + torn-tail injection + orphan sweep — the claude-code#52387/#96625, codex#37311 analogs" });
+}
+
+// ── scenario: idle-soak (the idle-leak lane — claude-code#67433/#18859) ─────
+
+async function scenarioIdleSoak() {
+  const name = "idle-soak";
+  const runRoot = join(ROOT, name);
+  rmSync(runRoot, { recursive: true, force: true });
+  mkdirSync(runRoot, { recursive: true });
+  const unownHome = join(runRoot, "unown-home");
+  await ensureHome(unownHome, MODEL);
+
+  log(`${name}: booting bench engine for a ${IDLE_MINUTES}-minute IDLE soak (jobs off, zero traffic)`);
+  const engine = await bootBenchEngine(name, {
+    port: Number(process.env.LONGRUN_IDLE_PORT ?? 3045),
+    dataDir: join(runRoot, "engine-data"),
+    dbPath: join(runRoot, "engine-db", "selflearning.db"),
+    runDir: join(runRoot, "engine-run"),
+    unownHome,
+  });
+  // Jobs stay DISABLED (the boot default) and no terminal session ever
+  // connects: the only activity is the engine's own housekeeping.
+
+  const samples = [];
+  const soakStart = Date.now();
+  const soakDeadline = soakStart + IDLE_MINUTES * 60_000;
+  while (Date.now() < soakDeadline) {
+    const health = await engineFetch(engine.url, engine.token, "/api/health");
+    const ps = procStats(health?.pid ?? engine.pid);
+    const walBytes = existsSync(`${engine.dbPath}-wal`) ? statSync(`${engine.dbPath}-wal`).size : 0;
+    samples.push({
+      tS: Math.round((Date.now() - soakStart) / 1000),
+      phase: health?.phase ?? null,
+      pid: health?.pid ?? null,
+      rssKb: ps?.rssKb ?? null,
+      fds: ps?.fds ?? null,
+      threads: ps?.threads ?? null,
+      walBytes,
+    });
+    await new Promise((r) => setTimeout(r, 30_000));
+  }
+  const gracefulStop = await engineFetch(engine.url, engine.token, "/api/shutdown", { method: "POST", timeoutMs: 15_000 });
+  await new Promise((r) => setTimeout(r, 5_000));
+  const healthAfterStop = await engineFetch(engine.url, engine.token, "/api/health");
+  await engine.stop().catch(() => {});
+
+  const rss = samples.map((s) => s.rssKb).filter((v) => typeof v === "number");
+  const fds = samples.map((s) => s.fds).filter((v) => typeof v === "number" && v >= 0);
+  const skipWarmup = Math.max(0, Math.floor(samples.length / 6));
+  const rssTail = rss.slice(skipWarmup);
+  const rssSlopeKbPerH =
+    rssTail.length >= 2
+      ? Math.round(((rssTail[rssTail.length - 1] - rssTail[0]) / Math.max(30, IDLE_MINUTES * 60 / 2)) * 3_600_000)
+      : 0;
+  const fdDrift = fds.length ? Math.max(...fds) - Math.min(...fds) : -1;
+  const maxWal = Math.max(0, ...samples.map((s) => s.walBytes ?? 0));
+  const metrics = {
+    idleMinutes: IDLE_MINUTES,
+    samples: samples.length,
+    rssSlopeKbPerH,
+    fdDrift,
+    maxWalBytes: maxWal,
+    rssStartKb: rss[0] ?? null,
+    rssEndKb: rss[rss.length - 1] ?? null,
+    gracefulStopOk: gracefulStop?.ok ?? Boolean(gracefulStop),
+    healthAfterStop,
+    sampleSeries: samples,
+  };
+  const checks = {
+    engineUpThroughout: samples.length > 0 && samples.every((s) => s.phase === "ready"),
+    idleRssFlat: rssSlopeKbPerH <= 15_360, // ≤ ~15 MB/h idle (no traffic — the #67433 class leaks 400-500 MB/min)
+    idleFdFlat: fdDrift <= 10,
+    walQuiet: maxWal <= 16 * 1024 * 1024,
+    gracefulShutdown: (gracefulStop?.ok ?? Boolean(gracefulStop)) && healthAfterStop === null,
+  };
+  const verdict = Object.values(checks).every(Boolean) ? "pass" : "fail";
+  writeReceipt(name, { verdict, checks, metrics, note: "zero-traffic idle engine — the claude-code#67433/#18859 idle-leak analog; k6 soak doctrine, idle variant" });
+}
+
 // ── rescore: re-run bench-owned scoring against an EXISTING scenario workspace ─
 
 const RESCORE_FEATURES = {
   marathon: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
   "compact-thrash": [1, 2, 3, 4, 5, 6, 10],
   "kill-resume": [1, 2, 3, 4, 5, 6, 7, 8, 10],
+  "crash-consistency": [1, 2, 3, 4, 10],
   "ralph-chain": [1, 2],
 };
 
@@ -1426,7 +1784,7 @@ async function rescore(scenario) {
   const session = parseSessionStats(unownHome, ws, 0);
   const feats = await featureCommits(ws);
   const passBar =
-    scenario === "marathon" ? 8 : scenario === "kill-resume" ? 5 : scenario === "compact-thrash" ? 3 : 1;
+    scenario === "marathon" ? 8 : scenario === "kill-resume" ? 5 : scenario === "compact-thrash" ? 3 : scenario === "crash-consistency" ? 2 : 1;
   const record = {
     ...(prev ?? {}),
     rescored: true,
@@ -1464,6 +1822,8 @@ const SCENARIOS = {
   "engine-soak": scenarioEngineSoak,
   "budget-fidelity": scenarioBudgetFidelity,
   "ralph-chain": scenarioRalphChain,
+  "crash-consistency": scenarioCrashConsistency,
+  "idle-soak": scenarioIdleSoak,
 };
 
 function writeSummary() {

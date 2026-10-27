@@ -1,10 +1,14 @@
 # Long-run endurance bench — "what breaks when the agent runs for a long time"
 
-The 2026-10-27 stress round for **long-running tasks**: every round before it
-(subagents v0.0.24, browser v0.0.29) drove *feature breadth*; this one drives
-**duration** — many-turn sessions, forced compaction cycles, kill/resume
-torture, a multi-job engine soak with live terminal traffic, budget/breaker
-fidelity under the metered endpoint, and the unattended ralph loop.
+The 2026-10-27 stress round for **long-running tasks** (resumed and extended
+the same day): every round before it (subagents v0.0.24, browser v0.0.29)
+drove *feature breadth*; this one drives **duration** — many-turn sessions,
+forced compaction cycles, kill/resume torture, a multi-job engine soak with
+live terminal traffic, budget/breaker fidelity under the metered endpoint,
+and the unattended ralph loop. The 2026-10-27 resume completed the run (the
+five scenarios the first session never reached) and added two lanes the
+published failure record demanded: crash-consistency (torn-write torture +
+orphan sweep) and the idle soak.
 
 ## Research grounding
 
@@ -24,6 +28,9 @@ mode or an established methodology:
 | [k6/Grafana soak doctrine](https://grafana.com/docs/k6/latest/testing-guides/test-types/soak-testing/) | duration ≫ smoke, RSS-slope (not absolute) criteria, fd stability, warmup discard, 30 s sample cadence |
 | [SQLite WAL docs](https://sqlite.org/wal.html) | long-lived readers block checkpoints — WAL bytes are a sampled verdict field |
 | [USE Method](https://www.brendangregg.com/USEmethod/uselinux.html) | per-resource saturation/errors — engine RSS + fds + threads + WAL + bridge counters every 30 s |
+| [Claude Code #52387](https://github.com/anthropics/claude-code/issues/52387) | session JSONL corrupted by non-atomic append when killed mid-write — `--resume` refused with a parse error; the crash-consistency lane (random-offset kills + torn-tail injection + prefix-never-lost) |
+| [Claude Code #96625](https://github.com/anthropics/claude-code/issues/96625) / [#104308](https://github.com/anthropics/claude-code/issues/104308), [Codex #37311](https://github.com/openai/codex/issues/37311) | orphaned background processes / bun spinners after a crash — the orphan sweep (descendants must reach 0 within 5 s of every SIGKILL) |
+| [Claude Code #67433](https://github.com/anthropics/claude-code/issues/67433) / [#18859](https://github.com/anthropics/claude-code/issues/18859) | off-heap RSS growth while IDLE (400–500 MB/min) — the idle-soak lane: zero-traffic plateau asserts (≤ 15 MB/h RSS slope, fd drift ≤ 10, WAL quiet) |
 
 ## The fixture
 
@@ -71,11 +78,16 @@ torn down per scenario.
 | `engine-soak` | jobs enabled (harness-cycle, auto-dream, task-mint, dream-check) + a terminal session every 5 min; 30 s sampling: engine RSS/fds/threads/WAL, governor, breaker, runs, dreams, bridge counters | 45 min (`--soak-minutes`) | engine up throughout, learning happened, RSS slope ≤ 30 MB/h after warmup, fd drift ≤ 25, WAL ≤ 64 MB, graceful shutdown |
 | `budget-fidelity` | engine A `PI_ENGINE_MAX_CALLS_HOUR=3` → 2nd cycle `budget:throttled`; engine B dead bridge → breaker opens, jobs skip; engine C live bridge → recovered | ~10 min | throttle skip seen, breaker reacted, recovered after restart |
 | `ralph-chain` | 6-iteration worker/reviewer loop (agnes-3.0-flash worker, agnes-2.5-flash reviewer), fresh context per iteration | 45 min | contract exit (0/1), ralph state present, no crash artifacts |
+| `crash-consistency` | features 01–04; 5 SIGKILLs at RANDOM 45–100 s offsets (arbitrary write states), a torn half-written record injected after each kill, `--resume` the same session every time; orphan sweep after every kill; per-message input-token timeline recorded | 30 min (`--crash-cap-min`, `--crash-kills` via `LONGRUN_CRASH_KILLS`) | kills landed, every resume contract-exits, no JSON-parse crash, 0 orphan survivors, tail torn at most (prefix intact), valid-line count never regresses, ≥ 2/5 features |
+| `idle-soak` | engine up with jobs OFF and zero terminal traffic — pure housekeeping; 30 s sampling of RSS/fds/threads/WAL | 20 min (`--idle-minutes` via `LONGRUN_IDLE_MINUTES`) | engine ready throughout, idle RSS slope ≤ ~15 MB/h after warmup, fd drift ≤ 10, WAL ≤ 16 MB, graceful shutdown |
 
 Receipts land in `results/run-<ts>/receipt-<scenario>.json` (machine verdict
 + checks + full metrics), `logs/`, and `summary.json` (all-pass rollup).
 `--resume <ts>` skips scenarios that already have a verdict — the runner is
-itself a long-running task.
+itself a long-running task. Bench engines wait up to 5 minutes for cold
+boot (`LONGRUN_ENGINE_BOOT_MS`; the memory-platform seed's LLM round is
+legitimately slow behind the metered upstream, and a failed boot now kills
+its scratch engine instead of leaking the port).
 
 ## Honest limitations
 
@@ -91,3 +103,11 @@ itself a long-running task.
   does not pin a specific isolation backend.
 - `pass^k` consistency is observed (repeat-run outcomes across soak cycles)
   but not formally swept like tau-bench's k=1..4.
+- The crash-consistency lane's per-message input-token timeline is recorded
+  in the receipt (the claude-code#104543 re-transmission class would show as
+  a step change) but NOT verdict-gated — legitimate resume context growth is
+  session-shaped, and a brittle numeric bar there would flake, not inform.
+- The torn-tail injection is deterministic (a half-written record appended
+  after each kill); real mid-append kill timing is left to the random-offset
+  SIGKILLs, which land at arbitrary write states but rarely exactly between
+  an append's open and write.
