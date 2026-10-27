@@ -38,6 +38,18 @@ mkdirSync(TEST_TMP_LITERAL, { recursive: true });
 // env redirect was honored, the roots exist.
 mkdirSync(join(TEST_TMP_LITERAL, "data"), { recursive: true });
 mkdirSync(join(TEST_TMP_LITERAL, "unown-home"), { recursive: true });
+// The outbox joins the order-independent roots (the 2026-10-27/28 release
+// finds): the H2 heal pin reads UNOWN_OUTBOX_DIR right after a delivery
+// that never touched the durable lane, and outbox-deadletter lists it at
+// module scope — on a bucket-b worker whose earlier neighbors never
+// outboxed a note the dir does not exist yet (the outbox write paths mkdir
+// lazily), and bun's file execution order varies by platform/runner/
+// scheduling, so the unguarded reads hit ENOENT — the v0.0.32 ubuntu
+// release leg, the live-preview round's ubuntu CI + release legs, and the
+// slug-keyed re-fix's own ubuntu release leg (61bae14) all crashed the
+// same scandir. The dir materializes up front with the other redirect
+// targets; the H2 pin's read also folds the no-dir case away itself.
+mkdirSync(join(TEST_TMP_LITERAL, "unown-home", "notes", "outbox"), { recursive: true });
 
 export const TEST_TMP = (() => {
         try {
