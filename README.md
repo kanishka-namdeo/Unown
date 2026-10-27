@@ -152,6 +152,7 @@ Full usage docs live in [`docs/`](docs/):
 | [TUI capture workflow](docs/tui-capture-workflow.md) | how the landing page's terminal screenshots/video are captured from real sessions — the harness contract, geometry rules, audit gates |
 | [blog](docs/blog.md) | the Unown blog at `/blog` — writing posts in `content/blog/`, the frontmatter reference, the media checklist per post type, the generator + RSS pipeline |
 | [landing research](docs/landing-research.md) | the landing page's design rationale and claim-sourcing rules — why the page looks the way it does, and what keeps every number on it defensible |
+| [live demo session record](docs/live-demo-session.md) | the receipt behind the landing page's live-demo band — the app the agent built, the four sessions that built it, the verification, and the documented embedding patches |
 | [TUI beautification plan](docs/tui-beautification-plan.md) | the evidence-based TUI design plan — VLM critique over the audited capture set, pixel-level color audit, defect-to-source traces |
 | [TUI dashboard](docs/tui-dashboard-plan.md) | the terminal dashboard (`unown dashboard` / `/dashboard`) — the D-series design record: screens, both mounts, the live engine feed, and the web dashboard's retirement |
 | [TUI responsiveness](docs/tui-responsive-plan.md) | the R-series responsive design record — viewport tiers, the min-size gate, footer degradation, overlay scaling, the graduated files dock |
