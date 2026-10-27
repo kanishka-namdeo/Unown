@@ -509,6 +509,24 @@ function newestSessionId(unownHome, workspace, startMs) {
   return best;
 }
 
+/**
+ * Normalize a session id to its FILENAME form. The result envelope reports
+ * the bare UUID (01a17c89-…) while session files are named
+ * <ISO-ts>_<uuid>.jsonl — kill-resume run 2026-10-27 false-failed its
+ * resumesTook check on exactly that mismatch (leg 4's sessionFile lookup
+ * missed a file that existed the whole time).
+ */
+function resolveSessionId(unownHome, rawId) {
+  if (!rawId) return null;
+  const sessDir = join(unownHome, "agent", "sessions");
+  if (!existsSync(sessDir)) return rawId;
+  if (existsSync(join(sessDir, `${rawId}.jsonl`))) return rawId; // already filename form
+  for (const f of readdirSync(sessDir)) {
+    if (f.endsWith(`_${rawId}.jsonl`)) return f.replace(/\.jsonl$/, "");
+  }
+  return rawId; // best effort
+}
+
 // ── acceptance scoring (bench-owned; copied in at scoring time only) ────────
 
 async function scoreAcceptance(ws, features = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]) {
@@ -918,7 +936,7 @@ async function scenarioKillResume() {
     const remaining = capMs - (Date.now() - runStart);
     const r = await handle.collect(join(LOG_DIR, `${name}-leg${leg + 1}`), Math.max(60_000, remaining));
     const sid = r.envelope?.session_id ?? sessionId;
-    if (sid) sessionId = sid;
+    if (sid) sessionId = resolveSessionId(unownHome, sid);
     if (!sessionId) sessionId = newestSessionId(unownHome, ws, startMs);
     const sfile = sessionId ? sessionFileValid(unownHome, sessionId) : { exists: false, valid: false };
     legs.push({
@@ -927,7 +945,11 @@ async function scenarioKillResume() {
       killed,
       orphanSurvivors,
       exitCode: r.code,
-      timedOut: r.timedOut,
+      // A killed leg's SIGKILL is the torture itself, not a wall-cap breach:
+      // spawnAgent reports signal "SIGKILL" for both, so the distinction is
+      // `killed` (the scenario pulled the trigger at a gate) vs a true cap
+      // timeout (no gate fired, the collect() timer had to kill).
+      timedOut: r.timedOut && !killed,
       wallS: Math.round((Date.now() - legStart) / 1000),
       featuresAtEnd: (await featureCommits(ws)).length,
       sessionFile: sfile,
@@ -1613,7 +1635,7 @@ async function scenarioCrashConsistency() {
     const remaining = capMs - (Date.now() - runStart);
     const r = await handle.collect(join(LOG_DIR, `${name}-leg${leg + 1}`), Math.max(60_000, remaining));
     const sid = r.envelope?.session_id ?? sessionId;
-    if (sid) sessionId = sid;
+    if (sid) sessionId = resolveSessionId(unownHome, sid);
     if (!sessionId) sessionId = newestSessionId(unownHome, ws, startMs);
 
     // Torn-tail injection on kill legs: append a HALF-WRITTEN record (no
@@ -1637,7 +1659,8 @@ async function scenarioCrashConsistency() {
       orphanCount: orphans.length,
       orphanSurvivors,
       exitCode: r.code,
-      timedOut: r.timedOut,
+      // killed legs: the scenario's own SIGKILL, not a wall-cap breach
+      timedOut: r.timedOut && !killed,
       wallS: Math.round((Date.now() - legStart) / 1000),
       validLines: sessFile ? validLineCount(sessFile) : 0,
       parseCrashInStderr: /SyntaxError|Unexpected token|JSON\.parse/i.test(r.stderr),
