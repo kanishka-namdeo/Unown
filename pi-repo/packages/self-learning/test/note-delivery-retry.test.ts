@@ -12,6 +12,17 @@
 // pattern); the probe POST to /api/overview is answered with a throw (the
 // engine is "down" for the probe) while the /api/notes POST decides per call
 // count — first refusal, then acceptance.
+//
+// Parallel-race hardening (2026-10-28): `bun test` runs files in parallel,
+// and a foreign file's outbox write can land inside this test's ~600ms mock
+// window — suite noise (background note-sync against a mocked or dead fetch)
+// made the "no new outbox file" assertion fail three release/CI runs (the
+// v0.0.32 ubuntu release, the live-preview round's ubuntu CI + release) on
+// files this test never wrote. The outbox filename embeds the note's own
+// project slug (writeOutboxNote: `<ts>-<uuid>-<slug>.md`), so every
+// assertion and the cleanup key on THIS test's slug: the bug each test
+// guards (its own note hitting the outbox) still fails it; a foreign
+// parallel write never does, and the cleanup never deletes one.
 import { describe, expect, test } from "bun:test";
 import { readdirSync, rmSync } from "node:fs";
 import { join } from "node:path";
@@ -20,12 +31,14 @@ import "./_env.ts";
 
 const MARKER = `retry-${Date.now()}`;
 
-/** rm every outbox file that appeared since `before` (delivery tests clean up after themselves). */
-function cleanupNewOutboxFiles(before: string[]): void {
+/** rm every outbox file that appeared since `before` FOR ONE PROJECT SLUG
+ * (delivery tests clean up after themselves — scoped so a parallel file's
+ * note is never another test's collateral). */
+function cleanupNewOutboxFiles(before: string[], slug: string): void {
 	const beforeSet = new Set(before);
 	let names: string[] = [];
 	try {
-		names = readdirSync(UNOWN_OUTBOX_DIR).filter((f) => f.endsWith(".md") && !beforeSet.has(f));
+		names = readdirSync(UNOWN_OUTBOX_DIR).filter((f) => f.endsWith(`-${slug}.md`) && !beforeSet.has(f));
 	} catch {
 		/* no dir */
 	}
@@ -69,11 +82,13 @@ describe("note delivery retry (H2)", () => {
 			expect(result.detail).toBe("delivered on retry");
 			expect(noteCalls.length).toBe(2); // exactly ONE retry — never a third attempt
 			// The note never touched the outbox.
-			const after = readdirSync(UNOWN_OUTBOX_DIR).filter((f) => f.endsWith(".md") && !new Set(beforeFiles).has(f));
+			// Slug-scoped: this note hitting the outbox fails the test; a
+				// parallel file's write is not this test's verdict.
+				const after = readdirSync(UNOWN_OUTBOX_DIR).filter((f) => f.endsWith("-retry-proj.md") && !new Set(beforeFiles).has(f));
 			expect(after).toEqual([]);
 		} finally {
 			globalThis.fetch = realFetch;
-			cleanupNewOutboxFiles(beforeFiles);
+			cleanupNewOutboxFiles(beforeFiles, "retry-proj");
 		}
 	});
 
@@ -100,11 +115,13 @@ describe("note delivery retry (H2)", () => {
 			expect(result.via).toBe("outbox");
 			expect(result.detail).toContain("retry");
 			expect(postCalls).toBe(2); // initial + ONE retry
-			const after = readdirSync(UNOWN_OUTBOX_DIR).filter((f) => f.endsWith(".md") && !new Set(beforeFiles).has(f));
+			// Slug-scoped: the durable write happened exactly once — this note's
+				// file; a parallel file's write is not this test's verdict.
+				const after = readdirSync(UNOWN_OUTBOX_DIR).filter((f) => f.endsWith("-retry-stays-down.md") && !new Set(beforeFiles).has(f));
 			expect(after).toHaveLength(1); // the durable write happened exactly once
 		} finally {
 			globalThis.fetch = realFetch;
-			cleanupNewOutboxFiles(beforeFiles);
+			cleanupNewOutboxFiles(beforeFiles, "retry-stays-down");
 		}
 	});
 
@@ -133,7 +150,7 @@ describe("note delivery retry (H2)", () => {
 			expect(postCalls).toBe(1); // NO retry on an HTTP status
 		} finally {
 			globalThis.fetch = realFetch;
-			cleanupNewOutboxFiles(beforeFiles);
+			cleanupNewOutboxFiles(beforeFiles, "status-no-retry");
 		}
 	});
 });

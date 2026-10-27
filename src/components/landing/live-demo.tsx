@@ -79,8 +79,7 @@ export function LiveDemoSection() {
               the scroll budget contract makes the band pay for its own
               height, and every word here is one the frame shows for free. */}
           <p className="mt-5 max-w-2xl text-[15px] leading-relaxed text-dim">
-            One unown session, start to finish. Not a video: drag a card,
-            start the timer, break it if you can.
+            One unown session. Not a video: drag a card, start the timer.
           </p>
         </FadeUp>
 
@@ -205,7 +204,7 @@ export function LiveDemoSection() {
               height; the patch details live in the receipt doc. */}
           <p className="mt-2 font-mono text-[10px] text-faint">
             agent-written as built · {R.embeddingAdaptations} documented
-            embedding patches (list in the receipt)
+            patches
           </p>
         </FadeUp>
       </div>

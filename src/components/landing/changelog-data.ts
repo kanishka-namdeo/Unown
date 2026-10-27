@@ -30,14 +30,14 @@ export interface ChangelogStop {
   groups: ChangelogGroup[];
 }
 
-export const CHANGELOG_TOTAL_ENTRIES = 331;
+export const CHANGELOG_TOTAL_ENTRIES = 332;
 
 export const CHANGELOG_TOTALS: Record<ChangelogBucket, number> = {
   "Added": 144,
   "Changed": 28,
   "Deprecated": 0,
   "Removed": 3,
-  "Fixed": 121,
+  "Fixed": 122,
   "Security": 5,
   "Behavior": 30
 };
@@ -46,13 +46,13 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
   {
     "label": "0.0.33",
     "date": "2026-10-28",
-    "total": 1,
+    "total": 5,
     "counts": {
-      "Added": 1,
+      "Added": 3,
       "Changed": 0,
       "Deprecated": 0,
       "Removed": 0,
-      "Fixed": 0,
+      "Fixed": 2,
       "Security": 0,
       "Behavior": 0
     },
@@ -61,32 +61,11 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
         "bucket": "Added",
         "items": [
           {
-            "title": "landing + demo: the live preview round — the agent-built app runs on the landing page",
+            "title": "landing + demo: the live preview round — the agent-built app, live",
             "behavior": false
-          }
-        ]
-      }
-    ]
-  },
-  {
-    "label": "0.0.32",
-    "date": "2026-10-28",
-    "total": 3,
-    "counts": {
-      "Added": 2,
-      "Changed": 0,
-      "Deprecated": 0,
-      "Removed": 0,
-      "Fixed": 1,
-      "Security": 0,
-      "Behavior": 0
-    },
-    "groups": [
-      {
-        "bucket": "Added",
-        "items": [
+          },
           {
-            "title": "landing: the builder round — one prompt, one whole app, on film",
+            "title": "landing: the builder round — one prompt, one app, filmed",
             "behavior": false
           },
           {
@@ -100,6 +79,10 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
         "items": [
           {
             "title": "engine: the memory-platform seed race clears its loser — a healthy boot no longer cries \"degraded\"",
+            "behavior": false
+          },
+          {
+            "title": "tests: the note-delivery retry pin loses its parallel-file race — the outbox verdict keys on the note's own slug",
             "behavior": false
           }
         ]
@@ -124,7 +107,7 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
         "bucket": "Added",
         "items": [
           {
-            "title": "benchmarks: the long-run endurance round — eleven duration scenarios…",
+            "title": "benchmarks: the long-run round — eleven duration scenarios, bench-owned anti-tamper scoring",
             "behavior": false
           },
           {

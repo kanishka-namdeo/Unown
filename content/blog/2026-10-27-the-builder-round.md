@@ -136,7 +136,7 @@ receipt-timeline evidence alongside.
 - The scenario spec (fifth cut): `scripts/tui-capture/scenarios/index.js`.
 - The session receipt: 97 events, 47 tool calls — the curation note quotes
   the timeline (`CURATION.md` in the capture root, outside the repo).
-- The changelog: the round ships in the 0.0.32 release entry.
+- The changelog: the round ships in the 0.0.33 release entry (folded with the live-preview round).
 
 ## What ships next
 
