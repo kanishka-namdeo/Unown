@@ -31,11 +31,28 @@ export interface BlogPost {
   html: string;
 }
 
-export const BLOG_TOTAL_POSTS = 14;
+export const BLOG_TOTAL_POSTS = 15;
 
-export const BLOG_TAGS: string[] = ["benchmarks","beta","browser","engine","landing","media","memory","meta","release","security","stress","subagents"];
+export const BLOG_TAGS: string[] = ["benchmarks","beta","browser","demo","engine","landing","media","memory","meta","release","security","stress","subagents"];
 
 export const BLOG_POSTS: BlogPost[] = [
+  {
+    "slug": "2026-10-28-the-live-preview-round",
+    "title": "\"The live preview round: the landing page now runs what the agent built\"",
+    "description": "\"Four sessions, ~200 tool calls, one fullstack app — and the landing page now runs it instead of showing a video. The category's first live agent-built demo.\"",
+    "date": "2026-10-28",
+    "lastmod": "2026-10-28",
+    "tags": [
+      "landing",
+      "demo"
+    ],
+    "type": "feature",
+    "readingMinutes": 3,
+    "media": [
+      "/landing/demo/poster.png"
+    ],
+    "html": "<p>The builder round filmed the agent building an app — one prompt in, a green\ntest suite out, the whole thing on video. This round asks the harder\nquestion a video can&#39;t answer: <strong>does the artifact actually run?</strong> The\nlanding page&#39;s new &quot;Live demo&quot; band answers it by running the app in your\nbrowser. Not a recording of the app. The app.</p>\n<figure>\n  <img src=\"/landing/demo/poster.png\" alt=\"Sigil Focus — the kanban board app the agent built: four columns with seeded tasks, running live on the landing page\" width=\"880\" loading=\"lazy\"/>\n  <figcaption>The poster is a real capture of the route the band frames — the\n  app boots seeded, so this is what a first-time visitor's board looks like.</figcaption>\n</figure><h2>What got built</h2>\n<p><strong>Sigil Focus</strong> — a fullstack productivity app:</p>\n<ul>\n<li>a four-column kanban board (Backlog, Doing, Review, Done) with\ndrag-and-drop cards carrying priority, labels and story-point estimates;</li>\n<li>a configurable pomodoro focus timer that attaches to a task and logs\ncompleted sessions against it;</li>\n<li>a stats view — 14-day SVG bar charts of tasks completed and focus minutes,\nall-time totals, and a day-streak calculation;</li>\n<li>localStorage-first persistence with best-effort API sync (Next.js route\nhandlers for tasks, stats and a starter-template library);</li>\n<li>dark/light themes, a mobile layout where columns collapse to tabs, and\nkeyboard shortcuts (<code>n</code>, <code>/</code>, <code>1</code>–<code>4</code>, <code>t</code>).</li>\n</ul>\n<h2>How it was driven</h2>\n<p>Like a real user, not a demo script. Four sessions against the live stack\n(<code>agnes-3.0-flash</code> through the bundled bridge):</p>\n<ol>\n<li><strong>Build</strong> — one prompt, the full brief; the agent planned six todos,\nscaffolded, built, tested, committed three times.</li>\n<li><strong>Review</strong> — a human testing pass found eight issues (a VLM design\ncritique found the rest: dead vertical space, confusing empty states,\nchart cards that were mostly void); the agent fixed all eight and added\ndemo-data seeding plus an <code>?embed=1</code> mode.</li>\n<li><strong>Finish</strong> — the review round hit its turn cap mid-work; a resume\nsession verified everything and landed the commit.</li>\n<li><strong>QA</strong> — the agent verified its own app in a real browser: board render,\ntask creation with a 201 from the API, drag-and-drop, a ticking timer,\nrendered charts. Verdict: SHIP.</li>\n</ol>\n<p>The receipts: ~200 tool calls, four commits, 27 unit tests green, zero human\nedits to the app&#39;s code — the full record, briefs and per-session ledgers,\nis <a href=\"https://github.com/kanishka-namdeo/Unown/blob/main/docs/live-demo-session.md\">docs/live-demo-session.md</a>.</p>\n<h2>The honest engineering of embedding</h2>\n<p>An app that owns its document behaves differently from an app embedded in\nsomeone else&#39;s. The integration surfaced (and fixed) real defects the\nstandalone app shipped with:</p>\n<ul>\n<li><strong>A hydration bug</strong>: the embed flag was read from\n<code>window.location.search</code> inside a <code>useState</code> initializer — the server\nrendered one tree, the client another, and every <code>?embed=1</code> visit was a\nReact #418 mismatch. The route now threads the flag from <code>searchParams</code>\nserver-side.</li>\n<li><strong>A contrast defect</strong>: the landing page&#39;s axe gate scans into the iframe,\nand the app&#39;s &quot;High&quot; priority badge read 3.85:1 on its dark surface —\nbelow WCAG AA. The badges moved to the -400 shades and now pass.</li>\n</ul>\n<p>Both fixes live in the embedded copy with code comments; the app as the\nagent wrote it is preserved untouched in the build record.</p>\n<h2>Try to break it</h2>\n<p>The band&#39;s frame is sandboxed, lazy-mounted (an idle visit never pays the\ndemo&#39;s hydration cost — a poster still carries the first impression), and\nhas a working <strong>reset</strong> button (a postMessage handshake the app listens for\nin embed mode) so every visitor is one click from the pristine seeded board.\nThere&#39;s also an <strong>open full screen</strong> hatch — the route is a real deployment,\nand the full app (including its own header, theme toggle and API routes) is\none click away.</p>\n<p>No other terminal coding agent ships this. Their landing pages show videos\nof agents working; this one runs the working thing. <a href=\"/demo\">Go drag a\ncard.</a></p>\n"
+  },
   {
     "slug": "2026-10-27-the-builder-round",
     "title": "\"The builder round: one prompt, a whole app, filmed end to end\"",

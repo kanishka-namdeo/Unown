@@ -7,6 +7,15 @@
     <description>How each feature and release works, what it does, and the receipts behind it — the longhand record of the self-improving terminal coding agent Unown.</description>
     <language>en</language>
     <item>
+      <title>&quot;The live preview round: the landing page now runs what the agent built&quot;</title>
+      <link>https://unown-nine.vercel.app/blog/2026-10-28-the-live-preview-round</link>
+      <guid isPermaLink="true">https://unown-nine.vercel.app/blog/2026-10-28-the-live-preview-round</guid>
+      <pubDate>Wed, 28 Oct 2026 00:00:00 GMT</pubDate>
+      <description>&quot;Four sessions, ~200 tool calls, one fullstack app — and the landing page now runs it instead of showing a video. The category&apos;s first live agent-built demo.&quot;</description>
+      <category>landing</category>
+      <category>demo</category>
+    </item>
+    <item>
       <title>&quot;The builder round: one prompt, a whole app, filmed end to end&quot;</title>
       <link>https://unown-nine.vercel.app/blog/2026-10-27-the-builder-round</link>
       <guid isPermaLink="true">https://unown-nine.vercel.app/blog/2026-10-27-the-builder-round</guid>
