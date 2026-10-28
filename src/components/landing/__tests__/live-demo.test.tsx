@@ -81,6 +81,13 @@ describe("live-demo band (the gallery)", () => {
     expect(parley!.route).toBe("/parley");
     expect(parley!.url).toContain("parley?embed=1");
     expect(parley!.receipt.receiptDoc).toContain("parley-demo-session.md");
+    // The fugue entry (the SOTA round) is present with its own reset type.
+    const fugue = LIVE_DEMO_APPS.find((a) => a.id === "fugue");
+    expect(fugue).toBeTruthy();
+    expect(fugue!.resetType).toBe("fugue-reset");
+    expect(fugue!.route).toBe("/fugue/flows");
+    expect(fugue!.url).toContain("fugue/flows?embed=1");
+    expect(fugue!.receipt.receiptDoc).toContain("fugue-demo-session.md");
   });
 
   test("every receipt chip reads from the ACTIVE app's data — switching tabs swaps the counts", () => {

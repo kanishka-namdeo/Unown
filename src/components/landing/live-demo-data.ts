@@ -43,6 +43,16 @@
  * (src/lib/parley + src/app/parley/api/__tests__ +
  * src/components/parley/__tests__) · files: 81 under src/ (lib + api +
  * components + app). Narrative: docs/parley-demo-session.md.
+ *
+ * ── Fugue (the SOTA round, 2026-10-28) ──────────────────────────────
+ * Sources: receipts .unown/receipts/*.jsonl (the build repo,
+ * /home/z/my-project/fugue-build) — 26 agent sessions over the round's
+ * phase chain (plan → scaffold → domain → auth+API → UI → e2e → review,
+ * each capped phase a chunked resume-chain, the cadence round's pattern)
+ * · ~640 tool_calls · git: the app's eight agent commits (05eef38 brief →
+ * e0a3058 review pass) · tests: src/lib/fugue/*.test.ts +
+ * src/components/fugue/*.test.tsx (174 green across 11 files) · files: 38
+ * under src/. Narrative: docs/fugue-demo-session.md.
  */
 export interface LiveDemoApp {
   id: string;
@@ -146,6 +156,26 @@ export const LIVE_DEMO_APPS: LiveDemoApp[] = [
       embeddingAdaptations: 8,
       receiptDoc:
         "https://github.com/kanishka-namdeo/Unown/blob/main/docs/parley-demo-session.md",
+    },
+  },
+  {
+    id: "fugue",
+    name: "Fugue",
+    route: "/fugue/flows",
+    url: "unown-nine.vercel.app/fugue/flows?embed=1",
+    poster: "/landing/fugue/poster.png",
+    posterAlt:
+      "Fugue — the AI workflow-automation app unown built: the flows dashboard with its step editor and the per-step run timeline, running live",
+    resetType: "fugue-reset",
+    receipt: {
+      sessions: 26,
+      toolCalls: 640,
+      files: 38,
+      tests: 174,
+      commits: 8,
+      embeddingAdaptations: 11,
+      receiptDoc:
+        "https://github.com/kanishka-namdeo/Unown/blob/main/docs/fugue-demo-session.md",
     },
   },
 ];

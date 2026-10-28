@@ -1,0 +1,111 @@
+/*
+ * Fugue — the /fugue route's scoped stylesheet.
+ *
+ * Embedded inside the unown landing app (the SOTA round's gallery embed —
+ * docs/fugue-demo-session.md), this file is imported ONLY by
+ * src/app/fugue/layout.tsx, so Next injects it for /fugue routes alone — the
+ * landing page never downloads it. The embedding adaptations (the rest is
+ * the app's stylesheet verbatim, as the agent wrote it — the cadence/
+ * bazaar scoped-stylesheet pattern, their route-layout headers):
+ *
+ *   1. `@source` scoping — with two Tailwind v4 passes in one repo, this
+ *      file's pass must generate utilities for the FUGUE trees only
+ *      (components/fugue, lib/fugue, app/fugue), never the landing's.
+ *   2. The standalone app's `:root` / `body` / `*` rules were re-anchored
+ *      onto `.fugue-scope` — under the landing's root layout those elements
+ *      are SHARED, and the demo must not restyle the host (the wrapper is
+ *      what the route layout renders).
+ *   3. The Geist webfonts stay referenced but NOT loaded here: the landing's
+ *      root layout already ships Geist under the same `--font-geist-sans` /
+ *      `--font-geist-mono` variable names, so the embedded route adds no
+ *      second font download (the cadence/bazaar rounds swapped to system
+ *      stacks because THEIR builds named different vars; fugue's names match
+ *      the host's — the app-as-built reference resolves to the host's own
+ *      loaded fonts).
+ */
+@import "tailwindcss";
+
+@source "../../../components/fugue";
+@source "../../../lib/fugue";
+@source "../../fugue";
+
+/* The scope wrapper the fugue layout renders (the standalone app put these
+ * on <html>/<body>; here it must not touch the landing's shared elements). */
+.fugue-scope {
+  color-scheme: light;
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-geist-sans), ui-sans-serif, system-ui, -apple-system,
+    "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  min-height: 100dvh;
+}
+
+/* ── Fugue design tokens (verbatim, re-anchored from :root) ──────────────
+ * Light SaaS palette (shadcn light, oklch) — the app's default scheme. */
+.fugue-scope {
+  --radius: 0.5rem;
+
+  --background: oklch(1 0 0);
+  --foreground: oklch(0.145 0 0);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.145 0 0);
+  --primary: oklch(0.205 0 0);
+  --primary-foreground: oklch(0.985 0 0);
+  --secondary: oklch(0.97 0 0);
+  --secondary-foreground: oklch(0.205 0 0);
+  --muted: oklch(0.97 0 0);
+  --muted-foreground: oklch(0.556 0 0);
+  --accent: oklch(0.97 0 0);
+  --accent-foreground: oklch(0.205 0 0);
+  --destructive: oklch(0.577 0.245 27.325);
+  --destructive-foreground: oklch(0.985 0 0);
+  --border: oklch(0.922 0 0);
+  --input: oklch(0.922 0 0);
+  --ring: oklch(0.708 0 0);
+}
+
+@theme inline {
+  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, -apple-system,
+    "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, "SF Mono",
+    SFMono-Regular, Menlo, Consolas, monospace;
+
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+}
+
+@layer base {
+  /* The standalone app's `*` rule, re-anchored onto the scope (never the
+   * landing's shared elements). */
+  .fugue-scope * {
+    @apply border-border outline-ring/50;
+  }
+
+  /* Visible focus ring on all interactive elements (brief: focus rings);
+   * scoped to the demo's own tree only. */
+  .fugue-scope :focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: 2px;
+    border-radius: 2px;
+  }
+}
