@@ -119,7 +119,42 @@ file), `check:changelog|blog|benchmarks|claims`, `gba_palette_check.mjs`
 - Budget after the new stop: audit 3,308w / e2e 3,275w against 3,320 —
   inside the gate with no amendment, as calculated.
 
-## Checkpoint 5 — release v0.0.36 (IN PROGRESS)
+## Checkpoint 5 — release v0.0.36 (DONE — SHIPPED)
+
+- Bun upgraded 1.3.14 -> 1.4.4 (pi-repo's lockfileVersion 3 requires >= 1.4 —
+  the fresh-clone installer enforces it).
+- `bun run agent:install` (link/service steps skipped) built the vendored pi
+  workspace end to end; `release:artifacts --dry-run` printed exactly the
+  six-target plan; `release:artifacts` compiled ALL SIX per-OS binaries
+  locally; `release-manifest.ts --out download/artifacts` wrote the unsigned
+  release.json for 0.0.36.
+- Concurrent-session note: another round (the SOTA round,
+  `benchmarks/sota-round/`) landed on main mid-flight; the release rebase
+  resolved the one overlap (`docs/AGENTS.md` ownership) by keeping BOTH
+  sessions' records. The SOTA round's work stays uncut — the rail renders
+  CUT stops only, so v0.0.36 cuts exactly the presence round.
+- Tag `v0.0.36` pushed; `.github/workflows/release.yml` completed **success
+  end to end**: 3x release assertion (real-installer matrix on all three
+  OSes), production build + the six per-OS binaries + SBOM, five per-platform
+  artifact smokes (each platform ran its own archive), the GitHub Release
+  created and PROMOTED (not a draft), the published feed verified, and the
+  three-OS smoke-install matrix green (installs the released binary through
+  the release's own installer, checks --version, update --check,
+  uninstall --dry-run).
+- The published release carries all 13 assets: the six binaries
+  (darwin/linux/windows x arm64/x64), install.sh + install.ps1, release.json,
+  sha256sums.txt, version.txt, sbom-spdx.json, release-checklist.md.
+- **One real defect shipped and was caught by the lane built for it**: the
+  word-settle split the h1 into per-word spans, so `verify-deploy.mjs`'s
+  raw-HTML assertion of the keyword sentence failed on the live deployment
+  (the deploy-verify workflow_run runs went red). The gate now extracts the
+  h1's own markup and strips tags before matching — the same assertion, on
+  text content, scoped to the element; the character-exact sentence stays
+  pinned upstream by `landing-copy`, `presence` and `e2e/seo.spec.ts`.
+  Manual dispatch of deploy-verify after the fix: **success**.
+- The live deployment serves the round: 12 word-settle spans in the SSR
+  HTML, the route-bar, the 0.0.36 rail stop. `verify-deploy.mjs`: all checks
+  passed.
 
 - Bun upgraded 1.3.14 → 1.4.4 (pi-repo's lockfileVersion 3 requires >= 1.4 —
   the fresh-clone installer enforces it).
