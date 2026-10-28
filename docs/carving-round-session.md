@@ -158,19 +158,42 @@ Mid-round corrections:
   rAF wall-clock under video recording is jittery — poll for resolved
   states instead of fixed waits.
 
-## Checkpoint 4 — docs, blog, DOX (PENDING)
+## Checkpoint 4 — docs, blog, DOX (DONE)
 
-- `src/components/landing/AGENTS.md`: the round's wiring contracts + the
-  carving suite in Verification.
-- `docs/AGENTS.md` ownership + README Documentation table: the two new docs.
-- Blog post `content/blog/2026-10-28-the-carving-round.md` (type feature) with
-  media; `landing_blog.mjs` regenerated; `check:blog` green.
-- The tracked OG shots regenerated against the production build (the standing
-  same-change rule, since the finale band's resting pixels change with the
-  balanced headings only if they rewrap — shoot and diff to decide).
-- CHANGELOG `[0.0.37] - 2026-10-28` written; `package.json` → 0.0.37;
-  `landing_changelog.mjs` regenerated; the budget re-measured with the new
-  stop, compressing or amending per the standing rules.
+- `src/components/landing/AGENTS.md` carries the round's wiring contracts:
+  the DrawGlyph/driver ownership (finished-first, IO-armed, replay-on-id,
+  decorative), the `.ink-fill` color-token rule + the stagger cap, the
+  `.gb-kbd` mono-face rule, the CopyButton status region — plus the carving
+  suite in Verification and the scroll-budget bullet's measurement note.
+- `docs/AGENTS.md` ownership lists the carving pair;
+  `docs/landing-research.md` gained the dated section "2026-10-28 — the
+  carving round" (the TOC links it); the README links both new docs in the
+  Documentation table and names the round (with the deterministic budget
+  numbers) in the Landing page section.
+- Blog post `content/blog/2026-10-28-the-carving-round.md` (type feature)
+  with the choreography clip (webm + faststart mp4) and six stills under
+  `public/blog/2026-10-28-the-carving-round/`, all shot against the shipped
+  build; `landing_blog.mjs` regenerated (19 posts) and `check:blog` green.
+- The tracked OG shots (`public/landing/landing-{hero,full,mobile}.png`)
+  regenerated against the release build — the standing same-change rule
+  (the balanced headings rewrapped two of the three).
+- CHANGELOG `[0.0.37] - 2026-10-28` written; `package.json` → 0.0.37
+  (JSON-LD `softwareVersion` reads it — verified in the build);
+  `landing_changelog.mjs` regenerated (35 stops, 35 dated).
+- Budget with the new stop: audit 13.3vh / 3,170w against 13.5 / 3,320 —
+  inside the gate with NO amendment, as the measurement fix calculated
+  (the stop's generated chrome lands inside the ~170 words of headroom the
+  deterministic count opened).
+- Release build re-verified end to end: 554 unit tests green (the parley
+  round's domain-layer suite, landed concurrently, rides along), e2e
+  15/15, contrast 1,822 nodes clean in both schemes.
+- Concurrent-session note (the presence/SOTA precedent again): the parley
+  round is mid-flight on main building its SaaS demo and its records
+  describe "v0.0.37's build". This round cut first, so the carving round is
+  0.0.37 and the parley round's work rides this tag UNDATED (its CHANGELOG
+  entry will date when it cuts its own release — the rail renders cut
+  stops only). Its session record will need the same renumbering note the
+  SOTA round's got.
 
 ## Checkpoint 5 — release v0.0.37 (PENDING)
 

@@ -16,6 +16,15 @@
       <category>demo</category>
     </item>
     <item>
+      <title>&quot;The carving round: the letters draw themselves&quot;</title>
+      <link>https://unown-nine.vercel.app/blog/2026-10-28-the-carving-round</link>
+      <guid isPermaLink="true">https://unown-nine.vercel.app/blog/2026-10-28-the-carving-round</guid>
+      <pubDate>Wed, 28 Oct 2026 00:00:00 GMT</pubDate>
+      <description>&quot;Glyph draw-on for the decode panel and the spellbox, a decode fill that stays AA at every frame, keycap chips, and copy buttons that finally speak.&quot;</description>
+      <category>landing</category>
+      <category>design</category>
+    </item>
+    <item>
       <title>&quot;The commerce round: a storefront, a checkout, and a browser QA pass&quot;</title>
       <link>https://unown-nine.vercel.app/blog/2026-10-28-the-commerce-round</link>
       <guid isPermaLink="true">https://unown-nine.vercel.app/blog/2026-10-28-the-commerce-round</guid>
