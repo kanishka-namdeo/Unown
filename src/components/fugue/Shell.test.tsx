@@ -12,9 +12,10 @@ import { describe, it, expect, beforeEach, afterEach } from "bun:test";
 // NATIVE fetch (never `undefined`) so later suites (cadence, bazaar) keep a
 // working global. Captured at module load, before any router patches it.
 const NATIVE_FETCH = globalThis.fetch;
-import { render, screen, cleanup } from "@testing-library/react";
+import { render, screen, cleanup, fireEvent, waitFor } from "@testing-library/react";
 import FugueShell from "./Shell";
 import { DEMO_EMAIL, DEMO_PASSWORD } from "./shared";
+import type { PublicUser, Workspace } from "@/lib/fugue/types";
 
 // ── helpers ──
 
@@ -24,6 +25,28 @@ function jsonResp(body: unknown, status = 200): Response {
     headers: { "Content-Type": "application/json" },
   });
 }
+
+// The seeded two workspaces the logged-in switcher mounts (lib/fugue/seed).
+const WS_ATLAS: Workspace = {
+  id: "ws_atlas",
+  slug: "atlas",
+  name: "Atlas",
+  description: "test",
+  createdAt: "2025-06-01T00:00:00.000Z",
+};
+const WS_BOREALIS: Workspace = {
+  id: "ws_borealis",
+  slug: "borealis",
+  name: "Borealis",
+  description: "test",
+  createdAt: "2025-06-01T00:00:00.000Z",
+};
+
+const DEMO_USER: PublicUser = {
+  id: "user_demo",
+  email: DEMO_EMAIL,
+  createdAt: "2025-06-01T00:00:00.000Z",
+};
 
 /**
  * Set up a fetch router that returns 401 for /auth/me (no session) and 200
@@ -69,6 +92,28 @@ function resetCapturingRouter(calls: Array<{ url: string; init?: RequestInit }>)
 
 function resetPostCount(calls: Array<{ url: string; init?: RequestInit }>): number {
   return calls.filter((c) => c.url.includes("/reset") && c.init?.method === "POST").length;
+}
+
+/**
+ * resetCapturingRouter's logged-in twin: /auth/me returns the demo user,
+ * /workspaces the seeded two, /auth/logout 204s — enough to drive FugueShell
+ * into the logged-in surface (header, nav, switcher, account, logout).
+ */
+function loggedInRouter(calls: Array<{ url: string; init?: RequestInit }>) {
+  const original = globalThis.fetch;
+  globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
+    const url = String(input);
+    calls.push({ url, init });
+    if (url.includes("/auth/me")) return jsonResp({ user: DEMO_USER });
+    if (url.includes("/workspaces")) return jsonResp({ workspaces: [WS_ATLAS, WS_BOREALIS] });
+    if (url.includes("/auth/logout")) return new Response(null, { status: 204 });
+    throw new TypeError("fetch failed");
+  }) as typeof fetch;
+  return {
+    dispose() {
+      globalThis.fetch = original;
+    },
+  };
 }
 
 beforeEach(() => cleanup());
@@ -211,5 +256,131 @@ describe("AuthScreen form labels", () => {
     expect(codeNodes[1]?.textContent).toBe(DEMO_PASSWORD);
 
     dispose();
+  });
+});
+
+// ── the logged-in shell: the standalone app surfaces (embed=false) ──
+
+describe("logged-in shell (the standalone app surfaces)", () => {
+  async function renderLoggedIn(calls: Array<{ url: string; init?: RequestInit }>) {
+    const { dispose } = loggedInRouter(calls);
+    render(
+      <FugueShell embed={false}>
+        <p>shell-body</p>
+      </FugueShell>,
+    );
+    // useAuth + refreshWorkspaces need a tick to settle loading → logged-in tree.
+    await new Promise((r) => setTimeout(r, 50));
+    return { dispose };
+  }
+
+  it("surfaces the brand, primary nav, workspace switcher, account + logout", async () => {
+    const calls: Array<{ url: string; init?: RequestInit }> = [];
+    const { dispose } = await renderLoggedIn(calls);
+
+    // The standalone header (never rendered in embed mode).
+    const header = screen.getByRole("banner");
+    expect(header.textContent).toContain("Fugue");
+    const nav = screen.getByRole("navigation", { name: "Primary" });
+    for (const label of ["Flows", "Runs", "Stats"]) {
+      expect(nav.textContent).toContain(label);
+    }
+
+    // The workspace switcher mounts the seeded two, first selected.
+    const select = screen.getByLabelText("Workspace") as HTMLSelectElement;
+    expect([...select.options].map((o) => o.textContent)).toEqual(["Atlas", "Borealis"]);
+    expect(select.value).toBe("ws_atlas");
+
+    // The account surface + the children render under the header.
+    expect(screen.getByText(DEMO_EMAIL)).toBeDefined();
+    expect(screen.getByRole("button", { name: "Logout" })).toBeDefined();
+    expect(screen.getByText("shell-body")).toBeDefined();
+
+    dispose();
+  });
+
+  it("switching workspaces updates the selection and rewrites ?workspaceId= in the URL", async () => {
+    const calls: Array<{ url: string; init?: RequestInit }> = [];
+    const { dispose } = await renderLoggedIn(calls);
+
+    // Instrument history.replaceState for this test only — happy-dom's history
+    // does not surface the call on location.search (see dom-helpers.ts), so
+    // the URL rewrite is pinned through the call itself.
+    const replaceStateArgs: string[] = [];
+    const nativeReplaceState = window.history.replaceState;
+    window.history.replaceState = ((
+      data: unknown,
+      unused: string,
+      url?: string | URL | null,
+    ) => {
+      replaceStateArgs.push(String(url ?? ""));
+      return nativeReplaceState.call(window.history, data, unused, url);
+    }) as typeof window.history.replaceState;
+    try {
+      fireEvent.change(screen.getByLabelText("Workspace"), {
+        target: { value: "ws_borealis" },
+      });
+      expect((screen.getByLabelText("Workspace") as HTMLSelectElement).value).toBe(
+        "ws_borealis",
+      );
+      expect(replaceStateArgs.length).toBe(1);
+      expect(replaceStateArgs[0]).toContain("workspaceId=ws_borealis");
+    } finally {
+      window.history.replaceState = nativeReplaceState;
+    }
+
+    dispose();
+  });
+
+  it("logout POSTs /auth/logout and returns to the auth screen", async () => {
+    const calls: Array<{ url: string; init?: RequestInit }> = [];
+    const { dispose } = await renderLoggedIn(calls);
+
+    fireEvent.click(screen.getByRole("button", { name: "Logout" }));
+    await waitFor(() => {
+      // Unauthenticated standalone: the non-embedded auth screen heading.
+      expect(screen.getByText("Fugue — workflow automation")).toBeDefined();
+    }, { timeout: 1500 });
+    // The logout went through the API (POST, not just a client-side flip).
+    expect(
+      calls.some((c) => c.url.includes("/auth/logout") && c.init?.method === "POST"),
+    ).toBe(true);
+    expect(screen.queryByRole("button", { name: "Logout" })).toBeNull();
+
+    dispose();
+  });
+});
+
+// ── the auth screen's login failure path ──
+
+describe("AuthScreen submit (login failure path)", () => {
+  it("POSTs the prefilled demo credentials; a 401 surfaces 'Invalid credentials'", async () => {
+    const original = globalThis.fetch;
+    const calls: Array<{ url: string; init?: RequestInit }> = [];
+    globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input);
+      calls.push({ url, init });
+      if (url.includes("/auth/me")) return jsonResp({ user: null }, 401);
+      if (url.includes("/auth/login")) return jsonResp({ error: "invalid credentials" }, 401);
+      throw new TypeError("fetch failed");
+    }) as typeof fetch;
+    try {
+      render(<FugueShell embed={false}>{null}</FugueShell>);
+      await new Promise((r) => setTimeout(r, 50));
+
+      // The form carries the prefilled demo credentials; submitting it
+      // posts them as JSON to /auth/login.
+      fireEvent.click(screen.getByRole("button", { name: "Sign in" }));
+      await waitFor(() => {
+        expect(screen.getByRole("alert")).toBeDefined();
+      }, { timeout: 1500 });
+      expect(screen.getByRole("alert").textContent).toBe("Invalid credentials");
+
+      const login = calls.find((c) => c.url.includes("/auth/login"));
+      expect(login).toBeDefined();
+      expect((login?.init?.body as string) ?? "").toContain(DEMO_EMAIL);
+    } finally {
+      globalThis.fetch = original;
+    }
   });
 });

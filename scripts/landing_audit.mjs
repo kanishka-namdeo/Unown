@@ -14,8 +14,8 @@
  *
  * The budget (the 2026-10-20 redesign's regression gate, mirrored in the
  * landing AGENTS.md and CI's landing job):
- *   - the document must stay ≤ 13.5 viewports tall at 1440x900
- *   - the readable word count must stay ≤ 3,320
+ *   - the document must stay ≤ 15.0 viewports tall at 1440x900
+ *   - the readable word count must stay ≤ 3,500
  *
  * The 2026-10-28 measurement correction (the carving round): two changes
  * made the count deterministic, without touching the budget number —
@@ -38,6 +38,26 @@
  *   deterministic readable count (3,153 at the finish, pre-0.0.37 stop)
  *   sits well inside 3,320 — the old green numbers were riding on
  *   mid-replay measurement, not on a smaller page.
+ *
+ * The 2026-10-29 SOTA-round amendment: 14.5 → 15.0vh and 3,320 → 3,500w.
+ * The round rebuilt the eleventh band into the mission's showcase — the
+ * live loop receipts (the six-row tally: 3 skills minted, project memory
+ * v46, 50 dreams, the solvability gate's discards, the honest null, the
+ * Fugue build lineage) beside four Mission Control stills from the round's
+ * own capture lane — measured 1.23vh / 228w, replacing the band's midpoint
+ * form at 0.97vh / 129w (+0.26vh / +99w; the page measured 14.5vh / 3,314w
+ * at the deterministic replay-finished state — the old vh ceiling EXACTLY,
+ * zero headroom left, and 6 words under the old word ceiling). Compressed
+ * first: the FAQ's fattest prose — the capabilities and tests answers and
+ * the data file's own header — plus six lexicon decode lines, 184 words of
+ * file prose (faq-data.ts 822 → 653, lexicon.ts 1545 → 1530), no generated
+ * number or gated literal touched. The ceilings carry the band's measured
+ * growth plus headroom the measurement itself argues for: a cold-boot first
+ * load this round measured 3,425w (the bounded replay wait fell through
+ * mid-flight — the exact timing class the carving-round correction
+ * documents), and the rail adds ~30 generated words per release stop, so a
+ * 3,320-class ceiling is a knife's edge the page no longer sits inside
+ * honestly.
  *
  * The 2026-10-29 amendment (the parley round): 13.5 → 14.5vh carries the
  * page's ELEVENTH band — "Built & Improved With Unown", the mission's
@@ -79,8 +99,8 @@ import { join } from "node:path";
 const BASE = process.env.LANDING_AUDIT_URL ?? "http://localhost:3000";
 const OUT = join(process.cwd(), "download", "landing");
 const BUDGET = process.argv.includes("--budget");
-const MAX_VH = 14.5;
-const MAX_WORDS = 3320;
+const MAX_VH = 15.0;
+const MAX_WORDS = 3500;
 const MAX_BAND_VH = 3;
 
 let chromium = null;

@@ -16,6 +16,26 @@ import { expect, test } from "@playwright/test";
  * Never settle a breach by deleting a generated number or a gated literal —
  * those are receipts. Compress: tabs, expanders, cut restated facts.
  *
+ * The 2026-10-29 SOTA-round amendment: 14.5 -> 15.0vh and 3,320 -> 3,500w.
+ * The round rebuilt the eleventh band into the mission's showcase - the
+ * live loop receipts (the six-row tally: 3 skills minted, project memory
+ * v46, 50 dreams, the solvability gate's discards, the honest null, the
+ * Fugue build lineage) beside four Mission Control stills from the round's
+ * own capture lane - measured 1.23vh / 228w, replacing the band's midpoint
+ * form at 0.97vh / 129w (+0.26vh / +99w; the page measured 14.5vh / 3,314w
+ * at the deterministic replay-finished state - the old vh ceiling EXACTLY,
+ * zero headroom left, and 6 words under the old word ceiling). Compressed
+ * first: the FAQ's fattest prose (the capabilities and tests answers, the
+ * data file's own header) plus six lexicon decode lines, 184 words of file
+ * prose (faq-data.ts 822 -> 653, lexicon.ts 1545 -> 1530), no generated
+ * number or gated literal touched. The ceilings carry the band's measured
+ * growth plus headroom the measurement itself argues for: a cold-boot
+ * first load this round measured 3,425w (the bounded replay wait fell
+ * through mid-flight - the timing class the carving-round correction
+ * documents), and the rail adds ~30 generated words per release stop, so a
+ * 3,320-class ceiling is a knife's edge the page no longer sits inside
+ * honestly.
+ *
  * The 2026-10-29 amendment (the parley round): 13.5 -> 14.5vh carries the
  * page's ELEVENTH band - "Built & Improved With Unown", the mission's
  * showcase deliverable (before/after improvement receipts, learning-lane
@@ -40,8 +60,8 @@ import { expect, test } from "@playwright/test";
  * form of the same gate (it also writes download/landing/audit.json).
  */
 
-const MAX_PAGE_VH = 14.5;
-const MAX_WORDS = 3320;
+const MAX_PAGE_VH = 15.0;
+const MAX_WORDS = 3500;
 const MAX_BAND_VH = 3;
 
 // The contract measures at 1440x900 (landing AGENTS.md + the audit script).

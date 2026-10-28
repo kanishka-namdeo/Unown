@@ -167,3 +167,42 @@
 
 (none yet — the first improvement entries will carry: baseline behaviour,
 improved behaviour, benchmark delta, and the receipts that prove both.)
+
+### F3 — the embed contract dead in production: a three-layer root cause (closed: fixed + verified live)
+
+- **Description:** after embedding Fugue, `curl /fugue/flows` and
+  `/fugue/flows?embed=1` returned **byte-identical HTML** and the RSC payload
+  serialized `embed:false` for both — in the production standalone build the
+  `?embed=1` flag never reached the client tree, so the landing's iframe would
+  have shipped the app's full standalone chrome (and the reset channel would
+  never arm).
+- **Reproduction:** byte-compare + RSC-payload grep (`"embed\\:false` for
+  ?embed=1), the redirect route firing on `/fugue?embed=1`, and header
+  inspection (`x-nextjs-prerender: 1`, `s-maxage=31536000`).
+- **Root cause — three layers, each necessary:** (1) the pages read
+  `searchParams` **synchronously** — in Next 15+/16 searchParams is a
+  Promise, so the read returned undefined and the route prerendered with
+  embed baked false; (2) a **zombie server** (`next-server` pid holding the
+  port whose cmdline pkill did not match, its cwd a **deleted** standalone
+  dir) served the old build while every "restart" silently died EADDRINUSE —
+  two intermediate fixes tested against it and falsely appeared to fail;
+  (3) with the reads fixed, Turbopack's static analysis still prerendered the
+  sync-outer shell (`force-dynamic` was needed for parity with what the
+  other three demo routes get naturally).
+- **Unown defect?** No — an app bug (agent-authored pages) + an operator
+  test-harness flaw (unverified server identity). Both closed inside the
+  round.
+- **Benchmark created:** the byte-identity check + RSC-payload grep is now
+  the embed lane's acceptance probe (page tests pin the awaited contract;
+  the live curl is the release checklist step).
+- **Improvement applied:** pages converted to the bazaar/cadence/parley
+  sync-outer + Suspense + async-inner shape with `force-dynamic`; the
+  redirect/inner exported for the test lane; page tests rewritten to the
+  cadence pattern (16 tests).
+- **Validation evidence:** fresh server (pid verified, cwd not deleted):
+  `/fugue/flows?embed=1` → `"embed":true`; `/fugue/flows` →
+  `"embed":false`; `/fugue?embed=1` → 200 (no redirect). Full suite + typecheck
+  + build green.
+- **Retention:** the operator lesson is recorded here and in the receipt:
+  **verify the server process, not just the port** — a listening port proves
+  nothing about which build answers.

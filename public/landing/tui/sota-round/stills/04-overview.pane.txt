@@ -1,0 +1,36 @@
+◆ unown dashboard · ● engine up · ● bridge · ⧗ busy                                             zai-bridge/agnes-3.0-flash 18:29
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+│pass rate ████████████ 98% 108/110 · 98%   errors 0
+ LEARNING│suite 6/6 passing · saturated   shipped 0   dreams 40   notes 5 pending
+▌1 Overview│memory policy v1 project v46 user v1 local v1   hooks 3 denies   tokens ↑824.1k ↓128.7k
+ 2 Memory│
+ 3 Dreams│cumulative pass ▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▅▅▅▅▅▅▅▅▅▅▅▅▅▅▅▅█████████████████ 20 runs
+ 4 Notes│
+ 5 Skills│▐ activity
+ 6 Learning Lab│just now connected to engine event stream
+ 7 Hooks│
+ 8 Router│▐ benchmark tasks · engine busy
+│▸ ★☆☆☆☆ Fix FizzBuzz             ✓5 ✗0  seed  0 impl
+ OPERATIONS│  ★★☆☆☆ Fix dropRight off-by-one ✓5 ✗0  seed  0 impl
+ 9 Gateway│  ★★★☆☆ Fix CSV parsing          ✓5 ✗0  seed  0 impl
+ 0 Routines│  ★★★☆☆ Swap if/else branch bodies ✓5 ✗0  seed  0 impl
+ · Web Cache│  ★★★★☆ Implement debounce       ✓5 ✗0  seed  0 impl
+│  ★★★★☆ Implement mapLimit       ✓4 ✗0  seed  0 impl
+ ── loop state│  data fresh
+ notes 5 pending│
+ dreams 40│
+ shipped 0│
+│
+│
+│
+│
+│
+│
+│
+│
+│
+│
+│
+│
+│
+enter task · t run cycle · m mint · j/k select · : palette ? help [ ] screens                                             q quit

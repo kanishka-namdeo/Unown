@@ -25,7 +25,8 @@ import { Footer, LandingMotion, Nav } from "@/components/landing/shell";
  * itself in `src/components/landing/`, and the contracts for that folder live
  * in its own AGENTS.md.
  *
- * Ten bands (the live demo joined 2026-10-28). The page ran fourteen sections / 21.5 viewports / 5,488 words
+ * Eleven bands (the live demo joined 2026-10-28; the built & improved
+ * showcase followed it 2026-10-29). The page ran fourteen sections / 21.5 viewports / 5,488 words
  * (2026-10-20), and visitors scrolled past most of it (see
  * docs/landing-research.md: ~57% of attention lands above the fold, 74%
  * within two screenfuls). The redesign kept every checkable claim and cut the
@@ -54,13 +55,13 @@ import { Footer, LandingMotion, Nav } from "@/components/landing/shell";
  *                                                     browser — the /demo
  *                                                     route iframed in
  *                                                     browser chrome
- *   built & improved (the showcase's evidence)        what CHANGED while it
- *                                                     built: the before/
- *                                                     after improvement
- *                                                     receipts, the
- *                                                     learning-lane
- *                                                     counters, Mission
- *                                                     Control stills
+ *   built & improved (the SOTA round's receipts)     what the loop minted,
+ *                                                     remembered and proved
+ *                                                     while it built Fugue:
+ *                                                     the six-receipt
+ *                                                     tally, the Mission
+ *                                                     Control stills, the
+ *                                                     three receipt links
  *   proof (benchmarks + integrity + models)           the receipts, one tabbed band
  *   alphabet (+ field notes)                          the identity: the wall, the
  *                                                     decode panel, the lexicon

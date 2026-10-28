@@ -1,0 +1,36 @@
+◆ unown dashboard · ● engine up · ● bridge · ⧗ busy                                             zai-bridge/agnes-3.0-flash 18:28
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+│▐ skills
+ LEARNING│▸ run-fugue-verification · fugue-build-e50a77 · shipped [ v1 ] · Use when finalizing changes in the F...…
+ 1 Overview│  verify-fugue-tests · fugue-build-e50a77 · shipped [ v1 ] · Use when implementing, modifying, or deb...…
+ 2 Memory│  test-cadence-domain · unown-066db0 · shipped [ v1 ] · Use when verifying, debugging, or extending t...…
+ 3 Dreams│  data fresh
+ 4 Notes│
+▌5 Skills│
+ 6 Learning Lab│
+ 7 Hooks│
+ 8 Router│
+│
+ OPERATIONS│
+ 9 Gateway│
+ 0 Routines│
+ · Web Cache│
+│
+ ── loop state│
+ notes 3 pending│
+ dreams 40│
+ shipped 0│
+│
+│
+│
+│
+│
+│
+│
+│
+│
+│
+│
+│
+│
+enter skill · j/k select · : palette ? help [ ] screens                                                                   q quit

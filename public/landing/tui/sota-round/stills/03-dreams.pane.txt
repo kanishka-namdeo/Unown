@@ -1,0 +1,36 @@
+◆ unown dashboard · ● engine up · ● bridge · ⧗ busy                                             zai-bridge/agnes-3.0-flash 18:28
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+│pending notes 3   D run autodream now
+ LEARNING│
+ 1 Overview│▐ dreams
+ 2 Memory│▸ running · 3 notes → 0 merged · 0 pruned · 0 added · 2m ago
+▌3 Dreams│  done · 2 notes → 0 merged · 0 pruned · 3 added · 5m ago
+ 4 Notes│  done · 2 notes → 0 merged · 0 pruned · 2 added · 8m ago
+ 5 Skills│  gated (canary) · 4 notes → 0 merged · 0 pruned · 1 added · 12m ago
+ 6 Learning Lab│  done · 2 notes → 0 merged · 0 pruned · 3 added · 16m ago
+ 7 Hooks│  gated (canary) · 3 notes → 1 merged · 12 pruned · 3 added · 18m ago
+ 8 Router│  gated (canary) · 3 notes → 3 merged · 11 pruned · 3 added · 28m ago
+│  done · 2 notes → 0 merged · 0 pruned · 2 added · 29m ago
+ OPERATIONS│  done · 1 notes → 0 merged · 0 pruned · 1 added · 40m ago
+ 9 Gateway│  gated (canary) · 3 notes → 0 merged · 7 pruned · 3 added · 41m ago
+ 0 Routines│  done · 1 notes → 0 merged · 0 pruned · 1 added · 52m ago
+ · Web Cache│  done · 1 notes → 0 merged · 0 pruned · 1 added · 58m ago
+│  done · 2 notes → 0 merged · 0 pruned · 5 added · 63m ago
+ ── loop state│  gated (canary) · 3 notes → 4 merged · 7 pruned · 2 added · 68m ago
+ notes 3 pending│  done · 9 notes → 0 merged · 0 pruned · 5 added · 72m ago
+ dreams 40│  gated (canary) · 4 notes → 0 merged · 4 pruned · 1 added · 2h ago
+ shipped 0│  gated (canary) · 3 notes → 0 merged · 0 pruned · 1 added · 2h ago
+│  done · 2 notes → 0 merged · 0 pruned · 0 added · 2h ago
+│  gated (canary) · 3 notes → 0 merged · 6 pruned · 5 added · 2h ago
+│  done · 1 notes → 0 merged · 0 pruned · 0 added · 2h ago
+│  gated (canary) · 3 notes → 1 merged · 1 pruned · 1 added · 3h ago
+│  gated (canary) · 3 notes → 0 merged · 4 pruned · 2 added · 3h ago
+│  gated (canary) · 3 notes → 0 merged · 2 pruned · 2 added · 3h ago
+│  done · 3 notes → 1 merged · 7 pruned · 6 added · 3h ago
+│  gated (canary) · 3 notes → 0 merged · 3 pruned · 3 added · 3h ago
+│  done · 4 notes → 0 merged · 0 pruned · 1 added · 3h ago
+│  done · 3 notes → 1 merged · 5 pruned · 4 added · 3h ago
+│  done · 4 notes → 0 merged · 4 pruned · 4 added · 3h ago
+│  … 2 more (j/k, PgDn)
+│  data fresh
+enter dream · D dream now · j/k select · : palette ? help [ ] screens                                                     q quit

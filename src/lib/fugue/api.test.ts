@@ -28,6 +28,7 @@ import { GET as runsGET } from "@/app/fugue/api/runs/route";
 import { GET as runGET } from "@/app/fugue/api/runs/[id]/route";
 
 import { GET as statsGET } from "@/app/fugue/api/stats/route";
+import { POST as resetPOST } from "@/app/fugue/api/reset/route";
 
 // ── domain / store helpers ──
 import { resetState, loadState } from "@/lib/fugue/store";
@@ -656,6 +657,45 @@ test("GET /stats?workspaceId=unknown → 404", async () => {
   resetState();
   const res = await statsGET(jsonReq("GET", "/stats?workspaceId=ws_nope", undefined, demoToken()));
   expect(res.status).toBe(404);
+});
+
+// ═══════════════════════════════════════════════════════
+// RESET (the embed reset channel's server side)
+// ═══════════════════════════════════════════════════════
+
+test("POST /reset: unauthenticated → 401 (and the store is NOT wiped)", async () => {
+  resetState();
+  const res = await resetPOST(unauthReq("/reset"));
+  expect(res.status).toBe(401);
+  expect((await body(res)).error).toBe("unauthorized");
+  // The guard runs before the wipe: the live store is still the seed.
+  const s = freshState();
+  expect(s.workspaces.length).toBe(2);
+  expect(s.flows.length).toBe(2);
+  expect(s.runs.length).toBe(6);
+});
+
+test("POST /reset: authenticated → 204 and the store is reseeded", async () => {
+  resetState();
+  // Dirty the live store well past the seed (the cached document every
+  // handler reads via loadState()). The session below survives the auth
+  // guard because it is checked BEFORE the wipe.
+  const token = demoToken();
+  const s = freshState();
+  s.workspaces = [];
+  s.flows = [];
+  s.runs = [];
+  expect(freshState().flows.length).toBe(0); // dirty as charged
+
+  const res = await resetPOST(jsonReq("POST", "/reset", undefined, token));
+  expect(res.status).toBe(204);
+  expect(await res.text()).toBe(""); // 204 carries no body
+
+  // The store a later handler reads is the fresh deterministic seed.
+  const after = freshState();
+  expect(after.workspaces.map((w) => w.id)).toEqual(["ws_atlas", "ws_borealis"]);
+  expect(after.flows.map((f) => f.id)).toEqual(["fl_atlas", "fl_borealis"]);
+  expect(after.runs.length).toBe(6);
 });
 
 // ═══════════════════════════════════════════════════════

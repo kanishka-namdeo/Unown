@@ -55,7 +55,7 @@ export const LEXICON: LexiconEntry[] = [
     id: "C",
     lore: "A lenticular decoder card shipped with Pokémon 3 to read the hidden messages.",
     loreSrc: "Gen III special edition",
-    means: "Cold against warm. The same ten tasks, fresh memory versus dreamed memory.",
+    means: "Cold against warm. The same ten tasks, fresh versus dreamed memory.",
     proof: "benchmarks/selfimprove",
   },
   {
@@ -76,21 +76,21 @@ export const LEXICON: LexiconEntry[] = [
     id: "F",
     lore: "“When alone, nothing happens.”",
     loreSrc: "Pokédex · Platinum",
-    means: "Failure is the raw material. The harness mines the transcript that did not pass, never the one that did.",
+    means: "Failure is the raw material. The harness mines only the transcript that did not pass.",
     proof: "harness.ts",
   },
   {
     id: "G",
     lore: "In the film, a swarm distorts reality to suit whichever being is in charge.",
     loreSrc: "Spell of the Unown: Entei",
-    means: "…which is the argument for guardrails. Every decision is logged, and you can read it.",
+    means: "…which is the argument for guardrails. Every decision is logged and readable.",
     proof: "hooks.ts · termhooks.ts",
   },
   {
     id: "H",
     lore: "“Research into this topic is ongoing but nothing is known.”",
     loreSrc: "Pokédex · Ruby/Sapphire",
-    means: "Harness cycles. Run the suite, mine the failure, propose a patch, re-run it, ship or discard.",
+    means: "Harness cycles. Run the suite, mine the failure, propose a patch, re-run, ship or discard.",
     proof: "harness-cycle job",
   },
   {
@@ -132,7 +132,7 @@ export const LEXICON: LexiconEntry[] = [
     id: "N",
     lore: "In Pokémon GO it shows up only at events, where it spells things like SWORD and SHIELD.",
     loreSrc: "Pokémon GO events",
-    means: "Notes. Every session hands the engine one before it exits, and they queue offline.",
+    means: "Notes. Every session hands the engine one on exit; they queue offline.",
     proof: "note-sync job",
   },
   {
@@ -153,7 +153,7 @@ export const LEXICON: LexiconEntry[] = [
     id: "Q",
     lore: "One room in the Solaceon Ruins is inscribed with nothing but “?!”. Another spells FRIENDSHIP as a pathcode.",
     loreSrc: "Solaceon Ruins",
-    means: "Questions. The loop exists to answer one: why did that run fail? Answer it with a rule, verify the rule, keep it only if it holds.",
+    means: "Questions. The loop exists to answer one: why did that run fail? Answer it with a rule and keep it only if it holds.",
     proof: "failure mining",
   },
   {
@@ -230,7 +230,7 @@ export const LEXICON: LexiconEntry[] = [
     id: "?",
     lore: "The punctuation forms are the only ones with half-closed eyes. Nobody has explained why.",
     loreSrc: "Bulbapedia · Biology",
-    means: "The question the loop exists to answer: why did that run fail? Turn it into a rule, verify the rule, keep it only if it survives.",
+    means: "The question the loop exists to answer: why did that run fail? Turn it into a rule and keep it only if it survives.",
     proof: "mining → patch → verify",
   },
 ];

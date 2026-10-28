@@ -1,0 +1,36 @@
+◆ unown dashboard · ● engine up · ● bridge · ⧗ busy                                             zai-bridge/agnes-3.0-flash 18:29
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+│▐ engine tiers
+ LEARNING│▸ POLICY   [ v1 ] · 639 chars · updated 7h ago
+ 1 Overview│  PROJECT  [ v46 ] · 2.1k chars · updated 8m ago
+▌2 Memory│  USER     [ v1 ] · 143 chars · updated 7h ago
+ 3 Dreams│  LOCAL    [ v1 ] · 98 chars · updated 7h ago
+ 4 Notes│injection budget █░░░░░░░░░░░░░ 5% 4.1k/80k chars resolved into every prompt
+ 5 Skills│
+ 6 Learning Lab│▐ project memories
+ 7 Hooks│  cascade-f079f0  [ v3 ] · 831 chars · updated 6h ago
+ 8 Router│  fugue-build-e50a77  [ v9 ] · 3.7k chars · updated 5m ago
+│  unown-066db0  [ v2 ] · 8.9k chars · updated 2h ago
+ OPERATIONS│  unown-smoke4-728af7  [ v1 ] · 490 chars · updated 6h ago
+ 9 Gateway│  data fresh
+ 0 Routines│
+ · Web Cache│
+│
+ ── loop state│
+ notes 5 pending│
+ dreams 40│
+ shipped 0│
+│
+│
+│
+│
+│
+│
+│
+│
+│
+│
+│
+│
+│
+enter open · j/k select · : palette ? help [ ] screens                                                                    q quit

@@ -349,7 +349,7 @@ describe("landing shell", () => {
   // single gold CTA. The record surfaces are still reachable — they are the
   // "More" panel's whole content — they just no longer share the row.
   const PRIMARY = ["How it learns", "Capability dex", "Proof", "FAQ"];
-  const MORE = ["Dashboard", "Live demo", "Built & improved", "Alphabet", "Changelog", "Blog"];
+  const MORE = ["Dashboard", "Live demo", "Built & Improved", "Alphabet", "Changelog", "Blog"];
   const barText = (container: HTMLElement) =>
     Array.from(container.querySelectorAll('nav[aria-label="Main"] > a')).map((a) =>
       a.textContent?.trim(),
@@ -466,10 +466,10 @@ describe("landing shell", () => {
     expect(button.getAttribute("aria-expanded")).toBe("true");
     expect(panel!.hasAttribute("hidden")).toBe(false);
     const menu = screen.getByRole("navigation", { name: "Main menu" });
-    // The eight entries the page has: the seven in-page anchors plus Blog —
+    // The ten entries the page has: the nine in-page anchors plus Blog —
     // the one real route, pinned here with the rest since the menu is the
     // phone visitor's only navigation.
-    for (const label of ["How it learns", "Capability dex", "Dashboard", "Built & improved", "Proof", "Alphabet", "FAQ", "Changelog", "Blog"]) {
+    for (const label of ["How it learns", "Capability dex", "Dashboard", "Live demo", "Built & Improved", "Proof", "Alphabet", "FAQ", "Changelog", "Blog"]) {
       const links = menu.querySelectorAll("a");
       expect(
         [...links].some((a) => a.textContent?.trim() === label),

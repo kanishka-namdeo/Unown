@@ -6,7 +6,7 @@
 // missing anchor target (three links once pointed at an id no element had,
 // and every gate stayed green).
 //
-//   - the ten bands are present, in the order the doc comment claims,
+//   - the eleven bands are present, in the order the doc comment claims,
 //     with the shipping rail between the FAQ and the finale;
 //   - the hue walk matches the allocation paragraph in the landing AGENTS.md;
 //   - every in-page anchor resolves to an element that exists.

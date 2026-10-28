@@ -563,7 +563,7 @@ const NAV_ENTRIES = [
   { href: "#dex", label: "Capability dex", group: "primary" },
   { href: "#showcase", label: "Dashboard", group: "more" },
   { href: "#live-demo", label: "Live demo", group: "more" },
-  { href: "#built-improved", label: "Built & improved", group: "more" },
+  { href: "#built-improved", label: "Built & Improved", group: "more" },
   { href: "#proof", label: "Proof", group: "primary" },
   { href: "#alphabet", label: "Alphabet", group: "more" },
   { href: "#faq", label: "FAQ", group: "primary" },

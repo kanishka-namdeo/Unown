@@ -5,7 +5,9 @@
 //
 // The changed-line coverage gate (scripts/check_coverage.mjs) flags landing
 // edits that no test exercises — this file pins the media contract of the
-// two bands that consume public/landing/:
+// three bands that consume public/landing/ (the dex's captures, the
+// showcase's dashboard stills, and the built-improved band's SOTA-round
+// Mission Control stills):
 //   - every media path the rendered DOM references (video <source>, poster,
 //     data-poster, <img src>) exists under public/ — a REEL whose lane
 //     folder was never curated fails here, not in production;
@@ -36,6 +38,7 @@ mock.module("../star-count", () => ({
 
 const { DexSection } = await import("../dex");
 const { ShowcaseSection } = await import("../showcase");
+const { BuiltImprovedSection } = await import("../built-improved");
 
 // The dex renders framer-motion mount animations; settle before unmount so
 // cleanup does not reject mid-flight (same reason as creature.test.tsx).
@@ -77,10 +80,10 @@ afterEach(async () => {
 });
 
 describe("the landing's captured media, on disk and byte-true", () => {
-  test("every media path the dex and showcase DOM reference exists in public/", () => {
+  test("every media path the dex, showcase and built-improved DOM reference exists in public/", () => {
     const refs = new Set<string>();
 
-    for (const Component of [DexSection, ShowcaseSection]) {
+    for (const Component of [DexSection, ShowcaseSection, BuiltImprovedSection]) {
       const { container } = render(<Component />);
       container.querySelectorAll("source[src]").forEach((el) => refs.add(el.getAttribute("src")!));
       container.querySelectorAll("img[src]").forEach((el) => refs.add(el.getAttribute("src")!));
@@ -99,21 +102,27 @@ describe("the landing's captured media, on disk and byte-true", () => {
 
   test("every <img> with declared intrinsic dims matches the PNG's real IHDR size", () => {
     const mismatches: string[] = [];
-    const { container } = render(<DexSection />);
+    // The dex's captures and the built-improved band's SOTA-round stills are
+    // the two <img> surfaces that declare intrinsic dims against PNGs on
+    // disk (the showcase's stills ride the same rule through the loop above
+    // whenever a future edit adds dims there).
+    for (const Component of [DexSection, BuiltImprovedSection]) {
+      const { container } = render(<Component />);
 
-    container.querySelectorAll("img[src]").forEach((el) => {
-      const src = el.getAttribute("src")!;
-      const w = Number(el.getAttribute("width"));
-      const h = Number(el.getAttribute("height"));
-      if (!src.startsWith("/landing/") || !w || !h) return;
-      const file = join(PUBLIC, src);
-      if (!existsSync(file)) return; // the existence test reports this
-      if (!src.endsWith(".png")) return;
-      const real = pngDims(file);
-      if (real.w !== w || real.h !== h) {
-        mismatches.push(`${src}: declares ${w}×${h}, file is ${real.w}×${real.h}`);
-      }
-    });
+      container.querySelectorAll("img[src]").forEach((el) => {
+        const src = el.getAttribute("src")!;
+        const w = Number(el.getAttribute("width"));
+        const h = Number(el.getAttribute("height"));
+        if (!src.startsWith("/landing/") || !w || !h) return;
+        const file = join(PUBLIC, src);
+        if (!existsSync(file)) return; // the existence test reports this
+        if (!src.endsWith(".png")) return;
+        const real = pngDims(file);
+        if (real.w !== w || real.h !== h) {
+          mismatches.push(`${src}: declares ${w}×${h}, file is ${real.w}×${real.h}`);
+        }
+      });
+    }
 
     expect(mismatches, `intrinsic-dimension drift (wrong width/height attrs)`).toEqual([]);
   });
