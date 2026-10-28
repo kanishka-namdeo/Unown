@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import Link from "next/link";
+import { Fragment, type CSSProperties } from "react";
 import { MotionConfig, motion, useReducedMotion } from "framer-motion";
 import { Check, Copy } from "lucide-react";
 import { Glyph } from "./glyph";
@@ -11,6 +12,12 @@ export const GITHUB_URL = "https://github.com/kanishka-namdeo/Unown";
 export const DOCS_URL = "https://github.com/kanishka-namdeo/Unown/tree/main/docs";
 export const BENCH_URL = `${GITHUB_URL}/tree/main/benchmarks`;
 export const SOURCE_URL = `${GITHUB_URL}/tree/main/pi-repo/packages/self-learning/src`;
+
+/** The decode fill's per-word stagger cap (`--wf`): the wave crosses the
+ * first nine words and the tail fills together, so any lead length still
+ * finishes every word's range inside `entry 100%` (`.ink-fill` in
+ * `landing.css`). Exported so the suite can pin the cap against the CSS. */
+export const INK_FILL_MAX = 8;
 
 /* ------------------------------------------------------------------ */
 /* primitives                                                          */
@@ -276,11 +283,19 @@ export function SectionHead({
   kicker,
   children,
   lead,
+  decode,
   className,
 }: {
   kicker?: React.ReactNode;
   children: React.ReactNode;
   lead?: React.ReactNode;
+  /** Render a STRING lead as the carving round's decode fill: per-word
+   * `.ink-fill` spans on their own `view()` timelines (`.ink-fill` in
+   * `landing.css`). The lead must be a plain string — a JSX lead carries
+   * markup that word-splitting would orphan, and this page never decodes
+   * one. The inter-word spaces stay in the parent inline flow (the
+   * word-settle rule) so the sentence's textContent is byte-identical. */
+  decode?: boolean;
   className?: string;
 }) {
   return (
@@ -288,12 +303,33 @@ export function SectionHead({
       {kicker ? (
         <p className="gb-label text-[10px] text-(--hue-accent)">{kicker}</p>
       ) : null}
-      <h2 className="gb-h mt-4 text-[clamp(1.8rem,3.2vw,2.6rem)] text-(--hue-accent)">
+      {/* `text-balance` since the carving round: the H1 has always balanced,
+          and a long section heading stranding one word on its own last line
+          is the cheapest polish the page was leaving on the table (Cursor,
+          Zed and Amp all ship it on their headings). Balance never widens,
+          so the scroll budget cannot move. */}
+      <h2 className="gb-h mt-4 text-balance text-[clamp(1.8rem,3.2vw,2.6rem)] text-(--hue-accent)">
         {children}
       </h2>
       {lead ? (
         <div className="mt-5 max-w-2xl text-[15px] leading-relaxed text-dim">
-          {lead}
+          {decode && typeof lead === "string" ? (
+            lead.split(" ").map((w, i) => (
+              <Fragment key={i}>
+                {/* The space lives in the PARENT's inline flow — the same
+                    rule as the hero's word-settle spans. */}
+                {i > 0 ? " " : null}
+                <span
+                  className="ink-fill"
+                  style={{ "--wf": Math.min(i, INK_FILL_MAX) } as CSSProperties}
+                >
+                  {w}
+                </span>
+              </Fragment>
+            ))
+          ) : (
+            lead
+          )}
         </div>
       ) : null}
     </div>
@@ -392,6 +428,16 @@ export function CopyButton({
       ) : (
         <Copy className="size-3.5" aria-hidden="true" />
       )}
+      {/* The WCAG 4.1.3 half of the pattern: swapping the icon and the
+          button's own aria-label is invisible to a screen reader mid-page —
+          an unattached label change is never announced. A polite status
+          region says "Copied" for exactly as long as the checkmark is up,
+          and is EMPTY when idle so it costs a listener nothing. The label
+          swap stays too: it is the accessible NAME of the control, which is
+          a different contract from the status change. */}
+      <span role="status" aria-live="polite" className="sr-only">
+        {copied ? "Copied" : ""}
+      </span>
     </button>
   );
 }

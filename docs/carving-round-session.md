@@ -60,9 +60,9 @@ AA at every frame), keycap chips for the Konami affordances, the copy buttons'
 - `docs/landing-research.md` gained the dated section "2026-10-28 — the
   carving round"; the TOC links it.
 
-## Checkpoint 2 — implementation (PENDING)
+## Checkpoint 2 — implementation (DONE)
 
-Planned file map (one effect per concern; effects in `effects.tsx`, styles in
+File map (one effect per concern; effects in `effects.tsx`, styles in
 `landing.css`, wiring in the owning band):
 
 | Change | File(s) |
@@ -70,36 +70,93 @@ Planned file map (one effect per concern; effects in `effects.tsx`, styles in
 | `useGlyphReveal` + `DrawGlyph` (pure `glyphRevealAt` exported) | `src/components/landing/effects.tsx` |
 | decode-panel glyph → `DrawGlyph` | `src/components/landing/alphabet.tsx` |
 | spellbox glyphs → `DrawGlyph` | `src/components/landing/finale.tsx` |
-| `.ink-fill` decode fill + `SectionHead`'s `decode` prop | `src/app/landing.css` + `src/components/landing/shell.tsx` |
+| `.ink-fill` decode fill + `SectionHead`'s `decode` prop (`INK_FILL_MAX = 8`) | `src/app/landing.css` + `src/components/landing/shell.tsx` |
 | `.gb-kbd` keycap chips (hint + receipt lines) | `src/app/landing.css` + `alphabet.tsx` + `finale.tsx` |
 | "Copied" `role="status"` region | `src/components/landing/shell.tsx` (`CopyButton`) |
 | `text-balance` on the section H2 | `src/components/landing/shell.tsx` (`SectionHead`) |
-| unit tests | `src/components/landing/__tests__/carving.test.tsx` |
+| unit tests | `src/components/landing/__tests__/carving.test.tsx` (15 tests) |
 
-Gates to hold green: `bun run typecheck`, `bun run lint`, `bun test src`,
-`bun run test:coverage` (changed-line 80% floor), `check:changelog|blog|
-benchmarks|claims`, `gba_palette_check.mjs`, `landing_audit.mjs --budget`
-(13.5vh / 3,320 words — the 0.0.37 stop's ~30 generated words land when the
-release is cut; re-measure then, compress or amend per the standing rules),
-`bun run build`.
+Gates green at this checkpoint: `bun run typecheck`, `bun run lint` (0 new
+findings — the 3 pre-existing `scripts-dev/` warnings untouched), `bun test
+src` (374 pass — 359 baseline + 15 new), `bun run test:coverage` (100/89/100/100%
+on the four touched files, gate floor 80%), `check:changelog|blog|benchmarks|
+claims`, `gba_palette_check.mjs` (21+21 tokens AA in both schemes),
+`landing_audit.mjs --budget` and `bun run build` (exit 0).
 
-## Checkpoint 3 — verification against a production build (PENDING)
+Mid-round corrections:
+- **The stale-server lesson.** After the first `bun run build` + restart, the
+  production server kept serving the previous build's CSS: Next 16 renames
+  its server process to `next-server (v16.4.2)`, so a `pkill -f
+  "standalone/server.js"` never matches it — the original process silently
+  held port 3111 through two "rebuilds". Caught by diffing the served page's
+  CSS chunk names against the fresh build's (referenced chunk did not exist
+  in `.next/static/chunks`). Fixed by killing the pid directly and verifying
+  the served chunk names after every restart. Recorded here so the next
+  round does not re-verify against a ghost build.
+- **The budget gates' measurement correction.** The first post-build audit
+  measured 3,330 words (over the 3,320 gate) while the same build's e2e
+  measured 3,297 — the difference was the session replay's autoplay: its
+  visible transcript types in over ~9s (up to 111 words), so any
+  "networkidle + fixed-settle" measure was timing-dependent, AND at finish
+  the transcript counted TWICE (the animated screen plus its sr-only
+  figcaption — `innerText` includes sr-only). Both gates
+  (`scripts/landing_audit.mjs` + `e2e/landing-budget.spec.ts`) now measure
+  the replay's FINISHED state and subtract the sr-only a11y lanes (246
+  annotation words on this page: the transcript, the dex's "entry N of 22"
+  tails, the copy buttons' status regions). The gates are deterministic,
+  agree with each other, and the budget number is UNCHANGED — the
+  deterministic readable count is 3,153, comfortably inside 3,320, with the
+  0.0.37 stop's ~30 generated words already accounted for. The old green
+  numbers were riding on mid-replay measurement, not on a smaller page.
 
-- `bunx playwright test` (axe both motion states, the scroll budget, the dex
-  video decode + mp4 fallback, the SEO surface).
-- Against a production build: `landing_shots.mjs` (both schemes + reduced
-  motion), `contrast_audit.mjs` (every visible text node, both schemes — the
-  decode fill must measure AA mid-animation by construction),
-  `theme_toggle_check.mjs`, `bun run audit:landing --budget`.
-- Real-user browser pass: the decode panel's glyph drawing on first view and
-  re-carving on tile hover/pick; the spellbox letters carving as typed; the
-  finale lead resolving word-by-word; the keycap chips; the "Copied"
-  announcement visible in the accessibility tree.
-- Agnes VLM design critique (`bun run review:vlm`, the apihub lane) over the
-  round's surfaces; ship the actionable findings, record the pre-existing
-  ones as their owning contracts' decisions.
-- Entrance media for the blog post (stills + a short clip of the carve, the
-  spell and the fill), staged under `public/blog/2026-10-28-the-carving-round/`.
+## Checkpoint 3 — verification against a production build (DONE)
+
+- Playwright e2e: **15/15** — axe-core A/AA zero violations in BOTH motion
+  states, the scroll budget at the corrected deterministic measure
+  (13.3vh / 3,153w), the dex video decode + mp4 fallback, the whole SEO
+  surface (the finale lead's word-splitting keeps the sentence's textContent
+  exact, like the h1 before it).
+- `landing_shots.mjs`: 20 sections + 3 reduced-motion stills, both schemes,
+  zero console errors.
+- `contrast_audit.mjs`: 1,812 visible text nodes across both schemes, zero
+  AA failures — the decode fill measures AA at every frame by construction
+  (it animates between two AA palette text tokens, never an opacity).
+- `theme_toggle_check.mjs`: cycle + persistence + label PASS.
+- Real-user browser pass (`node` + Playwright driving the production build
+  like a visitor, clip + stills recorded): **16/16 expectations** — the
+  decode panel's glyph draws itself when the alphabet band first enters view
+  (the dash ladder caught mid-flight, `pathLength=1`), re-carves on every
+  tile hover (dashoffset back to ~1) and resolves (dashoffset → 0, ladder
+  removed at rest); the spellbox letters carve as typed (typed HELLO,
+  mid-carve dashoffsets observed on 7 of 8 paths, then resolved); the finale
+  lead holds the faint `from` state below the viewport (rgb(156,180,222))
+  and settles at the dim `to` state when read through (rgb(189,205,230));
+  the per-word stagger caps at `--wf=8`; the keycap chips render in both
+  homes (Geist Mono face, 3px keycap depth); the copy button announces
+  "Copied" politely for the 2s window and goes silent after, with the
+  accessible name swapping in step.
+- Agnes VLM design critique (apihub endpoint, the repo's `review:vlm` lane)
+  over the round's four surfaces, then a re-review of the chip after the
+  fix. Shipped findings: **one** — the first cut's keycap chip grew its host
+  line (21.5px in a 16.5px line box) and overhung the text baseline by
+  6.5px; compacted to BetaBadge-proportioned keycap metrics (18.3px, 1px
+  below baseline — keycap depth, the MDN/GitHub idiom) and re-reviewed:
+  VERDICT PASS. The remaining findings were pre-existing documented
+  decisions or recommendations the page's own record rejects (scanlines —
+  the TFT-panel rule; blinking text — the no-autonomous-motion rule; the
+  O-form's eye — authentic anatomy; the dim lead — the page-wide lead
+  convention, contrast-audited AA at 8.55:1; "HELLO" under-lit — the leaf
+  field's audited palette), left to their owning contracts and recorded in
+  the research doc.
+- Entrance media captured for the blog: the decode panel mid-carve and
+  carved, the spellbox carving HELLO, the finale lead filled, the keycap
+  chips in both homes, and a choreography clip (`download/carving-round/`).
+- Harness notes for the next round, recorded because they cost real time:
+  Playwright's trusted-pointer click stalls headless Chromium's clipboard
+  IPC (a JS-dispatched click drives the same real handler end to end); the
+  production server's process title hides from `pkill` (see checkpoint 2);
+  rAF wall-clock under video recording is jittery — poll for resolved
+  states instead of fixed waits.
 
 ## Checkpoint 4 — docs, blog, DOX (PENDING)
 

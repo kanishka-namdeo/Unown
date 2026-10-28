@@ -3,9 +3,8 @@
 import * as React from "react";
 import { ArrowRight } from "lucide-react";
 import { motion } from "framer-motion";
-import { Glyph } from "./glyph";
 import type { GlyphId } from "./glyphs";
-import { useAlphabetWake } from "./effects";
+import { DrawGlyph, useAlphabetWake } from "./effects";
 import { FadeUp, GITHUB_URL, DOCS_URL, SectionHead, ContinueArrow } from "./shell";
 
 const DEFAULT_WORD = "UNKNOWN";
@@ -85,11 +84,19 @@ function Spellbox() {
                   }}
                   className="inline-block"
                 >
-                  <Glyph
+                  {/* DrawGlyph (the carving round): the letter carves itself
+                      as it arrives, a touch faster than the decode panel's
+                      subject because typing is the faster gesture. The two
+                      motions layer — the span's fade-rise and the stroke
+                      draw — exactly as the loop beats do; reduced motion
+                      keeps the fade (`LandingMotion`) and never starts the
+                      pen (the hook). */}
+                  <DrawGlyph
                     id={id}
                     weight="heavy"
                     tone="lit"
                     className="size-9 text-canvas"
+                    ms={380}
                   />
                 </motion.span>
               ))}
@@ -129,6 +136,12 @@ export function FinaleSection() {
           <FadeUp>
             <SectionHead
               kicker="Where to start"
+              /* `decode` (the carving round): the lead resolves word-by-word
+                 as it enters — the unknown→known gesture in its prose
+                 spelling, scroll-scrubbed and AA at every frame
+                 (`.ink-fill`). The words carry the same textContent; only
+                 the spans are new. */
+              decode
               lead="Clone it, run one session, come back tomorrow with memory that already knows what you told it. Nothing to sign up for. If it is not useful, you have lost an afternoon."
             >
               One afternoon, and then it starts remembering.
@@ -160,7 +173,11 @@ export function FinaleSection() {
               </a>
             </div>
 
-            {/* the Konami payoff, announced politely rather than shouted */}
+            {/* the Konami payoff, announced politely rather than shouted.
+                The sequence wears the keycap chip since the carving round —
+                the same affordance grammar the alphabet hint carries, so
+                the one keyboard flourish on the page reads as keys both
+                times it appears. */}
             <p
               role="status"
               aria-live="polite"
@@ -168,7 +185,8 @@ export function FinaleSection() {
                 woke ? "opacity-100" : "h-0 opacity-0"
               }`}
             >
-              ↑↑↓↓←→←→ba — the alphabet woke up. nice taste in easter eggs.
+              <kbd className="gb-kbd">↑↑↓↓←→←→ba</kbd>{" "}
+              — the alphabet woke up. nice taste in easter eggs.
             </p>
           </FadeUp>
 

@@ -15,8 +15,30 @@
  * The budget (the 2026-10-20 redesign's regression gate, mirrored in the
  * landing AGENTS.md and CI's landing job):
  *   - the document must stay ≤ 13.5 viewports tall at 1440x900
- *   - the visible word count must stay ≤ 3,320
-
+ *   - the readable word count must stay ≤ 3,320
+ *
+ * The 2026-10-28 measurement correction (the carving round): two changes
+ * made the count deterministic, without touching the budget number —
+ *   1. the session replay's autoplay made the old count timing-dependent:
+ *      the visible transcript types itself in over ~9s (0..111 words), so a
+ *      measure taken at "networkidle + 2.5s" landed anywhere in that
+ *      window — rounds recorded numbers that differed by up to ~90 words
+ *      on the same build. The audit now waits for the replay's timer to
+ *      read finished (bounded; reduced-motion renders finished
+ *      instantly, a missing timer falls straight through).
+ *   2. `innerText` counts the page's sr-only a11y lanes — spoken
+ *      annotations that no scrolling visitor reads — and the replay's
+ *      transcript therefore counted TWICE at finish (the animated screen
+ *      plus its figcaption). sr-only words are subtracted so the gate
+ *      counts readable copy exactly once. Measured effect on this page:
+ *      246 annotation words (the transcript, the dex's "entry N of 22"
+ *      tails, the copy buttons' "Copied" status regions).
+ *   Both gates (this script and e2e/landing-budget.spec.ts) measure the
+ *   same way; the budget number itself is unchanged because the
+ *   deterministic readable count (3,153 at the finish, pre-0.0.37 stop)
+ *   sits well inside 3,320 — the old green numbers were riding on
+ *   mid-replay measurement, not on a smaller page.
+ *
  * The 2026-10-28 amendments: the live-preview round (13 → 13.5vh, 3,200 →
  * 3,250w) carried the page's first interactive-application frame; the
  * commerce round (3,250 → 3,290w) carries the second one AND the rail's
@@ -68,31 +90,63 @@ if (!chromium) { console.error("no playwright found"); process.exit(1); }
 const browser = await chromium.launch();
 const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
 await page.goto(BASE, { waitUntil: "networkidle", timeout: 60000 });
+// The session replay autoplays once (~9s of typing). The word count must be
+// measured at its FINISHED state or it is timing-dependent — see the header.
+// Reduced-motion contexts render finished instantly; a missing timer (no
+// hydration, very slow CI) falls through after the bounded wait.
+await page.waitForFunction(
+  () => {
+    const timer = [...document.querySelectorAll("span")].find((s) =>
+      /^\d+\.\ds \/ \d+\.\ds$/.test((s.textContent ?? "").trim()),
+    );
+    if (!timer) return false;
+    const m = timer.textContent.trim().match(/(\d+\.\d)s \/ (\d+\.\d)s/);
+    return Number(m[1]) === Number(m[2]);
+  },
+  undefined,
+  { timeout: 15000 },
+).catch(() => {});
 await page.waitForTimeout(2500); // let reveals settle
 // neutralize scroll-reveal opacity so text is "present" for measurement
 await page.addStyleTag({ content: `*,*::before,*::after{transition:none!important;animation-duration:0.001s!important}` });
 
 const metrics = await page.evaluate(() => {
   const vh = window.innerHeight;
+  // Readable words: innerText minus the sr-only a11y lanes (spoken
+  // annotations — the replay's transcript figcaption, the dex's tally
+  // tails, the copy buttons' status regions). They are rendered, so
+  // innerText counts them, but no scrolling visitor reads them — and the
+  // replay's transcript would otherwise count twice (screen + figcaption).
+  const countWords = (s) => (s || "").trim().split(/\s+/).filter(Boolean).length;
+  const srOnlyWords = [...document.querySelectorAll(".sr-only")].reduce(
+    (n, el) => n + countWords(el.innerText),
+    0,
+  );
+  const readableWords = (root) => {
+    // subtract the sr-only words that fall inside `root`
+    const inner = [...root.querySelectorAll(".sr-only")].reduce(
+      (n, el) => n + countWords(el.innerText),
+      0,
+    );
+    return countWords(root.innerText) - inner;
+  };
   const main = document.querySelector("main");
   const sections = [...main.querySelectorAll(":scope > section, :scope > div > section")].map((s) => {
     const h2 = s.querySelector("h2, h1");
     const rect = s.getBoundingClientRect();
     const top = rect.top + window.scrollY;
-    const text = s.innerText || "";
-    const words = text.trim().split(/\s+/).filter(Boolean).length;
     return {
       id: s.id || null,
       heading: h2 ? h2.innerText.replace(/\s+/g, " ").trim().slice(0, 80) : null,
       top: Math.round(top),
       heightPx: Math.round(rect.height),
       heightVh: +(rect.height / vh).toFixed(2),
-      words,
+      words: readableWords(s),
       paragraphs: s.querySelectorAll("p").length,
       lists: s.querySelectorAll("ul,ol").length,
     };
   });
-  const bodyWords = (document.body.innerText || "").trim().split(/\s+/).filter(Boolean).length;
+  const bodyWords = countWords(document.body.innerText) - srOnlyWords;
   return {
     viewport: { w: window.innerWidth, h: vh },
     pageHeightPx: Math.round(document.documentElement.scrollHeight),

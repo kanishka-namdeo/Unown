@@ -1062,6 +1062,88 @@ a[aria-current="true"] .nav-cursor {
   mask-image: radial-gradient(ellipse 70% 55% at 30% 0%, black 10%, transparent 78%);
 }
 
+/* ---------------------------------------------------------------- */
+/* 5g. the carving round (2026-10-28): the decode fill, keycap chips  */
+/* ---------------------------------------------------------------- */
+
+/*
+ * The decode fill — the finale lead resolves as it is read.
+ *
+ * The Apple-style scroll-linked word reveal animates OPACITY, and a 40%-alpha
+ * frame of body text on the navy canvas measures ~2.4:1 — a fail against the
+ * axe contrast gate this page runs in both motion passes (the animated pass
+ * returns to the top of the document, where below-viewport words sit at
+ * their backwards-fill start state). This page's spelling animates COLOR
+ * between two AA palette text tokens instead: `faint` (7.8:1 on canvas, the
+ * token body fine print already uses) to `dim` (the lead's own resting
+ * colour), so every frame of the fill is as readable as the finished state,
+ * in both schemes, on any backdrop the words actually render over.
+ *
+ * Each word is its own `view()` timeline with a capped stagger (`--wf` is
+ * min(word index, 8), set inline by `SectionHead`'s `decode` prop): the wave
+ * crosses the first nine words and the tail fills together, so a 36-word
+ * lead still finishes every range inside `entry 100%`. Scrubbed by the
+ * reader's own scroll — it fires at no one. Base state, no support, reduced
+ * motion: the finished `dim` lead, byte-identical to the page before the
+ * round. Inter-word spaces live in the parent inline flow (the word-settle
+ * rule) so the sentence's textContent is unchanged for the copy, SEO and
+ * deploy gates.
+ */
+@keyframes ink-fill {
+  from {
+    color: var(--color-faint);
+  }
+  to {
+    color: var(--color-dim);
+  }
+}
+
+@supports ((animation-timeline: view()) and (animation-range: 0% 100%)) {
+  @media (prefers-reduced-motion: no-preference) {
+    .ink-fill {
+      display: inline;
+      animation: ink-fill linear both;
+      animation-timeline: view();
+      animation-range: entry calc(var(--wf, 0) * 4%) entry calc(var(--wf, 0) * 4% + 48%);
+    }
+  }
+}
+
+/*
+ * 5h. The keycap chip — keyboard affordances as keyboard affordances.
+ *
+ * The Konami sequences in the alphabet hint and the finale receipt line are
+ * the page's one "this product is keyboard-first" signal, and prose was
+ * underselling them. A keycap: mono text in a bordered chip whose bottom
+ * border is a step deeper — the GBA's SELECT/START pills, drawn in the
+ * page's own furniture grammar (square corners, no radius, palette tokens
+ * only). Deliberately NOT the pixel face: Press Start 2P's latin subset
+ * carries no ↑↓←→, the same reason every ▶ on this page is drawn as SVG —
+ * the arrows would silently fall to an OS fallback mid-word and break the
+ * line's rhythm. Geist Mono carries them natively.
+ *
+ * Sizing (the Agnes VLM round caught the first cut growing its host line
+ * and overhanging the text baseline by 6.5px): the chip is compacted to
+ * BetaBadge proportions (9.5px content + 1px padding + the 3px keycap
+ * depth ≈ 18px against an 11px/1.5 line's 16.5px box) and sits 1px below
+ * the shared baseline — a keycap hangs a hair under the typing line, the
+ * way MDN's and GitHub's do; that is depth, not misalignment.
+ */
+.gb-kbd {
+  display: inline-block;
+  padding: 1px 4px;
+  border: 1px solid var(--color-line-bright);
+  border-bottom-width: 3px;
+  background: var(--color-panel-2);
+  color: var(--color-ink);
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  line-height: 1.3;
+  vertical-align: -1px;
+  /* keep the chip from breaking inside the sequence it spells */
+  white-space: nowrap;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .gb-btn,
   .gb-btn-dark,

@@ -45,6 +45,26 @@ test.use({ viewport: { width: 1440, height: 900 } });
 test("the landing page stays inside the scroll budget", async ({ page }) => {
   await page.goto("/");
   await page.waitForLoadState("networkidle");
+  // The session replay autoplays once (~9s of typing) and its visible
+  // transcript is up to 111 words — a measure taken mid-replay is
+  // timing-dependent, which is how the same build recorded counts up to
+  // ~90 words apart. Measure at the replay's FINISHED state (bounded wait;
+  // reduced-motion contexts render finished instantly, a missing timer
+  // falls through). The carving round, 2026-10-28.
+  await page
+    .waitForFunction(
+      () => {
+        const timer = [...document.querySelectorAll("span")].find((s) =>
+          /^\d+\.\ds \/ \d+\.\ds$/.test((s.textContent ?? "").trim()),
+        );
+        if (!timer) return false;
+        const m = timer.textContent.trim().match(/(\d+\.\d)s \/ (\d+\.\d)s/);
+        return m !== null && Number(m[1]) === Number(m[2]);
+      },
+      undefined,
+      { timeout: 15000 },
+    )
+    .catch(() => {});
   // Neutralise reveal motion so every section measures at its finished
   // height and every word counts as present (same trick as the audit script).
   await page.addStyleTag({
@@ -54,6 +74,17 @@ test("the landing page stays inside the scroll budget", async ({ page }) => {
 
   const m = await page.evaluate(() => {
     const vh = window.innerHeight;
+    const countWords = (s) => (s || "").trim().split(/\s+/).filter(Boolean).length;
+    // Readable words: innerText minus the sr-only a11y lanes — spoken
+    // annotations no scrolling visitor reads (the replay's transcript
+    // figcaption, the dex's tally tails, the copy buttons' status regions).
+    // Without the subtraction the replay's transcript counts twice at
+    // finish (the animated screen plus its figcaption). The audit script
+    // measures the same way — the twin gates must not diverge.
+    const srOnlyWords = [...document.querySelectorAll(".sr-only")].reduce(
+      (n, el) => n + countWords((el as HTMLElement).innerText),
+      0,
+    );
     const main = document.querySelector("main");
     const sections = [...(main?.querySelectorAll(":scope > section") ?? [])].map((s) => {
       const h2 = s.querySelector("h2, h1");
@@ -66,7 +97,7 @@ test("the landing page stays inside the scroll budget", async ({ page }) => {
     return {
       vh,
       pageVh: +(document.documentElement.scrollHeight / vh).toFixed(1),
-      words: (document.body.innerText || "").trim().split(/\s+/).filter(Boolean).length,
+      words: countWords(document.body.innerText) - srOnlyWords,
       sections,
     };
   });

@@ -2,7 +2,8 @@
 
 import * as React from "react";
 import { useReducedMotion } from "framer-motion";
-import { GLYPH_IDS } from "./glyphs";
+import { GLYPH_IDS, type GlyphId } from "./glyphs";
+import { Glyph, type GlyphProps } from "./glyph";
 
 /* ------------------------------------------------------------------ */
 /* landing stylesheet                                                  */
@@ -379,6 +380,152 @@ export function CountUp({
   return (
     <span ref={frameHost} className={className}>
       {shown}
+    </span>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/* the glyph draw-on                                                   */
+/* ------------------------------------------------------------------ */
+
+/** One carve, in milliseconds. ~450ms is spectacle but inside the drag
+ * threshold (500ms, NN/g) — the same budget the decode wave's ~1s gesture
+ * deliberately exceeds because it is the brand moment. */
+const GLYPH_DRAW_MS = 450;
+
+/**
+ * Pure renderer: the stroke reveal at `elapsed` ms into a draw. Ease-out
+ * cubic — the strokes accelerate out of the pen and decelerate as the glyph
+ * completes, the same curve `CountUp` lands its figures with. Exported for
+ * the unit suite: the draw's shape (clamped, never negative, exactly 1 at
+ * the end) is a contract, and a pure function is cheaper to pin than timers
+ * in happy-dom.
+ */
+export function glyphRevealAt(elapsed: number, ms = GLYPH_DRAW_MS): number {
+  const p = Math.min(1, Math.max(0, elapsed / ms));
+  return 1 - Math.pow(1 - p, 3);
+}
+
+/**
+ * Drives a glyph's stroke draw-on: `reveal` starts at 1 (the FINISHED glyph —
+ * SSR, no-JS, crawlers, reduced motion and the first client paint all ship the
+ * complete form), an IntersectionObserver arms the first draw once the glyph
+ * actually enters the viewport, and every id change afterwards replays it.
+ * Returns the reveal value plus the host ref the caller must attach to its
+ * wrapper element — the ref is created HERE so every instance owns its own.
+ *
+ * That ordering is the whole honesty contract: nothing is ever hidden to be
+ * revealed. The visitor who never scrolls past the fold sees a finished
+ * alphabet; the visitor who arrives at the decode panel watches it carve
+ * itself once, then re-carves on every hover/pick because changing the
+ * subject IS the user-initiated trigger the motion rules want.
+ *
+ * happy-dom has no IntersectionObserver, so tests observe the base state:
+ * the finished glyph, no rAF — the same no-op pin `useScrollSpy` carries.
+ */
+function useGlyphReveal(id: GlyphId | null, ms = GLYPH_DRAW_MS) {
+  const reduced = useReducedMotion();
+  const [reveal, setReveal] = React.useState(1);
+  const host = React.useRef<HTMLSpanElement | null>(null);
+  const seen = React.useRef(false);
+  const raf = React.useRef(0);
+
+  React.useEffect(() => {
+    if (id === null) return;
+    if (reduced) {
+      // Reduced motion: the finished glyph, always. Never start the pen.
+      setReveal(1);
+      return;
+    }
+    if (typeof IntersectionObserver === "undefined") return;
+
+    const el = host.current;
+    if (!el) return;
+
+    const start = () => {
+      cancelAnimationFrame(raf.current);
+      // One frame of `0` before the first rAF tick advances it: the glyph
+      // is already on screen (IO fired, or the visitor changed the subject),
+      // so this is the draw's first pen-down, not a hidden state.
+      setReveal(0);
+      const t0 = performance.now();
+      const step = (now: number) => {
+        const r = glyphRevealAt(now - t0, ms);
+        setReveal(r);
+        if (r < 1) raf.current = requestAnimationFrame(step);
+      };
+      raf.current = requestAnimationFrame(step);
+    };
+
+    if (seen.current) {
+      start();
+      return;
+    }
+
+    const io = new IntersectionObserver(
+      (entries) => {
+        if (!entries.some((e) => e.isIntersecting)) return;
+        seen.current = true;
+        io.disconnect();
+        start();
+      },
+      { rootMargin: "0px 0px -10% 0px" },
+    );
+    io.observe(el);
+    return () => {
+      io.disconnect();
+      cancelAnimationFrame(raf.current);
+    };
+  }, [id, reduced, ms]);
+
+  // A late unmount mid-draw must not leak the pending frame.
+  React.useEffect(() => () => cancelAnimationFrame(raf.current), []);
+
+  return { reveal, host };
+}
+
+/**
+ * A `Glyph` that carves itself: the same hand-authored SVG form, with the
+ * component's own `reveal`/`drawStagger` stroke contract driven by
+ * `useGlyphReveal`. Drawn glyphs stay decorative (`aria-hidden` unless a
+ * `label` is passed) — the Latin text beside them is always the accessible
+ * reading, so the draw is pure motion with zero a11y surface.
+ *
+ * `ms` exists so a denser surface (the spellbox) can carve a touch faster
+ * than the decode panel's subject without a second driver.
+ */
+export function DrawGlyph({
+  id,
+  weight = "heavy",
+  tone,
+  eye,
+  label,
+  className,
+  ms = GLYPH_DRAW_MS,
+}: {
+  id: GlyphId | null;
+  weight?: GlyphProps["weight"];
+  tone?: GlyphProps["tone"];
+  eye?: boolean;
+  label?: string;
+  className?: string;
+  /** Draw length. Keep ≤ 500ms — the drag threshold. */
+  ms?: number;
+}) {
+  const { reveal, host } = useGlyphReveal(id, ms);
+  return (
+    <span ref={host} className="inline-block">
+      <Glyph
+        id={id}
+        weight={weight}
+        tone={tone}
+        eye={eye}
+        label={label}
+        className={className}
+        // `undefined` (not 1) at rest: `Glyph` only renders the dash ladder
+        // while a draw is in flight, so the resting form is plain paths.
+        reveal={reveal < 1 ? reveal : undefined}
+      />
     </span>
   );
 }

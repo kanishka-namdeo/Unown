@@ -4,7 +4,7 @@ import * as React from "react";
 import { Glyph, Mark } from "./glyph";
 import { GLYPH_IDS, MARKS, type GlyphId, type MarkId } from "./glyphs";
 import { LEXICON_BY_ID } from "./lexicon";
-import { useLetterRain } from "./effects";
+import { DrawGlyph, useLetterRain } from "./effects";
 import { FadeUp, SectionHead, TerminalWindow, PixelCursor, toneAttr, type Tone } from "./shell";
 
 /**
@@ -216,8 +216,12 @@ export function AlphabetSection() {
               ))}
             </div>
             <p className="mt-3 font-mono text-[11px] text-faint">
-              hover or focus to decode · click to pin and rain the letter · psst, try
-              ↑↑↓↓←→←→ba
+              hover or focus to decode · click to pin and rain the letter · psst, try{" "}
+              {/* The keycap chip (`.gb-kbd`, the carving round): the one
+                  keyboard affordance on the page, said in the mono face —
+                  Press Start 2P's latin subset carries no arrows, the same
+                  reason every ▶ here is drawn as SVG. */}
+              <kbd className="gb-kbd">↑↑↓↓←→←→ba</kbd>
             </p>
           </FadeUp>
 
@@ -228,7 +232,18 @@ export function AlphabetSection() {
               <div aria-live="polite" className="p-4">
                 <div className="flex items-center gap-4">
                   <div className="grid size-16 shrink-0 place-items-center border-[3px] border-canvas bg-gold/10">
-                    <Glyph id={entry.id} weight="heavy" tone="lit" className="size-11 text-gold" />
+                    {/* DrawGlyph (the carving round): the subject form carves
+                        itself when the panel first enters view and re-carves
+                        on every hover/pick — the page's own unwired
+                        `reveal` stroke contract, driven. Decorative like the
+                        Glyph it replaces; the Latin form id beside it is the
+                        accessible reading. */}
+                    <DrawGlyph
+                      id={entry.id}
+                      weight="heavy"
+                      tone="lit"
+                      className="size-11 text-gold"
+                    />
                   </div>
                   <div className="min-w-0">
                     <p className="gb-term text-[24px] leading-none text-ink">{entry.id}</p>
