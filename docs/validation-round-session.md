@@ -113,9 +113,19 @@ next. A checkpoint is DONE only with measured numbers.
   `docs/learning-progress-report.md`,
   `docs/end-user-experience-report.md`. The showcase band gains the
   round's improvement receipts.
-- [ ] **CP7 — the release cut** (v0.0.40 — v0.0.39 was cut by the
-  parallel SOTA-round session mid-round; this round releases on top of
-  it; builds compile; artifacts; tag; CI green).
+- [x] **CP7 — the release cut** (DONE). v0.0.40 — v0.0.39 was cut by the
+  parallel SOTA-round session mid-round; this round released on top of it.
+  `package.json` + `bun bin/unown --version` at 0.0.40; the 6-target
+  release plan verified (`release:artifacts --dry-run`); the tag pushed
+  (`a0780fc`) with the release workflow building the six platform archives
+  + SBOM + manifest. The release CI surfaced two latent gates failures on
+  main (both from the SOTA round's cancelled CI runs, caught by this
+  round's pushes): the improvement-receipt chips' 4.14:1 contrast (fixed
+  on-grid to 5.40:1) and the scroll-budget twin-gate divergence (the e2e
+  finished-state measure 3,731w vs the audit's fall-through 3,590w —
+  compressed ~135w, the ceiling set to 3,750 from the finished-state
+  measure, the audit's fall-through now warns loud; the full e2e suite
+  green at 15/15 on the fix commit `87f7b29`).
 
 ## The learning-loop evidence
 

@@ -30,14 +30,14 @@ export interface ChangelogStop {
   groups: ChangelogGroup[];
 }
 
-export const CHANGELOG_TOTAL_ENTRIES = 364;
+export const CHANGELOG_TOTAL_ENTRIES = 365;
 
 export const CHANGELOG_TOTALS: Record<ChangelogBucket, number> = {
   "Added": 161,
   "Changed": 28,
   "Deprecated": 0,
   "Removed": 3,
-  "Fixed": 133,
+  "Fixed": 134,
   "Security": 5,
   "Behavior": 34
 };
@@ -46,13 +46,13 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
   {
     "label": "0.0.40",
     "date": "2026-10-29",
-    "total": 11,
+    "total": 12,
     "counts": {
       "Added": 4,
       "Changed": 0,
       "Deprecated": 0,
       "Removed": 0,
-      "Fixed": 4,
+      "Fixed": 5,
       "Security": 0,
       "Behavior": 3
     },
@@ -95,6 +95,10 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
           },
           {
             "title": "F3b — the mint lane's shape flakiness",
+            "behavior": false
+          },
+          {
+            "title": "The improvement-receipt chips' contrast and the scroll budget's twin-gate agreement",
             "behavior": false
           }
         ]
