@@ -30,7 +30,7 @@ import {
 } from "./metering";
 import { newConversationId, newInviteToken, newMessageId, mulberry32 } from "./ids";
 import { hashPassword } from "./password";
-import { createSession, findSession, isExpired } from "./sessions";
+import { createSession, findSession, isExpired, removeSession } from "./sessions";
 import { seedParley, SEED_INTEGER } from "./seed";
 import {
   TenantContext,
@@ -175,6 +175,37 @@ export function sessionActor(session: SessionRow): { user: User; membership: Mem
   if (!membership) throw new NotFoundError("membership not found");
   const ctx = makeCtx(session.tenantId, user.id, membership.role);
   return { user, membership, ctx };
+}
+
+/**
+ * Look up a user by email (the login path). Returns the user row or
+ * `undefined`.
+ */
+export function userByEmail(email: string): User | undefined {
+  return getParley().users.find((u) => u.email.toLowerCase() === email.toLowerCase());
+}
+
+/**
+ * Create a session row for a user + tenant and write it into the
+ * store (the login path — the row is what `liveSession` / the
+ * cookie probe resolve against). Returns the new `SessionRow`.
+ */
+export function loginSession(userId: string, tenantId: string): SessionRow {
+  const s = getParley();
+  const row = createSession(userId, tenantId, clockNow(), rng);
+  state = { ...s, sessions: [...s.sessions, row] };
+  return row;
+}
+
+/**
+ * Destroy a session row (the logout path — the brief's "destroys
+ * the row"). Returns `true` when a row was removed.
+ */
+export function destroySession(sessionId: string): boolean {
+  const s = getParley();
+  const before = s.sessions.length;
+  state = { ...s, sessions: removeSession(s.sessions, sessionId) };
+  return state!.sessions.length < before;
 }
 
 /* ── audit helper ─────────────────────────────────────────────────── */
