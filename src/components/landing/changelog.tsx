@@ -230,9 +230,8 @@ export function ChangelogRail() {
               lead={
                 <>
                   <span className="font-mono text-ink">{CHANGELOG_TOTAL_ENTRIES} entries</span>, read
-                  out of <span className="font-mono text-ink">CHANGELOG.md</span>, the file{" "}
-                  <span className="font-mono text-ink">unown changelog</span> prints. Dates from
-                  its headings, titles from its bullets; nothing written for the page.
+                  out of <span className="font-mono text-ink">CHANGELOG.md</span>. Dates from its
+                  headings, titles from its bullets; nothing written for the page.
                 </>
               }
             >

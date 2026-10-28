@@ -1,0 +1,36 @@
+    all steps (costs-early principle), error summary announced via role="alert" live region with focus to first invalid field.
+ 8. Dashboard — KPI cards; 14-day revenue bar chart as inline SVG (stacked on mobile, with role="img" + text alternative);
+    top-5 products; category share bars; inventory table with low-stock highlight + Restock (+10) per row.
+ 9. API routes (src/app/api/) — GET /api/products, GET /api/products/[id], POST /api/orders (validate payload → 400 + field
+    errors; happy path 201/200 with order), GET /api/orders, GET /api/analytics; module-level in-memory store seeded via the
+    same seed.ts so client/server agree.
+ 10. Build & fix — bun run build must succeed; fix any type/build errors at root cause.
+ 11. Verify per brief §12 — bun run start -p 4317; curl every route and read actual JSON: 200s for all GETs, POST /api/orders
+     happy path and a 400 invalid case with field errors. Fix anything broken and re-verify.
+ 12. Commit — logical commits (scaffold; domain lib + tests; store + shell + components + checkout; dashboard; API routes;
+     verification fixes).
+ 13. One-paragraph summary — what was built, test count, known limitations (as the brief's mission asks).
+
+ Notes on choices: no new runtime deps beyond the Next.js scaffold (Tailwind is required by the contract); no UI/chart
+ libraries; charts are hand-rolled SVG; embed flag via server-side searchParams as the architecture contract requires.
+
+ Ready to execute on your approval — type /plan (or exit plan mode) and I'll build it.
+
+ ⠦ Running git... 0:46
+
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+
+ Plan ready (10 steps). What next?
+
+ → Execute the plan (track progress)
+   Stay in plan mode
+   Refine the plan
+
+  ↑↓ navigate · Enter to select · Esc to cancel
+
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+📂 3  .gitignore · SKILL.md · PRODUCT-BRIEF.md
+~/my-project/sigil-bazaar (main)
+ctx ▕█░░░░░░░░░▏ 5.0%/524k (auto) ↓1.9k ↑36k CH98.8% R63k                                                        agnes-3.0-flash
+memory: up · old build PLAN turn 14.9s · ctx 5% · in 36.3k out 1.9k (cached 63.5k)
+escape interrupt · ctrl+o tools · ctrl+t thinking

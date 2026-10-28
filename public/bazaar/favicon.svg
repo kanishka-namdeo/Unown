@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <!-- Sigil Bazaar favicon: the bazaar glyph (✧) on the app's dark token. -->
+  <rect width="64" height="64" rx="14" fill="#0d0b14"/>
+  <g stroke="#b794f6" stroke-width="3" stroke-linecap="round" fill="none">
+    <path d="M20 44 L32 16 L44 44"/>
+    <path d="M25 36 L39 36"/>
+  </g>
+  <circle cx="49" cy="19" r="4" fill="#8fe0b0"/>
+</svg>

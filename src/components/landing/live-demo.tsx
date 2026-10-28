@@ -2,39 +2,44 @@
 
 import { useEffect, useRef, useState } from "react";
 import { ArrowUpRight, RotateCcw } from "lucide-react";
-import { LIVE_DEMO_RECEIPT as R } from "./live-demo-data";
+import { LIVE_DEMO_APPS } from "./live-demo-data";
 import { FadeUp, SectionHead, TrafficDots } from "./shell";
 
 /**
  * The live demo — what the agent builds, running in the visitor's browser.
  *
- * No terminal-agent competitor ships this: their landing pages show videos
- * of the agent working; this one runs the artifact. The section iframes
- * /demo?embed=1 — the Sigil Focus app one unown session wrote end-to-end
- * (receipts in live-demo-data.ts) — in a browser-chrome frame, lazy-mounted
- * (the poster still is a real capture of the same route via
- * scripts/landing_demo_poster.mjs), with a working Reset (a postMessage
- * handshake the demo listens for in embed mode) and a full-screen escape
- * hatch (the route itself, opened in a new tab).
+ * The commerce round (2026-10-28) turned the band into a GALLERY: two
+ * agent-built apps, each iframed from its own route in browser chrome, one
+ * switcher — the v0-templates pattern (one live deployment per artifact,
+ * switchable in place; see docs/live-preview-competitor-research.md).
+ *
+ *   · Sigil Focus  — /demo  (the kanban round: one prompt, four sessions)
+ *   · Sigil Bazaar  — /bazaar (the commerce round: planned → reviewed →
+ *     browser-QA'd; storefront, checkout wizard, owner analytics)
  *
  * Contract notes:
- *  - The iframe mounts ONLY when scrolled near or clicked (an idle landing
- *    visit never pays the demo's hydration cost; the poster carries the
- *    first impression). `loading="lazy"` is belt-and-braces.
- *  - The frame is same-origin (/demo on this deployment), sandboxed with
+ *  - The frame mounts ONLY when scrolled near or clicked (an idle landing
+ *    visit never pays the demo's hydration cost; the active app's poster
+ *    carries the first impression). Switching apps swaps the iframe src in
+ *    place — no remount, the second app's first paint is a src change.
+ *  - The frame is same-origin (each app on this deployment), sandboxed with
  *    allow-same-origin + allow-scripts so the app's localStorage works and
  *    the reset handshake can flow.
- *  - Below sm, the frame is replaced by the poster + a "tap to try it
- *    live" link to /demo — a 390px iframe of a 4-column board is a
- *    punishment, not a demo (the app itself collapses to tabs there).
- *  - Every number in the chips row reads from the receipt data file; the
- *    test suite pins the section against that file (no hand-typed counts).
+ *  - The reset handshake posts the ACTIVE app's documented {source, type}
+ *    pair with targetOrigin = this origin — never "*" (MDN's rule; a stray
+ *    window in the hierarchy can postMessage a child, the origin check is
+ *    the defense).
+ *  - Below sm, the frame is replaced by the poster + a tap-through link to
+ *    the app's own route — a 390px iframe of a storefront is a punishment,
+ *    not a demo (both apps collapse to tabs/sheets there).
+ *  - Every number in the chips row reads from the active app's receipt in
+ *    live-demo-data.ts; the test suite pins the band against that file (no
+ *    hand-typed counts).
  */
 
-/** The demo's URL bar — the deployment's own route, truthfully shown. */
-const DEMO_URL = "unown-nine.vercel.app/demo?embed=1";
-
 export function LiveDemoSection() {
+  const [activeId, setActiveId] = useState(LIVE_DEMO_APPS[0].id);
+  const active = LIVE_DEMO_APPS.find((a) => a.id === activeId) ?? LIVE_DEMO_APPS[0];
   const [mounted, setMounted] = useState(false);
   const frameHostRef = useRef<HTMLDivElement | null>(null);
   const iframeRef = useRef<HTMLIFrameElement | null>(null);
@@ -58,11 +63,15 @@ export function LiveDemoSection() {
   }, []);
 
   const resetDemo = () => {
+    // The handshake pairs are the apps' documented contracts; the origin is
+    // pinned (never "*" — the 2026-10-28 hardening round).
     iframeRef.current?.contentWindow?.postMessage(
-      { source: "unown-landing", type: "sigil-reset" },
-      "*",
+      { source: "unown-landing", type: active.resetType },
+      window.origin,
     );
   };
+
+  const R = active.receipt;
 
   return (
     <section
@@ -73,35 +82,65 @@ export function LiveDemoSection() {
       <div className="mx-auto max-w-6xl px-5 sm:px-6">
         <FadeUp className="max-w-2xl">
           <SectionHead kicker="Live demo">
-            The agent built this. It&apos;s running.
+            The agent built these. They&apos;re running.
           </SectionHead>
           {/* One line, on purpose: the frame below IS the feature list —
               the scroll budget contract makes the band pay for its own
               height, and every word here is one the frame shows for free. */}
           <p className="mt-5 max-w-2xl text-[15px] leading-relaxed text-dim">
-            One unown session. Not a video: drag a card, start the timer.
+            Two apps, live. Pick one.
           </p>
         </FadeUp>
 
         <FadeUp delay={0.06} className="mt-8">
+          {/* The switcher + the browser chrome bar share one row: the app
+              tabs left, the URL bar (the one honest signal that this is a
+              real deployed route) right. */}
           <div className="gb-panel lift overflow-hidden">
-            {/* Browser chrome: the Gen-3 name strip carries the URL bar —
-                the one honest signal that this is a real deployed route. */}
-            <div className="gb-bar flex items-center gap-3 px-3 py-2">
+            <div className="gb-bar flex items-center gap-2 px-3 py-2">
               <TrafficDots />
-              <div className="flex min-w-0 flex-1 justify-center">
-                <span className="gb-label truncate text-[9px] text-canvas">
-                  {DEMO_URL}
-                </span>
+              <div
+                className="flex min-w-0 flex-1 items-center gap-1"
+                role="tablist"
+                aria-label="Live demo apps"
+              >
+                {LIVE_DEMO_APPS.map((app) => {
+                  const selected = app.id === active.id;
+                  return (
+                    <button
+                      key={app.id}
+                      type="button"
+                      role="tab"
+                      aria-selected={selected}
+                      onClick={() => setActiveId(app.id)}
+                      className={
+                        // Opaque pill, never a translucent overlay: axe
+                        // computes the effective contrast THROUGH an alpha
+                        // background (bg-ink/15 over the aqua bar read
+                        // 1.73:1 — the gallery round's a11y gate caught it).
+                        "rounded-md px-2.5 py-1 text-[11px] transition-colors " +
+                        (selected
+                          ? "bg-canvas font-semibold text-ink"
+                          : "text-canvas hover:underline underline-offset-2")
+                      }
+                    >
+                      {app.name}
+                    </button>
+                  );
+                })}
+
               </div>
-              <div className="flex min-w-[28px] items-center justify-end gap-2">
+              <div className="flex min-w-[120px] items-center justify-end gap-2">
+                <span className="gb-label hidden truncate text-[9px] text-canvas lg:inline">
+                  {active.url}
+                </span>
                 <button
                   type="button"
                   onClick={resetDemo}
                   disabled={!mounted}
                   className="flex items-center gap-1 font-mono text-[9px] text-canvas/80 underline-offset-2 hover:underline disabled:no-underline disabled:opacity-50"
-                  aria-label="Reset the demo board to its seeded state"
-                  title="Reset the demo board"
+                  aria-label={`Reset the ${active.name} demo to its seeded state`}
+                  title={`Reset the ${active.name} demo`}
                 >
                   <RotateCcw className="size-3" aria-hidden="true" />
                   reset
@@ -109,15 +148,19 @@ export function LiveDemoSection() {
               </div>
             </div>
 
-            {/* Desktop: the frame (poster until mounted). */}
+            {/* Desktop: the frame (the active app's poster until mounted). */}
             <div ref={frameHostRef} className="relative hidden sm:block">
               {mounted ? (
+                /* One persistent frame: switching apps swaps its src (a
+                   same-origin navigation), never a remount — the sandbox
+                   attrs stay identical, the ref stays live, and the reset
+                   handshake keeps pointing at the same browsing context. */
                 <iframe
                   ref={iframeRef}
-                  src="/demo?embed=1"
-                  title="Sigil Focus — the app unown built, running live"
+                  src={`${active.route}?embed=1`}
+                  title={`${active.name} — the app unown built, running live`}
                   loading="lazy"
-                  sandbox="allow-scripts allow-same-origin allow-forms allow-modals allow-popups"
+                  sandbox="allow-scripts allow-same-origin allow-forms allow-popups"
                   className="block h-[540px] w-full border-0 bg-black"
                 />
               ) : (
@@ -125,18 +168,16 @@ export function LiveDemoSection() {
                   type="button"
                   onClick={() => setMounted(true)}
                   className="group relative block h-[540px] w-full"
-                  aria-label="Load the live demo — the app unown built, running in your browser"
+                  aria-label={`Load the ${active.name} live demo — the app unown built, running in your browser`}
                 >
                   {/* The poster fills the FRAME's height (object-cover,
-                object-top: the board lives in the top of the shot), so the
+                object-top: the app lives in the top of the shot), so the
                 band never shifts when the iframe swaps in — and the
                 un-mounted band is exactly as tall as the mounted one. */}
-                  {/* eslint-disable-next-line @next/next/no-img-element -- a
-                      static poster, not an authored art asset: the capture
-                      lane writes it (scripts/landing_demo_poster.mjs). */}
+                  { }
                   <img
-                    src="/landing/demo/poster.png"
-                    alt="Sigil Focus — the kanban board app unown built: four columns with seeded demo tasks, focus timer and stats"
+                    src={active.poster}
+                    alt={active.posterAlt}
                     width={1440}
                     height={900}
                     className="block h-full w-full object-cover object-top"
@@ -151,19 +192,19 @@ export function LiveDemoSection() {
             </div>
 
             {/* Mobile: the poster + the escape hatch (a 390px frame of a
-                four-column board is a punishment; the app collapses to
-                tabs at that width — take it full screen instead). */}
+                storefront is a punishment; both apps collapse to tabs and
+                sheets at that width — take it full screen instead). */}
             <a
-              href="/demo"
+              href={active.route}
               target="_blank"
               rel="noreferrer noopener"
               className="relative block h-[420px] sm:hidden"
-              aria-label="Open the live demo app full screen in a new tab"
+              aria-label={`Open the ${active.name} live demo app full screen in a new tab`}
             >
-              {/* eslint-disable-next-line @next/next/no-img-element -- capture-lane poster, as above. */}
+              { }
               <img
-                src="/landing/demo/poster.png"
-                alt="Sigil Focus — the kanban board app unown built"
+                src={active.poster}
+                alt={active.posterAlt}
                 width={1440}
                 height={900}
                 loading="lazy"
@@ -191,7 +232,7 @@ export function LiveDemoSection() {
               the receipt
             </a>
             <a
-              href="/demo"
+              href={active.route}
               target="_blank"
               rel="noreferrer noopener"
               className="inline-flex items-center gap-1 underline underline-offset-2 transition-colors hover:text-gold"
