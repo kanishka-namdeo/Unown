@@ -50,6 +50,21 @@ function setup(pollMs = 10) {
         return { extension: extension!, controlFile, askFile, env };
 }
 
+/** Poll until cond() holds — the Windows-CI-safe replacement for the fixed
+ *  40ms sleeps these tests grew up with: a 10ms poll loop can miss a 40ms
+ *  window on a loaded runner (the fleet flake, CI 2026-10-28), and a wait
+ *  that ends only when the world is in the asserted state can never race
+ *  the assertion. Throws with the elapsed time when the deadline passes. */
+async function waitFor(cond: () => boolean, ms = 2_000, stepMs = 10): Promise<void> {
+        const start = Date.now();
+        while (!cond()) {
+                if (Date.now() - start > ms) {
+                        throw new Error(`waitFor: condition not met within ${ms}ms`);
+                }
+                await new Promise((r) => setTimeout(r, stepMs));
+        }
+}
+
 describe("createFleetChildExtension", () => {
         test("returns null without the fleet env (ordinary sessions get nothing)", () => {
                 expect(createFleetChildExtension({ env: {} })).toBeNull();
@@ -216,14 +231,20 @@ describe("ask instances carry a monotonic seq (R3-F2 — the identity the parent
                 extension.factory(fake.pi);
                 const tool = fake.tools.get("ask_question");
                 const first = tool.execute("t1", { question: "Same question?" });
-                await new Promise((r) => setTimeout(r, 40));
+                await waitFor(() => existsSync(askFile));
                 const p1 = JSON.parse(readFileSync(askFile, "utf8"));
                 expect(typeof p1.seq).toBe("number");
                 appendControlCommand(controlFile, { kind: "answer", text: "one" });
                 await first;
                 // The re-ask: identical text, new instance.
                 const second = tool.execute("t2", { question: "Same question?" });
-                await new Promise((r) => setTimeout(r, 40));
+                await waitFor(() => {
+                        try {
+                                return JSON.parse(readFileSync(askFile, "utf8")).seq === p1.seq + 1;
+                        } catch {
+                                return false;
+                        }
+                });
                 const p2 = JSON.parse(readFileSync(askFile, "utf8"));
                 expect(p2.question).toBe(p1.question);
                 expect(p2.seq).toBe(p1.seq + 1);
@@ -266,8 +287,7 @@ describe("concurrent ask_question parks queue their waiters (R3-F2 follow-up, li
                 // under the still-parked sibling.
                 const first = tool.execute("t1", { question: "First: which branch?" });
                 const second = tool.execute("t2", { question: "Second: which runner?" });
-                await new Promise((r) => setTimeout(r, 40));
-                expect(existsSync(askFile)).toBe(true);
+                await waitFor(() => existsSync(askFile));
                 // The file shows the LATEST pending question — the one the parent saw.
                 expect(JSON.parse(readFileSync(askFile, "utf8")).question).toBe("Second: which runner?");
                 // The answer satisfies the asker of the STANDING question…
@@ -275,7 +295,7 @@ describe("concurrent ask_question parks queue their waiters (R3-F2 follow-up, li
                 const r2 = await second;
                 expect(r2.content[0].text).toContain("[orchestrator's answer] answer-the-standing");
                 // …and the ask file SURVIVES for the still-parked sibling.
-                await new Promise((r) => setTimeout(r, 40));
+                await new Promise((r) => setTimeout(r, 80));
                 expect(existsSync(askFile)).toBe(true);
                 // A second answer falls back to the remaining asker (FIFO); NOW
                 // the file goes.
@@ -295,8 +315,7 @@ describe("concurrent ask_question parks queue their waiters (R3-F2 follow-up, li
                 // child never completed.
                 const first = tool.execute("t1", { question: "Same question?" });
                 const second = tool.execute("t2", { question: "Same question?" });
-                await new Promise((r) => setTimeout(r, 40));
-                expect(existsSync(askFile)).toBe(true);
+                await waitFor(() => existsSync(askFile));
                 appendControlCommand(controlFile, { kind: "answer", text: "one answer for both" });
                 const [r1, r2] = await Promise.all([first, second]);
                 expect(r1.content[0].text).toContain("[orchestrator's answer] one answer for both");
@@ -311,7 +330,7 @@ describe("concurrent ask_question parks queue their waiters (R3-F2 follow-up, li
                 const tool = fake.tools.get("ask_question");
                 const first = tool.execute("t1", { question: "First?" });
                 const second = tool.execute("t2", { question: "Second?" });
-                await new Promise((r) => setTimeout(r, 40));
+                await waitFor(() => existsSync(askFile));
                 appendControlCommand(controlFile, { kind: "stop" });
                 const [r1, r2] = await Promise.all([first, second]);
                 for (const r of [r1, r2]) {

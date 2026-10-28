@@ -61,7 +61,7 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
         "bucket": "Added",
         "items": [
           {
-            "title": "landing: the eleventh band — \"Built & Improved With Unown\"",
+            "title": "landing: the \"Built & Improved With Unown\" band",
             "behavior": false
           },
           {

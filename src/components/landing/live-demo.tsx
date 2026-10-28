@@ -88,7 +88,7 @@ export function LiveDemoSection() {
       <div className="mx-auto max-w-6xl px-5 sm:px-6">
         <FadeUp className="max-w-2xl">
           <SectionHead kicker="Live demo">
-            The agent built these. They&apos;re running.
+            The agent built these. They run.
           </SectionHead>
           {/* One line, on purpose: the frame below IS the feature list —
               the scroll budget contract makes the band pay for its own
@@ -238,7 +238,7 @@ export function LiveDemoSection() {
           <p className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-2 font-mono text-[10px] text-faint">
             <span>
               {R.sessions} sessions · ~{R.toolCalls} tool calls · {R.files}{" "}
-              files · {R.tests} tests green · {R.commits} commits
+              files · {R.tests} tests · {R.commits} commits
             </span>
             <a
               href={R.receiptDoc}
@@ -246,7 +246,7 @@ export function LiveDemoSection() {
               rel="noreferrer noopener"
               className="underline underline-offset-2 transition-colors hover:text-gold"
             >
-              the receipt
+              receipt
             </a>
             <a
               href={active.route}
@@ -254,14 +254,14 @@ export function LiveDemoSection() {
               rel="noreferrer noopener"
               className="inline-flex items-center gap-1 underline underline-offset-2 transition-colors hover:text-gold"
             >
-              open full screen
+              full screen
               <ArrowUpRight className="size-3" aria-hidden="true" />
             </a>
           </p>
           {/* The honesty note joins the chips row — the band pays for its
               height; the patch details live in the receipt doc. */}
           <p className="mt-2 font-mono text-[10px] text-faint">
-            agent-written as built · {R.embeddingAdaptations} documented
+            agent-written · {R.embeddingAdaptations} documented
             patches
           </p>
         </FadeUp>

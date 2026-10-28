@@ -205,8 +205,8 @@ describe("runs page", () => {
           expect(screen.getAllByText("run_fl_atlas_1").length).toBeGreaterThan(0);
         }, { timeout: 1000 }).then(
           () => {
-            // Status chip carries an accessible name (aria-label="status: passed")
-            expect(screen.getByLabelText("status: passed")).toBeDefined();
+            // Status chip carries an accessible name (aria-label="run status passed")
+            expect(screen.getByLabelText("run status passed")).toBeDefined();
             dispose();
             resolve();
           },

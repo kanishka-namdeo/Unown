@@ -97,7 +97,7 @@ describe("live-demo band (the gallery)", () => {
     const text = () => container.textContent ?? "";
     expect(text()).toContain(`${first.receipt.sessions} sessions`);
     expect(text()).toContain(`~${first.receipt.toolCalls} tool calls`);
-    expect(text()).toContain(`${first.receipt.tests} tests green`);
+    expect(text()).toContain(`${first.receipt.tests} tests`);
     expect(text()).toContain(`${first.receipt.commits} commits`);
     expect(text()).toContain(`${first.receipt.embeddingAdaptations} documented`);
 
@@ -106,7 +106,7 @@ describe("live-demo band (the gallery)", () => {
     expect(tabs.length).toBe(LIVE_DEMO_APPS.length);
     fireEvent.click(tabs[1]);
     expect(text()).toContain(`${second.receipt.toolCalls} tool calls`);
-    expect(text()).toContain(`${second.receipt.tests} tests green`);
+    expect(text()).toContain(`${second.receipt.tests} tests`);
     expect(text()).toContain(`${second.receipt.commits} commits`);
     expect(text()).not.toContain(`~${first.receipt.toolCalls} tool calls`);
   });
