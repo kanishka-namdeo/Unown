@@ -29,6 +29,7 @@ changed no pixels: an audit of what the page says twice, in Part 12.
 - [Part 16 — The atlas redraw: authored pixels, or why the generator lost the brush](#part-16--the-atlas-redraw-authored-pixels-or-why-the-generator-lost-the-brush)
 - [Part 17 — The variety round: one body plan per creature](#part-17--the-variety-round-one-body-plan-per-creature)
 - [Part 18 — The dex absorbs the captures: one spine for a capability and its footage](#part-18--the-dex-absorbs-the-captures-one-spine-for-a-capability-and-its-footage)
+- [2026-10-28 — the presence round: the page answers you](#2026-10-28--the-presence-round-the-page-answers-you)
 
 Related pages: [benchmark-research.md](benchmark-research.md) — the numbers the
 page quotes; the page's binding contract lives one level up in
@@ -2286,3 +2287,78 @@ Measured on the production build at 1440x900, before and after: 10 bands / 11,70
 **The seed content.** Three posts, one per type the template documents: the beta announcement (type `announcement`, text-only by the media checklist's own rule — the social card is generated), the tiered-memory feature post (type `feature`, embedding the real `memory-learn` reel and stills — the reuse-first media rule in action), and the v0.0.15 release post (type `release`, media-light by rule: links the GitHub release and the changelog stop). Every claim in every post cites a repo artifact — the memory post's tier table is `docs/memory.md`'s own, the release post's counts are the changelog's own, and nothing in any post invents a number the receipts do not carry.
 
 **The gates that pin it.** `scripts/landing_blog.test.mjs` (the generator's grammar and validation), `bun run check:blog` (the drift gate, wired into CI's landing job beside `check:changelog`), `src/app/blog/__tests__/blog-pages.test.tsx` (index, post, prev/next, JSON-LD, static params, per-post metadata), `e2e/blog.spec.ts` (the index, the feed's parseability and escaping, the article SEO surface, the generated PNG's magic bytes, the 404), the updated `e2e/seo.spec.ts` sitemap count (2 + posts, read off the generated data), and `verify-deploy.mjs`'s new blog section (routes, the h1, the feed link, RSS autodiscovery, sitemap entries). The changed-line coverage gate carries one justified exemption, the OG image route — Satori/resvg wasm cannot execute under the happy-dom lane; the e2e spec pins its output end to end instead.
+
+
+## 2026-10-28 — the presence round: the page answers you
+
+**The brief.** "What effects, animations, elements can we include to make the
+landing page stunning and intuitive for the end user?" — asked as a build
+brief. The round's research record is
+[`landing-effects-research.md`](landing-effects-research.md) (the field survey:
+Linear's blur-up H1 with its accessible-duplicate pattern, Vercel's
+ScramleText CTA, Cursor's shimmering status pill, Clerk's pointer-tracked
+`data-spotlight` overlays, Supabase's `motion-safe` hover-gated marquee, the
+motion.dev performance tier list, the NN/g duration and scroll-motion
+research, the CSS scroll-driven-animations Baseline). The session log,
+checkpoint by checkpoint, is
+[`presence-round-session.md`](presence-round-session.md).
+
+**The filter.** Every candidate had to survive the page's four standing motion
+invariants (additive never load-bearing; base state = finished state; GBA
+grid; nothing loops unless asked). That filter killed the loudest 2025
+patterns — WebGL heroes, marquees, View Transitions on tabs, scrollytelling,
+3D tilt, magnetic buttons — and passed six that answer the visitor instead of
+performing at them.
+
+**The shipped set, and the reasoning per piece.**
+
+1. **The decode wave** (hero kicker, `DecodeText`): every scrambling position
+   shows a letter of UNOWN — the brand story carried by the scramble itself.
+   Pixel font = monospaced = zero CLS; SSR ships the finished line; the wave
+   self-clears in ~1s; pure scheduler pinned by test. The H1 itself is
+   deliberately NOT scrambled: a proportional face jitters its own line
+   breaks, and the SEO/keyword contract on the h1 is not worth a shimmer.
+2. **The word-settle** (H1, CSS-only): words step into place from a VISIBLE
+   state — never opacity:0, so LCP is not hostage to an entrance. Inter-word
+   spaces live in the parent inline flow (a space inside an inline-block is
+   browser-collapsed; a trailing one would corrupt h1.textContent).
+3. **The route bar**: reading progress as the Gen 3 route, scrubbed by
+   `animation-timeline: scroll(root)` — zero JS, user-scrubbed (moves only
+   when the reader moves), honest by construction. 3px after the Agnes VLM
+   review twice read the 2px cut as "too subtle to read as a functional
+   element"; hidden under reduced motion and on non-supporting browsers
+   (a static full bar would lie).
+4. **The scrollspy**: `aria-current="true"` + the lit `▶` on the band being
+   read — a state, not motion; hero and finale mark nothing, the honest
+   answer. The intuitiveness half of the brief lives here: a map with a
+   you-are-here pin, not eight unlabeled labels.
+5. **The spotlight** (`SpotlightProvider` + `[data-spotlight]`): one passive
+   document listener writes `--mx`/`--my` on the hovered card only — scoped
+   vars, never the tier list's "inheritance bomb". Glows in the section's own
+   hue. The demo frame is deliberately excluded: a tint that follows the
+   cursor into a live app the visitor is operating is not feedback.
+6. **The furniture**: a hover-glint on the CTA (`steps(4)`, the specular slide
+   off a cartridge), the Live chip on the demo chrome (an honest status — the
+   frame really is a live route — in the cursor-blink idiom, opaque pills per
+   the gallery round's axe lesson), CountUp on the stat band (DOM ships the
+   receipt figures; `0/50` renders immovable — an animating tally growing
+   toward zero is the opposite of the claim), and `.pane-swap` riding
+   `display:none -> block` animation restarts on the proof tabs and dex
+   screens.
+
+**Budget accounting.** The round adds ONE word of prose (the Live chip) and
+zero scroll height: 3,283 of 3,320 words, 13.3 of 13.5 viewports — leaving
+the new release stop its usual ~30 generated words without an amendment.
+
+**The gates that pin it.** `presence.test.tsx` (17 tests: the wave's
+scheduler, finished-value-first renders, scoped vars, the scrollspy's
+document-order pick, the nav-cursor hook, character-exact h1 textContent,
+pane-swap wiring, the Live chip, the demo band's no-spotlight rule); the
+existing suites unchanged-green (359 total); coverage 91–100% on touched
+files; palette 21+21 AA; contrast 1,737 nodes clean; theme toggle PASS; e2e
+15/15 (axe both motion states, budget 13.3vh/3,275w, SEO); a real-browser
+pass (route bar `matrix(0.577…)`, scrollspy "How it learns" → "Capability
+dex", spotlight vars on the hovered card, the wave caught mid-flight by the
+VLM as "ANOWN · WHILT ON PI" — the decoy alphabet verbatim); and the Agnes
+VLM design critique whose one actionable finding (the 2px bar) shipped as a
+fix in the same round.

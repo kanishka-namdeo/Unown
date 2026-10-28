@@ -96,19 +96,41 @@ file), `check:changelog|blog|benchmarks|claims`, `gba_palette_check.mjs`
   the choreography: kicker decode -> word settle -> route bar -> scrollspy.
   (Scratch verification media — the blog's copy is staged separately.)
 
-## Checkpoint 4 — docs, blog, DOX (PENDING)
+## Checkpoint 4 — docs, blog, DOX (DONE)
 
-`docs/landing-research.md` gains the round's part; the landing AGENTS.md gains
-the effects contracts; this file and the research doc link into the DOX tree;
-blog post `content/blog/2026-10-28-the-presence-round.md` with captured media;
-README checked for staleness; OG shots regenerated (visual change ⇒ the
-tracked `public/landing/*.png` set moves in the same change).
+- `docs/landing-research.md` gained the dated section "2026-10-28 — the
+  presence round"; the TOC links it.
+- `src/components/landing/AGENTS.md` carries the round's wiring contracts
+  (DecodeText/SpotlightProvider/useScrollSpy/CountUp ownership, the
+  word-settle space rule, the route-bar/pane-swap/glint/Live-chip rules,
+  the demo-frame no-spotlight rule) and the presence suite in Verification.
+- `docs/AGENTS.md` ownership lists the two new docs; the README links both
+  in the Documentation table and names the round in the Landing page
+  section.
+- Blog post `content/blog/2026-10-28-the-presence-round.md` (type feature)
+  with the entrance video + three stills under
+  `public/blog/2026-10-28-the-presence-round/`, shot against the shipped
+  3px build; `landing_blog.mjs` regenerated (18 posts) and `check:blog`
+  green.
+- The tracked OG shots (`public/landing/landing-{hero,full,mobile}.png`)
+  regenerated against the production build — the standing same-change rule.
+- CHANGELOG `[0.0.36] - 2026-10-28` written; `package.json` → 0.0.36;
+  `landing_changelog.mjs` regenerated (34 stops).
+- Budget after the new stop: audit 3,308w / e2e 3,275w against 3,320 —
+  inside the gate with no amendment, as calculated.
 
-## Checkpoint 5 — release v0.0.36 (PENDING)
+## Checkpoint 5 — release v0.0.36 (IN PROGRESS)
 
-CHANGELOG `[0.0.36]` entry, `package.json` bump, budget amendment if the new
-changelog stop pushes the word count (compress first, amend with rationale
-second — never delete a generated number), `release:artifacts` dry-run + real
-run locally to prove the builds compile, push `main`, tag `v0.0.36`, watch the
-release workflow promote the draft, confirm the release assets and the live
-deploy gate.
+- Bun upgraded 1.3.14 → 1.4.4 (pi-repo's lockfileVersion 3 requires >= 1.4 —
+  the fresh-clone installer enforces it).
+- `bun run agent:install` (link/service steps skipped) built the vendored pi
+  workspace end to end.
+- `release:artifacts --dry-run`: exactly the six-target plan the workflow's
+  plan gate asserts. `release:artifacts`: ALL SIX per-OS binaries compiled
+  for 0.0.36 (42-55 MiB each) in `download/artifacts/`.
+- `release-manifest.ts --out download/artifacts`: unsigned release.json for
+  0.0.36, 6 platform assets, after staging the shipped installer scripts.
+- Remaining: push, tag `v0.0.36`, watch `.github/workflows/release.yml`
+  (install matrix, engine/bridge suites, SBOM + attestations, the six
+  binaries, per-platform smoke runs, DRAFT release promotion, post-publish
+  feed gate + smoke-install matrix), then confirm the live deployment gate.
