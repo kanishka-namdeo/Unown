@@ -1,0 +1,209 @@
+{
+ "label": "baseline",
+ "capturedAt": "2026-10-28T22:43:09",
+ "schema": "validation-round/1",
+ "drained": true,
+ "engine": {
+  "version": "self-learning v0.0.39",
+  "provider": "zai-bridge/agnes-3.0-flash",
+  "bridgeUpstreamOk": true
+ },
+ "memoryMetrics": {
+  "memoryVersions": {
+   "policy": 1,
+   "project": 1,
+   "user": 1,
+   "local": 1
+  },
+  "terminalMemory": {
+   "provenance": {
+    "version": 2,
+    "changedBy": "mem0",
+    "at": 1793227353744,
+    "sha256": "27c55e6d49c204580ba60cc14ae45af92c6ca8144458fa71c7256d3afaa3a19e",
+    "manualSha256": "64f2d1b1793fa5e12c6a356e2bcab16910e61b0d8b731f6b56b65d613f37e119",
+    "manualEdited": true
+   },
+   "contentChars": 10757,
+   "bulletCount": 72,
+   "sectionCount": 5,
+   "userSkills": [
+    "pre-commit-engine-check",
+    "restart-engine",
+    "test-cadence-domain",
+    "recover-failed-cycle"
+   ],
+   "stagedSkills": []
+  },
+  "retrievalProbeResults": null
+ },
+ "learningMetrics": {
+  "tasks": [
+   {
+    "id": "fix-fizzbuzz",
+    "name": "Fix FizzBuzz",
+    "category": "bugfix",
+    "difficulty": 1,
+    "status": "regression",
+    "origin": "seed",
+    "pass_count": 1,
+    "fail_count": 0,
+    "created_at": 1793226052650
+   },
+   {
+    "id": "fix-drop-right",
+    "name": "Fix dropRight off-by-one",
+    "category": "bugfix",
+    "difficulty": 2,
+    "status": "regression",
+    "origin": "seed",
+    "pass_count": 1,
+    "fail_count": 0,
+    "created_at": 1793226052650
+   },
+   {
+    "id": "fix-csv-parser",
+    "name": "Fix CSV parsing",
+    "category": "bugfix",
+    "difficulty": 3,
+    "status": "regression",
+    "origin": "seed",
+    "pass_count": 0,
+    "fail_count": 0,
+    "created_at": 1793226052651
+   },
+   {
+    "id": "swap-if-else-messages",
+    "name": "Swap if/else branch bodies",
+    "category": "bugfix",
+    "difficulty": 3,
+    "status": "regression",
+    "origin": "seed",
+    "pass_count": 0,
+    "fail_count": 0,
+    "created_at": 1793226052651
+   },
+   {
+    "id": "impl-debounce",
+    "name": "Implement debounce",
+    "category": "implementation",
+    "difficulty": 4,
+    "status": "regression",
+    "origin": "seed",
+    "pass_count": 0,
+    "fail_count": 0,
+    "created_at": 1793226052650
+   },
+   {
+    "id": "impl-map-limit",
+    "name": "Implement mapLimit",
+    "category": "implementation",
+    "difficulty": 4,
+    "status": "regression",
+    "origin": "seed",
+    "pass_count": 0,
+    "fail_count": 0,
+    "created_at": 1793226052651
+   }
+  ],
+  "taskCount": 6,
+  "tasksPassing": 6,
+  "suiteStats": {
+   "total": 6,
+   "passing": 2,
+   "capability": 0,
+   "regression": 6,
+   "minted": 0,
+   "graduated": 0,
+   "quarantined": 0,
+   "saturated": false
+  },
+  "cycles": [
+   {
+    "task_id": "fix-drop-right",
+    "status": "already-passing",
+    "iteration": 1,
+    "summary": "baseline passed — no improvement needed",
+    "shipped": 0,
+    "created_at": 1793227261610,
+    "ended_at": 1793227306481
+   },
+   {
+    "task_id": "fix-fizzbuzz",
+    "status": "already-passing",
+    "iteration": 1,
+    "summary": "baseline passed — no improvement needed",
+    "shipped": 0,
+    "created_at": 1793226653017,
+    "ended_at": 1793226658210
+   }
+  ],
+  "cycleCount": 2,
+  "cycleStatusCounts": {
+   "already-passing": 2
+  },
+  "improvements": [],
+  "improvementCount": 0,
+  "improvementsShipped": 0,
+  "dreams": [
+   {
+    "id": "project-61cf8088-e74a-4fb4-b0e0-d647f41a1413",
+    "status": "done",
+    "notes": 3,
+    "created_at": 1793227306641,
+    "entries_merged": 0,
+    "entries_pruned": 0,
+    "entries_added": 0
+   },
+   {
+    "id": "project-2b2e6549-5d60-45ce-84a4-ea1e7e2dc0bb",
+    "status": "done",
+    "notes": 2,
+    "created_at": 1793226663023,
+    "entries_merged": 0,
+    "entries_pruned": 0,
+    "entries_added": 0
+   }
+  ],
+  "dreamCount": 2,
+  "skills": [],
+  "skillCount": 0,
+  "runCount": 2,
+  "runStats": {
+   "tokensIn": 5124,
+   "tokensOut": 649,
+   "toolCalls": 8
+  },
+  "passRate": {
+   "runsPassed": 2,
+   "runsTotal": 2
+  },
+  "noteCount": 7,
+  "notesPending": 2,
+  "hooks": {
+   "total": 22,
+   "denies": 0
+  },
+  "governor": {
+   "budget": {
+    "callsHour": 10,
+    "callsDay": 10,
+    "tokensHour": 28468,
+    "tokensDay": 28468,
+    "limits": {
+     "callsHour": 600,
+     "tokensHour": 2000000,
+     "tokensDay": 20000000
+    },
+    "overBudget": false,
+    "reason": null
+   },
+   "breaker": {
+    "open": false,
+    "consecutiveFailures": 0,
+    "threshold": 3,
+    "retryInMs": 0
+   }
+  }
+ }
+}
