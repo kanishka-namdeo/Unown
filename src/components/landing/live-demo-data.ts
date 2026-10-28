@@ -32,6 +32,17 @@
  * src/app/cadence/api/__tests__/*.ts + src/components/cadence/__tests__/
  * *.tsx (96 green across 8 files) · files: 30 under src/. Narrative:
  * docs/cadence-demo-session.md.
+ *
+ * ── Parley (the parley round, 2026-10-28) ─────────────────────────────
+ * Sources: receipts .unown/receipts/2026-10-28*.jsonl (20 main-lane
+ * boots, the round's 8 stages: plan → lib → api → ui → e2e → review →
+ * drill → landing) · 1,109 tool_calls · git: the round's 7 code commits
+ * (6a5ef23 domain → b8d3e0a API → 3d10ed4 UI → c05c9c2 CSP → 9ea0a4f
+ * E2E → cf1797f adversarial review; the session-record + benchmark
+ * commits are the operator's) · tests: 302 green across 23 files
+ * (src/lib/parley + src/app/parley/api/__tests__ +
+ * src/components/parley/__tests__) · files: 81 under src/ (lib + api +
+ * components + app). Narrative: docs/parley-demo-session.md.
  */
 export interface LiveDemoApp {
   id: string;
@@ -115,6 +126,26 @@ export const LIVE_DEMO_APPS: LiveDemoApp[] = [
       embeddingAdaptations: 10,
       receiptDoc:
         "https://github.com/kanishka-namdeo/Unown/blob/main/docs/cadence-demo-session.md",
+    },
+  },
+  {
+    id: "parley",
+    name: "Parley",
+    route: "/parley",
+    url: "unown-nine.vercel.app/parley?embed=1",
+    poster: "/landing/parley/poster.png",
+    posterAlt:
+      "Parley — the multi-tenant support-inbox SaaS unown built: a live inbox with SLA chips, RBAC-gated views, an invite flow and a customer portal, running live",
+    resetType: "parley-reset",
+    receipt: {
+      sessions: 20,
+      toolCalls: 1109,
+      files: 81,
+      tests: 302,
+      commits: 7,
+      embeddingAdaptations: 8,
+      receiptDoc:
+        "https://github.com/kanishka-namdeo/Unown/blob/main/docs/parley-demo-session.md",
     },
   },
 ];

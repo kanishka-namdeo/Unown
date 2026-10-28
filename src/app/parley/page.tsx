@@ -1,6 +1,8 @@
 import { Suspense } from "react";
+import { cookies } from "next/headers";
 import { ParleyProvider } from "./client-store";
 import { ParleyShell } from "@/components/parley/shell";
+import { SESSION_COOKIE } from "./api/_auth";
 
 /**
  * The /parley live-demo route. Same contract as /bazaar + /cadence:
@@ -8,10 +10,14 @@ import { ParleyShell } from "@/components/parley/shell";
  * tree as a PROP — the server render and the hydration render agree
  * and React #418 never fires.
  *
- * In the embedded copy the flag also arms the frame reset channel:
- * the provider mounts an embed-only `message` listener for the
- * landing page's Reset button (the parley-reset postMessage) — never
- * in the standalone app.
+ * `hasSession` is also read HERE, server-side, through the parley
+ * session cookie (`cookies()`): in embed mode without a session the
+ * client skips the unauthenticated `GET /auth/session` probe (a 401
+ * that would log to the console — the poster capture lane's
+ * zero-console-errors bar) and goes straight to the demo auto-login
+ * POST; with a session (or standalone) the probe runs as today. The
+ * cookie's PRESENCE is all the client needs to pick a path — its
+ * validity is still settled by the probe/login itself.
  */
 async function PageInner({
   searchParams,
@@ -20,8 +26,10 @@ async function PageInner({
 }) {
   const sp = await searchParams;
   const embed = sp.embed === "1";
+  const cookieStore = await cookies();
+  const hasSession = !!cookieStore.get(SESSION_COOKIE)?.value;
   return (
-    <ParleyProvider embed={embed}>
+    <ParleyProvider embed={embed} hasSession={hasSession}>
       <ParleyShell embed={embed} />
     </ParleyProvider>
   );

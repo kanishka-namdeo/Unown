@@ -135,9 +135,21 @@ export const DEMO_USERS = [
 export function ParleyProvider({
   children,
   embed = false,
+  hasSession = false,
 }: {
   children: ReactNode;
   embed?: boolean;
+  /**
+   * Server-side session presence — the /parley page.tsx reads the
+   * parley session cookie SERVER-side (the `cookies()` API) and passes
+   * this in. The embed auto-login contract's clean-console half:
+   * in embed mode WITHOUT an existing session the client skips the
+   * unauthenticated `GET /auth/session` probe (a 401 that would log
+   * to the console — the poster capture lane's zero-console-errors
+   * bar) and goes STRAIGHT to the demo auto-login POST. With a
+   * session (or standalone) the probe runs as today.
+   */
+  hasSession?: boolean;
 }) {
   const [loading, setLoading] = useState(true);
   const [session, setSession] = useState<SessionShape | null>(null);
@@ -282,19 +294,29 @@ export function ParleyProvider({
     if (booted.current) return;
     booted.current = true;
     (async () => {
+      // The embed + no-session path goes STRAIGHT to the demo
+      // auto-login POST — no unauthenticated `GET /auth/session`
+      // probe (a 401 that logs to the console; the poster capture
+      // lane's zero-console-errors bar). Everything else probes as
+      // today.
+      const skipProbe = embed && !hasSession;
       try {
-        const probe = await fetchJson<SessionShape>("/parley/api/auth/session");
-        setSession(probe);
-        setRole(probe.role);
-        setTenant({ id: probe.tenant.id, slug: probe.tenant.slug, name: "", plan: "team", slas: null as never, createdAt: "" });
-        await loadTenant(probe.role);
-        await loadConversations("all", "");
+        if (!skipProbe) {
+          const probe = await fetchJson<SessionShape>("/parley/api/auth/session");
+          setSession(probe);
+          setRole(probe.role);
+          setTenant({ id: probe.tenant.id, slug: probe.tenant.slug, name: "", plan: "team", slas: null as never, createdAt: "" });
+          await loadTenant(probe.role);
+          await loadConversations("all", "");
+        }
       } catch {
         // 401 — not logged in
         if (embed) {
           // The demo auto-login: a REAL login of mira@lumen.test
           // (session row created server-side, cookie set) — never
-          // faked auth state.
+          // faked auth state. Reached both via the 401 probe (the
+          // session-cookie case) and via the skipProbe path (the
+          // fresh-embed case, where there was nothing to probe).
           try {
             const res = await fetch("/parley/api/auth/login", {
               method: "POST",
@@ -316,7 +338,7 @@ export function ParleyProvider({
         setLoading(false);
       }
     })();
-  }, [embed, fetchJson, loadConversations, loadTenant]);
+  }, [embed, hasSession, fetchJson, loadConversations, loadTenant]);
 
   // ── embed reset channel ────────────────────────────────────────────
   useEffect(() => {

@@ -12,13 +12,16 @@ import { FadeUp, SectionHead, TrafficDots } from "./shell";
  * agent-built apps, each iframed from its own route in browser chrome, one
  * switcher — the v0-templates pattern (one live deployment per artifact,
  * switchable in place; see docs/live-preview-competitor-research.md).
- * The cadence round added a third app:
+ * The cadence round added a third app; the parley round added the fourth:
  *
- *   · Sigil Focus  — /demo  (the kanban round: one prompt, four sessions)
+ *   · Sigil Focus  — /demo (the kanban round: one prompt, four sessions)
  *   · Sigil Bazaar  — /bazaar (the commerce round: planned → reviewed →
  *     browser-QA'd; storefront, checkout wizard, owner analytics)
  *   · Cadence  — /cadence (the cadence round: habit & streak tracker,
  *     dashboard check-offs with 52-week heatmap and stats)
+ *   · Parley  — /parley (the parley round: multi-tenant support-inbox
+ *     SaaS, RBAC-gated inbox + admin surfaces + customer portal, live
+ *     demo auto-login + the parley-reset handshake)
  *
  * Contract notes:
  *  - The frame mounts ONLY when scrolled near or clicked (an idle landing
@@ -91,7 +94,7 @@ export function LiveDemoSection() {
               the scroll budget contract makes the band pay for its own
               height, and every word here is one the frame shows for free. */}
           <p className="mt-5 max-w-2xl text-[15px] leading-relaxed text-dim">
-            Three apps, live. Pick one.
+            Four apps, live. Pick one.
           </p>
         </FadeUp>
 

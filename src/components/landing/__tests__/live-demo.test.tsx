@@ -52,8 +52,8 @@ describe("live-demo band (the gallery)", () => {
     expect(section?.textContent).toContain(LIVE_DEMO_APPS[0].url);
   });
 
-  test("the data file is a real gallery: three apps, distinct everything", () => {
-    expect(LIVE_DEMO_APPS.length).toBeGreaterThanOrEqual(3);
+  test("the data file is a real gallery: four apps, distinct everything", () => {
+    expect(LIVE_DEMO_APPS.length).toBeGreaterThanOrEqual(4);
     const routes = new Set(LIVE_DEMO_APPS.map((a) => a.route));
     const posters = new Set(LIVE_DEMO_APPS.map((a) => a.poster));
     const resets = new Set(LIVE_DEMO_APPS.map((a) => a.resetType));
@@ -74,6 +74,13 @@ describe("live-demo band (the gallery)", () => {
     expect(cadence!.route).toBe("/cadence");
     expect(cadence!.url).toContain("cadence?embed=1");
     expect(cadence!.receipt.receiptDoc).toBeDefined();
+    // The parley entry is present with its own reset type.
+    const parley = LIVE_DEMO_APPS.find((a) => a.id === "parley");
+    expect(parley).toBeTruthy();
+    expect(parley!.resetType).toBe("parley-reset");
+    expect(parley!.route).toBe("/parley");
+    expect(parley!.url).toContain("parley?embed=1");
+    expect(parley!.receipt.receiptDoc).toContain("parley-demo-session.md");
   });
 
   test("every receipt chip reads from the ACTIVE app's data — switching tabs swaps the counts", () => {
@@ -179,6 +186,22 @@ describe("live-demo band (the gallery)", () => {
       expect(p3.type).toBe("cadence-reset");
       expect(o3).toBe(window.origin);
       expect(o3).not.toBe("*");
+    }
+
+    // Switch to the parley app — the handshake posts the parley-reset
+    // payload with a pinned origin (the fourth gallery app).
+    postMessage.mockClear();
+    const parleyTab = tabs.findIndex((t) => t.textContent === "Parley");
+    if (parleyTab >= 0) {
+      fireEvent.click(tabs[parleyTab]);
+      fireEvent.click(
+        within(container as HTMLElement).getByRole("button", { name: /^reset/i }),
+      );
+      const [p4, o4] = postMessage.mock.calls[0] as [{ source: string; type: string }, string];
+      expect(p4.source).toBe("unown-landing");
+      expect(p4.type).toBe("parley-reset");
+      expect(o4).toBe(window.origin);
+      expect(o4).not.toBe("*");
     }
   });
 
