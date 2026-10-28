@@ -65,20 +65,57 @@ next. A checkpoint is DONE only with measured numbers.
   capture), 3 autonomous cycles (`already-passing`), 2 autonomous dreams
   (engine project tier v1 → v3), 9 runs (9/9 passed), 9 notes; terminal
   memory v12, 79 bullets, 0 staged skills.
-- [ ] **CP1 — tiered memory validation** (the recall probes + cold
-  sessions; UX ledger rows V1..Vn).
-- [ ] **CP2 — the self-improving harness validation** (a real cycle with
-  mine→patch→ship on a failing task, or the honest already-passing record).
-- [ ] **CP3 — task minting validation** (a mint from a real failure; suite
-  expansion or the honest discard receipt).
-- [ ] **CP4 — AutoDream + skill generation validation** (terminal-note
-  dream; version bump; provenance; staged skill mint).
-- [ ] **CP5 — the repeat-task improvement measurement** (cold vs warm
-  same-shape tasks; the UX deltas).
-- [ ] **CP6 — midpoint + final snapshots; the four reports; the showcase
-  refresh**.
-- [ ] **CP7 — the release cut** (v0.0.39; builds compile; artifacts;
-  tag; CI green).
+- [x] **CP1 — tiered memory validation** (DONE). V1 recall/decision: 2
+  turns, 5 s, correct NO-restart answer citing the skill + the memory
+  entry verbatim (cross-install continuity receipt). V2 recall/fact: Q2
+  verbatim-correct; Q1 WRONG (bcrypt confabulated over the correct scrypt
+  memory) — F1 opened. V2b post-fix: correct, cited, poison negated.
+  V3 cold build: 30 turns capped, core lane complete. V4 warm repeat: 9
+  turns complete. UX ledger rows V1..V4 + V2b; the retrieval probe
+  0/6 → 6/6 across the recovery.
+- [x] **CP2 — the self-improving harness validation** (DONE). 7 cycles,
+  all `already-passing` (the no-junk-mining contract — the honest state:
+  the model passes every seed task, so nothing fails to mine). The loop's
+  regression prevention validated LIVE: dream `bc0af2fc` consolidated,
+  its canary caught a claim mismatch (claimed [bun], executed [python3]),
+  and the engine rolled the memory back autonomously (the `memory_versions`
+  v6 rollback row). The mine→patch→ship depth path stays receipted by the
+  warm-install report (improvement f0db6ac3) — this round's cold suite
+  gave it no failing input, recorded honestly.
+- [x] **CP3 — task minting validation** (DONE, with found-and-fixed
+  defects). The suite saturated (6/6) → curriculum minting fired → F3
+  (caps blindness: the authoring prompt never stated the caps validateDraft
+  enforces) → fixed (caps stated) → F3b (shape flakiness) → fixed (one
+  bounded repair pass) → the post-fix mints travel the full validation
+  depth and discard honestly at the self-check layer (authored test files
+  that crash — the gate working). No task entered the suite this round:
+  the honest receipt.
+- [x] **CP4 — AutoDream + skill generation validation** (DONE / honest
+  null on skills). 12 dreams consolidated 34 notes; the swap-boundary
+  legacy import carried the previous install's 79 bullets into the fresh
+  platform (the continuity contract, live); the corrective note repaired
+  the eroded ground truth in one cycle; the live poison test extracted
+  ZERO wrong facts post-fix. No staged skill minted — the round's notes
+  distilled into facts, not recurring procedures (the warm-install report
+  carries the positive case; recorded as the programme's next step).
+- [x] **CP5 — the repeat-task improvement measurement** (DONE). V3 cold
+  (30 turns capped, 89 s, 5,995 out-tokens, partial) vs V4 warm (9 turns,
+  27 s, 2,020 out-tokens, complete): −70% turns, −70% wall, −66% output —
+  the same-shape task with one dream between. Receipts:
+  `sessions/v{3,4}-envelope.json`.
+- [x] **CP6 — midpoint + final snapshots; the four reports; the showcase
+  refresh** (DONE). Midpoint `midpoint-20261028-210755.json` (6/6 tasks,
+  10 dreams, 23/25 runs, engine tier v9) and final
+  `final-20261028-212306.json` (6/6, 12 dreams, 27/29 runs, tier v10,
+  34 notes, 145,125/22,337 tokens). The four mission reports committed:
+  `docs/learning-system-validation-report.md`,
+  `docs/memory-effectiveness-report.md`,
+  `docs/learning-progress-report.md`,
+  `docs/end-user-experience-report.md`. The showcase band gains the
+  round's improvement receipts.
+- [ ] **CP7 — the release cut** (v0.0.40 — v0.0.39 was cut by the
+  parallel SOTA-round session mid-round; this round releases on top of
+  it; builds compile; artifacts; tag; CI green).
 
 ## The learning-loop evidence
 

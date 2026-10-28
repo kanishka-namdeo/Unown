@@ -38,7 +38,7 @@
 // src/test-dom-setup.ts), same as the other landing component tests.
 
 import { afterEach, describe, expect, test } from "bun:test";
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, getByText, getByLabelText, render, screen } from "@testing-library/react";
 import { DexSection } from "../dex";
 import {
   CATEGORY_DEFS,
@@ -116,29 +116,29 @@ describe("landing DexSection", () => {
       expect(el.textContent, `row ${DEX[i].no} mark`).toContain(want);
     }
     // The counter starts at a full dex.
-    expect(screen.getByText(`${TALLY.total}/${TALLY.total}`)).toBeTruthy();
+    expect(getByText(container, `${TALLY.total}/${TALLY.total}`)).toBeTruthy();
   });
 
   test("typing filters through fuse.js and snaps the cursor to the first match", () => {
     const { container } = render(<DexSection />);
-    const input = screen.getByLabelText("search the dex");
+    const input = getByLabelText(container, "search the dex");
     fireEvent.change(input, { target: { value: "checkpoints" } });
     const options = optionsIn(container);
     expect(options.length).toBe(1);
     expect(options[0].textContent).toContain("Checkpoints");
     expect(options[0].getAttribute("aria-selected")).toBe("true");
-    expect(screen.getByText(`1/${TALLY.total}`)).toBeTruthy();
+    expect(getByText(container, `1/${TALLY.total}`)).toBeTruthy();
     // The detail pane followed the cursor.
     const shown = shownPane(container);
     expect(shown.length).toBe(1);
     expect(shown[0].getAttribute("aria-label")).toContain("Checkpoints");
     // A nonsense query keeps the last selection and says so.
     fireEvent.change(input, { target: { value: "zzzzqqqq" } });
-    expect(screen.getByText(/no entry matches/i)).toBeTruthy();
+    expect(getByText(container, /no entry matches/i)).toBeTruthy();
     // Esc clears.
     fireEvent.keyDown(input, { key: "Escape" });
     expect(optionsIn(container).length).toBe(TALLY.total);
-    expect(screen.getByText(`${TALLY.total}/${TALLY.total}`)).toBeTruthy();
+    expect(getByText(container, `${TALLY.total}/${TALLY.total}`)).toBeTruthy();
   });
 
   test("arrow keys walk the list and move the detail pane", () => {
@@ -233,7 +233,7 @@ describe("landing DexSection", () => {
     // to a row the screen cannot show.
     expect(shownPane(container)[0].getAttribute("aria-label")).toContain("Memory");
     // The tally reads against the pool, not the whole spine.
-    expect(screen.getByText(`${pool.length}/${pool.length}`)).toBeTruthy();
+    expect(getByText(container, `${pool.length}/${pool.length}`)).toBeTruthy();
     // And switching back to `all` keeps the walkable spine.
     const allBtn = Array.from(
       container.querySelectorAll<HTMLButtonElement>('[role="group"] button'),
@@ -266,7 +266,7 @@ describe("landing DexSection", () => {
   test("search intersects the active screen's pool", () => {
     const { container } = render(<DexSection />);
     // On `all` the search behaves exactly as it did before the screens.
-    const input = screen.getByLabelText("search the dex");
+    const input = getByLabelText(container, "search the dex");
     fireEvent.change(input, { target: { value: "checkpoints" } });
     expect(optionsIn(container).length).toBe(1);
     fireEvent.keyDown(input, { key: "Escape" });
@@ -278,7 +278,7 @@ describe("landing DexSection", () => {
     ).find((b) => b.textContent?.includes("engine"))!;
     fireEvent.click(engineBtn);
     fireEvent.change(input, { target: { value: "browser" } });
-    expect(screen.getByText(/no entry matches/i)).toBeTruthy();
+    expect(getByText(container, /no entry matches/i)).toBeTruthy();
     fireEvent.keyDown(input, { key: "Escape" });
     expect(optionsIn(container).length).toBe(DEX_BY_CATEGORY.get("engine")!.length);
   });

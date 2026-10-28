@@ -68,8 +68,8 @@ export function BuiltImprovedSection() {
       <div className="mx-auto max-w-6xl px-5 sm:px-6">
         <FadeUp className="max-w-2xl">
           <SectionHead
-            kicker="The SOTA round"
-            lead={`The round built Fugue (the gallery's ${galleryNth} app) while the learning loop watched — here is what it minted, remembered, and proved, receipts first.`}
+            kicker="The mission's rounds"
+            lead={`The rounds built the gallery (Fugue, the ${galleryNth} app) while the learning loop watched — and the cold-start validation round pointed the loop at itself. Here is what it minted, remembered, and proved, receipts first.`}
           >
             Built &amp; Improved With Unown
           </SectionHead>
@@ -127,10 +127,10 @@ export function BuiltImprovedSection() {
           </div>
         </FadeUp>
 
-        {/* The before/after improvements — the loop's two closed, retained
-            fixes (carried from the parley round's v0.0.38 band; the
-            mission's core exhibit: a failure became a shipped patch, and
-            the fix survives reruns). */}
+        {/* The before/after improvements — the loop's four closed, retained
+            fixes (the parley round's two carried from v0.0.38; the cold-start
+            validation round's two from v0.0.40 — the mission's core exhibit:
+            a failure became a shipped patch, and the fix survives reruns). */}
         <FadeUp delay={0.08} className="mt-6">
           <div className="grid gap-4 sm:grid-cols-2">
             {IMPROVEMENT_RECEIPTS.map((r) => (

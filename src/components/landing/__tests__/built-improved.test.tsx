@@ -58,6 +58,11 @@ const EXPECTED_NUMBERS = new Set([
   "11", // shipped to project memory v11 (the first patch's after-state)
   "1", "3", "6", "8", "24", "26", "32", "46", "50", "58", "62",
   "99.5", "103", "106", "108", "112", "174", "640", "2,343",
+  // the cold-start validation round's receipts (v0.0.40's additions):
+  "5", // hit@5 (the retrieval probe's rank)
+  "9", // the warm repeat's turns (30 capped → 9 complete)
+  "30", // the cold build's turn cap
+  "70", // −70% turns / −70% wall (the repeat-task lift)
 ]);
 
 /** Extract the number tokens from rendered/data copy ("103/106" → 103,
@@ -90,16 +95,18 @@ describe("built-improved band (the SOTA round's showcase)", () => {
     expect(section).toBeTruthy();
     expect(section?.getAttribute("data-hue")).toBe("gold");
     // The mission named the band precisely; the nav label and the hue walk
-    // key on the same casing.
+    // key on the same casing. (v0.0.40: the kicker widened from "The SOTA
+    // round" to "The mission's rounds" when the cold-start validation
+    // round's exhibits joined the band.)
     const h2 = container.querySelector("h2");
     expect(h2?.textContent).toBe("Built & Improved With Unown");
-    expect(container.textContent).toContain("The SOTA round");
+    expect(container.textContent).toContain("The mission's rounds");
     // The lede derives its app count from the gallery's own data — the
     // gallery is the single source for what was built (no duplicate 5).
     expect(LIVE_DEMO_APPS.length).toBe(5);
     expect(LIVE_DEMO_APPS[LIVE_DEMO_APPS.length - 1]?.id).toBe("fugue");
     expect(LIVE_DEMO_APPS[LIVE_DEMO_APPS.length - 1]?.name).toBe("Fugue");
-    expect(container.textContent).toContain("(the gallery's fifth app)");
+    expect(container.textContent).toContain("(Fugue, the fifth app)");
   });
 
   test("ordinalOf: the word form through ninth, the bare Nth after", () => {
@@ -110,10 +117,10 @@ describe("built-improved band (the SOTA round's showcase)", () => {
     expect(ordinalOf(0)).toBe("0th");
   });
 
-  test("all six tally rows render their key figure AND their receipt body", () => {
+  test("all eight tally rows render their key figure AND their receipt body", () => {
     const { container } = render(<BuiltImprovedSection />);
     const text = container.textContent ?? "";
-    expect(LOOP_RECEIPTS.length).toBe(6);
+    expect(LOOP_RECEIPTS.length).toBe(8);
     for (const r of LOOP_RECEIPTS) {
       expect(text).toContain(r.figure);
       expect(text).toContain(r.body);
@@ -132,6 +139,9 @@ describe("built-improved band (the SOTA round's showcase)", () => {
       "−32% task duration",
       "103/106 both sides",
       "174 tests green",
+      // the cold-start validation round's figures (v0.0.40):
+      "0/6 → 6/6 retrieval hit@5",
+      "30 turns capped → 9 turns complete",
     ]) {
       expect(text).toContain(key);
     }
@@ -168,7 +178,7 @@ describe("built-improved band (the SOTA round's showcase)", () => {
     expect(container.querySelectorAll("video, iframe").length).toBe(0);
   });
 
-  test("the three receipt links are the committed docs — absolute, new tab, never a blog route", () => {
+  test("the four receipt links are the committed docs — absolute, new tab, never a blog route", () => {
     const { container } = render(<BuiltImprovedSection />);
     expect(RECEIPT_LINKS).toEqual([
       {
@@ -182,6 +192,10 @@ describe("built-improved band (the SOTA round's showcase)", () => {
       {
         label: "the validation log",
         href: "https://github.com/kanishka-namdeo/Unown/blob/main/benchmarks/sota-round/validation-log.md",
+      },
+      {
+        label: "the cold-start reports",
+        href: "https://github.com/kanishka-namdeo/Unown/blob/main/docs/learning-system-validation-report.md",
       },
     ]);
     const text = container.textContent ?? "";
@@ -232,7 +246,7 @@ describe("built-improved band (the SOTA round's showcase)", () => {
     }
   });
 
-  test("the before/after improvement receipts render (the parley round's closed fixes, kept)", () => {
+  test("the before/after improvement receipts render (the parley round's two closed fixes kept; the cold-start round's two added)", () => {
     const { container } = render(<BuiltImprovedSection />);
     const text = container.textContent ?? "";
     for (const r of IMPROVEMENT_RECEIPTS) {
@@ -241,7 +255,10 @@ describe("built-improved band (the SOTA round's showcase)", () => {
       expect(text).toContain(r.after);
       expect(text).toContain(r.loop);
     }
+    expect(IMPROVEMENT_RECEIPTS.length).toBe(4);
     expect(text).toContain("The first shipped memory patch");
     expect(text).toContain("0-byte result envelopes");
+    expect(text).toContain("The recall-drift fix (cold-start round)");
+    expect(text).toContain("The poison containment (cold-start round)");
   });
 });

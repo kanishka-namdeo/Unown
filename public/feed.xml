@@ -16,6 +16,16 @@
       <category>learning</category>
     </item>
     <item>
+      <title>&quot;The validation round: cold-starting the learning loop, then pointing it at itself&quot;</title>
+      <link>https://unown-nine.vercel.app/blog/2026-10-29-the-validation-round</link>
+      <guid isPermaLink="true">https://unown-nine.vercel.app/blog/2026-10-29-the-validation-round</guid>
+      <pubDate>Thu, 29 Oct 2026 00:00:00 GMT</pubDate>
+      <description>&quot;A fresh clone, an empty engine DB, one tracked memory file — a validation programme that found drift, poisoning, and a dead-ended mint, then fixed all three.&quot;</description>
+      <category>memory</category>
+      <category>engine</category>
+      <category>release</category>
+    </item>
+    <item>
       <title>&quot;The cadence round: a habit tracker, a real bug in unown, and a three-app gallery&quot;</title>
       <link>https://unown-nine.vercel.app/blog/2026-10-28-the-cadence-round</link>
       <guid isPermaLink="true">https://unown-nine.vercel.app/blog/2026-10-28-the-cadence-round</guid>

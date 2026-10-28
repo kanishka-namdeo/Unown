@@ -201,16 +201,23 @@ describe("runs page", () => {
     withSearch("workspaceId=ws_atlas", () => {
       render(<RunsPage workspaces={[WS]} />);
       return new Promise<void>((resolve, reject) => {
+        // BOTH rows asserted inside ONE waitFor: the status chip's
+        // aria-label lands in a later commit than the run id (the flow-name
+        // fetch re-renders the table), so a single-shot query after the
+        // first waitFor races it when earlier test files shift timing
+        // (observed live: FlowsPage before this file → late rejection
+        // attributed to the NEXT test). Retrying both until timeout is the
+        // honest shape.
         waitFor(() => {
           expect(screen.getAllByText("run_fl_atlas_1").length).toBeGreaterThan(0);
+          // Status chip carries an accessible name (aria-label="run status passed")
+          expect(screen.getByLabelText("run status passed")).toBeDefined();
         }, { timeout: 1000 }).then(
           () => {
-            // Status chip carries an accessible name (aria-label="run status passed")
-            expect(screen.getByLabelText("run status passed")).toBeDefined();
             dispose();
             resolve();
           },
-          (e) => { dispose();; reject(e); },
+          (e) => { dispose(); reject(e); },
         );
       });
     });

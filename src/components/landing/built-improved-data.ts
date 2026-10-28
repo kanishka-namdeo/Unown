@@ -1,11 +1,12 @@
 /**
- * The "Built & Improved With Unown" band's receipts — the SOTA round's
- * showcase layer over the live-demo gallery. Authored data (the addons-data
- * pattern), drift-pinned by `__tests__/built-improved.test.tsx`: every
- * number cites a committed receipt, and the test re-extracts every number
- * from these strings against its own literal set, so a figure cannot drift
- * without the pin going red. A figure with no receipt prints "not measured"
- * — never a guess (the page's honesty rule).
+ * The "Built & Improved With Unown" band's receipts — the mission's
+ * showcase layer over the live-demo gallery (the SOTA round's tally +
+ * the cold-start validation round's exhibits, v0.0.40). Authored data
+ * (the addons-data pattern), drift-pinned by `__tests__/built-improved.test.tsx`:
+ * every number cites a committed receipt, and the test re-extracts every
+ * number from these strings against its own literal set, so a figure cannot
+ * drift without the pin going red. A figure with no receipt prints "not
+ * measured" — never a guess (the page's honesty rule).
  *
  * Sources (the SOTA round, 2026-10-28/29 — the Fugue build + the loop that
  * watched it):
@@ -26,6 +27,12 @@
  *   build's own session notes
  * - docs/unown-learning-report.md + docs/benchmark-improvement-report.md —
  *   the two longhand lanes the receipt links exit to
+ * - benchmarks/validation-round/ (the cold-start validation round, 2026-10-29)
+ *   — the 0/6 -> 6/6 retrieval recovery (probes/smoke.json -> probes/recovered.json),
+ *   the V3->V4 repeat-task lift (sessions/v{3,4}-envelope.json: 30 turns
+ *   capped -> 9 turns complete), and the two improvement receipts (F1 recall
+ *   drift: ux-ledger.md's V2->V2b before/after; F2 poison containment:
+ *   validation-log.md's live poison test)
  * - The gallery's app count derives from live-demo-data.ts (never
  *   duplicated here) — the gallery is the single source for what was built.
  */
@@ -70,6 +77,16 @@ export const LOOP_RECEIPTS: LoopReceipt[] = [
     figure: "26 sessions · ~640 tool calls · 99.5% tool success",
     body: "the Fugue build itself (8 agent commits, 174 tests green, 1 operator intervention — a Set-Cookie filtering diagnosis)",
   },
+  {
+    id: "cold-start",
+    figure: "0/6 → 6/6 retrieval hit@5",
+    body: "the cold-start validation round: the recall surface recovered from empty to full across the ground-truth restoration (the probe lane's committed receipts)",
+  },
+  {
+    id: "warm-repeat",
+    figure: "30 turns capped → 9 turns complete",
+    body: "the repeat-task lift: the warm session finished in 9 turns what the cold session could not in 30 — one dream between them (−70% turns, −70% wall)",
+  },
 ];
 
 /** The SOTA round's Mission Control stills (public/landing/tui/sota-round/
@@ -98,11 +115,12 @@ export const MISSION_CONTROL_STILLS: { src: string; alt: string; caption: string
   },
 ];
 
-/** The round's three receipt exits — committed docs, absolute links. */
+/** The round's receipt exits — committed docs, absolute links. */
 export const RECEIPT_LINKS: { label: string; href: string }[] = [
   { label: "the learning report", href: "https://github.com/kanishka-namdeo/Unown/blob/main/docs/unown-learning-report.md" },
   { label: "the benchmark report", href: "https://github.com/kanishka-namdeo/Unown/blob/main/docs/benchmark-improvement-report.md" },
   { label: "the validation log", href: "https://github.com/kanishka-namdeo/Unown/blob/main/benchmarks/sota-round/validation-log.md" },
+  { label: "the cold-start reports", href: "https://github.com/kanishka-namdeo/Unown/blob/main/docs/learning-system-validation-report.md" },
 ];
 
 /**
@@ -142,5 +160,25 @@ export const IMPROVEMENT_RECEIPTS: ImprovementReceipt[] = [
       "two lost build sessions became the F3 root cause; the forced-exit paths now write the full envelope (subtype forced_exit) before process.exit — pinned by 4 tests",
     receipt:
       "https://github.com/kanishka-namdeo/Unown/blob/main/benchmarks/parley-round/validation-log.md",
+  },
+  {
+    id: "drift-fix",
+    title: "The recall-drift fix (cold-start round)",
+    before: "memory answered wrong",
+    after: "verified + cited",
+    loop:
+      "a probe asked what Parley hashes passwords with: the agent said bcrypt (invented env var) over a memory that said scrypt; the guide now makes memory evidence, not proof — the re-probe answered scrypt, cited, and negated the poison",
+    receipt:
+      "https://github.com/kanishka-namdeo/Unown/blob/main/benchmarks/validation-round/ux-ledger.md",
+  },
+  {
+    id: "poison-fix",
+    title: "The poison containment (cold-start round)",
+    before: "wrong answer became memory",
+    after: "zero poison extracted",
+    loop:
+      "the wrong answer rode a session note into the dream and erased the verified fact; extraction now refuses unverified assertions — a live poisoned note produced no poisoned memories, and the ground truth was restored three-deep",
+    receipt:
+      "https://github.com/kanishka-namdeo/Unown/blob/main/benchmarks/validation-round/validation-log.md",
   },
 ];

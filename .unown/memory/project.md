@@ -26,6 +26,7 @@
 - In this project, landing pages auto-deploy to Vercel via GitHub integration; a 'deploy.completed' event payload typically contains an 'environment' field.
 
 ## Facts
+- In benchmarks/validation-round/probe.mjs, add a --summary <label> mode that reads all probes/, orders by capturedAt descending (newest first, do not rely on filesystem order), takes the two most recent, and prints a per-query table with id, previous hit, current hit, and delta (new, +1, or -1)
 - Per-project agent memory in Unown lives at .unown/memory/project.md, with a gitignored local.md for local overrides
 - Implement codepoint-safe slicing for glyph normalization to prevent multi-byte character truncation.
 - The CadenceProvider state object supports fire-and-forget POST sync for non-seeded habits and checkoffs, and an embed `message` listener that triggers a full state wipe and fresh seed when receiving `cadence-reset` from the `unown-landing` origin
@@ -83,4 +84,4 @@
 
 - Parley password hashing: scrypt N=16384 r=8 p=1 (src/lib/parley/password.ts). Restored by hand 2026-10-29 after AutoDream reconciles twice erased the fact (upstream 79->66 render, then the F1/F2 bcrypt poison round). Never let a memory answer overwrite this without reading the source.
 
-<!-- unown: rendered 71/71 memories via Mem0 (backend: lexical) at 2026-10-28T20:50:45.684Z -->
+<!-- unown: rendered 72/72 memories via Mem0 (backend: lexical) at 2026-10-28T21:22:26.246Z -->

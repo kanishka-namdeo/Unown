@@ -292,3 +292,17 @@ figure, zero LLM calls in collection.
   The engine's first minutes with zero operator input are themselves the
   autonomy receipt: the loop ran because it was scheduled, not because a
   button was pressed.
+- **Midpoint / final** (`snapshots/midpoint-20261028-210755.json`,
+  `snapshots/final-20261028-212306.json`, both drained) — the trajectory:
+  cycles 3 → 7 (all `already-passing` — the no-junk-mining contract), dreams
+  2 → 12 (34 notes consolidated; the swap-boundary legacy import + the
+  corrective-note repair), runs 9 → 29 (27/29 — both failures defenses
+  firing: the canary claim-mismatch rollback and the mint self-check
+  discard), engine project tier v3 → v10, terminal memory v12/79 → v4/73
+  (the F2 erosion + the three-deep restoration). The repeat-task receipt:
+  V3 cold (30 turns capped, partial) vs V4 warm (9 turns, complete) —
+  −70% turns / −70% wall / −66% output tokens. The four mission reports:
+  `docs/learning-system-validation-report.md`,
+  `docs/memory-effectiveness-report.md`,
+  `docs/learning-progress-report.md`,
+  `docs/end-user-experience-report.md`.

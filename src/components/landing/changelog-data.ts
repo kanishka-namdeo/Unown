@@ -30,19 +30,94 @@ export interface ChangelogStop {
   groups: ChangelogGroup[];
 }
 
-export const CHANGELOG_TOTAL_ENTRIES = 353;
+export const CHANGELOG_TOTAL_ENTRIES = 364;
 
 export const CHANGELOG_TOTALS: Record<ChangelogBucket, number> = {
-  "Added": 157,
+  "Added": 161,
   "Changed": 28,
   "Deprecated": 0,
   "Removed": 3,
-  "Fixed": 129,
+  "Fixed": 133,
   "Security": 5,
-  "Behavior": 31
+  "Behavior": 34
 };
 
 export const CHANGELOG_STOPS: ChangelogStop[] = [
+  {
+    "label": "0.0.40",
+    "date": "2026-10-29",
+    "total": 11,
+    "counts": {
+      "Added": 4,
+      "Changed": 0,
+      "Deprecated": 0,
+      "Removed": 0,
+      "Fixed": 4,
+      "Security": 0,
+      "Behavior": 3
+    },
+    "groups": [
+      {
+        "bucket": "Added",
+        "items": [
+          {
+            "title": "The validation round — the cold-start Memory & Learning System Validation Programme",
+            "behavior": false
+          },
+          {
+            "title": "The validation round's measurement receipts",
+            "behavior": false
+          },
+          {
+            "title": "The repeat-task improvement receipt",
+            "behavior": false
+          },
+          {
+            "title": "The competitor research refresh",
+            "behavior": false
+          }
+        ]
+      },
+      {
+        "bucket": "Fixed",
+        "items": [
+          {
+            "title": "F1 — memory-recall drift (the validation round's central find)",
+            "behavior": false
+          },
+          {
+            "title": "F2 — extraction poisoning (the compound failure)",
+            "behavior": false
+          },
+          {
+            "title": "F3 — the mint lane's caps blindness",
+            "behavior": false
+          },
+          {
+            "title": "F3b — the mint lane's shape flakiness",
+            "behavior": false
+          }
+        ]
+      },
+      {
+        "bucket": "Behavior",
+        "items": [
+          {
+            "title": "The memory guide's recall-time verification contract (F1)",
+            "behavior": true
+          },
+          {
+            "title": "The Mem0 extraction prompt's verified-vs-asserted contract (F2)",
+            "behavior": true
+          },
+          {
+            "title": "The mint authoring prompt states its size caps and gains one bounded repair pass (F3/F3b)",
+            "behavior": true
+          }
+        ]
+      }
+    ]
+  },
   {
     "label": "0.0.39",
     "date": "2026-10-28",
