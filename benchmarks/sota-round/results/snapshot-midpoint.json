@@ -1,0 +1,60 @@
+{
+  "label": "midpoint",
+  "takenAt": 1793211097473,
+  "takenAtIso": "2026-10-28T18:11:37.473Z",
+  "phase": "post-P3 (domain+api+ui)",
+  "source": {
+    "dbPath": "/home/z/my-project/Unown/db/selflearning.db",
+    "receiptsDir": "/home/z/my-project/fugue-build/.unown/receipts"
+  },
+  "sdlc": {
+    "tests": {
+      "unit": "168",
+      "passing": ""
+    },
+    "e2e": null,
+    "editBench": {
+      "benchmark": "oh-my-pi typescript-edit-benchmark (106 shipped fixtures)",
+      "model": "agnes-3.0-flash",
+      "passRate": 0.9716981132075472,
+      "passed": 103,
+      "totalTasks": 106,
+      "source": "../edit-bench/results/rerun-2026-10-21/agnes-3.0-flash/summary.json",
+      "generatedAt": "2026-10-21T16:32:11.245Z"
+    }
+  },
+  "agent": {
+    "sessions": 19,
+    "inputs": 35,
+    "toolCalls": 568,
+    "toolResults": 558,
+    "toolErrorResults": 3,
+    "checkpoints": 14,
+    "resumeChains": 0,
+    "humanInterventions": 1,
+    "toolSuccessRate": 0.9946
+  },
+  "learning": {
+    "runs": 105,
+    "tasksTotal": 9,
+    "tasksMinted": 3,
+    "tasksByOrigin": {
+      "minted": 3,
+      "seed": 6
+    },
+    "cyclesTotal": 27,
+    "cyclesByStatus": {
+      "already-passing": 27
+    },
+    "improvementsShipped": 0,
+    "dreamsTotal": 50,
+    "dreamsMerged": 24,
+    "dreamsAdded": 108,
+    "dreamsPruned": 112,
+    "notesTotal": 140,
+    "memoryVersions": 58,
+    "skillsStaged": 2,
+    "hookDecisions": 1733,
+    "failuresLogged": 0
+  }
+}
