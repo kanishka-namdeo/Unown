@@ -114,12 +114,15 @@ describe.skipIf(!INTEGRATION_ACTIVE)("engine integration (real server, temp DB/d
                 for (const key of ["totalRuns", "passed", "failed", "errors", "passRate", "improvementsShipped", "dreams"]) {
                         expect(typeof kpis[key]).toBe("number");
                 }
-                expect(kpis.tasks).toBe(5); // first boot seeds the five benchmark tasks
+                // Six since the engine task mint (see the tasks test above);
+                // the unit suite pins the same six.
+                expect(kpis.tasks).toBe(6);
                 expect(kpis.notes).toEqual({ total: 0, pending: 0 });
                 expect(kpis.hooks).toEqual({ total: 0, denies: 0 });
                 expect(kpis.tokens).toEqual({ in: 0, out: 0 });
                 const suite = kpis.suite as Record<string, unknown>;
-                expect(suite.total).toBe(5);
+                // six tasks since the engine task mint (same as kpis.tasks)
+                expect(suite.total).toBe(6);
                 expect(suite.passing).toBe(0);
                 expect(suite.saturated).toBe(false);
 
@@ -142,13 +145,23 @@ describe.skipIf(!INTEGRATION_ACTIVE)("engine integration (real server, temp DB/d
         // -------------------------------------------------------------------------
         // 2. Tasks: seeded suite present
         // -------------------------------------------------------------------------
-        test("GET /api/tasks lists the five seeded tasks; /api/tasks/:id returns one", async () => {
+        test("GET /api/tasks lists the six seeded tasks; /api/tasks/:id returns one", async () => {
                 const res = await authFetch(api("/api/tasks"));
                 expect(res.status).toBe(200);
                 const { tasks } = (await res.json()) as { tasks: Array<Record<string, unknown>> };
-                expect(tasks).toHaveLength(5);
+                // Six since the engine task mint (the harness's measured gap became
+                // a seeded task): the swap-if-else-messages def joins the original
+                // five. The unit suite pins the same six (`tasks.test.ts`).
+                expect(tasks).toHaveLength(6);
                 expect(tasks.map((t) => t.id).sort()).toEqual(
-                        ["fix-csv-parser", "fix-drop-right", "fix-fizzbuzz", "impl-debounce", "impl-map-limit"].sort(),
+                        [
+                                "fix-csv-parser",
+                                "fix-drop-right",
+                                "fix-fizzbuzz",
+                                "impl-debounce",
+                                "impl-map-limit",
+                                "swap-if-else-messages",
+                        ].sort(),
                 );
                 for (const t of tasks) {
                         expect(typeof t.name).toBe("string");
