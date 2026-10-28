@@ -1,0 +1,121 @@
+/*
+ * Parley — the /parley route's scoped stylesheet.
+ *
+ * Embedded inside the unown landing app, this file is imported ONLY by
+ * src/app/parley/layout.tsx, so Next injects it for /parley routes alone
+ * — the landing page never downloads it. The embedding adaptations:
+ *
+ *   1. `@source` scoping — with two Tailwind v4 passes in one repo, this
+ *      file's pass must generate utilities for the PARLEY trees only
+ *      (components/parley, lib/parley, app/parley), never the landing's.
+ *   2. The standalone app's `:root` / `html` / `body` rules were re-anchored
+ *      onto `.parley-scope` — under the landing's root layout those elements
+ *      are SHARED, and the demo must not restyle the host.
+ *   3. The Geist webfonts became system stacks — the landing's root layout
+ *      owns <html> and its fonts.
+ */
+@import "tailwindcss";
+
+@source "../../../components/parley";
+@source "../../../lib/parley";
+@source "../../parley";
+
+/* The scope wrapper the parley layout renders. */
+.parley-scope {
+  color-scheme: dark;
+  background: var(--background);
+  color: var(--foreground);
+  font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto,
+    "Helvetica Neue", Arial, sans-serif;
+  min-height: 100dvh;
+}
+
+/* ── Parley design tokens (GBA 5-bit palette, like the siblings) ─────
+   Dark by default. Light theme swaps the same tokens. WCAG AA
+   contrast checked for every text/bg pair. */
+.parley-scope,
+.parley-scope.dark {
+  --background: #0b1420;
+  --foreground: #d8ecf3;
+  --surface: #122130;
+  --surface-2: #1a2e42;
+  --border: #2d4a63;
+  --muted: #7aa8c4;
+  /* GBA blue — the app's signature accent */
+  --accent: #4d9ade;
+  --accent-strong: #2f7fc4;
+  --danger: #f87171;
+  --ok: #4ade80;
+  --warn: #f5cf8a;
+  --ring: #4d9ade;
+}
+
+.parley-scope.light {
+  --background: #eef6fc;
+  --foreground: #14283c;
+  --surface: #ffffff;
+  --surface-2: #e4f0f8;
+  --border: #a8c4d8;
+  --muted: #3a6a8a;
+  --accent: #1d5fa0;
+  --accent-strong: #174a7d;
+  --danger: #b91c1c;
+  --ok: #15803d;
+  /* Light-theme warn: dark brown for AA on white */
+  --warn: #7a3e00;
+  --ring: #1d5fa0;
+  color-scheme: light;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-line: var(--border);
+  --color-muted: var(--muted);
+  --color-accent: var(--accent);
+  --color-accent-strong: var(--accent-strong);
+  --color-danger: var(--danger);
+  --color-ok: var(--ok);
+  --color-warn: var(--warn);
+  --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto,
+    "Helvetica Neue", Arial, sans-serif;
+  --font-mono: ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas,
+    "Liberation Mono", monospace;
+}
+
+/* Global visible focus ring; injected only for /parley routes. */
+.parley-scope :focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* Parley element-level rules that a standalone app would have put on
+ * <html>/<body>. Under the landing those elements are shared, so they
+ * are scoped to `.parley-scope`. */
+.parley-scope {
+  line-height: 1.5;
+}
+
+/* Named keyframe (the app's subtle pop, like the siblings). */
+@keyframes parley-pop {
+  from {
+    transform: scale(0.96);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+.parley-scope .animate-parley-pop {
+  animation: parley-pop 140ms ease-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .parley-scope .animate-parley-pop {
+    animation: none;
+  }
+}
