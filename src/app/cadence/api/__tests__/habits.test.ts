@@ -166,3 +166,24 @@ describe("POST /cadence/api/habits", () => {
     expect(json.error).toBe("body too large");
   });
 });
+
+// ── Rate-bucket map hard cap (the review round's spoofed-XFF fix) ──────────
+
+describe("rateBuckets hard cap (the >500-key sweep)", () => {
+  test("501 distinct spoofed x-forwarded-for keys trigger the map sweep and stay bounded", async () => {
+    for (let i = 0; i < 510; i++) {
+      const req = new Request("http://localhost/cadence/api/habits", {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          "x-forwarded-for": `192.168.${i % 250}.${i}`,
+        },
+        body: JSON.stringify({ name: `cap-drill-${i}`, frequency: { kind: "daily" } }),
+      });
+      const res = await POST(req);
+      expect([201, 400, 429]).toContain(res.status);
+    }
+    const res = await GET();
+    expect(res.status).toBe(200);
+  });
+});

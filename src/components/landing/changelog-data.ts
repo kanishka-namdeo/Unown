@@ -30,19 +30,53 @@ export interface ChangelogStop {
   groups: ChangelogGroup[];
 }
 
-export const CHANGELOG_TOTAL_ENTRIES = 337;
+export const CHANGELOG_TOTAL_ENTRIES = 339;
 
 export const CHANGELOG_TOTALS: Record<ChangelogBucket, number> = {
-  "Added": 147,
+  "Added": 148,
   "Changed": 28,
   "Deprecated": 0,
   "Removed": 3,
-  "Fixed": 124,
+  "Fixed": 125,
   "Security": 5,
   "Behavior": 30
 };
 
 export const CHANGELOG_STOPS: ChangelogStop[] = [
+  {
+    "label": "0.0.35",
+    "date": "2026-10-28",
+    "total": 2,
+    "counts": {
+      "Added": 1,
+      "Changed": 0,
+      "Deprecated": 0,
+      "Removed": 0,
+      "Fixed": 1,
+      "Security": 0,
+      "Behavior": 0
+    },
+    "groups": [
+      {
+        "bucket": "Added",
+        "items": [
+          {
+            "title": "landing + demo: the cadence round — a third app in the gallery",
+            "behavior": false
+          }
+        ]
+      },
+      {
+        "bucket": "Fixed",
+        "items": [
+          {
+            "title": "agent: /review crashed at the merge step — a TDZ bug that ate every completed review's verdict",
+            "behavior": false
+          }
+        ]
+      }
+    ]
+  },
   {
     "label": "0.0.34",
     "date": "2026-10-28",

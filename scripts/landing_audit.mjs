@@ -15,7 +15,7 @@
  * The budget (the 2026-10-20 redesign's regression gate, mirrored in the
  * landing AGENTS.md and CI's landing job):
  *   - the document must stay ≤ 13.5 viewports tall at 1440x900
- *   - the visible word count must stay ≤ 3,290
+ *   - the visible word count must stay ≤ 3,320
 
  * The 2026-10-28 amendments: the live-preview round (13 → 13.5vh, 3,200 →
  * 3,250w) carried the page's first interactive-application frame; the
@@ -47,7 +47,7 @@ const BASE = process.env.LANDING_AUDIT_URL ?? "http://localhost:3000";
 const OUT = join(process.cwd(), "download", "landing");
 const BUDGET = process.argv.includes("--budget");
 const MAX_VH = 13.5;
-const MAX_WORDS = 3290;
+const MAX_WORDS = 3320;
 const MAX_BAND_VH = 3;
 
 let chromium = null;

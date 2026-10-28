@@ -7,6 +7,15 @@
     <description>How each feature and release works, what it does, and the receipts behind it — the longhand record of the self-improving terminal coding agent Unown.</description>
     <language>en</language>
     <item>
+      <title>&quot;The cadence round: a habit tracker, a real bug in unown, and a three-app gallery&quot;</title>
+      <link>https://unown-nine.vercel.app/blog/2026-10-28-the-cadence-round</link>
+      <guid isPermaLink="true">https://unown-nine.vercel.app/blog/2026-10-28-the-cadence-round</guid>
+      <pubDate>Wed, 28 Oct 2026 00:00:00 GMT</pubDate>
+      <description>&quot;One round, every SDLC stage: planned, built, browser-QA&apos;d, reviewed twice — and the review caught a TDZ crash in unown itself. Three apps live.&quot;</description>
+      <category>landing</category>
+      <category>demo</category>
+    </item>
+    <item>
       <title>&quot;The commerce round: a storefront, a checkout, and a browser QA pass&quot;</title>
       <link>https://unown-nine.vercel.app/blog/2026-10-28-the-commerce-round</link>
       <guid isPermaLink="true">https://unown-nine.vercel.app/blog/2026-10-28-the-commerce-round</guid>

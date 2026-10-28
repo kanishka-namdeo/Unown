@@ -18,8 +18,7 @@
 
 Related pages: [live-preview competitor research](live-preview-competitor-research.md)
 (the commerce round's reverse-engineering — bolt.new, OpenHands, opencode,
-aider, v0 on the showcase question) · [the sentinel session
-record](sentinel-demo-session.md) (what this round's research fed) · [testing
+aider, v0 on the showcase question) · [testing
 strategy](testing-strategy.md) (the standing record this round's findings
 extend).
 

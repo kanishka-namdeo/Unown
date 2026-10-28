@@ -1,7 +1,7 @@
 # The Cadence demo's session record
 
 > The receipt behind the landing page's live-demo **gallery**: what the
-> habit & streak tracker round built, the seven agent sessions that built
+> habit & streak tracker round built, the eleven agent sessions that built
 > it, what each stage's testing found, and the ten documented embedding
 > patches.
 
@@ -71,20 +71,23 @@ for 9 phase-turns:
 | Plan | `--plan` mode: a 14 KB numbered plan; approval overlay | 1 boot |
 | Lib | Domain layer: `types.ts`, `seed.ts`, `streaks.ts`, `stats.ts`, `validation.ts`, `persistence.ts` (62 tests) | 1 boot |
 | API | Route shells: `habits/route.ts` + `checkoffs/route.ts` (87 tests total) | 1 boot |
-| UI | 11 UI components: `shell.tsx`, `dashboard.tsx`, `habit-card.tsx`, `habit-form.tsx`, `heatmap.tsx`, `stats-chart.tsx`, `stats-band.tsx`, `habits.tsx`, `primitives.tsx`, `format.ts`, `empty-state.tsx` (95 tests total) | 1 boot |
-| E2E | Live browser E2E over CDP: check-off → streak recalculates live, CRUD form, heatmap 364 cells, stats 52 bars, embed reset `postMessage` wiped the created habit | 1 boot |
+| UI | 10 UI component files + `format.ts` helpers: `shell.tsx`, `dashboard.tsx`, `habit-card.tsx`, `habit-form.tsx`, `heatmap.tsx`, `stats-chart.tsx`, `stats-band.tsx`, `habits.tsx`, `primitives.tsx` (96 tests total at round close) | 1 boot |
+| E2E | Live browser E2E over CDP: check-off → streak recalculates live, CRUD form, heatmap 364 cells, stats 52 bars, embed reset `postMessage` wiped the created habit | 2 boots |
 | Review | `/review` TUI round: 6 reviewer subagent boots; findings fixed | 1 boot |
-| Drill | `/review` drill: focused fix round | 1 boot |
+| Drill | `/checkpoint` / `/undo` / `/commit` drill through the real TUI | 1 boot |
+| Landing | The review-fix + integration session (this round's Part A + B) | 1 boot |
+| Re-review | `/review` again after the fixes: no P0/P1; the two P2s below | 1 boot |
 
-*958 `tool_call` rows total across the round's receipts
-(`.unown/receipts/*.jsonl`), including the browser subagent's calls;
-6 auto-checkpoints were written along the way.
+*1,381 `tool_call` rows total across the round's receipts
+(`.unown/receipts/*.jsonl`) — 11 agent sessions, 15 boots, including the
+9 reviewer-subagent boots; 6 auto-checkpoints were written along the
+way.
 
 - **Commits**: `94d7cb1` → `6dbb439` → `286ffba` → `513dfc5` →
-  `b0429a3` → `be450e2` + this round's close.
-- **Tests**: 95 green across 12 files (6 lib + 5 api + 1 component).
-- **Files**: 32 under `src/` (11 components, 6 lib incl. 6 test files,
-  9 route/layout/css).
+  `b0429a3` → `be450e2` → `008d206` + this round's close.
+- **Tests**: 96 green across 8 files (5 lib + 2 api + 1 component).
+- **Files**: 30 under `src/` (11 components incl. 1 test file, 12 lib
+  incl. 5 test files, 7 route/layout/css incl. 2 api test files).
 - **Zero human edits to the app's code**: every line in the demo repo the
   agent wrote; the briefs, the findings lists and the verifications were
   the operator's.
@@ -98,14 +101,23 @@ for 9 phase-turns:
   would freeze forever in a Vercel production build), the tautology test
   (`todayKey(AS_OF_DATE) === "" ? "" : "done"` — replaced with a real pin
   against the seeded state at the fixed `asOf` date), the unbounded
-  `rateBuckets` Map (a spoofed `x-forwarded-for` flood could grow it
-  without limit — a hard cap was added), and the in-place mutation of the
-  seeded `entries` array (copy-on-write was introduced). All four fixed.
+  `rateBuckets` Map (a spoofed-header flood could grow it without limit —
+  a hard cap now bounds the map; the per-IP bound itself remains the
+  acknowledged honest limit it always was, mirroring the bazaar pattern),
+  and the in-place mutation of the seeded `entries` array (copy-on-write
+  plus a 400-date cap). All four fixed.
+- **The re-review** (after the fixes): no P0/P1 security issues; 2 of 3
+  reviewers honestly marked failed (timeout — the range grew past the
+  subagent wall clock). Its two P2s: the rate-limit key caveat (the
+  pre-existing bazaar pattern, documented above) and a receipt-drift
+  catch — this record's own test-file breakdown was wrong, which is what
+  triggered the recount you are reading. Both resolved at round close.
 - **A real Unown bug found along the way**: the `/review` TDZ crash in
-  `parseReviewerOutputs` (`labels[i]` referenced before `labels` was
-  declared — commit `b0429a3`). The crash was caught by the dev-server
-  compile, the fix was self-applied in the same session, and the
-  regression test was pinned in `pi-repo/packages/self-learning/test/
+  the merge step (`labels[i]` referenced before `labels` was declared —
+  commit `b0429a3`). Found live by the round's pty-lane TUI pass (the
+  crash ate a completed review's verdict), fixed in the agent source
+  with the computation extracted into two pure functions, and
+  regression-pinned in `pi-repo/packages/self-learning/test/
   review.test.ts`.
 
 ## The embedding adaptations

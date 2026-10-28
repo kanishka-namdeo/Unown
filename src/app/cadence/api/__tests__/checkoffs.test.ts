@@ -214,3 +214,35 @@ describe("POST /cadence/api/checkoffs", () => {
     }
   });
 });
+
+// ── Rate-bucket map hard cap (the review round's spoofed-XFF fix) ──────────
+
+describe("rateBuckets hard cap (the >500-key sweep)", () => {
+  test("501 distinct spoofed x-forwarded-for keys trigger the map sweep and stay bounded", async () => {
+    // Each distinct XFF value mints a fresh bucket (first request in the
+    // window: not limited). The 501st insert crosses the 500-key cap and
+    // runs the sweep: expired buckets first, then the oldest half — the
+    // map must never grow without bound.
+    const target = "hab-daily-water";
+    for (let i = 0; i < 510; i++) {
+      const req = new Request("http://localhost/cadence/api/checkoffs", {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          "x-forwarded-for": `10.0.${i}.${i % 250}`,
+        },
+        // Same (habitId, date) every time: the upsert is idempotent, so
+        // this loop exercises ONLY the rate-map path, never the date cap.
+        body: JSON.stringify({ habitId: target, date: "2020-01-01" }),
+      });
+      const res = await POST(req);
+      expect([201, 429]).toContain(res.status);
+    }
+    // A final GET still serves the seeded map (the sweep never corrupted
+    // the shared state lane).
+    const res = await GET();
+    expect(res.status).toBe(200);
+    const json = (await res.json()) as Record<string, string[]>;
+    expect(json[target]).toContain("2020-01-01");
+  });
+});
