@@ -2,11 +2,11 @@
 
 > **Status: open** — the Evolution Programme's sixth gallery app: **Aria, an
 > Enterprise CRM**, built end-to-end by Unown as the proving ground for the
-> mission's memory/learning validation. The round runs alongside the
-> validation round's completion on a second cold-start machine (2026-10-29):
-> the CRM is the live work, the five learning mechanisms are validated against
-> it, and both records feed the mission's four reports before the release
-> cut. The round's grounding research is
+> mission's memory/learning validation. The validation round closed at
+> v0.0.40 with its four reports; this round carries the programme's next
+> leg on the second cold-start machine (2026-10-29): the CRM is the live
+> work, the five learning mechanisms run against it, and the round cuts at
+> v0.0.41. The grounding research is
 > [aria-round-competitor-research.md](aria-round-competitor-research.md).
 
 - [What the app is](#what-the-app-is)
@@ -16,8 +16,9 @@
 - [Where things live](#where-things-live)
 
 Related pages: [the competitor research](aria-round-competitor-research.md) ·
-[the validation round session](validation-round-session.md) (running
-concurrently on this machine) ·
+[the validation round session](validation-round-session.md) (closed at
+v0.0.40; this machine's receipts live in
+[its postscript](validation-round-session.md#postscript--the-second-machine-cross-install-retention-2026-10-29)) ·
 [the fugue demo session](fugue-demo-session.md) (the previous gallery round) ·
 [the parley demo session](parley-demo-session.md) (the gallery app whose
 tenancy/RBAC patterns Aria inherits).
@@ -106,8 +107,9 @@ next. A checkpoint is DONE only with measured numbers.
   engine `:3030` ready, `unown doctor` green — one optional ⚠ LSP), first
   headless sessions answered (probe end-to-end ~6 s when the bridge is
   idle; the 45.6 s background-yield receipt under the engine's autonomous
-  burst is recorded in the validation round's CP0′). Learning state at
-  open receipted by the engine snapshot
+  burst is recorded in
+  [the validation round's machine-2 postscript](validation-round-session.md#postscript--the-second-machine-cross-install-retention-2026-10-29)).
+  Learning state at open receipted by the engine snapshot
   `../benchmarks/validation-round/snapshots/baseline-20261028-224309.json`
   — 6 tasks (2 run, 2/2 passed in bwrap sandboxes), 2 cycles
   (`already-passing`), 2 dreams, 7 notes, 0 improvements, 0 skills,
@@ -130,8 +132,10 @@ next. A checkpoint is DONE only with measured numbers.
 - [ ] **CP7 — the learning-loop evidence** (midpoint + final snapshots;
   UX ledger rows; validation-log entries with the
   failure→benchmark→improvement→rerun chain; any minted skills staged).
-- [ ] **CP8 — the release cut** (v0.0.40 — ships with the validation
-  round's four reports and the showcase refresh in the same CHANGELOG).
+- [ ] **CP8 — the release cut** (v0.0.41 — the validation round took
+  v0.0.40 with its four reports and the showcase refresh; the aria round
+  carries the gallery entry, its own learning evidence, and any
+  engine/landing changes it produces, in the same CHANGELOG section).
 
 ## Where things live
 

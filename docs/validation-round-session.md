@@ -13,6 +13,7 @@
 - [How the validation runs](#how-the-validation-runs)
 - [The checkpoints](#the-checkpoints)
 - [The learning-loop evidence](#the-learning-loop-evidence)
+- [Postscript — the second machine](#postscript--the-second-machine-cross-install-retention-2026-10-29)
 - [Where things live](#where-things-live)
 
 Related: [the competitor research](validation-round-competitor-research.md) ·
@@ -21,7 +22,9 @@ Related: [the competitor research](validation-round-competitor-research.md) ·
 snapshots) · [the failure ledger](../benchmarks/validation-round/validation-log.md) ·
 [the UX ledger](../benchmarks/validation-round/ux-ledger.md) ·
 [the prior learning report](unown-learning-report.md) (the warm-install
-validation this round complements)
+validation this round complements) ·
+[the aria round](aria-demo-session.md) (the gallery-app proving ground
+whose second machine is receipted in the postscript below)
 
 ## What the round is
 
@@ -49,7 +52,9 @@ exposure to a workflow (repeat tasks).
    finding).
 4. **Midpoint + final snapshots** — the growth trajectory.
 5. **The reports** — the mission's four reports plus the public showcase
-   refresh, then the release cut (v0.0.39).
+   refresh, then the release cut (v0.0.40 — v0.0.39 was claimed by the
+   parallel SOTA-round session mid-round; this round released on top of it,
+   per CP7 below).
 
 ## The checkpoints
 
@@ -140,6 +145,40 @@ v3; entries added 4+4, pruned 4+0) before the baseline snapshot drained.
 That is the autonomy the mission wants visible: the loop runs because it is
 scheduled, not because a user pressed a button.
 
+## Postscript — the second machine (cross-install retention, 2026-10-29)
+
+The round closed at v0.0.40 on the first machine; a second machine ran a
+parallel cold start that same day — a fresh clone of `main` at `350ebfb`
+(v0.0.39 + this round's F1/F2/F3/F3b engine fixes), bun 1.4.4, install
+green (model-data hydration + `build:offline`), stack up (bridge `:3031`
+→ Agnes upstream 200; engine `:3030` ready; `unown doctor` green — the one
+⚠ is the optional LSP lane). What that machine adds to the round's
+verdicts is the retention side the first machine could not receipt alone:
+
+- **The engine re-learned from zero again, autonomously** — 6 seed tasks
+  (2 run, 2/2 passed in bwrap sandboxes), 2 cycles (`already-passing`), 2
+  dreams (3 notes each), 7 notes, before any deliberate operator session;
+  baseline receipt
+  `snapshots/baseline-20261028-224309.json` (drained, schema
+  `validation-round/1`).
+- **The F1/F2-corrected ground truth survived the install boundary** — a
+  fresh clone reads the scrypt fact verbatim from the committed tracked
+  memory with zero intervention (the V2b-era corrected render IS the
+  committed artifact), and the anti-drift memory guide injects on the
+  second machine's sessions by construction.
+- **The F3/F3b mint fixes held without re-derivation** — the fixed
+  authoring prompts and the bounded repair lane are simply in the tree the
+  clone received.
+- One honest environment finding: while the engine's autonomous opening
+  burst saturated the bridge, interactive requests waited out the
+  `BRIDGE_BACKGROUND_YIELD_MS` window — a 45,600 ms probe receipt in the
+  usage log — resolved on the operator side by `BRIDGE_MAX_CONCURRENCY`
+  3→6 in `.env` (configuration, not code; the yield lane behaved as
+  designed).
+
+The second machine now carries the programme's next leg — the
+[aria round](aria-demo-session.md), gallery app #6, cutting at v0.0.41.
+
 ## Where things live
 
 - The benchmark lane: `benchmarks/validation-round/` (README — method;
@@ -153,5 +192,5 @@ scheduled, not because a user pressed a button.
   `docs/memory-effectiveness-report.md`,
   `docs/learning-progress-report.md`,
   `docs/end-user-experience-report.md`
-- The release: `CHANGELOG.md` `[0.0.39]`, `content/blog/2026-10-29-the-validation-round.md`,
-  the landing showcase band refresh, tag `v0.0.39`
+- The release: `CHANGELOG.md` `[0.0.40]`, `content/blog/2026-10-29-the-validation-round.md`,
+  the landing showcase band refresh, tag `v0.0.40`
