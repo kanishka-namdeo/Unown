@@ -80,7 +80,7 @@ build's contract.
 
 | Phase | Sessions | Result | Commit |
 |---|---|---|---|
-| Plan | (pending) | numbered plan: data model, route map, sequence-engine design, test plan, risks | — |
+| Plan | 2 (40-turn exploration capped → 1-turn resume) | 40,292-char numbered build contract: data model (every field), 16 modules, ~50 routes with the auth ladder, the deterministic sequence-engine design, the 330-380-test plan, phases with acceptance criteria, 13 risks with mitigations, the embed contract — [`plan.md`](../benchmarks/aria-round/plan.md) | — |
 | Lib/domain | (pending) | types, tenancy, rbac, pipeline/forecast math, sequences, scoring, store, seed | — |
 | API | (pending) | tenant-scoped routes, auth ladder, import, isolation + adversarial probe suites | — |
 | UI | (pending) | dashboard, kanban, record timelines, sequences, triage inbox, admin | — |
@@ -114,8 +114,19 @@ next. A checkpoint is DONE only with measured numbers.
   — 6 tasks (2 run, 2/2 passed in bwrap sandboxes), 2 cycles
   (`already-passing`), 2 dreams, 7 notes, 0 improvements, 0 skills,
   terminal memory v2 (72 bullets, the F1/F2-corrected tracked file).
-- [ ] **CP1 — the plan** (the `--plan` session's numbered contract: data
-  model, routes, sequence-engine design, PBT invariants, test plan, risks).
+- [x] **CP1 — the plan** (DONE — receipt
+  [`plan.md`](../benchmarks/aria-round/plan.md)): a 2-session `--plan` run — 40
+  turns of read-only exploration (81 tool calls over parley/fugue/cadence/
+  the session docs/AGENTS.md), capped and resumed per the gallery
+  convention, then one 12,370-token turn producing the 40,292-char numbered
+  contract: the complete data model, 16 `src/lib/aria/` modules, ~50 routes
+  with the 401/403/404/402/400 ladder, the deterministic sequence-engine
+  design, the ~330-380-test plan with the PBT-invariant lane, the phase
+  decomposition with acceptance criteria, 13 risks with mitigations, and the
+  embed-contract requirements. UX rows A1–A2
+  ([the ledger](../benchmarks/aria-round/ux-ledger.md)); operator review
+  passed with one note — the plan's gallery-entry receipt numbers are
+  placeholders until CP6's counted receipts replace them.
 - [ ] **CP2 — lib/domain phase** (pure modules + store + seed; the suite
   green; phase invariant sweep passes).
 - [ ] **CP3 — API phase** (tenant-scoped routes; 401/403/404 ladder;

@@ -1,0 +1,4 @@
+unown: --max-turns 40 reached — the run stopped after 40 completed turn(s)
+Request was aborted
+{"type":"result","subtype":"error_during_execution","result":"","session_id":"01a184b9-743d-701b-8883-b52176aaf88a","model":"agnes-3.0-flash","usage":{"input_tokens":225783,"output_tokens":2670,"cache_read_input_tokens":2438656,"cache_creation_input_tokens":0},"cost_usd":0,"duration_ms":89973,"num_turns":40,"unown_version":"0.0.40","capped":true}
+unown: the --max-turns cap hit mid-work — no answer was produced; reported as error, not success

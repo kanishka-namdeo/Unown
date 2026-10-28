@@ -33,8 +33,20 @@ Column key:
 
 | session | kind | phase | task | turns | tokens in/out | wall | interventions | clarifications | outcome | memory used |
 |---|---|---|---|---|---|---|---|---|---|---|
+| A1 | plan | Plan | read-only exploration for the CRM build contract (`--plan`, capped) | 40 (capped) | 225,783 / 2,670 (+2.44M cache reads) | 90s | 0 | 0 | partial — 81 tool calls over parley/fugue/cadence + session docs + AGENTS.md; cap hit mid-exploration, resumed per the gallery convention | yes |
+| A2 | plan (resume) | Plan | write the complete numbered build contract | 1 | 89,562 / 12,370 | 128s | 0 | 0 | completed — 40,292-char plan, all 8 sections ([plan.md](plan.md)) | yes |
 
 Notes on the rows:
+
+- **A1's cap is the honest boundary** of a 40-turn exploration budget, recorded
+  not papered over; the capped-resume pattern (one continuation) is the
+  established gallery discipline. Both sessions ran backgrounded through the
+  F0/F2 launcher (stdin `/dev/null`, file stdio, envelope from the log).
+- **A2's "memory used" is demonstrable in the artifact**: the plan's fidelity
+  to the memory-documented repo patterns — the parley scrypt/session/store
+  shapes, the fugue deterministic-engine contract, the embed checklist — is
+  the tracked memory + repo context carrying the work, not re-derivation
+  from scratch.
 
 - Envelope receipts land in this lane's `sessions/` directory as the round
   runs (the `--output-format json` final objects with session id, turns,
