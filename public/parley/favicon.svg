@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <!-- Parley — two overlapping speech bubbles (the correspondence mark),
+       the app palette: deep navy ground, sky-blue accent -->
+  <rect width="64" height="64" rx="14" fill="#0b1420"/>
+  <path d="M14 20c0-3.3 2.7-6 6-6h18c3.3 0 6 2.7 6 6v12c0 3.3-2.7 6-6 6H28l-8 7v-7h-.2c-3.2 0-5.8-2.7-5.8-6V20z"
+        fill="#4d9ade"/>
+  <path d="M26 34c0-2.8 2.2-5 5-5h13c2.8 0 5 2.2 5 5v9c0 2.8-2.2 5-5 5h-1v6l-7-6h-5c-2.8 0-5-2.2-5-5v-9z"
+        fill="#eef6fc" opacity="0.92"/>
+  <circle cx="23" cy="26" r="2.2" fill="#0b1420"/>
+  <circle cx="31" cy="26" r="2.2" fill="#0b1420"/>
+  <circle cx="39" cy="26" r="2.2" fill="#0b1420"/>
+</svg>

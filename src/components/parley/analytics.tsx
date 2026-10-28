@@ -116,13 +116,14 @@ export function VolumeDonut({
   const r = (size - stroke) / 2;
   const c = 2 * Math.PI * r;
 
-  let remaining = total;
-  const arcs = SEGMENTS.map((s) => {
+  // Pure cumulative offsets (no render-lane mutation): segment i's arc
+  // starts where the sum of the segments before it ends.
+  const arcs = SEGMENTS.map((s, i) => {
     const value = data[s.key];
+    const before = SEGMENTS.slice(0, i).reduce((a, k) => a + data[k.key], 0);
     const frac = total === 0 ? 0 : value / total;
     const dash = frac * c;
-    const offset = -remaining * (c / Math.max(total, 1));
-    remaining -= value;
+    const offset = -(total - before) * (c / Math.max(total, 1));
     return { ...s, dash, offset, value };
   });
 

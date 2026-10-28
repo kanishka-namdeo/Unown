@@ -5,16 +5,18 @@
  * bazaar shell pattern: the wrapper carries the class, never
  * `<html>`). Listens for the shell's keyboard `t` shortcut via the
  * `parley-theme-toggle` custom event, and exposes its own button.
+ *
+ * The toggle reads the theme from state directly (no ref — the render
+ * lane never writes a ref; the DOM class write happens in the toggle
+ * handler, an event lane).
  */
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 
 export function ThemeToggle() {
   const [theme, setTheme] = useState<"dark" | "light">("dark");
-  const themeRef = useRef(theme);
-  themeRef.current = theme;
 
   function toggle() {
-    const next = themeRef.current === "dark" ? "light" : "dark";
+    const next = theme === "dark" ? "light" : "dark";
     setTheme(next);
     const target =
       document.querySelector(".parley-scope") ?? document.documentElement;
@@ -26,8 +28,7 @@ export function ThemeToggle() {
     const onToggle = () => toggle();
     document.addEventListener("parley-theme-toggle", onToggle);
     return () => document.removeEventListener("parley-theme-toggle", onToggle);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [theme]);
 
   return (
     <button
