@@ -81,7 +81,7 @@ build's contract.
 | Phase | Sessions | Result | Commit |
 |---|---|---|---|
 | Plan | 2 (40-turn exploration capped → 1-turn resume) | 40,292-char numbered build contract: data model (every field), 16 modules, ~50 routes with the auth ladder, the deterministic sequence-engine design, the 330-380-test plan, phases with acceptance criteria, 13 risks with mitigations, the embed contract — [`plan.md`](../benchmarks/aria-round/plan.md) | — |
-| Lib/domain | (pending) | types, tenancy, rbac, pipeline/forecast math, sequences, scoring, store, seed | — |
+| Lib/domain | 6 sessions (5 capped resumes → 1 clean finish) | 16 modules + 18 test files, 7,146 LOC — **315 tests green** (2,520 expects), typecheck clean, full-repo suite 1,201 pass / 0 fail, zero files outside `src/lib/aria/` | (this round's next commits) |
 | API | (pending) | tenant-scoped routes, auth ladder, import, isolation + adversarial probe suites | — |
 | UI | (pending) | dashboard, kanban, record timelines, sequences, triage inbox, admin | — |
 | E2E + review + drill | (pending) | Playwright e2e, reviewer passes, P0 pins, cold-start acceptance | — |
@@ -127,8 +127,14 @@ next. A checkpoint is DONE only with measured numbers.
   ([the ledger](../benchmarks/aria-round/ux-ledger.md)); operator review
   passed with one note — the plan's gallery-entry receipt numbers are
   placeholders until CP6's counted receipts replace them.
-- [ ] **CP2 — lib/domain phase** (pure modules + store + seed; the suite
-  green; phase invariant sweep passes).
+- [x] **CP2 — lib/domain phase** (DONE — operator-verified): all 16 modules
+  + 18 test files; `bun test src/lib/aria` **315 pass / 0 fail** (2,520
+  expects — above the plan's 200-240 target), `bun run typecheck` clean, the
+  full repo suite 1,201 pass / 0 fail with nothing outside `src/lib/aria/`.
+  The PBT-invariant lane pins the four contract invariants on the seed's
+  real data; the store's atomic-rename/reseed and the engine's
+  terminals-are-final contracts operator-spot-checked. UX rows A3–A8
+  ([the ledger](../benchmarks/aria-round/ux-ledger.md)).
 - [ ] **CP3 — API phase** (tenant-scoped routes; 401/403/404 ladder;
   isolation suite; adversarial probes).
 - [ ] **CP4 — UI phase** (dashboard/kanban/timelines/sequences/triage/

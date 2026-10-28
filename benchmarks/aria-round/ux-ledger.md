@@ -35,6 +35,12 @@ Column key:
 |---|---|---|---|---|---|---|---|---|---|---|
 | A1 | plan | Plan | read-only exploration for the CRM build contract (`--plan`, capped) | 40 (capped) | 225,783 / 2,670 (+2.44M cache reads) | 90s | 0 | 0 | partial — 81 tool calls over parley/fugue/cadence + session docs + AGENTS.md; cap hit mid-exploration, resumed per the gallery convention | yes |
 | A2 | plan (resume) | Plan | write the complete numbered build contract | 1 | 89,562 / 12,370 | 128s | 0 | 0 | completed — 40,292-char plan, all 8 sections ([plan.md](plan.md)) | yes |
+| A3 | cold (build) | Lib | execute Phase 1: lib modules (capped mid-module-set) | 40 (capped) | 175,494 / 13,854 | 201s | 0 | 0 | partial — 8 files written cleanly, resumed | yes |
+| A4 | repeat (resume) | Lib | continue Phase 1: remaining modules | 40 (capped) | 85,326 / 39,741 | 507s | 0 | 0 | partial — all 16 modules written, resumed into tests | yes |
+| A5 | repeat (resume) | Lib | continue Phase 1: the test files | 40 (capped) | 60,405 / 24,266 | 359s | 0 | 0 | partial — tests in flight, resumed | yes |
+| A6 | repeat (resume) | Lib | continue Phase 1: test-run/fix loop | 40 (capped) | 233,947 / 22,254 | 414s | 0 | 0 | partial — fix loop, resumed | yes |
+| A7 | repeat (resume) | Lib | continue Phase 1: fix loop | 40 (capped) | 227,895 / 15,978 | 420s | 0 | 0 | partial — fix loop, resumed | yes |
+| A8 | repeat (resume) | Lib | finish Phase 1: green suite + clean typecheck | 33 | 36,778 / 8,539 | 275s | 0 | 0 | completed — 315/315 green, typecheck clean, full-repo 1,201/1,201 | yes |
 
 Notes on the rows:
 
