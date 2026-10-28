@@ -195,18 +195,51 @@ Mid-round corrections:
   stops only). Its session record will need the same renumbering note the
   SOTA round's got.
 
-## Checkpoint 5 — release v0.0.37 (PENDING)
+## Checkpoint 5 — release v0.0.37 (DONE — SHIPPED)
 
-- `bun run agent:install` (link/service steps skipped) to build the vendored
-  pi workspace; `release:artifacts --dry-run` must print exactly the
-  six-target plan; `release:artifacts` compiles ALL SIX per-OS binaries;
-  `release-manifest.ts --out download/artifacts` writes the unsigned
-  release.json.
-- Cross-platform lane per `docs/xplat-testing.md`: `full` before the tag,
-  `release-verify` before tagging.
-- Commit, push, tag `v0.0.37`, watch `.github/workflows/release.yml` to
-  completion (3-OS verify matrix, six binaries + SBOM + attestations,
-  per-platform smokes, the Release created and PROMOTED with its 13 assets,
-  the feed gate, the three-OS smoke-install matrix).
-- `bun scripts/verify-deploy.mjs` against the live deployment after the
-  release: all checks passed.
+- Bun at 1.4.4; `bun run agent:install` (link/service steps skipped) built
+  the vendored pi workspace end to end; `bun bin/unown --version` → 0.0.37
+  (matches package.json — the release contract).
+- `release:artifacts --dry-run` printed exactly the six-target plan;
+  `release:artifacts` compiled ALL SIX per-OS binaries locally
+  (42.2–55.3 MiB) into `download/artifacts/`;
+  `release-manifest.ts --out` wrote the unsigned release.json for 0.0.37
+  (6 platform assets, installers staged) and `--check --require-all`
+  verified the payload.
+- **The pre-tag xplat catch:** `node scripts/xplat.mjs local --scenario full`
+  went red on the engine integration suite — NOT this round's code: the
+  concurrent task-mint work seeded a sixth benchmark task
+  (`swap-if-else-messages`) and the older integration pins still said five
+  (`GET /api/tasks`, `kpis.tasks`, `kpis.suite.total`). Their unit suite
+  already pins six, so the fix direction was unambiguous — the stale pins
+  were updated to six and the suite re-verified (13/13), committed as its
+  own xplat fix (the release workflow runs this suite on the tag, so main
+  must be green before any cut).
+- `node scripts/xplat.mjs dispatch --scenario release-verify` → run
+  40737718284 **completed success**: the release path minus publish — six
+  binaries built and BOOTED on six runners (incl. windows-11-arm).
+- Tag `v0.0.37` pushed; `.github/workflows/release.yml` (run 40740455942)
+  **completed success end to end**: the 3-OS verify matrix (real
+  installer, engine unit + integration suites, bridge, version
+  consistency, CLI smokes, the artifact plan gate), the production build +
+  six per-OS binaries + SBOM + attestations, five per-platform artifact
+  smokes (each platform ran its own archive), the GitHub Release created
+  and PROMOTED (not a draft) with all **13 assets** (the six binaries,
+  install.sh + install.ps1, release.json, version.txt, sha256sums.txt,
+  sbom-spdx.json, release-checklist.md — verified via the API), the
+  published feed re-downloaded and hash-verified, and the three-OS
+  smoke-install matrix green (installs the released binary through the
+  release's own installer, checks --version, update --check,
+  uninstall --dry-run).
+- `bun scripts/verify-deploy.mjs` against the live deployment: **all
+  checks passed** — and the round's own markers are live: `.ink-fill` and
+  `.gb-kbd` in the shipped HTML, the 0.0.37 rail stop, `softwareVersion`
+  0.0.37 in the JSON-LD, the `psst` konami hint, and the empty-at-rest
+  "Copied" status region (zero occurrences in raw HTML is the WCAG 4.1.3
+  contract — the word appears only on click). The feed carries the round's
+  blog post.
+- The concurrent parley round's newest commits landed on main while this
+  release was being cut; the tag points at the verified commit and the
+  release builds from the tag, so their in-flight work rides the NEXT
+  release (their changelog entry dates when they cut, per the rail's
+  cut-stops-only rule).
