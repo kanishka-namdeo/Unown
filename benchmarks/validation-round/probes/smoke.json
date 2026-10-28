@@ -1,0 +1,92 @@
+{
+ "label": "smoke",
+ "capturedAt": "2026-10-28T20:29:21",
+ "schema": "validation-round/probe/1",
+ "queries": [
+  {
+   "id": "parley-scrypt-password",
+   "query": "parley password hashing scrypt N=16384",
+   "expect_terms": [
+    "scrypt",
+    "n=16384",
+    "timingsafeequal",
+    "password.ts"
+   ],
+   "hit": false,
+   "resultsCount": 0,
+   "evidence": null
+  },
+  {
+   "id": "cadence-embed-reset",
+   "query": "cadence embed=1 reset cadence-reset SEED_VERSION localStorage",
+   "expect_terms": [
+    "cadence",
+    "embed",
+    "cadence-reset",
+    "seed_version",
+    "localstorage"
+   ],
+   "hit": false,
+   "resultsCount": 0,
+   "evidence": null
+  },
+  {
+   "id": "failed-cycles-restart",
+   "query": "failed cycles do not restart engine auto-recover",
+   "expect_terms": [
+    "auto-recover",
+    "do not restart",
+    "restart engine",
+    "failed cycles"
+   ],
+   "hit": false,
+   "resultsCount": 0,
+   "evidence": null
+  },
+  {
+   "id": "project-memory-location",
+   "query": ".unown/memory/project.md AutoDream maintained",
+   "expect_terms": [
+    ".unown/memory/project.md",
+    "project.md",
+    "autodream"
+   ],
+   "hit": false,
+   "resultsCount": 0,
+   "evidence": null
+  },
+  {
+   "id": "localstorage-setitem-pitfall",
+   "query": "localStorage.setItem happy-dom Object.defineProperty native bind spy",
+   "expect_terms": [
+    "defineproperty",
+    "native bind",
+    "localstorage",
+    "setitem",
+    "happy-dom"
+   ],
+   "hit": false,
+   "resultsCount": 0,
+   "evidence": null
+  },
+  {
+   "id": "frame-hardening-cadence",
+   "query": "next.config.ts frame-hardening headers cadence frame-ancestors",
+   "expect_terms": [
+    "frame-ancestors",
+    "x-frame-options",
+    "cadence",
+    "next.config",
+    "sameorigin"
+   ],
+   "hit": false,
+   "resultsCount": 0,
+   "evidence": null
+  }
+ ],
+ "summary": {
+  "queries": 6,
+  "hits": 0,
+  "hitRate": 0
+ }
+}

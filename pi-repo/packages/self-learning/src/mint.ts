@@ -84,7 +84,9 @@ interface TaskDraft {
         reference?: unknown;
 }
 
-const MINT_SYSTEM = `You are the task minter of a self-improving coding-agent harness. You author NEW benchmark tasks that the agent may plausibly FAIL today. Each task is a tiny, self-contained code exercise that runs fully offline under bun.
+// Exported for the F3 prompt-visibility pin (test/mint-caps.test.ts): the
+// authoring prompt must state the size caps validateDraft enforces.
+export const MINT_SYSTEM = `You are the task minter of a self-improving coding-agent harness. You author NEW benchmark tasks that the agent may plausibly FAIL today. Each task is a tiny, self-contained code exercise that runs fully offline under bun.
 
 Task contract:
 - files: 1-4 source files (a deliberately broken or unimplemented exercise) plus exactly ONE test file matching /\\.test\\.mjs$/ that imports the source files with relative ESM imports
@@ -93,6 +95,7 @@ Task contract:
 - prompt: one short paragraph telling the agent what to fix/implement; it must NOT leak the solution and must not describe individual test cases (say "the test file describes the expected behavior")
 - difficulty 1-5 honest; category one of bugfix | implementation | algorithm | refactor
 - reference: the SOLVED content of every NON-TEST source file (the same keys as files, minus the test file). It proves the exercise is solvable — it is executed against the untouched test file before the task can enter the suite. The tests must be written so your reference passes them; if you cannot write a passing reference, the tests are inconsistent — fix the tests, not the reference.
+- SIZE CAPS (the harness REJECTS drafts over these, measured on the trimmed strings): name at most 80 characters, description at most 300 characters, prompt at most 2000 characters. Write tight: a one-line name, a two-sentence description, a single focused paragraph for the prompt. The prompt must NOT pad with test-case narration to reach quality — the caps are part of the exercise.
 
 Return STRICT JSON only:
 {"id":"kebab-case-slug","name":"...","description":"...","category":"bugfix","difficulty":3,"prompt":"...","files":{"src.js":"...","src.test.mjs":"..."},"reference":{"src.js":"..."},"verifyTestFile":"src.test.mjs"}`;
@@ -407,7 +410,30 @@ export async function authorDraft(
         ];
         if (!mintCascadeEnabled()) {
                 const draft = await chatJson<TaskDraft>(messages, { maxTokens: 3000, model: modelFor("mint") });
-                return validateDraft(draft);
+                const verdict = validateDraft(draft);
+                if (verdict.ok) return verdict;
+                // F3b — the bounded repair retry (2026-10-29 validation round):
+                // a verbose remote model authors drafts that fail validateDraft
+                // at the shape seams (over-cap fields, empty id/name, wrapped
+                // JSON) — measured live twice in this round (size caps, then
+                // empty fields). ONE repair call carrying the invalid draft +
+                // the validator's exact error, then re-validate; still invalid
+                // keeps the existing discarded path with a repair-aware reason
+                // so the receipt says which pass failed. Same shape as the
+                // cascade's stage-3 repair, without the local-draft stage.
+                const repair = await chatJson<TaskDraft>(
+                        [
+                                ...messages,
+                                { role: "assistant", content: JSON.stringify(draft) },
+                                {
+                                        role: "user",
+                                        content: `That draft was REJECTED by the harness validator: ${verdict.error}. Return the corrected draft as STRICT JSON with every required field (id, name, description, category, difficulty, prompt, files, reference, verifyTestFile), respecting the size caps from the system prompt. Output ONLY the JSON object.`,
+                                },
+                        ],
+                        { maxTokens: 3000, model: modelFor("mint") },
+                );
+                const retry = validateDraft(repair);
+                return retry.ok ? retry : { ok: false, error: `authoring failed: ${verdict.error} (repair pass: ${retry.error})` };
         }
         return authorDraftCascade(messages);
 }

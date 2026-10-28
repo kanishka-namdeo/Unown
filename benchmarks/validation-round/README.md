@@ -53,6 +53,26 @@ sessions the round runs.
    tiered memory injected, hooks attached — against the Agnes AI upstream
    through the bundled bridge (`:3031`). No direct model calls.
 
+**The retrieval-probe lane** (`probe.mjs`, schema `validation-round/probe/1`):
+the mission's "memory entries retrieved / retrieval success" metric made
+concrete. It reads the pinned query set (`queries.json`, an array of
+`{id, query, expect_terms}`), calls the live engine's recall surface per
+query (`GET /api/memories?q=<query>&limit=5` on `:3030`, bearer token, zero
+LLM calls — recall is a lexical surface), and receipts
+`probes/<label>.json`: per-query `hit@5` (at least one of the returned
+results whose combined text contains ANY expect_term, case-insensitive)
+plus the top result's first 160 chars as evidence, and a
+`summary {queries, hits, hitRate}`. Usage:
+`bun probe.mjs --label <label> [--engine-url <url>]`.
+
+**Summary mode** (`--summary`, zero HTTP calls): loads the two most
+recent receipts in `probes/` (ordered by `capturedAt`, newest first) and
+prints a compact comparison table — per-query `id`, previous hit, current
+hit, and `delta` (`new` for a query missing from the older receipt,
+`+1`/`-1`/`0` otherwise) — plus the overall `hitRate` delta. Usage:
+`bun probe.mjs --summary <label>`; the label is just the name you give the
+comparison (it is not written anywhere).
+
 ## The mission's metrics and where they live
 
 | Mission metric family | Where receipted |

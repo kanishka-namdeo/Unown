@@ -318,17 +318,20 @@ describe("term.ts — the terminal injection carries the same budget", () => {
                 const saved = process.env.PI_MEMORY_TOTAL_CHARS;
                 const project = join(tmpdir(), "engine-tests-budget", "project");
                 try {
-                        // Achievable cap: the protected stack (guide ≈ 660 +
+                        // Achievable cap: the protected stack (guide ≈ 1,760 +
                         // policy ≈ 555 + local/user seeds ≈ 470) plus the project memory
-                        // MINUS the oldest block fits under 2400 — so one block drop
+                        // MINUS the oldest block fits under 3,500 — so one block drop
                         // is exactly the degradation needed. (M10 raised the floor:
                         // the honest repo-supplied provenance comment is ~70 chars
                         // longer than the old "maintained by AutoDream" one; the
                         // 2026-10 verify-first defaults grew the policy seed by two
-                        // guardrails, so the cap grew with it; the payload lines carry
-                        // spaces so the injection scan's opaque-blob rule — correctly
-                        // — does not fire on them.)
-                        process.env.PI_MEMORY_TOTAL_CHARS = "2400";
+                        // guardrails, so the cap grew with it; the 2026-10-29
+                        // validation round's F1 fix grew the guide by the anti-drift
+                        // contract — evidence-not-proof, verify-before-asserting,
+                        // recall citations — so the cap grew again; the payload lines
+                        // carry spaces so the injection scan's opaque-blob rule —
+                        // correctly — does not fire on them.)
+                        process.env.PI_MEMORY_TOTAL_CHARS = "3500";
                         mkdirSync(join(project, ".unown", "memory"), { recursive: true });
                         writeFileSync(
                                 join(project, ".unown", "memory", "project.md"),
@@ -340,7 +343,7 @@ describe("term.ts — the terminal injection carries the same budget", () => {
 
                         const files = terminalMemoryForAgent(project);
                         const total = files.reduce((s, f) => s + f.path.length + f.content.length, 0);
-                        expect(total).toBeLessThanOrEqual(2400);
+                        expect(total).toBeLessThanOrEqual(3500);
                         const paths = files.map((f) => f.path).join("\n");
                         expect(paths).toContain("how-to-use"); // guide kept
                         expect(paths).toContain("tier0-policy"); // policy kept

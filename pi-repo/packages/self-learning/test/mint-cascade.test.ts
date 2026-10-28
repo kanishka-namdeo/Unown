@@ -130,12 +130,19 @@ describe("authorDraft — cascade disabled (default)", () => {
                 expect(events).toHaveLength(0); // no cascade machinery runs at all
         });
 
-        test("invalid remote draft -> {ok:false} with the validator error, still exactly one call", async () => {
+        test("invalid remote draft -> {ok:false} with the validator error, exactly one bounded repair pass (F3b)", async () => {
                 mockBridge([reply(invalidDraft(`casc${RUN}off2`))]);
                 const { result, events } = await withBusEvents("mint:cascade", () => authorDraft("author the variant"));
                 expect(result.ok).toBe(false);
-                if (!result.ok) expect(result.error).toBe("files must contain 1..6 entries");
-                expect(bodies).toHaveLength(1);
+                // F3b (2026-10-29): a failed draft gets ONE repair call carrying the
+                // validator error; still-invalid keeps the discarded path with a
+                // repair-aware reason. Bounded: never a third call.
+                if (!result.ok) {
+                        expect(result.error).toContain("files must contain 1..6 entries");
+                        expect(result.error).toContain("repair pass:");
+                }
+                expect(bodies).toHaveLength(2);
+                expect(bodies[1].messages.at(-1).content).toContain("REJECTED by the harness validator");
                 expect(events).toHaveLength(0);
         });
 });
@@ -272,14 +279,17 @@ describe("mintCurriculumVariant / mintTaskFromRun — the shared authoring step"
                 return id;
         }
 
-        test("cascade disabled: invalid remote draft -> discarded 'authoring failed:' with ONE call (default behavior)", async () => {
+        test("cascade disabled: invalid remote draft -> discarded 'authoring failed:' with the bounded repair pass (F3b default)", async () => {
                 const taskId = seedTask(`seed${RUN}c`);
                 mockBridge([reply(invalidDraft(`casc${RUN}pub1`))]);
                 const outcome = await mintCurriculumVariant(taskId);
                 expect(outcome.status).toBe("discarded");
                 expect(outcome.reason).toContain("authoring failed: files must contain 1..6 entries");
-                expect(bodies).toHaveLength(1);
+                expect(outcome.reason).toContain("repair pass:");
+                // authoring call + exactly ONE repair call — bounded (F3b)
+                expect(bodies).toHaveLength(2);
                 expect(bodies[0].model).toBe(modelFor("mint"));
+                expect(bodies[1].model).toBe(modelFor("mint"));
                 expect("response_format" in bodies[0]).toBe(false);
         });
 

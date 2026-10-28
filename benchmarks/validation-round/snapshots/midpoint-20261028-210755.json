@@ -1,0 +1,317 @@
+{
+ "label": "midpoint",
+ "capturedAt": "2026-10-28T21:07:55",
+ "schema": "validation-round/1",
+ "drained": true,
+ "engine": {
+  "version": "self-learning v0.0.38",
+  "provider": "zai-bridge/agnes-3.0-flash",
+  "bridgeUpstreamOk": true
+ },
+ "memoryMetrics": {
+  "memoryVersions": {
+   "policy": 1,
+   "project": 9,
+   "user": 1,
+   "local": 1
+  },
+  "terminalMemory": {
+   "provenance": {
+    "version": 3,
+    "changedBy": "mem0",
+    "at": 1793220645686,
+    "sha256": "87880be5c8af46f4dd3b457d9086ade614300f6549c256936bf64835406d8db4",
+    "manualSha256": "64f2d1b1793fa5e12c6a356e2bcab16910e61b0d8b731f6b56b65d613f37e119",
+    "manualEdited": true
+   },
+   "contentChars": 10757,
+   "bulletCount": 72,
+   "sectionCount": 5,
+   "userSkills": [
+    "recover-failed-cycle",
+    "pre-commit-engine-check",
+    "restart-engine",
+    "test-cadence-domain"
+   ],
+   "stagedSkills": []
+  },
+  "retrievalProbeResults": null
+ },
+ "learningMetrics": {
+  "tasks": [
+   {
+    "id": "fix-fizzbuzz",
+    "name": "Fix FizzBuzz",
+    "category": "bugfix",
+    "difficulty": 1,
+    "status": "regression",
+    "origin": "seed",
+    "pass_count": 1,
+    "fail_count": 0,
+    "created_at": 1793216918678
+   },
+   {
+    "id": "fix-drop-right",
+    "name": "Fix dropRight off-by-one",
+    "category": "bugfix",
+    "difficulty": 2,
+    "status": "regression",
+    "origin": "seed",
+    "pass_count": 1,
+    "fail_count": 0,
+    "created_at": 1793216918679
+   },
+   {
+    "id": "fix-csv-parser",
+    "name": "Fix CSV parsing",
+    "category": "bugfix",
+    "difficulty": 3,
+    "status": "regression",
+    "origin": "seed",
+    "pass_count": 1,
+    "fail_count": 0,
+    "created_at": 1793216918679
+   },
+   {
+    "id": "swap-if-else-messages",
+    "name": "Swap if/else branch bodies",
+    "category": "bugfix",
+    "difficulty": 3,
+    "status": "regression",
+    "origin": "seed",
+    "pass_count": 1,
+    "fail_count": 0,
+    "created_at": 1793216918679
+   },
+   {
+    "id": "impl-debounce",
+    "name": "Implement debounce",
+    "category": "implementation",
+    "difficulty": 4,
+    "status": "regression",
+    "origin": "seed",
+    "pass_count": 1,
+    "fail_count": 0,
+    "created_at": 1793216918679
+   },
+   {
+    "id": "impl-map-limit",
+    "name": "Implement mapLimit",
+    "category": "implementation",
+    "difficulty": 4,
+    "status": "regression",
+    "origin": "seed",
+    "pass_count": 1,
+    "fail_count": 0,
+    "created_at": 1793216918679
+   }
+  ],
+  "taskCount": 6,
+  "tasksPassing": 6,
+  "suiteStats": {
+   "total": 6,
+   "passing": 6,
+   "capability": 0,
+   "regression": 6,
+   "minted": 0,
+   "graduated": 0,
+   "quarantined": 0,
+   "saturated": true
+  },
+  "cycles": [
+   {
+    "task_id": "impl-map-limit",
+    "status": "already-passing",
+    "iteration": 1,
+    "summary": "baseline passed — no improvement needed",
+    "shipped": 0,
+    "created_at": 1793220668716,
+    "ended_at": 1793220675552
+   },
+   {
+    "task_id": "impl-debounce",
+    "status": "already-passing",
+    "iteration": 1,
+    "summary": "baseline passed — no improvement needed",
+    "shipped": 0,
+    "created_at": 1793220045783,
+    "ended_at": 1793220064671
+   },
+   {
+    "task_id": "swap-if-else-messages",
+    "status": "already-passing",
+    "iteration": 1,
+    "summary": "baseline passed — no improvement needed",
+    "shipped": 0,
+    "created_at": 1793219350349,
+    "ended_at": 1793219444540
+   },
+   {
+    "task_id": "fix-csv-parser",
+    "status": "already-passing",
+    "iteration": 1,
+    "summary": "baseline passed — no improvement needed",
+    "shipped": 0,
+    "created_at": 1793218734983,
+    "ended_at": 1793218746709
+   },
+   {
+    "task_id": "fix-drop-right",
+    "status": "already-passing",
+    "iteration": 1,
+    "summary": "baseline passed — no improvement needed",
+    "shipped": 0,
+    "created_at": 1793218129526,
+    "ended_at": 1793218134031
+   },
+   {
+    "task_id": "fix-fizzbuzz",
+    "status": "already-passing",
+    "iteration": 1,
+    "summary": "baseline passed — no improvement needed",
+    "shipped": 0,
+    "created_at": 1793217519087,
+    "ended_at": 1793217524895
+   }
+  ],
+  "cycleCount": 6,
+  "cycleStatusCounts": {
+   "already-passing": 6
+  },
+  "improvements": [],
+  "improvementCount": 0,
+  "improvementsShipped": 0,
+  "dreams": [
+   {
+    "id": "54a01798-88b4-4694-b862-126fe41bb41e",
+    "status": "done",
+    "notes": 4,
+    "created_at": 1793220958302,
+    "entries_merged": 0,
+    "entries_pruned": 1,
+    "entries_added": 1
+   },
+   {
+    "id": "70df60e5-d3cb-478f-baef-3624f930ddc2",
+    "status": "error",
+    "notes": 3,
+    "created_at": 1793220883831,
+    "entries_merged": 0,
+    "entries_pruned": 0,
+    "entries_added": 0
+   },
+   {
+    "id": "452150ec-47b0-4378-a740-f8cba4278dce",
+    "status": "done",
+    "notes": 3,
+    "created_at": 1793220678718,
+    "entries_merged": 1,
+    "entries_pruned": 2,
+    "entries_added": 1
+   },
+   {
+    "id": "project-f83b98fb-977d-4e5a-90dd-4f9825861cb5",
+    "status": "done",
+    "notes": 2,
+    "created_at": 1793220598924,
+    "entries_merged": 0,
+    "entries_pruned": 0,
+    "entries_added": 1
+   },
+   {
+    "id": "project-1d7ab5cc-4599-4cd3-aa5b-92c001c0438d",
+    "status": "done",
+    "notes": 1,
+    "created_at": 1793220304416,
+    "entries_merged": 0,
+    "entries_pruned": 0,
+    "entries_added": 3
+   },
+   {
+    "id": "bc0af2bc-3138-437a-bf57-fdc4adbf16cd",
+    "status": "gated",
+    "notes": 3,
+    "created_at": 1793219580479,
+    "entries_merged": 2,
+    "entries_pruned": 3,
+    "entries_added": 1
+   },
+   {
+    "id": "project-dd6ec4f0-27fb-471d-8184-a82e6ee10d1a",
+    "status": "done",
+    "notes": 3,
+    "created_at": 1793219520656,
+    "entries_merged": 0,
+    "entries_pruned": 0,
+    "entries_added": 3
+   },
+   {
+    "id": "7b1e5bfc-177a-403d-991f-d316ee20bf4d",
+    "status": "done",
+    "notes": 4,
+    "created_at": 1793219445414,
+    "entries_merged": 1,
+    "entries_pruned": 2,
+    "entries_added": 3
+   },
+   {
+    "id": "606d69ac-1106-4ff2-9771-751f177cc408",
+    "status": "done",
+    "notes": 3,
+    "created_at": 1793218820031,
+    "entries_merged": 0,
+    "entries_pruned": 4,
+    "entries_added": 4
+   },
+   {
+    "id": "a230f3fc-da0f-44b7-89dc-c738d680a4ff",
+    "status": "done",
+    "notes": 3,
+    "created_at": 1793218749996,
+    "entries_merged": 0,
+    "entries_pruned": 0,
+    "entries_added": 4
+   }
+  ],
+  "dreamCount": 10,
+  "skills": [],
+  "skillCount": 0,
+  "runCount": 25,
+  "runStats": {
+   "tokensIn": 126977,
+   "tokensOut": 20053,
+   "toolCalls": 147
+  },
+  "passRate": {
+   "runsPassed": 23,
+   "runsTotal": 25
+  },
+  "noteCount": 30,
+  "notesPending": 4,
+  "hooks": {
+   "total": 382,
+   "denies": 0
+  },
+  "governor": {
+   "budget": {
+    "callsHour": 37,
+    "callsDay": 37,
+    "tokensHour": 210226,
+    "tokensDay": 212772,
+    "limits": {
+     "callsHour": 60,
+     "tokensHour": 200000,
+     "tokensDay": 2000000
+    },
+    "overBudget": true,
+    "reason": "budget:throttled 210226 tokens in the last hour (limit 200000)"
+   },
+   "breaker": {
+    "open": false,
+    "consecutiveFailures": 0,
+    "threshold": 3,
+    "retryInMs": 0
+   }
+  }
+ }
+}
