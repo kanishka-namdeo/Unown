@@ -5,6 +5,11 @@ This page is the receipt for the landing page's **live demo** band — the
 was built, by what, in how many sessions, with what verification, and what
 was changed to embed it. Every number the band prints is defined here.
 
+Related pages: [bazaar demo session record](bazaar-demo-session.md) (the
+commerce round — the gallery's second app) · [cadence demo session
+record](cadence-demo-session.md) (the habit & streak tracker round — the
+gallery's third app).
+
 ## What the app is
 
 Sigil Focus — a fullstack productivity app:

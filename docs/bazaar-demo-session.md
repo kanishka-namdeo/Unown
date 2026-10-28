@@ -11,7 +11,9 @@
 - [The embedding adaptations](#the-embedding-adaptations)
 - [Where things live](#where-things-live)
 
-Related pages: [live demo session record](live-demo-session.md) (the kanban
+Related pages: [cadence demo session record](cadence-demo-session.md) (the
+habit & streak tracker round — the gallery's third app) · [live demo
+session record](live-demo-session.md) (the kanban
 round — the gallery's first app) · [live-preview competitor
 research](live-preview-competitor-research.md) (the round's
 reverse-engineering) · [tui capture workflow](tui-capture-workflow.md) (the
