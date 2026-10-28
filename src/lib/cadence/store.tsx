@@ -32,6 +32,13 @@ const CHECKOFFS_SYNC_URL = "/cadence/api/checkoffs";
 
 export type CadenceView = "today" | "habits" | "stats";
 
+/** The single edit-input shape (create and edit share it). */
+export interface HabitInput {
+  name: string;
+  glyph: string;
+  frequency: HabitFrequency;
+}
+
 export interface CadenceAppState {
   habits: CadenceState["habits"];
   entries: CadenceState["entries"];
@@ -43,10 +50,13 @@ export interface CadenceAppState {
 interface CadenceApi {
   state: CadenceAppState;
   toggleCheckoff(habitId: string, date: CheckoffDate): void;
-  addHabit(input: { name: string; glyph: string; frequency: HabitFrequency }): void;
+  addHabit(input: HabitInput): void;
+  /** Edit an existing habit (renames it / swaps glyph or frequency). */
+  editHabit(id: string, input: { name: string; glyph: string; frequency: HabitFrequency }): void;
   removeHabit(id: string): void;
   setView(v: CadenceView): void;
   selectHabit(id: string | null): void;
+  toggleTheme(): void;
 }
 
 const CadenceContext = createContext<CadenceApi | null>(null);
@@ -221,7 +231,7 @@ export function CadenceProvider({
   );
 
   const addHabit = useCallback(
-    (input: { name: string; glyph: string; frequency: HabitFrequency }) => {
+    (input: HabitInput) => {
       const id = generateHabitId(input.name);
       const today = new Date();
       const dayKey: CheckoffDate = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
@@ -237,6 +247,20 @@ export function CadenceProvider({
         ...s,
         habits: [...s.habits, habit],
         entries: { ...s.entries, [id]: [] },
+      }));
+    },
+    [commit],
+  );
+
+  const editHabit = useCallback(
+    (id: string, input: { name: string; glyph: string; frequency: HabitFrequency }) => {
+      commit((s) => ({
+        ...s,
+        habits: s.habits.map((h) =>
+          h.id === id
+            ? { ...h, name: input.name.trim(), glyph: input.glyph, frequency: input.frequency }
+            : h,
+        ),
       }));
     },
     [commit],
@@ -263,11 +287,14 @@ export function CadenceProvider({
       state,
       toggleCheckoff,
       addHabit,
+      editHabit,
       removeHabit,
       setView: (v) => commit({ view: v }),
       selectHabit: (id) => commit({ selectedHabitId: id }),
+      toggleTheme: () =>
+        commit((s) => ({ ...s, theme: s.theme === "dark" ? "light" : "dark" })),
     }),
-    [state, commit, toggleCheckoff, addHabit, removeHabit],
+    [state, commit, toggleCheckoff, addHabit, editHabit, removeHabit],
   );
 
   return (
