@@ -87,21 +87,22 @@ Engine learning state, baseline (pre-build, 2026-10-28T16:07:18) →
 midpoint (post-E2E, 2026-10-28T18:46:14, drained), schema
 `parley-round/1`:
 
-| Field | Baseline | Midpoint | Δ |
-|---|---|---|---|
-| Suite tasks | 5 (all seed) | 6 (5 seed passing + the minted `swap-if-else-messages`) | +1 minted task in the lineage |
-| Runs | 14 (14 passed) | 43 (30 passed, 13 errors) | +29 runs |
-| Pass rate | 100% (saturated seed suite) | 70% (the suite grew a failing task — by design) | the honest dip of a real benchmark |
-| Harness cycles | 5 (all `already-passing`) | 11 (10 `already-passing` + **1 `improved`**) | **the first closed cycle** |
-| Improvements shipped | 0 | **1** | see Layer 3 |
-| Dreams | 5 | 13 | +8 consolidations |
-| Notes | 15 | 38 | +23 session notes delivered |
-| Project memory version | v4 | **v12** | +8 re-renders (incl. the shipped patch at v11) |
-| Skills | 0 | 0 | staged skills live in the SOTA lineage (below) |
-| Token cost | (not recorded at baseline) | 151,472 in / 23,934 out / 201 tool calls | the cost column |
+| Field | Baseline | Midpoint | Final | Δ (baseline → final) |
+|---|---|---|---|---|
+| Suite tasks | 5 (all seed) | 6 (5 seed passing + the minted `swap-if-else-messages`) | 6 | +1 minted task in the lineage |
+| Runs | 14 (14 passed) | 43 (30 passed, 13 errors) | 50 (36 passed, 14 errors) | +36 runs |
+| Pass rate | 100% (saturated seed suite) | 70% | 72% | the honest dip of a real benchmark |
+| Harness cycles | 5 (all `already-passing`) | 11 (10 + **1 `improved`**) | 12 (11 + 1 `improved`) | **the first closed cycle** |
+| Improvements shipped | 0 | **1** | **1 (retained)** | see Layer 3 |
+| Dreams | 5 | 13 | 15 | +10 consolidations |
+| Notes | 15 | 38 | 40 | +25 session notes delivered |
+| Project memory version | v4 | **v12** | **v14** | +10 re-renders (the shipped patch at v11, live in v14) |
+| Skills | 0 | 0 | 0 | staged skills live in the SOTA lineage (below) |
+| Token cost | (not recorded at baseline) | 151,472 in / 23,934 out / 201 tool calls | 268,631 in / 53,862 out / 338 tool calls | the cost column |
 
 Receipts: `parley-round/snapshots/baseline-20261028-160718.json` ·
-`parley-round/snapshots/midpoint-2026-10-28184614.json` (drained: true).
+`parley-round/snapshots/midpoint-2026-10-28184614.json` ·
+`parley-round/snapshots/final-2026-10-28193230.json` (all drained: true).
 
 ### The SOTA round (the Fugue AI-workflow platform — the benchmark framework's own build)
 
@@ -162,10 +163,16 @@ The complete lifecycle, receipted in
   patch passed twice — shipped").
 - **Cycle record:** `baseline failed; iteration 1 patch passed twice —
   shipped (4 rules → project v11)`, 18:20:35 → 18:32:52 UTC.
-- **Retention (pending):** the final snapshot's regression sweep must
-  show the task still passing with the patch live — the retention check
-  the round closes with. *(This is the "improvements retained" claim's
-  receipt lane.)*
+- **Retention (verified at the final snapshot):** the full run sequence
+  for the task (the engine DB, `scripts/task-runs.mjs`'s query) reads:
+  two orphaned errors (a service restart), three passes (the shipped
+  patch's verification runs), then pass → one failed run (19:11 — the
+  flake family) → an immediate re-pass (19:12). The improvement row
+  remains `status: shipped` at memory v11, the auto-un-ship never
+  tripped, and the patch's four rules are present verbatim in the
+  current project memory (v14) — **5 of 6 post-patch runs passed and
+  the patch is live in the shipping memory tier.** The one failed run
+  is recorded, not smoothed away.
 
 ### R2 — the F3 envelope fix: a measured failure became a shipped agent fix (this round's own SDLC loop)
 
@@ -229,6 +236,8 @@ headline pass rate went DOWN at midpoint (100% → 70%) because the suite
 grew the failing mined task — the honest cost of a benchmark that
 measures gaps instead of celebrating saturation.
 
-**Pending receipts:** both rounds' final snapshots (the retention sweep
-for R1's patch, the closing token/run totals) — committed at round close;
-marked "not measured" here rather than projected.
+**Pending receipts:** none remain for the parley lineage — baseline,
+midpoint and final snapshots are committed with the retention evidence
+above. The SOTA round's `snapshot-final.json` closes with its own round
+(fugue's session record); its trajectory fields are marked "not
+measured" until then.

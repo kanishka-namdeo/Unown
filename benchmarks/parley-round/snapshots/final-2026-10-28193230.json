@@ -1,0 +1,386 @@
+{
+ "label": "final",
+ "capturedAt": "2026-10-28T19:32:30",
+ "schema": "parley-round/1",
+ "drained": true,
+ "tasks": [
+  {
+   "id": "fix-fizzbuzz",
+   "name": "Fix FizzBuzz",
+   "category": "bugfix",
+   "difficulty": 1,
+   "status": "regression",
+   "origin": "seed",
+   "pass_count": 2,
+   "fail_count": 0,
+   "created_at": 1793208941739
+  },
+  {
+   "id": "fix-drop-right",
+   "name": "Fix dropRight off-by-one",
+   "category": "bugfix",
+   "difficulty": 2,
+   "status": "regression",
+   "origin": "seed",
+   "pass_count": 2,
+   "fail_count": 0,
+   "created_at": 1793208941739
+  },
+  {
+   "id": "fix-csv-parser",
+   "name": "Fix CSV parsing",
+   "category": "bugfix",
+   "difficulty": 3,
+   "status": "regression",
+   "origin": "seed",
+   "pass_count": 2,
+   "fail_count": 0,
+   "created_at": 1793208941739
+  },
+  {
+   "id": "swap-if-else-messages",
+   "name": "Swap if/else branch bodies",
+   "category": "bugfix",
+   "difficulty": 3,
+   "status": "regression",
+   "origin": "seed",
+   "pass_count": 1,
+   "fail_count": 1,
+   "created_at": 1793208941739
+  },
+  {
+   "id": "impl-debounce",
+   "name": "Implement debounce",
+   "category": "implementation",
+   "difficulty": 4,
+   "status": "regression",
+   "origin": "seed",
+   "pass_count": 2,
+   "fail_count": 0,
+   "created_at": 1793208941739
+  },
+  {
+   "id": "impl-map-limit",
+   "name": "Implement mapLimit",
+   "category": "implementation",
+   "difficulty": 4,
+   "status": "regression",
+   "origin": "seed",
+   "pass_count": 2,
+   "fail_count": 0,
+   "created_at": 1793208941739
+  }
+ ],
+ "taskCount": 6,
+ "tasksPassing": 5,
+ "cycles": [
+  {
+   "task_id": "impl-map-limit",
+   "status": "already-passing",
+   "iteration": 1,
+   "summary": "baseline passed — no improvement needed",
+   "shipped": 0,
+   "created_at": 1793214568931,
+   "ended_at": 1793214620234
+  },
+  {
+   "task_id": "impl-debounce",
+   "status": "already-passing",
+   "iteration": 1,
+   "summary": "baseline passed — no improvement needed",
+   "shipped": 0,
+   "created_at": 1793211680846,
+   "ended_at": 1793211825580
+  },
+  {
+   "task_id": "swap-if-else-messages",
+   "status": "improved",
+   "iteration": 3,
+   "summary": "baseline failed; iteration 1 patch passed twice — shipped (4 rules -> project v11)",
+   "shipped": 1,
+   "created_at": 1793211635864,
+   "ended_at": 1793212372127
+  },
+  {
+   "task_id": "fix-csv-parser",
+   "status": "already-passing",
+   "iteration": 1,
+   "summary": "baseline passed — no improvement needed",
+   "shipped": 0,
+   "created_at": 1793211625509,
+   "ended_at": 1793211831738
+  },
+  {
+   "task_id": "fix-drop-right",
+   "status": "already-passing",
+   "iteration": 1,
+   "summary": "baseline passed — no improvement needed",
+   "shipped": 0,
+   "created_at": 1793211620513,
+   "ended_at": 1793211811274
+  },
+  {
+   "task_id": "fix-fizzbuzz",
+   "status": "already-passing",
+   "iteration": 1,
+   "summary": "baseline passed — no improvement needed",
+   "shipped": 0,
+   "created_at": 1793211601657,
+   "ended_at": 1793211762066
+  },
+  {
+   "task_id": "impl-map-limit",
+   "status": "already-passing",
+   "iteration": 1,
+   "summary": "baseline passed — no improvement needed",
+   "shipped": 0,
+   "created_at": 1793211596561,
+   "ended_at": 1793211762994
+  },
+  {
+   "task_id": "impl-debounce",
+   "status": "already-passing",
+   "iteration": 1,
+   "summary": "baseline passed — no improvement needed",
+   "shipped": 0,
+   "created_at": 1793211588452,
+   "ended_at": 1793211827847
+  },
+  {
+   "task_id": "swap-if-else-messages",
+   "status": "already-passing",
+   "iteration": 1,
+   "summary": "baseline passed — no improvement needed",
+   "shipped": 0,
+   "created_at": 1793211383165,
+   "ended_at": 1793211819264
+  },
+  {
+   "task_id": "fix-csv-parser",
+   "status": "already-passing",
+   "iteration": 1,
+   "summary": "baseline passed — no improvement needed",
+   "shipped": 0,
+   "created_at": 1793210757852,
+   "ended_at": 1793210778816
+  },
+  {
+   "task_id": "fix-drop-right",
+   "status": "already-passing",
+   "iteration": 1,
+   "summary": "baseline passed — no improvement needed",
+   "shipped": 0,
+   "created_at": 1793210152551,
+   "ended_at": 1793210156803
+  },
+  {
+   "task_id": "fix-fizzbuzz",
+   "status": "already-passing",
+   "iteration": 1,
+   "summary": "baseline passed — no improvement needed",
+   "shipped": 0,
+   "created_at": 1793209542155,
+   "ended_at": 1793209549562
+  }
+ ],
+ "cycleCount": 12,
+ "cycleStatusCounts": {
+  "already-passing": 11,
+  "improved": 1
+ },
+ "improvements": [
+  {
+   "id": "f0db6ac3-eba2-488b-830e-a369d9bff624",
+   "cycle_id": "4c6a432e-9739-48c3-ab7b-05cbe11cdd89",
+   "task_id": "swap-if-else-messages",
+   "iteration": 1,
+   "diagnosis": "The agent failed to recognize that escaping backticks and newlines within template literals inside a Python string resulted in incorrect replacement text. It confused the source code syntax (`\\`\\n`) with the literal bytes required by the task, leading to a mismatch in the file's final hash.",
+   "proposal": "Always extract the exact byte representation of the target text using `od -c` or `repr()` in Python to verify whitespace and escaping characters before writing replacements for files containing backticks or template literals.",
+   "patch": "- When editing files containing backticks or template literals, first extract the exact byte representation of the target text using `od -c` or `repr()` in Python to verify escaping.\n- Never assume standard string escaping rules apply inside bash/python commands for backticks; always verify the exact source code characters.\n- Use `repr()` or `od -c` to inspect the file's current state when encountering 'exact text not found' errors in the edit tool.\n- Validate byte-level identity using SHA-256 hashes if the task specifies 'byte-exact' matches to ensure replacements match the expected output.",
+   "target_tier": "project",
+   "status": "shipped",
+   "baseline_run_id": "864d69da-2db9-4f64-93a5-9e8b1108991a",
+   "candidate_run_id": "b07be91b-708e-46f0-91cb-f24c8a8c74c5",
+   "score_before": "failed",
+   "score_after": "passed",
+   "created_at": 1793212240645,
+   "decided_at": 1793212372126,
+   "memory_version": 11,
+   "memory_ids": "[\"a687cc36-d192-4f1d-acb4-7aa819e5e8f3\",\"4d6bcd9f-d028-445b-bd86-58e8a41446d1\",\"cb13469c-639b-47b6-ab03-5667c9ddad69\"]"
+  }
+ ],
+ "improvementCount": 1,
+ "dreams": [
+  {
+   "id": "457c519f-0748-4a11-b782-4056f6e77002",
+   "status": "done",
+   "notes": 5,
+   "created_at": 1793214623937,
+   "entries_merged": 0,
+   "entries_pruned": 0,
+   "entries_added": 1
+  },
+  {
+   "id": "7c84b0ee-c504-4079-a4f9-ba2db9eede41",
+   "status": "done",
+   "notes": 4,
+   "created_at": 1793214568898,
+   "entries_merged": 0,
+   "entries_pruned": 2,
+   "entries_added": 2
+  },
+  {
+   "id": "aa47e76a-02d6-45a8-9e54-91588814ee66",
+   "status": "done",
+   "notes": 8,
+   "created_at": 1793212373369,
+   "entries_merged": 2,
+   "entries_pruned": 1,
+   "entries_added": 1
+  },
+  {
+   "id": "777fa2cf-d6c2-49b6-a6dd-d8a1f371b9b7",
+   "status": "done",
+   "notes": 11,
+   "created_at": 1793212296520,
+   "entries_merged": 0,
+   "entries_pruned": 3,
+   "entries_added": 3
+  },
+  {
+   "id": "project-5e0ca36c-5ba7-4efb-a756-164830c91b3e",
+   "status": "done",
+   "notes": 2,
+   "created_at": 1793212241532,
+   "entries_merged": 0,
+   "entries_pruned": 0,
+   "entries_added": 1
+  },
+  {
+   "id": "4fc46477-db04-415e-802b-ee1b047f7861",
+   "status": "done",
+   "notes": 9,
+   "created_at": 1793211935634,
+   "entries_merged": 0,
+   "entries_pruned": 4,
+   "entries_added": 4
+  },
+  {
+   "id": "project-11c8bd33-c48a-413f-bc99-7b968747b2cc",
+   "status": "done",
+   "notes": 3,
+   "created_at": 1793211875554,
+   "entries_merged": 0,
+   "entries_pruned": 0,
+   "entries_added": 1
+  },
+  {
+   "id": "9a01f78e-1e6c-4c4a-9a36-7b5c59d55d4b",
+   "status": "done",
+   "notes": 3,
+   "created_at": 1793211764155,
+   "entries_merged": 0,
+   "entries_pruned": 3,
+   "entries_added": 3
+  },
+  {
+   "id": "512b970d-390e-44b8-953b-b55fc4f7224c",
+   "status": "done",
+   "notes": 3,
+   "created_at": 1793211680929,
+   "entries_merged": 0,
+   "entries_pruned": 2,
+   "entries_added": 1
+  },
+  {
+   "id": "ff26afa3-9548-4400-a034-a24191204a29",
+   "status": "done",
+   "notes": 3,
+   "created_at": 1793211635936,
+   "entries_merged": 0,
+   "entries_pruned": 2,
+   "entries_added": 2
+  },
+  {
+   "id": "b6010245-8cd6-4b51-9048-f3931c264339",
+   "status": "done",
+   "notes": 3,
+   "created_at": 1793211625582,
+   "entries_merged": 0,
+   "entries_pruned": 2,
+   "entries_added": 3
+  },
+  {
+   "id": "e015fcd7-3141-4060-a8f0-5e23ca2c009c",
+   "status": "done",
+   "notes": 3,
+   "created_at": 1793211605201,
+   "entries_merged": 0,
+   "entries_pruned": 1,
+   "entries_added": 1
+  },
+  {
+   "id": "3573f0c4-9dea-46b8-9f68-39092521d069",
+   "status": "done",
+   "notes": 3,
+   "created_at": 1793210912948,
+   "entries_merged": 0,
+   "entries_pruned": 3,
+   "entries_added": 3
+  },
+  {
+   "id": "project-d96e6c09-2f12-485a-a1f4-d6fc202cd7c5",
+   "status": "done",
+   "notes": 3,
+   "created_at": 1793210850707,
+   "entries_merged": 0,
+   "entries_pruned": 0,
+   "entries_added": 3
+  },
+  {
+   "id": "76920586-1777-4a69-a46b-063d2c6adfbe",
+   "status": "done",
+   "notes": 3,
+   "created_at": 1793210782860,
+   "entries_merged": 0,
+   "entries_pruned": 0,
+   "entries_added": 3
+  }
+ ],
+ "dreamCount": 15,
+ "memoryTiers": [
+  {
+   "tier": "policy",
+   "version": 1,
+   "content": "# Tier 0 — Policy (non-negotiable guardrails)\n\n- Never delete or overwrite files outside the current working directory.\n- Never install packages, start network listeners, or contact external hosts.\n- Always verify your work by running the provided tests before declaring success.\n- Keep changes minimal: fix exactly what the task asks for.\n- If a verification fails, inspect the failure output and fix the root cause — never edit tests to make them pass.\n- Read a file before editing it, and match the style and conventions already in it.\n- When a check fails, fix the root cause and re-run it — never report success with a failing check.\n"
+  },
+  {
+   "tier": "project",
+   "version": 14,
+   "content": "# Project Memory\n\n## Workflow\n- Verification is automated: a verify script executes after your turn; its output is ground truth.\n- The workspace contains a small Node/Bun project with tests. Run tests with `bun <testfile>`.\n\n## Known pitfalls\n- `dropRight.js` had an off-by-one bug: it sliced at `arr.length - n - 1`, removing one extra element. Fix (commit b8784b31, task `fix-drop-right`): slice at `arr.length - n` so exactly `n` trailing elements are removed; `dropRight.test.mjs` passes.\n\n## Verified fixes\n- For tasks requiring byte-exact output matches, verify replacements byte-identically using SHA-256 hashes of the expected and actual results (harness).\n- When an edit tool reports 'exact text not found' (especially in files with backticks or template literals), inspect the file's current byte content with `repr()` or `od -c` to identify the mismatch before retrying the edit (harness).\n\n## Facts\n- `mapLimit` in `mapLimit.js` is implemented with a worker-pool pattern: spawns `min(limit, items.length)` async workers that pull the next index from a shared counter (no more than `limit` mappers concurrent); results are written to fixed array slots to preserve input order. Verified on task `impl-map-limit` (commit 4d682fbf): all tests passed.\n- swap-if-else-messages task (commits b07be91b, bce84790): in `messages.ts` lines 84–88 the `if (msg.output)` / `else` branch bodies were swapped so the code-block output is under `if` and `'(no output)'` is under `else`; verified with `bun swap.test.mjs` ('swap test passed').\n- CSV parser in `csv.js` must use character-scanning instead of naive split: a `\"` at field start opens a quoted section where commas are literal, a doubled `\"\"` inside quoted text becomes a single escaped `\"`, and a `\"` in the middle of unquoted text is literal. Verified fix on task `fix-csv-parser` (commit 048b37ba): tests pass.\n- `fizzbuzz.js` must check `% 15` before `% 3` and `% 5` so multiples of 15 emit `FizzBuzz` rather than `Fizz`. Correct order: `% 15` → `FizzBuzz`, else `% 3` → `Fizz`, else `% 5` → `Buzz`, else the number. Verified on task `fix-fizzbuzz` (commit 0692fad4): tests pass.\n\n<!-- unown: rendered 9/9 memories via Mem0 (backend: lexical) at 2026-10-28T19:11:09.752Z -->\n"
+  },
+  {
+   "tier": "user",
+   "version": 1,
+   "content": "# Tier 2 — User Memory\n\n- The user values minimal diffs and clear, idiomatic code.\n- Prefer standard library functions over hand-rolled logic.\n"
+  },
+  {
+   "tier": "local",
+   "version": 1,
+   "content": "# Tier 3 — Local Overrides\n\n(empty — most specific tier; anything here overrides the tiers above)\n"
+  }
+ ],
+ "skills": [],
+ "skillCount": 0,
+ "runCount": 50,
+ "runStats": {
+  "tokensIn": 268631,
+  "tokensOut": 53862,
+  "toolCalls": 338
+ },
+ "passRate": {
+  "runsPassed": 36,
+  "runsTotal": 50
+ },
+ "noteCount": 40
+}

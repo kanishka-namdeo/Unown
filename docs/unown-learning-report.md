@@ -287,11 +287,14 @@ holdout rule, and the cost columns. Full trajectories:
 
 ## Improvements retained
 
-- **The harness patch (R1)**: shipped at project memory v11; the
-  retention check is the final snapshot's regression sweep (pending
-  receipt at round close — the sweep must show `swap-if-else-messages`
-  still passing with the patch live, and the patch's memory row still
-  present).
+- **The harness patch (R1)**: **retention verified at the final snapshot**
+  — the improvement row remains `status: shipped` at project memory v11,
+  the patch's four rules are present verbatim in the current memory tier
+  (v14), the auto-un-ship never tripped, and the task's full run
+  sequence shows 5 of 6 post-patch runs passing (one flake at 19:11,
+  immediately re-passed at 19:12 — recorded, not smoothed away).
+  Receipts: `parley-round/snapshots/final-2026-10-28193230.json` + the
+  engine DB's run sequence.
 - **The F3 envelope fix (R2)**: retained by construction — the 4
   pinning tests run in the engine unit suite on every CI pass; the
   contract is documented in three places (CHANGELOG, BEHAVIOR.md,
