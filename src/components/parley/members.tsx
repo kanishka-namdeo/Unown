@@ -223,7 +223,10 @@ function InviteDialog({ onClose }: { onClose: () => void }) {
       setError((body as { errors?: string[]; error?: string }).errors?.[0] ?? (body as { error?: string }).error ?? "Invite failed");
       return;
     }
-    await parley.refresh();
+    // Re-fetch the tenant's admin data (the mailbox's "sent" list now
+    // carries the new invite row; the brief's "the client re-fetches"
+    // — the server is the source of truth, not the dialog's state).
+    await parley.reloadTenant();
     onClose();
   }
 
@@ -354,7 +357,10 @@ function AcceptInviteDialog({
       setError((body as { errors?: string[]; error?: string }).errors?.[0] ?? (body as { error?: string }).error ?? "Accept failed");
       return;
     }
-    await parley.refresh();
+    // Re-fetch the tenant's data after the accept (the new member is
+    // now in the table, the mailbox's "sent" row is gone, the audit
+    // feed shows the `invite.accept` event — all server-side truth).
+    await parley.reloadTenant();
     onClose();
   }
 

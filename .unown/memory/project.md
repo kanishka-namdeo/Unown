@@ -24,6 +24,8 @@
 - In this project, landing pages auto-deploy to Vercel via GitHub integration; a 'deploy.completed' event payload typically contains an 'environment' field.
 
 ## Facts
+- The Parley SaaS app (`/parley`) now includes Phase 4 UI: a pass-through `layout.tsx` in `src/app/parley/` imports a scoped stylesheet and renders a `.parley-scope dark` wrapper; its `globals.css` uses scoped Tailwind v4 with three `@source` lines for `components/parley`, `lib/parley`, and `app/parley`.
+- The Parley app's `src/app/parley/globals.css` defines GBA 5-bit dark-default color tokens, a named `parley-pop` keyframe, and a reduced-motion guard; `page.tsx` supports an `?embed=` query parameter.
 - Capture and document terminal session results in /home/z/unown for context preservation
 - When working in /home/z/unown, verify terminal session outcomes before proceeding to next steps
 - Parley API `_auth.ts` includes `requirePermission` (the `rbac.can` gate returning 403 with the missing permission named) plus body builders for 401, 403, 404, and 402 responses.
@@ -84,4 +86,4 @@
 - In src/lib/review.ts, parseReviewOutput (lines 455-475) uses static regexes over model output so treated data cannot become code injection, and the git() helper (lines 114-121) calls spawnSync with array args and shell:false; a security review of the /cadence diff (since commit 94d7cb1d) confirmed no new injection surface.
 - Utilize `useDialogDismiss` to manage focus traps and Escape-key closing for modal components.
 
-<!-- unown: rendered 74/74 memories via Mem0 (backend: lexical) at 2026-10-28T17:47:41.069Z -->
+<!-- unown: rendered 76/76 memories via Mem0 (backend: lexical) at 2026-10-28T17:56:28.004Z -->

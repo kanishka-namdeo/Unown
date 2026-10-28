@@ -112,6 +112,8 @@ interface ParleyApi {
   setFilter(f: string): void;
   setQ(q: string): void;
   refresh(): Promise<void>;
+  /** Re-fetch the tenant's admin data (members + mailbox + audit + usage + analytics + canned) with the active role's read gates. */
+  reloadTenant(): Promise<void>;
   switchRole(email: string): Promise<void>;
   switchTenant(slug: string): Promise<void>;
   setPortalOpen(open: boolean): void;
@@ -183,25 +185,69 @@ export function ParleyProvider({
     [members],
   );
 
-  /** Load the active tenant's data after login / tenant switch. */
-  const loadTenant = useCallback(async () => {
-    const [m, u, a, c, inv, mbox, aud] = await Promise.all([
-      fetchJson<MemberRow[]>("/parley/api/members"),
-      fetchJson<UsageData>("/parley/api/usage").catch(() => null),
-      fetchJson<AnalyticsData>("/parley/api/analytics").catch(() => null),
-      fetchJson<CannedReply[]>("/parley/api/canned").catch(() => []),
-      fetchJson<Invite[]>("/parley/api/invites").catch(() => []),
-      fetchJson<MailboxRow[]>("/parley/api/mailbox").catch(() => []),
-      fetchJson<unknown[]>("/parley/api/audit").catch(() => []),
-    ]);
-    setMembers(m);
-    setUsage(u);
-    setAnalytics(a);
-    setCanned(c);
-    setInvites(inv);
-    setMailbox(mbox);
-    setAudit(aud);
-  }, [fetchJson]);
+  /**
+   * Load the active tenant's data, fetching ONLY the lanes the role's
+   * permissions allow (the matrix's read gates):
+   * - `member.list` — all 4 roles (the all-✓ row)
+   * - `usage.read` / `analytics.read` — owner/admin/viewer
+   * - `canned.read` — owner/admin/agent
+   * - `invite.create` (the mailbox read-gate) — owner/admin
+   * - `audit.read` — owner/admin
+   * A lane the role can't read is skipped entirely (the UI shows the
+   * "no permission" notice), so the provider never logs a spurious
+   * 403 to the console and never holds another role's data.
+   */
+  const loadTenant = useCallback(
+    async (activeRole?: Role) => {
+      const r = activeRole ?? role;
+      const canUse = r === "owner" || r === "admin" || r === "viewer";
+      const canCanned = r !== "viewer";
+      const canInvite = r === "owner" || r === "admin";
+      const canAudit = r === "owner" || r === "admin";
+
+      const jobs: Promise<unknown>[] = [fetchJson<MemberRow[]>("/parley/api/members").catch(() => [])];
+      jobs.push(canUse ? fetchJson<UsageData | null>("/parley/api/usage").catch(() => null) : Promise.resolve(null));
+      jobs.push(canUse ? fetchJson<AnalyticsData | null>("/parley/api/analytics").catch(() => null) : Promise.resolve(null));
+      jobs.push(canCanned ? fetchJson<CannedReply[]>("/parley/api/canned").catch(() => []) : Promise.resolve([]));
+      jobs.push(canInvite ? fetchJson<Invite[]>("/parley/api/invites").catch(() => []) : Promise.resolve([]));
+      jobs.push(canInvite ? fetchJson<MailboxRow[]>("/parley/api/mailbox").catch(() => []) : Promise.resolve([]));
+      jobs.push(canAudit ? fetchJson<unknown[]>("/parley/api/audit").catch(() => []) : Promise.resolve([]));
+
+      const [m, u, a, c, inv, mbox, aud] = (await Promise.all(jobs)) as [
+        MemberRow[],
+        UsageData | null,
+        AnalyticsData | null,
+        CannedReply[],
+        Invite[],
+        MailboxRow[],
+        unknown[],
+      ];
+      setMembers(m);
+      setUsage(u);
+      setAnalytics(a);
+      setCanned(c);
+      setInvites(inv);
+      setMailbox(mbox);
+      setAudit(aud);
+    },
+    [fetchJson, role],
+  );
+
+  /**
+   * Reload the active tenant's data (members / usage / analytics /
+   * canned / invites / mailbox / audit) with the ACTIVE role's read
+   * gates. The invite + accept dialogs call this after their POST
+   * succeeds (the brief's "the client re-fetches" — the server is
+   * the source of truth, the dialog's own state is not).
+   */
+  const reloadTenant = useCallback(async () => {
+    try {
+      const probe = await fetchJson<SessionShape>("/parley/api/auth/session");
+      await loadTenant(probe.role);
+    } catch {
+      /* not logged in — nothing to reload */
+    }
+  }, [fetchJson, loadTenant]);
 
   const loadConversations = useCallback(async (f: string, query: string) => {
     const url =
@@ -241,7 +287,7 @@ export function ParleyProvider({
         setSession(probe);
         setRole(probe.role);
         setTenant({ id: probe.tenant.id, slug: probe.tenant.slug, name: "", plan: "team", slas: null as never, createdAt: "" });
-        await loadTenant();
+        await loadTenant(probe.role);
         await loadConversations("all", "");
       } catch {
         // 401 — not logged in
@@ -259,7 +305,7 @@ export function ParleyProvider({
             setSession(probe);
             setRole(probe.role);
             setTenant({ id: probe.tenant.id, slug: probe.tenant.slug, name: "", plan: "team", slas: null as never, createdAt: "" });
-            await loadTenant();
+            await loadTenant(probe.role);
             await loadConversations("all", "");
             void res;
           } catch {
@@ -286,7 +332,7 @@ export function ParleyProvider({
           const probe = await fetchJson<SessionShape>("/parley/api/auth/session");
           setSession(probe);
           setRole(probe.role);
-          await loadTenant();
+          await loadTenant(probe.role);
           await loadConversations("all", "");
         } catch { /* fall through to login */ }
       })();
@@ -309,7 +355,9 @@ export function ParleyProvider({
       setSession(probe);
       setRole(probe.role);
       setTenant({ id: probe.tenant.id, slug: probe.tenant.slug, name: "", plan: "team", slas: null as never, createdAt: "" });
-      await loadTenant();
+      // Load the tenant data with the probe's role, so the audit
+      // fetch is only attempted for the roles that may read it.
+      await loadTenant(probe.role);
       await loadConversations("all", "");
       return { ok: true };
     } catch (e) {
@@ -322,7 +370,16 @@ export function ParleyProvider({
     await fetchJson("/parley/api/auth/logout", { method: "POST" }).catch(() => {});
     setSession(null);
     setTenant(null);
+    setRole("viewer");
+    setMembers([]);
     setConversations([]);
+    setCounts({});
+    setUsage(null);
+    setAnalytics(null);
+    setCanned([]);
+    setInvites([]);
+    setMailbox([]);
+    setAudit([]);
     setThread({ messages: [], events: [], customer: null });
     setSelectedConvoId(null);
   }, [fetchJson]);
@@ -337,22 +394,46 @@ export function ParleyProvider({
     if (selectedConvoId) await loadThread(selectedConvoId);
   }, [loadConversations, loadThread, filter, q, selectedConvoId]);
 
-  const switchRole = useCallback(async (email: string) => {
-    // The brief's "re-logins as each seeded user through the real
-    // login API — never faked auth state": the session is destroyed +
-    // recreated server-side, the role flips because the membership
-    // does, the whole app re-gates itself on the new role.
-    await fetchJson("/parley/api/auth/logout", { method: "POST" }).catch(() => {});
-    await login(email, "parley-demo-1");
-  }, [fetchJson, login]);
+  const switchRole = useCallback(
+    async (email: string) => {
+      // The brief's "re-logins as each seeded user through the real
+      // login API — never faked auth state": the session is destroyed +
+      // recreated server-side, the role flips because the membership
+      // does, the whole app re-gates itself on the new role.
+      //
+      // The provider clears ALL domain state first (the logout step
+      // destroys the server session; the local state wipe prevents the
+      // previous tenant's rows / audit / usage from lingering while the
+      // re-login + reload is in flight — a cross-tenant leak would
+      // otherwise be visible in the UI).
+      await logout();
+      // `login` re-probes the session + reloads the tenant's data
+      // role-aware (the brief's "re-logins through the real login API —
+      // never faked auth state").
+      try {
+        await login(email, "parley-demo-1");
+      } catch {
+        /* stay on the login screen */
+      }
+    },
+    [logout, login],
+  );
 
-  const switchTenant = useCallback(async (slug: string) => {
-    // mira@lumen.test ↔ ingrid@northwind.test — the tenant switcher
-    // re-logs in as the other tenant's owner (isolation visible).
-    const email = slug === "northwind" ? "ingrid@northwind.test" : "mira@lumen.test";
-    await fetchJson("/parley/api/auth/logout", { method: "POST" }).catch(() => {});
-    await login(email, "parley-demo-1");
-  }, [fetchJson, login]);
+  const switchTenant = useCallback(
+    async (slug: string) => {
+      // mira@lumen.test ↔ ingrid@northwind.test — the tenant switcher
+      // re-logs in as the other tenant's owner (isolation visible).
+      const email =
+        slug === "northwind" ? "ingrid@northwind.test" : "mira@lumen.test";
+      await logout();
+      try {
+        await login(email, "parley-demo-1");
+      } catch {
+        /* stay on the login screen */
+      }
+    },
+    [logout, login],
+  );
 
   const canDo = useCallback(
     (action: Action, resource?: string, ownerMembershipIdOverride?: string) =>
@@ -394,6 +475,7 @@ export function ParleyProvider({
         void loadConversations(filter, qq);
       },
       refresh,
+      reloadTenant,
       switchRole,
       switchTenant,
       setPortalOpen,
@@ -403,7 +485,7 @@ export function ParleyProvider({
       loading, session, tenant, role, members, conversations, counts,
       selectedConvoId, thread, view, filter, q, portalOpen, usage,
       analytics, canned, invites, mailbox, audit, login, logout,
-      selectConvo, refresh, switchRole, switchTenant, canDo,
+      selectConvo, refresh, reloadTenant, switchRole, switchTenant, canDo,
       loadConversations,
     ],
   );
