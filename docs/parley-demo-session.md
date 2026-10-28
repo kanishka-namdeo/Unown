@@ -122,9 +122,9 @@ Phase chain (the cadence order, extended for tenancy):
 | Lib | Domain: types, ids, password (scrypt), sessions, tenancy (fail-closed repo), rbac matrix, sla, audit, metering, validation, deterministic seed + unit tests | done — `6a5ef23`, 180 tests |
 | API | Route handlers: auth (login/logout/session), conversations CRUD + reply/assign/status/tags, invites + accept, audit, usage, analytics, canned, mailbox, reset + isolation tests | done — `b8d3e0a` + `6d40de2`, 76 tests |
 | UI | Login, two-pane inbox, thread, composer, detail panel with SLA chips, admin surfaces, portal toggle, role switcher, embed shell + component tests | done — `3d10ed4` (32 tests) + CSP `c05c9c2`; re-verified post-revival: 647 tests, `GET /parley` 200 |
-| E2E | Live browser pass over CDP: login/logout, role switch, cross-tenant 404, invite accept, SLA render, embed reset handshake | in flight (session 2) |
-| Review | `/review` with the adversarial brief (this round's adopted pattern) + fixes | pending |
-| Drill | `/checkpoint` `/undo` `/commit` through the real TUI | pending |
+| E2E | Live browser pass over CDP: login/logout, role switch, cross-tenant 404, invite accept, SLA render, embed reset handshake | **done** — `9ea0a4f`: all 8 steps green, 3 real defects found + fixed live |
+| Review | `/review` with the adversarial brief (this round's adopted pattern) + fixes | **done** — `cf1797f`: 2 P0 wall-breaks found, fixed, pinned; +29 tests (676 total) |
+| Drill | `/checkpoint` `/undo` `/redo` `/commit` through the real TUI (the plain-PTY drill) | **done** — checkpoint sealed, undo verified, redo verified, committed through /commit |
 | Landing | Gallery entry #4, poster, receipts, tests | pending |
 
 ### The mid-round session-continuity event (2026-10-29, recorded for the resume)
