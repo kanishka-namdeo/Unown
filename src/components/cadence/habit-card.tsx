@@ -45,7 +45,19 @@ export function HabitCard({
 
   if (compact) {
     return (
-      <div className="flex items-center gap-3 rounded-xl border border-line bg-surface p-3">
+      <div
+        role="button"
+        tabIndex={0}
+        onClick={onOpen}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            onOpen?.();
+          }
+        }}
+        aria-label={"Open detail for " + habit.name}
+        className={"flex items-center gap-3 rounded-xl border border-line bg-surface p-3 " + (onOpen ? "cursor-pointer hover:border-accent/40" : "")}
+      >
         <HabitGlyph habit={habit} />
         <div className="min-w-0 flex-1">
           <div className="truncate font-semibold">{habit.name}</div>
@@ -56,7 +68,10 @@ export function HabitCard({
         <StreakChip days={streak} />
         {onEdit && (
           <button
-            onClick={onEdit}
+            onClick={(e) => {
+              e.stopPropagation();
+              onEdit?.();
+            }}
             aria-label={"Edit " + habit.name}
             className="rounded-md border border-line px-2 py-1 text-xs text-muted hover:bg-surface-2"
           >

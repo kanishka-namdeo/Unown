@@ -53,12 +53,23 @@ export function Habits({ asOf }: { asOf?: CheckoffDate }) {
                   habit={h}
                   entries={state.entries[h.id] ?? []}
                   asOf={day}
-                  onEdit={() => setEditing(true)}
-                  onOpen={() => selectHabit(h.id)}
+                  onEdit={() => {
+                    setEditing(true);
+                  }}
+                  onOpen={() => {
+                    selectHabit(h.id);
+                    // Scroll the newly-opened detail panel into view.
+                    requestAnimationFrame(() => {
+                      document
+                        .querySelector('[data-cadence-detail]')
+                        ?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    });
+                  }}
                 />
               </div>
               <button
-                onClick={() => {
+                onClick={(e) => {
+                  e.stopPropagation();
                   if (confirmId === h.id) {
                     removeHabit(h.id);
                     setConfirmId(null);
@@ -84,7 +95,9 @@ export function Habits({ asOf }: { asOf?: CheckoffDate }) {
       )}
 
       {selected && (
-        <DetailPanel habitId={selected.id} day={day} />
+        <div data-cadence-detail="true">
+          <DetailPanel habitId={selected.id} day={day} />
+        </div>
       )}
 
       {creating && <HabitForm onClose={() => setCreating(false)} />}
