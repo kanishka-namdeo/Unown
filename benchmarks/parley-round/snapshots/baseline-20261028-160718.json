@@ -1,0 +1,185 @@
+{
+ "label": "baseline",
+ "capturedAt": "2026-10-28T16:07:18",
+ "schema": "parley-round/1",
+ "tasks": [
+  {
+   "id": "fix-fizzbuzz",
+   "name": "Fix FizzBuzz",
+   "category": "bugfix",
+   "difficulty": 1,
+   "status": "regression",
+   "origin": "seed",
+   "pass_count": 1,
+   "fail_count": 0,
+   "created_at": 1793201393852
+  },
+  {
+   "id": "fix-drop-right",
+   "name": "Fix dropRight off-by-one",
+   "category": "bugfix",
+   "difficulty": 2,
+   "status": "regression",
+   "origin": "seed",
+   "pass_count": 1,
+   "fail_count": 0,
+   "created_at": 1793201393852
+  },
+  {
+   "id": "fix-csv-parser",
+   "name": "Fix CSV parsing",
+   "category": "bugfix",
+   "difficulty": 3,
+   "status": "regression",
+   "origin": "seed",
+   "pass_count": 1,
+   "fail_count": 0,
+   "created_at": 1793201393852
+  },
+  {
+   "id": "impl-debounce",
+   "name": "Implement debounce",
+   "category": "implementation",
+   "difficulty": 4,
+   "status": "regression",
+   "origin": "seed",
+   "pass_count": 1,
+   "fail_count": 0,
+   "created_at": 1793201393852
+  },
+  {
+   "id": "impl-map-limit",
+   "name": "Implement mapLimit",
+   "category": "implementation",
+   "difficulty": 4,
+   "status": "regression",
+   "origin": "seed",
+   "pass_count": 1,
+   "fail_count": 0,
+   "created_at": 1793201393852
+  }
+ ],
+ "taskCount": 5,
+ "tasksPassing": 5,
+ "cycles": [
+  {
+   "task_id": "impl-map-limit",
+   "status": "already-passing",
+   "iteration": 1,
+   "summary": "baseline passed \u2014 no improvement needed",
+   "shipped": 0,
+   "created_at": 1793203605299,
+   "ended_at": 1793203613008
+  },
+  {
+   "task_id": "impl-debounce",
+   "status": "already-passing",
+   "iteration": 1,
+   "summary": "baseline passed \u2014 no improvement needed",
+   "shipped": 0,
+   "created_at": 1793202994944,
+   "ended_at": 1793203000851
+  },
+  {
+   "task_id": "fix-csv-parser",
+   "status": "already-passing",
+   "iteration": 1,
+   "summary": "baseline passed \u2014 no improvement needed",
+   "shipped": 0,
+   "created_at": 1793202449930,
+   "ended_at": 1793202477636
+  },
+  {
+   "task_id": "fix-drop-right",
+   "status": "already-passing",
+   "iteration": 1,
+   "summary": "baseline passed \u2014 no improvement needed",
+   "shipped": 0,
+   "created_at": 1793202388022,
+   "ended_at": 1793202391978
+  },
+  {
+   "task_id": "fix-fizzbuzz",
+   "status": "already-passing",
+   "iteration": 1,
+   "summary": "baseline passed \u2014 no improvement needed",
+   "shipped": 0,
+   "created_at": 1793201994290,
+   "ended_at": 1793201998976
+  }
+ ],
+ "cycleCount": 5,
+ "cycleStatusCounts": {
+  "already-passing": 5
+ },
+ "improvements": [],
+ "improvementCount": 0,
+ "dreams": [
+  {
+   "id": "e68df5ac-e2a8-4bae-9502-b72c55130bfa",
+   "status": "running",
+   "notes": null,
+   "created_at": null
+  },
+  {
+   "id": "c1f7db86-755d-4c60-98da-dca53115d015",
+   "status": "done",
+   "notes": null,
+   "created_at": null
+  },
+  {
+   "id": "24e18dd9-308f-42e7-8812-8970fdfa86e0",
+   "status": "done",
+   "notes": null,
+   "created_at": null
+  },
+  {
+   "id": "2f894094-5488-4f96-9656-0f07f93911ba",
+   "status": "done",
+   "notes": null,
+   "created_at": null
+  },
+  {
+   "id": "project-165224c1-552c-4dab-ba5e-cd97e2378e1f",
+   "status": "done",
+   "notes": null,
+   "created_at": null
+  }
+ ],
+ "dreamCount": 5,
+ "memoryTiers": [
+  {
+   "tier": "policy",
+   "version": 1,
+   "content": "# Tier 0 \u2014 Policy (non-negotiable guardrails)\n\n- Never delete or overwrite files outside the current working directory.\n- Never install packages, start network listeners, or contact external hosts.\n- Always verify your work by running the provided tests before declaring success.\n- Keep changes minimal: fix exactly what the task asks for.\n- If a verification fails, inspect the failure output and fix the root cause \u2014 never edit tests to make them pass.\n- Read a file before editing it, and match the style and conventions already in it.\n- When a check fails, fix the root cause and re-run it \u2014 never report success with a failing check.\n"
+  },
+  {
+   "tier": "project",
+   "version": 4,
+   "content": "# Project Memory\n\n## Workflow\n- Verification is automated: a verify script executes after your turn; its output is ground truth.\n- The workspace contains a small Node/Bun project with tests. Run tests with `bun <testfile>`.\n\n## Known pitfalls\n- When implementing `dropRight`, the slice end index must be `arr.length - n`, not `arr.length - n - 1`, to avoid off-by-one errors.\n\n## Environment\n- In csv.js, parseCsvLine must be a state-machine parser: inside a quoted state, treat commas as literal, consume two consecutive double quotes as a single escaped quote, and close the quoted region on a lone double quote. A leading `\"` starts a quoted region only if it is the first non-whitespace character in the field; otherwise treat `\"` as a literal inside an unquoted field. \"reason\":\"Merged near-duplicate 097b16ee and 6e24ebb7 into one complete CSV-parsing rule. \"}]},\n\n## Facts\n- In CSV parsing logic, a quote character `\"` is only treated as the start of a quoted region if it is the first non-whitespace character in the field; otherwise, it is treated as a literal character inside an unquoted field.\n- Debounce implementation uses a pending state holding the last call's args and a `due` timestamp (`now() + delay`), firing lazily on the next call when the boundary has passed\n- Fix for the fizz-buzz logic: check % 15 === 0 before the % 3 branch so multiples of 15 output \"FizzBuzz\" instead of \"Fizz\".\n\n<!-- unown: rendered 7/7 memories via Mem0 (backend: lexical) at 2026-10-28T16:03:10.645Z -->\n"
+  },
+  {
+   "tier": "user",
+   "version": 1,
+   "content": "# Tier 2 \u2014 User Memory\n\n- The user values minimal diffs and clear, idiomatic code.\n- Prefer standard library functions over hand-rolled logic.\n"
+  },
+  {
+   "tier": "local",
+   "version": 1,
+   "content": "# Tier 3 \u2014 Local Overrides\n\n(empty \u2014 most specific tier; anything here overrides the tiers above)\n"
+  }
+ ],
+ "skills": [],
+ "skillCount": 0,
+ "runCount": 14,
+ "runStats": {
+  "tokensIn": 0,
+  "tokensOut": 0,
+  "toolCalls": 0
+ },
+ "passRate": {
+  "runsPassed": 14,
+  "runsTotal": 14
+ },
+ "noteCount": 15
+}
