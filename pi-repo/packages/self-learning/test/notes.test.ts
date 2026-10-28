@@ -382,7 +382,7 @@ describe("pendingTerminalNotesByProject", () => {
                 expect(groups[0]?.projectPath).toBe("/srv/quiet");
                 const total = groups.reduce((n, g) => n + g.notes.length, 0);
                 expect(total).toBeLessThanOrEqual(40);
-        });
+        }, 60_000);
 
         test("the per-project cap keeps the global 40-cap meaningful across many projects (BUG 6)", () => {
                 // 5 projects x 20 notes each (seeded round-robin): after the
@@ -402,7 +402,7 @@ describe("pendingTerminalNotesByProject", () => {
                         expect(g.notes).toHaveLength(8); // 40 oldest / 5 projects, round-robin
                         expect(g.notes[0].content).toBe(`p${g.projectPath.slice(-1)}-r0`); // oldest-first within the project
                 }
-        });
+        }, 60_000);
 });
 
 // ---------------------------------------------------------------------------

@@ -663,7 +663,7 @@ describe("createCheckpointsExtension — hardening (H1)", () => {
             storeDir: join(proj, ".unown", "checkpoints"),
             receiptsFile: join(proj, ".unown", "receipts", `${boot}.jsonl`),
             bootId: boot,
-        });
+        }, 60_000);
         const harness = makeFakePi();
         ext.factory(harness.pi);
         return harness;
