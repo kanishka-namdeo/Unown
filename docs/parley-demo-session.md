@@ -112,7 +112,7 @@ ledger, phase table and commit map ship at round close.
   improvements/dreams/skills/memory/runs token stats) captured to a
   versioned JSON receipt, taken at baseline / midpoint / final.
 
-## Checkpoint 3 — the build (IN PROGRESS)
+## Checkpoint 3 — the build (IN PROGRESS — Plan/Lib/API/UI shipped, E2E next)
 
 Phase chain (the cadence order, extended for tenancy):
 
@@ -126,6 +126,48 @@ Phase chain (the cadence order, extended for tenancy):
 | Review | `/review` with the adversarial brief (this round's adopted pattern) + fixes | pending |
 | Drill | `/checkpoint` `/undo` `/commit` through the real TUI | pending |
 | Landing | Gallery entry #4, poster, receipts, tests | pending |
+
+### The mid-round session-continuity event (2026-10-29, recorded for the resume)
+
+The round survived an operator handover mid-build: a fresh environment
+resumed the mission while the original session's queued pushes landed
+(through `0c0c99f` — the UI phase, the round's REST-based snapshot driver
+`64573b6`, and the SOTA midpoint `8cb4dff`). The resuming operator:
+
+- verified the baseline gates green on a fresh clone (bun 1.4.4, 413
+  packages, pi-repo built, bridge up against the Agnes upstream, engine
+  `phase:ready` v0.0.37, typecheck/lint/630 tests);
+- root-caused, fixed and pinned the round's first Unown defect (**F3** —
+  print-mode forced exits swallowing the result envelope;
+  [validation log](../benchmarks/parley-round/validation-log.md), commit
+  `b4cdbbe`) and documented the zero-token usage-log gap (F4);
+- reconciled the duplicate in-flight UI work onto the shipped upstream UI
+  (`git rebase origin/main`, the upstream session's snapshot driver kept,
+  the duplicate local work archived unmerged) — the F3 fix re-verified on
+  the rebased tree (4/4 pinning tests, 647 unit tests green).
+
+The UI-phase research receipt ([parley-ui-research.md](parley-ui-research.md))
+landed with the F3 commit — the blueprint the upstream UI was audited
+against (three-pane workspace, SLA chip states, listbox semantics, the
+Freshdesk-style explicit role switcher).
+
+### Operator division of labor (2026-10-29, the coordination note)
+
+With both operators live on the repo (the original mid-E2E, the resuming
+one verified and reconciled), the lanes split to end the collision risk:
+
+- **The original session** owns the app phase chain to its close: E2E (in
+  flight) → Review → Drill → Landing (the gallery's fourth entry) →
+  round-close receipts.
+- **The resuming session** owns the mission-level deliverables that span
+  rounds: the consolidated competitor-comparison report, the Unown
+  learning report, the benchmark improvement report (baseline → midpoint
+  → final, receipts-first), and the landing showcase section ("Built &
+  Improved With Unown") that frames all four apps plus the agent's
+  measured evolution — distinct files from the round's Landing phase
+  (which touches `live-demo-data.ts` + the gallery band); any unavoidable
+  overlap reconciles through fetch-before-push, the procedure both
+  operators now follow.
 
 ## Checkpoint 4 — verification (PENDING)
 
