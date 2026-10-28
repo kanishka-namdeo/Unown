@@ -12,7 +12,7 @@
 - [Checkpoint 0 — setup](#checkpoint-0--setup-done)
 - [Checkpoint 1 — research](#checkpoint-1--research-done)
 - [Checkpoint 2 — benchmark baseline](#checkpoint-2--benchmark-baseline-done)
-- [Checkpoint 3 — the build](#checkpoint-3--the-build-in-progress)
+- [Checkpoint 3 — the build](#checkpoint-3--the-build-in-progress--planlibapiui-shipped-e2e-next)
 - [Checkpoint 4 — verification](#checkpoint-4--verification-pending)
 - [Checkpoint 5 — learning-loop evidence](#checkpoint-5--learning-loop-evidence-pending)
 - [Checkpoint 6 — docs, blog, DOX](#checkpoint-6--docs-blog-dox-pending)
