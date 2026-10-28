@@ -59,7 +59,9 @@ ledger, phase table and commit map ship at round close.
   `agent:start` green (bridge `ok:true` upstream, engine `phase:ready`
   v0.0.37, `unown doctor` green except optional items), baseline gates
   re-verified (typecheck/lint clean, 630 tests, all `check:*` green).
-  Two operator incidents, both logged in the SOTA validation log as F3:
+  Two operator incidents, both logged in the SOTA validation log as F5
+  (numbered after the predecessor's F3/F4 in the parley-round log — the
+  shared lineage):
   (1) a first headless launch died at tool-call teardown — F2's exact
   pattern, re-verified on this host, the intermediate-exit launcher
   rebuilt (`setsid` + immediate-exit parent); (2) a parallel-predecessor

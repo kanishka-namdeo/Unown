@@ -107,7 +107,12 @@
 - **Retention:** procedure recorded here and in the session receipt; the
   F0/F2 pair now fully specifies the unattended-caller contract on this host.
 
-### F3 — the environment-resurrection pair: launcher teardown kill re-verified + the parallel-predecessor collision (closed: caller environment ×2, one procedure gap)
+### F5 — the environment-resurrection pair: launcher teardown kill re-verified + the parallel-predecessor collision (closed: caller environment ×2, one procedure gap)
+
+> Numbered F5 in the shared lineage: F3/F4 live in the parley round's log
+> ([the envelope fix](../../parley-round/validation-log.md) shipped by the
+> predecessor session while this one was cloning — the same lineage's other
+> branch, discovered mid-collision and reconciled below).
 
 - **Description:** resuming the round on a fresh machine produced two failures
   in sequence. (a) A headless `unown -p … &` build session (plain `nohup`,
@@ -154,7 +159,7 @@
   snapshot, `8cb4dff`); the remote UI verified green on this machine
   (647 tests, `GET /parley` 200).
 - **Retention:** the launcher + the fetch-first rule are now the standing
-  procedure for every remaining phase and any future resurrection; F2/F3
+  procedure for every remaining phase and any future resurrection; F2/F5
   together fully specify the unattended-caller contract for both hosts this
   round has run on.
 
