@@ -79,7 +79,23 @@ if (!html) {
 
 section("page content");
 note(html.includes("It reads what you write down"), "signature line (subhead since 2026-10-24)");
-note(html.includes("The terminal coding agent that remembers"), "keyword-bearing h1");
+// The h1 carries the search phrases, and since the presence round
+// (2026-10-28) each word is wrapped in its own `.word-settle` span — the
+// contiguous string no longer exists in RAW HTML, only in the element's
+// text content. The assertion's intent never was markup shape; it was
+// "the keyword-bearing sentence is what a reader (and a crawler reading
+// textContent) gets". Extract the h1's own markup and strip the tags
+// before matching: same assertion, scoped to the element, robust to the
+// settle's (and any future) per-word markup. The unit suite
+// (`landing-copy`, `presence`) and `e2e/seo.spec.ts` keep pinning the
+// character-exact sentence upstream of this gate.
+const h1Markup = html.match(/<h1[^>]*>([\s\S]*?)<\/h1>/)?.[1] ?? "";
+const h1Text = h1Markup
+  .replace(/<[^>]+>/g, " ")
+  .replace(/&amp;/g, "&")
+  .replace(/\s+/g, " ")
+  .trim();
+note(h1Text.includes("The terminal coding agent that remembers"), "keyword-bearing h1 (text content)");
 // The beta stage is a load-bearing status claim (2026-10-25): the badge pair
 // the research settled on — chip + plain-language sentence — so both halves
 // are asserted; a badge whose sentence was copy-edited away would still pass
