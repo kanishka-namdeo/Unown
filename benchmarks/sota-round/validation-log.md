@@ -107,6 +107,57 @@
 - **Retention:** procedure recorded here and in the session receipt; the
   F0/F2 pair now fully specifies the unattended-caller contract on this host.
 
+### F3 — the environment-resurrection pair: launcher teardown kill re-verified + the parallel-predecessor collision (closed: caller environment ×2, one procedure gap)
+
+- **Description:** resuming the round on a fresh machine produced two failures
+  in sequence. (a) A headless `unown -p … &` build session (plain `nohup`,
+  backgrounded) died silently within ~90 s of the launching tool call ending —
+  empty log, process gone, while the bridge usage log proved the session had
+  started (3 upstream calls). (b) A UI-phase build session launched from a
+  clone at `6d40de2` spent ~14 minutes rebuilding work that was already
+  committed: the predecessor operator session was still alive and pushing
+  (`3d10ed4` parley UI, `c05c9c2` CSP, `8cb4dff` SOTA midpoint — all
+  timestamped after the clone), and the fresh clone's git log showed none of
+  it.
+- **Reproduction:** (a) process-table comparison across tool calls + the
+  bridge usage log (session started, then gone; the engine/bridge — spawned
+  through an intermediate process that exits immediately — survived every
+  call). (b) `git fetch origin` on the supposedly-current clone returned
+  `6d40de2..8cb4dff main -> origin/main` — four remote commits, one of them
+  the exact phase the local session was re-doing; local receipts
+  (`2026-10-28180733-0l4y.jsonl`, 144 tool rows) overlapped the remote
+  commit's file list.
+- **Root cause:** (a) F2's exact mechanism, re-verified on the new host: the
+  caller harness's teardown kills direct descendants even under
+  `nohup … &`; only the intermediate-exit spawn shape survives. (b) a
+  procedure gap, not a tool defect: the clone was taken while the
+  predecessor session was mid-flight, and no fetch-before-launch check
+  existed to catch the divergence before spending a session on it.
+- **Unown defect?** No — (a) is F2's family (caller environment, documented
+  contract); (b) is an operator-process failure the git preflight in
+  AGENTS.md already anticipates ("a pull can move the tree mid-task"), here
+  in its clone-side variant.
+- **Benchmark created:** this entry + the fetch-before-every-phase-launch
+  rule now in the parley session record.
+- **Improvement applied:** the intermediate-exit launcher rebuilt for this
+  environment (`setsid bash -c 'exec …'` + immediate-exit parent + file
+  stdio — the F2-proven shape, verified surviving across five subsequent
+  tool calls); the duplicate session killed, its uncommitted writes
+  discarded (the remote's committed, tested UI is canonical), its receipts
+  retained as this entry's evidence; the round's snapshot driver committed
+  (`benchmarks/parley-round/snapshot.mjs`) so the receipts lane survives
+  environment changes.
+- **Validation evidence:** the E2E session launched through the rebuilt
+  launcher ran 50 turns to completion across many tool-call teardowns;
+  `git fetch` divergence checks before each subsequent phase launch caught
+  no further collision (the predecessor's last push was its midpoint
+  snapshot, `8cb4dff`); the remote UI verified green on this machine
+  (647 tests, `GET /parley` 200).
+- **Retention:** the launcher + the fetch-first rule are now the standing
+  procedure for every remaining phase and any future resurrection; F2/F3
+  together fully specify the unattended-caller contract for both hosts this
+  round has run on.
+
 ## Improvements
 
 (none yet — the first improvement entries will carry: baseline behaviour,

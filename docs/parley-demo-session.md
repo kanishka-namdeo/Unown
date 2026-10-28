@@ -52,6 +52,27 @@ ledger, phase table and commit map ship at round close.
   claims`, sandbox verify 12/12.
 - Fresh engine state confirmed (new clone = fresh `data/self-learning/`):
   5 seed tasks, 0 cycles, 0 dreams, 0 skills, policy-tier memory only.
+- **Environment resurrection (2026-10-28 18:31 UTC, the session-resume
+  checkpoint):** the round resumed on a fresh machine from this record.
+  Clone at `6d40de2`, bun 1.4.3 installed (host bun 1.3.14 below the
+  floor), `.env` wired to the Agnes upstream key, `agent:install` +
+  `agent:start` green (bridge `ok:true` upstream, engine `phase:ready`
+  v0.0.37, `unown doctor` green except optional items), baseline gates
+  re-verified (typecheck/lint clean, 630 tests, all `check:*` green).
+  Two operator incidents, both logged in the SOTA validation log as F3:
+  (1) a first headless launch died at tool-call teardown — F2's exact
+  pattern, re-verified on this host, the intermediate-exit launcher
+  rebuilt (`setsid` + immediate-exit parent); (2) a parallel-predecessor
+  collision — the prior operator session was still pushing while this
+  environment cloned at `6d40de2`, so its UI-phase commits (`3d10ed4`,
+  `c05c9c2`) landed remotely after the clone; a locally-launched UI
+  session duplicated finished work for ~14 minutes before the fetch
+  caught it. Resolution: kill, discard the uncommitted duplicates, keep
+  the receipts, rebase, verify the remote's UI on this machine (647
+  tests green, `GET /parley` 200). Procedure adopted: `git fetch` +
+  divergence check before EVERY phase launch. The snapshot driver is
+  now committed (`benchmarks/parley-round/snapshot.mjs`) so the receipts
+  lane is reproducible across environments.
 
 ## Checkpoint 1 — research (DONE)
 
@@ -95,11 +116,11 @@ Phase chain (the cadence order, extended for tenancy):
 
 | Phase | What | Status |
 |---|---|---|
-| Plan | `--plan` mode: the numbered plan from the brief | pending |
-| Lib | Domain: types, ids, password (scrypt), sessions, tenancy (fail-closed repo), rbac matrix, sla, audit, metering, validation, deterministic seed + unit tests | pending |
-| API | Route handlers: auth (login/logout/session), conversations CRUD + reply/assign/status/tags, invites + accept, audit, usage, analytics, canned, mailbox, reset + isolation tests | pending |
-| UI | Login, two-pane inbox, thread, composer, detail panel with SLA chips, admin surfaces, portal toggle, role switcher, embed shell + component tests | pending |
-| E2E | Live browser pass over CDP: login/logout, role switch, cross-tenant 404, invite accept, SLA render, embed reset handshake | pending |
+| Plan | `--plan` mode: the numbered plan from the brief | done (operator briefs, pre-revival) |
+| Lib | Domain: types, ids, password (scrypt), sessions, tenancy (fail-closed repo), rbac matrix, sla, audit, metering, validation, deterministic seed + unit tests | done — `6a5ef23`, 180 tests |
+| API | Route handlers: auth (login/logout/session), conversations CRUD + reply/assign/status/tags, invites + accept, audit, usage, analytics, canned, mailbox, reset + isolation tests | done — `b8d3e0a` + `6d40de2`, 76 tests |
+| UI | Login, two-pane inbox, thread, composer, detail panel with SLA chips, admin surfaces, portal toggle, role switcher, embed shell + component tests | done — `3d10ed4` (32 tests) + CSP `c05c9c2`; re-verified post-revival: 647 tests, `GET /parley` 200 |
+| E2E | Live browser pass over CDP: login/logout, role switch, cross-tenant 404, invite accept, SLA render, embed reset handshake | in flight (session 2) |
 | Review | `/review` with the adversarial brief (this round's adopted pattern) + fixes | pending |
 | Drill | `/checkpoint` `/undo` `/commit` through the real TUI | pending |
 | Landing | Gallery entry #4, poster, receipts, tests | pending |
