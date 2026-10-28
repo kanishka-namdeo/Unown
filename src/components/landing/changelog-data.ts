@@ -30,19 +30,65 @@ export interface ChangelogStop {
   groups: ChangelogGroup[];
 }
 
-export const CHANGELOG_TOTAL_ENTRIES = 332;
+export const CHANGELOG_TOTAL_ENTRIES = 337;
 
 export const CHANGELOG_TOTALS: Record<ChangelogBucket, number> = {
-  "Added": 144,
+  "Added": 147,
   "Changed": 28,
   "Deprecated": 0,
   "Removed": 3,
-  "Fixed": 122,
+  "Fixed": 124,
   "Security": 5,
   "Behavior": 30
 };
 
 export const CHANGELOG_STOPS: ChangelogStop[] = [
+  {
+    "label": "0.0.34",
+    "date": "2026-10-28",
+    "total": 5,
+    "counts": {
+      "Added": 3,
+      "Changed": 0,
+      "Deprecated": 0,
+      "Removed": 0,
+      "Fixed": 2,
+      "Security": 0,
+      "Behavior": 0
+    },
+    "groups": [
+      {
+        "bucket": "Added",
+        "items": [
+          {
+            "title": "landing + demo: the commerce round — the live-demo band became a gallery",
+            "behavior": false
+          },
+          {
+            "title": "demo hardening: both live demos get the round's research-grounded fixes",
+            "behavior": false
+          },
+          {
+            "title": "capture harness: the round-session driver, and the first-flights fix both lanes needed",
+            "behavior": false
+          }
+        ]
+      },
+      {
+        "bucket": "Fixed",
+        "items": [
+          {
+            "title": "bazaar: same-day seed orders were dated into the future after midnight",
+            "behavior": false
+          },
+          {
+            "title": "landing: axe computes contrast THROUGH alpha backgrounds — the gallery's selected tab failed at 1.73:1",
+            "behavior": false
+          }
+        ]
+      }
+    ]
+  },
   {
     "label": "0.0.33",
     "date": "2026-10-28",
