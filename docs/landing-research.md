@@ -30,6 +30,7 @@ changed no pixels: an audit of what the page says twice, in Part 12.
 - [Part 17 — The variety round: one body plan per creature](#part-17--the-variety-round-one-body-plan-per-creature)
 - [Part 18 — The dex absorbs the captures: one spine for a capability and its footage](#part-18--the-dex-absorbs-the-captures-one-spine-for-a-capability-and-its-footage)
 - [2026-10-28 — the presence round: the page answers you](#2026-10-28--the-presence-round-the-page-answers-you)
+- [2026-10-28 — the carving round: the letters draw themselves](#2026-10-28--the-carving-round-the-letters-draw-themselves)
 
 Related pages: [benchmark-research.md](benchmark-research.md) — the numbers the
 page quotes; the page's binding contract lives one level up in
@@ -2362,3 +2363,57 @@ dex", spotlight vars on the hovered card, the wave caught mid-flight by the
 VLM as "ANOWN · WHILT ON PI" — the decoy alphabet verbatim); and the Agnes
 VLM design critique whose one actionable finding (the 2px bar) shipped as a
 fix in the same round.
+
+---
+
+## 2026-10-28 — the carving round: the letters draw themselves
+
+The presence round shipped the page's entrance (the decode wave, the word
+settle, the route bar, the scrollspy, the spotlight, the glint, the Live chip,
+the count-up, the pane-swap). This round is the remainder of the same brief —
+what else can make the page stunning AND intuitive without duplicating a single
+one of those, and without breaking the four motion invariants that keep this
+page from becoming a template. The full survey, with citations, is
+[`docs/landing-carving-research.md`](landing-carving-research.md); this section
+records the decisions.
+
+**The insight the round is named for.** The page's own `Glyph` component has
+shipped a stroke-reveal hook (`reveal`/`drawStagger`, `pathLength` +
+`strokeDashoffset`) since the 28 forms were authored — wired to nothing. One
+small driver (`DrawGlyph` + `useGlyphReveal`) points it at the two surfaces
+where a glyph IS the subject: the alphabet decode panel (carves on first
+view, re-carves on every hover/pick — the "engraving stuck to a wall" lore
+made literal) and the finale spellbox (each typed letter draws itself).
+SSR ships the finished glyph; the draw is IntersectionObserver-gated;
+reduced motion never starts it; both glyphs stay `aria-hidden` decorative.
+
+**The decode fill, spelled the honest way.** The Apple-style scroll-linked
+word reveal animates opacity — and a 40%-opacity frame of body text on the
+navy canvas measures ~2.4:1, which fails the axe contrast gate this page runs
+in both motion passes (the animated pass returns to the top of the page, where
+below-viewport words sit at their backwards-fill start state). This page's
+spelling animates **color between two AA palette tokens** (`faint` → `dim`,
+7.8:1 → 11.3:1) on per-word `view()` timelines with a capped stagger — the
+same unknown→known gesture, AA at every frame, zero JS. It lives on the
+finale lead, the calmest band on the page, whose prose was otherwise static.
+
+**The intuitiveness half.** The Konami affordances render as keycap chips
+(`.gb-kbd`) instead of prose — the same words, in the recognition-over-recall
+spelling, on the mono face (Press Start 2P's latin subset carries no arrows,
+the same reason every `▶` on the page is drawn). The copy buttons gain the
+sr-only `role="status"` "Copied" announcement (WCAG 4.1.3 Status Messages) —
+the one a11y gap the research pass found on an otherwise dense surface. The
+section H2s gain `text-balance`, joining the H1.
+
+**What the round re-verified as already shipped** (so no round re-opens it):
+anchor scroll offsets (`scroll-mt-16` on every banded section), benchmark
+receipt links under `benchmarks/`, install copy buttons with OS tabs, the
+docs-first CTA, the star chip, the trust strip.
+
+**What it rejected** (full reasons in the carving research doc): CRT
+scanlines — reconfirmed against the TFT-panel rule, and the rejection is now
+recorded in the research doc so the proposal stops returning; nav
+hover-scramble — the decode wave's monospaced-zero-CLS contract forbids it on
+Geist; shimmer/conic borders, split-flap stats, interactive grid cells,
+meteors, the word-rotator, the seal's eye blink. cmd-K landing search and
+blog hover-previews are recorded as the head of the next round's queue.
