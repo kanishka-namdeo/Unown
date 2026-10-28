@@ -234,12 +234,16 @@ describe("verify script execution (tamper gate)", () => {
 // ---------------------------------------------------------------------------
 
 describe("TASK_DEFS invariants", () => {
-        test("five seed tasks ship with the benchmark suite", () => {
+        test("six seed tasks ship with the benchmark suite", () => {
                 expect(TASK_DEFS.map((d) => d.id)).toEqual([
                         "fix-fizzbuzz",
                         "fix-drop-right",
                         "impl-debounce",
                         "impl-map-limit",
+                        // The SOTA round's port of a measured edit-bench failure
+                        // (structural-swap-if-else-006): gives the harness a real
+                        // capability gap instead of a saturated seed suite.
+                        "swap-if-else-messages",
                         "fix-csv-parser",
                 ]);
         });
@@ -253,9 +257,9 @@ describe("TASK_DEFS invariants", () => {
 });
 
 describe("seedTasks / getTask / listTasks", () => {
-        test("seedTasks inserts the five defs with buildVerify as the verify script", () => {
+        test("seedTasks inserts the six defs with buildVerify as the verify script", () => {
                 const rows = store.query<{ id: string }>(`SELECT id FROM tasks ORDER BY id`);
-                expect(rows).toHaveLength(5);
+                expect(rows).toHaveLength(6);
                 const task = getTask("fix-fizzbuzz");
                 expect(task?.prompt).toBe(TASK_DEFS[0]?.prompt);
                 expect(task?.files).toEqual(TASK_DEFS[0]?.files); // files JSON round-trips
@@ -278,7 +282,8 @@ describe("seedTasks / getTask / listTasks", () => {
                 expect(listTasks().map((t: { id: string }) => t.id)).toEqual([
                         "fix-fizzbuzz", // difficulty 1
                         "fix-drop-right", // 2
-                        "fix-csv-parser", // 3
+                        "fix-csv-parser", // 3, id sorts before swap-if-else
+                        "swap-if-else-messages", // 3 (the SOTA round's ported swap)
                         "impl-debounce", // 4, id sorts before map-limit
                         "impl-map-limit", // 4
                 ]);
@@ -287,7 +292,7 @@ describe("seedTasks / getTask / listTasks", () => {
         test("seedTasks is idempotent — re-seeding neither duplicates nor overwrites", () => {
                 seedTasks();
                 seedTasks();
-                expect(store.query(`SELECT id FROM tasks`)).toHaveLength(5);
+                expect(store.query(`SELECT id FROM tasks`)).toHaveLength(6);
                 expect(getTask("fix-fizzbuzz")?.verify).toBe(buildVerify(TASK_DEFS[0] as TaskDef));
         });
 });
