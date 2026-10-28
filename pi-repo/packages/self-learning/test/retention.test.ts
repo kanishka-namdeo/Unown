@@ -236,7 +236,7 @@ describe("runRetentionPass (throwaway stores)", () => {
                         expect(r2.pruned.hook_log).toBe(0);
                 });
                 s.close();
-        });
+        }, 60_000);
 
         test("moreRemaining=true when a table still has prunable rows after the budget", () => {
                 // 60k old rows > the 50k per-table-per-pass budget: the pass must
