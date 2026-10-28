@@ -14,6 +14,7 @@ import {
   SELFIMPROVE,
 } from "./benchmarks-data";
 import { formatPct, runStamp } from "./benchmark-figures";
+import { CountUp } from "./effects";
 
 /**
  * The Benchmarks pane of the proof band (`proof.tsx`).
@@ -230,7 +231,7 @@ function TrackCard({
 }) {
   return (
     <FadeUp delay={delay} className="h-full">
-      <div className="gb-panel lift flex h-full flex-col p-4 hover:border-line-bright">
+      <div className="gb-panel lift flex h-full flex-col p-4 hover:border-line-bright" data-spotlight>
         <div className="flex items-center gap-3">
           <Icon className="size-5 shrink-0 text-gold" aria-hidden="true" />
           <h3 className="text-[15px] font-medium text-ink">{name}</h3>
@@ -252,14 +253,21 @@ export function BenchmarksPane() {
       {/* the stat band: full-bleed, four numbers the research calls a
           "proof band" — the cheapest way to say "this is measured" without a
           paragraph. Dividers are borders on the cells so the row spans the
-          pane without seam bars. */}
+          pane without seam bars.
+
+          Three of the four count up once when they first enter the viewport
+          (`CountUp` — the DOM ships the final receipt figure; the count is a
+          600ms one-shot, never under reduced motion). The fourth is a ratio,
+          and ratios do not count: "0/50" animating would read as a tally
+          growing, which is the opposite of the honest claim — zero rules
+          shipped is an immovable fact, so it renders immovable. */}
       <div className="border-y border-line bg-panel/30">
         <div className="grid sm:grid-cols-2 lg:grid-cols-4">
           {[
-            { v: "52%", l: "LiveCodeBench v6 pass@1", s: "post-cutoff problems, kimi-k2.5" },
-            { v: "98.1%", l: "edit accuracy", s: "106-fixture oh-my-pi benchmark" },
-            { v: "−35%", l: "warm wall time", s: "repeat tasks, kimi-k2.5" },
-            { v: "0/50", l: "attacker rules shipped", s: "MPBench-adapted corpus, 0 planted" },
+            { v: 52 as number | null, suffix: "%", decimals: 0, l: "LiveCodeBench v6 pass@1", s: "post-cutoff problems, kimi-k2.5" },
+            { v: 98.1 as number | null, suffix: "%", decimals: 1, l: "edit accuracy", s: "106-fixture oh-my-pi benchmark" },
+            { v: -35 as number | null, suffix: "%", decimals: 0, l: "warm wall time", s: "repeat tasks, kimi-k2.5" },
+            { v: null, raw: "0/50", l: "attacker rules shipped", s: "MPBench-adapted corpus, 0 planted" },
           ].map((s, i) => (
             <div
               key={s.l}
@@ -270,7 +278,11 @@ export function BenchmarksPane() {
                   figures — the no-digit-in-font-display rule is at its most
                   load-bearing exactly here. */}
               <p className="font-mono text-3xl font-semibold tabular-nums tracking-tight text-gold">
-                {s.v}
+                {s.v === null ? (
+                  s.raw
+                ) : (
+                  <CountUp value={s.v} suffix={s.suffix} decimals={s.decimals} />
+                )}
               </p>
               <p className="mt-1 text-[13px] font-medium text-ink">{s.l}</p>
               <p className="mt-0.5 font-mono text-[10px] leading-relaxed text-faint">

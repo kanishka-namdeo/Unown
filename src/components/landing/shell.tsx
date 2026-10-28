@@ -5,7 +5,7 @@ import Link from "next/link";
 import { MotionConfig, motion, useReducedMotion } from "framer-motion";
 import { Check, Copy } from "lucide-react";
 import { Glyph } from "./glyph";
-import { useAlphabetWake, useKonami } from "./effects";
+import { useAlphabetWake, useKonami, useScrollSpy } from "./effects";
 
 export const GITHUB_URL = "https://github.com/kanishka-namdeo/Unown";
 export const DOCS_URL = "https://github.com/kanishka-namdeo/Unown/tree/main/docs";
@@ -529,16 +529,31 @@ const NAV_ENTRIES = [
 const NAV_PRIMARY = NAV_ENTRIES.filter((l) => l.group === "primary");
 const NAV_MORE = NAV_ENTRIES.filter((l) => l.group === "more");
 
+/** The in-page nav anchors, in page order — the scrollspy's watch list. A
+ *  module constant so the hook's effect never re-subscribes between
+ *  renders. */
+const SECTION_IDS: readonly string[] = Object.freeze(
+  NAV_ENTRIES.filter((l) => l.href.startsWith("#")).map((l) => l.href.slice(1)),
+);
+
 /** A nav entry: in-page anchors are plain `<a>` (same-document jumps), real
  * routes go through next/link — one component so both bars stay in sync.
  * Both carry the gutter `▶` hover cursor; for the route entry it sits in the
- * same gap the anchors put it in. */
+ * same gap the anchors put it in.
+ *
+ * `current` marks the band the visitor is reading (the scrollspy in `Nav`):
+ * the link gains `aria-current="true"`, which `landing.css` styles into the
+ * persistent `▶` and the ink-bright label — the battle-menu idiom for "this
+ * row is selected", so the marker is furniture, not decoration, and it
+ * ships identically under reduced motion. The `/blog` route entry can never
+ * be current — it is not a band on this page. */
 function NavLink({
   href,
   label,
   className,
   onClick,
   cursorClassName,
+  current,
 }: {
   href: string;
   label: string;
@@ -547,10 +562,13 @@ function NavLink({
   /** Where the entry renders its hover cursor — the desktop bar positions it
    * in the link gap, the menu list in a fixed leading slot. */
   cursorClassName?: string;
+  /** True when `href` is the section the scrollspy says is being read. */
+  current?: boolean;
 }) {
   const cursor = cursorClassName ? (
-    <PixelCursor className={cursorClassName} />
+    <PixelCursor className={`${cursorClassName} nav-cursor`} />
   ) : null;
+  const aria = current ? ({ "aria-current": "true" } as const) : undefined;
   if (href.startsWith("/")) {
     return (
       <Link href={href} onClick={onClick} className={className}>
@@ -560,7 +578,7 @@ function NavLink({
     );
   }
   return (
-    <a href={href} onClick={onClick} className={className}>
+    <a href={href} onClick={onClick} className={className} {...aria}>
       {cursor}
       {label}
     </a>
@@ -582,7 +600,7 @@ function NavLink({
  * closes on Escape (back to the trigger), on a link click, on a pointer-down
  * outside, and on focus leaving the disclosure.
  */
-function NavMore() {
+function NavMore({ current }: { current: string | null }) {
   const [open, setOpen] = React.useState(false);
   const wrap = React.useRef<HTMLDivElement>(null);
   const trigger = React.useRef<HTMLButtonElement>(null);
@@ -643,6 +661,7 @@ function NavMore() {
             href={l.href}
             label={l.label}
             onClick={close}
+            current={current !== null && l.href === `#${current}`}
             className="group flex items-center border-b border-line py-2.5 text-[13px] text-dim transition-colors last:border-b-0 hover:text-gold focus:outline-none focus-visible:text-gold"
             cursorClassName="mr-3 h-3 w-[7px] shrink-0 text-gold opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100"
           />
@@ -683,6 +702,11 @@ function NavMore() {
  */
 export function Nav() {
   const [open, setOpen] = React.useState(false);
+  // The band being read feeds `aria-current` on the matching link — one
+  // observer over the section anchors (`useScrollSpy`), `null` until the
+  // reader reaches the first banded section (the hero and the finale
+  // honestly mark nothing: they have no nav entry).
+  const current = useScrollSpy(SECTION_IDS);
 
   // Esc closes from anywhere inside the header and puts focus back on the
   // button — the disclosure pattern's contract for keyboard users.
@@ -736,11 +760,12 @@ export function Nav() {
               key={l.href}
               href={l.href}
               label={l.label}
+              current={current !== null && l.href === `#${current}`}
               className="group relative whitespace-nowrap text-[13px] text-dim transition-colors hover:text-gold focus-visible:text-gold focus:outline-none"
               cursorClassName="absolute -left-3.5 top-1/2 h-3 w-[7px] -translate-y-1/2 text-gold opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100"
             />
           ))}
-          <NavMore />
+          <NavMore current={current} />
         </nav>
 
         <div className="ml-auto flex items-center gap-2.5 lg:ml-0">
@@ -814,6 +839,7 @@ export function Nav() {
                 href={l.href}
                 label={l.label}
                 onClick={close}
+                current={current !== null && l.href === `#${current}`}
                 className="group flex items-center border-b border-line py-3 text-[13px] text-dim transition-colors last:border-b-0 hover:text-gold focus-visible:text-gold focus:outline-none"
                 cursorClassName="mr-3 h-3 w-[7px] shrink-0 text-gold opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100"
               />

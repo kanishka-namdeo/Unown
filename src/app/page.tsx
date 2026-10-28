@@ -6,6 +6,7 @@ import {
   AlphabetWakeProvider,
   LetterRainProvider,
   LandingStyles,
+  SpotlightProvider,
 } from "@/components/landing/effects";
 import { DexSection } from "@/components/landing/dex";
 import { FaqSection } from "@/components/landing/faq";
@@ -84,12 +85,24 @@ export default function LandingPage() {
             `prefers-reduced-motion`, including the staged ones that are not
             written through `FadeUp`. See its doc comment in `shell.tsx`. */}
         <LandingMotion>
+        {/* `SpotlightProvider` installs the one passive pointer listener that
+            lights `[data-spotlight]` cards under the cursor (`effects.tsx`).
+            It owns no DOM, so nesting it inside the motion root changes
+            nothing about the page's rendered shape. */}
+        <SpotlightProvider>
         {/* The page's structured data (Organization + SoftwareApplication +
             FAQPage, one graph) — a server-rendered <script>, first in the
             body so it never paints. See `seo.tsx`. */}
         <LandingJsonLd />
         <LandingStyles />
         <div className="grain grain-fixed relative isolate flex min-h-screen flex-col overflow-x-clip bg-canvas text-ink">
+          {/* The route bar — reading progress scrubbed on the compositor by
+              the page's own scroll (`animation-timeline: scroll(root)`,
+              `.route-bar` in landing.css). Decorative and `aria-hidden`;
+              browsers without scroll timelines and reduced-motion visitors
+              get no bar at all, which is the honest rendering of "no
+              scrubbing, no progress". */}
+          <div className="route-bar" aria-hidden="true" />
           <a
             href="#main"
             className="skip-link bg-gold px-4 py-2 text-sm font-medium text-canvas"
@@ -111,6 +124,7 @@ export default function LandingPage() {
           </main>
           <Footer />
         </div>
+        </SpotlightProvider>
         </LandingMotion>
       </AlphabetWakeProvider>
     </LetterRainProvider>

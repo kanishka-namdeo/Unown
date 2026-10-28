@@ -437,8 +437,13 @@ function DexDetail({
          breaking with a ~195px page shift per selection. The receipts row
          pins to the panel's bottom edge (mt-auto below) so the floor reads
          as structure, not empty space. Below lg the panes stack, there is no
-         second column to jump against, and natural height wins. */
-      className="gb-panel lift flex flex-col lg:min-h-[76rem]"
+         second column to jump against, and natural height wins.
+         `pane-swap` (landing.css): the un-hide itself plays the three-frame
+         settle — the same fade the proof band's tabs gained this round, one
+         instrument for one interaction. `data-spotlight` lights the pane
+         under the pointer in the section's own magma hue. */
+      className="gb-panel lift pane-swap flex flex-col lg:min-h-[76rem]"
+      data-spotlight
     >
       {entry.kind === "form" ? (
         /* the specimen — h-48 is 3× the 64px logical grid, so the sprite

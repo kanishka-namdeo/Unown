@@ -20,6 +20,11 @@
  *     gate uses `@supports` with an `animation-range` check that filters
  *     partial implementations. Never ship a hero that depends on JS to be
  *     readable.
+ *  5. The presence round (2026-10-28): the scroll route bar, the headline's
+ *     word-settle, the card spotlight, the CTA glint and the pane-swap fade —
+ *     the same stepped vocabulary applied to the page's entrance and its
+ *     pointer feedback. Contracts in `src/components/landing/AGENTS.md`;
+ *     reasoning in `docs/landing-effects-research.md`.
  *
  * The base state of every animated rule here is the finished state: a browser
  * without `animation-timeline`, and a visitor with `prefers-reduced-motion`,
@@ -814,6 +819,223 @@ section[data-hue] {
   }
 }
 
+/* --- the presence round: the page answers you ----------------------- */
+
+/*
+ * 5a. The nav's current-band marker — the battle-menu's selected row.
+ *
+ * The scrollspy (`useScrollSpy` in `effects.tsx`) sets `aria-current="true"`
+ * on the nav link of the band crossing the reader's eyeline. The marker is
+ * the same `▶` the link shows on hover, kept lit, plus the ink-bright label:
+ * exactly what a Gen 3 menu does with its cursor row. It is a STATE, not
+ * motion — it renders identically under reduced motion — and it costs one
+ * attribute, so it works in the desktop bar, the "More" panel and the mobile
+ * menu without any of them knowing about the others.
+ *
+ * Specificity: `a[aria-current]` (0,1,1) out-ranks the Tailwind colour
+ * utility (0,1,0) without an !important, and `.nav-cursor` (0,2,0) the
+ * opacity utility the cursor carries.
+ */
+a[aria-current="true"] {
+  color: var(--color-ink);
+}
+
+a[aria-current="true"] .nav-cursor {
+  opacity: 1;
+}
+
+/*
+ * 5b. The route bar — reading progress as the Gen 3 route.
+ *
+ * The shipping rail draws its route as the band scrolls into view; this is
+ * the same drawing applied to the whole page: a 3px gold line at the top of
+ * the viewport, scrubbed by `animation-timeline: scroll(root)`. It runs on
+ * the compositor with zero JavaScript, it is USER-SCRUBBED motion (it moves
+ * only when the reader moves), and it is honest by construction — the fill
+ * IS the scroll position, so it cannot over- or under-report progress.
+ *
+ * Browsers without scroll timelines never see it (scaleX(0) is the base
+ * state — a full bar would lie, and an empty one is noise); reduced motion
+ * removes it entirely. It sits above the sticky bar (z 60 over the nav's 50)
+ * so it stays visible while the header is pinned, and it borrows the rail's
+ * gold so the two route drawings read as one system.
+ */
+.route-bar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  /* 3px, the page's border idiom (the nav's own gold rule, the gb-btn
+     frame, the dialogue boxes): the VLM review round read the first cut's
+     2px as "too subtle to read as a functional element" — a progress mark
+     that cannot be seen is a mark that says nothing. */
+  height: 3px;
+  z-index: 60;
+  transform-origin: left center;
+  background: var(--color-gold);
+  transform: scaleX(0);
+}
+
+@keyframes route-grow {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
+
+@supports (animation-timeline: scroll()) {
+  @media (prefers-reduced-motion: no-preference) {
+    .route-bar {
+      animation: route-grow linear both;
+      animation-timeline: scroll(root);
+    }
+  }
+}
+
+/*
+ * 5c. The word-settle — the headline arrives in frames.
+ *
+ * The hero H1's words settle into place on load: a small stepped rise with a
+ * two-pixel blur that clears in four frames, each word ~60ms after the last.
+ * It is CSS-only (it runs with scripting off), it starts from a VISIBLE
+ * state — never opacity:0, so the text is on screen from the first paint and
+ * LCP is not held hostage to an entrance — and the base state is the settled
+ * state. The `--i` per-word index is set inline by the hero.
+ *
+ * This is the whole headline treatment the round ships: no scramble on the
+ * H1 itself (a proportional face would jitter its own line breaks — the
+ * decode wave lives on the pixel-font kicker where every glyph cell is the
+ * same width), no gradient text (a shimmering headline fights the "the one
+ * gold thing on the page is the accent" rule the palette runs on).
+ */
+@keyframes word-settle {
+  from {
+    transform: translateY(0.16em);
+    filter: blur(2px);
+  }
+  to {
+    transform: none;
+    filter: blur(0);
+  }
+}
+
+.word-settle {
+  display: inline-block;
+  animation: word-settle 360ms steps(4, end) both;
+  animation-delay: calc(60ms + var(--i, 0) * 60ms);
+}
+
+/*
+ * 5d. The card spotlight — the pointer is a light source.
+ *
+ * Any card that opts in (`data-spotlight`) lights up under the cursor with a
+ * soft radial of its OWN section hue: magma cards glow magma, leaf cards
+ * leaf. The position comes from `--mx`/`--my` written on the card (never a
+ * global var — animating an inherited custom property is the "inheritance
+ * bomb" at the bottom of every performance tier list), by one passive
+ * document-level listener in `effects.tsx`.
+ *
+ * The defaults sit 400px off-card, so the un-hovered page — and both contrast
+ * audits, which never hover — render no glow at all. The overlay is 10% of
+ * the accent under the card's own text: decorative, transient, and never the
+ * only hover affordance (the `lift` rim + one-pixel rise stays on every
+ * spotlight card too).
+ */
+[data-spotlight] {
+  --mx: -400px;
+  --my: -400px;
+  position: relative;
+}
+
+[data-spotlight]::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: radial-gradient(
+    260px circle at var(--mx) var(--my),
+    color-mix(in oklab, var(--hue-accent) 10%, transparent),
+    transparent 72%
+  );
+  opacity: 0;
+  transition: opacity 160ms steps(2, end);
+}
+
+@media (hover: hover) and (prefers-reduced-motion: no-preference) {
+  [data-spotlight]:hover::after {
+    opacity: 1;
+  }
+}
+
+/*
+ * 5e. The CTA glint — light off a cartridge.
+ *
+ * The filled menu button catches the light on hover: a canvas-tinted band
+ * sweeps across it in four frames, like the specular slide off a GBA cart.
+ * It is a state change on something the visitor did, in `steps()` like every
+ * other furniture transition here; the mix takes the canvas token, so no
+ * colour exists that the palette does not own. `overflow: hidden` contains
+ * the sweep to the button; box-shadows (the bevel, the hover rim, focus
+ * rings) paint outside the border box and are not clipped by it.
+ */
+.gb-btn {
+  position: relative;
+  overflow: hidden;
+}
+
+.gb-btn::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  transform: translateX(-130%);
+  background: linear-gradient(
+    105deg,
+    transparent 40%,
+    color-mix(in oklab, var(--color-canvas) 26%, transparent) 50%,
+    transparent 60%
+  );
+}
+
+@keyframes gb-glint {
+  to {
+    transform: translateX(130%);
+  }
+}
+
+@media (hover: hover) and (prefers-reduced-motion: no-preference) {
+  .gb-btn:hover::after {
+    animation: gb-glint 280ms steps(4, end) both;
+  }
+}
+
+/*
+ * 5f. The pane-swap fade — tabs advance a frame.
+ *
+ * The proof band's panes and the dex's detail panes stay mounted with the
+ * inactive ones `hidden`; `display: none` → `block` restarts a CSS animation
+ * for free, so giving the pane this class is the entire implementation: each
+ * activation plays a 160ms three-frame settle. No JS, no View Transitions
+ * snapshot of the whole page, and the DOM contract (every number stays in
+ * the server render) is untouched — the panes were already all mounted.
+ */
+@keyframes pane-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.pane-swap {
+  animation: pane-in 160ms steps(3, end);
+}
+
 /* --- the hero's survey grid ---------------------------------------- */
 
 /*
@@ -857,5 +1079,18 @@ section[data-hue] {
   .seal-form,
   .seal-halo {
     animation: none;
+  }
+
+  /* The presence round: every entrance and feedback rule resolves to its
+     finished state — the words sit in place, the panes render, the route bar
+     is simply absent (a static full bar would claim a reading that has not
+     happened, and a static empty one says nothing). */
+  .word-settle,
+  .pane-swap {
+    animation: none;
+  }
+
+  .route-bar {
+    display: none;
   }
 }

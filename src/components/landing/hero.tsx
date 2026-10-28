@@ -1,4 +1,7 @@
+import { Fragment } from "react";
+import type { CSSProperties } from "react";
 import { ArrowRight } from "lucide-react";
+import { DecodeText } from "./effects";
 import { Glyph } from "./glyph";
 import type { GlyphId } from "./glyphs";
 import { InstallPanel } from "./install-panel";
@@ -19,6 +22,20 @@ const AGENT_PROMPT =
   "`bun run agent:start` to boot the engine. Finish by reporting what `unown doctor` says.";
 
 const WORD: GlyphId[] = ["U", "N", "O", "W", "N"];
+
+/** The kicker line the decode wave runs over. It is said in PIXEL TYPE
+ *  (`.gb-label`, Press Start 2P) on purpose: that face is monospaced, so a
+ *  decoy glyph occupies exactly the final glyph's cell and the wave cannot
+ *  jitter the line — the same zero-CLS guarantee a transform-only animation
+ *  buys for free. See `effects.tsx` (`DecodeText`) for the full contract. */
+const KICKER = "Open-source AI coding agent · built on pi";
+
+/** The H1, split for the word-settle: each word steps into place ~60ms after
+ *  the one before it (CSS-only — `.word-settle` in `landing.css`). The DOM
+ *  text is identical to the plain string (spaces are real text nodes between
+ *  the spans), so the copy suites, the SEO gate and `verify-deploy` keep
+ *  reading the same sentence. */
+const HEADLINE = "The terminal coding agent that remembers.";
 
 /* ------------------------------------------------------------------ */
 /* the quickstart, absorbed from its own section (2026-10-20)          */
@@ -176,12 +193,14 @@ export function Hero() {
                 here, the header wordmark, the footer note), and the sentence
                 under the subhead below is the plain-language half of the
                 pattern: a badge states the stage, a sentence says what it
-                means for the reader. */}
+                means for the reader. The category line itself decodes once on
+                load (`DecodeText`): every scrambling position shows one of the
+                letters of UNOWN, so the brand's whole story — unknown becomes
+                known — plays out in the first line a visitor reads. The server
+                ships the finished line; the wave is additive. */}
             <p className="flex flex-wrap items-center gap-x-2.5 gap-y-1.5">
               <BetaBadge />
-              <span className="gb-label text-[10px] text-gold">
-                Open-source AI coding agent · built on pi
-              </span>
+              <DecodeText text={KICKER} className="gb-label text-[10px] text-gold" />
             </p>
 
             {/* The h1 carries the search phrases ("terminal coding agent") —
@@ -189,9 +208,25 @@ export function Hero() {
                 poetic h1 wasted it. The old headline moved into the subhead
                 below verbatim, so the page's voice is unchanged and the
                 deploy gate's text assertion ("It reads what you write down")
-                still holds. `e2e/seo.spec.ts` pins the h1's keyword line. */}
+                still holds. `e2e/seo.spec.ts` pins the h1's keyword line.
+                The words settle into place on load (`.word-settle`) — a
+                stepped rise, never an opacity gate, so the text paints with
+                the first frame. */}
             <h1 className="mt-5 font-display text-balance text-[2.75rem] font-semibold leading-[1.04] tracking-tight sm:text-6xl lg:text-[4.25rem]">
-              The terminal coding agent that remembers.
+              {HEADLINE.split(" ").map((w, i) => (
+                <Fragment key={i}>
+                  {/* The inter-word space lives in the PARENT's inline flow,
+                      never inside the settling span: a leading space inside an
+                      inline-block is collapsed by the browser's own
+                      whitespace rules, and a trailing one drags a space into
+                      textContent. Out here it renders as a real space and the
+                      sentence's text stays character-for-character exact. */}
+                  {i > 0 ? " " : null}
+                  <span className="word-settle" style={{ "--i": i } as CSSProperties}>
+                    {w}
+                  </span>
+                </Fragment>
+              ))}
             </h1>
 
             <p className="mt-6 max-w-xl text-pretty text-lg leading-relaxed text-dim">

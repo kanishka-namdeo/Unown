@@ -102,6 +102,17 @@ export function LiveDemoSection() {
           <div className="gb-panel lift overflow-hidden">
             <div className="gb-bar flex items-center gap-2 px-3 py-2">
               <TrafficDots />
+              {/* The honest status light: the frame below is a real route
+                  running live in the visitor's browser, and the chip says so
+                  in the same idiom the session replay's cursor blinks in —
+                  an opaque pill on full-strength tokens (the gallery round's
+                  axe lesson: never a translucent chip on this bar), a
+                  blinking square that stills under reduced motion, and the
+                  one word this round adds to the page. */}
+              <span className="inline-flex shrink-0 items-center gap-1.5 border border-gold bg-panel px-1.5 py-[3px] leading-none">
+                <span className="gb-cont size-1.5 bg-gold" aria-hidden="true" />
+                <span className="gb-label text-[8px] text-gold">Live</span>
+              </span>
               <div
                 className="flex min-w-0 flex-1 items-center gap-1"
                 role="tablist"

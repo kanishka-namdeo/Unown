@@ -40,34 +40,61 @@ contracts live in
 - Rejected with reasons: WebGL/canvas matrix, marquees, View Transitions,
   3D tilt, magnetic buttons, scrollytelling, back-to-top.
 
-## Checkpoint 2 — implementation (IN PROGRESS)
+## Checkpoint 2 — implementation (DONE)
 
 Planned file map (one effect per concern, effects live in `effects.tsx`,
 styles in `landing.css`, wiring in the owning band):
 
 | Change | File(s) |
 |---|---|
-| `DecodeText` (H1 wave) | `src/components/landing/effects.tsx` + `hero.tsx` |
+| `DecodeText` (kicker wave) | `src/components/landing/effects.tsx` + `hero.tsx` |
 | `.route-bar` progress | `src/app/landing.css` + `page.tsx` |
 | `useScrollSpy` + `aria-current` | `effects.tsx` + `shell.tsx` (Nav) |
-| `useSpotlight` + `[data-spotlight]` | `effects.tsx` + `landing.css` + proof/dex/live-demo cards |
+| `SpotlightProvider` + `[data-spotlight]` | `effects.tsx` + `landing.css` + proof/dex cards |
 | `.gb-btn` glint | `landing.css` |
 | Live chip | `live-demo.tsx` |
 | `CountUp` | `effects.tsx` + `benchmarks.tsx` |
 | `.pane-swap` fade | `landing.css` + `proof.tsx` + `dex.tsx` |
 | unit tests | `src/components/landing/__tests__/presence.test.tsx` |
 
-Gates to run before any push: `bun run lint`, `bun run typecheck`,
-`bun test src`, `bun run test:coverage`, `check:changelog|blog|benchmarks|claims`,
-`gba_palette_check.mjs`, `landing_audit.mjs --budget`.
+Shipped as designed, plus two mid-round corrections:
+- the decode's lock schedule went fractional (`floor(i*spread/span)`) — the
+  first cut's minimum one-tick stagger made a 41-glyph line take 2.25s;
+- the h1's inter-word spaces moved into the parent inline flow — a space
+  inside an `inline-block` word span is collapsed by the browser's own
+  whitespace rules, and a trailing one would drag into `textContent`.
 
-## Checkpoint 3 — verification against a production build (PENDING)
+Gates green at this checkpoint: `bun run typecheck`, `bun run lint`,
+`bun test src` (359 pass), `bun run test:coverage` (91-100% on every touched
+file), `check:changelog|blog|benchmarks|claims`, `gba_palette_check.mjs`
+(21+21 tokens AA in both schemes), `landing_audit.mjs --budget` (13.3vh /
+3,283w <= 13.5 / 3,320), `bun run build` (exit 0).
 
-`bun run build`, `landing_shots.mjs` (both schemes + reduced motion + mobile),
-`contrast_audit.mjs`, `theme_toggle_check.mjs`, `audit:landing --budget`,
-Playwright e2e (a11y both motion states, budget, dex video, SEO), and a VLM
-design critique through the Agnes lane (`scripts/agnes_review.mjs` pointed at
-the apihub endpoint — the repo's own reviewer's aid).
+## Checkpoint 3 — verification against a production build (DONE)
+
+- Playwright e2e: **15/15** — axe-core A/AA zero violations in BOTH motion
+  states, the scroll budget (13.3vh / 3,275w), the dex video decode + mp4
+  fallback, the whole SEO surface (the split-word h1 still reads as one
+  keyword-bearing sentence to the crawler, the gate and `verify-deploy`).
+- `landing_shots.mjs`: 20 sections + 3 reduced-motion stills, both schemes.
+- `contrast_audit.mjs`: 1,737 visible text nodes, zero AA failures.
+- `theme_toggle_check.mjs`: cycle + persistence + label all PASS.
+- Real-user browser pass (Playwright-driven): the route bar scrubs
+  (`matrix(0.577...)` mid-page), the scrollspy marks "How it learns" at the
+  loop band and "Capability dex" one scroll later with the `▶` cursor lit,
+  the spotlight vars land on the hovered card (`--mx: 552px`), the Live chip
+  renders with its blinking square, and the decode wave was caught
+  mid-flight — the VLM read the kicker as "ANOWN · WHILT ON PI", which is
+  the UNOWN decoy alphabet doing exactly what it is designed to do.
+- Agnes VLM design critique (apihub endpoint, the repo's `review:vlm` lane)
+  over four shots: the actionable finding — the first cut's 2px route bar
+  read "too subtle to read as a functional element" twice — shipped as the
+  fix (3px, the page's border idiom). The remaining findings were
+  pre-existing, documented design decisions (the hue walk, the density
+  budget, the tab styling) and were left to their owning contracts.
+- An entrance video (`download/effects/hero-entrance.webm`, 30fps) records
+  the choreography: kicker decode -> word settle -> route bar -> scrollspy.
+  (Scratch verification media — the blog's copy is staged separately.)
 
 ## Checkpoint 4 — docs, blog, DOX (PENDING)
 

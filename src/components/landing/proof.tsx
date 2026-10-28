@@ -175,8 +175,12 @@ export function ProofSection() {
 
           {/* panes: all mounted, inactive hidden — generated numbers stay in
               the DOM for crawlers and the gates, and framer whileInView
-              reveals re-trigger on reveal */}
-          <div className="border border-line p-5 sm:p-6">
+              reveals re-trigger on reveal. `pane-swap` (landing.css) plays a
+              three-frame settle each time a pane un-hides: `display:none →
+              block` restarts a CSS animation for free, so the tab change
+              gains the fade without a JS swap or a View-Transition snapshot
+              of the whole page. */}
+          <div className="border border-line p-5 sm:p-6" data-spotlight>
             {PANES.map((p, i) => (
               <div
                 key={p.id}
@@ -185,7 +189,7 @@ export function ProofSection() {
                 aria-labelledby={`proof-tab-${p.id}`}
                 tabIndex={0}
                 hidden={i !== active}
-                className="focus:outline-none"
+                className="pane-swap focus:outline-none"
               >
                 <p.Component />
               </div>
