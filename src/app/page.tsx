@@ -12,6 +12,7 @@ import { DexSection } from "@/components/landing/dex";
 import { FaqSection } from "@/components/landing/faq";
 import { FinaleSection } from "@/components/landing/finale";
 import { Hero } from "@/components/landing/hero";
+import { BuiltImprovedSection } from "@/components/landing/built-improved";
 import { LiveDemoSection } from "@/components/landing/live-demo";
 import { LoopSection } from "@/components/landing/loop";
 import { ProofSection } from "@/components/landing/proof";
@@ -53,6 +54,13 @@ import { Footer, LandingMotion, Nav } from "@/components/landing/shell";
  *                                                     browser — the /demo
  *                                                     route iframed in
  *                                                     browser chrome
+ *   built & improved (the showcase's evidence)        what CHANGED while it
+ *                                                     built: the before/
+ *                                                     after improvement
+ *                                                     receipts, the
+ *                                                     learning-lane
+ *                                                     counters, Mission
+ *                                                     Control stills
  *   proof (benchmarks + integrity + models)           the receipts, one tabbed band
  *   alphabet (+ field notes)                          the identity: the wall, the
  *                                                     decode panel, the lexicon
@@ -116,6 +124,7 @@ export default function LandingPage() {
             <DexSection />
             <ShowcaseSection />
             <LiveDemoSection />
+            <BuiltImprovedSection />
             <ProofSection />
             <AlphabetSection />
             <FaqSection />

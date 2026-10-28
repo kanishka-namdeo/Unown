@@ -39,6 +39,17 @@
  *   sits well inside 3,320 — the old green numbers were riding on
  *   mid-replay measurement, not on a smaller page.
  *
+ * The 2026-10-29 amendment (the parley round): 13.5 → 14.5vh carries the
+ * page's ELEVENTH band — "Built & Improved With Unown", the mission's
+ * showcase deliverable (the before/after improvement receipts, the
+ * learning-lane counters, three reused Mission Control stills). The band
+ * was compressed before the amendment (measured 1.12vh / 220w →
+ * 0.97vh / 129w: the cards' loop prose and the counters' note lines moved
+ * into the data file + the reports, spacing tightened one step); the
+ * remaining 0.97vh is the receipts-and-stills surface itself, and every
+ * other band kept its height. The word budget is UNCHANGED at 3,320 — the
+ * compression paid for the band's prose inside the old number.
+ *
  * The 2026-10-28 amendments: the live-preview round (13 → 13.5vh, 3,200 →
  * 3,250w) carried the page's first interactive-application frame; the
  * commerce round (3,250 → 3,290w) carries the second one AND the rail's
@@ -68,7 +79,7 @@ import { join } from "node:path";
 const BASE = process.env.LANDING_AUDIT_URL ?? "http://localhost:3000";
 const OUT = join(process.cwd(), "download", "landing");
 const BUDGET = process.argv.includes("--budget");
-const MAX_VH = 13.5;
+const MAX_VH = 14.5;
 const MAX_WORDS = 3320;
 const MAX_BAND_VH = 3;
 

@@ -16,6 +16,13 @@ import { expect, test } from "@playwright/test";
  * Never settle a breach by deleting a generated number or a gated literal —
  * those are receipts. Compress: tabs, expanders, cut restated facts.
  *
+ * The 2026-10-29 amendment (the parley round): 13.5 -> 14.5vh carries the
+ * page's ELEVENTH band - "Built & Improved With Unown", the mission's
+ * showcase deliverable (before/after improvement receipts, learning-lane
+ * counters, three reused Mission Control stills). The band was compressed
+ * before the amendment (1.12vh / 220w -> 0.97vh / 129w); the word budget
+ * is UNCHANGED at 3,320 - the compression paid for the band's prose.
+ *
  * The 2026-10-28 amendments: the live-preview round (13 → 13.5vh, 3,200 →
  * 3,250w) carried the first interactive-application frame; the commerce
  * round (3,250 → 3,290w) carries the second and the rail's structural
@@ -33,7 +40,7 @@ import { expect, test } from "@playwright/test";
  * form of the same gate (it also writes download/landing/audit.json).
  */
 
-const MAX_PAGE_VH = 13.5;
+const MAX_PAGE_VH = 14.5;
 const MAX_WORDS = 3320;
 const MAX_BAND_VH = 3;
 

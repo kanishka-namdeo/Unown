@@ -45,7 +45,7 @@ const LandingPage = (await import("../page")).default;
 // only inside its own render container, so a tree left mounted cannot make
 // another test's anchor check pass on a borrowed id.
 
-const SECTION_COUNT = 10;
+const SECTION_COUNT = 11;
 
 describe("landing composition root", () => {
   test(`renders ${SECTION_COUNT} bands with the rail between the FAQ and the finale`, () => {
@@ -67,8 +67,9 @@ describe("landing composition root", () => {
     expect(at("dex")).toBe(2);
     expect(at("showcase")).toBe(3);
     expect(at("live-demo")).toBe(4);
-    expect(at("proof")).toBe(5);
-    expect(at("alphabet")).toBe(6);
+    expect(at("built-improved")).toBe(5);
+    expect(at("proof")).toBe(6);
+    expect(at("alphabet")).toBe(7);
     // The capture band is gone as a band of its own — its media lives in the
     // dex's panes now, and an orphan #features would fail the anchor test.
     expect(at("features")).toBe(-1);
@@ -95,6 +96,7 @@ describe("landing composition root", () => {
       "magma", // dex — the capability catalog and its captures
       "gold", // showcase — mission control
       "aqua", // live demo — the agent-built app, running
+      "gold", // built & improved — the measured improvement receipts
       "magma", // proof — benchmarks | integrity | models
       "psychic", // alphabet — the identity (+ field notes)
       "gold", // faq

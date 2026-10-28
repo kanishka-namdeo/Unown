@@ -180,7 +180,7 @@ describe("the scrollspy", () => {
     const links = [...container.querySelectorAll('a[href^="#"]')].filter(
       (a) => a.getAttribute("href") !== "#quickstart",
     );
-    expect(links.length).toBe(16);
+    expect(links.length).toBe(18);
     for (const link of links) {
       expect(link.querySelector(".nav-cursor")).toBeTruthy();
     }
