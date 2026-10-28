@@ -9,10 +9,14 @@
 
 - [What the app is](#what-the-app-is)
 - [How it was built](#how-it-was-built)
-- [What the testing found (and fixed)](#what-the-testing-found-and-fixed)
-- [The learning-loop evidence](#the-learning-loop-evidence)
-- [The embedding adaptations](#the-embedding-adaptations)
-- [Where things live](#where-things-live)
+- [Checkpoint 0 — setup](#checkpoint-0--setup-done)
+- [Checkpoint 1 — research](#checkpoint-1--research-done)
+- [Checkpoint 2 — benchmark baseline](#checkpoint-2--benchmark-baseline-done)
+- [Checkpoint 3 — the build](#checkpoint-3--the-build-in-progress)
+- [Checkpoint 4 — verification](#checkpoint-4--verification-pending)
+- [Checkpoint 5 — learning-loop evidence](#checkpoint-5--learning-loop-evidence-pending)
+- [Checkpoint 6 — docs, blog, DOX](#checkpoint-6--docs-blog-dox-pending)
+- [Checkpoint 7 — release](#checkpoint-7--release-pending)
 
 Related pages: [Cadence session record](cadence-demo-session.md) (the third
 app) · [Sigil Bazaar session record](bazaar-demo-session.md) (the second) ·

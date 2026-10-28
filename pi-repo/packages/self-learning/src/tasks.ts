@@ -7,6 +7,7 @@
  */
 import { createHash } from "node:crypto";
 import { store } from "./store.ts";
+import { swapIfElseSource, swapIfElseSolved, swapIfElseTest, swapIfElsePrompt } from "./tasks-swap.ts";
 
 export interface TaskDef {
         id: string;
@@ -278,6 +279,18 @@ export const TASK_DEFS: TaskDef[] = [
                         "Implement the mapLimit function in mapLimit.js according to its doc comment. The test file mapLimit.test.mjs verifies ordering, the concurrency bound and error propagation. Make all tests pass. Do not modify the test file.",
                 files: { "mapLimit.js": mapLimitSource, "mapLimit.test.mjs": mapLimitTest },
                 verifyTestFile: "mapLimit.test.mjs",
+        },
+        {
+                id: "swap-if-else-messages",
+                name: "Swap if/else branch bodies",
+                description:
+                        "A structural swap mutation (ported from edit-bench fixture structural-swap-if-else-006 — a measured agnes-3.0-flash failure: 12 edit calls, byte mismatch): the if/else branch bodies must trade places, byte-exact.",
+                category: "bugfix",
+                difficulty: 3,
+                prompt: swapIfElsePrompt,
+                files: { "messages.ts": swapIfElseSource, "swap.test.mjs": swapIfElseTest },
+                verifyTestFile: "swap.test.mjs",
+                reference: { "messages.ts": swapIfElseSolved },
         },
         {
                 id: "fix-csv-parser",

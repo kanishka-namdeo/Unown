@@ -1,4 +1,4 @@
-# The Cascade demo session (the SOTA round)
+# The Fugue demo session (the SOTA round)
 
 > **Status: in progress** — this is the SOTA round's session receipt stub, committed mid-round per the cadence round's pattern (`be450e2`). It will carry: what the round built, the agent sessions that built it, what each stage's testing found, the numbered embedding patches, the learning-mechanism validation evidence (the five mechanisms exercised against the live engine), and the benchmark framework's baseline/midpoint/final numbers. The round's grounding research is [sota-round-competitor-research.md](sota-round-competitor-research.md).
 
@@ -17,7 +17,7 @@ gallery round) · [bazaar demo session](bazaar-demo-session.md) ·
 
 (to be filled at close — an AI workflow automation platform: workspaces,
 flows of composable steps, an execution engine with runs and evidence,
-session auth, and a dashboard; the landing page's fourth gallery app)
+session auth, and a dashboard; the landing page's fifth gallery app)
 
 ## How it was built
 

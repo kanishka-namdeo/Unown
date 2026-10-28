@@ -2,7 +2,7 @@
 
 > **Purpose:** the SOTA round (docs/cascade-demo-session.md) exists to prove
 > Unown's learning mechanisms function under real work: a production-shaped
-> app (Cascade, an AI workflow automation platform) built **through** unown,
+> app (Fugue, an AI workflow automation platform) built **through** unown,
 > while a formal benchmark framework measures whether the agent — not the
 > model — got better. This directory is that framework: three metric groups,
 > three snapshots (baseline / midpoint / final), receipts-first sourcing,

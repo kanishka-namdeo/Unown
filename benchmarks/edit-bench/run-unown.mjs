@@ -183,6 +183,29 @@ function render(tpl, vars) {
 const BENCHMARK_INSTRUCTIONS =
     "Read the relevant files first, then use the edit or vim tool to apply the fix.";
 const benchmarkSystemPrompt = render(TPL_SYSTEM, { multiFile: false, instructions: BENCHMARK_INSTRUCTIONS });
+// ---------------------------------------------------------------------------
+// Memory-lift experiment (SOTA round, 2026-10-28): the measured agnes-3.0-flash
+// edit-bench failures (rerun-2026-10-21: structural-swap-if-else-001,
+// structural-swap-sibling-blocks-001 — 1 edit call each, byte mismatch;
+// structural-swap-if-else-006 — 12 edit calls, byte mismatch) are all the same
+// behaviour: edits land without the full affected region being rewritten, and
+// the run finishes without reading the result back. These rules are what the
+// memory layer would carry after such a failed round — the experiment measures
+// whether a memory-style discipline lifts the pass rate at the SAME model,
+// SAME fixtures, SAME scoring. Env-gated so default runs stay omp-faithful;
+// label results dirs `memory-lift-*` (NOT `rerun-*`) so the landing's
+// canonical-receipt resolver ignores them.
+// ---------------------------------------------------------------------------
+const MEMORY_LIFT_RULES = `Project memory — editing discipline, earned from three measured structural-swap failures:
+
+1. Before editing, read the exact current text of every line you will touch, including whitespace.
+2. When a change swaps or reorders blocks, make ONE edit whose old text spans the complete affected region and whose new text is the complete final form of that region — never two partial edits that each move one half.
+3. After every edit, read the affected region back and verify it matches the requested final state exactly. If it does not, fix the discrepancy before anything else.
+4. Never declare the task complete while the file still differs from the requested state — verify first, then answer.`;
+const memoryLiftEnabled = (process.env.UNOWN_BENCH_MEMORY_LIFT ?? "") !== "";
+const benchSystemPromptWithMemory = memoryLiftEnabled
+    ? benchmarkSystemPrompt + "\n\n" + MEMORY_LIFT_RULES
+    : benchmarkSystemPrompt;
 const initialPromptFor = (taskPrompt) => render(TPL_TASK, { task_prompt: taskPrompt });
 const retryPromptFor = (retryContext) => render(TPL_RETRY, { retry_context: retryContext });
 
@@ -793,7 +816,7 @@ async function runSingleTask(task, modelSlug, runDirs, runIndex = 0) {
     const client = new UnownClient({
         cwd: workDir,
         model: config.model,
-        appendSystemPrompt: benchmarkSystemPrompt,
+        appendSystemPrompt: benchSystemPromptWithMemory,
     });
 
     try {
@@ -1026,6 +1049,7 @@ function buildSummary(model, records) {
         agent: `Unown pi-repo createAgentSession (in-process) @ ${path.dirname(path.dirname(PI_DIST))}`,
         editSemantics: "pi-native replace (edits[]: {oldText,newText} batch; exact-first, fuzzy fallback)",
         harness: "run-unown.mjs — port of omp metaharness adapters/edit runner",
+        memoryLift: memoryLiftEnabled ? "UNOWN_BENCH_MEMORY_LIFT=1 — editing-discipline rules appended (SOTA round experiment; not omp-comparable)" : null,
         model, provider: PROVIDER,
         generatedAt: new Date().toISOString(),
         totalTasks: best.length,

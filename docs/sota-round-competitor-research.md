@@ -5,7 +5,9 @@
 > Google Gemini CLI, Aider and Claude Code's public workflows — each read
 > against its own repo, docs and changelogs on the round's seven dimensions:
 > learning loops, memory systems, benchmark design, planning, failure
-> recovery, task decomposition and autonomous debugging. The headline
+> recovery, task decomposition and autonomous debugging. Three late entrants
+> were verified mid-round and folded in (ZCode, OpenClaude, Codewhale — §the
+> late entrants), making it ten systems total. The headline
 > finding: **no competitor ships a closed, self-improving loop** — Gemini CLI
 > mines transcripts into human-gated patch inboxes, Claude Code writes its own
 > memory notes, OpenHands gates releases with matched-model benchmarks, but
@@ -21,6 +23,7 @@
 - [Gemini CLI — the extraction loop](#gemini-cli--the-extraction-loop)
 - [Aider — the benchmark craft](#aider--the-benchmark-craft)
 - [Claude Code — the self-improvement playbook](#claude-code--the-self-improvement-playbook)
+- [The late entrants — ZCode, OpenClaude, Codewhale](#the-late-entrants--zcode-openclaude-codewhale)
 - [The seven-dimension comparison](#the-seven-dimension-comparison)
 - [What this round adopted](#what-this-round-adopted)
 
@@ -54,6 +57,9 @@ not evidence.
 | [Gemini CLI](https://github.com/google-gemini/gemini-cli) | Google's open agent, now enterprise-gated | the only competitor mining past transcripts: human-gated patch inbox for memory + SKILL drafts |
 | [Aider](https://github.com/Aider-AI/aider) | the benchmark-driven pair programmer; "88% of its last release written by itself" | benchmark craft: pass@1/pass@2, edit-format well-formedness, per-run cost, Docker-deterministic harness |
 | Claude Code (public docs) | Anthropic's closed-source CLI with open engineering practice | the self-improvement playbook: find own weaknesses → ablate → soak → gradual rollout; typed agent-written memory notes |
+| [ZCode](https://zcode.z.ai/en) | Z.ai's "agentic development environment" — the official GLM harness (desktop + browser + CLI) | the closest shipped competitor loop: background memory curation after each finished round, auto-recalled next session [V: zcode.z.ai/en/docs/memory] |
+| [OpenClaude](https://github.com/Twigpine/openclaude) | the provider-agnostic fork of the leaked Claude Code source (34k★) | confirmation by contrast: full skills/subagents surface, **no persistent learning loop** [V] — the loop remains Unown's differentiation |
+| [Codewhale](https://github.com/codewhale-hq/Codewhale) | Rust terminal coding agent (any-provider, 41k★, ex-`deepseek-tui`) | receipts/undo audit trail + repo-checked-in workflows [V]; no memory system beyond AGENTS.md [V-absence] |
 
 ## OpenHands — the benchmark discipline
 
@@ -208,6 +214,55 @@ context, premature "done" declarations, untested "complete" features — with
 progress-file + git-history state as the countermeasure [V:
 anthropic.com/research/effective-harnesses-for-long-running-agents].
 
+## The late entrants — ZCode, OpenClaude, Codewhale
+
+The mission's list named three more systems; all three were verified to exist
+mid-round (2026-10-28, 25+ fresh queries: GitHub API, npm registry, official
+docs, HN Algolia) and are folded in here rather than in a new record.
+
+- **ZCode** [V: zcode.z.ai/en, github.com/zai-org/ZCode (8.3k★)] — Z.ai's
+  "agentic development environment" for GLM models: desktop app + browser UI
+  + CLI. It ships the **closest thing to Unown's memory loop in the wild**:
+  after each finished conversation round, the agent *in the background*
+  decides what to keep (preferences, corrections, project goals) and
+  auto-recalls it in later sessions; users say "remember X" / "forget Y"
+  [V: zcode.z.ai/en/docs/memory]. The honest distinction: ZCode's loop is
+  memory-curation only — no benchmark, no harness, no shipped-improvement
+  receipts — and a Sept-2026 telemetry controversy (silent workspace uploads,
+  later apologized and open-sourced) [V: blog.ferstar.org, HN] is the
+  cautionary tale Unown's local-first engine design answers. Z.ai also
+  publishes the memory-mechanism doctrine
+  (session/project/semantic/episodic/procedural tiers, docs.z.ai/devpack) —
+  independently convergent with Unown's tiering [V].
+- **OpenClaude** [V: github.com/Twigpine/openclaude (34.2k★)] — the
+  provider-agnostic fork of the leaked Claude Code source (leaked 2026-03-31;
+  substantially rewritten): multi-provider incl. a GLM coding-plan lane,
+  subagents, skills (`SKILL.md`), session resume/fork, background sessions,
+  repo map. **No persistent learning loop or memory tier exists in it**
+  [V-absence: README/docs search] — inherited the surface, not the postmortem
+  discipline. Relevant to Unown only as the widest-distributed proof that
+  Claude Code's *surface* is commoditized while its *improvement loop* is not.
+- **Codewhale** [V: github.com/codewhale-hq/Codewhale (41.1k★)] — a Rust
+  terminal coding agent (any-provider, 40+ providers, Plan/Work/Operate
+  modes, fleet subagents, Claude-Code plugin compatibility, receipts/undo).
+  No published benchmarks [V-absence], no persistent memory beyond AGENTS.md
+  [V-absence]. Its one adoptable pattern: **the receipts/undo audit trail** —
+  every agent action logged to a restorable ledger, which is what Unown's
+  `.unown/receipts/` already does; the round keeps counting receipts as the
+  primary evidence lane.
+
+A second finding from the same pass: **the name "Cascade" was taken** —
+Windsurf's flagship AI coding agent is named Cascade (now
+`docs.devin.ai/desktop/cascade`, post the Cognition acquisition) and is
+already documented as a competitor in
+[detached-engine-research.md](detached-engine-research.md#17-windsurf--cascade-now-cognition)
+§1.7. The round's app was renamed **Fugue** before the first build session
+(the only honest moment to do it: nothing built, nothing embedded, three doc
+references). A fugue is independent voices interwoven into one composition —
+the exact shape of a workflow automation platform — and the collision search
+(Atlassian Loom, Snyk's Fugue, the Fugue CRDT, FugueSQL) found no AI-agent
+product holding it [V: 25+ queries].
+
 ## The seven-dimension comparison
 
 | Dimension | OpenHands | Roo/Zoo | Cline | Codex CLI | Gemini CLI | Aider | Claude Code |
@@ -248,6 +303,13 @@ benchmark framework, and the learning validation):
 8. **The postmortem loop** (Claude Code) — every failure gets root cause →
    fix → regression pin → rerun; the Validation Log is this loop written
    down, and "agent finds its own weaknesses" is the round's thesis.
+9. **Naming-collision discipline** (the late-entrants pass) — a fresh-name
+   search is part of shipping anything public: the app was renamed
+   Cascade → Fugue on the receipt that Windsurf's flagship agent owns the
+   name, before a single build session paid for the old one. ZCode's
+   background memory curation is noted as the closest shipped competitor
+   loop to watch, and the round's local-first engine stands as the answer to
+   ZCode's telemetry controversy.
 
 Remaining gaps this round deliberately does *not* adopt: Gemini's enterprise
 gating (Unown stays clone-to-install), Codex's docs-behind-login (Unown's docs
