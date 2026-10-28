@@ -132,6 +132,22 @@ describe("reviewerLabels + parseReviewerOutputs", () => {
         expect(outputs[1].truncated).toBe(true);
         expect(outputs[1].verdict).toBe("unknown");
     });
+    test("out-of-range results fall back to `reviewer-${i}` — `from` is never undefined", () => {
+        // 2 focuses + 2 checks = 4 labels, but results has 6 entries
+        // (a truncated spawn or miscounted focus list).
+        const results = Array.from({ length: 6 }, (_, i) => ({
+            output: "- [P2] nit — item " + i + " (confidence: low)\nVERDICT: SHIP",
+            exitCode: 0,
+            outputTruncated: false,
+        }));
+        const outputs = parseReviewerOutputs(results, focuses, checks);
+        // Labels 0–3 are the named reviewers; 4–5 fall back.
+        expect(outputs[4].findings[0].from).toBe("reviewer-4");
+        expect(outputs[5].findings[0].from).toBe("reviewer-5");
+        // In-range indices still pair correctly.
+        expect(outputs[0].findings[0].from).toBe("correctness");
+        expect(outputs[2].findings[0].from).toBe("check:tests");
+    });
 });
 
 // ---------------------------------------------------------------------------

@@ -22,6 +22,15 @@
  * (88 green — the QA round added the last 3) · files: 35 under src/
  * (10 components, 16 lib incl. 7 test files, 9 route/layout/css).
  * Narrative + the three briefs: docs/bazaar-demo-session.md.
+ *
+ * ── Cadence (the cadence round, 2026-10-28) ─────────────────────────────
+ * Sources: receipts .unown/receipts/*.jsonl — 9 agent sessions (11 boots)
+ * over 7 rounds (plan → lib → api → ui → e2e → review → drill) · 958
+ * tool_calls · 6 reviewer subagent boots · git: the round's commits
+ * (94d7cb1 → 513dfc5) · tests: src/lib/cadence/*.test.ts +
+ * src/app/cadence/api/__tests__/*.ts + src/components/cadence/__tests__/
+ * *.tsx (95 green) · files: 32 under src/. Narrative:
+ * docs/cadence-demo-session.md.
  */
 export interface LiveDemoApp {
   id: string;
@@ -85,6 +94,26 @@ export const LIVE_DEMO_APPS: LiveDemoApp[] = [
       embeddingAdaptations: 9,
       receiptDoc:
         "https://github.com/kanishka-namdeo/Unown/blob/main/docs/bazaar-demo-session.md",
+    },
+  },
+  {
+    id: "cadence",
+    name: "Cadence",
+    route: "/cadence",
+    url: "unown-nine.vercel.app/cadence?embed=1",
+    poster: "/landing/cadence/poster.png",
+    posterAlt:
+      "Cadence — the habit & streak tracker app unown built: today check-offs with streaks, a 52-week heatmap and stats, running live",
+    resetType: "cadence-reset",
+    receipt: {
+      sessions: 9,
+      toolCalls: 958,
+      files: 32,
+      tests: 95,
+      commits: 7,
+      embeddingAdaptations: 10,
+      receiptDoc:
+        "https://github.com/kanishka-namdeo/Unown/blob/main/docs/cadence-demo-session.md",
     },
   },
 ];

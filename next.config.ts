@@ -16,6 +16,9 @@ import type { NextConfig } from "next";
  * X-Frame-Options for modern browsers; the SAMEORIGIN header stays as the
  * legacy fallback. Vercel sends no X-Frame-Options by default, so same-
  * origin framing works out of the box; these headers make it POLICY.
+ * /cadence (the cadence round, 2026-10-28) is embedded the same way:
+ * the live-demo gallery's third app is iframed into the band, so the
+ * identical headers block applies.
  */
 const nextConfig: NextConfig = {
   output: "standalone",
@@ -34,6 +37,13 @@ const nextConfig: NextConfig = {
       },
       {
         source: "/bazaar/:path*",
+        headers: [
+          { key: "Content-Security-Policy", value: "frame-ancestors 'self'" },
+          { key: "X-Frame-Options", value: "SAMEORIGIN" },
+        ],
+      },
+      {
+        source: "/cadence/:path*",
         headers: [
           { key: "Content-Security-Policy", value: "frame-ancestors 'self'" },
           { key: "X-Frame-Options", value: "SAMEORIGIN" },

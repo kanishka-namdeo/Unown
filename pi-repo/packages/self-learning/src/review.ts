@@ -420,9 +420,13 @@ export function reviewerLabels(
 }
 
 /** Map raw reviewer results to parsed outputs. `labels[i]` pairs with
- * `results[i]` — the same order runSubagent spawned them in (focuses
- * first, then checks). Failed reviewers are marked (R-b S1) and truncated
- * outputs get the marker line appended (R-b S3). */
+ * `results[i]` — the CALLER MUST pass results in spawn order (focuses first,
+ * then checks); this function only pairs by index and has no way to recover
+ * a wrong order. When `results` is longer than `labels` (a truncated spawn
+ * or a miscounted focus list), out-of-range indices fall back to
+ * `reviewer-${i}` so `from` is never undefined. Failed reviewers are
+ * marked (R-b S1) and truncated outputs get the marker line appended
+ * (R-b S3). */
 export function parseReviewerOutputs(
     results: ReadonlyArray<{ output: string; exitCode: number; outputTruncated?: boolean }>,
     focuses: ReadonlyArray<{ key: string }>,
@@ -430,7 +434,7 @@ export function parseReviewerOutputs(
 ): ReviewOutput[] {
     const labels = reviewerLabels(focuses, selectedChecks);
     return results.map((r, i) =>
-        parseReviewOutput(r.output + (r.outputTruncated ? "\n(reviewer output truncated)" : ""), labels[i], {
+        parseReviewOutput(r.output + (r.outputTruncated ? "\n(reviewer output truncated)" : ""), i < labels.length ? labels[i] : `reviewer-${i}`, {
             failed: r.exitCode !== 0 || !r.output.trim(),
             truncated: r.outputTruncated,
         }),

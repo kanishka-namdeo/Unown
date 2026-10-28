@@ -1,0 +1,36 @@
+ the route is also reachable cross-origin as JSON). Because the data is ephemeral and demo-scoped this is low impact, but it's
+ a public, unauthenticated mutation endpoint on the production marketing domain.
+ [P3] `src/app/cadence/api/habits/route.ts:112-116` (confidence: high)
+     the "oversized body" test in `src/app/cadence/api/__tests__/habits.test.ts:157-165` accepts either 400 or 201
+ (`expect([400, 201]).toContain(res.status)`), which defeats the purpose of pinning the 4 KB guard: a regression that drops the
+ content-length / text-length check would still keep the test green because a 5000-char name inside a 5000-char body is still a
+ valid habit payload that the 201 path would happily accept. The assertion should be `expect(res.status).toBe(400)`.
+ [P3] `pi-repo/packages/self-learning/src/review.ts:424` (confidence: medium)
+     the docstring for `parseReviewerOutputs` claims "the same order `runSubagent` spawned them in (focuses first, then
+ checks)", which is only true because the caller in `tools.ts:3660-3680` happens to build the `Promise.all` array by spreading
+ `focuses.map(...)` before `selectedChecks.map(...)`; nothing in the function's own signature or body ties it to that spawn
+ layout, so a future change that reorders the fan-out (e.g. checks interleaved, or a parallelism budget that groups them) would
+ silently re-label every finding without any type-system or test signal, since the parameter types `ReadonlyArray<{key:
+ string}>` / `ReadonlyArray<{name: string}>` accept any arrays.
+ [P3] `src/app/cadence/page.tsx:36-38` passes `params: Promise<Record<...>>` into `PageInner`'s type via `{...props}` spread
+ even though `PageInner` destructures only (confidence: low)
+     a small surface for the same React #418 mismatch the file's own header comment is trying to prevent.
+ [P3] `parseReviewerOutputs` uses `labels[i]` which silently becomes `undefined` when `results.length > labels.length`
+ (review.ts:432-433). Today `results` and `label (confidence: medium)
+     a defensive bounds check (`if (i >= labels.length) labels[i] = "reviewer-${i}"`) would close it. Not a security bug today,
+ worth hardening while the function is new.
+
+ VERDICT: DO-NOT-SHIP — the `/cadence` route is missing the `next.config.ts` frame-hardening block its own docblock claims it
+ shares with `/demo` and `/bazaar`, and the landing gallery's `live-demo-data.ts` was never extended with the Cadence entry the
+ embedded reset channel expects, so the two new routes ship with a half-wired demo gallery and an unpatched header contract.
+
+ Saved to /home/z/Unown/.unown/reviews/2026-10-28094841-diff-vs-94d7cb1-since-94d7cb1d.md
+
+»───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+📂 2  store.tsx · habit-form.tsx
+~/Unown (main)
+ctx ▕░░░░░░░░░░▏ 4.9%/524k (auto) ↓415 ↑13k CH65.5% R33k                                                         agnes-3.0-flash
+memory: up · old build turn 6.9s · ctx 5% · in 12.5k out 415 (cached 33.3k)
+? help · ctrl+k palette · / commands · ! bash · ctrl+o tools · esc-esc tree · ctrl+shift+f search (fullscreen)

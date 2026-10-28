@@ -28,13 +28,19 @@ async function PageInner({
   );
 }
 
-export default function Page(props: {
+export default function Page({
+  searchParams,
+  params,
+}: {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
   params: Promise<Record<string, string | string[] | undefined>>;
 }) {
   return (
     <Suspense fallback={<div className="min-h-full" />}>
-      <PageInner {...props} />
+      {/* Explicit prop pass (not a {...props} spread): the server-side
+          searchParams contract (React #418) is preserved while the params
+          prop stays declared so the route's typing is complete. */}
+      <PageInner searchParams={searchParams} />
     </Suspense>
   );
 }

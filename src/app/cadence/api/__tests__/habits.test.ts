@@ -161,6 +161,8 @@ describe("POST /cadence/api/habits", () => {
     });
     const res = await POST(req);
     // The content-length check rejects before parsing.
-    expect([400, 201]).toContain(res.status);
+    expect(res.status).toBe(400);
+    const json = await res.json();
+    expect(json.error).toBe("body too large");
   });
 });

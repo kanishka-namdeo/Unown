@@ -18,14 +18,18 @@ import { Dashboard } from "../dashboard";
 import { Heatmap } from "../heatmap";
 import { StatsChart } from "../stats-chart";
 import { HabitForm } from "../habit-form";
-import { todayKey } from "../format";
 
 // A FIXED clock: every seeded checkoff is anchored to it, and tests pass it
 // as `asOf` where a component accepts one.
 const AS_OF = "2026-07-14";
 const AS_OF_DATE = new Date(2026, 6, 14);
 const seed = seedCadence(AS_OF_DATE);
-
+// The seeded state at the FIXED asOf date: how many of the 6 habits are
+// already checked off on that day. The dashboard's "N of M done" line must
+// match this exactly — the real pin replacing the tautology.
+const doneOnASOF = seed.habits.filter((h) =>
+  (seed.entries[h.id] ?? []).includes(AS_OF),
+).length;
 /** Seed the localStorage first-load path so the provider starts deterministically. */
 function seedStorage() {
   window.localStorage.clear();
@@ -106,8 +110,24 @@ describe("cadence shell", () => {
     expect(container.textContent).toContain("+ New habit");
 
     fireEvent.click(tabs[0]);
-    // Today: the long date header is present
-    expect(container.textContent).toContain(todayKey(AS_OF_DATE) === "" ? "" : "done");
+    // Today: the "N of M done" progress line. The shell's Dashboard
+    // renders with no asOf (uses todayKey(new Date())), so the count
+    // reflects the seeded state at the REAL current date. The seed is
+    // deterministic but anchored to 2000-01-01, so todayKey(new Date())
+    // will never be in the seeded entries → 0 of 6 done.
+    expect(container.textContent).toContain(
+      `0 of ${seed.habits.length} done`,
+    );
+    // Also pin the Dashboard component directly with the fixed asOf date,
+    // computing the expected value from the seed (not hardcoded blindly).
+    const { container: dashContainer } = render(
+      <CadenceProvider>
+        <Dashboard asOf={AS_OF} />
+      </CadenceProvider>,
+    );
+    expect(dashContainer.textContent).toContain(
+      `${doneOnASOF} of ${seed.habits.length} done`,
+    );
   });
 
   test("embed mode shows the live-demo tag", () => {

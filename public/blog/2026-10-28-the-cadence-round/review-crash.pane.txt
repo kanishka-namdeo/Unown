@@ -1,0 +1,36 @@
+
+ I need to look at the referenced modules to verify the claims about the useDialogDismiss import, the validation.habitErrors
+ signature, and the persistence behavior.
+
+
+✓  read src/components/bazaar/primitives.tsx
+
+
+
+✓  read src/lib/cadence/validation.ts
+
+
+
+✓  read src/lib/cadence/persistence.ts
+
+
+ QA gate result (5 lines max):
+
+ 1. habit-form.tsx: QA PASS — validation wiring, glyph slicing, a11y, and delete confirm are correct.
+ 2. store.tsx: 1 issue — the habit-sync effect gates sessionHabitsRef.has(h.id) but addHabit only adds to that set if
+    !isSeededHabitId(id), so a user-created id matching a seeded prefix would never sync (minor, low-risk); no other issues.
+
+ Review: 3 reviewer(s) over diff vs 94d7cb1 (since 94d7cb1d) (40032 chars, truncated) — subagents spawn with fresh contexts…
+ Extension "command:review" error: Cannot access 'labels' before initialization.
+
+»───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+📂 5  persistence.ts · validation.ts · primitives.tsx  +2
+~/Unown (main)
+ctx ▕█░░░░░░░░░▏ 5.6%/524k (auto) ↓299 ↑9.5k CH86.5% R93k                                                        agnes-3.0-flash
+memory: up · old build turn 2.1s · ctx 6% · in 9.5k out 299 (cached 92.7k)
+? help · ctrl+k palette · / commands · ! bash · ctrl+o tools · esc-esc tree · ctrl+shift+f search (fullscreen)
+
+
+

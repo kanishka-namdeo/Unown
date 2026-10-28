@@ -1,15 +1,15 @@
-// live-demo.test.tsx — the live-demo band's contract (the commerce round,
-// 2026-10-28: the band became a two-app gallery).
+// live-demo.test.tsx — the live-demo band's contract (the cadence round,
+// 2026-10-28: the band became a three-app gallery).
 //
 // The band iframes each agent-built app's own route in browser chrome, one
 // switcher. What this suite pins:
 //   - the section exists with the aqua hue and the #live-demo anchor;
-//   - the data file carries two apps with distinct routes, posters, reset
+//   - the data file carries three apps with distinct routes, posters, reset
 //     types and receipt docs (a gallery, not one app twice);
 //   - every receipt chip reads from the ACTIVE app's data — switching tabs
 //     swaps the counts (drift between the copy and the data file is exactly
 //     the hand-typed-number defect the honesty rules forbid);
-//   - both posters exist on disk with the real intrinsic dimensions (the
+//   - every poster exists on disk with the real intrinsic dimensions (the
 //     dex-media pattern — a missing or mis-sized poster is a layout shift,
 //     not just a broken image);
 //   - the iframe is absent until mounted (the lazy contract: an idle visit
@@ -52,8 +52,8 @@ describe("live-demo band (the gallery)", () => {
     expect(section?.textContent).toContain(LIVE_DEMO_APPS[0].url);
   });
 
-  test("the data file is a real gallery: two apps, distinct everything", () => {
-    expect(LIVE_DEMO_APPS.length).toBeGreaterThanOrEqual(2);
+  test("the data file is a real gallery: three apps, distinct everything", () => {
+    expect(LIVE_DEMO_APPS.length).toBeGreaterThanOrEqual(3);
     const routes = new Set(LIVE_DEMO_APPS.map((a) => a.route));
     const posters = new Set(LIVE_DEMO_APPS.map((a) => a.poster));
     const resets = new Set(LIVE_DEMO_APPS.map((a) => a.resetType));
@@ -67,6 +67,13 @@ describe("live-demo band (the gallery)", () => {
       expect(a.receipt.receiptDoc.startsWith("https://")).toBe(true);
       expect(a.url).toContain(a.route.replace("/", "") + "?embed=1");
     }
+    // The cadence entry is present with its own reset type.
+    const cadence = LIVE_DEMO_APPS.find((a) => a.id === "cadence");
+    expect(cadence).toBeTruthy();
+    expect(cadence!.resetType).toBe("cadence-reset");
+    expect(cadence!.route).toBe("/cadence");
+    expect(cadence!.url).toContain("cadence?embed=1");
+    expect(cadence!.receipt.receiptDoc).toBeDefined();
   });
 
   test("every receipt chip reads from the ACTIVE app's data — switching tabs swaps the counts", () => {
@@ -90,7 +97,7 @@ describe("live-demo band (the gallery)", () => {
     expect(text()).not.toContain(`~${first.receipt.toolCalls} tool calls`);
   });
 
-  test("both posters exist on disk with the real intrinsic dimensions", () => {
+  test("every poster exists on disk with the real intrinsic dimensions", () => {
     for (const app of LIVE_DEMO_APPS) {
       const buf = readFileSync(posterPath(app));
       const [w, h] = pngSize(buf);
@@ -156,6 +163,23 @@ describe("live-demo band (the gallery)", () => {
     const [p2, o2] = postMessage.mock.calls[0] as [{ type: string }, string];
     expect(p2.type).toBe(LIVE_DEMO_APPS[1].resetType);
     expect(o2).not.toBe("*");
+
+    // Switch to the cadence app — the handshake posts the cadence reset
+    // payload with a pinned origin.
+    postMessage.mockClear();
+    const tabs = within(container as HTMLElement).getAllByRole("tab");
+    const cadenceTab = tabs.findIndex((t) => t.textContent === "Cadence");
+    if (cadenceTab >= 0) {
+      fireEvent.click(tabs[cadenceTab]);
+      fireEvent.click(
+        within(container as HTMLElement).getByRole("button", { name: /^reset/i }),
+      );
+      const [p3, o3] = postMessage.mock.calls[0] as [{ source: string; type: string }, string];
+      expect(p3.source).toBe("unown-landing");
+      expect(p3.type).toBe("cadence-reset");
+      expect(o3).toBe(window.origin);
+      expect(o3).not.toBe("*");
+    }
   });
 
   test("the mobile story is the poster + the app's own route link, never a cramped frame", () => {

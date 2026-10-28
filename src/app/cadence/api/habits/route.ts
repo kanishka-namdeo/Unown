@@ -1,5 +1,9 @@
 import { NextResponse } from "next/server";
 import { seedState } from "@/lib/cadence/persistence";
+
+// GETs read module-scope in-memory state that POSTs mutate — without this
+// a Vercel production build would serve the first GET response forever.
+export const dynamic = "force-dynamic";
 import {
   HABIT_NAME_MAX,
   WEEKLY_GOAL_MAX,
@@ -31,8 +35,15 @@ function rateLimited(req: Request): boolean {
   if (!b || now - b.start >= RATE_WINDOW_MS) {
     rateBuckets.set(ip, { start: now, count: 1 });
     if (rateBuckets.size > 500) {
+      // Hard cap (new — bazaar only expired-then-dropped): wipe every bucket
+      // whose last hit is older than the window; if still over 500, drop the
+      // oldest half so a spoofed x-forwarded-for flood cannot grow it unbounded.
       for (const [k, v] of rateBuckets) {
         if (now - v.start >= RATE_WINDOW_MS) rateBuckets.delete(k);
+      }
+      if (rateBuckets.size > 500) {
+        const half = [...rateBuckets.entries()].slice(0, 250);
+        for (const [k] of half) rateBuckets.delete(k);
       }
     }
     return false;

@@ -2,6 +2,10 @@ import { NextResponse } from "next/server";
 import { seedState } from "@/lib/cadence/persistence";
 import type { CheckoffDate } from "@/lib/cadence/types";
 
+// GETs read module-scope in-memory state that POSTs mutate — without this
+// a Vercel production build would serve the first GET response forever.
+export const dynamic = "force-dynamic";
+
 // ── Seeded state (deterministic, no clock) ────────────────────────────────
 const seed = seedState(new Date("2000-01-01T00:00:00Z"));
 
@@ -26,8 +30,15 @@ function rateLimited(req: Request): boolean {
   if (!b || now - b.start >= RATE_WINDOW_MS) {
     rateBuckets.set(ip, { start: now, count: 1 });
     if (rateBuckets.size > 500) {
+      // Hard cap (new — bazaar only expired-then-dropped): wipe every bucket
+      // whose last hit is older than the window; if still over 500, drop the
+      // oldest half so a spoofed x-forwarded-for flood cannot grow it unbounded.
       for (const [k, v] of rateBuckets) {
         if (now - v.start >= RATE_WINDOW_MS) rateBuckets.delete(k);
+      }
+      if (rateBuckets.size > 500) {
+        const half = [...rateBuckets.entries()].slice(0, 250);
+        for (const [k] of half) rateBuckets.delete(k);
       }
     }
     return false;
@@ -137,9 +148,22 @@ export async function POST(req: Request) {
     );
   }
 
-  // Upsert: add the date to the habit's entry list (idempotent).
-  const list = seededEntries[habitId];
-  if (!list.includes(date)) list.push(date);
+  const existing = seededEntries[habitId];
+
+  // Demo-scoped history cap: seeded habits carry ~270 distinct dates, so a
+  // habit that reaches 400 distinct checkoff dates is full.
+  if (existing.length >= 400) {
+    return NextResponse.json(
+      { error: "habit history full", errors: [`habit ${habitId} is at the ${400}-date demo cap`] },
+      { status: 400 },
+    );
+  }
+
+  // Copy-on-write upsert: never mutate the seeded array in place — the GET
+  // lane must keep serving stable data while POSTs accumulate.
+  if (!existing.includes(date)) {
+    seededEntries[habitId] = [...existing, date];
+  }
 
   return NextResponse.json(
     { habitId, date, entries: seededEntries[habitId] },
