@@ -115,3 +115,4 @@ benchmarks/complementary/results/*/
 
 # python bytecode from the capture/audit scripts
 __pycache__/
+.unown/briefs/
