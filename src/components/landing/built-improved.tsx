@@ -69,7 +69,7 @@ export function BuiltImprovedSection() {
         <FadeUp className="max-w-2xl">
           <SectionHead
             kicker="The mission's rounds"
-            lead={`The rounds built the gallery (Fugue, the ${galleryNth} app) while the learning loop watched — and the cold-start validation round pointed the loop at itself. Here is what it minted, remembered, and proved, receipts first.`}
+            lead={`The rounds built the gallery (Fugue, the ${galleryNth} app) while the loop watched — and the cold-start round pointed it at itself. What it minted, remembered, and proved, receipts first.`}
           >
             Built &amp; Improved With Unown
           </SectionHead>
@@ -140,14 +140,14 @@ export function BuiltImprovedSection() {
               >
                 <p className="text-[13px] font-medium text-ink">{r.title}</p>
                 <p className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 font-mono text-[10.5px] leading-relaxed">
-                  <span className="rounded bg-line px-1.5 py-0.5 text-faint">
+                  <span className="rounded bg-line px-1.5 py-0.5 text-dim">
                     before
                   </span>
                   <span className="text-dim">{r.before}</span>
                   <span aria-hidden="true" className="text-faint">
                     →
                   </span>
-                  <span className="rounded bg-line px-1.5 py-0.5 text-faint">
+                  <span className="rounded bg-line px-1.5 py-0.5 text-dim">
                     after
                   </span>
                   <span className="text-ink">{r.after}</span>

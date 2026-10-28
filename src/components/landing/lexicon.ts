@@ -53,7 +53,7 @@ export const LEXICON: LexiconEntry[] = [
   },
   {
     id: "C",
-    lore: "A lenticular decoder card shipped with Pokémon 3 to read the hidden messages.",
+    lore: "A lenticular decoder card shipped with Pokémon 3.",
     loreSrc: "Gen III special edition",
     means: "Cold against warm. The same ten tasks, fresh versus dreamed memory.",
     proof: "benchmarks/selfimprove",
@@ -76,7 +76,7 @@ export const LEXICON: LexiconEntry[] = [
     id: "F",
     lore: "“When alone, nothing happens.”",
     loreSrc: "Pokédex · Platinum",
-    means: "Failure is the raw material. The harness mines only the transcript that did not pass.",
+    means: "Failure is the raw material: the harness mines only the transcript that did not pass.",
     proof: "harness.ts",
   },
   {
@@ -144,7 +144,7 @@ export const LEXICON: LexiconEntry[] = [
   },
   {
     id: "P",
-    lore: "Professor Laventon, field note: “the species' many forms resemble writing from other lands; no one will take me seriously.”",
+    lore: "Professor Laventon: “the species' many forms resemble writing from other lands.”",
     loreSrc: "Pokédex · Legends: Arceus",
     means: "Project memory. .unown/memory/project.md — plain versioned Markdown you commit and diff.",
     proof: "per-project memory",
@@ -153,12 +153,12 @@ export const LEXICON: LexiconEntry[] = [
     id: "Q",
     lore: "One room in the Solaceon Ruins is inscribed with nothing but “?!”. Another spells FRIENDSHIP as a pathcode.",
     loreSrc: "Solaceon Ruins",
-    means: "Questions. The loop exists to answer one: why did that run fail? Answer it with a rule and keep it only if it holds.",
+    means: "Questions. The loop answers one: why did that run fail? Keep the rule only if it holds.",
     proof: "failure mining",
   },
   {
     id: "R",
-    lore: "In the film a swarm compiles a grieving child's wishes into a god and a warped world — and then it all has to be taken back apart.",
+    lore: "In the film a swarm compiles a child's wishes into a god — then it all has to be taken back apart.",
     loreSrc: "Spell of the Unown: Entei",
     means: "Retention. A shipped patch that later regresses gets un-shipped, automatically.",
     proof: "retention check",
@@ -207,7 +207,7 @@ export const LEXICON: LexiconEntry[] = [
   },
   {
     id: "Y",
-    lore: "A 2013 font, a translator web app, a Minecraft mod, a classroom taxonomy paper. People keep trying to make it into tooling.",
+    lore: "A font, a translator app, a Minecraft mod, a taxonomy paper: people keep making it tooling.",
     loreSrc: "DaFont · CurseForge · Science Scope",
     means: "It yields. When a gate says no the engine obeys, then tries again.",
     proof: "ship · canary · mint gates",
@@ -230,7 +230,7 @@ export const LEXICON: LexiconEntry[] = [
     id: "?",
     lore: "The punctuation forms are the only ones with half-closed eyes. Nobody has explained why.",
     loreSrc: "Bulbapedia · Biology",
-    means: "The question the loop exists to answer: why did that run fail? Turn it into a rule and keep it only if it survives.",
+    means: "The loop's question: why did that run fail? Keep the rule only if it survives.",
     proof: "mining → patch → verify",
   },
 ];

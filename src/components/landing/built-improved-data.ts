@@ -80,12 +80,12 @@ export const LOOP_RECEIPTS: LoopReceipt[] = [
   {
     id: "cold-start",
     figure: "0/6 → 6/6 retrieval hit@5",
-    body: "the cold-start validation round: the recall surface recovered from empty to full across the ground-truth restoration (the probe lane's committed receipts)",
+    body: "the cold-start round: the recall surface recovered from empty to full across the ground-truth restoration (committed probe receipts)",
   },
   {
     id: "warm-repeat",
     figure: "30 turns capped → 9 turns complete",
-    body: "the repeat-task lift: the warm session finished in 9 turns what the cold session could not in 30 — one dream between them (−70% turns, −70% wall)",
+    body: "the repeat-task lift: the warm session finished in 9 turns what the cold could not in 30 — one dream between (−70% turns, −70% wall)",
   },
 ];
 
@@ -163,21 +163,21 @@ export const IMPROVEMENT_RECEIPTS: ImprovementReceipt[] = [
   },
   {
     id: "drift-fix",
-    title: "The recall-drift fix (cold-start round)",
+    title: "The recall-drift fix",
     before: "memory answered wrong",
     after: "verified + cited",
     loop:
-      "a probe asked what Parley hashes passwords with: the agent said bcrypt (invented env var) over a memory that said scrypt; the guide now makes memory evidence, not proof — the re-probe answered scrypt, cited, and negated the poison",
+      "a probe asked what Parley hashes with: the agent said bcrypt (invented env var) over a memory that said scrypt; the guide now makes memory evidence, not proof — the re-probe answered scrypt, cited",
     receipt:
       "https://github.com/kanishka-namdeo/Unown/blob/main/benchmarks/validation-round/ux-ledger.md",
   },
   {
     id: "poison-fix",
-    title: "The poison containment (cold-start round)",
+    title: "The poison containment",
     before: "wrong answer became memory",
     after: "zero poison extracted",
     loop:
-      "the wrong answer rode a session note into the dream and erased the verified fact; extraction now refuses unverified assertions — a live poisoned note produced no poisoned memories, and the ground truth was restored three-deep",
+      "the wrong answer rode a session note into the dream and erased the verified fact; extraction now refuses unverified assertions — a live poisoned note extracted zero, the truth restored three-deep",
     receipt:
       "https://github.com/kanishka-namdeo/Unown/blob/main/benchmarks/validation-round/validation-log.md",
   },

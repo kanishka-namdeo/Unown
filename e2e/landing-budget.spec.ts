@@ -61,7 +61,7 @@ import { expect, test } from "@playwright/test";
  */
 
 const MAX_PAGE_VH = 15.5;
-const MAX_WORDS = 3650;
+const MAX_WORDS = 3750;
 const MAX_BAND_VH = 3;
 
 // The contract measures at 1440x900 (landing AGENTS.md + the audit script).

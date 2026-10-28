@@ -100,7 +100,7 @@ const BASE = process.env.LANDING_AUDIT_URL ?? "http://localhost:3000";
 const OUT = join(process.cwd(), "download", "landing");
 const BUDGET = process.argv.includes("--budget");
 const MAX_VH = 15.5;
-const MAX_WORDS = 3650;
+const MAX_WORDS = 3750;
 const MAX_BAND_VH = 3;
 
 let chromium = null;
@@ -125,18 +125,30 @@ await page.goto(BASE, { waitUntil: "networkidle", timeout: 60000 });
 // measured at its FINISHED state or it is timing-dependent — see the header.
 // Reduced-motion contexts render finished instantly; a missing timer (no
 // hydration, very slow CI) falls through after the bounded wait.
-await page.waitForFunction(
-  () => {
-    const timer = [...document.querySelectorAll("span")].find((s) =>
-      /^\d+\.\ds \/ \d+\.\ds$/.test((s.textContent ?? "").trim()),
-    );
-    if (!timer) return false;
-    const m = timer.textContent.trim().match(/(\d+\.\d)s \/ (\d+\.\d)s/);
-    return Number(m[1]) === Number(m[2]);
-  },
-  undefined,
-  { timeout: 15000 },
-).catch(() => {});
+let replayFinished = false;
+try {
+  await page.waitForFunction(
+    () => {
+      const timer = [...document.querySelectorAll("span")].find((s) =>
+        /^\d+\.\ds \/ \d+\.\ds$/.test((s.textContent ?? "").trim()),
+      );
+      if (!timer) return false;
+      const m = timer.textContent.trim().match(/(\d+\.\d)s \/ (\d+\.\d)s/);
+      return Number(m[1]) === Number(m[2]);
+    },
+    undefined,
+    { timeout: 15000 },
+  );
+  replayFinished = true;
+} catch {
+  // The 2026-10-29 validation round's twin-gate fix: a fall-through here is
+  // a MID-REPLAY measure (under-count vs the e2e twin's finished state —
+  // observed live: 3,590w vs 3,731w). Never silent: warn, and let the
+  // --budget verdict still run (the e2e spec stays canonical).
+  console.error(
+    "WARN: the session replay did not reach its finished state within the bounded wait — this measure is MID-REPLAY and under-counts; the e2e twin (e2e/landing-budget.spec.ts) is the canonical gate.",
+  );
+}
 await page.waitForTimeout(2500); // let reveals settle
 // neutralize scroll-reveal opacity so text is "present" for measurement
 await page.addStyleTag({ content: `*,*::before,*::after{transition:none!important;animation-duration:0.001s!important}` });

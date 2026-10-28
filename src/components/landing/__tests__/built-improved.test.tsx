@@ -258,7 +258,7 @@ describe("built-improved band (the SOTA round's showcase)", () => {
     expect(IMPROVEMENT_RECEIPTS.length).toBe(4);
     expect(text).toContain("The first shipped memory patch");
     expect(text).toContain("0-byte result envelopes");
-    expect(text).toContain("The recall-drift fix (cold-start round)");
-    expect(text).toContain("The poison containment (cold-start round)");
+    expect(text).toContain("The recall-drift fix");
+    expect(text).toContain("The poison containment");
   });
 });
