@@ -58,9 +58,15 @@ export function apiReq(
   const headers: Record<string, string> = {};
   if (opts?.body !== undefined) headers["content-type"] = "application/json";
   if (opts?.cookie) {
-    headers["cookie"] = opts.cookie;
-    // the test-lane fallback (WHATWG Request strips the forbidden
-    // `cookie` header; the custom one survives to the handler)
+    // The test-lane cookie channel: WHATWG's Request strips the
+    // forbidden `cookie` header, so the session cookie is attached
+    // through the NON-forbidden `x-parley-cookie` header that
+    // `_auth.ts`'s `sessionFromRequest` reads as a fallback (the
+    // real-server path uses the standard `cookie` header — exercised
+    // only against the running dev server, see the E2E pass).
+    // The value is URI-encoded exactly once here; `_auth` decodes it
+    // — no double-encoding (a double-encode made the fallback path
+    // un-decodable → every session-lane 401'd).
     headers["x-parley-cookie"] = encodeURIComponent(opts.cookie);
   }
   if (opts?.xff) headers["x-forwarded-for"] = opts.xff;

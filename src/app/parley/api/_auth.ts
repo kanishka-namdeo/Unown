@@ -64,7 +64,14 @@ export function sessionFromRequest(req: Request): ResolvedSession | null {
     .map((s) => s.trim())
     .find((s) => s.startsWith(`${SESSION_COOKIE}=`));
   if (!match) return null;
-  const cookieValue = decodeURIComponent(match.slice(SESSION_COOKIE.length + 1));
+  let cookieValue: string;
+  try {
+    cookieValue = decodeURIComponent(match.slice(SESSION_COOKIE.length + 1));
+  } catch {
+    // A malformed %-sequence is an attacker-supplied cookie value —
+    // fail closed to a 401, never let it crash into a 500.
+    return null;
+  }
   if (!cookieValue) return null;
   const sessionId = verifySignedCookie(cookieValue);
   if (!sessionId) return null;

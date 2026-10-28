@@ -8,9 +8,14 @@ import { NextResponse } from "next/server";
 
 export const dynamic = "force-dynamic";
 
-import { acceptInvite, InviteUsedError, NotFoundError } from "@/lib/parley/store";
+import { acceptInvite, InviteUsedError, NotFoundError, QuotaExceededError } from "@/lib/parley/store";
+import { writeLaneRateLimited, rateLimitedBody } from "@/app/parley/api/_rate";
+import { quotaExceededResponse } from "@/app/parley/api/_auth";
 
 export async function POST(req: Request) {
+  if (writeLaneRateLimited(req)) {
+    return NextResponse.json(rateLimitedBody("invite accepts"), { status: 429 });
+  }
   let body: unknown;
   try {
     body = await req.json();
@@ -35,6 +40,9 @@ export async function POST(req: Request) {
   } catch (e) {
     if (e instanceof NotFoundError) {
       return NextResponse.json({ error: "unknown token", reason: "unknown", status: 404 }, { status: 404 });
+    }
+    if (e instanceof QuotaExceededError) {
+      return NextResponse.json(quotaExceededResponse(), { status: 402 });
     }
     if (e instanceof InviteUsedError) {
       return NextResponse.json(

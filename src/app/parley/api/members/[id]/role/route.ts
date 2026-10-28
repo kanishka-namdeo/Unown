@@ -16,11 +16,15 @@ import {
   unauthorizedResponse,
   requirePermission,
 } from "@/app/parley/api/_auth";
+import { writeLaneRateLimited, rateLimitedBody } from "@/app/parley/api/_rate";
 
 export async function POST(
   req: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
+  if (writeLaneRateLimited(req)) {
+    return NextResponse.json(rateLimitedBody("role changes"), { status: 429 });
+  }
   const session = sessionFromRequest(req);
   if (!session) return NextResponse.json(unauthorizedResponse(), { status: 401 });
 
@@ -55,6 +59,17 @@ export async function POST(
   if (target.role === "owner") {
     return NextResponse.json(
       { error: "forbidden", permission: "the owner seat may not have its role changed" },
+      { status: 403 },
+    );
+  }
+  // Guard 1b (the P0 fix): a membership may not be PROMOTED to owner
+  // (the tenant already has an owner seat — `mem-owner` / `mem-nw-owner`
+  // per the seed). A second owner would break the owner-seat carve-out
+  // (the `mem-owner` default in `rbac.can`) + the customer-side
+  // `createConvo` owner-lookup (which picks the first owner).
+  if (newRole === "owner") {
+    return NextResponse.json(
+      { error: "forbidden", permission: "a tenant may not gain a second owner" },
       { status: 403 },
     );
   }

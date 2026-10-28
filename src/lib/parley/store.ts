@@ -27,7 +27,9 @@ import { slaState } from "./sla";
 import {
   canCreate,
   conversationsThisMonth,
+  seatsUsed,
 } from "./metering";
+import { PLAN_CAPS } from "./types";
 import { newConversationId, newInviteToken, newMessageId, mulberry32 } from "./ids";
 import { hashPassword } from "./password";
 import { createSession, findSession, isExpired, removeSession } from "./sessions";
@@ -586,6 +588,12 @@ export function createInvite(ctx: TenantContext, email: string, role: Role): Inv
  * expired → `InviteUsedError("expired")`. Creates the user (a REAL
  * `passwordHash` from the submitted password, NOT the demo one) +
  * attaches the membership with the invited role.
+ *
+ * Seat-cap gate (the P1 overage fix): an invitee landing on a
+ * tenant at the plan's seat cap is REJECTED (`QuotaExceededError`;
+ * the route maps it to the 402 `quota_exceeded` body) — the seat
+ * count may not cross `PLAN_CAPS[plan].seats`, so the usage panel's
+ * overage accounting stays consistent.
  */
 export function acceptInvite(
   token: string,
@@ -600,6 +608,11 @@ export function acceptInvite(
   if (new Date(inv.expiresAt).getTime() < new Date(now).getTime()) throw new InviteUsedError("expired");
   const { errors } = validateAcceptInvite({ name, password });
   if (errors.length > 0) throw new Error(`validation failed: ${errors.join("; ")}`);
+  // The seat-cap gate: the tenant may not cross its plan's seat cap.
+  const tenant = s.tenants.find((t) => t.id === inv.tenantId)!;
+  if (seatsUsed(s, inv.tenantId) >= PLAN_CAPS[tenant.plan].seats) {
+    throw new QuotaExceededError("seat cap");
+  }
   const user: User = {
     id: liveId("usr"),
     email: inv.email,
@@ -645,6 +658,14 @@ export function changeRole(ctx: TenantContext, membershipId: string, newRole: Ro
   const s = getParley();
   const m = s.memberships.find((x) => x.id === membershipId && x.tenantId === ctx.tenantId);
   if (!m) return null;
+  // The P0 store-level backstop: a tenant may not gain a SECOND owner
+  // (the owner-seat carve-out + the customer-side owner-lookup assume
+  // exactly one owner seat per tenant). Demoting the existing owner
+  // is allowed by the caller's guards (it is never done in the demo);
+  // promotion to owner is rejected here.
+  if (newRole === "owner" && s.memberships.some((x) => x.tenantId === ctx.tenantId && x.role === "owner")) {
+    return null;
+  }
   const updated: Membership = { ...m, role: newRole };
   state = {
     ...s,

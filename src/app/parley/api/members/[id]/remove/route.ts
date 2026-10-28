@@ -14,11 +14,15 @@ import {
   unauthorizedResponse,
   requirePermission,
 } from "@/app/parley/api/_auth";
+import { writeLaneRateLimited, rateLimitedBody } from "@/app/parley/api/_rate";
 
 export async function POST(
   req: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
+  if (writeLaneRateLimited(req)) {
+    return NextResponse.json(rateLimitedBody("member removals"), { status: 429 });
+  }
   const session = sessionFromRequest(req);
   if (!session) return NextResponse.json(unauthorizedResponse(), { status: 401 });
 

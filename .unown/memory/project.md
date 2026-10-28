@@ -8,6 +8,8 @@
 - Use a two-step confirmation flow before executing destructive actions like deletion in React forms.
 
 ## Known pitfalls
+- RBAC pitfall in `src/app/parley/api/members/[id]/role/route.ts`: guards at lines 45-77 check only `target.role === "owner"` (line 55) and self-change (line 61) but never reject `newRole === "owner"`, so any admin/owner can self-promote a non-owner seat to `owner` and create a second owner.
+- Parley code-review verdict workflow: read all domain modules, API routes, tests, and UI wiring before issuing a BLOCK/PASS verdict; P0 findings must include the exact file:line range, the guard that fails, and a reproduction command (e.g., `POST /parley/api/members/[id]/role`).
 - To reliably spy on localStorage.setItem in component tests for this project, use Object.defineProperty on the instance prototype with the native bind; simple property assignment fails because happy-dom routes setItem calls through a different receiver
 - Stealth verification suite on bot.sannysoft.com: all 10 checks (webdriver, userAgent, platform, userAgentData, timezone, locale, screen, viewport, plugins, window.chrome) pass; 0 FAIL rows in Intoli tests.
 - Web search may fallback to alternative providers (You.com, DuckDuckGo, Tavily) due to connection/rate-limit issues [note 1].
@@ -24,6 +26,8 @@
 - In this project, landing pages auto-deploy to Vercel via GitHub integration; a 'deploy.completed' event payload typically contains an 'environment' field.
 
 ## Facts
+- Parley E2E suite covers invite-to-membership flow (admin invites `casey@lumen.test`, invite appears in Demo Mailbox, acceptance creates membership row) and embed-mode auto-login (`/parley?embed=1` shows "live demo"/"demo session" badges and posts a `parley-reset` message via postMessage).
+- P0 fix: `store.changeRole` in `src/lib/parley/store.ts` (lines 623-637) lacks a seat-uniqueness check, so it must be added to prevent multiple `owner` seats in a tenant.
 - The Parley SaaS app (`/parley`) now includes Phase 4 UI: a pass-through `layout.tsx` in `src/app/parley/` imports a scoped stylesheet and renders a `.parley-scope dark` wrapper; its `globals.css` uses scoped Tailwind v4 with three `@source` lines for `components/parley`, `lib/parley`, and `app/parley`.
 - The Parley app's `src/app/parley/globals.css` defines GBA 5-bit dark-default color tokens, a named `parley-pop` keyframe, and a reduced-motion guard; `page.tsx` supports an `?embed=` query parameter.
 - Capture and document terminal session results in /home/z/unown for context preservation
@@ -86,4 +90,4 @@
 - In src/lib/review.ts, parseReviewOutput (lines 455-475) uses static regexes over model output so treated data cannot become code injection, and the git() helper (lines 114-121) calls spawnSync with array args and shell:false; a security review of the /cadence diff (since commit 94d7cb1d) confirmed no new injection surface.
 - Utilize `useDialogDismiss` to manage focus traps and Escape-key closing for modal components.
 
-<!-- unown: rendered 76/76 memories via Mem0 (backend: lexical) at 2026-10-28T17:56:28.004Z -->
+<!-- unown: rendered 80/80 memories via Mem0 (backend: lexical) at 2026-10-28T19:02:11.934Z -->
