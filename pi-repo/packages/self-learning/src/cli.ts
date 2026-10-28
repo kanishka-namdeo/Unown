@@ -22,7 +22,7 @@
  *   unown mcp <sub>        manage MCP server configs (add/list/get/remove/test)
  *   unown note "text"     hand a note to the engine (for AutoDream)
  */
-import { existsSync, readdirSync, writeFileSync } from "node:fs";
+import { existsSync, readdirSync, writeFileSync, writeSync } from "node:fs";
 import { basename, join } from "node:path";
 import {
         type CreateAgentSessionRuntimeFactory,
@@ -2545,8 +2545,23 @@ export function nextStallMilestone(elapsedMs: number, budgetMs: number, emitted:
         return null;
 }
 
-function installPrintStallWatchdog(runtime: any): void {
+export function installPrintStallWatchdog(runtime: any, lastResort?: () => void): { dispose: () => void } {
         try {
+                // F3 (2026-10-29, the parley round): every forced exit below used to
+                // call process.exit() bare — bounded, but an unattended caller's
+                // result vanished whenever post-answer teardown hung past the
+                // grace (measured live: a 59-tool-call build session exited via
+                // the hard-exit grace with a 0-byte envelope). The lastResort
+                // hook lets cmdPrint write its envelope (writeSync — unloseable)
+                // + one stderr line BEFORE the bounded exit. Fail-open: a
+                // throwing hook must never block the exit.
+                const runLastResort = () => {
+                        try {
+                                lastResort?.();
+                        } catch {
+                                /* boundedness outranks the envelope */
+                        }
+                };
                 let timer: any = null;
                 let lastEventTs = Date.now();
                 let emitted: Record<number, boolean> = {};
@@ -2570,6 +2585,7 @@ function installPrintStallWatchdog(runtime: any): void {
                                 console.error(
                                         `unown: print mode stalled — no session events for ${Math.round(printStallMs() / 1000)}s; forcing exit (tune with PI_PRINT_STALL_MS)`,
                                 );
+                                runLastResort();
                                 process.exit(1);
                         }, printStallMs());
                 };
@@ -2602,7 +2618,9 @@ function installPrintStallWatchdog(runtime: any): void {
                                         armHardExit();
                                         return;
                                 }
-                                // The agent finished; dispose had its grace. Leave quietly.
+                                // The agent finished; dispose had its grace. Leave quietly —
+                                // but never silently: the caller's envelope goes first (F3).
+                                runLastResort();
                                 process.exit(0);
                         }, printExitGraceMs());
                 };
@@ -2650,9 +2668,22 @@ function installPrintStallWatchdog(runtime: any): void {
                                                 : null;
                         }
                 }, 1_000);
+                // F3: the test lane's dispose — clears every timer the watchdog
+                // armed (stall guard, hard-exit grace, the 1s poll) so a pinning
+                // test can install the real watchdog without keeping the test
+                // process alive. Production never calls it (the process exits
+                // through one of the guarded paths first).
+                return {
+                        dispose: () => {
+                                if (timer) clearTimeout(timer);
+                                if (hardExit) clearTimeout(hardExit);
+                                clearInterval(poll);
+                        },
+                };
         } catch {
                 /* best effort only */
         }
+        return { dispose: () => {} };
 }
 
 /** M3 answer-watch accumulator for cmdPrint's OSC-9 ping (notify.ts): a
@@ -2902,7 +2933,18 @@ async function cmdPrint(prompt: string | undefined, args: CliArgs, verbose: bool
                 permissionMode: args.permissionMode,
                 addDirs: args.addDirs,
         });
-        installPrintStallWatchdog(runtime);
+        // F3 (2026-10-29, the parley round): the last-resort envelope lane.
+        // The watchdog's forced exits (stall guard, post-answer hard-exit
+        // grace) call the current closure BEFORE process.exit so an
+        // unattended caller never loses the result to a hung teardown
+        // (measured: 59 tool calls, 0-byte envelope, receipt ended at the
+        // drain sentinel). The holder is assigned per lane below — the
+        // watchdog installs before either lane exists, so before assignment
+        // the dispatcher is a no-op (a stall during the run itself still
+        // exits through the stall guard's own stderr line).
+        let envelopeWritten = false;
+        const lastResort: { current: (() => void) | null } = { current: null };
+        installPrintStallWatchdog(runtime, () => lastResort.current?.());
         // The fleet drain sentinel rides as the final message in orchestrator
         // runs: the fleet's input handler intercepts it (never model-visible)
         // and waits for async subagents so their steer-back results land while
@@ -2977,6 +3019,37 @@ async function cmdPrint(prompt: string | undefined, args: CliArgs, verbose: bool
         };
         if (wantResultJson && capture) {
                 const wrap = captureStdout();
+                // F3: this lane's last resort — the full envelope, subtype
+                // forced_exit, written via writeSync(1, …) so no exit race can
+                // lose it. The text recovers the cap case exactly like the
+                // normal path (LR-1b): a capped run's answer-so-far stands.
+                lastResort.current = () => {
+                        if (envelopeWritten) return;
+                        envelopeWritten = true;
+                        const capped = maxTurnsGuard?.state.capped === true;
+                        const text =
+                                (answerWatch.answer?.text ?? "").trim() ||
+                                (capped ? (answerWatch.lastCompleted?.text ?? "").trim() : "");
+                        const result = assembleResultJson({
+                                capture,
+                                text,
+                                subtype: "forced_exit",
+                                durationMs: Date.now() - startedAt,
+                                version: VERSION,
+                        });
+                        if (capped) result.capped = true;
+                        if (repetitionGuard?.state.tripped) {
+                                result.loop_guard = {
+                                        tool: repetitionGuard.state.tool,
+                                        count: repetitionGuard.state.count,
+                                        limit: repetitionGuard.state.limit,
+                                };
+                        }
+                        console.error(
+                                "unown: post-answer teardown exceeded the exit grace — envelope written, forcing exit (tune with PI_PRINT_EXIT_GRACE_MS)",
+                        );
+                        writeSync(1, JSON.stringify(result) + "\n");
+                };
                 let code = 0;
                 try {
                         code = await runPrintRounds([message]);
@@ -3044,6 +3117,7 @@ async function cmdPrint(prompt: string | undefined, args: CliArgs, verbose: bool
                                         limit: repetitionGuard.state.limit,
                                 };
                         }
+                        envelopeWritten = true; // F3: the real envelope landed — the last resort stands down
                         process.stdout.write(JSON.stringify(result) + "\n");
                         if (repetitionGuard?.state.tripped) {
                                 // The loop guard is a distinct, documented exit
@@ -3072,6 +3146,18 @@ async function cmdPrint(prompt: string | undefined, args: CliArgs, verbose: bool
                 process.exit(code);
         }
         let code: number;
+        // F3: the text/--mode-json lanes' last resort — stdout already carries
+        // the live answer (pi prints as it goes), so a JSON envelope would
+        // corrupt the lane; the honest last resort is the stderr note. The
+        // --mode json event stream is exempt like its F11 guard: its consumer
+        // sees the raw events.
+        lastResort.current = () => {
+                if (envelopeWritten) return;
+                envelopeWritten = true;
+                console.error(
+                        "unown: post-answer teardown exceeded the exit grace — forcing exit; the printed answer stands (tune with PI_PRINT_EXIT_GRACE_MS)",
+                );
+        };
         if (args.jsonMode) {
                 // The JSONL event stream: one runPrintMode call, sentinel inline
                 // (the extension is warn-only in "json" mode — nothing races it).

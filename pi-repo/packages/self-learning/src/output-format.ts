@@ -109,11 +109,21 @@ export function createOutputCaptureExtension(capture: OutputCapture) {
         };
 }
 
-/** Assemble the final result object (pure — pinned by tests). */
+/**
+ * Assemble the final result object (pure — pinned by tests).
+ *
+ * `forced_exit` (2026-10-29, the parley round's F3): the print watchdog's
+ * boundedness nets (the +15s post-answer hard-exit grace, the 180s stall
+ * guard) used to call process.exit() bare — when post-answer teardown hung
+ * past the grace, an unattended caller's whole result vanished with the
+ * process (measured live: 59-tool-call UI build session, envelope 0 bytes,
+ * receipt ended at the drain sentinel). The watchdog now writes a
+ * last-resort envelope before those exits; this subtype is its honest label.
+ */
 export function assembleResultJson(opts: {
         capture: OutputCapture;
         text: string;
-        subtype: "success" | "error_during_execution";
+        subtype: "success" | "error_during_execution" | "forced_exit";
         durationMs: number;
         version: string;
 }): Record<string, unknown> {

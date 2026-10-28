@@ -9,6 +9,12 @@ otherwise specified; the release tag must always equal package.json's version.
 
 Repo conventions: measured claims cite their receipts (`docs/testing-strategy.md`, `benchmarks/memory-eval/*/RESULTS.md`). Changes to agent behavior — prompts, default models, routing, guard rules, hooks, memory injection — are filed under **Agent Behavior**; the policy lives in [docs/BEHAVIOR.md](docs/BEHAVIOR.md).
 
+## [Unreleased]
+
+### Agent Behavior (print-mode forced exits write the envelope, 2026-10-29 — the parley round's F3)
+
+- **the print watchdog's forced exits can no longer swallow the result envelope** — measured live during the Parley round's UI build: two detached headless sessions ended through the post-answer hard-exit grace with **0-byte envelopes** (an upstream empty-completion pair had ended the run; teardown then hung past the +15 s grace), and both boundedness nets — the hard exit and the 180 s stall guard — called `process.exit()` bare, so the unattended caller's whole result vanished with the process. The fix: `installPrintStallWatchdog` now takes a `lastResort` hook that runs immediately before every forced exit (fail-open — a throwing hook can never block the exit), and cmdPrint installs a per-lane last resort: the `--output-format json` lane writes the **full envelope with the new honest subtype `forced_exit`** (the answer text, cap-recovered per LR-1b when a `--max-turns` cap landed mid-work; usage; `capped`/`loop_guard` facts) via `writeSync(1, …)` so no exit race can lose it, plus one stderr line; the text and `--mode json` lanes emit the stderr note (their stdout already carries the live answer / raw event stream). The watchdog also returns a `dispose()` so the pinning test runs the real watchdog without keeping the test process alive. Automation can now distinguish "forced exit after the answer" (`forced_exit`) from success and from `error_during_execution`. Pinned by `test/print-exit-envelope.test.ts` (hook-before-exit ordering, fail-open boundedness, the `forced_exit` envelope shape); receipts in [benchmarks/parley-round/validation-log.md](benchmarks/parley-round/validation-log.md) (F3, with the trigger's two-layer root-cause analysis). Tuning knob unchanged: `PI_PRINT_EXIT_GRACE_MS` ([docs/configuration.md](docs/configuration.md)).
+
 ## [0.0.37] - 2026-10-28
 
 ### Added

@@ -30,7 +30,7 @@ export interface ChangelogStop {
   groups: ChangelogGroup[];
 }
 
-export const CHANGELOG_TOTAL_ENTRIES = 341;
+export const CHANGELOG_TOTAL_ENTRIES = 342;
 
 export const CHANGELOG_TOTALS: Record<ChangelogBucket, number> = {
   "Added": 150,
@@ -39,10 +39,35 @@ export const CHANGELOG_TOTALS: Record<ChangelogBucket, number> = {
   "Removed": 3,
   "Fixed": 125,
   "Security": 5,
-  "Behavior": 30
+  "Behavior": 31
 };
 
 export const CHANGELOG_STOPS: ChangelogStop[] = [
+  {
+    "label": "Unreleased",
+    "date": null,
+    "total": 1,
+    "counts": {
+      "Added": 0,
+      "Changed": 0,
+      "Deprecated": 0,
+      "Removed": 0,
+      "Fixed": 0,
+      "Security": 0,
+      "Behavior": 1
+    },
+    "groups": [
+      {
+        "bucket": "Behavior",
+        "items": [
+          {
+            "title": "the print watchdog's forced exits can no longer swallow the result envelope",
+            "behavior": true
+          }
+        ]
+      }
+    ]
+  },
   {
     "label": "0.0.37",
     "date": "2026-10-28",
