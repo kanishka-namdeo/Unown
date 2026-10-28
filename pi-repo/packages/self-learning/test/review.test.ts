@@ -19,8 +19,10 @@ import {
     captureReviewTarget,
     mergeReviews,
     parseReviewOutput,
+    parseReviewerOutputs,
     renderReview,
     reviewerAgent,
+    reviewerLabels,
     REVIEWER_FOCUSES,
     saveReviewArtifact,
 } from "../src/review.ts";
@@ -81,6 +83,54 @@ describe("parseReviewOutput", () => {
         expect(clean.findings).toHaveLength(0);
         expect(clean.verdict).toBe("ship");
         expect(parseReviewOutput("unstructured text", "quality").verdict).toBe("unknown");
+    });
+});
+
+// ---------------------------------------------------------------------------
+// 1b. Reviewer labels + the results->outputs mapping — the TDZ regression
+// (the /review wiring used `labels[i]` before declaring `labels`, crashing
+// the merge AFTER all reviewers finished; cadence round 2026-10-28)
+// ---------------------------------------------------------------------------
+describe("reviewerLabels + parseReviewerOutputs", () => {
+    const focuses = [{ key: "correctness" }, { key: "security" }];
+    const checks = [{ name: "tests" }, { name: "a11y" }];
+
+    test("labels follow spawn order: focuses first, then check: prefixed checks", () => {
+        expect(reviewerLabels(focuses, checks)).toEqual([
+            "correctness",
+            "security",
+            "check:tests",
+            "check:a11y",
+        ]);
+        expect(reviewerLabels([], [{ name: "only" }])).toEqual(["check:only"]);
+        expect(reviewerLabels([], [])).toEqual([]);
+    });
+
+    test("results[i] pairs with labels[i] — every finding's `from` is its own reviewer", () => {
+        const results = [
+            { output: "- [P2] naming — off-by-one (confidence: low)\nVERDICT: SHIP", exitCode: 0, outputTruncated: false },
+            { output: "- [P0] injection — unsanitized input (confidence: high)\nVERDICT: DO-NOT-SHIP", exitCode: 0, outputTruncated: false },
+            { output: "- [P3] missing test — none for the edge (confidence: medium)\nVERDICT: SHIP", exitCode: 0, outputTruncated: false },
+            { output: "No findings.\nVERDICT: SHIP", exitCode: 0, outputTruncated: false },
+        ];
+        const outputs = parseReviewerOutputs(results, focuses, checks);
+        expect(outputs).toHaveLength(4);
+        expect(outputs[0].findings[0].from).toBe("correctness");
+        expect(outputs[1].findings[0].from).toBe("security");
+        expect(outputs[2].findings[0].from).toBe("check:tests");
+        expect(outputs[3].verdict).toBe("ship");
+    });
+
+    test("failed + truncated marking rides through (R-b S1/S3)", () => {
+        const results = [
+            { output: "", exitCode: 1, outputTruncated: false },
+            { output: "- [P1] partial — cut at the cap (confidence: low)", exitCode: 0, outputTruncated: true },
+        ];
+        const outputs = parseReviewerOutputs(results, [{ key: "quality" }], []);
+        expect(outputs[0].failed).toBe(true);
+        expect(outputs[1].failed).toBe(false);
+        expect(outputs[1].truncated).toBe(true);
+        expect(outputs[1].verdict).toBe("unknown");
     });
 });
 

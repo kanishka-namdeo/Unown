@@ -404,6 +404,39 @@ export interface ReviewOutput {
     truncated?: boolean;
 }
 
+/** Reviewer labels in spawn order — focus reviewers first, then checks.
+ *
+ * The /review wiring once computed this array AFTER first using it inside
+ * `results.map(...)` (a TDZ ReferenceError — "Cannot access 'labels' before
+ * initialization" — that ate every completed review's verdict at the merge
+ * step; found live in the cadence round, 2026-10-28). Extracting it here
+ * makes the order structural: labels exist before any use, and the pairing
+ * with `results` (the Promise.all spawn order) is pinned by tests. */
+export function reviewerLabels(
+    focuses: ReadonlyArray<{ key: string }>,
+    selectedChecks: ReadonlyArray<{ name: string }>,
+): string[] {
+    return [...focuses.map((f) => f.key), ...selectedChecks.map((c) => `check:${c.name}`)];
+}
+
+/** Map raw reviewer results to parsed outputs. `labels[i]` pairs with
+ * `results[i]` — the same order runSubagent spawned them in (focuses
+ * first, then checks). Failed reviewers are marked (R-b S1) and truncated
+ * outputs get the marker line appended (R-b S3). */
+export function parseReviewerOutputs(
+    results: ReadonlyArray<{ output: string; exitCode: number; outputTruncated?: boolean }>,
+    focuses: ReadonlyArray<{ key: string }>,
+    selectedChecks: ReadonlyArray<{ name: string }>,
+): ReviewOutput[] {
+    const labels = reviewerLabels(focuses, selectedChecks);
+    return results.map((r, i) =>
+        parseReviewOutput(r.output + (r.outputTruncated ? "\n(reviewer output truncated)" : ""), labels[i], {
+            failed: r.exitCode !== 0 || !r.output.trim(),
+            truncated: r.outputTruncated,
+        }),
+    );
+}
+
 const SEVERITIES = ["P0", "P1", "P2", "P3"] as const;
 
 /** Parse one reviewer's output into findings + verdict (tolerant). The

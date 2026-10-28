@@ -138,7 +138,7 @@ import {
         filterFindingsBySeverity,
         mergeReviews,
         parseReviewFlags,
-        parseReviewOutput,
+        parseReviewerOutputs,
         REVIEWER_FOCUSES,
         type ReviewTarget,
         renderReview,
@@ -3670,14 +3670,11 @@ export function createUnownToolsExtension(opts: UnownToolsOptions) {
                                         // Reviewer honesty (R-b S1): a non-zero exit, timeout or empty
                                         // output marks the reviewer FAILED — its silence must never
                                         // render as "the diff looked clean". Truncated outputs are
-                                        // marked too (S3).
-                                        const outputs = results.map((r, i) =>
-                                                parseReviewOutput(r.output + (r.outputTruncated ? "\n(reviewer output truncated)" : ""), labels[i], {
-                                                        failed: r.exitCode !== 0 || !r.output.trim(),
-                                                        truncated: r.outputTruncated,
-                                                }),
-                                        );
-                                        const labels = [...focuses.map((f) => f.key), ...selectedChecks.map((c) => `check:${c.name}`)];
+                                        // marked too (S3). Labels pair with results by spawn order —
+                                        // computed by the pure helper (the inline version once used
+                                        // `labels[i]` before declaring `labels` — a TDZ crash that
+                                        // ate the verdict; cadence round 2026-10-28).
+                                        const outputs = parseReviewerOutputs(results, focuses, selectedChecks);
                                         const merged = mergeReviews(outputs);
                                         const shownFindings = filterFindingsBySeverity(merged.findings, flags.minSeverity);
                                         const text = renderReview(target.label, outputs, shownFindings);
