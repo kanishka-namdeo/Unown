@@ -49,6 +49,15 @@ const nextConfig: NextConfig = {
           { key: "X-Frame-Options", value: "SAMEORIGIN" },
         ],
       },
+      {
+        // /parley (the parley round, 2026-10-28) is embedded the same way:
+        // the live-demo gallery iframes /parley?embed=1 same-origin.
+        source: "/parley/:path*",
+        headers: [
+          { key: "Content-Security-Policy", value: "frame-ancestors 'self'" },
+          { key: "X-Frame-Options", value: "SAMEORIGIN" },
+        ],
+      },
     ];
   },
 };
