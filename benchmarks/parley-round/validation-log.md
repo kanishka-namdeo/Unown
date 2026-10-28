@@ -115,3 +115,75 @@
   usage-log rows (12/12 ok-text client-side; zero-token rows logged).
 - **Retention:** the distinction (zero-token row ≠ degenerate completion)
   is recorded here and cited by F3's analysis.
+
+### F6 — the dev-origin trap: 127.0.0.1 vs localhost in Next 16 dev (closed: caller environment — a lane rule, not a code change)
+
+- **Description:** on the resuming environment, the E2E phase's first two
+  sessions (and the operator's spot checks) saw the app permanently wedged
+  on "Loading…" — no login form, zero API calls — while the upstream E2E
+  pass on the predecessor environment was all-green on the same commit.
+  Two build sessions chased the wedge as an app bug (one shipped a
+  `setLoading` restructure that never addressed it) before the operator
+  killed them for duplicating the upstream E2E.
+- **Reproduction:** Playwright (real Chrome 156, agent-browser lane) at
+  `http://127.0.0.1:3000/parley`: the page loads every chunk (no 404s
+  beyond the favicon, no pageerror, no unhandled rejection), React runs
+  (the devtools banner prints), but hydration never completes — the boot
+  effect's `fetchJson("/parley/api/auth/session")` never fires, and the
+  console fills with `WebSocket connection to 'ws://127.0.0.1:3000/_next/hmr'
+  failed: ERR_INVALID_HTTP_RESPONSE`. The dev server log names it:
+  `Blocked cross-origin request to Next.js dev resource /_next/hmr from
+  "127.0.0.1"`. Navigating the same server at `http://localhost:3000/parley`
+  boots instantly: session 401 → login form → login 200 → nine API lanes
+  200 → SLA chips, filters, thread, composer all render (screenshot
+  `/tmp/parley-shots/spot-inbox.png`, the resuming operator's receipts).
+- **Root cause:** Next.js 16 dev treats the HMR socket as a same-origin
+  dev resource pinned to the announced host (`localhost`); a page served
+  from `127.0.0.1` is a cross-origin HMR client and is blocked — and with
+  the HMR handshake rejected, the dev client's hydration pipeline stalls
+  before any effect runs. The upstream E2E lane used `localhost`
+  throughout; the resuming environment's briefs and driver scripts used
+  `127.0.0.1` — the asymmetry, not the app, produced the "wedge".
+- **Unown defect?** No — the app is innocent (proven by the localhost
+  boot). But the lane rule was unwritten, and it cost two sessions.
+- **Benchmark created:** this entry; the E2E brief's setup section now
+  pins the host (any future E2E driver navigates `localhost:3000` — or
+  configures `allowedDevOrigins` — never bare `127.0.0.1`).
+- **Improvement applied:** procedural (the host pin in the E2E brief);
+  no app change — the app boots correctly, and hardening it against a
+  dev-only origin policy would be patching around the caller.
+- **Validation evidence:** the paired boots (127.0.0.1 wedged /
+  localhost green) on the same server process, same commit (`9ea0a4f`),
+  same browser; the dev-server log line; the two dead sessions' receipts
+  (`…181654-ktqe.jsonl`, `…183136-97hd.jsonl`).
+- **Retention:** the rule lands in the phase brief and here; any future
+  "app wedges on Loading" report on this repo checks the host FIRST.
+
+### F7 — the favicon the layout references was never committed (closed: app defect, fixed by the landing phase)
+
+- **Description:** `src/app/parley/layout.tsx` links
+  `/parley/favicon.svg` (the metadata icons block), but no commit ever
+  tracked `public/parley/favicon.svg` — every fresh clone serves a 404
+  there (visible in the E2E console capture; the tab falls back to the
+  default document icon).
+- **Reproduction:** `git ls-tree -r origin/main --name-only | grep
+  public/parley` → empty; `curl -I localhost:3000/parley/favicon.svg`
+  → 404.
+- **Root cause:** the UI-phase session wrote the asset into its working
+  tree but the phase commit captured only source files; the E2E pass
+  (8 steps, console-clean rule) ran on the authoring tree where the file
+  existed — a worktree-only asset passing a same-tree verification.
+- **Unown defect?** App defect (a referenced, untracked asset — the
+  shipped route 404s on every fresh clone), minor.
+- **Benchmark created:** this entry; the landing phase's checklist gains
+  the asset-existence gate (every referenced public asset must be
+  tracked — the same class of check `verify-deploy.mjs` runs for landing
+  media).
+- **Improvement applied:** the landing phase commits a real
+  `public/parley/favicon.svg` (two overlapping speech-bubble glyph, the
+  app's accent) and the gallery's poster pass re-shoots with it live.
+- **Validation evidence:** this entry + the landing commit that adds the
+  asset; `curl -I` flips 404 → 200 with `image/svg+xml`.
+- **Retention:** the asset is tracked from the landing commit forward;
+  the deploy-verify lane covers every landing media URL already, and the
+  favicon joins the app-route surface it checks.
