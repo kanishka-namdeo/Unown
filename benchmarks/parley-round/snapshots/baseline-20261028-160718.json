@@ -181,5 +181,6 @@
   "runsPassed": 14,
   "runsTotal": 14
  },
- "noteCount": 15
+ "noteCount": 15,
+ "engineInstance": "build-engine (this checkout's :3030)"
 }

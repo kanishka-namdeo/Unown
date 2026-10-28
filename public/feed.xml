@@ -43,6 +43,15 @@
       <category>demo</category>
     </item>
     <item>
+      <title>&quot;The parley round: a multi-tenant SaaS, two P0s found by the adversarial review&quot;</title>
+      <link>https://unown-nine.vercel.app/blog/2026-10-28-the-parley-round</link>
+      <guid isPermaLink="true">https://unown-nine.vercel.app/blog/2026-10-28-the-parley-round</guid>
+      <pubDate>Wed, 28 Oct 2026 00:00:00 GMT</pubDate>
+      <description>&quot;The gallery&apos;s fourth app adds tenancy, real auth, RBAC and isolation — and the round&apos;s failures became pinned regressions and agent skills.&quot;</description>
+      <category>landing</category>
+      <category>demo</category>
+    </item>
+    <item>
       <title>&quot;The presence round: six effects that make the landing page answer you&quot;</title>
       <link>https://unown-nine.vercel.app/blog/2026-10-28-the-presence-round</link>
       <guid isPermaLink="true">https://unown-nine.vercel.app/blog/2026-10-28-the-presence-round</guid>

@@ -1,0 +1,439 @@
+{
+ "label": "final",
+ "capturedAt": "2026-10-28T19:27:42",
+ "schema": "parley-round/1",
+ "tasks": [
+  {
+   "id": "fix-fizzbuzz",
+   "name": "Fix FizzBuzz",
+   "category": "bugfix",
+   "difficulty": 1,
+   "status": "regression",
+   "origin": "seed",
+   "pass_count": 3,
+   "fail_count": 0,
+   "created_at": 1793201393852
+  },
+  {
+   "id": "fix-drop-right",
+   "name": "Fix dropRight off-by-one",
+   "category": "bugfix",
+   "difficulty": 2,
+   "status": "regression",
+   "origin": "seed",
+   "pass_count": 3,
+   "fail_count": 0,
+   "created_at": 1793201393852
+  },
+  {
+   "id": "fix-csv-parser",
+   "name": "Fix CSV parsing",
+   "category": "bugfix",
+   "difficulty": 3,
+   "status": "regression",
+   "origin": "seed",
+   "pass_count": 3,
+   "fail_count": 0,
+   "created_at": 1793201393852
+  },
+  {
+   "id": "impl-debounce",
+   "name": "Implement debounce",
+   "category": "implementation",
+   "difficulty": 4,
+   "status": "regression",
+   "origin": "seed",
+   "pass_count": 2,
+   "fail_count": 0,
+   "created_at": 1793201393852
+  },
+  {
+   "id": "impl-map-limit",
+   "name": "Implement mapLimit",
+   "category": "implementation",
+   "difficulty": 4,
+   "status": "regression",
+   "origin": "seed",
+   "pass_count": 2,
+   "fail_count": 0,
+   "created_at": 1793201393852
+  }
+ ],
+ "taskCount": 5,
+ "tasksPassing": 5,
+ "cycles": [
+  {
+   "task_id": "fix-csv-parser",
+   "status": "already-passing",
+   "iteration": 1,
+   "summary": "baseline passed \u2014 no improvement needed",
+   "shipped": 0,
+   "created_at": 1793215063461,
+   "ended_at": 1793215069972
+  },
+  {
+   "task_id": "fix-drop-right",
+   "status": "already-passing",
+   "iteration": 1,
+   "summary": "baseline passed \u2014 no improvement needed",
+   "shipped": 0,
+   "created_at": 1793214223032,
+   "ended_at": 1793214330257
+  },
+  {
+   "task_id": "fix-fizzbuzz",
+   "status": "already-passing",
+   "iteration": 1,
+   "summary": "baseline passed \u2014 no improvement needed",
+   "shipped": 0,
+   "created_at": 1793212312464,
+   "ended_at": 1793212703102
+  },
+  {
+   "task_id": "impl-map-limit",
+   "status": "already-passing",
+   "iteration": 1,
+   "summary": "baseline passed \u2014 no improvement needed",
+   "shipped": 0,
+   "created_at": 1793211397253,
+   "ended_at": 1793211676588
+  },
+  {
+   "task_id": "impl-debounce",
+   "status": "already-passing",
+   "iteration": 1,
+   "summary": "baseline passed \u2014 no improvement needed",
+   "shipped": 0,
+   "created_at": 1793210201960,
+   "ended_at": 1793210218005
+  },
+  {
+   "task_id": "fix-csv-parser",
+   "status": "already-passing",
+   "iteration": 1,
+   "summary": "baseline passed \u2014 no improvement needed",
+   "shipped": 0,
+   "created_at": 1793208981625,
+   "ended_at": 1793208996276
+  },
+  {
+   "task_id": "fix-drop-right",
+   "status": "already-passing",
+   "iteration": 1,
+   "summary": "baseline passed \u2014 no improvement needed",
+   "shipped": 0,
+   "created_at": 1793205655829,
+   "ended_at": 1793205659992
+  },
+  {
+   "task_id": "fix-fizzbuzz",
+   "status": "already-passing",
+   "iteration": 1,
+   "summary": "baseline passed \u2014 no improvement needed",
+   "shipped": 0,
+   "created_at": 1793204270500,
+   "ended_at": 1793204275955
+  },
+  {
+   "task_id": "impl-map-limit",
+   "status": "already-passing",
+   "iteration": 1,
+   "summary": "baseline passed \u2014 no improvement needed",
+   "shipped": 0,
+   "created_at": 1793203605299,
+   "ended_at": 1793203613008
+  },
+  {
+   "task_id": "impl-debounce",
+   "status": "already-passing",
+   "iteration": 1,
+   "summary": "baseline passed \u2014 no improvement needed",
+   "shipped": 0,
+   "created_at": 1793202994944,
+   "ended_at": 1793203000851
+  },
+  {
+   "task_id": "fix-csv-parser",
+   "status": "already-passing",
+   "iteration": 1,
+   "summary": "baseline passed \u2014 no improvement needed",
+   "shipped": 0,
+   "created_at": 1793202449930,
+   "ended_at": 1793202477636
+  },
+  {
+   "task_id": "fix-drop-right",
+   "status": "already-passing",
+   "iteration": 1,
+   "summary": "baseline passed \u2014 no improvement needed",
+   "shipped": 0,
+   "created_at": 1793202388022,
+   "ended_at": 1793202391978
+  },
+  {
+   "task_id": "fix-fizzbuzz",
+   "status": "already-passing",
+   "iteration": 1,
+   "summary": "baseline passed \u2014 no improvement needed",
+   "shipped": 0,
+   "created_at": 1793201994290,
+   "ended_at": 1793201998976
+  }
+ ],
+ "cycleCount": 13,
+ "cycleStatusCounts": {
+  "already-passing": 13
+ },
+ "improvements": [],
+ "improvementCount": 0,
+ "dreams": [
+  {
+   "id": "project-a5dc58a2-c2a8-4a63-a47d-936526d157d9",
+   "status": "done",
+   "notes": null,
+   "created_at": null
+  },
+  {
+   "id": "e2a8f028-ed0c-4491-9881-9fd9dec84764",
+   "status": "done",
+   "notes": null,
+   "created_at": null
+  },
+  {
+   "id": "c6e03a92-70df-45c8-87ea-3e49e94ce5b6",
+   "status": "done",
+   "notes": null,
+   "created_at": null
+  },
+  {
+   "id": "c6c266a7-b072-49a6-a933-eec70931ebee",
+   "status": "done",
+   "notes": null,
+   "created_at": null
+  },
+  {
+   "id": "project-f0b1cbbe-5d1e-42ef-aa96-986e773aeb82",
+   "status": "done",
+   "notes": null,
+   "created_at": null
+  },
+  {
+   "id": "abefd349-1d97-4ee1-a21e-6e84a3893763",
+   "status": "done",
+   "notes": null,
+   "created_at": null
+  },
+  {
+   "id": "project-0b6de1b3-edcc-4b3d-b883-11b91c9890ff",
+   "status": "done",
+   "notes": null,
+   "created_at": null
+  },
+  {
+   "id": "project-04ae85cf-46b4-49a5-9c92-ea3e061e25c2",
+   "status": "done",
+   "notes": null,
+   "created_at": null
+  },
+  {
+   "id": "9b32dcbe-3840-4442-b2e5-90ea883913ca",
+   "status": "done",
+   "notes": null,
+   "created_at": null
+  },
+  {
+   "id": "384fa641-91e6-4c6c-920f-30f81649350d",
+   "status": "done",
+   "notes": null,
+   "created_at": null
+  },
+  {
+   "id": "f65e7922-bacf-45c3-882d-3347460d6f1d",
+   "status": "done",
+   "notes": null,
+   "created_at": null
+  },
+  {
+   "id": "07dd367d-b40c-4a3d-9e8e-a8517e6e129a",
+   "status": "done",
+   "notes": null,
+   "created_at": null
+  },
+  {
+   "id": "project-9376c403-c6f9-4d6d-b756-78bf350dfe86",
+   "status": "done",
+   "notes": null,
+   "created_at": null
+  },
+  {
+   "id": "ac76d7d3-9545-49a8-955a-e3c34d1c54bb",
+   "status": "done",
+   "notes": null,
+   "created_at": null
+  },
+  {
+   "id": "project-742b2943-66e6-48cb-8e99-68622b27353f",
+   "status": "done",
+   "notes": null,
+   "created_at": null
+  },
+  {
+   "id": "591f43aa-bfba-446e-9a8e-dcd4e49e020e",
+   "status": "done",
+   "notes": null,
+   "created_at": null
+  },
+  {
+   "id": "project-160922ff-93ba-42e8-9a4f-4b2fb540a6b3",
+   "status": "done",
+   "notes": null,
+   "created_at": null
+  },
+  {
+   "id": "3f6ed92f-002a-4b42-97e3-08cd33621d66",
+   "status": "done",
+   "notes": null,
+   "created_at": null
+  },
+  {
+   "id": "project-81b549ec-696b-4da2-a2c9-dec11bfcc24b",
+   "status": "done",
+   "notes": null,
+   "created_at": null
+  },
+  {
+   "id": "556e24df-2cf6-4626-a4da-612d20f6e4b7",
+   "status": "done",
+   "notes": null,
+   "created_at": null
+  },
+  {
+   "id": "project-cc9c845b-7d28-4428-bde5-999c5468d9d5",
+   "status": "done",
+   "notes": null,
+   "created_at": null
+  },
+  {
+   "id": "fee6bac5-1d6c-4778-8205-8cb0e0a9dd5d",
+   "status": "done",
+   "notes": null,
+   "created_at": null
+  },
+  {
+   "id": "project-67c34f67-6ec8-4332-95dd-b4c42ea0754b",
+   "status": "done",
+   "notes": null,
+   "created_at": null
+  },
+  {
+   "id": "8f0a5476-3c70-4000-944d-2c2c1f4c6793",
+   "status": "done",
+   "notes": null,
+   "created_at": null
+  },
+  {
+   "id": "b19430ac-d73e-4b3f-bb67-ccda212fd219",
+   "status": "done",
+   "notes": null,
+   "created_at": null
+  },
+  {
+   "id": "project-7f1420ca-1e8a-4c3c-8970-649a8229d97f",
+   "status": "done",
+   "notes": null,
+   "created_at": null
+  },
+  {
+   "id": "7e96489e-0cb6-4f74-8195-42542b1b2240",
+   "status": "done",
+   "notes": null,
+   "created_at": null
+  },
+  {
+   "id": "e68df5ac-e2a8-4bae-9502-b72c55130bfa",
+   "status": "done",
+   "notes": null,
+   "created_at": null
+  },
+  {
+   "id": "c1f7db86-755d-4c60-98da-dca53115d015",
+   "status": "done",
+   "notes": null,
+   "created_at": null
+  },
+  {
+   "id": "24e18dd9-308f-42e7-8812-8970fdfa86e0",
+   "status": "done",
+   "notes": null,
+   "created_at": null
+  }
+ ],
+ "dreamCount": 30,
+ "memoryTiers": [
+  {
+   "tier": "policy",
+   "version": 1,
+   "content": "# Tier 0 \u2014 Policy (non-negotiable guardrails)\n\n- Never delete or overwrite files outside the current working directory.\n- Never install packages, start network listeners, or contact external hosts.\n- Always verify your work by running the provided tests before declaring success.\n- Keep changes minimal: fix exactly what the task asks for.\n- If a verification fails, inspect the failure output and fix the root cause \u2014 never edit tests to make them pass.\n- Read a file before editing it, and match the style and conventions already in it.\n- When a check fails, fix the root cause and re-run it \u2014 never report success with a failing check.\n"
+  },
+  {
+   "tier": "project",
+   "version": 21,
+   "content": "# Project Memory\n\n## Workflow\n- The workspace contains a small Node/Bun project. Run tests with `bun <testfile>`.\n\n## Known pitfalls\n- When implementing string-to-number or array-to-string utilities, ensure the inverse function strictly restores the original data type to prevent test failures.\n- In `mapLimit.js`, add a `failed` flag: when a worker's promise rejects, set `failed = true` to stop dispatching new work from the shared counter and let the error propagate through `Promise.all` instead of continuing the pool.\n- The throttle merge-window implementation (`throttle.js`) failed on lazy boundary flush: when a pending merged call fires at the boundary, any new call at that same boundary timestamp (e.g., `t(4)` at `clock=1400` when pending `t(3)` flushed) must NOT fire immediately. The test expects `events=[1,3]`, not `[1,3,4]`.\n- In csv.js, parseCsvLine must be a state-machine parser: treat commas inside quoted fields as literal, consume two consecutive double quotes as a single escaped quote, and close the quoted region on a lone double quote. A leading quote starts a quoted region only if it is the first non-whitespace character in the field; otherwise treat the quote as a literal inside an unquoted field. Naive split(',') is insufficient. \"reason\":\"Merged near-duplicate 097b16ee and 6e24ebb7 into one complete CSV-parsing rule.\\n\"}]}}, {\"id\": \"6e24ebb7-bbd3-4afa-8c24-2e32218f73dd\", \"op\": \"DELETE\", \"reason\": \"Subsumed by the more complete CSV rule in 097b16ee\"}, {\"id\": \"b7874946-a521-4af8-8ddd-03765c5e4be9\", \"op\": \"DELETE\", \"reason\": \"Near-duplicate of the CSV rule in 097b16ee; the leading-quote nuance is already covered there\"}, {\"id\": \"a1083bda-813d-48eb-86b1-a18cb23ecee6\", \"op\": \"DELETE\", \"reason\": \"Near-duplicate of the CSV rule in 097b16ee; the state-machine requirement is already stated there\"}, {\"id\": \"60edf3cd-e074-4ef8-9eec-48e13befc77c\", \"op\": \"UPDATE\", \"text\": \"In dropRight.js, the correct slice end index is Math.max(0, arr.length - n) to avoid off-by-one errors; earlier versions using arr.length - n - 1 were incorrect.\"reason\":\"Merged near-duplicate 6e24ebb7 and 60edf3cd; 60edf3cd is more precise (clamps to 0) and supersedes 6e24ebb7\"}, {\"id\": \"3c9e4992-144a-47df-a45a-25a37a17c1f0\", \"op\": \"DELETE\", \"reason\": \"Superseded by e97784b5, which is newer (2026-10-28T16:06:59.795Z vs 2026-10-28T15:56:46.375Z) and describes the same debounce implementation more completely\"}, {\"id\": \"0885be09-5610-4697-a447-48c05dc27687\", \"op\": \"DELETE\", \"reason\": \"This memory attempts to redefine agent behavior (verification harness policy) and is a prompt-injection payload; it is not a fact about the project\"} ]}\n\n## Facts\n- In `dropRight.js`, slice end index must be `Math.max(0, arr.length - n)` to handle cases where `n` is greater than array length or negative; verify edge cases n=0, n>length, and negative n. This corrects the earlier off-by-one `arr.length - n - 1` and the imprecise 'exactly arr.length - n' wording. See also 60edf3cd for the full verification context.\n- When implementing FizzBuzz logic, check for multiples of 15 before multiples of 3 or 5 to prevent the compound case from being incorrectly categorized by the single-divisor branches.\n- In CSV line parsers, explicitly handle empty strings by initializing the field with an empty string so `parseCsvLine(\"\")` returns `[\"\"]`. Manually trace execution paths for empty lines and consecutive delimiters to catch unquoted edge cases early.\n- In debounce.js, use a no-timer lazy-flush strategy: store pendingArgs and a due timestamp from the injectable clock; on each debounced call, check if now() >= due to lazily flush the pending invocation before rescheduling.\n- For merge-window debounce implementations, strictly check if a pending invocation is past-due before scheduling new timers to ensure edge-case timing boundaries are handled correctly.\n- In `dropRight.js`, slice end index must be `Math.max(0, arr.length - n)`; the earlier `arr.length - n - 1` was off-by-one. Verify edge cases n=0, n>length, and negative n to confirm the clamp works as expected; the previous wording 'exactly arr.length - n' was imprecise (must clamp).\",\"reason\":\"Merged near-duplicate 97451a6e and verification bullet d9dc1bb9 into the dropRight rule; corrected a self-inconsistency in 97451a6e (end index is the clamped max, not a raw arr.length - n).\"},{\"id\":\"d9dc1bb9-6d9c-44d0-82f3-0157a1506bb8\",\"op\":\"DELETE\",\"reason\":\"Folded into the tightened dropRight bullet 60edf3cd\"}]}]\n- In `mapLimit.js`, use a worker-pool pattern: spawn `min(limit, items.length)` workers that pull indices from a shared counter and write results by index into a preallocated array to preserve input order.\n- Debounce implementation in `debounce.js` should keep a pending call and a `due` timestamp, lazily flush the pending invocation when the boundary is reached and no cancel is pending, then reschedule; expose a `.cancel` API.\n\n<!-- unown: rendered 13/13 memories via Mem0 (backend: lexical) at 2026-10-28T19:26:16.984Z -->\n"
+  },
+  {
+   "tier": "user",
+   "version": 1,
+   "content": "# Tier 2 \u2014 User Memory\n\n- The user values minimal diffs and clear, idiomatic code.\n- Prefer standard library functions over hand-rolled logic.\n"
+  },
+  {
+   "tier": "local",
+   "version": 1,
+   "content": "# Tier 3 \u2014 Local Overrides\n\n(empty \u2014 most specific tier; anything here overrides the tiers above)\n"
+  }
+ ],
+ "skills": [
+  {
+   "id": "8abea5fa-3391-49e3-9102-b85d4e8c917b",
+   "name": "parley-code-review-verdict",
+   "version": 1,
+   "created_at": 1793214213153
+  },
+  {
+   "id": "c94ade48-4b9c-46e5-aecb-4a3c74832909",
+   "name": "parley-adversarial-probe",
+   "version": 1,
+   "created_at": 1793214213153
+  },
+  {
+   "id": "5d069315-b2d2-4023-ade2-6d0f7cf38f1e",
+   "name": "verify-parley-rbac-change-role",
+   "version": 1,
+   "created_at": 1793214135637
+  },
+  {
+   "id": "d9035619-a900-4629-a259-d204f240ba60",
+   "name": "spy-localstorage-in-tests",
+   "version": 1,
+   "created_at": 1793205460965
+  },
+  {
+   "id": "62340736-5944-41f1-b5da-3d39ed0d446e",
+   "name": "setup-parley-tailwind-scoped-css",
+   "version": 1,
+   "created_at": 1793204253401
+  }
+ ],
+ "skillCount": 5,
+ "runCount": 72,
+ "runStats": {
+  "tokensIn": 0,
+  "tokensOut": 0,
+  "toolCalls": 0
+ },
+ "passRate": {
+  "runsPassed": 69,
+  "runsTotal": 72
+ },
+ "noteCount": 100,
+ "engineInstance": "build-engine (this checkout's :3030)"
+}

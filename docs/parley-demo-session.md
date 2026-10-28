@@ -9,170 +9,192 @@
 
 - [What the app is](#what-the-app-is)
 - [How it was built](#how-it-was-built)
-- [Checkpoint 0 — setup](#checkpoint-0--setup-done)
-- [Checkpoint 1 — research](#checkpoint-1--research-done)
-- [Checkpoint 2 — benchmark baseline](#checkpoint-2--benchmark-baseline-done)
-- [Checkpoint 3 — the build](#checkpoint-3--the-build-in-progress--planlibapiui-shipped-e2e-next)
-- [Checkpoint 4 — verification](#checkpoint-4--verification-pending)
-- [Checkpoint 5 — learning-loop evidence](#checkpoint-5--learning-loop-evidence-pending)
-- [Checkpoint 6 — docs, blog, DOX](#checkpoint-6--docs-blog-dox-pending)
-- [Checkpoint 7 — release](#checkpoint-7--release-pending)
+- [What the testing found (and fixed)](#what-the-testing-found-and-fixed)
+- [The learning-loop evidence](#the-learning-loop-evidence)
+- [The embedding adaptations](#the-embedding-adaptations)
+- [Where things live](#where-things-live)
 
 Related pages: [Cadence session record](cadence-demo-session.md) (the third
 app) · [Sigil Bazaar session record](bazaar-demo-session.md) (the second) ·
 [focus session record](live-demo-session.md) (the first) · [Parley round
 competitor research](parley-round-competitor-research.md) (the research that
-grounds this round) · [tui capture workflow](tui-capture-workflow.md) (the
-capture lane the round's stills came from).
+grounds this round) · [the learning report](unown-learning-report.md) · [the
+benchmark report](benchmark-improvement-report.md) · [the validation
+log](../benchmarks/parley-round/validation-log.md) (the failure→fix ledger) ·
+[tui capture workflow](tui-capture-workflow.md) (the capture lane the round's
+stills came from).
 
 ## What the app is
 
-Parley — a **multi-tenant customer-support inbox SaaS**, the round's SDLC
-stress test on the hardest surface yet: tenancy, authentication, RBAC and
-isolation. (Full feature/contract inventory ships at round close — this
-section is completed by the build, not before it, so it records what IS
-rather than what was planned.)
+Parley — a **multi-tenant customer-support inbox SaaS**, the gallery's
+fourth agent-built app and the first with tenancy, authentication, RBAC
+and isolation on its surface (the round's SDLC stress test):
+
+- **Multi-tenancy** — two seeded tenants (Lumen Labs `team` plan, Northwind
+  Kits `free` plan at 47/50 conversations), row-level tenancy
+  (`tenantId` on every owned row) behind a **fail-closed repository**:
+  a repository call without tenant context throws; a cross-tenant call
+  returns not-found — the isolation is structural, not per-route
+  discipline.
+- **Authentication** — credential login with scrypt-hashed passwords
+  (`node:crypto`, salted, timing-safe), **server-side sessions** (a
+  session store with `expiresAt`, an HMAC-signed HttpOnly cookie), real
+  logout (row destroyed), real expiry (8h TTL), no external service.
+- **RBAC** — four roles (owner / admin / agent / viewer) behind a
+  data-driven `can(role, action)` matrix, enforced in BOTH the API
+  (401/403/404 ladder) and the UI (disabled-with-reason surfaces).
+- **The inbox** — two-pane layout, six filters with count chips
+  (all/open/pending/closed/unassigned/SLA-at-risk), per-conversation SLA
+  chips (breached red / at-risk amber live countdown / ok), thread view
+  with customer-vs-agent bubbles + system-event timeline, a `/`-canned
+  composer, assignment/status/priority/tag controls, empty states.
+- **SLA policies** — per-tenant data-driven targets by priority; due
+  dates, breach and the 20% at-risk band are pure explicit-now functions.
+- **Invites** — owner/admin invites generate real single-use 24h tokens;
+  the in-app **Demo Mailbox** drawer shows the "sent" emails; accepting
+  creates the user + membership with the invited role (410 used / 410
+  expired / 404 unknown).
+- **Audit log** — every mutation appends a tenant-scoped event with
+  actor/action/entity/before-after; admin-visible, filterable feed.
+- **Usage metering** — plan caps (free 3 seats/50 conv-month, team 10/500,
+  scale higher), overage banner, seat-cap gate on invites (402
+  `quota_exceeded`), per-agent load.
+- **Analytics** — volume by status, median first response, resolution
+  rate, per-agent load — pure functions, accessible SVG (cadence's
+  chart pattern).
+- **Customer portal toggle** — the customer-side view of a conversation,
+  clearly labeled, internal controls swapped out.
+- **Demo contract** — `?embed=1` strips chrome; the demo auto-login is a
+  REAL login (session row + cookie; the server reads the cookie first so
+  the embedded first load never 401s in the console); the role switcher
+  and tenant switcher re-login through the real API; the reset handshake
+  `{source:"unown-landing", type:"parley-reset"}` wipes, reseeds
+  deterministically and rotates the demo session.
 
 ## How it was built
 
 Written end-to-end by `unown` — the pi coding agent under the self-learning
 layer — driven through the established phase chain against the Agnes AI
-endpoint (`agnes-3.0-flash`) through the bundled llm-bridge. The receipts
-ledger, phase table and commit map ship at round close.
+endpoint (`agnes-3.0-flash`) through the bundled llm-bridge, on 2026-10-28.
+**20 session boots, 1,109 tool calls** (receipts
+`.unown/receipts/2026-10-28*.jsonl`), as chunked resume-chains of one
+session (the host sandbox's ~10-minute call budget):
 
-## Checkpoint 0 — setup (DONE)
-
-- Cloned `kanishka-namdeo/Unown` at `8e69ce5` (post-v0.0.36, the presence
-  round); `bun install` clean (413 packages, bun 1.4.4); the vendored
-  `pi-repo` workspace built (`npm run build` — tsc chain, 682 packages).
-- Stack up: llm-bridge :3031 (upstream Agnes `ok:true`), engine :3030
-  (`phase:ready`, v0.0.36), landing dev :3000 (`GET /` 200).
-- Baseline gates green before any edit: `bun run typecheck`, `bun run lint`
-  (0 errors), `bun test src` (359 pass), `check:changelog|blog|benchmarks|
-  claims`, sandbox verify 12/12.
-- Fresh engine state confirmed (new clone = fresh `data/self-learning/`):
-  5 seed tasks, 0 cycles, 0 dreams, 0 skills, policy-tier memory only.
-- **Environment resurrection (2026-10-28 18:31 UTC, the session-resume
-  checkpoint):** the round resumed on a fresh machine from this record.
-  Clone at `6d40de2`, bun 1.4.3 installed (host bun 1.3.14 below the
-  floor), `.env` wired to the Agnes upstream key, `agent:install` +
-  `agent:start` green (bridge `ok:true` upstream, engine `phase:ready`
-  v0.0.37, `unown doctor` green except optional items), baseline gates
-  re-verified (typecheck/lint clean, 630 tests, all `check:*` green).
-  Two operator incidents, both logged in the SOTA validation log as F5
-  (numbered after the predecessor's F3/F4 in the parley-round log — the
-  shared lineage):
-  (1) a first headless launch died at tool-call teardown — F2's exact
-  pattern, re-verified on this host, the intermediate-exit launcher
-  rebuilt (`setsid` + immediate-exit parent); (2) a parallel-predecessor
-  collision — the prior operator session was still pushing while this
-  environment cloned at `6d40de2`, so its UI-phase commits (`3d10ed4`,
-  `c05c9c2`) landed remotely after the clone; a locally-launched UI
-  session duplicated finished work for ~14 minutes before the fetch
-  caught it. Resolution: kill, discard the uncommitted duplicates, keep
-  the receipts, rebase, verify the remote's UI on this machine (647
-  tests green, `GET /parley` 200). Procedure adopted: `git fetch` +
-  divergence check before EVERY phase launch. The snapshot driver is
-  now committed (`benchmarks/parley-round/snapshot.mjs`) so the receipts
-  lane is reproducible across environments.
-
-## Checkpoint 1 — research (DONE)
-
-- App-domain research (multi-tenant patterns, demo-safe auth, RBAC testing,
-  showcase presentation — OWASP multi-tenant/authorization cheat sheets,
-  Microsoft tenancy guidance, Nile's RLS decision, Next.js auth guide,
-  Better Auth organization plugin, v0/bolt/SWE-bench showcase practice,
-  METR's 2026-03 "would-not-merge" finding) → the Parley concept: a
-  support-inbox SaaS, path-based tenancy, row-level isolation with a
-  fail-closed repository, DB-backed sessions, 4-role matrix, mock-mailbox
-  invites, SLA timers, audit log, usage metering.
-- Competitor research: six NEW systems reverse-engineered (ZCode, OpenClaude,
-  Codewhale, Goose, Crush, Amp) →
-  [`docs/parley-round-competitor-research.md`](parley-round-competitor-research.md).
-  Headline: no competitor ships a closed self-improving loop; the 2026
-  frontier is adversarial verification + isolation-controlled evaluation +
-  durable resumable execution. Adopted: adversarial review probes,
-  evidence-first receipts, drain-before-snapshot, holdout discipline,
-  cost columns.
-
-## Checkpoint 2 — benchmark baseline (DONE)
-
-- **Baseline snapshot** (all 5 seed tasks run through real engine cycles,
-  fresh sandboxes, Agnes upstream):
-  `benchmarks/parley-round/snapshots/baseline-*.json` —
-  5/5 tasks passing (fix-fizzbuzz, fix-drop-right, fix-csv-parser,
-  impl-debounce, impl-map-limit all "baseline passed — no improvement
-  needed"), 14/14 runs passed, 5 cycles, 5 dreams already consolidated
-  (the engine's auto-dream ran while the baseline cycled), 0 improvements,
-  0 skills, 0 minted tasks.
-- The seed suite is saturated from the start — per the harness design that
-  is the condition that hands the loop to task minting, so the round's
-  learning evidence rides on minted tasks + the app-build sessions' notes.
-- Snapshot tooling: the engine's full learning state (tasks/cycles/
-  improvements/dreams/skills/memory/runs token stats) captured to a
-  versioned JSON receipt, taken at baseline / midpoint / final.
-
-## Checkpoint 3 — the build (IN PROGRESS — Plan/Lib/API/UI shipped, E2E next)
-
-Phase chain (the cadence order, extended for tenancy):
-
-| Phase | What | Status |
+| Phase | What happened | Receipts |
 |---|---|---|
-| Plan | `--plan` mode: the numbered plan from the brief | done (operator briefs, pre-revival) |
-| Lib | Domain: types, ids, password (scrypt), sessions, tenancy (fail-closed repo), rbac matrix, sla, audit, metering, validation, deterministic seed + unit tests | done — `6a5ef23`, 180 tests |
-| API | Route handlers: auth (login/logout/session), conversations CRUD + reply/assign/status/tags, invites + accept, audit, usage, analytics, canned, mailbox, reset + isolation tests | done — `b8d3e0a` + `6d40de2`, 76 tests |
-| UI | Login, two-pane inbox, thread, composer, detail panel with SLA chips, admin surfaces, portal toggle, role switcher, embed shell + component tests | done — `3d10ed4` (32 tests) + CSP `c05c9c2`; re-verified post-revival: 647 tests, `GET /parley` 200 |
-| E2E | Live browser pass over CDP: login/logout, role switch, cross-tenant 404, invite accept, SLA render, embed reset handshake | **done** — `9ea0a4f`: all 8 steps green, 3 real defects found + fixed live |
-| Review | `/review` with the adversarial brief (this round's adopted pattern) + fixes | **done** — `cf1797f`: 2 P0 wall-breaks found, fixed, pinned; +29 tests (676 total) |
-| Drill | `/checkpoint` `/undo` `/redo` `/commit` through the real TUI (the plain-PTY drill) | **done** — checkpoint sealed, undo verified, redo verified, committed through /commit |
-| Landing | Gallery entry #4, poster, receipts, tests | pending |
+| Plan | `--plan` mode: the 36-step plan (~1,260 lines) with file map, test plan, 12-risk list — including the verified correction of the brief (the siblings DO use scoped Tailwind v4) | 1 boot |
+| Lib | The domain layer: types, clock, ids, password, rbac, tenancy, sla, sessions, audit, metering, validation, seed, analytics, store — **180 tests** | 3 boots |
+| API | The shared `_auth.ts` + 22 tenant-scoped routes + the isolation/auth/invite/audit/reset integration suites — **76 tests** | 3 boots |
+| UI | The client store (request-driven, no localStorage for domain state), shell/login/inbox/thread/composer/detail/admin/portal + component tests — **32 tests** | 3 boots |
+| E2E | The live headless-Chromium pass: all 8 steps green, **3 defects found + fixed live** (screenshots `.unown/briefs/parley-e2e/`) | 5 boots |
+| Review | The adversarial round (this round's adopted pattern): 2 reviewer subagent passes + a 27-probe adversarial suite + the P0 regression pin — **2 P0 wall-breaks found, fixed, pinned** (+29 tests) | 3 boots |
+| Drill | The checkpoint/undo/redo drill (the agent-lane equivalent, honestly recorded) | 1 boot |
+| Landing | The gallery entry #4, the four-app copy, the test pins, the favicon, the poster (production-build capture), the embed console-noise fix | 1 boot |
 
-### The mid-round session-continuity event (2026-10-29, recorded for the resume)
+- **Tests**: **302** across 23 files (lib 180 + api 99 + ui 23); the full
+  repo suite **676 pass** (the 359 baseline + parley 302 + 15 shared-lane
+  pins); typecheck and biome clean.
+- **Files**: 81 under the parley trees (26 lib, 33 app incl. 22 routes,
+  22 components).
+- **Commits**: the round's 7 code commits (`parley: the domain layer` →
+  `landing + demo: the parley round`) + the docs/reports commits from the
+  mission's parallel reports lane.
+- **Zero human edits to the app's code**: every line in the parley trees
+  the agent wrote; the brief, the phase prompts and the verifications
+  were the operator's.
 
-The round survived an operator handover mid-build: a fresh environment
-resumed the mission while the original session's queued pushes landed
-(through `0c0c99f` — the UI phase, the round's REST-based snapshot driver
-`64573b6`, and the SOTA midpoint `8cb4dff`). The resuming operator:
+## What the testing found (and fixed)
 
-- verified the baseline gates green on a fresh clone (bun 1.4.4, 413
-  packages, pi-repo built, bridge up against the Agnes upstream, engine
-  `phase:ready` v0.0.37, typecheck/lint/630 tests);
-- root-caused, fixed and pinned the round's first Unown defect (**F3** —
-  print-mode forced exits swallowing the result envelope;
-  [validation log](../benchmarks/parley-round/validation-log.md), commit
-  `b4cdbbe`) and documented the zero-token usage-log gap (F4);
-- reconciled the duplicate in-flight UI work onto the shipped upstream UI
-  (`git rebase origin/main`, the upstream session's snapshot driver kept,
-  the duplicate local work archived unmerged) — the F3 fix re-verified on
-  the rebased tree (4/4 pinning tests, 647 unit tests green).
+- **E2E (the agent's browser pass)** — three real defects, each fixed and
+  re-verified in the same round: **D1** the role/tenant switchers left the
+  previous tenant's domain state in the provider (logout now wipes all
+  domain state); **D2** `loadTenant` fetched every lane unconditionally
+  so a viewer's audit fetch 403'd (now fetches only the active role's
+  matrix-allowed lanes); **D3** the invite/accept dialogs' stale-closure
+  refresh never updated members/mailbox/audit (a `reloadTenant()` provider
+  action re-probes and re-fetches with the active role's read gates).
+- **The adversarial review round** (the OpenClaude-verification pattern
+  adopted from this round's competitor research): two reviewer verdicts
+  landed **BLOCK** on the first pass —
+  **P0-1** an admin could promote any seat TO owner (a second owner per
+  tenant — the owner-seat wall had a two-way hole); fixed at BOTH layers
+  (route Guard 1b 403 + a store-level backstop) and pinned by
+  `p0-repro.test.ts`;
+  **P0-2** a malformed cookie (broken %-sequence) crashed requests into a
+  500 instead of the ladder's 401 — the decode is guarded now, pinned by
+  the malformed-cookie probes.
+  P1s fixed: the probe-lane cookie double-encode, three write lanes
+  missing the rate limiter (incl. the unauthenticated `invites/accept`),
+  the invite seat-cap gate (invitees could cross `PLAN_CAPS.seats`).
+  Three findings ACCEPTED with documented reasons (the guard-ordering
+  trade, the safe-fail default, the two-clocks bound).
+- **The full failure→fix ledger** (including the two Unown-side defects
+  the round's sessions surfaced — the F3 print-mode envelope fix and the
+  F4 usage-log gap) lives in
+  [`benchmarks/parley-round/validation-log.md`](../benchmarks/parley-round/validation-log.md).
 
-The UI-phase research receipt ([parley-ui-research.md](parley-ui-research.md))
-landed with the F3 commit — the blueprint the upstream UI was audited
-against (three-pane workspace, SLA chip states, listbox semantics, the
-Freshdesk-style explicit role switcher).
+## The learning-loop evidence
 
-### Operator division of labor (2026-10-29, the coordination note)
+The round's benchmark-first measurement (snapshots in
+[`benchmarks/parley-round/snapshots/`](../benchmarks/parley-round/snapshots/),
+each annotated with its engine instance — the round ran the build lane
+and the reports lane on two parallel engine instances):
 
-With both operators live on the repo (the original mid-E2E, the resuming
-one verified and reconciled), the lanes split to end the collision risk:
+- **Baseline** (build engine, before any app code): 5/5 seed tasks
+  passing, 14/14 runs, 0 improvements, 0 skills — and 5 dreams already
+  consolidated while the baseline cycled.
+- **Midpoint** (reports engine): 6 tasks (the minted
+  `swap-if-else-messages` — a measured edit-bench failure converted into
+  a suite task), 1 improvement shipped (the closed
+  mine→patch→verify-twice→ship cycle), 13 dreams.
+- **Final** (build engine): **13 cycles, 30 dreams, 5 skills**,
+  72 runs at 95.8% pass — the five skills are the headline:
+  AutoDream distilled the round's OWN procedures into staged skills
+  (`parley-adversarial-probe`, `parley-code-review-verdict`,
+  `verify-parley-rbac-change-role`, `setup-parley-tailwind-scoped-css`,
+  `spy-localstorage-in-tests`) — the adversarial-probe skill is
+  literally the P0-fix procedure, minted from the review round's notes.
+- The five-mechanism verdicts with their receipts:
+  [`docs/unown-learning-report.md`](unown-learning-report.md); the
+  trajectories: [`docs/benchmark-improvement-report.md`](benchmark-improvement-report.md).
 
-- **The original session** owns the app phase chain to its close: E2E (in
-  flight) → Review → Drill → Landing (the gallery's fourth entry) →
-  round-close receipts.
-- **The resuming session** owns the mission-level deliverables that span
-  rounds: the consolidated competitor-comparison report, the Unown
-  learning report, the benchmark improvement report (baseline → midpoint
-  → final, receipts-first), and the landing showcase section ("Built &
-  Improved With Unown") that frames all four apps plus the agent's
-  measured evolution — distinct files from the round's Landing phase
-  (which touches `live-demo-data.ts` + the gallery band); any unavoidable
-  overlap reconciles through fetch-before-push, the procedure both
-  operators now follow.
+## The embedding adaptations
 
-## Checkpoint 4 — verification (PENDING)
+The app as **built** is untouched. The copy embedded at `/parley` carries
+the documented host-integration patches:
 
-## Checkpoint 5 — learning-loop evidence (PENDING)
+1. **Embed param read server-side** (`page.tsx`) — `?embed=1` reaches the
+   client tree as a PROP; the server ALSO reads the session cookie and
+   passes `hasSession` so the embedded first load goes straight to the
+   demo auto-login POST (zero console errors — the poster lane's gate).
+2. **Reset listener** (`client-store.tsx`) — origin- and shape-checked
+   `parley-reset` handshake; wipes the store, reseeds deterministically,
+   rotates the demo session.
+3. **CSP headers block** (`next.config.ts`) — `/parley/:path*` joins
+   demo/bazaar/cadence (`frame-ancestors 'self'` + SAMEORIGIN).
+4. **Gallery entry + copy** (`live-demo-data.ts` + `live-demo.tsx`) —
+   the fourth entry; "Four apps, live. Pick one."; a fourth switcher pill.
+5. **Test pins** (`__tests__/live-demo.test.tsx`) — ≥4 apps with distinct
+   routes/posters/reset types/receipt docs + the parley reset-type pin.
+6. **Poster** (`public/landing/parley/poster.png`) — captured by
+   `scripts/landing_demo_poster.mjs` from the **production build**
+   (1440×900 @2x, 2880×1800); all four posters re-shot clean there.
+7. **Favicon** (`public/parley/favicon.svg`) — the two-speech-bubble
+   correspondence mark (the F7 finding's ship).
+8. **Rate-limit buckets** — test-resettable so suites never bleed 429s.
 
-## Checkpoint 6 — docs, blog, DOX (PENDING)
+## Where things live
 
-## Checkpoint 7 — release (PENDING)
+- The app: `src/lib/parley/` (domain, 14 modules), `src/app/parley/`
+  (routes + 22 API handlers), `src/components/parley/` (15 components).
+- The adversarial suites: `src/app/parley/api/__tests__/adversarial.test.ts`
+  (27 probes) + `p0-repro.test.ts`.
+- The round's records: this page, the
+  [validation log](../benchmarks/parley-round/validation-log.md), the
+  [snapshots](../benchmarks/parley-round/snapshots/) (baseline / midpoint /
+  final, engine-annotated), the [competitor research](parley-round-competitor-research.md).
+- The build receipts: `.unown/receipts/2026-10-28*.jsonl` (gitignored,
+  counted in the gallery entry), the E2E screenshots
+  (`.unown/briefs/parley-e2e/`), the adversarial review
+  (`.unown/briefs/parley-review.md`), the drill record
+  (`.unown/briefs/parley-drill.md`).

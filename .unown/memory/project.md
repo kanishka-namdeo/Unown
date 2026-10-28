@@ -8,6 +8,7 @@
 - Use a two-step confirmation flow before executing destructive actions like deletion in React forms.
 
 ## Known pitfalls
+- Parley's embed-mode mount effect produced a 401 from the initial GET /parley/api/auth/session probe when no session existed, causing a console error that broke the poster capture lane; this was fixed by updating src/app/parley/page.tsx.
 - RBAC pitfall in `src/app/parley/api/members/[id]/role/route.ts`: guards at lines 45-77 check only `target.role === "owner"` (line 55) and self-change (line 61) but never reject `newRole === "owner"`, so any admin/owner can self-promote a non-owner seat to `owner` and create a second owner.
 - To reliably spy on localStorage.setItem in component tests for this project, use Object.defineProperty on the instance prototype with the native bind; simple property assignment fails because happy-dom routes setItem calls through a different receiver
 - Stealth verification suite on bot.sannysoft.com: all 10 checks (webdriver, userAgent, platform, userAgentData, timezone, locale, screen, viewport, plugins, window.chrome) pass; 0 FAIL rows in Intoli tests.
@@ -88,4 +89,4 @@
 - In src/lib/review.ts, parseReviewOutput (lines 455-475) uses static regexes over model output so treated data cannot become code injection, and the git() helper (lines 114-121) calls spawnSync with array args and shell:false; a security review of the /cadence diff (since commit 94d7cb1d) confirmed no new injection surface.
 - Utilize `useDialogDismiss` to manage focus traps and Escape-key closing for modal components.
 
-<!-- unown: rendered 78/78 memories via Mem0 (backend: lexical) at 2026-10-28T19:13:29.390Z -->
+<!-- unown: rendered 79/79 memories via Mem0 (backend: lexical) at 2026-10-28T19:27:18.714Z -->
