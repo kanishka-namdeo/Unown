@@ -1,6 +1,6 @@
 # The Fugue demo session (the SOTA round)
 
-> **Status: in progress** — this is the SOTA round's session receipt stub, committed mid-round per the cadence round's pattern (`be450e2`). It will carry: what the round built, the agent sessions that built it, what each stage's testing found, the numbered embedding patches, the learning-mechanism validation evidence (the five mechanisms exercised against the live engine), and the benchmark framework's baseline/midpoint/final numbers. The round's grounding research is [sota-round-competitor-research.md](sota-round-competitor-research.md).
+> **Status: closed at the round's release** — the full record:  what the round built, the agent sessions that built it, what each stage's testing found, the numbered embedding patches, the learning-mechanism validation evidence (the five mechanisms exercised against the live engine), and the benchmark framework's baseline/midpoint/final numbers. The round's grounding research is [sota-round-competitor-research.md](sota-round-competitor-research.md).
 
 - [What the app is](#what-the-app-is)
 - [How it was built](#how-it-was-built)
@@ -58,7 +58,40 @@ cadence round's chunked-resume pattern holding.
 
 ## What the testing found (and fixed)
 
-(to be filled at close)
+Every phase ended in operator verification (build + suite + typecheck; E2E at
+P4), and the round kept a failure→root-cause→fix→rerun ledger — the
+validation log (F0–F3, all receipted):
+
+- **F0** — the print-mode "hang": never a Unown defect (eight controlled
+  runs, genealogy evidence: the process tree exits 6–31 s every time; the
+  caller's harness waits on its own pipe). The unattended-caller contract
+  became the round's operating procedure.
+- **F1** — the memory-lift experiment: a null result kept honestly. Four
+  editing-discipline rules (a simulated memory patch authored from the
+  baseline's three measured structural-swap failures) did NOT lift the
+  matched-model edit-bench headline — 103/106 both sides. What moved: the
+  swap category healed one failure, a non-target remove-mutation flipped,
+  and mean task duration fell 32% (16.8 s → 11.4 s, early-stop dominant) at
+  +50% token overhead — the selfimprove round's "memory buys efficiency,
+  not correctness," reproduced on a fresh axis.
+- **F2** — background runners killed at tool-call teardown: caller
+  environment (the host kills direct descendants even across setsid/nohup);
+  the surviving pattern is the intermediate-exit spawn — captured in a
+  reusable launcher and the operating procedure.
+- **F3** — the embed contract dead in production, a three-layer root cause:
+  the sync searchParams read (Next 15+/16 passes a Promise — the read
+  silently returned undefined and the route prerendered embed:false),
+  a zombie next-server serving a deleted build behind every false test, and
+  Turbopack's static analysis needing force-dynamic for parity. Fixed with
+  the bazaar/cadence/parley page shape, verified live: ?embed=1 serializes
+  embed:true, no-query false, /fugue?embed=1 renders 200.
+- The production review pass (5 sessions): 8 MUST-FIXes (a scrypt
+  RangeError→500 on corrupt digests, store shape validation, read-path
+  retention, an a11y status chip, a reload-free list re-key, a false config
+  doc, cross-file test pollution, missing label pins) and 6 NOTEs with
+  rationale — including a timing-side-channel analysis (N5) left documented.
+- The E2E login "bug" was a spec locator defect (hasNot misuse), honestly
+  root-caused as such — the AuthScreen was correct.
 
 ## The learning validation
 
@@ -92,8 +125,66 @@ task duration, not correctness.
 caller-environment closures and one null experiment, all with receipts.
 ## The embedding adaptations
 
-(to be filled at close — numbered, each naming file + mechanism + why)
+The numbered host-integration patches (the cadence checklist, adapted):
+
+1. **Scoped layout + stylesheet** — `src/app/fugue/layout.tsx` is a
+   pass-through (`.fugue-scope` wrapper, `globals.css` imported for
+   /fugue routes only; the root layout owns html/body). Fugue ships
+   light-by-default: no `dark` class, matching its clean-SaaS design.
+2. **Server-read embed flag** — every page reads `?embed=1` server-side
+   and passes it as an explicit prop (the bazaar/cadence/parley
+   sync-outer + Suspense + async-inner shape + `force-dynamic`, per F3).
+3. **Frame headers** — `next.config.ts` carries `frame-ancestors 'self'`
+   + `X-Frame-Options: SAMEORIGIN` for `/fugue/:path*` (the block was
+   committed by the parley round's CSP pass).
+4. **The reset channel** — the landing's Reset button posts
+   `{source:"unown-landing", type:"fugue-reset"}`; the Shell mounts the
+   origin-checked listener only in embed mode (`useEmbedChannel`,
+   gated — a real bug the pin caught) and POSTs the auth-gated
+   `/fugue/api/reset` route, then re-fetches.
+5. **Host test-env restoration** — `src/test-dom-setup.ts` captures and
+   restores Node's Response/Request/Headers around happy-dom's
+   registration (Set-Cookie/Cookie are filtered WHATWG headers in the
+   shim; the api suites pin the real cookie flags). The fugue build
+   repo's preload pioneered the same documented pattern.
+6. **Cross-file hygiene** — the fugue component tests register their
+   fetch routers and restore the NATIVE fetch in afterEach (a leaked
+   router was measured poisoning the cadence suite in the shared bun
+   process).
+7. **Data-dir placement** — the JSON store resolves under the host's
+   gitignored `data/fugue/` (same lane as the other demo apps).
+8. **Gallery data + pins** — the fifth `LiveDemoApp` entry with its
+   receipts; the live-demo tests pin route/reset/poster/receipt chips.
+9. **Poster** — `scripts/landing_demo_poster.mjs` shot the production
+   `/fugue/flows?embed=1` frame (2880×1800, IHDR-pinned by the tests).
+10. **The showcase band** — the landing's eleventh section,
+    "Built & Improved With Unown," carries the round's loop receipts and
+    four PTY-lane Mission Control stills (see below).
+11. **Coverage parity** — page/layout/reset-route/Stats tests to the
+    80% changed-line bar (Shell 98%); every previously-failing row green.
 
 ## Where things live
 
-(to be filled at close)
+- The app (embedded): `src/app/fugue/`, `src/lib/fugue/`,
+  `src/components/fugue/` — app-as-built plus the embedding patches
+  above. The build repo (verbatim source, agent receipts, phase
+  commits): `/home/z/my-project/fugue-build` (8 commits, brief → review).
+- The benchmark framework: `benchmarks/sota-round/` — the three metric
+  groups, the baseline/midpoint/final snapshots, `report.mjs`'s trajectory,
+  and the validation log (F0–F3).
+- The memory-lift campaign:
+  `benchmarks/edit-bench/results/memory-lift-2026-10-28/` (jsonl + summary +
+  RESULTS.md; the env-gated `UNOWN_BENCH_MEMORY_LIFT` lane in
+  `run-unown.mjs`).
+- The three mission reports: `docs/unown-learning-report.md`,
+  `docs/benchmark-improvement-report.md`,
+  `docs/competitor-comparison-report.md` (shared across the round's
+  parallel workstreams, receipts-first).
+- The showcase band: `src/components/landing/built-improved.tsx` + its
+  data file; the stills under `public/landing/tui/sota-round/stills/`
+  with `.pane.txt` audits (captured live from the PTY lane against the
+  running engine).
+- The promoted skills: `.unown/skills/test-cadence-domain` (host repo) and
+  `.unown/skills/{run-fugue-verification,verify-fugue-tests}` (the build
+  repo) — dream-minted, claims operator-verified, promoted through the
+  staged-skills human gate.

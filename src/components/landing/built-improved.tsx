@@ -2,6 +2,7 @@
 
 import { Fragment } from "react";
 import {
+  IMPROVEMENT_RECEIPTS,
   LOOP_RECEIPTS,
   MISSION_CONTROL_STILLS,
   RECEIPT_LINKS,
@@ -123,6 +124,47 @@ export function BuiltImprovedSection() {
                 </TerminalWindow>
               ))}
             </div>
+          </div>
+        </FadeUp>
+
+        {/* The before/after improvements — the loop's two closed, retained
+            fixes (carried from the parley round's v0.0.38 band; the
+            mission's core exhibit: a failure became a shipped patch, and
+            the fix survives reruns). */}
+        <FadeUp delay={0.08} className="mt-6">
+          <div className="grid gap-4 sm:grid-cols-2">
+            {IMPROVEMENT_RECEIPTS.map((r) => (
+              <div
+                key={r.id}
+                className="rounded-lg border border-line bg-panel-2 p-4"
+              >
+                <p className="text-[13px] font-medium text-ink">{r.title}</p>
+                <p className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 font-mono text-[10.5px] leading-relaxed">
+                  <span className="rounded bg-line px-1.5 py-0.5 text-faint">
+                    before
+                  </span>
+                  <span className="text-dim">{r.before}</span>
+                  <span aria-hidden="true" className="text-faint">
+                    →
+                  </span>
+                  <span className="rounded bg-line px-1.5 py-0.5 text-faint">
+                    after
+                  </span>
+                  <span className="text-ink">{r.after}</span>
+                </p>
+                <p className="mt-2 text-[12px] leading-relaxed text-dim">
+                  {r.loop}
+                </p>
+                <a
+                  href={r.receipt}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="mt-2 inline-block font-mono text-[10px] text-faint underline decoration-line underline-offset-4 hover:text-ink"
+                >
+                  the receipt
+                </a>
+              </div>
+            ))}
           </div>
         </FadeUp>
 

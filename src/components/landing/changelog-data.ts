@@ -30,19 +30,81 @@ export interface ChangelogStop {
   groups: ChangelogGroup[];
 }
 
-export const CHANGELOG_TOTAL_ENTRIES = 344;
+export const CHANGELOG_TOTAL_ENTRIES = 353;
 
 export const CHANGELOG_TOTALS: Record<ChangelogBucket, number> = {
-  "Added": 152,
+  "Added": 157,
   "Changed": 28,
   "Deprecated": 0,
   "Removed": 3,
-  "Fixed": 125,
+  "Fixed": 129,
   "Security": 5,
   "Behavior": 31
 };
 
 export const CHANGELOG_STOPS: ChangelogStop[] = [
+  {
+    "label": "0.0.39",
+    "date": "2026-10-28",
+    "total": 9,
+    "counts": {
+      "Added": 5,
+      "Changed": 0,
+      "Deprecated": 0,
+      "Removed": 0,
+      "Fixed": 4,
+      "Security": 0,
+      "Behavior": 0
+    },
+    "groups": [
+      {
+        "bucket": "Added",
+        "items": [
+          {
+            "title": "The live-demo gallery's fifth app, Fugue",
+            "behavior": false
+          },
+          {
+            "title": "The \"Built & Improved With Unown\" band, reframed around the SOTA round's live evidence",
+            "behavior": false
+          },
+          {
+            "title": "The SOTA round's benchmark framework",
+            "behavior": false
+          },
+          {
+            "title": "The engine's sixth seeded capability task",
+            "behavior": false
+          },
+          {
+            "title": "The memory-lift benchmark lane",
+            "behavior": false
+          }
+        ]
+      },
+      {
+        "bucket": "Fixed",
+        "items": [
+          {
+            "title": "The Fugue embed contract, dead in production",
+            "behavior": false
+          },
+          {
+            "title": "The host test environment restores Node's Response/Request/Headers around happy-dom",
+            "behavior": false
+          },
+          {
+            "title": "Cross-file test pollution",
+            "behavior": false
+          },
+          {
+            "title": "The parley round's stub TOC anchors",
+            "behavior": false
+          }
+        ]
+      }
+    ]
+  },
   {
     "label": "0.0.38",
     "date": "2026-10-28",

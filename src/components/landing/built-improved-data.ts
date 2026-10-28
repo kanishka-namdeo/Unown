@@ -104,3 +104,43 @@ export const RECEIPT_LINKS: { label: string; href: string }[] = [
   { label: "the benchmark report", href: "https://github.com/kanishka-namdeo/Unown/blob/main/docs/benchmark-improvement-report.md" },
   { label: "the validation log", href: "https://github.com/kanishka-namdeo/Unown/blob/main/benchmarks/sota-round/validation-log.md" },
 ];
+
+/**
+ * The before/after improvement receipts — the mission's core exhibit,
+ * carried from the parley round's band (v0.0.38 shipped them; the SOTA
+ * round keeps them when it reframed the band around its own live
+ * captures). These are the loop's two closed improvements: a measured
+ * failure became a shipped memory patch (retained), and a lost-envelope
+ * failure became a pinned forced-exit contract.
+ */
+export interface ImprovementReceipt {
+  id: string;
+  title: string;
+  before: string;
+  after: string;
+  loop: string;
+  receipt: string;
+}
+
+export const IMPROVEMENT_RECEIPTS: ImprovementReceipt[] = [
+  {
+    id: "first-patch",
+    title: "The first shipped memory patch",
+    before: "baseline run failed",
+    after: "passed twice, shipped",
+    loop:
+      "a measured edit-bench failure became the minted task swap-if-else-messages; the harness mined a 4-rule patch, verified it twice, shipped it to project memory v11",
+    receipt:
+      "https://github.com/kanishka-namdeo/Unown/blob/main/benchmarks/parley-round/snapshots/midpoint-2026-10-28184614.json",
+  },
+  {
+    id: "envelope",
+    title: "The unattended-caller contract",
+    before: "0-byte result envelopes",
+    after: "every exit writes it",
+    loop:
+      "two lost build sessions became the F3 root cause; the forced-exit paths now write the full envelope (subtype forced_exit) before process.exit — pinned by 4 tests",
+    receipt:
+      "https://github.com/kanishka-namdeo/Unown/blob/main/benchmarks/parley-round/validation-log.md",
+  },
+];

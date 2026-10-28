@@ -33,6 +33,7 @@ import {
   LOOP_RECEIPTS,
   MISSION_CONTROL_STILLS,
   RECEIPT_LINKS,
+  IMPROVEMENT_RECEIPTS,
 } from "../built-improved-data";
 import { LIVE_DEMO_APPS } from "../live-demo-data";
 
@@ -51,6 +52,10 @@ function pngSize(buf: Buffer): [number, number] {
 /** The round's receipt figures — every number the band may render. A digit
  *  outside this set is a number the mission did not receipt. */
 const EXPECTED_NUMBERS = new Set([
+  // the parley-round improvement receipts (carried into the band):
+  "0", // 0-byte result envelopes (the envelope fix's before-state)
+  "4", // pinned by 4 tests (the envelope fix's pin count)
+  "11", // shipped to project memory v11 (the first patch's after-state)
   "1", "3", "6", "8", "24", "26", "32", "46", "50", "58", "62",
   "99.5", "103", "106", "108", "112", "174", "640", "2,343",
 ]);
@@ -198,6 +203,12 @@ describe("built-improved band (the SOTA round's showcase)", () => {
     const dataNumbers = new Set(
       [
         ...LOOP_RECEIPTS.flatMap((r) => [r.figure, r.body]),
+        ...IMPROVEMENT_RECEIPTS.flatMap((r) => [
+          r.title,
+          r.before,
+          r.after,
+          r.loop,
+        ]),
         ...MISSION_CONTROL_STILLS.flatMap((s) => [s.alt, s.caption]),
         ...RECEIPT_LINKS.map((l) => l.label),
       ].flatMap(numbersIn),
@@ -219,5 +230,18 @@ describe("built-improved band (the SOTA round's showcase)", () => {
         `"${n}" renders in the band but is not a receipted figure`,
       ).toBe(true);
     }
+  });
+
+  test("the before/after improvement receipts render (the parley round's closed fixes, kept)", () => {
+    const { container } = render(<BuiltImprovedSection />);
+    const text = container.textContent ?? "";
+    for (const r of IMPROVEMENT_RECEIPTS) {
+      expect(text).toContain(r.title);
+      expect(text).toContain(r.before);
+      expect(text).toContain(r.after);
+      expect(text).toContain(r.loop);
+    }
+    expect(text).toContain("The first shipped memory patch");
+    expect(text).toContain("0-byte result envelopes");
   });
 });

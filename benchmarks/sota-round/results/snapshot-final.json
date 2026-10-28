@@ -1,0 +1,60 @@
+{
+  "label": "final",
+  "takenAt": 1793221501513,
+  "takenAtIso": "2026-10-28T21:05:01.513Z",
+  "phase": "round close",
+  "source": {
+    "dbPath": "/home/z/my-project/Unown/db/selflearning.db",
+    "receiptsDir": "/home/z/my-project/fugue-build/.unown/receipts"
+  },
+  "sdlc": {
+    "tests": {
+      "unit": "885",
+      "passing": ""
+    },
+    "e2e": "fugue lane green twice back-to-back; landing e2e battery green",
+    "editBench": {
+      "benchmark": "oh-my-pi typescript-edit-benchmark (106 shipped fixtures)",
+      "model": "agnes-3.0-flash",
+      "passRate": 0.9716981132075472,
+      "passed": 103,
+      "totalTasks": 106,
+      "source": "../edit-bench/results/rerun-2026-10-21/agnes-3.0-flash/summary.json",
+      "generatedAt": "2026-10-21T16:32:11.245Z"
+    }
+  },
+  "agent": {
+    "sessions": 30,
+    "inputs": 53,
+    "toolCalls": 960,
+    "toolResults": 951,
+    "toolErrorResults": 9,
+    "checkpoints": 22,
+    "resumeChains": 0,
+    "humanInterventions": 2,
+    "toolSuccessRate": 0.9905
+  },
+  "learning": {
+    "runs": 178,
+    "tasksTotal": 11,
+    "tasksMinted": 5,
+    "tasksByOrigin": {
+      "minted": 5,
+      "seed": 6
+    },
+    "cyclesTotal": 41,
+    "cyclesByStatus": {
+      "already-passing": 41
+    },
+    "improvementsShipped": 0,
+    "dreamsTotal": 78,
+    "dreamsMerged": 36,
+    "dreamsAdded": 184,
+    "dreamsPruned": 197,
+    "notesTotal": 229,
+    "memoryVersions": 91,
+    "skillsStaged": 3,
+    "hookDecisions": 2827,
+    "failuresLogged": 0
+  }
+}

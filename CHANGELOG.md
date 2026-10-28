@@ -9,6 +9,23 @@ otherwise specified; the release tag must always equal package.json's version.
 
 Repo conventions: measured claims cite their receipts (`docs/testing-strategy.md`, `benchmarks/memory-eval/*/RESULTS.md`). Changes to agent behavior — prompts, default models, routing, guard rules, hooks, memory injection — are filed under **Agent Behavior**; the policy lives in [docs/BEHAVIOR.md](docs/BEHAVIOR.md).
 
+## [0.0.39] - 2026-10-28
+
+### Added
+
+- **The live-demo gallery's fifth app, Fugue** — an AI workflow-automation platform (workspaces; flows of transform/classify/enrich/branch/notify steps, each a deterministic simulated-inference processor; the execution engine with per-attempt run timelines; scrypt session auth; a fourteen-route JSON API; the flows/runs/stats dashboard) written end-to-end by `unown` through the round's phase chain — 26 sessions, ~640 tool calls, eight build-repo commits, **zero human edits to the app's code**. Receipts: [docs/fugue-demo-session.md](docs/fugue-demo-session.md).
+- **The "Built & Improved With Unown" band, reframed around the SOTA round's live evidence** — the band the parley round shipped in 0.0.38 now leads with the round's receipted loop tally (3 skills minted→verified→promoted; project memory v46; 50 dreams; 3 mints with 3 solvability-gate discards; the honest memory-lift null; 26 sessions · 99.5% tool success) beside four fresh PTY-lane Mission Control stills (skills/memory/dreams/overview, 1792×1042 with pane-truth audits, captured against the live engine mid-round) and receipt links to the round's three reports — while **keeping the parley round's two before/after improvement receipts** (the first shipped memory patch and the forced-exit envelope contract, the mission's core retained-improvement exhibits). ~185 words compressed from the FAQ/lexicon prose first; the twin scroll-budget gates amended in lockstep (3,320→3,500 words; the 15.0 vh ceiling recorded in both headers + the landing AGENTS.md).
+- **The SOTA round's benchmark framework** (`benchmarks/sota-round/`): three metric groups (SDLC/Agent/Learning), baseline/midpoint/final snapshots, the rendered trajectory, and the F0–F3 failure→root-cause→fix→rerun validation log.
+- **The engine's sixth seeded capability task** (`swap-if-else-messages`, ported byte-exact from a measured agnes-3.0-flash edit-bench failure) so harness cycles run against a real gap; in the engine's full-tool sandbox it passes 12/12 — the gap is edit-bench-toolset-specific.
+- **The memory-lift benchmark lane** (`UNOWN_BENCH_MEMORY_LIFT`, env-gated): the matched-model experiment measured prompt-discipline rules buying −32% task duration and **zero pass-rate lift** (103/106 both sides) — the null is published as the finding (`benchmarks/edit-bench/results/memory-lift-2026-10-28/RESULTS.md`).
+
+### Fixed
+
+- **The Fugue embed contract, dead in production** — the pages read `searchParams` synchronously (a Promise in Next 15+/16), so the flag silently never reached the client and the route prerendered `embed:false`; fixed with the bazaar/cadence/parley sync-outer + Suspense + async-inner shape plus `force-dynamic`, verified live against a verified-fresh server (`?embed=1` → `embed:true`; `/fugue?embed=1` → 200). The three-layer root cause — sync read, a zombie next-server serving a deleted build, Turbopack's prerender analysis — is receipted in the validation log's F3.
+- **The host test environment restores Node's Response/Request/Headers around happy-dom** — Set-Cookie/Cookie are filtered WHATWG headers in the shim; the demo apps' API suites now pin the real cookie flags (the same documented pattern the fugue build repo's preload pioneered; the parley round had needed an x-parley-cookie workaround for the same filter).
+- **Cross-file test pollution** — the fugue component tests register their fetch routers and restore the NATIVE fetch in afterEach; a leaked router was measured poisoning the cadence suite in the shared bun test process.
+- **The parley round's stub TOC anchors** — re-anchored to the checkpoint headings its record actually ships, so the docs gate holds for every later commit.
+
 ## [0.0.38] - 2026-10-28
 
 ### Added
