@@ -270,3 +270,25 @@ Honest limitations live in the bench README: one model, one OS, one
 2 CPU / 4 GB box; the lane default is 45 minutes and the shipped
 engine-soak receipt ran the 75-minute window (`--soak-minutes` — the
 verdict math is duration-independent).
+
+## The 2026-10-29 validation round (the cold-start mission)
+
+The Memory & Learning System Validation Programme as a round: a fresh
+clone, a fresh engine DB, and the tracked `.unown/memory/project.md` (v12,
+79 bullets) as the only carried-over learning — the deployment every new
+contributor experiences. Receipts in [`validation-round/`](validation-round/README.md)
+(snapshot driver + baseline/midpoint/final JSON receipts + the per-session
+UX ledger + the failure ledger); narrative in
+`docs/validation-round-session.md`; the mission's four reports in `docs/`.
+Method: drain-before-snapshot, cold-start discipline (no DB restore),
+with/without baselines for every improvement claim, cost columns on every
+figure, zero LLM calls in collection.
+
+- **Baseline** (`snapshots/baseline-20261028-202136.json`, drained) —
+  6 tasks / 3 passing at capture, 3 autonomous cycles (all
+  `already-passing` under agnes-3.0-flash), 2 autonomous dreams (engine
+  project tier v1 → v3; entries added 4+4, pruned 4+0), 9 runs (9/9
+  passed), 9 notes, terminal memory v12 / 79 bullets / 0 staged skills.
+  The engine's first minutes with zero operator input are themselves the
+  autonomy receipt: the loop ran because it was scheduled, not because a
+  button was pressed.
