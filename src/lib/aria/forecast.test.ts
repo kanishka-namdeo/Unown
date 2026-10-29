@@ -78,6 +78,7 @@ function stateWith(deals: AriaDeal[]): AriaState {
     quotas: [],
     forecastSnapshots: [],
     sessions: [],
+    invites: [],
     audit: [],
     seq: 0,
   };

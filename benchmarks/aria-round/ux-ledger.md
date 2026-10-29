@@ -41,6 +41,13 @@ Column key:
 | A6 | repeat (resume) | Lib | continue Phase 1: test-run/fix loop | 40 (capped) | 233,947 / 22,254 | 414s | 0 | 0 | partial — fix loop, resumed | yes |
 | A7 | repeat (resume) | Lib | continue Phase 1: fix loop | 40 (capped) | 227,895 / 15,978 | 420s | 0 | 0 | partial — fix loop, resumed | yes |
 | A8 | repeat (resume) | Lib | finish Phase 1: green suite + clean typecheck | 33 | 36,778 / 8,539 | 275s | 0 | 0 | completed — 315/315 green, typecheck clean, full-repo 1,201/1,201 | yes |
+| A9 | repeat (resume) | API | Phase 2 start on the lib mega-session (context drag: 962K in/40 turns) | 40 (capped) | 962,377 / 21,184 | 589s | 0 | 0 | partial — _auth/_rate/_state helpers; operator restarted fresh (the fold-not-fanout economics) | yes |
+| A10 | cold (build) | API | fresh Phase 2 session: read plan + patterns, re-verify lib | 40 (capped) | 257,151 / 4,039 | 220s | 0 | 0 | partial — exploration complete (257K in, 4x cheaper than the mega-session's 40) | yes |
+| A11 | repeat (resume) | API | write route files, group by group | 40 (capped) | 64,752 / 16,538 | 328s | 0 | 0 | partial — 16 files, resumed | yes |
+| A12 | repeat (resume) | API | continue route groups + stubs | 40 (capped) | 206,034 / 22,063 | 399s | 0 | 0 | partial — 45 files, resumed | yes |
+| A13 | repeat (resume) | API | finish routes + start tests | 40 (capped) | 222,579 / 17,071 | 379s | 0 | 0 | partial — 57 files, resumed | yes |
+| A14 | repeat (resume) | API | write the 14 API test files | 40 (capped) | 266,123 / 45,940 | 859s | 0 | 0 | partial — tests written, fix loop pending | yes |
+| A15 | repeat (resume) | API | the run/fix loop to green | 27 | 27,478 / 8,189 | 861s | 0 | 0 | completed — 210/210 green, typecheck + lint clean, lib fixes receipted | yes |
 
 Notes on the rows:
 

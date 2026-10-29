@@ -17,6 +17,7 @@ import type { TenantContext } from "./tenancy";
 import { teamOf } from "./tenancy";
 import type {
   AriaAccount,
+  AriaContact,
   AriaDeal,
   AriaLead,
   AriaState,
@@ -67,6 +68,24 @@ export function isRecordVisible(
   const scope = visibleOwnerIds(state, ctx);
   if (scope === null) return true; // whole-tenant role
   return scope.has(ownerId);
+}
+
+/**
+ * The tenant's contacts, narrowed to the ctx's visibility scope
+ * (owner/admin/viewer → whole tenant; rep/manager → owned records).
+ * The contact's visibility key is its OWN `ownerId` (the plan's
+ * ownership layer — the rep's contacts are the ones they own).
+ */
+export function visibleContacts(
+  state: AriaState,
+  ctx: TenantContext,
+): AriaContact[] {
+  const scope = visibleOwnerIds(state, ctx);
+  return state.contacts.filter(
+    (c) =>
+      c.tenantId === ctx.tenantId &&
+      (scope === null || (c.ownerId ? scope.has(c.ownerId) : true)),
+  );
 }
 
 /** Filter a list of accounts down to the ctx's visible scope. */

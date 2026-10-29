@@ -82,7 +82,7 @@ build's contract.
 |---|---|---|---|
 | Plan | 2 (40-turn exploration capped → 1-turn resume) | 40,292-char numbered build contract: data model (every field), 16 modules, ~50 routes with the auth ladder, the deterministic sequence-engine design, the 330-380-test plan, phases with acceptance criteria, 13 risks with mitigations, the embed contract — [`plan.md`](../benchmarks/aria-round/plan.md) | — |
 | Lib/domain | 6 sessions (5 capped resumes → 1 clean finish) | 16 modules + 18 test files, 7,146 LOC — **315 tests green** (2,520 expects), typecheck clean, full-repo suite 1,201 pass / 0 fail, zero files outside `src/lib/aria/` | (this round's next commits) |
-| API | (pending) | tenant-scoped routes, auth ladder, import, isolation + adversarial probe suites | — |
+| API | 7 sessions (6 capped resumes → 1 clean finish; one fresh-session restart after the mega-session's context drag passed 900K input/40 turns) | ~50 routes across 10 groups with the 401/403/404/402/400 ladder, `aria-store` accessor, layout/page/globals stubs, 14 test files — **210 tests green** (1,077 expects), typecheck + lint clean, lib fixes receipted (the plan's `invites` array, the owner-carve-out refinement) | (this round's next commits) |
 | UI | (pending) | dashboard, kanban, record timelines, sequences, triage inbox, admin | — |
 | E2E + review + drill | (pending) | Playwright e2e, reviewer passes, P0 pins, cold-start acceptance | — |
 | Landing embed | (pending) | gallery entry #6, embed contract patches, poster, copy, test pins | — |
@@ -135,8 +135,20 @@ next. A checkpoint is DONE only with measured numbers.
   real data; the store's atomic-rename/reseed and the engine's
   terminals-are-final contracts operator-spot-checked. UX rows A3–A8
   ([the ledger](../benchmarks/aria-round/ux-ledger.md)).
-- [ ] **CP3 — API phase** (tenant-scoped routes; 401/403/404 ladder;
-  isolation suite; adversarial probes).
+- [x] **CP3 — API phase** (DONE — operator-verified): all ~50 routes per
+  the plan's route map — auth/tenants/members/invites, accounts/contacts
+  (the 409 email-uniqueness gate), leads with the atomic conversion,
+  pipelines/deals (lost-reason gate, closed-deal-never-reopen), activities/
+  tasks, notes/tags, sequences/enrollments/mailbox, the 9 report routes +
+  drill-down, the 3 triage routes, import (CSV dry-run), audit, demo-reset,
+  forecast snapshots (immutable) — plus the 14-file API suite:
+  `bun test src/app/aria` **210 pass / 0 fail**, typecheck clean, `bun test
+  src/lib/aria` still 315 green. The adversarial suite carries the parley
+  27-probe pattern; the tenancy suite pins cross-tenant 404-never-403 on
+  every entity route. Seven lib files gained plan-compliance fixes on the
+  way (the `invites` state array, the owner-seat carve-out refinement,
+  visibility additions) — receipted in the diff. UX rows A9–A15
+  ([the ledger](../benchmarks/aria-round/ux-ledger.md)).
 - [ ] **CP4 — UI phase** (dashboard/kanban/timelines/sequences/triage/
   admin; component suite green).
 - [ ] **CP5 — e2e + adversarial review + cold-start drill** (Playwright

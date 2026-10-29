@@ -376,6 +376,25 @@ export interface AriaSession {
   expiresAt: string;
 }
 
+/**
+ * The invite (the parley single-use token pattern): a role + email
+ * the tenant's owner/admin extends, redeemable by anyone who holds
+ * the token. The 24h expiry + used-flag live on the row.
+ */
+export interface AriaInvite {
+  id: string;
+  tenantId: string;
+  email: string;
+  role: AriaRole;
+  /** The single-use credential (never logged, never the password). */
+  token: string;
+  /** ISO — accepted, or null while pending. */
+  usedAt: string | null;
+  /** ISO — the token's hard expiry (24h from creation). */
+  expiresAt: string;
+  createdAt: string;
+}
+
 /* ── Full state (the seed + store own this shape) ────────────────── */
 
 export interface AriaState {
@@ -401,6 +420,8 @@ export interface AriaState {
   forecastSnapshots: AriaForecastSnapshot[];
   sessions: AriaSession[];
   audit: AriaAuditEvent[];
+  /** Pending + used invite tokens (the accept lane's single-use rows). */
+  invites: AriaInvite[];
   /** Monotonic counter for deterministic id generation. */
   seq: number;
 }

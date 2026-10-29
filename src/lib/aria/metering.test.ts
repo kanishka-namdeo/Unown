@@ -50,6 +50,7 @@ function base(): AriaState {
     quotas: [],
     forecastSnapshots: [],
     sessions: [],
+    invites: [],
     audit: [],
     seq: 0,
   };

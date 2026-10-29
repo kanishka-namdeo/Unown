@@ -786,6 +786,7 @@ export function seedAria(now: string = AS_OF): AriaState {
     quotas,
     forecastSnapshots: [],
     sessions: [],
+    invites: [],
     audit,
     seq: maxSeedSeq + 1,
   };

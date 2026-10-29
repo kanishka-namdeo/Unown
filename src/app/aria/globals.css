@@ -1,0 +1,38 @@
+/*
+ * Aria — the /aria route's scoped stylesheet (the parley pattern).
+ *
+ * Embedded inside the unown landing app, this file is imported ONLY
+ * by src/app/aria/layout.tsx, so Next injects it for /aria routes
+ * alone — the landing page never downloads it. The embedding
+ * adaptations:
+ *
+ *   1. `@source` scoping — with two Tailwind v4 passes in one repo,
+ *      this file's pass must generate utilities for the ARIA trees
+ *      only (components/aria, lib/aria, app/aria), never the
+ *      landing's.
+ *   2. The standalone app's `:root` rules were re-anchored onto
+ *      `.aria-scope` — under the landing's root layout those
+ *      elements are SHARED, and the demo must not restyle the host.
+ */
+@import "tailwindcss";
+
+@source "../../../components/aria";
+@source "../../../lib/aria";
+@source "../../aria";
+
+/* The scope wrapper the aria layout renders. */
+.aria-scope {
+  color-scheme: dark;
+  background: var(--aria-background, #0a0a0f);
+  color: var(--aria-foreground, #e7e7ea);
+  font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto,
+    "Helvetica Neue", Arial, sans-serif;
+  min-height: 100dvh;
+}
+
+.aria-scope[data-theme="light"],
+.aria-scope:where([data-theme="light"]) {
+  color-scheme: light;
+  background: var(--aria-background, #fafafa);
+  color: var(--aria-foreground, #111);
+}

@@ -95,6 +95,7 @@ function stateWith(deals: AriaDeal[], leads: AriaLead[] = [], extra: Partial<Ari
     quotas: [],
     forecastSnapshots: [],
     sessions: [],
+    invites: [],
     audit: [],
     seq: 0,
     ...extra,

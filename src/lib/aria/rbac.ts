@@ -185,12 +185,13 @@ export const MATRIX: Record<Action, Record<AriaRole, boolean>> = {
 };
 
 /**
- * The owner-seat carve-out: the only resource-gated action in the
- * matrix is `tenant.settings` — acting on a tenant id targets that
- * tenant's owner seat. The owner role is gated: they may manage
- * their own tenant only (the cross-tenant case is handled by the
- * tenancy layer as a 404). Returns `true` when the carve-out
- * permits the action.
+ * The owner-seat carve-out: `tenant.settings` targets the tenant
+ * row being patched. The owner role is granted by the matrix but
+ * the route lane enforces the resource guard FIRST (the 404 rung
+ * when the tenant id is not the actor's own tenant — the plan's
+ * tenancy floor), so the carve-out collapses to a pure role check
+ * by the time `can()` runs: an owner's own tenant → 200, any other
+ * tenant → already 404 (not 403, not 200).
  */
 function ownerSeatGated(
   action: Action,
@@ -199,10 +200,13 @@ function ownerSeatGated(
   actorTenantId: string,
 ): boolean {
   if (action !== "tenant.settings") return true;
-  if (role !== "owner") return true; // only owners are resource-gated
-  if (resource === undefined) return true; // general capability check
-  // An owner may manage only their own tenant's settings.
-  return resource === actorTenantId;
+  // Non-owner roles: the matrix already denies them (the ✗ cells).
+  if (role !== "owner") return false;
+  // The owner's resource guard: only their own tenant (the
+  // cross-tenant case is the route's 404 rung, so by the time
+  // can() runs with a resource, the resource is the actor's own
+  // tenant id).
+  return resource === undefined || resource === actorTenantId;
 }
 
 /**

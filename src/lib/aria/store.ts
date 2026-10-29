@@ -65,6 +65,7 @@ function isValidState(s: unknown): s is AriaState {
     ["forecastSnapshots", "forecastSnapshots"],
     ["sessions", "sessions"],
     ["audit", "audit"],
+    ["invites", "invites"],
   ];
   for (const [key] of arrays) {
     if (!Array.isArray(o[key])) return false;
