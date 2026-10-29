@@ -43,15 +43,19 @@ export interface TurnMeterInput {
 	usage: TurnUsageDelta;
 	/** Wall-clock duration of the turn just completed (ms). */
 	durationMs: number;
+	/** Time-to-first-token: when the host observed the first streamed
+	 *  assistant chunk (ms after turn start) — the latency the user FELT.
+	 *  Omitted when the host cannot observe it (non-streaming runs). */
+	firstTokenMs?: number;
 	/** Live context utilization, when the host reports it: tokens + window. */
 	context?: { tokens: number; contextWindow: number };
 	/** Env (injected for tests); reads UNOWN_TURN_METER and the price overrides. */
 	env?: Record<string, string | undefined>;
 	/** Pricing resolver — defaults to usage-cli's resolveModelPrice. */
-	resolvePrice?: (model: string, env: Record<string, string | undefined>) =>
-		| { inputUsdPer1M: number; outputUsdPer1M: number }
-		| null
-		| undefined;
+	resolvePrice?: (
+		model: string,
+		env: Record<string, string | undefined>,
+	) => { inputUsdPer1M: number; outputUsdPer1M: number } | null | undefined;
 }
 
 export interface TurnMeterResult {
@@ -120,6 +124,12 @@ export function formatTurnMeter(input: TurnMeterInput): TurnMeterResult {
 
 	const parts: string[] = [];
 	parts.push(`turn ${compactDuration(input.durationMs)}`);
+
+	// TTFT (the goose v1.42+ row parity): how long the model made the user
+	// wait before the first streamed token. Only when the host observed it.
+	if (typeof input.firstTokenMs === "number" && Number.isFinite(input.firstTokenMs) && input.firstTokenMs > 0) {
+		parts.push(`ttft ${compactDuration(input.firstTokenMs)}`);
+	}
 
 	if (input.context && input.context.contextWindow > 0) {
 		const pct = Math.min(100, Math.round((input.context.tokens / input.context.contextWindow) * 100));

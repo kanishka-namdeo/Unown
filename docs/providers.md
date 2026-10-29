@@ -28,7 +28,7 @@ Both write the same three files under `~/.unown/agent/`. You can mix them — th
 
 ## Multiple providers
 
-Unown is multi-provider: **adding a provider never removes the ones you already configured**. The registry (`~/.unown/agent/models.json`) accumulates, `/model` lists every configured provider's models, and `--model provider/model` routes a session to any of them:
+Unown is multi-provider: **adding a provider never removes the ones you already configured**, and **updating one never truncates its model list** — a re-add naming a single model keeps the discovered catalog registered (the incoming id just moves to the front; `--force` is the only reset). The registry (`~/.unown/agent/models.json`) accumulates, `/model` lists every configured provider's models, and `--model provider/model` routes a session to any of them:
 
 ```bash
 unown --model agnes/agnes-3.0-flash "fix the failing test"
@@ -54,9 +54,9 @@ unown setup --provider custom \
   --base-url http://127.0.0.1:11434/v1 --model llama3   # any OpenAI-compatible server
 ```
 
-Presets: `bridge` (bundled), `openai`, `openrouter`, `anthropic`, `dashscope`, `deepseek`, `agnes`, `custom`. Every direct setup verifies the endpoint is reachable and the key is accepted before declaring success — a rejected key fails setup with the HTTP status instead of failing your first chat later.
+Presets: `bridge` (bundled), `openai`, `openrouter`, `anthropic`, `dashscope`, `deepseek`, `agnes`, `custom`. Every direct setup verifies the endpoint is reachable and the key is accepted before declaring success — a rejected key fails setup with the HTTP status instead of failing your first chat later. A 429 is reported as **rate-limited** (the endpoint is up, the key passed auth, only the throttle is in the way), and the probe speaks the provider's own wire — Anthropic endpoints are authenticated with `x-api-key` against `{root}/v1/models`, so a valid Anthropic key verifies correctly.
 
-The interactive wizard (no flags, TTY) is a guided flow: current-state welcome → provider choice (the bundled bridge is marked `← recommended` when its stack is up and keyed) → **masked key entry** (a stored key shows as `key[:8]… ✓` with **Keep / Replace / Clear** — Keep preserves the storage form, Clear removes every local trace) → **live model discovery** (the endpoint is probed with your key and the list is what it actually serves; unreachable or the Anthropic wire falls back to typing the id) → **theme step** (current first — blank keeps it) → **setup summary** (provider, model +N discovered, key disposition, theme, verify, kept siblings) plus next commands and first-flight suggestions. Blank at any step takes the default; Ctrl+C cancels with `nothing written`.
+The interactive wizard (no flags, TTY) is a guided flow: current-state welcome → provider choice (the bundled bridge is marked `← recommended` when its stack is up and keyed; blank or an invalid answer takes the default — never a silent mid-parse selection) → **masked key entry** (a stored key shows as `key[:8]… ✓` with **Keep / Replace / Clear** — Keep preserves the storage form, Clear removes every local trace; pasted keys are trimmed and keys that still contain whitespace or control characters are rejected with a diagnosis that never echoes the value) → **live model discovery on both wires** (the endpoint is probed with your key and the list is what it actually serves; only an unreachable or throttled endpoint falls back to typing the id) → **theme step** (current first — blank keeps it) → **setup summary** (provider, model +N discovered, key disposition, theme, verify, kept siblings) plus next commands and first-flight suggestions. Blank at any step takes the default; Ctrl+C cancels with `nothing written`. Base URLs get paste hygiene too: surrounding whitespace and trailing slashes are stripped before anything is written.
 
 Setup **merges**: re-running it adds or updates that provider in place and keeps the rest of the registry; it also makes the provider the default (setup is a "make this my setup" action). `--force` resets instead — see [Multiple providers](#multiple-providers).
 
@@ -73,12 +73,12 @@ unown providers add --provider openai --api-key sk-... \
   --model gpt-4o --all-models            # + import every served chat model
 unown providers refresh agnes            # import the endpoint's live catalog
 unown providers remove openai             # drops the provider + its stored key
-unown providers key openai                # rotate a key (prompts; verifies live)
+unown providers key openai                # rotate a key (masked prompt; verifies live)
 unown providers default agnes agnes-3.0-flash
 unown providers test agnes               # live endpoint probe with the stored key
 ```
 
-`add` does not steal the default unless `--default` (or the registry was empty); `remove` re-points the default at the first survivor; `key` verifies the new credential against the endpoint immediately — a rejected key fails the command instead of failing your next chat later.
+`add` does not steal the default unless `--default` (or the registry was empty); `remove` re-points the default at the first survivor; `key` prompts with **masked input** (the same raw-mode reader the setup wizard uses — the typed secret never echoes) and verifies the new credential against the endpoint immediately — a rejected key fails the command instead of failing your next chat later. The interactive `add` wizard also masks its key entry. Probes report the round-trip latency (`· 240 ms`) and classify 429 as **rate-limited** rather than unreachable.
 
 **Model discovery** (`--all-models` / `refresh`) imports the endpoint's live `GET /models` catalog into models.json: new ids register with sane defaults (a vision-capable provider's new models inherit image input), curated per-model metadata is never touched, and ids the endpoint stopped serving are reported but kept (pruning is deliberate). Obviously-not-chat ids (embeddings, rerankers, TTS, image/video generation, moderation) are filtered out of the import — they would only be noise in `/model`.
 
@@ -97,7 +97,7 @@ Bare `/providers` opens a select over the registry — one row per provider (`�
 
 - **Make default…** — pick one of the provider's registered models; writes `settings.json` and reports `default set to <provider>/<model>`. **Use `/model` to switch the current session** — that stays /model's job (the registry default is what the NEXT session boots with).
 - **Set API key** — paste the key; it lands in `auth.json` (mode 0600) and is **verified against the endpoint immediately** — a rejected key fails right there, not in your next chat. Blank keeps the current key; `$ENV` references are the CLI's `--key-env` lane.
-- **Test connection** — the live probe with the stored credential, with the same actionable classification as the CLI: HTTP 401 → rotate the key, unreachable → fix the URL/start the endpoint, plus a `⚠ registered but not served` cross-check.
+- **Test connection** — the live probe with the stored credential, with the same actionable classification as the CLI: HTTP 401 → rotate the key, 429 → rate-limited (retry in a moment), unreachable → fix the URL/start the endpoint, plus the probe's `· 240 ms` latency chip and a `⚠ registered but not served` cross-check.
 - **Refresh models** — the live `GET /models` import: `+N added`, `M no longer served (kept)`.
 - **Remove provider…** — one confirm, then the provider AND its stored key are gone; if it was the default, the fallback is reported (`default fell back to <provider>/<model>`).
 
@@ -225,7 +225,7 @@ local draft never touches the remote API. Unset = remote authoring as before.
 - **Per session**: `/model` or Ctrl+L opens the picker (every configured provider's models); Ctrl+P cycles through enabled models; Shift+Tab cycles thinking levels; `/scoped-models` controls what Ctrl+P cycles through.
 - **One-shot**: `unown --model provider/model "task"` routes that session without touching defaults.
 - **Persistently**: `unown providers default <provider> [model]`, `/providers` → the provider → *Make default…* mid-session, pick with Ctrl+S in the picker, or re-run `unown setup`.
-- **Check what's live**: `unown models` lists your configured models plus what a local bridge actually serves (with an allow-list cross-check); `unown providers test <id>` probes one provider with its stored key.
+- **Check what's live**: `unown models` lists your configured models plus what a local bridge actually serves (with an allow-list cross-check, the probe's latency, and a `⚠ recently failed` annotation on models the health store marked — the same marks `unown doctor` surfaces); `unown providers test <id>` probes one provider with its stored key. `unown doctor` shows the probe latency on the model-endpoint row, rates 429 as a warning (up, throttling), and surfaces the model-health marks (`model health marks — <model> failed N min ago (subagents skip it for up to 30 min)`) so a subagent's silent model skip is never mysterious.
 
 ## Web-search providers (the `web_search` tool)
 
