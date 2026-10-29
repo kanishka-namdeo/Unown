@@ -1,12 +1,12 @@
 One surgical fix, two occurrences. The live deploy gate
 (scripts/verify-deploy.mjs, "faded text utilities not emitted") is failing
 because two encore components use the Tailwind opacity modifier
-text-faint/70:
+text-faint[/]70:
 
 - src/components/encore/views/loop.tsx (a span with className
-  "encore-type-caption text-faint/70 mr-2" — near the artifact line)
+  "encore-type-caption text-faint[/]70 mr-2" — near the artifact line)
 - src/components/encore/views/finale.tsx (a span with className
-  "encore-type-caption text-faint/70")
+  "encore-type-caption text-faint[/]70")
 
 The landing's documented a11y rule (src/components/landing/AGENTS.md, the
 gallery round's axe lesson): NO opacity-faded text tokens anywhere the
@@ -14,7 +14,7 @@ shared CSS chunks can emit them — axe computes effective contrast THROUGH
 alpha, and the deploy gate asserts the utility never appears in the
 emitted CSS.
 
-Fix: replace `text-faint/70` with the full-strength `text-dim` token in
+Fix: replace `text-faint[/]70` with the full-strength `text-dim` token in
 BOTH files (the named-pairs rule: dim passes on panel-2 and canvas). Keep
 every other class in those classNames exactly as-is.
 

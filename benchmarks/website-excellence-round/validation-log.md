@@ -224,8 +224,8 @@ console-error rejection) did its job.
 **Failure (verify-deploy after the v0.0.42 push).** The live gate's
 "faded text utilities not emitted" check failed: the emitted CSS carried
 `.text-faint\/70` — four occurrences across the encore components
-(`loop.tsx`, `finale.tsx`, `primitives.tsx` `text-dim/70`,
-`failures.tsx` `text-amber/80`).
+(`loop.tsx`, `finale.tsx`, `primitives.tsx` `text-dim[/]70`,
+`failures.tsx` `text-amber[/]80`).
 
 **Reproduction.** `node scripts/verify-deploy.mjs` against the live
 deployment; the source sweep
@@ -251,3 +251,20 @@ net (it caught this within one deploy); the sweep pattern is recorded
 here for the next round's checklist. The candidate durable fix (the gap
 analysis's roadmap): move the no-faded-text rule to the root AGENTS.md
 or a shared design-system contract so no subtree can miss it.
+
+**The F20 postscript (the part nobody would believe without a receipt).**
+After the four source fixes, the live gate STILL failed — the emitted CSS
+still carried `.text-faint\/70`, now resolved to a literal
+`#9cb4deb3` (the dark faint at 70% alpha). The candidate came from
+NOWHERE in `src/` — it came from THIS ROUND'S OWN RECEIPTS: the E11/E12
+prompt files, their envelopes, and the first F20 entry itself contained
+the literal utility string, and Tailwind v4's default source detection
+scans the whole repo from the CSS file upward (gitignore-respecting,
+but `benchmarks/` is tracked) — every text file is a candidate source.
+The receipts resurrected the banned utility through the build pipeline.
+Defused by bracket-breaking the tokens in the receipts
+(`text-faint[/]70` — prose keeps its meaning, the scanner loses the
+candidate). The durable lesson for the root contract: a repo-wide CSS
+rule enforced by emitted-utility gates is violated by DOCUMENTATION that
+quotes the utility — the gate and the scanner disagree about what a
+source is.
