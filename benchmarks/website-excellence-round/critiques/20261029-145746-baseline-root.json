@@ -1,0 +1,1072 @@
+{
+  "schema": "website-excellence/critique/1",
+  "route": "/",
+  "url": "http://127.0.0.1:3211/",
+  "label": "baseline",
+  "generatedAt": "2026-10-29T14:57:46.173Z",
+  "rubric": {
+    "vlmAxes": [
+      "hierarchy",
+      "typography",
+      "spacing",
+      "color",
+      "alignment",
+      "density",
+      "overall"
+    ],
+    "vlmFloor": 7,
+    "contrastViolations": 0,
+    "fontSizesMax": 8,
+    "offGridMaxPct": 15,
+    "headingSkips": 0,
+    "missingAlts": 0,
+    "mobileOverflow": 0,
+    "fcpMs": 1800,
+    "lcpMs": 2500,
+    "cls": 0.1,
+    "tbtMs": 200
+  },
+  "audit": {
+    "desktop": {
+      "contrast": {
+        "min": 5.95,
+        "mean": 9.76,
+        "violations": []
+      },
+      "type": {
+        "distinctSizes": 23,
+        "sizes": [
+          {
+            "size": "8px",
+            "uses": 97
+          },
+          {
+            "size": "9px",
+            "uses": 120
+          },
+          {
+            "size": "9.5px",
+            "uses": 4
+          },
+          {
+            "size": "10px",
+            "uses": 135
+          },
+          {
+            "size": "10.5px",
+            "uses": 47
+          },
+          {
+            "size": "11px",
+            "uses": 161
+          },
+          {
+            "size": "11.5px",
+            "uses": 55
+          },
+          {
+            "size": "12px",
+            "uses": 83
+          },
+          {
+            "size": "12.5px",
+            "uses": 52
+          },
+          {
+            "size": "13px",
+            "uses": 108
+          },
+          {
+            "size": "13.5px",
+            "uses": 1
+          },
+          {
+            "size": "14px",
+            "uses": 31
+          },
+          {
+            "size": "14.5px",
+            "uses": 7
+          },
+          {
+            "size": "15px",
+            "uses": 54
+          },
+          {
+            "size": "16px",
+            "uses": 8
+          },
+          {
+            "size": "17px",
+            "uses": 1
+          },
+          {
+            "size": "18px",
+            "uses": 2
+          },
+          {
+            "size": "19px",
+            "uses": 3
+          },
+          {
+            "size": "24px",
+            "uses": 2
+          },
+          {
+            "size": "30px",
+            "uses": 4
+          },
+          {
+            "size": "36px",
+            "uses": 1
+          },
+          {
+            "size": "41.6px",
+            "uses": 10
+          },
+          {
+            "size": "68px",
+            "uses": 6
+          }
+        ]
+      },
+      "spacing": {
+        "samples": 483,
+        "offGrid": 158,
+        "offGridPct": 32.7
+      },
+      "headings": {
+        "order": [
+          1,
+          2,
+          3,
+          3,
+          3,
+          2,
+          2,
+          2,
+          2,
+          3,
+          2,
+          3,
+          3,
+          3,
+          3,
+          3,
+          3,
+          3,
+          2,
+          2,
+          3,
+          3,
+          3,
+          3,
+          3,
+          3,
+          3,
+          2,
+          2
+        ],
+        "skips": []
+      },
+      "images": {
+        "total": 20,
+        "missingAlts": 0
+      },
+      "overflowX": 0
+    },
+    "mobile": {
+      "contrast": {
+        "min": 5.95,
+        "mean": 9.75,
+        "violations": []
+      },
+      "type": {
+        "distinctSizes": 24,
+        "sizes": [
+          {
+            "size": "8px",
+            "uses": 97
+          },
+          {
+            "size": "9px",
+            "uses": 118
+          },
+          {
+            "size": "9.5px",
+            "uses": 4
+          },
+          {
+            "size": "10px",
+            "uses": 132
+          },
+          {
+            "size": "10.5px",
+            "uses": 47
+          },
+          {
+            "size": "11px",
+            "uses": 162
+          },
+          {
+            "size": "11.5px",
+            "uses": 53
+          },
+          {
+            "size": "12px",
+            "uses": 83
+          },
+          {
+            "size": "12.5px",
+            "uses": 52
+          },
+          {
+            "size": "13px",
+            "uses": 103
+          },
+          {
+            "size": "13.5px",
+            "uses": 1
+          },
+          {
+            "size": "14px",
+            "uses": 31
+          },
+          {
+            "size": "14.5px",
+            "uses": 7
+          },
+          {
+            "size": "15px",
+            "uses": 54
+          },
+          {
+            "size": "16px",
+            "uses": 8
+          },
+          {
+            "size": "17px",
+            "uses": 3
+          },
+          {
+            "size": "18px",
+            "uses": 2
+          },
+          {
+            "size": "19px",
+            "uses": 1
+          },
+          {
+            "size": "20px",
+            "uses": 1
+          },
+          {
+            "size": "24px",
+            "uses": 1
+          },
+          {
+            "size": "28.8px",
+            "uses": 10
+          },
+          {
+            "size": "30px",
+            "uses": 4
+          },
+          {
+            "size": "36px",
+            "uses": 1
+          },
+          {
+            "size": "44px",
+            "uses": 6
+          }
+        ]
+      },
+      "spacing": {
+        "samples": 482,
+        "offGrid": 136,
+        "offGridPct": 28.2
+      },
+      "headings": {
+        "order": [
+          1,
+          2,
+          3,
+          3,
+          3,
+          2,
+          2,
+          2,
+          2,
+          3,
+          2,
+          3,
+          3,
+          3,
+          3,
+          3,
+          3,
+          3,
+          2,
+          2,
+          3,
+          3,
+          3,
+          3,
+          3,
+          3,
+          3,
+          2,
+          2
+        ],
+        "skips": []
+      },
+      "images": {
+        "total": 20,
+        "missingAlts": 0
+      },
+      "overflowX": 0
+    }
+  },
+  "vitals": {
+    "desktop": {
+      "fcp": 276,
+      "lcp": 276,
+      "cls": 0,
+      "tbt": 61
+    },
+    "mobile": {
+      "fcp": 216,
+      "lcp": 216,
+      "cls": 0,
+      "tbt": 32
+    }
+  },
+  "critiques": [
+    {
+      "shot": "root-desktop-full.png",
+      "device": "desktop",
+      "kind": "full",
+      "label": null,
+      "scores": {
+        "hierarchy": 6,
+        "typography": 6,
+        "spacing": 4,
+        "color": 5,
+        "alignment": 7,
+        "density": 4,
+        "overall": 5
+      },
+      "defects": [
+        "The page is composed of massive, empty pastel color blocks that create a disjointed, washed-out visual structure, failing to anchor content.",
+        "The hero section's 'Unown' vertical text stack on the right feels arbitrarily placed and lacks a functional connection to the terminal UI on the left.",
+        "There is no visual rhythm; the alternating pastel sections create a chaotic, 'color-splash' effect that destroys the disciplined spacing and calm density required.",
+        "The dark, terminal-inspired UI element is placed on a stark, solid beige block, which feels disconnected from the rest of the page's pastel 'confetti' aesthetic.",
+        "The scattered glyphs in the second-to-last section look like floating, unanchored elements rather than a cohesive, pattern-based section, breaking the brand's intentional alignment."
+      ],
+      "improvements": [
+        "Remove the large, empty pastel color blocks; use a single, cohesive dark or warm paper background.",
+        "Establish a strict 8pt or 12pt spacing grid to replace the chaotic, unanchored section heights.",
+        "Integrate the pastel colors as subtle, low-opacity accent lines or gradients, not full-screen voids."
+      ]
+    },
+    {
+      "shot": "root-desktop-band00.png",
+      "device": "desktop",
+      "kind": "band",
+      "label": "The terminal coding agent that remembers.",
+      "scores": {
+        "hierarchy": 6,
+        "typography": 7,
+        "spacing": 5,
+        "color": 8,
+        "alignment": 8,
+        "density": 6,
+        "overall": 6
+      },
+      "defects": [
+        "The 'Read the docs' text link is underweighted against the 'Star on GitHub' button, breaking visual parity for a secondary action.",
+        "The right-hand glyph column is vertically misaligned with the primary content stack, creating an awkward whitespace gap on the right.",
+        "The 'INSTALL' tab bar uses a harsh, flat background that clashes with the organic 'paper' texture of the surrounding install card.",
+        "The micro-copy at the very bottom of the viewport is cut off, suggesting a poor vertical rhythm or lack of bottom padding in this band.",
+        "The vertical rhythm between the 'BETA' tag and the main headline is too tight, compressing the visual breathing room."
+      ],
+      "improvements": [
+        "Increase vertical padding above the headline to improve the visual hierarchy of the brand tag.",
+        "Align the right-hand glyph column's top edge with the start of the 'Open-source' tagline.",
+        "Introduce a subtle drop shadow on the code block to better separate it from the background."
+      ]
+    },
+    {
+      "shot": "root-desktop-band01.png",
+      "device": "desktop",
+      "kind": "band",
+      "label": "Most agents forget. This one has to prove it rem",
+      "scores": {
+        "hierarchy": 7,
+        "typography": 6,
+        "spacing": 7,
+        "color": 8,
+        "alignment": 7,
+        "density": 8,
+        "overall": 7
+      },
+      "defects": [
+        "Inconsistent left alignment: The subhead 'Three steps...' and the main heading are not perfectly vertically aligned, creating a slight visual break in the leading edge.",
+        "Type pairing friction: The pixelated display font and the clean sans-serif body font feel disjointed; the body font looks like a standard default that clashes with the hand-drawn brand.",
+        "Visual noise in code block: The monospace text in the file panel uses a generic system font that lacks the terminal aesthetic expected in a developer tool, breaking immersion.",
+        "Passive tab labels: The subtext under the tab labels (e.g., 'YOU CHAT', 'IT MINES') is too faint and small, reducing the clarity of the workflow steps."
+      ],
+      "improvements": [
+        "Align the subhead flush-left with the main heading for a strong visual anchor.",
+        "Increase tab sub-label contrast to 4.5:1 to meet WCAG AA for legibility.",
+        "Add subtle hand-drawn underlines to section subheaders to reinforce brand identity."
+      ]
+    },
+    {
+      "shot": "root-desktop-band02.png",
+      "device": "desktop",
+      "kind": "band",
+      "label": "Every capability, catalogued and filmed.",
+      "scores": {
+        "hierarchy": 8,
+        "typography": 7,
+        "spacing": 8,
+        "color": 8,
+        "alignment": 9,
+        "density": 8,
+        "overall": 8
+      },
+      "defects": [
+        "Left sidebar search input box (No. 001 Websearch) has inconsistent corner rounding compared to the square buttons above it, breaking the pixel-art geometric language.",
+        "The 'FILMED' status labels in the left list are right-aligned with varying text lengths, creating ragged visual edges that distract from the list's vertical rhythm.",
+        "The terminal window inside the film player lacks clear visual separation from the 'Websreach' header above it; the brown border feels heavy and clutters the bottom half of the card.",
+        "The typography hierarchy between 'No 001 · The Crawler Form' and 'Websearch' is too subtle; the secondary label barely registers, making the primary title compete for attention.",
+        "Vertical spacing between the 'ALL 23' tab group and the 'SEARCH THE DEX' section is tighter than the gap between individual list items, disrupting the 4/8pt spacing rhythm."
+      ],
+      "improvements": [
+        "Align 'FILMED' labels to a consistent right-margin to create a clean, stable vertical edge.",
+        "Increase whitespace between 'All 23' tabs and the search area to match internal list rhythm.",
+        "Refine terminal window borders with subtle contrast to better separate it from the film header.",
+        "Boost visual weight difference between 'No 001' and 'Websearch' for clearer hierarchy.",
+        "Standardize corner radii across all UI components to match the pixel-art aesthetic."
+      ]
+    },
+    {
+      "shot": "root-desktop-band03.png",
+      "device": "desktop",
+      "kind": "band",
+      "label": "What the running engine looks like.",
+      "scores": {
+        "hierarchy": 8,
+        "typography": 7,
+        "spacing": 8,
+        "color": 9,
+        "alignment": 9,
+        "density": 8,
+        "overall": 8
+      },
+      "defects": [
+        "Caption text beneath the main and secondary window mockups is too small and low-contrast, risking legibility on low-end displays.",
+        "The right-aligned text 'INSTALL IT AND RUN UNOWN DASHBOARD →' under the surface cards feels floating and disconnected from the main content column.",
+        "Vertical alignment of the two secondary window mockups at the bottom is slightly uneven relative to the primary mockup's vertical axis, creating subtle visual noise."
+      ],
+      "improvements": [
+        "Increase caption text size by 1px and raise contrast to 4.5:1 for body copy."
+      ]
+    },
+    {
+      "shot": "root-desktop-band04.png",
+      "device": "desktop",
+      "kind": "band",
+      "label": "The agent built these. They run.",
+      "scores": {
+        "hierarchy": 6,
+        "typography": 7,
+        "spacing": 6,
+        "color": 6,
+        "alignment": 7,
+        "density": 8,
+        "overall": 6
+      },
+      "defects": [
+        "The board card titles are set in a pixel/scanline typeface that is hard to read at 14px, competing with the section headline and undermining WCAG legibility",
+        "The tag chips (backend, tech-debt, qa, etc.) are tiny, low-contrast gray-on-dark, failing contrast requirements and looking like afterthoughts rather than a system",
+        "The kanban board feels like a pasted-in SaaS widget that betrays the hand-drawn paper/ink brand: zero organic texture, harsh 1px borders, generic dark gray palette",
+        "The tab bar (Sigi Bazaar, Cadence, Parley) is cramped and the active tab’s cream pill has no clear relationship to the ink/gold accent system, looking like a stock UI control",
+        "The section heading and subhead “Six apps, live. Pick one.” float over the warm paper but the board below is a cold, desaturated dark—no visual bridge (inset shadow, ruled line, or warm border treatment) to anchor them together"
+      ],
+      "improvements": [
+        "Replace board card titles with a clean 13-14px sans-serif; keep pixel type only for section headings",
+        "Increase chip contrast to 4.5:1 and add 1px accent-color borders on tags",
+        "Warm the board background with subtle paper grain or a soft ink-toned border to bridge to page"
+      ]
+    },
+    {
+      "shot": "root-desktop-band05.png",
+      "device": "desktop",
+      "kind": "band",
+      "label": "Built & Improved With Unown",
+      "scores": {
+        "hierarchy": 5,
+        "typography": 4,
+        "spacing": 6,
+        "color": 5,
+        "alignment": 4,
+        "density": 6,
+        "overall": 5
+      },
+      "defects": [
+        "Visual hierarchy is inverted: the 2x2 code dashboard grid (right) dominates the 'Loop's Receipts' text column (left), contradicting the narrative flow where text (receipts) should lead and dashboards (proof) support.",
+        "Massive, unexplained whitespace in the right two dashboard cards: 'Mission Control — Skills' and 'Memory' cards are approximately 80% empty below their title bars, creating a broken, unfinished look that violates calm density.",
+        "Typography lacks discipline: the section headers ('THE MISSION'S ROUNDS', 'THE LOOP'S RECEIPTS') use a small, tracked-out, lowercase-style sans-serif that fights the dominant pixel-art display font, creating a jarring, unintegrated visual rhythm.",
+        "Alignment is structurally poor: the left text column and right grid column are not visually balanced. The text column's varying card heights do not align with the right grid's rigid two-row structure, causing the eye to bounce erratically between the two zones.",
+        "Color/contrast issue: The 'UNOWN DASHBOARD' header bar in the mockups uses a muddy brown that clashes with the warm gold of the site brand, and the white text on it suffers from borderline legibility compared to the crisp black ink used elsewhere."
+      ],
+      "improvements": [
+        "Redesign layout: Stack text receipts full-width top; place dashboard proof grid full-width bottom.",
+        "Align empty right-cards with bottom text-card bottom; trim right-cards height to eliminate voids.",
+        "Standardize header typography: Drop small tracked sans; use medium-scale pixel font for sub-headers."
+      ]
+    },
+    {
+      "shot": "root-desktop-band06.png",
+      "device": "desktop",
+      "kind": "band",
+      "label": "Receipts, not promises.",
+      "scores": {
+        "hierarchy": 7,
+        "typography": 8,
+        "spacing": 7,
+        "color": 8,
+        "alignment": 7,
+        "density": 8,
+        "overall": 7
+      },
+      "defects": [
+        "The section 'eyebrow' label 'PROOF' is misaligned with the H1 baseline and lacks vertical rhythm, creating a disjointed visual entry point.",
+        "The tab interface relies on subtle background fills that provide insufficient color contrast to clearly distinguish the active vs. inactive states on the paper texture.",
+        "The left 'Benchmark' column has inconsistent left-alignment of the metadata text versus the header icons, causing a visual 'ragged' edge on the interior content.",
+        "The horizontal progress bars in the right column lack internal spacing between the bar track and the percentage label, making the data hard to parse at a glance.",
+        "The 'GET STARTED' button uses a dark fill with a white stroke that breaks the warm paper/ink aesthetic and reduces button contrast on the light background."
+      ],
+      "improvements": [
+        "Align 'PROOF' to left edge, increase top margin, reduce font size for better hierarchy.",
+        "Increase contrast on active tabs with bold text and a distinct gold or ink underline.",
+        "Left-align all metadata text and add a consistent 16px left padding gutter for columns.",
+        "Add 8px right padding to progress bars and align percentage labels to the column's right edge."
+      ]
+    },
+    {
+      "shot": "root-desktop-band07.png",
+      "device": "desktop",
+      "kind": "band",
+      "label": "The name is a pun you have to read twice.",
+      "scores": {
+        "hierarchy": 4,
+        "typography": 5,
+        "spacing": 4,
+        "color": 6,
+        "alignment": 4,
+        "density": 3,
+        "overall": 4
+      },
+      "defects": [
+        "The floating 'C' glyph and scattered asterisk symbols create visual noise that competes with the primary heading, breaking the focal hierarchy.",
+        "The 7-column letter grid introduces chaotic color variance (blue/red/green/brown borders) that creates a busy, uncontrolled pattern, ruining the calm density.",
+        "The 'FIELD NOTES' footer text is extremely small, creating a WCAG contrast failure and rendering it illegible against the light paper background.",
+        "The right-hand sidebar panel feels disconnected; it competes for attention with the main text without a clear visual link or consistent spacing rhythm.",
+        "The 'U' letter tile in the grid has a heavy, dark background that breaks the pattern of the other tiles, making it look like an error rather than a selection state."
+      ],
+      "improvements": [
+        "Reduce grid borders to a single subtle, monochromatic hairline to restore visual calm and rhythm.",
+        "Increase footer text size to 14px minimum to ensure WCAG-legible contrast and readability.",
+        "Remove the floating decorative 'C' and asterisk glyphs to reduce visual noise and focus the eye."
+      ]
+    },
+    {
+      "shot": "root-desktop-band08.png",
+      "device": "desktop",
+      "kind": "band",
+      "label": "The skeptic's questions.",
+      "scores": {
+        "hierarchy": 7.5,
+        "typography": 8.5,
+        "spacing": 7,
+        "color": 8,
+        "alignment": 7,
+        "density": 6.5,
+        "overall": 7.8
+      },
+      "defects": [
+        "Insufficient tap target for FAQ questions; the text appears small and tightly cropped within the accordion boxes, making them feel more like rows than buttons.",
+        "Weak visual separation between the 'FAQ' and 'CHANGELOG' sections; the shift from paper background to light blue is abrupt and lacks a deliberate transition or rule, causing a disjointed feel.",
+        "The left-column text block (FAQ header and subheader) is vertically centered against the accordion list, creating negative space that feels unbalanced rather than intentional padding.",
+        "The changelog subheader text ('365 entries...') has low contrast against the light blue background, bordering on illegible for users with low vision or glare.",
+        "The 'FAQ' and 'CHANGELOG' labels are visually identical in weight to the body text, failing to leverage the pixelated display typeface to establish stronger categorical separation."
+      ],
+      "improvements": [
+        "Increase accordion row height by 50% to establish a comfortable, thumb-friendly touch target for the FAQ questions.",
+        "Introduce a subtle horizontal rule or distinct section break to clearly delineate the FAQ from the Changelog content.",
+        "Left-align the FAQ header to the top of the section to create a stronger, more structured visual anchor."
+      ]
+    },
+    {
+      "shot": "root-desktop-band09.png",
+      "device": "desktop",
+      "kind": "band",
+      "label": "What has been added, and when.",
+      "scores": {
+        "hierarchy": 6,
+        "typography": 8,
+        "spacing": 5,
+        "color": 8,
+        "alignment": 5,
+        "density": 6,
+        "overall": 6
+      },
+      "defects": [
+        "Severe visual clutter and alignment breakage caused by the fourth card being cut off, creating a jagged, unfinished edge that destroys the grid's rhythm.",
+        "The right-hand navigation arrows float in isolated, unanchored whitespace with poor visual proximity to the carousel, failing to establish a clear affordance connection to the cards.",
+        "Lack of optical alignment in the card headers: the 'LATEST' tag in the first card disrupts the vertical rhythm and misaligns with the clean headers of subsequent cards.",
+        "Confusing density contrast between the light, airy section background and the heavy, boxy card borders, causing the components to feel disjointed rather than integrated.",
+        "Inconsistent visual weight of the top header line, which appears like a separate, heavy underline disconnected from the card below it rather than a defining border."
+      ],
+      "improvements": [
+        "Crop or mask the overflow cleanly instead of a jagged, cut-off fourth card.",
+        "Group navigation arrows with the carousel for better visual proximity and clear affordance.",
+        "Standardize card header alignment by removing or integrating the 'LATEST' tag rhythmically."
+      ]
+    },
+    {
+      "shot": "root-desktop-band10.png",
+      "device": "desktop",
+      "kind": "band",
+      "label": "One afternoon, and then it starts remembering.",
+      "scores": {
+        "hierarchy": 9,
+        "typography": 9,
+        "spacing": 8,
+        "color": 9,
+        "alignment": 8,
+        "density": 9,
+        "overall": 9
+      },
+      "defects": [
+        "Header 'BETA' tag is visually cramped against the 'UNOWN' wordmark, creating a slight collision that disrupts the clean rhythm of the branding block.",
+        "The 'SPELL IT IN UNOWN' card header aligns flush to the top edge with insufficient vertical padding compared to the bottom, making the internal layout feel top-heavy and cramped.",
+        "The footer section lacks a distinct color or background treatment, causing it to feel visually disconnected from the hero and lacking the clear boundary expected in a polished dark-first design.",
+        "The small print disclaimer text in the footer is extremely dense and has low contrast against the cream background, failing to provide a comfortable reading experience for small text."
+      ],
+      "improvements": [
+        "Increase left padding for header 'BETA' tag to establish a more generous breathing room from the logo.",
+        "Add equal top and bottom padding to the green card's header to balance the visual weight and create breathing room."
+      ]
+    },
+    {
+      "shot": "root-mobile-full.png",
+      "device": "mobile",
+      "kind": "full",
+      "label": null,
+      "scores": {
+        "hierarchy": 6,
+        "typography": 7,
+        "spacing": 4,
+        "color": 8,
+        "alignment": 5,
+        "density": 4,
+        "overall": 5
+      },
+      "defects": [
+        "Massive empty vertical whitespace below the hero creates a disconnected, broken layout feeling.",
+        "The 'UNOWN' vertical text feature creates a fragmented visual flow and poor readability.",
+        "Terminal-style card section feels cramped compared to the surrounding excessive white space.",
+        "Inconsistent rhythm between the stacked text blocks and the isolated diagram elements.",
+        "Nav bar elements appear small and lack clear visual prominence against the light background."
+      ],
+      "improvements": [
+        "Collapse redundant vertical whitespace to improve content density and flow.",
+        "Reposition UNOWN glyphs horizontally or integrate them as a cohesive visual accent.",
+        "Increase spacing consistency between terminal card elements and surrounding sections."
+      ]
+    },
+    {
+      "shot": "root-mobile-band00.png",
+      "device": "mobile",
+      "kind": "band",
+      "label": "The terminal coding agent that remembers.",
+      "scores": {
+        "hierarchy": 8,
+        "typography": 7,
+        "spacing": 7,
+        "color": 6,
+        "alignment": 9,
+        "density": 8,
+        "overall": 7
+      },
+      "defects": [
+        "High-contrast 'GET STARTED' button in deep magenta clashes with the established warm ink/paper palette, disrupting brand cohesion.",
+        "The 'Read the docs' link next to the primary GitHub button suffers from weak visual weight and low contrast, undermining CTA hierarchy.",
+        "The header includes a cluttered 'DEMO' tab that feels tacked on and breaks the clean navigation rhythm of the top bar.",
+        "The body copy's dark blue-grey text on the cream background creates a slightly muddy, low-legibility experience compared to pure ink.",
+        "The 'Unown is in beta' disclaimer text is set in a monospace font that is too small and tightly tracked, reducing scannability."
+      ],
+      "improvements": [
+        "Replace magenta button with deep ink or gold to align with warm brand palette and improve visual harmony.",
+        "Increase contrast of secondary text and links by switching to pure black ink for body and high-weight labels.",
+        "Remove or visually integrate the 'DEMO' tab to establish a cleaner, more confident header hierarchy."
+      ]
+    },
+    {
+      "shot": "root-mobile-band01.png",
+      "device": "mobile",
+      "kind": "band",
+      "label": "Most agents forget. This one has to prove it rem",
+      "scores": {
+        "hierarchy": 6,
+        "typography": 7,
+        "spacing": 6,
+        "color": 8,
+        "alignment": 8,
+        "density": 7,
+        "overall": 6
+      },
+      "defects": [
+        "Tab rows use inconsistent icon alignment: the 'Work' tab glyph is vertically centered, but 'Learn' and 'Dream' icons sit slightly high relative to the text baseline.",
+        "The code block terminal font lacks sufficient line-height and contrast against the beige background, making the outcome text difficult to scan rapidly.",
+        "The 'BETA' badge and hamburger icon in the header use uneven horizontal padding, breaking the consistent spacing rhythm established by the logo text."
+      ],
+      "improvements": [
+        "Increase terminal text contrast to meet WCAG AA standards for legibility on beige backgrounds.",
+        "Standardize tab icon vertical alignment to match the text baseline across all three states.",
+        "Unify header padding values to establish a consistent horizontal spacing rhythm across the top bar."
+      ]
+    },
+    {
+      "shot": "root-mobile-band02.png",
+      "device": "mobile",
+      "kind": "band",
+      "label": "Every capability, catalogued and filmed.",
+      "scores": {
+        "hierarchy": 4,
+        "typography": 5,
+        "spacing": 4,
+        "color": 5,
+        "alignment": 4,
+        "density": 4,
+        "overall": 4
+      },
+      "defects": [
+        "The primary heading 'Every capability, catalogued and filmed.' suffers from severely broken line-wrapping, creating ragged, uneven word spacing that undermines perceived precision.",
+        "Filter tabs ('ALL 23', 'SESSION 5') are inconsistent in color, contrast, and spacing; 'ENGINE 6' and 'WORKFLOWS 9' are visually detached, failing to form a cohesive grid.",
+        "The table rows ('Websearch', 'Mcp') lack visual separation between the index, name, and status, making scanning difficult; 'FILMED' text is low-contrast and floats ambiguously.",
+        "The 'SEARCH THE DEX' header feels ad-hoc and cramped against the input field, with no clear vertical rhythm separating the utility bar from the main data table.",
+        "Overall, the warm 'paper' background fails to provide sufficient contrast against the muted green and maroon elements, reducing WCAG readability and the 'dark-first' brand promise."
+      ],
+      "improvements": [
+        "Normalize heading word-spacing and constrain line-length to fix broken wrapping.",
+        "Unify filter tab styling and establish a strict two-column grid rhythm.",
+        "Increase vertical padding between table rows and improve status label contrast."
+      ]
+    },
+    {
+      "shot": "root-mobile-band03.png",
+      "device": "mobile",
+      "kind": "band",
+      "label": "What the running engine looks like.",
+      "scores": {
+        "hierarchy": 6,
+        "typography": 5,
+        "spacing": 4,
+        "color": 7,
+        "alignment": 8,
+        "density": 6,
+        "overall": 5
+      },
+      "defects": [
+        "Excessive vertical whitespace between the main headline and the first dashboard card creates a disconnected visual gap.",
+        "The 'Memory' and 'Session' dashboard previews are nearly illegible; the text is too small and low-contrast against the dark background.",
+        "Truncation of the third dashboard title ('SESSION + /DASHBO...') looks like a bug rather than an intentional design choice.",
+        "The caption text below the first dashboard ('Overview: KPI band...') is very small and light, failing accessibility contrast ratios.",
+        "The top navigation bar feels cramped and disconnected from the 'MISSION CONTROL' label, which sits awkwardly between the nav and the hero text."
+      ],
+      "improvements": [
+        "Increase dashboard preview text size and contrast significantly for legibility.",
+        "Tighten vertical spacing to create a cohesive, unified visual flow between sections.",
+        "Fix dashboard title truncation and improve caption text contrast for accessibility."
+      ]
+    },
+    {
+      "shot": "root-mobile-band04.png",
+      "device": "mobile",
+      "kind": "band",
+      "label": "The agent built these. They run.",
+      "scores": {
+        "hierarchy": 5,
+        "typography": 6,
+        "spacing": 7,
+        "color": 8,
+        "alignment": 9,
+        "density": 7,
+        "overall": 7
+      },
+      "defects": [
+        "The 'Sigil Focus' tab visually bleeds out of its container and overlaps the 'Sigil Bazaar' text, breaking the UI metaphor.",
+        "The dark mode application screenshot is crushed by excessive empty vertical dead space at the bottom.",
+        "The 'LIVE DEMO' eyebrow text is an oversized system font that fights the hand-drawn pixel hero typography.",
+        "The 'TAP TO TRY IT LIVE' bottom bar lacks internal vertical breathing room, pushing the text to the absolute edge."
+      ],
+      "improvements": [
+        "Fix the overlapping tab layout to contain elements within the dark UI frame.",
+        "Crop the bottom empty dead space from the application mockup.",
+        "Scale down the 'LIVE DEMO' eyebrow to match the pixel display type."
+      ]
+    },
+    {
+      "shot": "root-mobile-band05.png",
+      "device": "mobile",
+      "kind": "band",
+      "label": "Built & Improved With Unown",
+      "scores": {
+        "hierarchy": 8,
+        "typography": 8,
+        "spacing": 8,
+        "color": 7,
+        "alignment": 9,
+        "density": 9,
+        "overall": 8
+      },
+      "defects": [
+        "Mobile header controls (hamburger and view-toggle) are too close to the right edge with no safe-area padding, risking thumb mis-taps.",
+        "The gold accent text on the light paper background has borderline WCAG contrast; the 'verified' and 'promoted' terms wash out against the cream.",
+        "The monospace 'hand-drawn' display font is used at a large size but its pixelated stroke weight flickers slightly on mobile LCD, reducing perceived precision.",
+        "The four receipt cards are visually identical in border style and spacing, creating a flat list with no visual grouping or hierarchy among the different data types.",
+        "The '50 dreams consolidated' card's secondary text is too small and tightly kerned for comfortable reading on a mobile viewport, straining legibility."
+      ],
+      "improvements": [
+        "Increase safe-area padding on header controls to 24px.",
+        "Increase gold contrast to 4.5:1 ratio for mobile legibility.",
+        "Group receipt cards into two visual clusters with varied border weights."
+      ]
+    },
+    {
+      "shot": "root-mobile-band06.png",
+      "device": "mobile",
+      "kind": "band",
+      "label": "Receipts, not promises.",
+      "scores": {
+        "hierarchy": 6.5,
+        "typography": 8.5,
+        "spacing": 7,
+        "color": 8,
+        "alignment": 8.5,
+        "density": 7.5,
+        "overall": 7.2
+      },
+      "defects": [
+        "The 'PROOF' label at the top left is significantly lighter in color and smaller scale than the main 'Receipts, not promises' header, creating a fractured visual hierarchy.",
+        "The three data cards at the bottom ('47%', '89.1%', '-16%') have inconsistent bottom padding and lack a distinct container border, causing them to visually bleed into the dark background below.",
+        "In the list rows (Benchmarks, Integrity, Models), the hand-drawn icons are vertically misaligned with the secondary text (e.g., 'SIX TRACKS, MEASURED'), creating a jagged left margin.",
+        "The '47%' card label 'post-cutoff problems, kimi-k2.5' lacks visual distinction from the title 'LiveCodeBench v6 pass@1', reducing readability of the sub-header.",
+        "The transition from the light pink section to the darker bottom section is a hard, unsoftened edge that creates a visual 'cliff' and breaks the 'warm paper' aesthetic."
+      ],
+      "improvements": [
+        "Increase 'PROOF' contrast weight to match header prominence, or replace with a more subtle typographic treatment.",
+        "Unify padding and add a subtle ink line border to all three data cards at the bottom.",
+        "Align hand-drawn icons vertically with primary text, creating a consistent, calm left-margin grid."
+      ]
+    },
+    {
+      "shot": "root-mobile-band07.png",
+      "device": "mobile",
+      "kind": "band",
+      "label": "The name is a pun you have to read twice.",
+      "scores": {
+        "hierarchy": 6,
+        "typography": 5,
+        "spacing": 4,
+        "color": 7,
+        "alignment": 5,
+        "density": 5,
+        "overall": 5
+      },
+      "defects": [
+        "The 'UNOWN' wordmark in the header utilizes a low-contrast, muted maroon against a light olive background, failing WCAG AA standards for legibility.",
+        "A rogue circular control icon is horizontally misaligned, floating inconsistently in the paragraph text and breaking the established left-to-right text flow rhythm.",
+        "The 'BETA' badge features a harsh, solid black outline that feels visually too heavy and disconnected from the otherwise soft, hand-drawn sketch aesthetic of the header.",
+        "Column alignment in the 4x4 glyph grid is erratic; the border weights between columns appear uneven, and the sub-labels are not perfectly centered under their corresponding glyphs.",
+        "The typography scale in the primary body copy is too large relative to the viewport width, forcing an excessively narrow text column that significantly disrupts the reading flow.",
+        "An arbitrary, heavy black border separates the top navigation from the section label, which feels visually jarring and disrupts the continuous paper-like background texture."
+      ],
+      "improvements": [
+        "Increase 'UNOWN' logo contrast to dark ink, ensuring clear WCAG AA compliance against the background.",
+        "Remove or intentionally integrate the rogue circular icon to restore consistent visual flow and alignment.",
+        "Standardize grid column borders and perfectly center all sub-labels beneath the corresponding glyphs."
+      ]
+    },
+    {
+      "shot": "root-mobile-band08.png",
+      "device": "mobile",
+      "kind": "band",
+      "label": "The skeptic's questions.",
+      "scores": {
+        "hierarchy": 7,
+        "typography": 6,
+        "spacing": 8,
+        "color": 6,
+        "alignment": 9,
+        "density": 8,
+        "overall": 6
+      },
+      "defects": [
+        "The 'BETA' badge in the header has insufficient border contrast against the background, making it look like a rendering artifact.",
+        "The 'FAQ' small label lacks a clear visual connection to the main heading below, floating in isolation.",
+        "The small triangle icons on the left of each accordion item have low contrast and appear detached from the text baseline.",
+        "The bottom blue footer band is a hard, unexplained cut with no transition or context, breaking the immersive theme.",
+        "The main heading 'The skeptic's questions.' is set in a decorative font that reduces legibility at mobile scales compared to the body text."
+      ],
+      "improvements": [
+        "Increase 'BETA' badge border thickness and use high-contrast ink color for legibility.",
+        "Group the 'FAQ' label directly under the main heading or style it as a consistent kicker.",
+        "Align triangle icons with text baselines and increase their size/contrast for clear affordance."
+      ]
+    },
+    {
+      "shot": "root-mobile-band09.png",
+      "device": "mobile",
+      "kind": "band",
+      "label": "What has been added, and when.",
+      "scores": {
+        "hierarchy": 7,
+        "typography": 8,
+        "spacing": 6,
+        "color": 8,
+        "alignment": 7,
+        "density": 8,
+        "overall": 7
+      },
+      "defects": [
+        "Floating prev/next arrows at ~340px decouple from the timeline; they float in whitespace with no clear container or affordance anchor.",
+        "The second card on the right is clipped at the viewport edge with no visual cue (edge fade, scroll shadow) that it's a scroll target, reads as a layout bug.",
+        "Two separate legend lines (caption + bottom) duplicate the interaction description; bottom 'Newest left; cut releas... Scroll or ◀▶ .' collides with the bottom of the card row and creates vertical clutter.",
+        "Top-right control cluster (hamburger + monitor) sits on a different tint band than the nav baseline, producing an unintended horizontal color seam.",
+        "'4 additions · 5 fixes · 3 alter agent behavior' wraps unevenly under a full-width rule; metrics and rule don't align on a shared baseline grid."
+      ],
+      "improvements": [
+        "Tighten vertical rhythm: card spacing from timeline to 48px, legend from card to 24px.",
+        "Merge duplicate legend into one 12px caption directly under the scrollable row, left-aligned.",
+        "Add right-edge scroll fade (24px gradient) and shadow to signal off-screen card.",
+        "Snap arrows into a 36px pill group, baseline-aligned with timeline start/end dots.",
+        "Unify top-band background to single tint; remove hard edge between nav and content."
+      ]
+    },
+    {
+      "shot": "root-mobile-band10.png",
+      "device": "mobile",
+      "kind": "band",
+      "label": "One afternoon, and then it starts remembering.",
+      "scores": {
+        "hierarchy": 7,
+        "typography": 8,
+        "spacing": 6,
+        "color": 8,
+        "alignment": 9,
+        "density": 7,
+        "overall": 7.5
+      },
+      "defects": [
+        "The CTA button block ('GET STARTED' and 'STAR ON GITHUB') feels vertically isolated from the supporting paragraph above it, breaking the visual flow of the primary message.",
+        "The 'SPELL IT IN UNOWN' section is overly dense at the bottom, with the '7/9' counter and terminal input line cramped against the large Unown glyphs, reducing breathing room.",
+        "The contrast between the light mint background and the dark green text is strong, but the white text on the dark green buttons/panels feels slightly flat and lacks a subtle drop shadow or bevel to match the 'Game-Boy-inspired' tactile aesthetic.",
+        "The alignment of the 'Read the docs' text next to the 'STAR ON GITHUB' button is vertically centered against the button's mid-line, which feels slightly off compared to being baseline-aligned with the button's text."
+      ],
+      "improvements": [
+        "Tighten vertical spacing between paragraph and buttons to group them into a single visual unit."
+      ]
+    }
+  ],
+  "axisMeans": {
+    "hierarchy": 6.5,
+    "typography": 6.79,
+    "spacing": 6.08,
+    "color": 7.25,
+    "alignment": 7.19,
+    "density": 6.71,
+    "overall": 6.4
+  },
+  "gates": {
+    "contrastViolations": {
+      "value": 0,
+      "max": 0,
+      "pass": true
+    },
+    "fontSizes": {
+      "value": 23,
+      "max": 8,
+      "pass": false
+    },
+    "offGridPct": {
+      "value": 32.7,
+      "max": 15,
+      "pass": false
+    },
+    "headingSkips": {
+      "value": 0,
+      "max": 0,
+      "pass": true
+    },
+    "missingAlts": {
+      "value": 0,
+      "max": 0,
+      "pass": true
+    },
+    "mobileOverflow": {
+      "value": 0,
+      "max": 0,
+      "pass": true
+    },
+    "fcpMs": {
+      "value": 276,
+      "max": 1800,
+      "pass": true
+    },
+    "lcpMs": {
+      "value": 276,
+      "max": 2500,
+      "pass": true
+    },
+    "cls": {
+      "value": 0,
+      "max": 0.1,
+      "pass": true
+    },
+    "tbtMs": {
+      "value": 61,
+      "max": 200,
+      "pass": true
+    },
+    "vlmAxes": {
+      "value": {
+        "hierarchy": 6.5,
+        "typography": 6.79,
+        "spacing": 6.08,
+        "color": 7.25,
+        "alignment": 7.19,
+        "density": 6.71,
+        "overall": 6.4
+      },
+      "floor": 7,
+      "pass": false,
+      "failures": [
+        "hierarchy 6.5<7",
+        "typography 6.79<7",
+        "spacing 6.08<7",
+        "density 6.71<7",
+        "overall 6.4<7"
+      ]
+    }
+  },
+  "passed": false,
+  "shotsDir": "/home/z/my-project/unown/download/design-critic/baseline/root",
+  "wallSeconds": 116.1
+}

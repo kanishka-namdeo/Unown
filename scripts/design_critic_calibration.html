@@ -1,0 +1,54 @@
+<!doctype html>
+<!--
+  design_critic_calibration.html — the KNOWN-BAD calibration fixture.
+
+  The critic's VLM lane is a judge, and a judge that cannot discriminate a
+  deliberately-bad page from a real one is worthless (the memory-eval round
+  calibrated its QA judge the same way: agreement, FPR, flips). This page
+  violates, on purpose and in bulk: type-scale discipline (11 ad-hoc sizes),
+  the 4/8px spacing grid (arbitrary odd paddings everywhere), WCAG AA
+  (multiple low-contrast text tokens), heading order (h1 straight to h4),
+  and visual hierarchy (equal-weight everything, no alignment anchors).
+
+  `node scripts/design_critic.mjs --file scripts/design_critic_calibration.html
+  --label calib-bad --full-only` must score every axis WELL below the
+  landing page's baseline. The expected result is recorded in the round's
+  README; if the critic ever rates this fixture >= 7 on any axis, the
+  critique lane itself is the defect (a sycophantic judge).
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>calibration fixture — the known-bad page</title>
+<style>
+  body { margin: 13px; padding: 37px; font-family: sans-serif; background: #f4f4f4; color: #9a9a9a; }
+  h1 { font-size: 31px; color: #a5a5a5; margin: 17px 3px; }
+  h4 { font-size: 13px; color: #b9b9b9; margin: 9px 21px; }
+  p  { font-size: 11px; line-height: 1.1; margin: 23px 5px; color: #b0b0b0; }
+  .t1 { font-size: 27px; } .t2 { font-size: 22px; } .t3 { font-size: 19px; }
+  .t4 { font-size: 16.5px; } .t5 { font-size: 14px; } .t6 { font-size: 12.5px; }
+  .t7 { font-size: 10px; } .t8 { font-size: 9px; color: #c6c6c6; }
+  .box { padding: 11px 29px; margin: 7px 19px; background: #e9e9e9; border: 1px solid #d4d4d4; }
+  .box2 { padding: 33px 6px; margin: 25px 13px; background: #efefef; }
+  img { display: block; }
+  .faint { color: #cfcfcf; font-size: 10px; }
+</style>
+</head>
+<body>
+  <h1>welcome to the fixture</h1>
+  <h4>a subheading that skips two levels</h4>
+  <p class="t1">Lorum text at twenty seven pixels.</p>
+  <p class="t2">Text at twenty two pixels with no role.</p>
+  <p class="t3">Nineteen pixels of undifferentiated copy.</p>
+  <p class="t4">Sixteen and a half pixels, still the same weight.</p>
+  <p class="t5">Fourteen pixels, faint grey, low contrast.</p>
+  <p class="t6">Twelve point five pixels of nothing in particular.</p>
+  <p class="t7">Ten pixels of unreadable filler text.</p>
+  <p class="t8">Nine pixels, the faintest of all.</p>
+  <div class="box"><p class="t5">A box with odd paddings (11/29) and equal-weight text.</p></div>
+  <div class="box2"><p class="t6">Another box, different arbitrary paddings (33/6), no alignment anchor.</p></div>
+  <img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='40' height='40'%3E%3Crect width='40' height='40' fill='%23cccccc'/%3E%3C/svg%3E">
+  <p class="faint">footer text in the faintest grey, no alt on the image above, no hierarchy anywhere.</p>
+</body>
+</html>

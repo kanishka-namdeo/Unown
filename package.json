@@ -24,6 +24,7 @@
     "test:artifacts": "node --test scripts/build-artifacts.test.mjs",
     "audit:landing": "node scripts/landing_audit.mjs",
     "review:vlm": "node scripts/agnes_review.mjs",
+    "critic:design": "node scripts/design_critic.mjs",
     "unown": "bun bin/unown",
     "agent:install": "bun scripts/install.ts",
     "agent:start": "bun scripts/start.ts",

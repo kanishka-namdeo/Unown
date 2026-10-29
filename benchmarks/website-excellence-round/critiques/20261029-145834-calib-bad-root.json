@@ -1,0 +1,546 @@
+{
+  "schema": "website-excellence/critique/1",
+  "route": "/",
+  "url": "file:///home/z/my-project/unown/scripts/design_critic_calibration.html",
+  "label": "calib-bad",
+  "file": "scripts/design_critic_calibration.html",
+  "generatedAt": "2026-10-29T14:58:34.725Z",
+  "rubric": {
+    "vlmAxes": [
+      "hierarchy",
+      "typography",
+      "spacing",
+      "color",
+      "alignment",
+      "density",
+      "overall"
+    ],
+    "vlmFloor": 7,
+    "contrastViolations": 0,
+    "fontSizesMax": 8,
+    "offGridMaxPct": 15,
+    "headingSkips": 0,
+    "missingAlts": 0,
+    "mobileOverflow": 0,
+    "fcpMs": 1800,
+    "lcpMs": 2500,
+    "cls": 0.1,
+    "tbtMs": 200
+  },
+  "audit": {
+    "desktop": {
+      "contrast": {
+        "min": 1.42,
+        "mean": 1.88,
+        "violations": [
+          {
+            "text": "welcome to the fixture",
+            "ratio": 2.24,
+            "need": 3,
+            "size": "31px",
+            "weight": "700",
+            "selector": "h1"
+          },
+          {
+            "text": "a subheading that skips two levels",
+            "ratio": 1.78,
+            "need": 4.5,
+            "size": "13px",
+            "weight": "700",
+            "selector": "h4"
+          },
+          {
+            "text": "Lorum text at twenty seven pixels.",
+            "ratio": 1.97,
+            "need": 3,
+            "size": "27px",
+            "weight": "400",
+            "selector": "p.t1"
+          },
+          {
+            "text": "Text at twenty two pixels with no role.",
+            "ratio": 1.97,
+            "need": 4.5,
+            "size": "22px",
+            "weight": "400",
+            "selector": "p.t2"
+          },
+          {
+            "text": "Nineteen pixels of undifferentiated copy",
+            "ratio": 1.97,
+            "need": 4.5,
+            "size": "19px",
+            "weight": "400",
+            "selector": "p.t3"
+          },
+          {
+            "text": "Sixteen and a half pixels, still the sam",
+            "ratio": 1.97,
+            "need": 4.5,
+            "size": "16.5px",
+            "weight": "400",
+            "selector": "p.t4"
+          },
+          {
+            "text": "Fourteen pixels, faint grey, low contras",
+            "ratio": 1.97,
+            "need": 4.5,
+            "size": "14px",
+            "weight": "400",
+            "selector": "p.t5"
+          },
+          {
+            "text": "Twelve point five pixels of nothing in p",
+            "ratio": 1.97,
+            "need": 4.5,
+            "size": "12.5px",
+            "weight": "400",
+            "selector": "p.t6"
+          },
+          {
+            "text": "Ten pixels of unreadable filler text.",
+            "ratio": 1.97,
+            "need": 4.5,
+            "size": "10px",
+            "weight": "400",
+            "selector": "p.t7"
+          },
+          {
+            "text": "Nine pixels, the faintest of all.",
+            "ratio": 1.55,
+            "need": 4.5,
+            "size": "9px",
+            "weight": "400",
+            "selector": "p.t8"
+          },
+          {
+            "text": "A box with odd paddings (11/29) and equa",
+            "ratio": 1.79,
+            "need": 4.5,
+            "size": "14px",
+            "weight": "400",
+            "selector": "p.t5"
+          },
+          {
+            "text": "Another box, different arbitrary padding",
+            "ratio": 1.89,
+            "need": 4.5,
+            "size": "12.5px",
+            "weight": "400",
+            "selector": "p.t6"
+          },
+          {
+            "text": "footer text in the faintest grey, no alt",
+            "ratio": 1.42,
+            "need": 4.5,
+            "size": "10px",
+            "weight": "400",
+            "selector": "p.faint"
+          }
+        ]
+      },
+      "type": {
+        "distinctSizes": 10,
+        "sizes": [
+          {
+            "size": "9px",
+            "uses": 1
+          },
+          {
+            "size": "10px",
+            "uses": 2
+          },
+          {
+            "size": "12.5px",
+            "uses": 2
+          },
+          {
+            "size": "13px",
+            "uses": 1
+          },
+          {
+            "size": "14px",
+            "uses": 2
+          },
+          {
+            "size": "16.5px",
+            "uses": 1
+          },
+          {
+            "size": "19px",
+            "uses": 1
+          },
+          {
+            "size": "22px",
+            "uses": 1
+          },
+          {
+            "size": "27px",
+            "uses": 1
+          },
+          {
+            "size": "31px",
+            "uses": 1
+          }
+        ]
+      },
+      "spacing": {
+        "samples": 8,
+        "offGrid": 8,
+        "offGridPct": 100
+      },
+      "headings": {
+        "order": [
+          1,
+          4
+        ],
+        "skips": [
+          {
+            "from": "h1",
+            "to": "h4"
+          }
+        ]
+      },
+      "images": {
+        "total": 1,
+        "missingAlts": 1
+      },
+      "overflowX": 0
+    },
+    "mobile": {
+      "contrast": {
+        "min": 1.42,
+        "mean": 1.88,
+        "violations": [
+          {
+            "text": "welcome to the fixture",
+            "ratio": 2.24,
+            "need": 3,
+            "size": "31px",
+            "weight": "700",
+            "selector": "h1"
+          },
+          {
+            "text": "a subheading that skips two levels",
+            "ratio": 1.78,
+            "need": 4.5,
+            "size": "13px",
+            "weight": "700",
+            "selector": "h4"
+          },
+          {
+            "text": "Lorum text at twenty seven pixels.",
+            "ratio": 1.97,
+            "need": 3,
+            "size": "27px",
+            "weight": "400",
+            "selector": "p.t1"
+          },
+          {
+            "text": "Text at twenty two pixels with no role.",
+            "ratio": 1.97,
+            "need": 4.5,
+            "size": "22px",
+            "weight": "400",
+            "selector": "p.t2"
+          },
+          {
+            "text": "Nineteen pixels of undifferentiated copy",
+            "ratio": 1.97,
+            "need": 4.5,
+            "size": "19px",
+            "weight": "400",
+            "selector": "p.t3"
+          },
+          {
+            "text": "Sixteen and a half pixels, still the sam",
+            "ratio": 1.97,
+            "need": 4.5,
+            "size": "16.5px",
+            "weight": "400",
+            "selector": "p.t4"
+          },
+          {
+            "text": "Fourteen pixels, faint grey, low contras",
+            "ratio": 1.97,
+            "need": 4.5,
+            "size": "14px",
+            "weight": "400",
+            "selector": "p.t5"
+          },
+          {
+            "text": "Twelve point five pixels of nothing in p",
+            "ratio": 1.97,
+            "need": 4.5,
+            "size": "12.5px",
+            "weight": "400",
+            "selector": "p.t6"
+          },
+          {
+            "text": "Ten pixels of unreadable filler text.",
+            "ratio": 1.97,
+            "need": 4.5,
+            "size": "10px",
+            "weight": "400",
+            "selector": "p.t7"
+          },
+          {
+            "text": "Nine pixels, the faintest of all.",
+            "ratio": 1.55,
+            "need": 4.5,
+            "size": "9px",
+            "weight": "400",
+            "selector": "p.t8"
+          },
+          {
+            "text": "A box with odd paddings (11/29) and equa",
+            "ratio": 1.79,
+            "need": 4.5,
+            "size": "14px",
+            "weight": "400",
+            "selector": "p.t5"
+          },
+          {
+            "text": "Another box, different arbitrary padding",
+            "ratio": 1.89,
+            "need": 4.5,
+            "size": "12.5px",
+            "weight": "400",
+            "selector": "p.t6"
+          },
+          {
+            "text": "footer text in the faintest grey, no alt",
+            "ratio": 1.42,
+            "need": 4.5,
+            "size": "10px",
+            "weight": "400",
+            "selector": "p.faint"
+          }
+        ]
+      },
+      "type": {
+        "distinctSizes": 10,
+        "sizes": [
+          {
+            "size": "9px",
+            "uses": 1
+          },
+          {
+            "size": "10px",
+            "uses": 2
+          },
+          {
+            "size": "12.5px",
+            "uses": 2
+          },
+          {
+            "size": "13px",
+            "uses": 1
+          },
+          {
+            "size": "14px",
+            "uses": 2
+          },
+          {
+            "size": "16.5px",
+            "uses": 1
+          },
+          {
+            "size": "19px",
+            "uses": 1
+          },
+          {
+            "size": "22px",
+            "uses": 1
+          },
+          {
+            "size": "27px",
+            "uses": 1
+          },
+          {
+            "size": "31px",
+            "uses": 1
+          }
+        ]
+      },
+      "spacing": {
+        "samples": 8,
+        "offGrid": 8,
+        "offGridPct": 100
+      },
+      "headings": {
+        "order": [
+          1,
+          4
+        ],
+        "skips": [
+          {
+            "from": "h1",
+            "to": "h4"
+          }
+        ]
+      },
+      "images": {
+        "total": 1,
+        "missingAlts": 1
+      },
+      "overflowX": 0
+    }
+  },
+  "vitals": {
+    "desktop": {
+      "fcp": 0,
+      "lcp": 68,
+      "cls": 0,
+      "tbt": 0
+    },
+    "mobile": {
+      "fcp": 0,
+      "lcp": 28,
+      "cls": 0,
+      "tbt": 0
+    }
+  },
+  "critiques": [
+    {
+      "shot": "root-desktop-full.png",
+      "device": "desktop",
+      "kind": "full",
+      "label": null,
+      "scores": {
+        "hierarchy": 1,
+        "typography": 2,
+        "spacing": 2,
+        "color": 1,
+        "alignment": 2,
+        "density": 3,
+        "overall": 2
+      },
+      "defects": [
+        "The entire interface has virtually zero contrast; the text is faint gray on a near-white background, making it functionally illegible and inaccessible.",
+        "The type scale is broken; the subheading is smaller than the body text, and the overall hierarchy is confusing and inconsistent.",
+        "The spacing rhythm is non-existent; the lines of text are tightly packed with uneven line-heights and arbitrary margins, creating visual clutter.",
+        "The two content boxes have completely different padding and alignment, breaking the layout's consistency and making the content look misaligned.",
+        "There is no clear focal point or visual hierarchy, making it impossible for a user to quickly understand the page's structure or primary message."
+      ],
+      "improvements": [
+        "Establish a clear, high-contrast color palette to ensure text legibility.",
+        "Implement a logical type scale to create a strong visual hierarchy.",
+        "Standardize padding and margins to create a consistent, rhythmic layout."
+      ]
+    },
+    {
+      "shot": "root-mobile-full.png",
+      "device": "mobile",
+      "kind": "full",
+      "label": null,
+      "scores": {
+        "hierarchy": 2,
+        "typography": 2,
+        "spacing": 2,
+        "color": 1,
+        "alignment": 3,
+        "density": 2,
+        "overall": 1
+      },
+      "defects": [
+        "Contrast failure: The 'warm paper/ink' brand is ignored; text is pale grey-on-light-grey, completely failing WCAG AAA/AA.",
+        "Hierarchy breakdown: The subheading 'a subheading that skips two levels' is visually weaker than the massive 27px 'Lorum text' below it.",
+        "Typographic inconsistency: The design uses arbitrary pixel values (e.g., 'sixteen and a half pixels') rather than a disciplined modular scale.",
+        "Arbitrary spacing: The 'box with odd paddings' utilizes a non-standard 11/29 ratio, breaking the site's spacing rhythm.",
+        "Unanchored elements: The final small grey square and footer text are visually disconnected, floating with zero alignment intent."
+      ],
+      "improvements": [
+        "Invert to dark mode: apply deep charcoal background with high-contrast ink and gold accents for WCAG legibility.",
+        "Implement strict modular type scale: remove arbitrary pixel sizes, enforcing 1.5 or 1.25 ratio hierarchy.",
+        "Standardize 8pt spacing system: replace odd 11/29 and 33/6 paddings with a consistent grid rhythm."
+      ]
+    }
+  ],
+  "axisMeans": {
+    "hierarchy": 1.5,
+    "typography": 2,
+    "spacing": 2,
+    "color": 1,
+    "alignment": 2.5,
+    "density": 2.5,
+    "overall": 1.5
+  },
+  "gates": {
+    "contrastViolations": {
+      "value": 26,
+      "max": 0,
+      "pass": false
+    },
+    "fontSizes": {
+      "value": 10,
+      "max": 8,
+      "pass": false
+    },
+    "offGridPct": {
+      "value": 100,
+      "max": 15,
+      "pass": false
+    },
+    "headingSkips": {
+      "value": 1,
+      "max": 0,
+      "pass": false
+    },
+    "missingAlts": {
+      "value": 2,
+      "max": 0,
+      "pass": false
+    },
+    "mobileOverflow": {
+      "value": 0,
+      "max": 0,
+      "pass": true
+    },
+    "fcpMs": {
+      "value": 0,
+      "max": 1800,
+      "pass": true
+    },
+    "lcpMs": {
+      "value": 68,
+      "max": 2500,
+      "pass": true
+    },
+    "cls": {
+      "value": 0,
+      "max": 0.1,
+      "pass": true
+    },
+    "tbtMs": {
+      "value": 0,
+      "max": 200,
+      "pass": true
+    },
+    "vlmAxes": {
+      "value": {
+        "hierarchy": 1.5,
+        "typography": 2,
+        "spacing": 2,
+        "color": 1,
+        "alignment": 2.5,
+        "density": 2.5,
+        "overall": 1.5
+      },
+      "floor": 7,
+      "pass": false,
+      "failures": [
+        "hierarchy 1.5<7",
+        "typography 2<7",
+        "spacing 2<7",
+        "color 1<7",
+        "alignment 2.5<7",
+        "density 2.5<7",
+        "overall 1.5<7"
+      ]
+    }
+  },
+  "passed": false,
+  "shotsDir": "/home/z/my-project/unown/download/design-critic/calib-bad/root",
+  "wallSeconds": 10
+}
