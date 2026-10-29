@@ -105,3 +105,34 @@ Linear, Geist/Vercel, Stripe; this round surveys the rest of the
 mission's list: Apple, Airbnb, Arc, Resend, Cursor, OpenAI, Anthropic,
 Perplexity, Raycast, Mercury, Attio, Notion, Framer) and the refreshed
 capability gap analysis, then the round's capability builds.
+
+## Checkpoint 2 — the second research base
+
+**DONE.**
+[`website-excellence-research-2.md`](website-excellence-research-2.md) —
+nine elite sites read from their live production HTML/CSS (Apple,
+Airbnb, Notion, Framer, Raycast, Resend, Anthropic, Mercury, Attio —
+each with its token values extracted, not paraphrased from posts) plus
+the 2026 motion state of the art (the scroll-driven-animation matrix
+that completed with Firefox 159 on 2026-10-27; Stripe/Vercel as the
+production adopters; what died — particles, Lottie-on-marketing, cursor
+followers, JS animation libraries — and what replaced them). Two
+mission-list sites sat behind Cloudflare challenges (arc.net,
+openai.com) and are recorded as **not-verified** rather than guessed —
+the doc's honesty rule. The synthesis distills the nine sites into
+**ten enforceable builder rules** (closed type ramps with weight
+ceilings, tracking-vs-size curves, tinted neutrals, one-accent
+censuses, product-as-hero, quantified trust, compositing-only motion,
+`@supports`-wrapped scroll timelines, breakpoint ceilings,
+one-scale spacing+leading) — each phrased so a tool can check it, which
+is what the round's capability builds consume.
+
+**VERIFIED.** Every number in the research doc carries the [V] tier
+(extracted this round from the named production artifacts) or [C]
+(publisher-cited); `bun run check:docs` green; the doc registered in
+the README table and `docs/AGENTS.md`.
+
+**NEXT.** Phase 2 — the capability gap analysis refresh (what the
+platform could not do at `661801fa`), then the round's builds: the
+critic's new objective axes and the website skills the ten rules
+imply.
