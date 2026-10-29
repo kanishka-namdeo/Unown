@@ -1,0 +1,43 @@
+Implement Phase 2 (the Lib phase) of the Encore build contract you will
+find at benchmarks/website-excellence-round/plan.md — gallery app #8, the
+Website Excellence showcase. Read the plan FULLY first, then implement
+exactly sections 1, 2 and the lib parts of 6 (the test plan's lib suites),
+plus the invariant tests named in the plan's Constraint Compliance.
+
+Scope for THIS session — src/lib/encore/ only:
+- types.ts — every entity from plan §1.2 (Iteration, ToolCard,
+  FailureEntry, TimelineEvent, the receipt-subset types from §1.1) with the
+  exact field lists the plan pins
+- seed.ts — the receipt-derived constants per §1.3: ENCORE_ITERATIONS (the
+  baseline receipt as iteration 0), the calibration receipt entry, the
+  tool cards (design_critic + the calibration fixture with their receipts),
+  the F-ledger entries (F10, F11 from benchmarks/nocturne-round/
+  validation-log.md — read it and carry the exact facts), the timeline
+  events — every constant with its @provenance comment naming the receipt
+  or ledger file it derives from
+- seed.test.ts — THE DRIFT GATE per §6.1: read the actual receipt JSONs
+  from benchmarks/website-excellence-round/critiques/ and the validation
+  log, assert every seed constant equals its source, field by field
+- stats.ts + stats.test.ts — the aggregations per §2 (axis deltas between
+  iterations, gate pass counts, improvement math) with the synthesized-
+  iter1 ordering test the plan's risk #10 names
+- invariant.test.ts — zero Date.now()/Math.random() in src/lib/encore/
+  (the fugue determinism contract), the type-ramp census of the seed
+  constants, the append-clean ordering invariants
+
+Rules:
+- Read the real receipts first: benchmarks/website-excellence-round/
+  critiques/20261029-145746-baseline-root.json and
+  20261029-145834-calib-bad-root.json — the seed constants MUST match them
+  exactly (the drift gate proves it).
+- No UI, no routes, no components, no landing changes this session —
+  lib only. The next session builds the UI.
+- Colocated *.test.ts files; every test green under `bun test src/lib/encore`.
+- `bun run typecheck` must stay clean. Run it before you finish.
+- Follow the DOX chain (AGENTS.md) and the sibling lib patterns (aria's
+  seed discipline, nocturne's test style).
+- Do NOT edit: .unown/**, any AGENTS.md, any receipt, the plan, anything
+  outside src/lib/encore/.
+
+Finish by reporting: the module list you created, the test count, and the
+exact `bun test src/lib/encore` + `bun run typecheck` results.

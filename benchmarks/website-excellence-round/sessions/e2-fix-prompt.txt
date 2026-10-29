@@ -1,0 +1,21 @@
+Your lib landed with 59/64 green. Five failures, both diagnosed precisely — fix exactly these:
+
+1. The gatePasses math (3 tests): the baseline receipt's gates are 8 of 11
+   passing, not 9 — the three FAILING gates are fontSizes, offGridPct AND
+   vlmAxes (read benchmarks/website-excellence-round/critiques/
+   20261029-145746-baseline-root.json "gates" yourself and count: contrast,
+   headings, alts, overflow, fcp, lcp, cls, tbt pass = 8). Fix the expected
+   values in the gatePasses test, the improvementStats single-iteration
+   test, and the append-clean iter1 test (baseline gatePasses 9 -> 8). If
+   stats.ts hardcodes a 9 anywhere, the constant is the bug too — derive
+   from the seed's gate results, never a magic number.
+
+2. The fugue determinism invariant (2 tests): the scan matches the literal
+   strings inside invariant.test.ts itself (and any test file) — the
+   invariant owns DOMAIN files only. Exclude *.test.ts from the scan set
+   (keep scanning types.ts, seed.ts, stats.ts, format.ts), so the test
+   file's own matcher strings cannot trip it.
+
+Rules unchanged: lib only, no receipt edits, no UI. Finish by running
+`bun test src/lib/encore` and `bun run typecheck` and reporting the exact
+counts (64 tests, 0 fail expected).

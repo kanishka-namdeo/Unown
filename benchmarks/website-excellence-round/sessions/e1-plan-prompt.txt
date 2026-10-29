@@ -1,0 +1,136 @@
+Plan gallery app #8: Encore — the Website Excellence showcase, the flagship
+(the earned performance: what seven apps of practice taught the platform,
+shown as one elite-grade web experience). It will live in-repo like its
+siblings: src/lib/encore/ (pure domain), src/app/encore/ (the route), and
+src/components/encore/ (UI), embedded on the landing at /encore.
+
+Encore is a SHOWCASE, not a SaaS domain: its content is the Website
+Excellence Program's own measured story — the critique baseline, the
+iteration receipts, the tools built, the failures ledgered, the learning
+retained. Every number on the page must trace to a committed receipt under
+benchmarks/website-excellence-round/ (the landing truth rules: a figure with
+no receipt is a lie, and this app is ABOUT the receipts).
+
+The design bar is the round's research synthesis
+(docs/website-excellence-research.md — READ IT FIRST, it is the design
+brief): the craft baseline of Linear/Stripe/Vercel applied through the
+Unown brand (warm paper/ink/gold, Game-Boy-inspired, dark-first — the
+existing token system in src/app/globals.css, NOT a new palette).
+
+Explore before designing, in this order:
+1. docs/website-excellence-research.md — the design brief and token synthesis
+2. benchmarks/website-excellence-round/README.md + rubric.md — the critique
+   contracts; Encore will be measured by them and must PASS
+3. The receipts: benchmarks/website-excellence-round/critiques/*.json — the
+   baseline (label "baseline") and the calibration (label "calib-bad") are
+   the two data anchors; more iteration receipts will land as Encore itself
+   is critiqued (design the data model so iterations APPEND cleanly)
+4. docs/website-excellence-session.md — the round log (the story to tell)
+5. docs/website-excellence-gap-analysis.md — the tools/roadmap content
+6. The siblings for the house patterns: nocturne (newest: layout.tsx
+   metadata + scoped globals + embed contract, page.tsx ?embed=1 server
+   read, the F3 hydration pin), aria (seed discipline, invariant tests),
+   cadence (charts + primitives conventions), plus the gallery contract in
+   src/components/landing/live-demo-data.ts and its test
+   src/components/landing/__tests__/live-demo.test.tsx (poster paths,
+   reset handshake, receipt chips)
+7. src/app/globals.css — the existing token system Encore inherits
+
+Then produce the complete numbered build contract, 8 sections, the aria
+plan.md style (see benchmarks/nocturne-round/plan.md for the house format):
+
+1. The complete data model — every entity and field: Iteration (label,
+   timestamp, axis scores, objective metrics, verdict, receiptPath), the
+   rubric gate results, ToolCard, FailureEntry (the F-ledger), TimelineEvent,
+   the receipt JSON schema subset Encore consumes (schema
+   "website-excellence/critique/1" — pin the exact fields). The naming
+   receipt (musical-term convention: why "Encore" — the earned performance
+   after the show; collision check: Adobe Encore discontinued 2014,
+   encore.org nonprofit, no dev-tool/AI-space collision, lexically distinct
+   from all seven siblings).
+
+2. The src/lib/encore/ module list — one line per module with its exports.
+   Must include: types.ts, seed.ts (the receipt-derived constants, each with
+   a provenance comment naming its receipt file), seed.test.ts (THE DRIFT
+   GATE: reads the actual receipt JSONs from the repo and asserts every
+   seed constant equals the receipt — the check:benchmarks pattern, tests as
+   the gate), stats.ts (aggregations: axis deltas between two iterations,
+   gate pass counts, improvement math) + stats.test.ts.
+
+3. The route + embed contract — /encore (page.tsx with the ?embed=1
+   server-side read per the F3 pin, layout.tsx with metadata + robots
+   noindex + the scoped-globals wrapper class), the reset handshake
+   (resetType "encore-reset", postMessage targetOrigin window.origin —
+   Encore resets its interactive state: slider position, stepper selection),
+   NO API routes (static receipt data — say so explicitly and why), the CSP
+   block for next.config.ts.
+
+4. The design system (THE section this app exists for — be exhaustive):
+   - Type ramp: EXACTLY 8 sizes max (e.g. 12/14/16/18/24/32/48/64px or the
+     token equivalents), Geist + Geist Mono + at most ONE retro accent font,
+     tracking -0.01em to -0.02em at >=32px, line-height <=1.1 display / 1.6
+     body. Name every size's role.
+   - Spacing: the 4px sub-grid / 8px rhythm — every section padding, gap
+     and card padding pinned to the scale (4/8/12/16/24/32/48/64/96).
+   - Color: inherit the landing token system (canvas/ink/paper/gold
+     families from globals.css); every text/surface pairing must clear
+     WCAG AA 4.5:1 (the rubric audits it); name the exact pairs.
+   - Motion: 150/250/400ms budget, ease-out reveals, one interactive
+     spring; EVERY effect behind prefers-reduced-motion; nothing loops
+     without status meaning; reveals settle to a base-finished state
+     (blank-frame-under-reduced-motion is a defect the critic catches).
+   - Layout: max-w container (the centered-layout rule), the section
+     grammar, the grid per section.
+
+5. The section-by-section UX spec — Encore's bands, each with its data
+   source, its interaction, and its a11y contract:
+   - Hero: "Every great performance earns an encore." kicker with the glyph
+     decode device, H1, sub, two CTAs (see the loop / read the receipts),
+     a live axis-score strip animating baseline values
+   - The baseline: the receipt card — overall 6.40, 23 font sizes, 32.7%
+     off-grid, 0 contrast violations, the seven axis means; sourced
+   - The loop: the critique loop as an interactive stepper (build ->
+     capture -> audit -> critique -> fix -> re-score), keyboard operable
+   - The iterations: BEFORE/AFTER comparison — a drag slider comparing two
+     screenshots (the flagship interaction; images staged under
+     public/landing/encore/), plus the score-delta table between receipts
+   - The tools: design_critic + the calibration fixture as tool cards with
+     their receipts (the 1.5-vs-6.4 discrimination chart)
+   - The failures: the F-ledger (F10, F11 + this round's entries) — "every
+     failure became a benchmark"
+   - The finale: the program's success question and its answer, CTA back to
+     the gallery
+   - Mobile: the 390px covenant per band (no horizontal overflow)
+
+6. The test plan — the lib suites (seed drift gate, stats math), the
+   component tests (each band renders its receipt numbers, the slider
+   drags, the stepper steps, reduced-motion paths), the embed/reset
+   handshake test, the gallery-entry test updates (>= 8 apps now), and the
+   route/page tests in the sibling style.
+
+7. The build phase decomposition — plan -> lib -> ui -> embed/landing,
+   each phase one session with its verification gate (bun test, typecheck,
+   lint), and where the critique loop runs (after UI, before landing).
+
+8. The risks list (10+) with mitigations — including: the before/after
+   slider's a11y (keyboard + screen reader), the receipt-schema drift
+   (the seed gate), the retro-font/Geist pairing friction the baseline
+   critique flagged, the scroll-budget pressure on the LANDING page when
+   the eighth gallery entry lands (compress, never delete generated
+   numbers), and the honesty risk (no number without a receipt).
+
+Constraints (binding):
+- Zero Date.now()/Math.random() in src/lib/encore/ (the fugue determinism
+  contract) — the data is static receipt-derived constants.
+- No API routes; no client state beyond the documented interactions.
+- The landing scroll budget: Encore's entry must not grow the landing
+  beyond its ceilings (the e2e twin is canonical).
+- Every test file colocated (*.test.ts) and green under bun test src.
+- DO NOT edit: .unown/**, any AGENTS.md, the landing bands other than the
+  gallery data + gallery copy, the existing receipts. The plan may propose
+  landing changes; the landing phase implements them as its own session.
+- Keep the whole plan under 350 lines.
+
+Output: the numbered build contract as a single markdown document. This is
+a PLANNING task — write the plan to benchmarks/website-excellence-round/plan.md
+and print only a 10-line summary of your key decisions.
