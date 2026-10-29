@@ -549,21 +549,6 @@ export function NocturneProvider({
     setComponents([]);
   }, [fetchJson]);
 
-  /** Re-open the current detail view after a mutation (the data
-   * refresh + the clock re-tick — countdowns stay honest). */
-  const reopen = useCallback(
-    async (id?: string) => {
-      const probe = await fetchJson<NocturneSessionShape>("/nocturne/api/auth/session");
-      await loadTenantData(probe.role);
-      if (id !== undefined && view === "incidents") {
-        await openIncident(id);
-      }
-      tick();
-    },
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [fetchJson, loadTenantData, view],
-  );
-
   const openIncident = useCallback(
     async (id: string | null) => {
       if (!id) {
@@ -580,6 +565,20 @@ export function NocturneProvider({
       }
     },
     [fetchJson],
+  );
+
+  /** Re-open the current detail view after a mutation (the data
+   * refresh + the clock re-tick — countdowns stay honest). */
+  const reopen = useCallback(
+    async (id?: string) => {
+      const probe = await fetchJson<NocturneSessionShape>("/nocturne/api/auth/session");
+      await loadTenantData(probe.role);
+      if (id !== undefined && view === "incidents") {
+        await openIncident(id);
+      }
+      tick();
+    },
+    [fetchJson, loadTenantData, view, openIncident, tick],
   );
 
   const openService = useCallback(

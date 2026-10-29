@@ -24,7 +24,6 @@ export function PublicStatusPage({ slug = "lumen" }: { slug?: string }) {
 
   useEffect(() => {
     void nocturne.loadPublicStatus(slug).then(() => setLoaded(true));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [slug]);
 
   const s = nocturne.publicStatus;

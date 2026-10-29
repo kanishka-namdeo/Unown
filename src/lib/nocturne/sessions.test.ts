@@ -1,4 +1,5 @@
 import { describe, expect, test } from "bun:test";
+import { createHmac } from "node:crypto";
 import {
   createSession,
   findSession,
@@ -132,7 +133,6 @@ describe("cookie signing (HMAC)", () => {
   test("the signature is the HMAC-SHA256 hex of the session id under HMAC_SECRET", () => {
     // Independent re-derivation: the demo secret is public-by-design,
     // so a test can re-sign and pin the byte shape.
-    const { createHmac } = require("node:crypto");
     const sessionId = "nc_ses-pin-000001";
     const expected = createHmac("sha256", HMAC_SECRET).update(sessionId).digest("hex");
     expect(makeSignedCookie(sessionId)).toBe(`${sessionId}.${expected}`);
@@ -141,7 +141,6 @@ describe("cookie signing (HMAC)", () => {
   test("a different secret produces a different signature (the secret is bound)", () => {
     // signCookie is pinned to HMAC_SECRET; re-deriving with another
     // key must mismatch → verifyCookie false.
-    const { createHmac } = require("node:crypto");
     const other = createHmac("sha256", "some-other-secret")
       .update("nc_ses-x")
       .digest("hex");
