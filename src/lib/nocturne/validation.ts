@@ -11,6 +11,7 @@
 
 import type {
   NocturneRotation,
+  NocturneService,
   Severity,
 } from "./types";
 import { NocturneRoles, NocturneSeverities } from "./types";
@@ -85,7 +86,7 @@ export interface CreateServiceInput {
   name: string;
   description: string;
   rotationId?: string | null;
-  escalationPolicy?: NocturneServiceInput["escalationPolicy"];
+  escalationPolicy?: NocturneService["escalationPolicy"];
 }
 
 export interface NocturneServiceInput {
