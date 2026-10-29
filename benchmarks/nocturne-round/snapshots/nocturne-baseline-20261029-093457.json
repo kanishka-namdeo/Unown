@@ -1,0 +1,169 @@
+{
+ "label": "baseline",
+ "capturedAt": "2026-10-29T09:34:57",
+ "schema": "validation-round/1",
+ "drained": true,
+ "engine": {
+  "version": "self-learning v0.0.40",
+  "provider": "zai-bridge/agnes-3.0-flash",
+  "bridgeUpstreamOk": true
+ },
+ "memoryMetrics": {
+  "memoryVersions": {
+   "policy": 1,
+   "project": 1,
+   "user": 1,
+   "local": 1
+  },
+  "terminalMemory": {
+   "provenance": {
+    "version": 4,
+    "changedBy": "mem0",
+    "at": 1793222546248,
+    "sha256": "a84644ae888881323af78ced0cbba6e49e9f7499fe6c84afecddde34eca5cf1c",
+    "manualSha256": "64f2d1b1793fa5e12c6a356e2bcab16910e61b0d8b731f6b56b65d613f37e119",
+    "manualEdited": true
+   },
+   "contentChars": 11054,
+   "bulletCount": 73,
+   "sectionCount": 5,
+   "userSkills": [
+    "recover-failed-cycle",
+    "pre-commit-engine-check",
+    "test-cadence-domain",
+    "restart-engine"
+   ],
+   "stagedSkills": []
+  },
+  "retrievalProbeResults": null
+ },
+ "learningMetrics": {
+  "tasks": [
+   {
+    "id": "fix-fizzbuzz",
+    "name": "Fix FizzBuzz",
+    "category": "bugfix",
+    "difficulty": 1,
+    "status": "regression",
+    "origin": "seed",
+    "pass_count": 0,
+    "fail_count": 0,
+    "created_at": 1793266348423
+   },
+   {
+    "id": "fix-drop-right",
+    "name": "Fix dropRight off-by-one",
+    "category": "bugfix",
+    "difficulty": 2,
+    "status": "regression",
+    "origin": "seed",
+    "pass_count": 0,
+    "fail_count": 0,
+    "created_at": 1793266348424
+   },
+   {
+    "id": "fix-csv-parser",
+    "name": "Fix CSV parsing",
+    "category": "bugfix",
+    "difficulty": 3,
+    "status": "regression",
+    "origin": "seed",
+    "pass_count": 0,
+    "fail_count": 0,
+    "created_at": 1793266348424
+   },
+   {
+    "id": "swap-if-else-messages",
+    "name": "Swap if/else branch bodies",
+    "category": "bugfix",
+    "difficulty": 3,
+    "status": "regression",
+    "origin": "seed",
+    "pass_count": 0,
+    "fail_count": 0,
+    "created_at": 1793266348424
+   },
+   {
+    "id": "impl-debounce",
+    "name": "Implement debounce",
+    "category": "implementation",
+    "difficulty": 4,
+    "status": "regression",
+    "origin": "seed",
+    "pass_count": 0,
+    "fail_count": 0,
+    "created_at": 1793266348424
+   },
+   {
+    "id": "impl-map-limit",
+    "name": "Implement mapLimit",
+    "category": "implementation",
+    "difficulty": 4,
+    "status": "regression",
+    "origin": "seed",
+    "pass_count": 0,
+    "fail_count": 0,
+    "created_at": 1793266348424
+   }
+  ],
+  "taskCount": 6,
+  "tasksPassing": 6,
+  "suiteStats": {
+   "total": 6,
+   "passing": 0,
+   "capability": 0,
+   "regression": 6,
+   "minted": 0,
+   "graduated": 0,
+   "quarantined": 0,
+   "saturated": false
+  },
+  "cycles": [],
+  "cycleCount": 0,
+  "cycleStatusCounts": {},
+  "improvements": [],
+  "improvementCount": 0,
+  "improvementsShipped": 0,
+  "dreams": [],
+  "dreamCount": 0,
+  "skills": [],
+  "skillCount": 0,
+  "runCount": 0,
+  "runStats": {
+   "tokensIn": 0,
+   "tokensOut": 0,
+   "toolCalls": 0
+  },
+  "passRate": {
+   "runsPassed": 0,
+   "runsTotal": 0
+  },
+  "noteCount": 1,
+  "notesPending": 1,
+  "hooks": {
+   "total": 0,
+   "denies": 0
+  },
+  "governor": {
+   "budget": {
+    "callsHour": 0,
+    "callsDay": 0,
+    "tokensHour": 0,
+    "tokensDay": 0,
+    "limits": {
+     "callsHour": 60,
+     "tokensHour": 200000,
+     "tokensDay": 2000000
+    },
+    "overBudget": false,
+    "reason": null
+   },
+   "breaker": {
+    "open": false,
+    "consecutiveFailures": 0,
+    "threshold": 3,
+    "retryInMs": 0
+   }
+  }
+ }
+}

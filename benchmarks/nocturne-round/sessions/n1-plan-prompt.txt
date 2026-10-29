@@ -1,0 +1,49 @@
+Plan gallery app #7: Nocturne — an AI-native incident operations platform
+(the on-call / alerting / incident-response domain: PagerDuty-class, deterministic
+demo scope). It will live in-repo like its siblings: src/lib/nocturne/ (pure
+domain), src/app/nocturne/ (routes + API handlers), src/components/nocturne/
+(UI), embedded on the landing at /nocturne.
+
+The product surface (all multi-tenant, all deterministic under a pinned clock):
+- Alert ingestion with dedup (dedup keys + windows) and correlation into incidents
+- Services with severity rules and escalation policies (who gets paged, in what
+  order, on what timers)
+- On-call rotations: weekly schedules with handoffs, overrides, and "who is on
+  call now"
+- Incident lifecycle: triggered -> acknowledged -> resolved (+ snoozed), ack /
+  resolve SLA timers with breach detection
+- Event-sourced incident timelines (alert received, acked, escalated, note,
+  status change, resolved)
+- Runbooks per service with checklists
+- Public per-tenant status page: component status + active incidents feed
+- Postmortems on resolved incidents with action items
+- Analytics: MTTA / MTTR, incident counts by severity / service, breach rate,
+  on-call load
+
+Explore the sibling apps to ground every pattern before designing: aria (the
+newest: plans/caps, RBAC matrix, fail-closed tenancy, seed discipline,
+immutable audit, forecast), parley (SLA chips, inbox, customer portal,
+invites), fugue (the file-backed JSON store, clock-injected deterministic
+engine, seq ids), cadence (charts, primitives, heatmap conventions) — plus
+their test suites, the AGENTS.md contract, and docs/aria-demo-session.md for
+the round conventions.
+
+Then produce the complete numbered build contract, 8 sections, in the aria
+plan.md style:
+1. The complete data model — every entity, every field, tenancy/id/time
+   conventions, plans & caps, roles & visibility
+2. The src/lib/nocturne/ module list — one line per module with its exports
+3. The complete API route map — every route with method, auth, and the
+   401/403/404/400 status ladder
+4. The engine design — dedup windows, correlation, escalation timers, rotation
+   resolution with overrides, SLA breach detection, all clock-injected and
+   deterministic
+5. The test plan — unit + PBT invariants (ack-before-resolve, escalation only
+   while unacked, contiguous rotations, MTTA/MTTR over resolved only, dedup
+   idempotence)
+6. Phase decomposition — Lib -> API -> UI -> Embed, each with acceptance
+   criteria
+7. Risks — the realistic ones (clock-dependence, dedup races, escalation
+   combinatorics, UI timeline rendering)
+8. The embed contract — CSP frame-ancestors for /nocturne/:path*,
+   nocturne-reset reset type, gallery entry #7, poster
