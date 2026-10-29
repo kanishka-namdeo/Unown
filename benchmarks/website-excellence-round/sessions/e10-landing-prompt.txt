@@ -1,0 +1,52 @@
+Phase 5 — the embed/landing session for Encore (gallery app #8), per plan
+§3.6 and §8 of benchmarks/website-excellence-round/plan.md. Read the plan
+sections 3 and 8, the gallery contract (src/components/landing/
+live-demo-data.ts + its test src/components/landing/__tests__/
+live-demo.test.tsx), and the CSP blocks in next.config.ts first.
+
+1. next.config.ts: add the /encore/:path* frame-hardening block
+   (Content-Security-Policy frame-ancestors 'self' + X-Frame-Options
+   SAMEORIGIN), matching the sibling blocks exactly.
+
+2. src/components/landing/live-demo-data.ts: the EIGHTH entry —
+   id "encore", route "/encore", poster "/landing/encore/poster.png",
+   resetType "encore-reset", receiptDoc "docs/encore-demo-session.md",
+   receipts (counted from this round's committed artifacts — use these
+   EXACT numbers, they are counted):
+   - sessions: 17 (the e1-e10 envelopes under benchmarks/
+     website-excellence-round/sessions/)
+   - toolCalls: 513 (counted from the session logs)
+   - files: 24 (8 lib + 10 components + 3 app routes + favicon + 2
+     iteration shots)
+   - tests: 125 (70 lib + 55 component, all green)
+   - commits: 3 (the lib phase, the UI+loop phase, this landing phase)
+   - embeddingAdaptations: 0 so far (this session is the first embed
+     pass — the field is counted, not estimated)
+   The entry's one-line description follows the gallery voice: the
+   Website Excellence showcase — the platform critiquing its own design
+   output with receipted scores (the "earned performance").
+
+3. The gallery copy that counts apps ("Seven apps, live." or however
+   the current copy reads in the live-demo component): re-number to
+   eight. Check src/components/landing/live-demo.tsx (or wherever the
+   count copy lives) and the landing AGENTS.md contract for the wording.
+
+4. The gallery test updates: the live-demo test pins (>= 8 apps now,
+   the poster existence check — NOTE: the poster does not exist yet;
+   the operator shoots it via scripts/landing_demo_poster.mjs AFTER
+   this session; the test's poster-on-disk assertion must pass — so
+   coordinate: if the test hard-fails on a missing poster file, leave
+   that assertion as-is (it will pass once the poster lands) but tell
+   the operator in your final report that the poster is the remaining
+   artifact; run the test suite and report which tests await the poster.
+
+5. The scroll budget: the e2e twin (e2e/landing-budget.spec.ts) is
+   canonical — the gallery band grows by one tab; if the copy allows,
+   compress the gallery lede by a few words to compensate. NEVER delete
+   a generated number.
+
+Verification (exact results reported): `bun test src/components/landing`
+green (or green-pending-poster), `bun run typecheck`, `bun run lint`.
+Rules: the landing bands OUTSIDE the gallery data/copy are untouched;
+AGENTS.md, receipts, lib/ untouched; the poster is NOT created by you
+(no fake media).

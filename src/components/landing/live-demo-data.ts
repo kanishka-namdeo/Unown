@@ -81,6 +81,16 @@
  * 78 api + 28 ui, the round's CP1–CP4 receipts) · files: 103 under src/.
  * Narrative: docs/nocturne-demo-session.md (the round's session doc; the
  * receipt link follows the aria convention).
+ *
+ * ── Encore (the Website Excellence round, 2026-10-29) ─────────────────
+ * Sources: the round's session envelopes e1-e10 under
+ * benchmarks/website-excellence-round/sessions/ (17 ledgered sessions,
+ * 513 tool calls) · git: the round's three agent commits (b89db87 lib →
+ * b1c868e UI+loop; the landing phase adds the third) · tests: 125 green
+ * (70 lib incl. the five-receipt drift gate + 55 component) · files: 24
+ * under src/ + public/. Narrative: docs/encore-demo-session.md — the
+ * Website Excellence showcase, the platform critiquing its own design
+ * output with receipted scores (the "earned performance").
  */
 export interface LiveDemoApp {
   id: string;
@@ -244,6 +254,26 @@ export const LIVE_DEMO_APPS: LiveDemoApp[] = [
       embeddingAdaptations: 6,
       receiptDoc:
         "https://github.com/kanishka-namdeo/Unown/blob/main/docs/nocturne-demo-session.md",
+    },
+  },
+  {
+    id: "encore",
+    name: "Encore",
+    route: "/encore",
+    url: "unown-nine.vercel.app/encore?embed=1",
+    poster: "/landing/encore/poster.png",
+    posterAlt:
+      "Encore — the Website Excellence showcase unown built: the platform's own measured story, receipted critique scores and the before/after loop, running live",
+    resetType: "encore-reset",
+    receipt: {
+      sessions: 17,
+      toolCalls: 513,
+      files: 24,
+      tests: 125,
+      commits: 3,
+      embeddingAdaptations: 0,
+      receiptDoc:
+        "https://github.com/kanishka-namdeo/Unown/blob/main/docs/encore-demo-session.md",
     },
   },
 ];

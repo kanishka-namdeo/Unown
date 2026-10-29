@@ -131,16 +131,39 @@ the self-scanning determinism invariant, both fixed in 15 turns).
 
 ## Checkpoint 3 — the flagship app
 
-**IN PROGRESS.** `/encore` — "the earned performance" (the naming receipt:
-the eighth app, built by everything seven apps of practice taught the
+**DONE.** `/encore` — "the earned performance" (the naming receipt: the
+eighth app, built by everything seven apps of practice taught the
 platform; collision-checked — Adobe Encore discontinued 2014, encore.org
 nonprofit, no dev-tool/AI-space collision, lexically distinct from all
-seven siblings). The showcase of the program's own measured story: the
-baseline receipt, the iteration receipts, the tools, the F-ledger, the
-learning — every number traced to a committed receipt, the seed drift gate
-proving it. Built by Unown sessions phase by phase (E1 plan → E2 lib →
-E3/E4 UI → the critique loop → E5 landing), zero human edits, the critique
-loop between phases as the QA gate.
+seven siblings). The showcase of the program's own measured story, built
+by **17 agent sessions** (e1 plan → e10 landing, 459 turns, **513 tool
+calls**, zero human edits to app code), with the critique loop as the QA
+gate between phases.
+
+The loop's receipts (all committed under
+[`critiques/`](../benchmarks/website-excellence-round/critiques/)):
+
+| Run | Overall | Font sizes | Off-grid | Contrast (dark/light) | Overflow | Verdict |
+|---|---|---|---|---|---|---|
+| the landing baseline | 6.40 | **23** | **32.7%** | 0 / (light-only, F14) | 0px | the "before" |
+| encore iter0 | 6.27 | 6 | 0% | 0 / 0 | **42px** | first build, overflow caught |
+| iter1 | 6.0 | 6 | 0% | 0 / 0 | **42px** | short-ref fixes, overflow persists |
+| iter2 | 6.0 | 6 | 0% | 0 / **27** | 0px | overflow fixed; E6's pins broke light |
+| **iter3 (final)** | 6.22 | **6** | **0%** | **0 / 0** | **0px** | **ALL objective gates pass** |
+
+The flagship's final state: every objective rubric gate green — against
+a landing baseline that fails type-scale (23 vs ≤8) and spacing
+(32.7% vs ≤15%) — with the VLM overall honestly below the 7.0 floor
+(the single-judge variance band; the floor stays the program's open
+goal, recorded in the round's README limitations). The failure ledger:
+**F14–F18** in
+[`validation-log.md`](../benchmarks/website-excellence-round/validation-log.md)
+— including the loop catching its own fix's light-scheme regression one
+iteration after introducing it.
+
+**VERIFIED.** 2041/2041 repo tests green, typecheck + lint clean, the
+production build serving `/encore`, the seed's drift gate pinning all
+five receipts field-by-field.
 
 ## Checkpoint 4 — the learning pipeline
 

@@ -1,0 +1,22 @@
+You explored for 30 turns and edited NOTHING. APPLY THE EDITS NOW — you
+already know the files. In order:
+
+1. next.config.ts: the /encore/:path* CSP block (copy the nocturne
+   block's shape exactly, one block after the siblings).
+2. src/components/landing/live-demo-data.ts: append the eighth entry:
+   id "encore", name "Encore", route "/encore", url "/encore",
+   poster "/landing/encore/poster.png", posterAlt describing the showcase,
+   resetType "encore-reset", receipts {sessions: 17, toolCalls: 513,
+   files: 24, tests: 125, commits: 3, embeddingAdaptations: 0},
+   receiptDoc "docs/encore-demo-session.md", one-line description in the
+   gallery voice (the Website Excellence showcase — the agent critiquing
+   its own design output with receipted scores).
+3. src/components/landing/live-demo.tsx line ~100: "Six apps, live.
+   Pick one." -> "Eight apps, live. Pick one."
+4. src/components/landing/__tests__/live-demo.test.tsx: the app-count
+   pin (>= 7 becomes >= 8 or the count constant updates — read the
+   assertion and update it to 8).
+5. Run `bun test src/components/landing` and `bun run typecheck` +
+   `bun run lint`; report exact results. If the poster-on-disk assertion
+   fails, report it as awaiting the operator's poster shot — do not
+   create the poster.

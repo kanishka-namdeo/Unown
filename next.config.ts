@@ -88,6 +88,16 @@ const nextConfig: NextConfig = {
           { key: "X-Frame-Options", value: "SAMEORIGIN" },
         ],
       },
+      {
+        // /encore (the Website Excellence round, 2026-10-29) is embedded
+        // the same way: the live-demo gallery iframes /encore?embed=1
+        // same-origin (gallery app #8).
+        source: "/encore/:path*",
+        headers: [
+          { key: "Content-Security-Policy", value: "frame-ancestors 'self'" },
+          { key: "X-Frame-Options", value: "SAMEORIGIN" },
+        ],
+      },
     ];
   },
 };

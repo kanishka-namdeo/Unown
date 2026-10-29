@@ -52,8 +52,8 @@ describe("live-demo band (the gallery)", () => {
     expect(section?.textContent).toContain(LIVE_DEMO_APPS[0].url);
   });
 
-  test("the data file is a real gallery: seven apps, distinct everything", () => {
-    expect(LIVE_DEMO_APPS.length).toBeGreaterThanOrEqual(7);
+  test("the data file is a real gallery: eight apps, distinct everything", () => {
+    expect(LIVE_DEMO_APPS.length).toBeGreaterThanOrEqual(8);
     const routes = new Set(LIVE_DEMO_APPS.map((a) => a.route));
     const posters = new Set(LIVE_DEMO_APPS.map((a) => a.poster));
     const resets = new Set(LIVE_DEMO_APPS.map((a) => a.resetType));
