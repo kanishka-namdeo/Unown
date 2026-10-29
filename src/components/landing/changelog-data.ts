@@ -30,19 +30,57 @@ export interface ChangelogStop {
   groups: ChangelogGroup[];
 }
 
-export const CHANGELOG_TOTAL_ENTRIES = 381;
+export const CHANGELOG_TOTAL_ENTRIES = 384;
 
 export const CHANGELOG_TOTALS: Record<ChangelogBucket, number> = {
-  "Added": 166,
+  "Added": 167,
   "Changed": 28,
   "Deprecated": 0,
   "Removed": 3,
-  "Fixed": 144,
+  "Fixed": 146,
   "Security": 5,
   "Behavior": 35
 };
 
 export const CHANGELOG_STOPS: ChangelogStop[] = [
+  {
+    "label": "Unreleased",
+    "date": null,
+    "total": 3,
+    "counts": {
+      "Added": 1,
+      "Changed": 0,
+      "Deprecated": 0,
+      "Removed": 0,
+      "Fixed": 2,
+      "Security": 0,
+      "Behavior": 0
+    },
+    "groups": [
+      {
+        "bucket": "Added",
+        "items": [
+          {
+            "title": "The Website Excellence Round 2 opens",
+            "behavior": false
+          }
+        ]
+      },
+      {
+        "bucket": "Fixed",
+        "items": [
+          {
+            "title": "F21 — releases no longer ship while their own CI is red",
+            "behavior": false
+          },
+          {
+            "title": "F23 — a hosted-runner DNS blip no longer reds all of main's CI",
+            "behavior": false
+          }
+        ]
+      }
+    ]
+  },
   {
     "label": "0.0.42",
     "date": "2026-10-29",

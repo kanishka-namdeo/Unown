@@ -9,6 +9,17 @@ otherwise specified; the release tag must always equal package.json's version.
 
 Repo conventions: measured claims cite their receipts (`docs/testing-strategy.md`, `benchmarks/memory-eval/*/RESULTS.md`). Changes to agent behavior — prompts, default models, routing, guard rules, hooks, memory injection — are filed under **Agent Behavior**; the policy lives in [docs/BEHAVIOR.md](docs/BEHAVIOR.md).
 
+## [Unreleased]
+
+### Added
+
+- **The Website Excellence Round 2 opens** — the second programme round's records: [the session log](docs/website-excellence-2-session.md) (the resumable checkpoint log) and [the validation log](benchmarks/website-excellence-round-2/validation-log.md) (F21–F23, the release-credibility ledger: the v0.0.42 release shipped while its own CI was red).
+
+### Fixed
+
+- **F21 — releases no longer ship while their own CI is red:** the v0.0.42 tag was cut while the tagged commit's CI run had failed (its e2e lane red on the scroll budget, its macOS lane red on a DNS blip) — the Release workflow triggered on tags and never consulted CI's conclusion, and the release notes claimed "all gates green". `release.yml` now runs a `ci-green` first job that every downstream job needs: it resolves the CI run for the tagged SHA through the GitHub API, waits while CI is queued or running (bounded at 40 minutes), and fails the release unless CI concluded success. A red or in-flight CI can no longer mint artifacts.
+- **F23 — a hosted-runner DNS blip no longer reds all of main's CI:** the macOS CI leg once failed its `unown update --check` smoke on a transient `Could not resolve host: github.com` while the same step passed on the other two OSes; the step now retries once (15s backoff) on exit 1 and fails only if both attempts fail.
+
 ## [0.0.42] - 2026-10-29
 
 ### Added

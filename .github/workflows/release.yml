@@ -77,8 +77,57 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  ci-green:
+    name: CI green on the tagged commit
+    # F21 (2026-10-30, the second excellence round): the v0.0.42 release
+    # shipped with its own e2e lane red — the tag was cut minutes after a
+    # push whose CI run was still in flight (and would fail), and nothing in
+    # this workflow looked at CI's conclusion. A release that does not clear
+    # the repository's own gates does not exist, so this job IS the gate:
+    # it resolves the CI run for the tagged SHA (waiting while CI is queued
+    # or running) and fails the release unless CI concluded success. Every
+    # downstream job needs this one, so a red CI can never mint artifacts.
+    permissions:
+      actions: read
+      contents: read
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Wait for CI on ${{ github.sha }} and require success
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          sha="${GITHUB_SHA}"
+          # 40 attempts x 60s = 40 min bound (CI's longest lane is ~25 min;
+          # the tag can also land before the branch push's run is queued).
+          for i in $(seq 1 40); do
+            json="$(gh api "repos/${GITHUB_REPOSITORY}/actions/runs?head_sha=${sha}&per_page=100" \
+              --jq '[.workflow_runs[] | select(.name == "CI")][0] // empty')"
+            if [ -n "$json" ]; then
+              status="$(printf '%s' "$json" | jq -r '.status')"
+              if [ "$status" = "completed" ]; then
+                conclusion="$(printf '%s' "$json" | jq -r '.conclusion')"
+                url="$(printf '%s' "$json" | jq -r '.html_url')"
+                echo "CI on ${sha} concluded: ${conclusion} (${url})"
+                if [ "$conclusion" != "success" ]; then
+                  echo "::error::CI on the tagged commit concluded '${conclusion}' — a release that fails the repo's own gates does not exist. Fix CI, then re-tag."
+                  exit 1
+                fi
+                exit 0
+              fi
+              echo "CI on ${sha} is '${status}' — waiting (attempt ${i}/40)"
+            else
+              echo "no CI run found yet for ${sha} — waiting (attempt ${i}/40). If this tag points at a commit that was never pushed to main, CI will never run: push the commit first."
+            fi
+            sleep 60
+          done
+          echo "::error::CI on ${sha} did not complete within 40 minutes — refusing to release without the gate"
+          exit 1
+
   verify:
     name: Release assertion (3-OS install + full suites + build)
+    needs: ci-green
     strategy:
       fail-fast: false
       matrix:

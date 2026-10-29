@@ -174,10 +174,22 @@ jobs:
             bash -n "c-ci.$sh" || { echo "::error::$sh completion has syntax errors"; exit 1; }
           done
           bun bin/unown changelog | grep -q "full changelog" || { echo "::error::unown changelog printed no footer (command broken)"; exit 1; }
+          # F23 (2026-10-30, the second excellence round): a macOS runner's
+          # transient DNS failure ("Could not resolve host: github.com") once
+          # reded this step — and with it all of main's CI — while the same
+          # step passed on the other two OSes. Exit 1 means "offline/broken
+          # remote"; a hosted runner's DNS blip is exactly the transient
+          # class a single bounded retry absorbs. Two strikes still fail.
           ucode=0
           bun bin/unown update --check || ucode=$?
+          if [ "$ucode" -eq 1 ]; then
+            echo "update --check exit 1 (offline/remote unreachable) — retrying once in 15s (F23: hosted-runner DNS blips are transient)"
+            sleep 15
+            ucode=0
+            bun bin/unown update --check || ucode=$?
+          fi
           if [ "$ucode" -ne 0 ] && [ "$ucode" -ne 2 ]; then
-            echo "::error::unown update --check failed with exit $ucode (1 = offline/broken remote)"
+            echo "::error::unown update --check failed with exit $ucode (1 = offline/broken remote, twice)"
             exit 1
           fi
       - name: Smoke — doctor prints its table
