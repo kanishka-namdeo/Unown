@@ -1,0 +1,6 @@
+Continue Phase 3 (UI). You explored the aria UI conventions. Now write the
+files, in order: nocturne-provider.tsx, the app shell (page.tsx +
+layout.tsx + scoped stylesheet), login, then the screens (dashboard,
+incidents, services, rotations, runbooks, postmortems, analytics, members,
+public status page), then the component tests. Write files immediately —
+no more exploration.

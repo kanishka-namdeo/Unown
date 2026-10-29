@@ -1,0 +1,7 @@
+Continue Phase 3 (UI). Provider and primitives are landing. Keep writing:
+the remaining screens (dashboard, incidents list + detail with timeline,
+services, rotations with weekly schedule, runbooks, postmortems, analytics
+with accessible-SVG charts, members/invites, public status page), then the
+component tests per plan §5. Then `bun test src/components/nocturne`
+green, full `bun test src` green, `bun run typecheck` clean. Write files
+immediately.

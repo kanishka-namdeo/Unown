@@ -1,0 +1,39 @@
+/*
+ * Nocturne — the /nocturne route's scoped stylesheet (the parley
+ * pattern).
+ *
+ * Embedded inside the unown landing app, this file is imported ONLY
+ * by src/app/nocturne/layout.tsx, so Next injects it for /nocturne
+ * routes alone — the landing page never downloads it. The embedding
+ * adaptations:
+ *
+ *   1. `@source` scoping — with two Tailwind v4 passes in one repo,
+ *      this file's pass must generate utilities for the Nocturne
+ *      trees only (components/nocturne, lib/nocturne, app/nocturne),
+ *      never the landing's.
+ *   2. The standalone app's `:root` rules were re-anchored onto
+ *      `.nocturne-scope` — under the landing's root layout those
+ *      elements are SHARED, and the demo must not restyle the host.
+ */
+@import "tailwindcss";
+
+@source "../../../components/nocturne";
+@source "../../../lib/nocturne";
+@source "../../nocturne";
+
+/* The scope wrapper the nocturne layout renders. */
+.nocturne-scope {
+  color-scheme: dark;
+  background: var(--nocturne-background, #0a0a0f);
+  color: var(--nocturne-foreground, #e7e7ea);
+  font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto,
+    "Helvetica Neue", Arial, sans-serif;
+  min-height: 100dvh;
+}
+
+.nocturne-scope[data-theme="light"],
+.nocturne-scope:where([data-theme="light"]) {
+  color-scheme: light;
+  background: var(--nocturne-background, #fafafa);
+  color: var(--nocturne-foreground, #111);
+}

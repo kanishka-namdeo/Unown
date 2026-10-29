@@ -1,0 +1,4 @@
+Continue the UI fix loop. 28 component tests exist, 19 pass / 9 fail. Run
+`bun test src/components/nocturne`, inspect each failure, fix (code or test
+per the plan contract), repeat until green. Then full `bun test src` green
+and `bun run typecheck` clean. Do not add new screens.

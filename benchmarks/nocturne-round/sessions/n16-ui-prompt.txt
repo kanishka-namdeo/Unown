@@ -1,0 +1,42 @@
+You are executing Phase 3 (UI) of the Nocturne build — gallery app #7, the
+AI-native incident operations platform. The domain layer (src/lib/nocturne/,
+360 tests) and API layer (src/app/nocturne/api/, 78 tests) are complete and
+green; the full-repo suite is 1881/1881.
+
+Read benchmarks/nocturne-round/plan.md sections 1, 3 (route map — the UI
+pages mirror it), and any UI/embed sections, then study ONE sibling UI
+surface for conventions (src/components/aria/ + src/app/aria/ — the
+AriaProvider client store pattern, login + role switcher, page shell,
+scoped stylesheet, component test setup in
+src/components/aria/__tests__/) — do not study every sibling.
+
+Then implement the complete UI layer per the plan:
+1. src/components/nocturne/nocturne-provider.tsx — the client store
+   (session, fetch wrappers, per-page data loading, the embed-reset
+   message listener with resetType nocturne-reset, per the cadence/aria
+   embed contract)
+2. src/app/nocturne/page.tsx + layout.tsx — the app shell (login gate ->
+   dashboard), scoped stylesheet, public status page route
+   (src/app/nocturne/status/[slug]/) 
+3. The screens per plan (dashboard with active incidents + SLA countdowns,
+   incidents list + detail with timeline, services with on-call + severity
+   rules, rotations with weekly schedule + overrides, runbooks with
+   checklists, postmortems, analytics with MTTA/MTTR charts (cadence
+   accessible-SVG conventions), members/invites, the public status page)
+4. Component tests per plan §5 (bun:test + happy-dom, the aria test
+   conventions — provider + render + interaction + the embed-reset
+   contract test)
+
+Hard requirements:
+- every fetch through the provider with 401 -> login gate handling
+- role-gated UI (viewer sees read-only surfaces, admin sees config,
+  responder sees ack/resolve actions) reflecting the rbac matrix
+- countdowns/durations via the lib format helpers, never Date.now()
+  directly in render paths (the provider owns the clock tick)
+- `bun test src/components/nocturne` green, then full `bun test src`
+  green (1881+ and yours), then `bun run typecheck` clean
+- write code and tests only; do not commit; touch only
+  src/components/nocturne/ and src/app/nocturne/
+
+Work screen by screen in the plan's order. Leave the suite runnable if you
+run out of turns.
