@@ -30,19 +30,82 @@ export interface ChangelogStop {
   groups: ChangelogGroup[];
 }
 
-export const CHANGELOG_TOTAL_ENTRIES = 372;
+export const CHANGELOG_TOTAL_ENTRIES = 380;
 
 export const CHANGELOG_TOTALS: Record<ChangelogBucket, number> = {
-  "Added": 163,
+  "Added": 166,
   "Changed": 28,
   "Deprecated": 0,
   "Removed": 3,
-  "Fixed": 139,
+  "Fixed": 143,
   "Security": 5,
-  "Behavior": 34
+  "Behavior": 35
 };
 
 export const CHANGELOG_STOPS: ChangelogStop[] = [
+  {
+    "label": "0.0.42",
+    "date": "2026-10-29",
+    "total": 8,
+    "counts": {
+      "Added": 3,
+      "Changed": 0,
+      "Deprecated": 0,
+      "Removed": 0,
+      "Fixed": 4,
+      "Security": 0,
+      "Behavior": 1
+    },
+    "groups": [
+      {
+        "bucket": "Added",
+        "items": [
+          {
+            "title": "Encore — the gallery's eighth app, the Website Excellence showcase",
+            "behavior": false
+          },
+          {
+            "title": "The design critique lane",
+            "behavior": false
+          },
+          {
+            "title": "The Website Excellence research base and capability audit",
+            "behavior": false
+          }
+        ]
+      },
+      {
+        "bucket": "Fixed",
+        "items": [
+          {
+            "title": "F14 — the critic's own light-scheme blind spot",
+            "behavior": false
+          },
+          {
+            "title": "F15 — the lib session's first-cut defects",
+            "behavior": false
+          },
+          {
+            "title": "F17 — the flagship's 42px mobile overflow",
+            "behavior": false
+          },
+          {
+            "title": "F18 — a contrast fix that broke the light scheme",
+            "behavior": false
+          }
+        ]
+      },
+      {
+        "bucket": "Behavior",
+        "items": [
+          {
+            "title": "The critique loop is now the round-grade QA gate for UI work",
+            "behavior": true
+          }
+        ]
+      }
+    ]
+  },
   {
     "label": "0.0.41",
     "date": "2026-10-29",

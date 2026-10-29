@@ -9,6 +9,25 @@ otherwise specified; the release tag must always equal package.json's version.
 
 Repo conventions: measured claims cite their receipts (`docs/testing-strategy.md`, `benchmarks/memory-eval/*/RESULTS.md`). Changes to agent behavior — prompts, default models, routing, guard rules, hooks, memory injection — are filed under **Agent Behavior**; the policy lives in [docs/BEHAVIOR.md](docs/BEHAVIOR.md).
 
+## [0.0.42] - 2026-10-29
+
+### Added
+
+- **Encore — the gallery's eighth app, the Website Excellence showcase** (`src/lib/encore/` + `src/app/encore/` + `src/components/encore/`, embedded live at `/encore`): the round's own measured story as an elite-grade experience — the baseline receipt card (the landing page's honest 6.40/10 with its failing gates), the critique loop as a keyboard-operable stepper, the before/after drag comparison (the landing baseline hero vs the flagship final hero, a native range input — keyboard and screen reader by construction), the tool cards, the F-ledger, and the finale answering the program's success question. Built by the agent across **17 ledgered sessions** (459 turns, 513 tool calls, zero human edits to app code) from its own 192-line build contract; the seed's drift gate reads the committed critique receipts and asserts every displayed number field-by-field (the check:benchmarks pattern, tests as the gate). The receipts: [the session record](docs/encore-demo-session.md), [the plan](benchmarks/website-excellence-round/plan.md), [the validation log (F14–F18)](benchmarks/website-excellence-round/validation-log.md), [the round log](docs/website-excellence-session.md).
+- **The design critique lane** (`scripts/design_critic.mjs`, `critic:design`) — the Website Excellence Round's self-critique driver: any route of the production build (or any local HTML file) at desktop 1440 + mobile 390, per-band + full-page shots under reduced-motion in BOTH colour schemes, the objective in-page audit (WCAG contrast per text node against its composited background, the type-scale census, 4px-grid conformance, heading order, alts, overflow), cold-load FCP/LCP/CLS/TBT, and the strict-JSON seven-axis VLM critique through the Agnes lane — one committed receipt per run under `benchmarks/website-excellence-round/critiques/` (schema `website-excellence/critique/1`); `--enforce` turns a rubric fail into exit 1. Ships with the [rubric](benchmarks/website-excellence-round/rubric.md) and the known-bad [calibration fixture](scripts/design_critic_calibration.html) (the judge's discrimination receipted: 1.5 on the fixture vs 6.4 on the real page).
+- **The Website Excellence research base and capability audit** — [docs/website-excellence-research.md](docs/website-excellence-research.md) (every elite-website token cited from live production CSS: Linear's type ramp and alpha-border system, Geist's 10-scale color law, Stripe's craft, the 2025–26 landing grammar, the VLM-critique literature) and [docs/website-excellence-gap-analysis.md](docs/website-excellence-gap-analysis.md) (the before/after/roadmap capability audit).
+
+### Fixed
+
+- **F14 — the critic's own light-scheme blind spot:** its first runs photographed only the light theme (playwright's default), on a dark-first page — found when the receipts described "off-white backgrounds"; the lane now audits both schemes, the contrast gate sums violations across them.
+- **F15 — the lib session's first-cut defects:** a miscounted gate expectation (9 vs the receipt's 8 — `vlmAxes` fails too) and a self-scanning determinism invariant (the test's own matcher strings tripped the rule it enforces); both fixed in one fed-diagnosis resume, pinned by the drift gate.
+- **F17 — the flagship's 42px mobile overflow:** an `sr-only` data table whose layout box the scoped table CSS re-expanded past the 390px viewport (the class works on divs, not tables, under a scoped stylesheet); fixed by moving the clip to a wrapper, verified by probe.
+- **F18 — a contrast fix that broke the light scheme:** unconditional color pins ("under ANY scheme") left scheme-flipped dark text on unconditionally-dark panels — 27 light-theme violations, introduced by the fix for the dark-theme findings and caught by the both-scheme audit one iteration later; fixed by inheriting the landing's dual-declared tokens. The receipt that proved the breakage was in hand and unread when the writing session hit its turn cap — the ledger entry keeps the anatomy.
+
+### Agent Behavior
+
+- The critique loop is now the round-grade QA gate for UI work: build → screenshot (both schemes, both viewports) → objective audit → VLM critique → fix → re-score, receipts committed per run. The pre-push checklist for landing-affecting work gains `bun run build` (F10's lesson) and the critic's `--enforce` is the gate's exit code.
+
 ## [0.0.41] - 2026-10-29
 
 ### Added

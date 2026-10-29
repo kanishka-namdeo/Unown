@@ -7,6 +7,15 @@
     <description>How each feature and release works, what it does, and the receipts behind it — the longhand record of the self-improving terminal coding agent Unown.</description>
     <language>en</language>
     <item>
+      <title>&quot;The encore round: an agent that critiqued its own design work, then beat its own gates&quot;</title>
+      <link>https://unown-nine.vercel.app/blog/2026-10-29-the-encore-round</link>
+      <guid isPermaLink="true">https://unown-nine.vercel.app/blog/2026-10-29-the-encore-round</guid>
+      <pubDate>Thu, 29 Oct 2026 00:00:00 GMT</pubDate>
+      <description>&quot;The gallery&apos;s eighth app, built inside a measured design loop — every screenshot scored, every failure ledgered, every number traced to a receipt.&quot;</description>
+      <category>landing</category>
+      <category>demo</category>
+    </item>
+    <item>
       <title>&quot;The nocturne round: the agent built an incident-ops platform — and got better building it&quot;</title>
       <link>https://unown-nine.vercel.app/blog/2026-10-29-the-nocturne-round</link>
       <guid isPermaLink="true">https://unown-nine.vercel.app/blog/2026-10-29-the-nocturne-round</guid>

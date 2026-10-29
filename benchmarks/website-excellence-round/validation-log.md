@@ -191,3 +191,28 @@ screenshots) would have shipped the 27 violations.
   baseline landing page measuring 23 sizes and 32.7% off-grid. The
   VLM-overall floor (7.0) stays open and is recorded honestly as such
   (the single-judge variance band; see the round README's limitations).
+
+---
+
+## F19 — zombie standalone servers serving stale builds after a clean rebuild (an environment trap that mimics a build defect)
+
+**Failure (the OG-shot gate).** After a CLEAN rebuild (`rm -rf .next`), the
+landing page still 500'd on one chunk (`0uvtt87t3cfhp.js`) that existed in
+no build artifact — the served HTML referenced a chunk the fresh build
+never emitted, which presents exactly like a Turbopack manifest corruption.
+
+**Reproduction.** Boot `.next/standalone/server.js`, `pkill -f "node
+.next/standalone"`, rebuild, boot again — the old process survives: Next.js
+renames the process to `next-server (v16.4.2)`, so the pkill pattern never
+matches, and the OLD process keeps the port, serving its in-memory build
+against a deleted static tree.
+
+**Root cause.** Caller-environment: process-title rename defeating pattern
+kills. Two zombies accumulated this round (ports 3111/3218, both holding
+pre-rebuild state).
+
+**Mitigation adopted.** Kill standalone servers by PID from the port table
+(`ss -tlnp`), never by cmdline pattern; the round's build protocol (F16)
+now includes the port sweep before any build→serve→shoot sequence. No repo
+defect — the clean build was correct all along; the gate (the OG lane's
+console-error rejection) did its job.

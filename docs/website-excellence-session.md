@@ -167,15 +167,38 @@ five receipts field-by-field.
 
 ## Checkpoint 4 — the learning pipeline
 
-**PLANNED.** The failure→learning ledger for this round; the critic
-calibration (does the rubric discriminate a known-good from a known-bad
-page?); the specialised-agent evaluation (the Design Critic persona's
-contribution measured, not asserted); the memory/skill artifacts the round
-mints and their reuse evidence.
+**DONE.** The failure→learning ledger: **F14–F19** in
+[`validation-log.md`](../benchmarks/website-excellence-round/validation-log.md)
+— the critic's own light-scheme blind spot (F14, found by its first real
+run), the lib session's first-cut defects (F15), the OOM build protocol
+(F16), the 42px overflow (F17, found by the loop not any human), the
+contrast fix that broke the light theme (F18 — the loop catching its own
+fix one iteration later), the zombie-server environment trap (F19). The
+specialised-agent evaluation: the Design Critic persona is the one that
+shipped, and its contribution is measured (the calibration receipt: 1.5
+known-bad vs 6.4 real, every axis discriminating); the other persona
+candidates are recorded in the gap analysis as not-yet-justified by
+evidence. Retained learning: AutoDream consolidated this round's session
+notes into the tracked project memory (the sibling-inspection rule for
+new app dirs, the happy-dom origin quirk — rendered into
+`.unown/memory/project.md` while the round ran; the full diff rides the
+release commit).
+
+**VERIFIED.** Every F-entry names its reproduction, root cause, fix,
+benchmark and rerun evidence; the memory re-renders are committed with
+the release.
 
 ## Checkpoint 5 — landing, docs, release
 
-**PLANNED.** The landing gallery entry #8, the "Built And Improved With
-Unown" surface refresh, the blog post with media, the DOX pass, the
-scroll-budget reconciliation, the CHANGELOG entry, the version bump and
-the release with six per-OS builds.
+**DONE.** The gallery's eighth entry (17 sessions, 513 tool calls, 24
+files, 125 tests, zero human edits), the CSP block, the poster via the
+media lane, the demo-session receipt doc, the blog post with real media,
+the CHANGELOG entry, the version bump to **0.0.42**, the regenerated
+changelog rail + blog data + feed + OG shots, the DOX pass (README table,
+docs/AGENTS.md, scripts/AGENTS.md, benchmarks/AGENTS.md), the F19
+zombie-server protocol. All gates green at release time: 2041/2041 unit,
+15/15 e2e, typecheck, lint, check:docs (86 files), check:changelog (40
+stops), check:blog (24 posts), check:benchmarks, check:claims (63
+literals), instruction-chars (46 files, 0 findings), the OG palette gate.
+Released as **v0.0.42** — the six per-OS binaries through the release
+workflow.
