@@ -1,0 +1,411 @@
+{
+ "label": "midpoint-api",
+ "capturedAt": "2026-10-29T12:40:48",
+ "schema": "validation-round/1",
+ "drained": true,
+ "engine": {
+  "version": "self-learning v0.0.40",
+  "provider": "zai-bridge/agnes-3.0-flash",
+  "bridgeUpstreamOk": true
+ },
+ "memoryMetrics": {
+  "memoryVersions": {
+   "policy": 1,
+   "project": 10,
+   "user": 1,
+   "local": 1
+  },
+  "terminalMemory": {
+   "provenance": {
+    "version": 1,
+    "changedBy": "mem0",
+    "at": 1793267027422,
+    "sha256": "16e03e79b416e3432b8eae6217ec4e999ddfb2c102e6541b4034a0705fbbe774",
+    "manualSha256": "64f2d1b1793fa5e12c6a356e2bcab16910e61b0d8b731f6b56b65d613f37e119",
+    "manualEdited": true
+   },
+   "contentChars": 16682,
+   "bulletCount": 104,
+   "sectionCount": 5,
+   "userSkills": [
+    "fix-nocturne-seed-invariants",
+    "recover-failed-cycle",
+    "pre-commit-engine-check",
+    "test-cadence-domain",
+    "restart-engine"
+   ],
+   "stagedSkills": [
+    "debug-nocturne-routing-403",
+    "README.md"
+   ]
+  },
+  "retrievalProbeResults": null
+ },
+ "learningMetrics": {
+  "tasks": [
+   {
+    "id": "fix-fizzbuzz",
+    "name": "Fix FizzBuzz",
+    "category": "bugfix",
+    "difficulty": 1,
+    "status": "regression",
+    "origin": "seed",
+    "pass_count": 2,
+    "fail_count": 0,
+    "created_at": 1793266348423
+   },
+   {
+    "id": "fix-drop-right",
+    "name": "Fix dropRight off-by-one",
+    "category": "bugfix",
+    "difficulty": 2,
+    "status": "regression",
+    "origin": "seed",
+    "pass_count": 1,
+    "fail_count": 0,
+    "created_at": 1793266348424
+   },
+   {
+    "id": "fix-csv-parser",
+    "name": "Fix CSV parsing",
+    "category": "bugfix",
+    "difficulty": 3,
+    "status": "regression",
+    "origin": "seed",
+    "pass_count": 1,
+    "fail_count": 0,
+    "created_at": 1793266348424
+   },
+   {
+    "id": "swap-if-else-messages",
+    "name": "Swap if/else branch bodies",
+    "category": "bugfix",
+    "difficulty": 3,
+    "status": "regression",
+    "origin": "seed",
+    "pass_count": 1,
+    "fail_count": 0,
+    "created_at": 1793266348424
+   },
+   {
+    "id": "impl-debounce",
+    "name": "Implement debounce",
+    "category": "implementation",
+    "difficulty": 4,
+    "status": "regression",
+    "origin": "seed",
+    "pass_count": 1,
+    "fail_count": 0,
+    "created_at": 1793266348424
+   },
+   {
+    "id": "impl-map-limit",
+    "name": "Implement mapLimit",
+    "category": "implementation",
+    "difficulty": 4,
+    "status": "regression",
+    "origin": "seed",
+    "pass_count": 1,
+    "fail_count": 0,
+    "created_at": 1793266348424
+   }
+  ],
+  "taskCount": 6,
+  "tasksPassing": 6,
+  "suiteStats": {
+   "total": 6,
+   "passing": 6,
+   "capability": 0,
+   "regression": 6,
+   "minted": 0,
+   "graduated": 0,
+   "quarantined": 0,
+   "saturated": true
+  },
+  "cycles": [
+   {
+    "task_id": "fix-fizzbuzz",
+    "status": "already-passing",
+    "iteration": 1,
+    "summary": "baseline passed — no improvement needed",
+    "shipped": 0,
+    "created_at": 1793277348504,
+    "ended_at": 1793277353692
+   },
+   {
+    "task_id": "impl-map-limit",
+    "status": "already-passing",
+    "iteration": 1,
+    "summary": "baseline passed — no improvement needed",
+    "shipped": 0,
+    "created_at": 1793273766916,
+    "ended_at": 1793273773914
+   },
+   {
+    "task_id": "impl-debounce",
+    "status": "already-passing",
+    "iteration": 1,
+    "summary": "baseline passed — no improvement needed",
+    "shipped": 0,
+    "created_at": 1793272616514,
+    "ended_at": 1793272656743
+   },
+   {
+    "task_id": "swap-if-else-messages",
+    "status": "already-passing",
+    "iteration": 1,
+    "summary": "baseline passed — no improvement needed",
+    "shipped": 0,
+    "created_at": 1793269559745,
+    "ended_at": 1793269717205
+   },
+   {
+    "task_id": "fix-csv-parser",
+    "status": "already-passing",
+    "iteration": 1,
+    "summary": "baseline passed — no improvement needed",
+    "shipped": 0,
+    "created_at": 1793268944305,
+    "ended_at": 1793268957770
+   },
+   {
+    "task_id": "fix-drop-right",
+    "status": "already-passing",
+    "iteration": 1,
+    "summary": "baseline passed — no improvement needed",
+    "shipped": 0,
+    "created_at": 1793268153983,
+    "ended_at": 1793268343675
+   },
+   {
+    "task_id": "fix-fizzbuzz",
+    "status": "already-passing",
+    "iteration": 1,
+    "summary": "baseline passed — no improvement needed",
+    "shipped": 0,
+    "created_at": 1793266948696,
+    "ended_at": 1793267548775
+   }
+  ],
+  "cycleCount": 7,
+  "cycleStatusCounts": {
+   "already-passing": 7
+  },
+  "improvements": [],
+  "improvementCount": 0,
+  "improvementsShipped": 0,
+  "dreams": [
+   {
+    "id": "a64dab08-06d8-4505-a915-626c196ef1fc",
+    "status": "done",
+    "notes": 4,
+    "created_at": 1793277358511,
+    "entries_merged": 1,
+    "entries_pruned": 3,
+    "entries_added": 3
+   },
+   {
+    "id": "project-72281ccb-c1db-4fb7-bb50-4d90798fddb4",
+    "status": "done",
+    "notes": 6,
+    "created_at": 1793277258921,
+    "entries_merged": 0,
+    "entries_pruned": 0,
+    "entries_added": 1
+   },
+   {
+    "id": "a466cd3f-ba04-4fbc-bcd5-6b19f9ffa9e8",
+    "status": "done",
+    "notes": 4,
+    "created_at": 1793277183395,
+    "entries_merged": 1,
+    "entries_pruned": 3,
+    "entries_added": 4
+   },
+   {
+    "id": "49933fa6-ef23-47f1-8240-187f7bdc2f88",
+    "status": "done",
+    "notes": 4,
+    "created_at": 1793273776920,
+    "entries_merged": 1,
+    "entries_pruned": 2,
+    "entries_added": 3
+   },
+   {
+    "id": "d4b9b964-8c69-47be-961b-73efdf5ad677",
+    "status": "done",
+    "notes": 4,
+    "created_at": 1793273651852,
+    "entries_merged": 0,
+    "entries_pruned": 2,
+    "entries_added": 1
+   },
+   {
+    "id": "project-13310e3d-7512-420a-9fe4-dca55d0d0195",
+    "status": "done",
+    "notes": 4,
+    "created_at": 1793273583852,
+    "entries_merged": 0,
+    "entries_pruned": 0,
+    "entries_added": 3
+   },
+   {
+    "id": "a52e56ed-26ba-4b82-91af-d210242c8d3b",
+    "status": "done",
+    "notes": 4,
+    "created_at": 1793272661526,
+    "entries_merged": 0,
+    "entries_pruned": 4,
+    "entries_added": 4
+   },
+   {
+    "id": "project-584a8f5a-59bc-4fc2-8bd4-31d850fb59a6",
+    "status": "done",
+    "notes": 1,
+    "created_at": 1793272432336,
+    "entries_merged": 0,
+    "entries_pruned": 0,
+    "entries_added": 1
+   },
+   {
+    "id": "a37bd5b3-9096-412e-9db8-c8ca304cebcb",
+    "status": "done",
+    "notes": 3,
+    "created_at": 1793271566288,
+    "entries_merged": 0,
+    "entries_pruned": 3,
+    "entries_added": 3
+   },
+   {
+    "id": "7245c90c-ef63-4ce8-ae41-89f54e3f11fe",
+    "status": "done",
+    "notes": 4,
+    "created_at": 1793269719832,
+    "entries_merged": 0,
+    "entries_pruned": 0,
+    "entries_added": 2
+   },
+   {
+    "id": "f93d84a9-3c62-431e-b548-1bc8371fd430",
+    "status": "done",
+    "notes": 3,
+    "created_at": 1793269349605,
+    "entries_merged": 1,
+    "entries_pruned": 3,
+    "entries_added": 4
+   },
+   {
+    "id": "bad97358-a418-4d2a-9332-42a746646fef",
+    "status": "done",
+    "notes": 3,
+    "created_at": 1793268959313,
+    "entries_merged": 0,
+    "entries_pruned": 0,
+    "entries_added": 3
+   },
+   {
+    "id": "project-39814df1-e076-4076-a043-e238b5f72dca",
+    "status": "done",
+    "notes": 1,
+    "created_at": 1793268689103,
+    "entries_merged": 0,
+    "entries_pruned": 0,
+    "entries_added": 0
+   },
+   {
+    "id": "project-76d2f538-4727-4481-b00f-a3ba4e149927",
+    "status": "done",
+    "notes": 1,
+    "created_at": 1793268344029,
+    "entries_merged": 0,
+    "entries_pruned": 0,
+    "entries_added": 0
+   },
+   {
+    "id": "project-40f20044-8bdb-4845-8d2a-d5ce158b8967",
+    "status": "done",
+    "notes": 8,
+    "created_at": 1793267548835,
+    "entries_merged": 0,
+    "entries_pruned": 0,
+    "entries_added": 11
+   },
+   {
+    "id": "project-c3b9af35-e41d-4c9d-9440-6275708ee634",
+    "status": "done",
+    "notes": 3,
+    "created_at": 1793267548835,
+    "entries_merged": 0,
+    "entries_pruned": 0,
+    "entries_added": 5
+   }
+  ],
+  "dreamCount": 16,
+  "skills": [
+   {
+    "id": "3901d9ae-86b7-46fc-a939-4ad56974a027",
+    "project_slug": "unown-066db0",
+    "project_path": "/home/z/my-project/unown",
+    "name": "debug-nocturne-routing-403",
+    "description": "Use when Nocturne routes return unexpected 401/403 errors during permission tests, specifically when debugging `requirePermission` gates in `src/app/nocturne/api/`.",
+    "body": "---\nname: debug-nocturne-routing-403\ndescription: Use when Nocturne routes return unexpected 401/403 errors during permission tests, specifically when debugging `requirePermission` gates in `src/app/nocturne/api/`.\nstaged: true\n---\n\n# Debugging Nocturne Routing 403s\n\nWhen a Nocturne route returns an unexpected 403, it is often due to the `requirePermission` gate incorrectly interpreting the `forUserId` or resource target.\n\n1. **Inspect the gate**: Check `src/app/nocturne/api/_state.ts` to see how `requirePermission` maps the current user's permissions to the target resource.\n2. **Audit resource ownership**: The gate usually checks if the `forUserId` matches the current `userId` to determine \"covered seat\" status. If a user is trying to delete an override they are responsible for, verify the logic handles this carve-out correctly.\n3. **Verify test intent**: Read the relevant section of `benchmarks/nocturne-round/plan.md` to confirm the intended permission boundary.\n4. **Check session state**: Ensure the test setup correctly allocates session IDs using `nextId` and that the logged-in user has the expected permissions (often `resource=forUserId`).\n5. **Adjust logic**: If the 403 is due to the user not being recognized as the covered owner, update the permission check to explicitly allow the user to delete overrides where `userId = self` or `forUserId = self`.\n",
+    "status": "shipped",
+    "version": 1,
+    "dream_id": "project-72281ccb-c1db-4fb7-bb50-4d90798fddb4",
+    "created_at": 1793277314198,
+    "updated_at": 1793277314198
+   },
+   {
+    "id": "8302ea42-b0a3-4303-9c3b-21b42d2abe0d",
+    "project_slug": "unown-066db0",
+    "project_path": "/home/z/my-project/unown",
+    "name": "fix-nocturne-seed-invariants",
+    "description": "Use when Nocturne domain tests fail due to seed data timeline violations (e.g., escalation timestamp after acknowledgment) or to validate that nc_seed_* constants satisfy engine preconditions before running the suite.",
+    "body": "---\nname: fix-nocturne-seed-invariants\ndescription: Use when Nocturne domain tests fail due to seed data timeline violations (e.g., escalation timestamp after acknowledgment) or to validate that nc_seed_* constants satisfy engine preconditions before running the suite.\nstaged: true\n---\n\n# Fix Nocturne Seed Invariants\n\nNocturne test failures often stem from seed data (`nc_seed_*` constants) violating temporal invariants enforced by the escalation engine.\n\n1. **Identify the failing test**: Run `bunx biome check --write` and the specific test suite to isolate the assertion error.\n2. **Inspect the invariant**: Check `src/lib/nocturne/escalation.ts`. The guard `if (!incident.acknowledgedAt)` means escalation timers only fire for unacked/snoozed incidents.\n3. **Verify seed timestamps**: Open the seed file and compare `lastEscalatedAt` against `acknowledgedAt` for every `NocturneIncident`.\n   - Rule: `lastEscalatedAt` must be **strictly before** `acknowledgedAt`.\n   - If `lastEscalatedAt` is null, it is treated as `triggeredAt`, which is also acceptable but must precede any later events.\n4. **Reorder the seed**: Edit the seed constant so the escalation event (`lastEscalatedAt`) fires before the acknowledgment event (`acknowledgedAt`). Do not modify the engine logic to accept invalid seeds.\n5. **Validate tier consistency**: If the test uses multi-tier policies, ensure the number of ticks in the test matches `N-1` for an `N`-tier policy, where each tick waits the current tier's `waitMinutes`.\n6. **Run the full suite**: Execute `bun test src/lib/nocturne` to confirm all 360+ tests pass.\n7. **Typecheck**: Run `bunx tsc --noEmit` in `src/` to ensure no type regressions.\n",
+    "status": "shipped",
+    "version": 1,
+    "dream_id": "project-13310e3d-7512-420a-9fe4-dca55d0d0195",
+    "created_at": 1793273633773,
+    "updated_at": 1793273633773
+   }
+  ],
+  "skillCount": 2,
+  "runCount": 37,
+  "runStats": {
+   "tokensIn": 388088,
+   "tokensOut": 77793,
+   "toolCalls": 381
+  },
+  "passRate": {
+   "runsPassed": 35,
+   "runsTotal": 37
+  },
+  "noteCount": 40,
+  "notesPending": 4,
+  "hooks": {
+   "total": 846,
+   "denies": 8
+  },
+  "governor": {
+   "budget": {
+    "callsHour": 13,
+    "callsDay": 56,
+    "tokensHour": 216963,
+    "tokensDay": 603240,
+    "limits": {
+     "callsHour": 60,
+     "tokensHour": 200000,
+     "tokensDay": 2000000
+    },
+    "overBudget": true,
+    "reason": "budget:throttled 216963 tokens in the last hour (limit 200000)"
+   },
+   "breaker": {
+    "open": false,
+    "consecutiveFailures": 0,
+    "threshold": 3,
+    "retryInMs": 0
+   }
+  }
+ }
+}
