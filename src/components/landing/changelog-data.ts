@@ -44,15 +44,15 @@ export const CHANGELOG_TOTALS: Record<ChangelogBucket, number> = {
 
 export const CHANGELOG_STOPS: ChangelogStop[] = [
   {
-    "label": "0.0.43",
+    "label": "0.0.44",
     "date": "2026-10-30",
-    "total": 15,
+    "total": 7,
     "counts": {
       "Added": 5,
       "Changed": 0,
       "Deprecated": 0,
       "Removed": 0,
-      "Fixed": 10,
+      "Fixed": 2,
       "Security": 0,
       "Behavior": 0
     },
@@ -92,7 +92,28 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
           {
             "title": "F24 — the landing's HP bars animated width, and the first gallery app shipped transition[-]all",
             "behavior": false
-          },
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "label": "0.0.43",
+    "date": "2026-10-30",
+    "total": 8,
+    "counts": {
+      "Added": 0,
+      "Changed": 0,
+      "Deprecated": 0,
+      "Removed": 0,
+      "Fixed": 8,
+      "Security": 0,
+      "Behavior": 0
+    },
+    "groups": [
+      {
+        "bucket": "Fixed",
+        "items": [
           {
             "title": "The provider-workflow hardening round",
             "behavior": false

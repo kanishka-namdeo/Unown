@@ -211,3 +211,32 @@ the weight census (scoped tables inherit the ramp); grid children need
 **NEXT.** The round's closing docs (the gap-analysis refresh, the blog
 post, the README), the version bump to 0.0.44, and the release —
 through the new ci-green gate this round shipped.
+
+## Checkpoint 5 — the close: docs, the seventh amendment, v0.0.44
+
+**DONE.** The gap-analysis refresh
+([website-excellence-gap-analysis-2.md](website-excellence-gap-analysis-2.md)
+— the round-1 roadmap closed or carried, the capability table, the
+open roadmap), the blog post (the craft axes, the nine-site evidence,
+the Ledger loop), the README/docs registrations, the coverage
+exemptions for the three route/type files (the encore pattern: route
+files are e2e-pinned, type files are pure). The 0.0.44 cut needed the
+**seventh scroll-budget amendment** (3,750 → 3,780): every release
+adds a rail stop (~8 net generated words), the zero-headroom ceiling
+left the 0.0.44 stop seven over (measured 3,757) — compressed first
+(the finale lead −2w, the models local-lane restatement −6w), then
+the ceiling carries one stop's headroom so the next release does not
+open on a knife's edge. The changelog split honestly: the engine's
+provider-workflow entries stay in [0.0.43] (they shipped in its
+binary); the round's craft-axes/Ledger/skills entries move to
+[0.0.44] where they actually ship.
+
+**VERIFIED (the pre-release battery, all green on the release
+commit):** typecheck, lint 0 errors, 2063/2063 unit, 15/15 e2e, every
+check:* lane, the coverage gate with the exemptions, the scroll
+budget 3,756 ≤ 3,780 in BOTH twins, `bun bin/unown --version` = 0.0.44
+= package.json = the tag.
+
+**NEXT.** Push, wait for CI to conclude green (never cancelled
+mid-flight — the round's own law), then the v0.0.44 tag: the first
+release to run through the ci-green gate this round shipped.

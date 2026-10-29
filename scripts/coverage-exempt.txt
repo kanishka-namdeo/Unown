@@ -8,3 +8,6 @@
 # Current exemptions: none — every changed line is exercisable.
 src/app/layout.tsx   next/font/google exports are compiler-generated — importing the module under bun test is a SyntaxError (pinned by src/app/__tests__/layout.test.tsx as a text drift-gate + asset-existence check instead)
 src/app/blog/[slug]/opengraph-image.tsx   ImageResponse renders through Satori/resvg wasm at request/build time — cannot execute under the bun test happy-dom lane; pinned end to end by e2e/blog.spec.ts (route 200, PNG magic bytes, og:image meta) and verify-deploy.mjs
+src/app/ledger/layout.tsx   route layout: metadata + the scoped stylesheet import — compiler-driven (next injects the CSS); the bands it wraps are covered by src/components/ledger/__tests__/ledger-components.test.tsx and the route is pinned end to end by the critic lane + the gallery e2e
+src/app/ledger/page.tsx   the route page: a Suspense boundary over the server-read searchParams prop — the embed contract is pinned by ledger-components.test.tsx (embed flag drops chrome) and by /ledger serving 200 in the deploy-verify lane
+src/lib/ledger/types.ts   pure type surface, no runtime values (the fugue/encore determinism pin); the seed/stats/format modules that implement these shapes carry the suite

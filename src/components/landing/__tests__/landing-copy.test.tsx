@@ -298,7 +298,7 @@ describe("landing models", () => {
     expect(text).toContain("local-*");
     expect(text).toContain("node benchmarks/local-llm/runner.mjs serve");
     // The split the page promises: background learning goes local, sessions do not.
-    expect(text).toContain("while sessions stay on the remote one");
+    expect(text).toContain("while sessions stay remote");
   });
 
   test("the complementary-bench sentence carries the three measured mechanisms", () => {

@@ -84,9 +84,9 @@ export function ModelsPane() {
               has a local lane: point{" "}
               <code className="font-mono text-ink">BRIDGE_LOCAL_URL</code> at llama.cpp,
               Ollama or LM Studio and <code className="font-mono text-ink">local-*</code>{" "}
-              ids route there keyless, so background learning (note triage, failure
-              mining, AutoDream) can run on a small local model while sessions stay on
-              the remote one —{" "}
+              ids route there keyless — background learning (note triage, failure
+              mining, AutoDream) runs on a small local model while sessions stay
+              remote —{" "}
               <code className="font-mono text-ink">
                 node benchmarks/local-llm/runner.mjs serve
               </code>{" "}

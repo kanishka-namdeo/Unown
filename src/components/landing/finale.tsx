@@ -142,7 +142,7 @@ export function FinaleSection() {
                  (`.ink-fill`). The words carry the same textContent; only
                  the spans are new. */
               decode
-              lead="Clone it, run one session, come back tomorrow with memory that already knows what you told it. Nothing to sign up for. If it is not useful, you have lost an afternoon."
+              lead="Clone it, run one session, come back tomorrow to memory that knows what you told it. Nothing to sign up for; if it is not useful, you have lost an afternoon."
             >
               One afternoon, and then it starts remembering.
             </SectionHead>

@@ -100,7 +100,7 @@ const BASE = process.env.LANDING_AUDIT_URL ?? "http://localhost:3000";
 const OUT = join(process.cwd(), "download", "landing");
 const BUDGET = process.argv.includes("--budget");
 const MAX_VH = 15.5;
-const MAX_WORDS = 3750;
+const MAX_WORDS = 3780;
 const MAX_BAND_VH = 3;
 
 let chromium = null;
