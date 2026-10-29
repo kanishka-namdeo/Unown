@@ -86,7 +86,7 @@ export function Finale({ embed }: { embed: boolean }) {
                   <strong className="text-gold">{overall}</strong>{" "}
                   overall ({latest.label}).
                 </span>
-                <span className="encore-type-caption text-faint/70">
+                <span className="encore-type-caption text-dim">
                   The answer flips when the next receipt lands with{" "}
                   <code className="font-mono">passed: true</code> —
                   zero code change.

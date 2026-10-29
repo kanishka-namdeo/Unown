@@ -30,14 +30,14 @@ export interface ChangelogStop {
   groups: ChangelogGroup[];
 }
 
-export const CHANGELOG_TOTAL_ENTRIES = 380;
+export const CHANGELOG_TOTAL_ENTRIES = 381;
 
 export const CHANGELOG_TOTALS: Record<ChangelogBucket, number> = {
   "Added": 166,
   "Changed": 28,
   "Deprecated": 0,
   "Removed": 3,
-  "Fixed": 143,
+  "Fixed": 144,
   "Security": 5,
   "Behavior": 35
 };
@@ -46,13 +46,13 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
   {
     "label": "0.0.42",
     "date": "2026-10-29",
-    "total": 8,
+    "total": 9,
     "counts": {
       "Added": 3,
       "Changed": 0,
       "Deprecated": 0,
       "Removed": 0,
-      "Fixed": 4,
+      "Fixed": 5,
       "Security": 0,
       "Behavior": 1
     },
@@ -91,6 +91,10 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
           },
           {
             "title": "F18 — a contrast fix that broke the light scheme",
+            "behavior": false
+          },
+          {
+            "title": "F20 — the encore sessions reintroduced the opacity-faded text tokens the landing banned",
             "behavior": false
           }
         ]

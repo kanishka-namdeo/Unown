@@ -147,7 +147,7 @@ function FailureRow({ entry }: { entry: FailureEntry }) {
               href={`https://github.com/kanishka-namdeo/Unown/commit/${commit}`}
               target="_blank"
               rel="noreferrer noopener"
-              className="text-amber underline underline-offset-2 hover:text-amber/80"
+              className="text-amber underline underline-offset-2 hover:text-amber"
             >
               {docPart}
               {commit ? (

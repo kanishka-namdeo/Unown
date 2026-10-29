@@ -1,0 +1,16 @@
+The sweep found TWO more opacity-faded text tokens the deploy gate will
+reject (the same rule as your last fix — no translucent text tokens,
+axe computes contrast through alpha):
+
+1. src/components/encore/primitives.tsx line ~214: text-dim/70 -> the
+   full-strength text-faint token (it is a secondary caption inside a
+   panel — faint passes on panel surfaces per the named-pairs rule; if
+   that span sits on panel-2, use text-dim instead — check the surface)
+2. src/components/encore/views/failures.tsx line ~150: text-amber/80 ->
+   the full-strength text-amber token
+
+Replace the modifier classes with the full-strength tokens, keep every
+other class untouched. Then run and report: `bun test src/components/
+encore`, `bun run typecheck`, `bun run lint`. Then run this sweep
+yourself and confirm zero matches:
+rg -n "text-(faint|dim|ink|gold|amber|poke)[a-z-]*/[0-9]+" src/components/encore/ src/app/encore/

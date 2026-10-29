@@ -216,3 +216,38 @@ pre-rebuild state).
 now includes the port sweep before any build→serve→shoot sequence. No repo
 defect — the clean build was correct all along; the gate (the OG lane's
 console-error rejection) did its job.
+
+---
+
+## F20 — the encore sessions reintroduced the opacity-faded text tokens the landing banned (caught by the live deploy gate, the one lane that checks the emitted CSS)
+
+**Failure (verify-deploy after the v0.0.42 push).** The live gate's
+"faded text utilities not emitted" check failed: the emitted CSS carried
+`.text-faint\/70` — four occurrences across the encore components
+(`loop.tsx`, `finale.tsx`, `primitives.tsx` `text-dim/70`,
+`failures.tsx` `text-amber/80`).
+
+**Reproduction.** `node scripts/verify-deploy.mjs` against the live
+deployment; the source sweep
+`rg "text-(faint|dim|ink|gold|amber|poke)[a-z-]*/[0-9]+" src/components/encore/`.
+
+**Root cause.** App defect with a DOX-scope lesson: the landing's
+categorical rule ("NO translucent text/background tokens — axe computes
+effective contrast THROUGH alpha", the gallery round's documented lesson
+in `src/components/landing/AGENTS.md`) lives in the landing's DOX file —
+which the encore sessions were explicitly scoped AWAY from ("no landing
+edits"). A rule that must hold repo-wide but is documented in one
+subtree's AGENTS.md is a rule the next subtree will break. The
+session-level design rules (the plan §4.3 named-pairs rule) did not
+spell out the no-opacity-modifier form.
+
+**Fix implemented.** E11 + E12: all four occurrences replaced with
+full-strength tokens (`text-dim` / `text-faint` / `text-amber` per
+surface); the mangle-proof sweep returns zero matches across
+`src/components/encore/` + `src/app/encore/`.
+
+**Benchmark created.** The existing verify-deploy gate IS the regression
+net (it caught this within one deploy); the sweep pattern is recorded
+here for the next round's checklist. The candidate durable fix (the gap
+analysis's roadmap): move the no-faded-text rule to the root AGENTS.md
+or a shared design-system contract so no subtree can miss it.

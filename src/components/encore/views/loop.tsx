@@ -202,7 +202,7 @@ function LoopStepper({
                   : "border-line bg-panel text-dim hover:text-ink"
               }`}
             >
-              <span className="encore-type-caption text-faint/70 mr-2">
+              <span className="encore-type-caption text-dim mr-2">
                 {i + 1}.
               </span>
               {s.label}

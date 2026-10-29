@@ -211,7 +211,7 @@ export function GateChip({ gate }: { gate: GateChipData }) {
         >
           {gate.value}
           {gate.bound ? (
-            <span className="ml-1 text-dim/70">/ {gate.bound}</span>
+            <span className="ml-1 text-faint">/ {gate.bound}</span>
           ) : null}
         </span>
         <span
