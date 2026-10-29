@@ -1,0 +1,5 @@
+Continue the fix loop. All modules exist; suite stands 346 pass / 12 fail
+across 18 files. Run `bun test src/lib/nocturne`, inspect each failure, fix
+the code (not the tests, unless the test itself is wrong per the plan), and
+repeat until fully green. Then run `bun run typecheck` and fix any errors.
+Do not add new modules. Leave the suite runnable if you run out of turns.

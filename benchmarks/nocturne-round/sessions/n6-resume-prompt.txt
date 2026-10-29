@@ -1,0 +1,17 @@
+Continue exactly where you left off. Suite stands 174 pass / 7 fail across 9
+files; rotation.ts + sla.ts landed. Still missing: store.ts, dedup.ts,
+correlate.ts, escalation.ts, incident.ts, postmortem.ts, analytics.ts,
+status.ts (+ tests), and seed.test.ts.
+
+Remaining work, in order:
+1. store.ts (file-backed JSON store, atomic writes, cache, structural
+   reseed) + its test
+2. dedup.ts, correlate.ts, escalation.ts, incident.ts, postmortem.ts,
+   analytics.ts, status.ts + their test files (plan sections 2 + 4)
+3. fix the 7 failing tests (the nextHandoff period-anchoring bug you were
+   mid-fix on)
+4. PBT invariants per plan section 5
+5. `bun test src/lib/nocturne` fully green; `bun run typecheck` clean
+
+Write files immediately; no re-exploration. Leave the suite runnable if you
+run out of turns.

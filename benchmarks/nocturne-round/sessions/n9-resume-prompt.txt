@@ -1,0 +1,5 @@
+Finish the fix loop. Suite stands 356 pass / 4 fail. You were fixing a seed
+bug: incident 2's lastEscalatedAt was AFTER acknowledgedAt, violating the
+escalation-only-while-unacked invariant. Complete that fix, re-run
+`bun test src/lib/nocturne` until fully green, then `bun run typecheck`
+clean. Do not add new modules or tests.

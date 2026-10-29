@@ -1,0 +1,15 @@
+Continue exactly where you left off. You were writing src/lib/nocturne/
+modules and tests; 20 files exist (types, ids, clock, tenancy, rbac,
+password, sessions, audit, metering, validation, format, seed + tests), the
+suite currently stands 146 pass / 5 fail, typecheck clean.
+
+Remaining work:
+1. the engine modules still missing: store.ts, dedup.ts, correlate.ts,
+   escalation.ts, rotation.ts, sla.ts, incident.ts, postmortem.ts,
+   analytics.ts, status.ts (+ their test files) per plan sections 2 and 4
+2. fix the 5 failing tests
+3. the PBT invariant tests per plan section 5
+4. `bun test src/lib/nocturne` fully green, `bun run typecheck` clean
+
+Write files immediately; do not re-explore. If you run out of turns, leave
+the suite runnable.

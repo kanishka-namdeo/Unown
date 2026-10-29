@@ -1,0 +1,23 @@
+Execute Phase 1 (Lib) of the Nocturne build contract at
+benchmarks/nocturne-round/plan.md — read the full contract first, then
+implement the complete src/lib/nocturne/ domain layer per section 2 (the 21
+modules) and section 1 (the data model), writing the per-module test files
+per section 5's unit + PBT invariants as you go.
+
+Hard requirements:
+- pure domain code only: no I/O outside store.ts, explicit `now` everywhere,
+  no Date.now()/Math.random() in src/lib/nocturne/ (the fugue determinism
+  contract), atomic file-backed JSON store, structural reseed on schema
+  drift
+- fail-closed tenancy (assertTenant/makeCtx), scrypt password hashing and
+  HMAC sessions per the parley pattern, deterministic seed (2 tenants, 9
+  weeks of incidents + rotations, AS_OF 2026-10-28T12:00:00Z)
+- the dedup/correlate/escalation/rotation/sla engine modules exactly per
+  section 4
+- every module gets its test file; run `bun test src/lib/nocturne` and fix
+  until fully green; `bun run typecheck` must stay clean
+- write code and tests only; do not commit; do not touch any file outside
+  src/lib/nocturne/
+
+Work module by module in the plan's order. If you run out of turns mid-set,
+leave the suite in a runnable state.

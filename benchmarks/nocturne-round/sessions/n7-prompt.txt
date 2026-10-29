@@ -1,0 +1,27 @@
+You are continuing the Nocturne build (gallery app #7, an AI-native incident
+operations platform). Read benchmarks/nocturne-round/plan.md (sections 1, 2,
+4, 5) and the existing src/lib/nocturne/ modules (types, ids, clock, tenancy,
+rbac, password, sessions, audit, metering, validation, format, seed, store,
+rotation, sla — all tested, 181/181 green).
+
+Your job: write ONLY the remaining engine modules + their test files:
+1. dedup.ts — the dedup engine: dedupKey + window → logical alert, idempotent
+   merge (plan §4)
+2. correlate.ts — standalone alert → open incident (service + severity match)
+3. escalation.ts — escalation timer: tier advance on silence, clock-injected
+4. incident.ts — incident lifecycle: ack, resolve, snooze, timeline append
+5. postmortem.ts — postmortem creation + action-item state
+6. analytics.ts — MTTA/MTTR, counts by severity/service, breach rate, on-call
+   load
+7. status.ts — public status page computed surface: component status + active
+   incidents
+8. seed.test.ts — the seed's structural invariants
+9. the PBT invariant tests per plan §5 (ack-before-resolve, escalation only
+   while unacked, contiguous rotations, MTTA/MTTR over resolved only, dedup
+   idempotence)
+
+Constraints: pure domain code, explicit `now`, no Date.now()/Math.random() in
+src/lib/nocturne/, reuse the existing modules' conventions (import types from
+types.ts, ids from ids.ts, etc). Then run `bun test src/lib/nocturne` and fix
+until fully green; `bun run typecheck` must stay clean. Do not touch files
+outside src/lib/nocturne/. Write files immediately; minimal exploration.
