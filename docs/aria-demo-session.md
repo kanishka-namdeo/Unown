@@ -84,8 +84,8 @@ build's contract.
 | Lib/domain | 6 sessions (5 capped resumes → 1 clean finish) | 16 modules + 18 test files, 7,146 LOC — **315 tests green** (2,520 expects), typecheck clean, full-repo suite 1,201 pass / 0 fail, zero files outside `src/lib/aria/` | (this round's next commits) |
 | API | 7 sessions (6 capped resumes → 1 clean finish; one fresh-session restart after the mega-session's context drag passed 900K input/40 turns) | ~50 routes across 10 groups with the 401/403/404/402/400 ladder, `aria-store` accessor, layout/page/globals stubs, 14 test files — **210 tests green** (1,077 expects), typecheck + lint clean, lib fixes receipted (the plan's `invites` array, the owner-carve-out refinement) | (this round's next commits) |
 | UI | 6 sessions (5 capped resumes → 1 clean finish) | AriaProvider client store (embed channel per §8.2), server-side embed/cookie read (the F3 pin), shell/login/dashboard/pipeline-kanban/deal-detail/accounts/contacts/leads/sequences/triage/reports/admin/primitives — RBAC-disabled-with-reason everywhere; **31 UI tests green**, full aria surface 556 green, typecheck clean, zero lib/API changes | (this round's next commits) |
+| Landing embed | 2 sessions (1 capped → 1 clean finish) | the `/aria/:path*` + the missing `/fugue/:path*` CSP blocks, the favicon, gallery entry #6 with counted receipts (21 sessions / 920 tool calls / 122 files / 556 tests / 4 commits), "Six apps, live." copy, pins bumped data-driven, production build clean (caught the missing `"use client"`), posters re-shot, F3 pin verified, landing suite 136 green, all gates green | (this round's next commits) |
 | E2E + review + drill | (pending) | Playwright e2e, reviewer passes, P0 pins, cold-start acceptance | — |
-| Landing embed | (pending) | gallery entry #6, embed contract patches, poster, copy, test pins | — |
 
 Every session's turns/tokens/wall-time/outcome lands in the round's
 [UX ledger](../benchmarks/aria-round/ux-ledger.md); every failure lands in
@@ -168,10 +168,22 @@ next. A checkpoint is DONE only with measured numbers.
 - [ ] **CP5 — e2e + adversarial review + cold-start drill** (Playwright
   e2e; reviewer subagent passes; P0 pins; a fresh-sandbox, zero-memory
   agent stands the app up from the repo alone).
-- [ ] **CP6 — landing embedding** (gallery entry #6 with the sources
-  comment and receipts; embed contract patches — `?embed=1`,
-  `aria-reset` handshake, CSP `frame-ancestors` for `/aria/:path*`;
-  poster; "Six apps, live." copy; test pins bumped).
+- [x] **CP6 — landing embedding** (DONE — operator-verified, Phase 4 before
+  Phase 5 per the plan's order so the e2e exercises the embedded app): the
+  `/aria/:path*` frame-hardening block in `next.config.ts` (plus the
+  `/fugue/:path*` block the six-app gallery exposed as missing — the same
+  gap class the tracked memory warned about for cadence), the aria favicon
+  + `metadata.icons`, gallery entry #6 in `live-demo-data.ts` with counted
+  receipts (21 sessions, 920 tool calls, 122 files, 556 tests, 4 commits
+  — each citing its receipt, the final counts landing at release), the
+  "Six apps, live. Pick one." copy, the `live-demo.test.tsx` +
+  `built-improved.test.tsx` pins bumped data-driven. The production build
+  is clean (it caught the missing `"use client"` in the client store —
+  fixed), posters re-shot from the build (aria at 2880×1800), the F3 pin
+  (`embed:true`/`embed:false` serialization) verified on the standalone
+  server, `bun test src/components/landing` **136 pass / 0 fail**, and the
+  check:docs / check:blog / check:changelog gates green. UX rows A22–A23
+  ([the ledger](../benchmarks/aria-round/ux-ledger.md)).
 - [ ] **CP7 — the learning-loop evidence** (midpoint + final snapshots;
   UX ledger rows; validation-log entries with the
   failure→benchmark→improvement→rerun chain; any minted skills staged).

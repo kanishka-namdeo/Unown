@@ -1,3 +1,5 @@
+"use client";
+
 /**
  * The aria client store — the parley `client-store.tsx` pattern: the
  * provider bootstraps the session (a login-state probe), fetches

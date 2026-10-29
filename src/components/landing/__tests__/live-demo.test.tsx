@@ -52,8 +52,8 @@ describe("live-demo band (the gallery)", () => {
     expect(section?.textContent).toContain(LIVE_DEMO_APPS[0].url);
   });
 
-  test("the data file is a real gallery: four apps, distinct everything", () => {
-    expect(LIVE_DEMO_APPS.length).toBeGreaterThanOrEqual(4);
+  test("the data file is a real gallery: six apps, distinct everything", () => {
+    expect(LIVE_DEMO_APPS.length).toBeGreaterThanOrEqual(6);
     const routes = new Set(LIVE_DEMO_APPS.map((a) => a.route));
     const posters = new Set(LIVE_DEMO_APPS.map((a) => a.poster));
     const resets = new Set(LIVE_DEMO_APPS.map((a) => a.resetType));
@@ -88,6 +88,13 @@ describe("live-demo band (the gallery)", () => {
     expect(fugue!.route).toBe("/fugue/flows");
     expect(fugue!.url).toContain("fugue/flows?embed=1");
     expect(fugue!.receipt.receiptDoc).toContain("fugue-demo-session.md");
+    // The aria entry (the aria round) is present with its own reset type.
+    const aria = LIVE_DEMO_APPS.find((a) => a.id === "aria");
+    expect(aria).toBeTruthy();
+    expect(aria!.resetType).toBe("aria-reset");
+    expect(aria!.route).toBe("/aria");
+    expect(aria!.url).toContain("aria?embed=1");
+    expect(aria!.receipt.receiptDoc).toContain("aria-demo-session.md");
   });
 
   test("every receipt chip reads from the ACTIVE app's data — switching tabs swaps the counts", () => {
@@ -209,6 +216,22 @@ describe("live-demo band (the gallery)", () => {
       expect(p4.type).toBe("parley-reset");
       expect(o4).toBe(window.origin);
       expect(o4).not.toBe("*");
+    }
+
+    // Switch to the aria app — the handshake posts the aria-reset
+    // payload with a pinned origin (the sixth gallery app).
+    postMessage.mockClear();
+    const ariaTab = tabs.findIndex((t) => t.textContent === "Aria");
+    if (ariaTab >= 0) {
+      fireEvent.click(tabs[ariaTab]);
+      fireEvent.click(
+        within(container as HTMLElement).getByRole("button", { name: /^reset/i }),
+      );
+      const [p5, o5] = postMessage.mock.calls[0] as [{ source: string; type: string }, string];
+      expect(p5.source).toBe("unown-landing");
+      expect(p5.type).toBe("aria-reset");
+      expect(o5).toBe(window.origin);
+      expect(o5).not.toBe("*");
     }
   });
 

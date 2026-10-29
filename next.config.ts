@@ -19,6 +19,9 @@ import type { NextConfig } from "next";
  * /cadence (the cadence round, 2026-10-28) is embedded the same way:
  * the live-demo gallery's third app is iframed into the band, so the
  * identical headers block applies.
+ * /fugue (the SOTA round, 2026-10-28) and /aria (the aria round,
+ * 2026-10-29) join the same block: the live-demo gallery iframes them
+ * same-origin in browser chrome.
  */
 const nextConfig: NextConfig = {
   output: "standalone",
@@ -53,6 +56,24 @@ const nextConfig: NextConfig = {
         // /parley (the parley round, 2026-10-28) is embedded the same way:
         // the live-demo gallery iframes /parley?embed=1 same-origin.
         source: "/parley/:path*",
+        headers: [
+          { key: "Content-Security-Policy", value: "frame-ancestors 'self'" },
+          { key: "X-Frame-Options", value: "SAMEORIGIN" },
+        ],
+      },
+      {
+        // /fugue (the SOTA round, 2026-10-28) is embedded the same way:
+        // the live-demo gallery iframes /fugue/flows?embed=1 same-origin.
+        source: "/fugue/:path*",
+        headers: [
+          { key: "Content-Security-Policy", value: "frame-ancestors 'self'" },
+          { key: "X-Frame-Options", value: "SAMEORIGIN" },
+        ],
+      },
+      {
+        // /aria (the aria round, 2026-10-29) is embedded the same way:
+        // the live-demo gallery iframes /aria?embed=1 same-origin.
+        source: "/aria/:path*",
         headers: [
           { key: "Content-Security-Policy", value: "frame-ancestors 'self'" },
           { key: "X-Frame-Options", value: "SAMEORIGIN" },

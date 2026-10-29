@@ -53,6 +53,21 @@
  * e0a3058 review pass) · tests: src/lib/fugue/*.test.ts +
  * src/components/fugue/*.test.tsx (174 green across 11 files) · files: 38
  * under src/. Narrative: docs/fugue-demo-session.md.
+ *
+ * ── Aria (the aria round, 2026-10-29) ───────────────────────────────
+ * Sources: receipts .unown/receipts/*.jsonl — 21 agent sessions (A1–A21,
+ * the round's phase chain: 2 plan boots → 6 lib → 7 api → 6 ui, each
+ * capped phase a chunked resume-chain, plus 920 tool_calls counted from
+ * the session envelopes — the build-receipt envelopes; the final count
+ * lands at release when the E2E + review phases close the round) · git:
+ * the round's 4 agent commits so far on main (1998ac5 plan → 782ea8e
+ * domain → c34a2b2 api → 6024571 ui; the E2E + embed-landing phases add
+ * the round's remaining commits) · tests: the aria surface's 556 green
+ * across 34 files (315 lib + 210 api + 31 ui, the phase CP2–CP4
+ * receipts) · files: 122 under src/ (36 lib incl. 18 test files, 71 app
+ * incl. 49 routes + 14 api test files, 13 components + 2 component test
+ * files, provider/page/layout/globals/css). Narrative:
+ * docs/aria-demo-session.md.
  */
 export interface LiveDemoApp {
   id: string;
@@ -176,6 +191,26 @@ export const LIVE_DEMO_APPS: LiveDemoApp[] = [
       embeddingAdaptations: 11,
       receiptDoc:
         "https://github.com/kanishka-namdeo/Unown/blob/main/docs/fugue-demo-session.md",
+    },
+  },
+  {
+    id: "aria",
+    name: "Aria",
+    route: "/aria",
+    url: "unown-nine.vercel.app/aria?embed=1",
+    poster: "/landing/aria/poster.png",
+    posterAlt:
+      "Aria — the enterprise CRM unown built: accounts, deals, sequences and forecasts, running live",
+    resetType: "aria-reset",
+    receipt: {
+      sessions: 21,
+      toolCalls: 920,
+      files: 122,
+      tests: 556,
+      commits: 4,
+      embeddingAdaptations: 5,
+      receiptDoc:
+        "https://github.com/kanishka-namdeo/Unown/blob/main/docs/aria-demo-session.md",
     },
   },
 ];

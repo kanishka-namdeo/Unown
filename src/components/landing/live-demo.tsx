@@ -22,6 +22,9 @@ import { FadeUp, SectionHead, TrafficDots } from "./shell";
  *   · Parley  — /parley (the parley round: multi-tenant support-inbox
  *     SaaS, RBAC-gated inbox + admin surfaces + customer portal, live
  *     demo auto-login + the parley-reset handshake)
+ *   · Aria  — /aria (the aria round: the enterprise CRM — accounts, deals,
+ *     sequences and forecasts, fail-closed tenancy + RBAC, the live
+ *     demo auto-login + the aria-reset handshake)
  *
  * Contract notes:
  *  - The frame mounts ONLY when scrolled near or clicked (an idle landing
@@ -94,7 +97,7 @@ export function LiveDemoSection() {
               the scroll budget contract makes the band pay for its own
               height, and every word here is one the frame shows for free. */}
           <p className="mt-5 max-w-2xl text-[15px] leading-relaxed text-dim">
-            Five apps, live. Pick one.
+            Six apps, live. Pick one.
           </p>
         </FadeUp>
 

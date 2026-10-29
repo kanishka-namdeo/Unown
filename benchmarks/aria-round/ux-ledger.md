@@ -54,6 +54,8 @@ Column key:
 | A19 | repeat (resume) | UI | test fix loop (embed-reset assertion, login render condition) | 40 (capped) | 257,700 / 25,313 | 530s | 0 | 0 | partial — fixes in flight, resumed | yes |
 | A20 | repeat (resume) | UI | continue fix loop; components file to 26 pass | 40 (capped) | 42,971 / 10,829 | 382s | 0 | 0 | partial — invariant file pending, resumed | yes |
 | A21 | repeat (resume) | UI | finish: all suites green | 19 | 537,444 / 7,875 | 580s | 0 | 0 | completed — 31 UI green; full aria surface 556/556; full repo 1,442/1,442; zero lib/API changes | yes |
+| A22 | cold (build) | Embed+landing | Phase 4: CSP blocks, favicon, gallery entry, copy, pins (capped pre-verify) | 40 (capped) | 171,093 / 8,283 | 341s | 0 | 0 | partial — the five patches written, verification pending | yes |
+| A23 | repeat (resume) | Embed+landing | the ordered verification: production build, gallery tests, posters, gates, F3 pin | 40 | 113,155 / 3,994 | 560s | 0 | 0 | completed — build clean (caught a missing "use client"), 136 landing tests green, posters re-shot, embed pin verified; the missing /fugue CSP block also fixed | yes |
 
 Notes on the rows:
 
