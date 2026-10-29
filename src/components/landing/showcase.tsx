@@ -33,7 +33,7 @@ const SCREENS: [string, string][] = [
   ["Router", "the background jobs"],
   ["Gateway", "tokens, latency, per-model"],
   ["Routines", "scheduled recurring runs — cron, every, after"],
-  ["Web Cache", "the persistent web results store"],
+  ["Web Cache", "the persistent results store"],
   ["Embedded", "/dashboard inside a live session"],
 ];
 

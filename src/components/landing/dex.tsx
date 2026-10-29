@@ -788,7 +788,7 @@ export function DexSection() {
           </SectionHead>
           <p className="mt-4 text-pretty leading-relaxed text-dim">
             Session tools, engine mechanisms, workflows, configurable
-            surfaces — one numbered spine. Play a cry, watch the capture.{" "}
+            surfaces — one spine. Play a cry, watch the capture.{" "}
             {TALLY_SENTENCE}
           </p>
         </FadeUp>

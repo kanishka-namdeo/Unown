@@ -46,7 +46,7 @@ export const LEXICON: LexiconEntry[] = [
   },
   {
     id: "B",
-    lore: "A 2001 contest asked children to spell words in the Unown alphabet, with tuition as the prize.",
+    lore: "A 2001 contest asked children to spell words in the Unown alphabet; the prize was tuition.",
     loreSrc: "Pokémon Crystal promo",
     means: "Bubblewrap. Read-only root, private /tmp, killed network namespace.",
     proof: "verify_sandbox.mjs — 12 checks",
@@ -76,7 +76,7 @@ export const LEXICON: LexiconEntry[] = [
     id: "F",
     lore: "“When alone, nothing happens.”",
     loreSrc: "Pokédex · Platinum",
-    means: "Failure is the raw material: the harness mines only the transcript that did not pass.",
+    means: "Failure is the raw material: the harness mines only the transcript that failed.",
     proof: "harness.ts",
   },
   {
@@ -130,7 +130,7 @@ export const LEXICON: LexiconEntry[] = [
   },
   {
     id: "N",
-    lore: "In Pokémon GO it shows up only at events, where it spells things like SWORD and SHIELD.",
+    lore: "In Pokémon GO it shows up only at events, spelling things like SWORD and SHIELD.",
     loreSrc: "Pokémon GO events",
     means: "Notes. Every session hands the engine one on exit; they queue offline.",
     proof: "note-sync job",
@@ -151,21 +151,21 @@ export const LEXICON: LexiconEntry[] = [
   },
   {
     id: "Q",
-    lore: "One room in the Solaceon Ruins is inscribed with nothing but “?!”. Another spells FRIENDSHIP as a pathcode.",
+    lore: "One Solaceon Ruins room is inscribed with nothing but “?!” — another spells FRIENDSHIP as a pathcode.",
     loreSrc: "Solaceon Ruins",
     means: "Questions. The loop answers one: why did that run fail? Keep the rule only if it holds.",
     proof: "failure mining",
   },
   {
     id: "R",
-    lore: "In the film a swarm compiles a child's wishes into a god — then it all has to be taken back apart.",
+    lore: "In the film a swarm compiles a child's wishes into a god — then it must be taken back apart.",
     loreSrc: "Spell of the Unown: Entei",
     means: "Retention. A shipped patch that later regresses gets un-shipped, automatically.",
     proof: "retention check",
   },
   {
     id: "S",
-    lore: "In Smash Bros. one Unown summons a swarm of thirty that carries the victim off the top of the screen.",
+    lore: "In Smash Bros. one Unown summons thirty that carry the victim off the top of the screen.",
     loreSrc: "ssbwiki · frame data",
     means: "Skills. Recurring procedures in your notes become real SKILL.md files.",
     proof: "skills.ts · skill mint gate",
@@ -179,7 +179,7 @@ export const LEXICON: LexiconEntry[] = [
   },
   {
     id: "U",
-    lore: "Its name is the word “unknown” with the spelling knocked about. Its Japanese name is simply アンノーン.",
+    lore: "Its name is “unknown” with the spelling knocked about; in Japanese it is simply アンノーン.",
     loreSrc: "PokémonDB · Bulbapedia",
     means: "Unknown. Point Unown at any endpoint you are allowed to use.",
     proof: "10 provider tiles on the model band",

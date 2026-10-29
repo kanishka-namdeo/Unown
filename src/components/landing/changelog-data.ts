@@ -30,29 +30,29 @@ export interface ChangelogStop {
   groups: ChangelogGroup[];
 }
 
-export const CHANGELOG_TOTAL_ENTRIES = 384;
+export const CHANGELOG_TOTAL_ENTRIES = 390;
 
 export const CHANGELOG_TOTALS: Record<ChangelogBucket, number> = {
-  "Added": 167,
+  "Added": 168,
   "Changed": 28,
   "Deprecated": 0,
   "Removed": 3,
-  "Fixed": 146,
+  "Fixed": 151,
   "Security": 5,
   "Behavior": 35
 };
 
 export const CHANGELOG_STOPS: ChangelogStop[] = [
   {
-    "label": "Unreleased",
-    "date": null,
-    "total": 3,
+    "label": "0.0.43",
+    "date": "2026-10-30",
+    "total": 9,
     "counts": {
-      "Added": 1,
+      "Added": 2,
       "Changed": 0,
       "Deprecated": 0,
       "Removed": 0,
-      "Fixed": 2,
+      "Fixed": 7,
       "Security": 0,
       "Behavior": 0
     },
@@ -62,6 +62,10 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
         "items": [
           {
             "title": "The Website Excellence Round 2 opens",
+            "behavior": false
+          },
+          {
+            "title": "The provider-workflow hardening round",
             "behavior": false
           }
         ]
@@ -75,6 +79,26 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
           },
           {
             "title": "F23 — a hosted-runner DNS blip no longer reds all of main's CI",
+            "behavior": false
+          },
+          {
+            "title": "P0 — upsertProvider truncated the model list on update",
+            "behavior": false
+          },
+          {
+            "title": "P0 — providers key <id> echoed the secret in clear text",
+            "behavior": false
+          },
+          {
+            "title": "The setup wizard's NaN choice hole",
+            "behavior": false
+          },
+          {
+            "title": "removeProvider could write a bogus defaultModel: \"\"",
+            "behavior": false
+          },
+          {
+            "title": "Key/URL paste hygiene at every entry point",
             "behavior": false
           }
         ]

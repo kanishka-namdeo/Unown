@@ -59,6 +59,7 @@ sys.path.insert(0, HERE)
 from pty_common import (  # noqa: E402
     PaneTimeout,
     UnownPty,
+    dismiss_first_flights,
     make_logger,
     print_summary,
 )
@@ -143,6 +144,10 @@ def main() -> int:
     s = UnownPty(log, env_extra={"UNOWN_HOME": home})
     try:
         s.wait_ready()
+        # A fresh scratch home opens the first-flights catalog at boot — while
+        # focused it consumes keypresses, so "/providers" would never reach the
+        # editor. Dismiss it (a no-op when latched/not shown).
+        dismiss_first_flights(s, log)
         s.wait_idle(timeout=30)
 
         # -- 01: the interactive manager (select list frame) -----------------

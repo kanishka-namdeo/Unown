@@ -22,7 +22,7 @@ export function FaqSection() {
           <FadeUp>
             <SectionHead
               kicker="FAQ"
-              lead="Including the one that decides installs: will it rewrite my tests."
+              lead="Including the one that decides installs."
             >
               The skeptic&apos;s questions.
             </SectionHead>

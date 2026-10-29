@@ -104,7 +104,7 @@ export function ProofSection() {
             lead={
               <>
                 Every number is generated from receipts and re-checked in CI —
-                including the ones where memory made things worse.
+                including where memory made things worse.
               </>
             }
           >

@@ -69,7 +69,7 @@ export function BuiltImprovedSection() {
         <FadeUp className="max-w-2xl">
           <SectionHead
             kicker="The mission's rounds"
-            lead={`The gallery the rounds built (${LIVE_DEMO_APPS[LIVE_DEMO_APPS.length - 1].name}, the ${galleryNth} app) — minted, remembered, proved: receipts first.`}
+            lead={`The gallery the rounds built (${LIVE_DEMO_APPS[LIVE_DEMO_APPS.length - 1].name}, the ${galleryNth} app) — minted, remembered, proved.`}
           >
             Built &amp; Improved With Unown
           </SectionHead>
