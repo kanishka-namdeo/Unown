@@ -1,0 +1,11 @@
+3751 words > 3750 — one word over (measurement variance ate the headroom).
+Shave exactly 4 more words from the SAME lead you just edited. Replace:
+
+  The gallery the rounds built (${...}, the ${galleryNth} app) under the loop's watch — minted, remembered, proved: receipts first.
+
+with:
+
+  The gallery the rounds built (${LIVE_DEMO_APPS[LIVE_DEMO_APPS.length - 1].name}, the ${galleryNth} app) — minted, remembered, proved: receipts first.
+
+Then run `bun test src/components/landing/__tests__/built-improved.test.tsx`
+and `bun run typecheck` and report. Nothing else.

@@ -1,0 +1,1 @@
+{"type":"result","subtype":"error_during_execution","result":"","session_id":"01a18901-8781-7ada-afae-4b39c940aa0b","model":"agnes-3.0-flash","usage":{"input_tokens":132656,"output_tokens":797,"cache_read_input_tokens":492032,"cache_creation_input_tokens":0},"cost_usd":0,"duration_ms":40979,"num_turns":15,"unown_version":"0.0.42","capped":true}

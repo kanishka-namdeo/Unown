@@ -1,0 +1,22 @@
+You read for 15 turns and edited nothing. APPLY THIS EXACT EDIT NOW —
+one line, already written for you:
+
+In src/components/landing/built-improved.tsx, the SectionHead lead
+(line ~72) currently reads:
+
+  The rounds built the gallery (${...name}, the ${galleryNth} app) while
+  the loop watched — and the cold-start round pointed it at itself. What
+  it minted, remembered, and proved, receipts first.
+
+Replace it with:
+
+  The gallery the rounds built (${LIVE_DEMO_APPS[LIVE_DEMO_APPS.length - 1].name}, the ${galleryNth} app) under the loop's watch — minted, remembered, proved: receipts first.
+
+(13 visible words saved; the test-pinned substring "(Encore, the eighth
+app)" derives unchanged; no generated number touched.)
+
+Then run and report exact results:
+1. `bun test src/components/landing/__tests__/built-improved.test.tsx`
+2. `bun run typecheck`
+3. `bun run lint`
+Do nothing else.

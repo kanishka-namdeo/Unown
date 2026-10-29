@@ -1,0 +1,21 @@
+The scroll-budget e2e (the canonical twin) fails: 3762 words > 3750 (the
+page vh is fine at 15.1 <= 15.5). The eighth gallery entry plus the
+regenerated changelog rail pushed the readable-word count 12 words over.
+
+Fix: compress ~20 words of LANDING COPY (never a generated number, never
+a gated literal, never a receipt figure). The candidates, in preference
+order (read the bands first):
+1. The live-demo band's lede/description copy — the newest copy, written
+   for eight apps; tighten it (e.g. the app descriptions inside
+   live-demo-data.ts entries can lose articles and filler — the receipts
+   chips render numbers, the one-line description is copy)
+2. The built-improved band's lede
+3. The FAQ answers' filler
+
+Rules: src/components/landing/** only; the scroll budget must pass at
+3750 words max (aim for <= 3740 to leave headroom); the gallery test
+pins some copy — update only what breaks; every word you remove must be
+COPY (not a number, not a gated literal).
+
+Then run and report exact results: `bun test src/components/landing`,
+`bun run test:e2e` (the budget test must pass), `bun run typecheck`.
