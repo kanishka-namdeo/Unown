@@ -4,10 +4,10 @@
  * The PUBLIC status page (plan §3.7's tenancy exception) — the one
  * surface that reads WITHOUT authentication. A client that mounts
  * this component with no session fetches the public
- * `/nocturne/status/[slug]` route (the lean view: components +
- * active incidents, never users or schedules). It is NOT mounted
- * inside the shell (the shell is the authenticated app); it is the
- * standalone public route's client body.
+ * `/nocturne/api/public-status/[slug]` data route (the lean view:
+ * components + active incidents, never users or schedules). It is
+ * NOT mounted inside the shell (the shell is the authenticated
+ * app); it is the standalone public route's client body.
  */
 import { useEffect, useState } from "react";
 import { useNocturne } from "@/components/nocturne/nocturne-provider";

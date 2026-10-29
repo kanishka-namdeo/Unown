@@ -1,10 +1,13 @@
 /**
- * GET /nocturne/status/[slug] — the PUBLIC status page (plan §3.7
- * + §1's tenancy exception). NO session: the one route that reads
- * without authentication. Returns ONLY the tenant's components +
- * active incidents (the trigger/ack/resolve fields — no user ids,
- * no schedule detail — the risk list's P1 "Status page leak"
- * mitigation, plan §7/11). 404 on an unknown slug.
+ * GET /nocturne/api/public-status/[slug] — the PUBLIC status data
+ * route (plan §3.7 + §1's tenancy exception; the JSON twin of the
+ * human surface at /nocturne/status/[slug] — a page and a route
+ * handler can never share one path segment in the App Router, the
+ * build break the landing round shipped). NO session: the one route
+ * that reads without authentication. Returns ONLY the tenant's
+ * components + active incidents (the trigger/ack/resolve fields — no
+ * user ids, no schedule detail — the risk list's P1 "Status page
+ * leak" mitigation, plan §7/11). 404 on an unknown slug.
  */
 import { NextResponse } from "next/server";
 

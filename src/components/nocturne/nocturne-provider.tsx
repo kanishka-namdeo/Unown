@@ -677,7 +677,7 @@ export function NocturneProvider({
     async (slug: string) => {
       try {
         const out = await fetchJson<import("@/lib/nocturne/status").PublicStatusResult>(
-          `/nocturne/status/${encodeURIComponent(slug)}`,
+          `/nocturne/api/public-status/${encodeURIComponent(slug)}`,
         );
         setPublicStatus(out);
       } catch {

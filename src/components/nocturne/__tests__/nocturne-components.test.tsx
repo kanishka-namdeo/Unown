@@ -332,9 +332,9 @@ function installFetchStub(opts?: { session?: NocturneSessionShape | null }) {
       return json({});
     }
 
-    // ── the public status page (no auth)
-    if (url.includes("/nocturne/status/")) {
-      const slug = url.match(/\/nocturne\/status\/([^/?]+)/)?.[1] ?? "lumen";
+    // ── the public status data route (no auth)
+    if (url.includes("/nocturne/api/public-status/")) {
+      const slug = url.match(/\/nocturne\/api\/public-status\/([^/?]+)/)?.[1] ?? "lumen";
       const tenant = SEED.tenants.find((x) => x.slug === slug);
       if (!tenant) return json({ error: "not found", status: 404 }, 404);
       const comps = SEED.components.filter((c) => c.tenantId === tenant.id);
@@ -666,7 +666,7 @@ describe("PublicStatusPage (the public, no-auth surface)", () => {
   test("fetches the public status route (no session needed)", async () => {
     const { called, restore } = await renderWithProvider(<PublicStatusPage />);
     restore();
-    expect(called.some((c) => c.url.includes("/nocturne/status/"))).toBe(true);
+    expect(called.some((c) => c.url.includes("/nocturne/api/public-status/"))).toBe(true);
   });
 });
 
