@@ -12,12 +12,13 @@ import { SESSION_COOKIE } from "./api/_auth";
  * pin).
  *
  * `hasSession` is also read HERE, server-side, through the
- * nocturne session cookie (`cookies()`): in embed mode without a
- * session the client skips the unauthenticated `GET /auth/session`
- * probe (a 401 that would log to the console — the poster capture
- * lane's zero-console-errors bar) and goes straight to the demo
- * auto-login POST; with a session (or standalone) the probe runs
- * as today.
+ * nocturne session cookie (`cookies()`): the F13 pin (modeled on
+ * the aria sibling) — an EXPLICIT `false` skips the unauthenticated
+ * `GET /auth/session` probe (a 401 that would log to the console —
+ * the live ui-pass lane's zero-console-errors bar): embed + no
+ * session goes straight to the demo auto-login POST, standalone +
+ * no session lands on the login screen; `true` (a session cookie
+ * present) probes as today.
  */
 async function PageInner({
   searchParams,

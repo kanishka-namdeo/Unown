@@ -393,11 +393,15 @@ function installFetchStub(opts?: { session?: NocturneSessionShape | null }) {
 async function renderWithProvider(
   ui: React.ReactNode,
   session: NocturneSessionShape = OWNER,
-  providerProps: { embed?: boolean; hasSession?: boolean } = {},
+  providerProps: { embed?: boolean; hasSession?: boolean; isPublic?: boolean } = {},
 ): Promise<RenderResult & { restore: () => void; called: Array<{ url: string; method: string }> }> {
   const stub = installFetchStub({ session });
   const utils = render(
-    <NocturneProvider embed={providerProps.embed} hasSession={providerProps.hasSession}>
+    <NocturneProvider
+      embed={providerProps.embed}
+      hasSession={providerProps.hasSession}
+      isPublic={providerProps.isPublic}
+    >
       {ui}
     </NocturneProvider>,
   );
@@ -423,26 +427,75 @@ beforeEach(() => {
 
 describe("NocturneProvider (bootstrap)", () => {
   test("bootstraps a session probe + loads tenant data for a logged-in role", async () => {
-    const { container, restore } = await renderWithProvider(<NocturneShell embed={false} />);
+    const { container, restore, called } = await renderWithProvider(<NocturneShell embed={false} />);
     restore();
     // The owner's nav is visible + the dashboard renders.
     expect(container.textContent).toContain("Dashboard");
     expect(container.textContent).toContain("Incidents");
+    // hasSession=undefined → the probe runs (the F13 pin part: undefined keeps the probe).
+    expect(called.some((c) => c.url.includes("/nocturne/api/auth/session"))).toBe(true);
   });
 
-  test("renders the login screen when there is no session (standalone)", async () => {
+  test("hasSession=true probes the session on mount", async () => {
+    const { restore, called } = await renderWithProvider(
+      <div data-testid="probe" />,
+      OWNER,
+      { embed: false, hasSession: true },
+    );
+    restore();
+    // hasSession=true → the probe runs.
+    expect(called.some((c) => c.url.includes("/nocturne/api/auth/session"))).toBe(true);
+  });
+
+  test("hasSession=false mounts WITHOUT issuing the session fetch (F13)", async () => {
+    const stub = installFetchStub({ session: null });
+    const { unmount } = render(
+      <NocturneProvider hasSession={false}>
+        <div data-testid="probe" />
+      </NocturneProvider>,
+    );
+    // Let the effect settle (the skipProbe path — no fetch is issued).
+    await act(async () => {
+      await new Promise((r) => setTimeout(r, 0));
+    });
+    // The F13 pin: hasSession=false skips the unauthenticated probe
+    // (no 401 → no console error).
+    expect(stub.called.some((c) => c.url.includes("/nocturne/api/auth/session"))).toBe(false);
+    stub.restore();
+    unmount();
+  });
+
+  test("isPublic=true never probes the session, regardless of cookie state (F13 part 2)", async () => {
+    const stub = installFetchStub({ session: OWNER });
+    const { unmount } = render(
+      <NocturneProvider isPublic hasSession={true}>
+        <div data-testid="probe" />
+      </NocturneProvider>,
+    );
+    await act(async () => {
+      await new Promise((r) => setTimeout(r, 0));
+    });
+    // The public status page must never probe — even with hasSession=true.
+    expect(stub.called.some((c) => c.url.includes("/nocturne/api/auth/session"))).toBe(false);
+    stub.restore();
+    unmount();
+  });
+
+  test("renders the login screen when there is no session (standalone, hasSession=false)", async () => {
     const stub = installFetchStub({ session: null });
     const { container, unmount } = render(
       <NocturneProvider hasSession={false}>
         <NocturneShell embed={false} />
       </NocturneProvider>,
     );
-    // The provider's 401 probe settles → `loading` flips false +
-    // `session` stays null → the shell renders the login screen.
+    // hasSession=false → the provider SKIPS the probe (no 401 console
+    // error) and the shell renders the login screen directly.
     await act(async () => {
       await new Promise((r) => setTimeout(r, 0));
     });
     expect(container.textContent).toContain("Sign in to Nocturne");
+    // F13: no session fetch was issued.
+    expect(stub.called.some((c) => c.url.includes("/nocturne/api/auth/session"))).toBe(false);
     stub.restore();
     unmount();
   });
@@ -656,7 +709,11 @@ describe("MembersView (the members + invites + audit)", () => {
 
 describe("PublicStatusPage (the public, no-auth surface)", () => {
   test("renders the components + active incidents (the lean public view)", async () => {
-    const { container, restore } = await renderWithProvider(<PublicStatusPage />);
+    const { container, restore } = await renderWithProvider(
+      <PublicStatusPage />,
+      OWNER,
+      { isPublic: true },
+    );
     restore();
     expect(container.textContent).toContain("system status");
     expect(container.textContent).toContain("Components");
@@ -664,9 +721,25 @@ describe("PublicStatusPage (the public, no-auth surface)", () => {
   });
 
   test("fetches the public status route (no session needed)", async () => {
-    const { called, restore } = await renderWithProvider(<PublicStatusPage />);
+    const { called, restore } = await renderWithProvider(
+      <PublicStatusPage />,
+      OWNER,
+      { isPublic: true },
+    );
     restore();
     expect(called.some((c) => c.url.includes("/nocturne/api/public-status/"))).toBe(true);
+  });
+
+  test("isPublic=true never issues the session fetch (F13 part 2 pin)", async () => {
+    const { called, restore } = await renderWithProvider(
+      <PublicStatusPage />,
+      OWNER,
+      { isPublic: true },
+    );
+    restore();
+    // The public status page's client path only fetches the public
+    // status data — never the session probe.
+    expect(called.some((c) => c.url.includes("/nocturne/api/auth/session"))).toBe(false);
   });
 });
 
@@ -815,5 +888,91 @@ describe("the RBAC-disabled-with-reason surfaces", () => {
     if (textarea) {
       expect(textarea.disabled).toBe(false);
     }
+  });
+});
+
+/* ──────────────────────────────────────────────────────────────────
+ * The provider shape regression pin (F12):
+ * the detail lanes parse the REAL (flattened) API payloads. The
+ * component tests' fetch stub returns the same flattened shape the
+ * live routes emit — `{ ...rotation, overrides: [] }`,
+ * `{ ...runbook, checklists: [] }`, and the flat `NocturnePostmortem`.
+ * If a provider lane regresses to a nested read (`out.rotation` off a
+ * flat payload), the detail state ends up `undefined` and the view's
+ * `.shiftLengthMs` / `.name` / `.body` read throws — these tests
+ * mount the actual view, open the detail, and assert the rendered
+ * text is present (i.e. the parse did NOT leave a hole).
+ * ────────────────────────────────────────────────────────────────── */
+
+/** The first seeded rotation / runbook the lumen tenant has. */
+function firstLumenRotationId(): string {
+  return SEED.rotations.filter((r) => r.tenantId === LUMEN.id)[0]?.id ?? "";
+}
+function firstLumenRunbookId(): string {
+  return SEED.runbooks.filter((r) => r.tenantId === LUMEN.id)[0]?.id ?? "";
+}
+
+describe("the provider detail lanes parse the flattened API payloads (F12)", () => {
+  test("openRotation: the rotation detail parses the flattened rotation + overrides", async () => {
+    const rotation = SEED.rotations.find((r) => r.id === firstLumenRotationId())!;
+    const { container, restore } = await renderWithProvider(<RotationsView />);
+    const firstRow = [...container.querySelectorAll("button")].find((b) =>
+      b.textContent?.includes(rotation.name),
+    );
+    if (firstRow) {
+      fireEvent.click(firstRow);
+      await act(async () => {
+        await new Promise((r) => setTimeout(r, 0));
+      });
+    }
+    // The detail renders the rotation's own fields — the shift label is
+    // computed from `shiftLengthMs` (an F12 hole in the parse would throw
+    // reading `rotation.shiftLengthMs` off an undefined row). Assert the
+    // rotation name is visible in the detail lane.
+    expect(container.textContent).toContain(rotation.name);
+    expect(container.textContent).toContain("Seat schedule");
+    restore();
+  });
+
+  test("openRunbook: the runbook detail parses the flattened runbook + checklists", async () => {
+    const rb = SEED.runbooks.find((r) => r.id === firstLumenRunbookId())!;
+    const { container, restore } = await renderWithProvider(<RunbooksView />);
+    const firstRow = [...container.querySelectorAll("button")].find((b) =>
+      b.textContent?.includes(rb.name),
+    );
+    if (firstRow) {
+      fireEvent.click(firstRow);
+      await act(async () => {
+        await new Promise((r) => setTimeout(r, 0));
+      });
+    }
+    // The detail renders the runbook's name + step list — a hole in the
+    // parse (`out.runbook` undefined off a flat payload) would throw on
+    // `rb.name`. Assert the name + the step list's aria-label are present.
+    expect(container.textContent).toContain(rb.name);
+    expect(container.querySelector('[aria-label="Runbook steps"]')).not.toBeNull();
+    restore();
+  });
+
+  test("openPostmortem: the postmortem detail parses the flat postmortem payload", async () => {
+    const pm = SEED.postmortems.find((p) => p.tenantId === LUMEN.id && p.id === "nc_seed_pm_01")!;
+    const incident = SEED.incidents.find((i) => i.id === pm.incidentId)!;
+    const { container, restore } = await renderWithProvider(<PostmortemsView />);
+    // The postmortems list shows the incident title (the postmortem's
+    // incident), not the postmortem id — open by that title.
+    const firstRow = [...container.querySelectorAll("button")].find((b) =>
+      b.textContent?.includes(incident.title),
+    );
+    if (firstRow) {
+      fireEvent.click(firstRow);
+      await act(async () => {
+        await new Promise((r) => setTimeout(r, 0));
+      });
+    }
+    // The detail renders the postmortem's body + the "Action items" header
+    // — a hole in the parse would throw on `pm.body` / `pm.actionItems`.
+    expect(container.textContent).toContain(pm.body.slice(0, 12));
+    expect(container.textContent).toContain("Action items");
+    restore();
   });
 });

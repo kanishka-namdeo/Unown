@@ -1,0 +1,5 @@
+unown: first run — using the bundled llm-bridge (zai-bridge/agnes-3.0-flash).
+  connect any provider (OpenAI, OpenRouter, Anthropic, Dashscope, local): unown setup
+
+unown: --max-turns 30 reached — the run stopped after 30 completed turn(s)
+Request was aborted

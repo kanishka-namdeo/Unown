@@ -183,6 +183,84 @@ gate.
 
 ---
 
+## F12 — provider/API shape mismatch on the detail lanes (the live browser pass caught what 31 component tests papered over)
+
+**Failure (N22's first live run).** The 10-step Chromium ui-pass failed
+steps 6–8: opening a rotation logged `PAGEERROR: TypeError: Cannot read
+properties of undefined (reading 'shiftLengthMs')` and every later tab
+click timed out — the React tree had unmounted (no error boundary).
+
+**Reproduction.** `node benchmarks/nocturne-round/ui-pass.mjs` (or the
+kept probe `sessions/probe-rotations.mjs`): login → Rotations → click the
+first rotation row → the API returns 200 but the detail pane is blank and
+the shell is gone.
+
+**Root cause.** `GET /nocturne/api/rotations/[id]` returns the rotation
+**flattened** (`{...rotation, overrides}`), but the provider's
+`openRotation` parsed it **nested** (`{rotation: {...}, overrides}`) —
+`out.rotation` was `undefined`, `RotationDetail` read
+`.shiftLengthMs` off it and threw. The component tests never caught it
+because they mock the provider *state*, never the real API response
+shapes. The same mismatch pattern affected the runbook + postmortem
+detail lanes.
+
+**Memory contribution analysis.** Project memory carried the plan's API
+shapes but nothing pinned the provider-parse/test-mock gap — the failure
+mode was *integration* (two layers agreeing), which unit lanes on either
+side cannot see.
+
+**Benchmark created.** The provider-shape regression pins (N26): tests
+that mount the provider against a mocked fetch returning the REAL route
+shapes and assert the detail state parses without undefined — plus
+`ui-pass.mjs` step 6/7 as the live behavioral pins, and the shell error
+boundary so a future view crash renders an inline error card instead of a
+blank screen.
+
+**Improvement implemented + rerun.** N25/N26 (fed the precise diagnosis):
+flattened-shape parsing for rotation/runbook/postmortem details. Re-run:
+ui-pass 9/10 → (after F13) **10/10 twice consecutively, 0 console
+errors**; suite 1916 green.
+
+**Retention.** Regression pins in the component suite + the live pass in
+the round's closeout checklist.
+
+---
+
+## F13 — the unauthenticated session probe logged 401 console errors (the zero-console-error bar, solved by the aria sibling pattern)
+
+**Failure (N22's first live run, NOTE line).** Two console errors on every
+pass: the provider's boot probe `GET /nocturne/api/auth/session` 401s on
+the login screen (pre-login) and on the anonymous public status page —
+`Failed to load resource` in the console, violating the round's
+zero-console-errors bar (the aria landing-poster lane's standard, applied
+to the app surface).
+
+**Reproduction.** Any anonymous visit to `/nocturne` or
+`/nocturne/status/lumen` with the console open.
+
+**Root cause.** The nocturne provider ALWAYS ran the unauthenticated
+probe on mount. Aria had already solved this exact problem (its
+`client-store.tsx`): the page reads the session cookie SERVER-side and
+passes `hasSession` in; without a cookie the client skips the probe
+entirely. Nocturne's build did not carry the pattern over — a
+cross-app-lesson-transfer miss (the sibling knowledge was in the repo,
+one directory away).
+
+**Benchmark created.** The provider tests pin `hasSession=false` mounts
+without issuing any `/auth/session` fetch; the public status lane never
+probes at all. The live ui-pass's zero-console-error NOTE line is the
+behavioral pin.
+
+**Improvement implemented + rerun.** N27/N28: the aria `hasSession`
+pattern ported (page.tsx server-side cookie read → provider
+`hasSession`/`isPublic` skip lanes). Re-run: **10/10 twice consecutively,
+0 console errors**.
+
+**Retention.** Component-suite pins + the live pass in the closeout
+checklist.
+
+---
+
 ## Positive validations (defects the system caught itself — recorded so the
 loop's defenses are visible)
 

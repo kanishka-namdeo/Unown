@@ -23,6 +23,7 @@ import { PostmortemsView } from "./postmortems";
 import { AnalyticsView } from "./analytics";
 import { MembersView } from "./members";
 import { LoginScreen } from "./login";
+import { NocturneViewBoundary } from "./error-boundary";
 
 const NAV: Array<{ id: NocturneView; label: string }> = [
   { id: "dashboard", label: "Dashboard" },
@@ -164,8 +165,22 @@ export function NocturneShell({ embed }: { embed: boolean }) {
           </nav>
         )}
 
-        {/* ── the active view ─────────────────────────────────────── */}
+        {/* ── the active view (wrapped in a view error boundary so a
+            single-view crash shows an inline card instead of unmounting
+            the whole Nocturne tree — the F12 resilience lane) ──────── */}
         <main className="min-h-0 flex-1">
+          <NocturneViewBoundary
+            viewId={activeView}
+            onReset={() => {
+              // Reset the current detail state so the view re-renders
+              // from the list, then nudge a re-render to retry.
+              if (activeView === "rotations") void nocturne.openRotation(null);
+              if (activeView === "runbooks") void nocturne.openRunbook(null);
+              if (activeView === "postmortems") void nocturne.openPostmortem(null);
+              if (activeView === "incidents") void nocturne.openIncident(null);
+              void nocturne.tick();
+            }}
+          >
           {activeView === "dashboard" && <DashboardView />}
           {activeView === "incidents" && <IncidentsView />}
           {activeView === "services" && <ServicesView />}
@@ -181,6 +196,7 @@ export function NocturneShell({ embed }: { embed: boolean }) {
                 You don&apos;t have permission to view this section.
               </div>
             ))}
+          </NocturneViewBoundary>
         </main>
       </div>
 

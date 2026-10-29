@@ -1,0 +1,34 @@
+One integration defect to fix, modeled on the sibling pattern that already
+solved it (this is the round's zero-console-errors bar on the live pass).
+
+DEFECT F13: the nocturne provider ALWAYS runs the unauthenticated
+GET /nocturne/api/auth/session probe on mount — a 401 that logs "Failed to
+load resource" to the console on (a) the login screen before login and
+(b) the anonymous public status page. The live ui-pass bar is zero console
+errors; the two NOTE'd errors in the last run are exactly these probes.
+
+THE SIBLING PATTERN (aria, src/app/aria/client-store.tsx ~line 175):
+the /aria page.tsx reads the `aria_ses` cookie SERVER-side (the cookies()
+API) and passes `hasSession` into the client store; in embed/anonymous
+mode WITHOUT an existing session the client SKIPS the probe entirely and
+goes straight to the login screen (or the demo auto-login POST). With a
+session cookie present, the probe runs.
+
+IMPLEMENT for nocturne:
+1. src/app/nocturne/page.tsx — read the `nocturne_ses` cookie server-side,
+   pass `hasSession` (and keep the embed flag) into the client provider
+   (follow aria's page.tsx exactly).
+2. src/components/nocturne/nocturne-provider.tsx — accept `hasSession?`;
+   when explicitly false, skip the unauthenticated probe (no 401 fetch);
+   when true or undefined, keep the current probe behavior.
+3. The public status page (src/app/nocturne/status/[slug]/page.tsx or
+   wherever the public surface mounts) must never probe the session at
+   all — verify and fix if it does (it is the anonymous surface; its
+   client path should only fetch the public status data).
+4. Add/extend the provider tests: hasSession=false mounts without
+   issuing the session fetch (assert the fetch stub saw no /auth/session
+   call); hasSession=true still probes.
+5. Verify: `bun test src` green, `bun run typecheck` clean,
+   `bun run lint` 0 errors, `bun run build` succeeds.
+
+Write the fix + tests; no other changes.

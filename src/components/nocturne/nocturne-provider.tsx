@@ -251,23 +251,32 @@ const NocturneContext = createContext<NocturneApi | null>(null);
 export function NocturneProvider({
   children,
   embed = false,
-  hasSession = false,
-  demoSession = false,
+  hasSession,
+  isPublic = false,
 }: {
   children: ReactNode;
   embed?: boolean;
   /**
    * Server-side session presence — the /nocturne page.tsx reads the
    * `nocturne_ses` cookie SERVER-side (the `cookies()` API) and
-   * passes this in. In embed mode WITHOUT an existing session the
-   * client skips the unauthenticated `GET /auth/session` probe (a
-   * 401 that would log to the console — the poster capture lane's
-   * zero-console-errors bar) and goes straight to the demo
-   * auto-login POST. With a session (or standalone) the probe runs.
+   * passes this in (the F13 pin — modeled on the aria sibling):
+   * an EXPLICIT `false` skips the unauthenticated `GET /auth/session`
+   * probe (a 401 that would log to the console — the live ui-pass
+   * lane's zero-console-errors bar). In EMBED mode a skipped probe
+   * falls straight to the demo auto-login POST; in the STANDALONE
+   * mode it renders straight to the login screen. `true` or
+   * `undefined` (not passed) keeps the probe — the page that owns
+   * the authenticated app always passes a definite value, so
+   * `undefined` only ever means "probe as today".
    */
   hasSession?: boolean;
-  /** The server-rendered "a live demo session cookie exists" flag. */
-  demoSession?: boolean;
+  /** The PUBLIC status page's flag (the F13 pin, part 2): the
+   * `/nocturne/status/[slug]` route is the anonymous surface — it
+   * must NEVER probe the session at all (its client path only
+   * fetches the public status data), regardless of cookie state.
+   * It does not reach the provider's `publicStatus` data state.
+   */
+  isPublic?: boolean;
 }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -427,7 +436,13 @@ export function NocturneProvider({
     if (booted.current) return;
     booted.current = true;
     (async () => {
-      const skipProbe = embed && !hasSession;
+      // The F13 pin: an EXPLICIT hasSession=false (or the public
+      // status page) skips the unauthenticated probe — a 401 that
+      // would log to the console (the live ui-pass lane's
+      // zero-console-errors bar). Embed + no session falls straight
+      // to the demo auto-login POST; standalone + no session lands
+      // on the login screen. hasSession=true/undefined probes.
+      const skipProbe = isPublic || hasSession === false;
       try {
         if (!skipProbe) {
           const probe = await fetchJson<NocturneSessionShape>("/nocturne/api/auth/session");
@@ -460,7 +475,7 @@ export function NocturneProvider({
         setLoading(false);
       }
     })();
-  }, [embed, hasSession, fetchJson, loadTenantData]);
+  }, [embed, hasSession, isPublic, fetchJson, loadTenantData]);
 
   // ── embed reset channel (plan §8.2: the `nocturne-reset` handshake)
   useEffect(() => {
@@ -624,11 +639,28 @@ export function NocturneProvider({
         return;
       }
       try {
-        const out = await fetchJson<{
-          rotation: NocturneApi["rotations"][number];
-          overrides: import("@/lib/nocturne/types").NocturneOverride[];
-        }>(`/nocturne/api/rotations/${encodeURIComponent(id)}`);
-        setRotationDetail({ rotation: out.rotation, overrides: out.overrides });
+        // The GET route FLATTENS the payload: `{ ...rotation, overrides: [] }` —
+        // the rotation's fields (id, name, shiftLengthMs, …) live at the top
+        // level, with `overrides` as a sibling array. Parse it flat, then nest
+        // it for the detail state (the F12 pin: reading `out.rotation` off a
+        // flat payload yields `undefined` → the view's
+        // `rotation.shiftLengthMs` read TypeErrors).
+        // The GET route FLATTENS the payload: `{ ...rotation, overrides: [] }` —
+        // the rotation's fields (id, name, shiftLengthMs, …) live at the top
+        // level, with `overrides` as a sibling array. Parse it flat, then nest
+        // it for the detail state (the F12 pin: reading `out.rotation` off a
+        // flat payload yields `undefined` → the view's
+        // `rotation.shiftLengthMs` read TypeErrors).
+        const out = await fetchJson<
+          NocturneRotation & {
+            currentSeat: { userId: string; name: string } | null;
+            current: { userId: string; name: string } | null;
+            nextSeat: { userId: string; name: string } | null;
+            handoffAt: string | null;
+            overrides: NocturneOverride[];
+          }
+        >(`/nocturne/api/rotations/${encodeURIComponent(id)}`);
+        setRotationDetail({ rotation: out as RotationRow, overrides: out.overrides ?? [] });
       } catch {
         setRotationDetail(null);
       }
@@ -643,11 +675,20 @@ export function NocturneProvider({
         return;
       }
       try {
-        const out = await fetchJson<{
-          runbook: NocturneRunbook;
-          checklists: import("@/lib/nocturne/types").NocturneChecklistState[];
-        }>(`/nocturne/api/runbooks/${encodeURIComponent(id)}`);
-        setRunbookDetail({ runbook: out.runbook, checklists: out.checklists });
+        // The GET route FLATTENS the payload: `{ ...runbook, checklists: [] }`
+        // — the runbook's fields live at the top level, with `checklists` as a
+        // sibling array. Parse it flat, then nest it for the detail state
+        // (the F12-class pin, mirroring the rotation lane).
+        // The GET route FLATTENS the payload: `{ ...runbook, checklists: [] }`
+        // — the runbook's fields live at the top level, with `checklists` as a
+        // sibling array. Parse it flat, then nest it for the detail state
+        // (the F12-class pin, mirroring the rotation lane).
+        const out = await fetchJson<
+          NocturneRunbook & {
+            checklists: import("@/lib/nocturne/types").NocturneChecklistState[];
+          }
+        >(`/nocturne/api/runbooks/${encodeURIComponent(id)}`);
+        setRunbookDetail({ runbook: out as NocturneRunbook, checklists: out.checklists ?? [] });
       } catch {
         setRunbookDetail(null);
       }

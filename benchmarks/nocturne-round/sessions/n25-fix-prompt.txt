@@ -1,0 +1,47 @@
+A precise integration-defect report to fix (found by the live Chromium UI
+pass — the component tests mocked the provider state and never exercised
+the real API response shapes).
+
+DEFECT F12: provider/API shape mismatch on the detail lanes. The live pass
+logs: PAGEERROR "TypeError: Cannot read properties of undefined (reading
+'shiftLengthMs')" when opening a rotation.
+
+- GET /nocturne/api/rotations/[id] returns the rotation FLATTENED:
+  { ...rotation, overrides: [...] }  (src/app/nocturne/api/rotations/[id]/route.ts
+  GET handler)
+- but the provider's openRotation expects it NESTED:
+  { rotation: {...}, overrides: [...] }  (nocturne-provider.tsx ~line 628-631:
+  setRotationDetail({ rotation: out.rotation, overrides: out.overrides }))
+- so out.rotation is undefined → setRotationDetail({rotation: undefined})
+  → RotationDetail reads rotation.shiftLengthMs → TypeError → the React
+  tree unmounts (no error boundary) → every later tab click times out.
+
+The same mismatch pattern likely affects openRunbook (expects
+{ runbook, checklists } — check what GET /nocturne/api/runbooks/[id]
+actually returns) and openPostmortem (check its route too). The runbooks
+step of the live pass fails the same way.
+
+FIX (keep the API contracts as shipped — plan §3 shapes are fine; fix the
+provider parsing):
+1. nocturne-provider.tsx openRotation: parse the flattened shape —
+   const out = await fetchJson<NocturneRotation & { overrides: NocturneOverride[] }>(...)
+   then setRotationDetail({ rotation: out, overrides: out.overrides ?? [] })
+2. openRunbook + openPostmortem: read each route's actual response shape
+   and parse accordingly (check src/app/nocturne/api/runbooks/[id]/route.ts
+   and postmortems/[id]/route.ts GET handlers).
+3. Add an error boundary around the view render in shell.tsx so a future
+   view crash shows an inline error card instead of unmounting the whole
+   app (resilience lane — the live pass requirement of zero blank screens).
+4. Add provider-shape regression tests (component test lane): tests that
+   mount the provider against a mocked fetch returning the REAL API
+   shapes (flattened rotation with overrides; the runbook + postmortem
+   shapes) and assert the detail state parses without undefined — the
+   pin that would have caught F12. NOTE: when writing the test comment
+   blocks, be careful to write complete, closed /* */ comments — a prior
+   session was capped mid-edit and left a dangling comment fragment that
+   broke the whole test file's syntax.
+5. Verify: `bun test src` green, `bun run typecheck` clean,
+   `bun run build` succeeds, `bun run lint` clean (0 errors — the round
+   now lints at closeout per F11).
+
+Write the fix + tests; no other changes.
