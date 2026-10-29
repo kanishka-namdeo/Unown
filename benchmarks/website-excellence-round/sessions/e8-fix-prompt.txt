@@ -1,0 +1,46 @@
+The iter2 critique receipt (benchmarks/website-excellence-round/critiques/
+20261029-165327-iter2-encore.json — READ its audit.desktopLight) found 27
+LIGHT-scheme contrast violations (min 1.09:1). Diagnosis, verified against
+the cascade:
+
+src/app/encore/globals.css (the "iter1 contrast-pair pins" block at the
+bottom) unconditionally pins `.encore-scope { --color-poke: #ff7362;
+--color-amber: #ffbd83; }` AND (per its own comment) re-anchors the panel
+tokens to the dark navy pair "under ANY scheme". In light mode the ROOT
+scheme flips the text tokens to dark values (ink #102039, dim #182952 —
+correct for the light canvas) but Encore's panels stay DARK — so every
+text-on-panel pairing renders dark-on-dark (~1.67-1.78:1). The block's
+claim that "the iter1b receipt measured 0 light violations" matches no
+committed receipt — iter2's audit is the truth.
+
+THE FIX (the landing's own dual-declaration pattern —
+src/app/globals.css lines 178-206 are the reference):
+1. DELETE the unconditional panel re-anchoring and the unconditional
+   poke/amber pins in .encore-scope. Encore inherits the root's
+   dual-declared tokens: dark scheme renders exactly as today; light
+   scheme renders panels light and text dark (the landing's light mode,
+   which passes its own contrast audit).
+2. The two badge/link pairs then need scheme-correct values: in a
+   `@media (prefers-color-scheme: light)` block scoped to .encore-scope,
+   pin --color-poke and --color-amber to the landing's LIGHT values
+   (#732020, #6a3108 — they are already dual-declared at root; you may
+   not even need the override — check what the root cascade resolves
+   inside .encore-scope first, and prefer NO override if inheritance
+   already yields the light values).
+3. `color-scheme: dark` on .encore-scope: if the page is meant to follow
+   the OS scheme (the landing's model), that pin may itself be wrong for
+   light visitors — check how the landing root declares color-scheme and
+   match the same mechanism.
+4. Sweep EVERY hardcoded color in src/app/encore/globals.css and the
+   encore components for scheme-safety: a color that only passes on one
+   scheme must be a token that flips, never a literal.
+
+Verification (report exact results):
+- `bun test src/components/encore` green
+- `bun run typecheck` + `bun run lint` clean
+- Reason through both schemes: every text/surface pair clears 4.5:1 in
+  dark AND in light (the receipt's audit does the measuring next run —
+  the operator will re-run the critic after this session)
+
+Rules: lib/, landing files, receipts, AGENTS.md untouched. The type
+census stays <= 8; the GBA-5-bit token families only.

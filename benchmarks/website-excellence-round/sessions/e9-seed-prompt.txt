@@ -1,0 +1,49 @@
+Phase 4 closeout: wire the critique loop's receipts into the showcase.
+The images are staged; the receipts are committed. Read the plan §1.3
+(the seed's provenance rules) and the current seed first.
+
+1. APPEND the encore trajectory to ENCORE_ITERATIONS in
+   src/lib/encore/seed.ts. The canonical chronological entries (each
+   with @provenance naming its receipt file under benchmarks/
+   website-excellence-round/critiques/):
+   - iter0: 20261029-161216-iter0-encore.json (overall 6.27, overflow
+     42px FAIL — the first both-scheme critique)
+   - iter1: 20261029-162927-iter1-encore.json (overall 6.0, overflow
+     42px still FAIL)
+   - iter2: 20261029-165327-iter2-encore.json (overall 6.0, overflow
+     0px PASS, 27 light-scheme violations FAIL)
+   - iter3: 20261029-170148-iter3-encore.json (overall 6.22, ALL
+     objective gates PASS — the final)
+   The baseline (the landing receipt, 20261029-145746-baseline-root.json)
+   stays entry 0. Keep the append-clean ordering (risk #10).
+
+2. Update the drift gate (seed.test.ts) to read ALL five receipt files
+   and assert the constants field-by-field (the gate grows).
+
+3. The iterations component (src/components/encore/views/iterations.tsx):
+   - ITERATION_AFTER_IMG -> "/landing/encore/iterations/final-hero.png"
+     (staged from the iter3 receipt's shotsDir band00 shot)
+   - Remove the "in flight" placeholder pane — the after image EXISTS
+     now; the comparison renders both real shots
+   - The delta table compares entry 0 (the landing baseline) vs the
+     latest (iter3) — the honest trajectory includes the encore
+     iterations' own gates story; if the component renders per-iteration
+     rows, wire them from the appended entries
+   - Update the alt text to describe the final state honestly: the
+     landing baseline (23 font sizes, 32.7% off-grid) vs the encore
+     final (6 font sizes, 0% off-grid, all objective gates passing)
+
+4. The honest-note contract: wherever the band presents the VLM overall
+   (baseline 6.40 vs final 6.22), the copy must carry the honest
+   framing from the round's README: the objective discipline gates
+   transformed; the VLM overall sits within the single-judge variance
+   band (iter1->iter3 spread on an improving page) — no number without
+   its receipt, no spin.
+
+5. Update the tests (the component suite + any seed-dependent
+   assertions) so everything stays green: `bun test src/lib/encore` +
+   `bun test src/components/encore`, `bun run typecheck`, `bun run lint`
+   — run all four, report exact counts.
+
+Rules: landing files, AGENTS.md, the receipts themselves untouched. The
+type census stays <= 8. No new deps.

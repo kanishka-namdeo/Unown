@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+  <!-- Encore favicon: a music note (the encore — the standing ovation that
+       earns a second show) meets the Unown eye. GBA 5-bit palette: navy
+       window bg, gold note stem, navy eye with a white pupil — the
+       creature looking back at the performance. -->
+  <rect width="32" height="32" rx="7" fill="#102039"/>
+  <!-- the note: eighth-note glyph, stem up-right, gold -->
+  <g stroke="#ffc55a" stroke-width="2" stroke-linecap="round" fill="none">
+    <path d="M18 8v14"/>
+    <path d="M18 8c3.5 1 5.5 3 5.5 6"/>
+  </g>
+  <ellipse cx="14.5" cy="22.5" rx="4.5" ry="3.5" fill="#ffc55a"/>
+  <!-- the Unown eye at the note's head: the creature watching the encore -->
+  <circle cx="14.5" cy="22.5" r="1.8" fill="#102039"/>
+  <circle cx="15" cy="22" r="0.6" fill="#dee6ee"/>
+</svg>

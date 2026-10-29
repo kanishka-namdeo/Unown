@@ -1,0 +1,3 @@
+unown: resumed by session id — 2026-10-29T16-13-34-219Z_01a18870-288b-75be-83ec-d062a87eb46d.jsonl (01a18870-288b-75be-83ec-d062a87eb46d)
+unown: --max-turns 20 reached — the run stopped after 20 completed turn(s)
+Request was aborted

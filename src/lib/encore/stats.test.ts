@@ -30,12 +30,21 @@ describe("axisDelta", () => {
     }
   });
 
-  test("axisDelta(latest, baseline) for the ENCORE_ITERATIONS pair", () => {
-    // With one iteration, latest === baseline, so all deltas are 0.
-    const d = axisDelta(ENCORE_ITERATIONS[ENCORE_ITERATIONS.length - 1].axes, ENCORE_ITERATIONS[0].axes);
-    for (const axis of ENCORE_AXES) {
-      expect(d[axis], `delta[${axis}]`).toBe(0);
-    }
+  test("axisDelta(latest, baseline) for the ENCORE_ITERATIONS pair (baseline → iter3)", () => {
+    // With five iterations, latest = ITER3. Deltas are iter3 − baseline:
+    // 6.22 − 6.40 = −0.18 (the VLM overall sits within the single-judge
+    // variance band while the objective gates transformed).
+    const d = axisDelta(
+      ENCORE_ITERATIONS[ENCORE_ITERATIONS.length - 1].axes,
+      ENCORE_ITERATIONS[0].axes,
+    );
+    expect(d.overall, "delta[overall]").toBe(-0.18);
+    expect(d.hierarchy, "delta[hierarchy]").toBe(-0.18);
+    expect(d.typography, "delta[typography]").toBe(-0.53);
+    expect(d.spacing, "delta[spacing]").toBe(-0.08);
+    expect(d.color, "delta[color]").toBe(-0.6);
+    expect(d.alignment, "delta[alignment]").toBe(-0.07);
+    expect(d.density, "delta[density]").toBe(0.03);
   });
 
   test("axisDelta is 2-decimal rounded", () => {
@@ -79,13 +88,14 @@ describe("calibrationSeparation", () => {
 /* ── improvementStats ────────────────────────────────────────────── */
 
 describe("improvementStats", () => {
-  test("with a single iteration, latest === baseline, all deltas 0, gatePasses 8", () => {
+  test("with five iterations, latest = ITER3, gatePasses(latest) = 10, baseline gatePasses = 8", () => {
     const s = improvementStats(ENCORE_ITERATIONS, CALIB_BAD_ITERATION, F_LEDGER, TOOL_CARDS);
-    expect(s.latest).toBe(ENCORE_ITERATIONS[0]);
-    for (const axis of ENCORE_AXES) {
-      expect(s.axisDelta[axis], `axisDelta[${axis}]`).toBe(0);
-    }
-    expect(s.gatePasses).toBe(8);
+    expect(s.latest).toBe(ENCORE_ITERATIONS[4]);
+    expect(s.latest.label).toBe("iter3");
+    // iter3: every objective gate passes; only vlmAxes (the VLM opinion)
+    // misses the 7.0 floor → 10 of 11.
+    expect(s.gatePasses).toBe(10);
+    // baseline: fontSizes, offGridPct, vlmAxes fail → 8 of 11.
     expect(s.gatePassesBaseline).toBe(8);
     expect(s.calibrationSeparation).toBe(4.9);
     expect(s.failures).toBe(F_LEDGER);
@@ -97,9 +107,12 @@ describe("improvementStats", () => {
 /* ── append-clean invariant (synthesized iter1 @ 7.5) ────────────── */
 
 describe("append-clean invariant (plan risk #10)", () => {
+  // Synthesized AFTER the real iter3 (the array is now five entries;
+  // a 15:00:00 timestamp would fall mid-array and break the
+  // non-decreasing-order check it is meant to guard).
   const ITER1: Iteration = {
     label: "iter1",
-    timestamp: "2026-10-29T15:00:00.000Z",
+    timestamp: "2026-10-29T18:00:00.000Z",
     receiptPath: "benchmarks/website-excellence-round/critiques/fake-iter1.json",
     overall: 7.5,
     axes: {
@@ -146,10 +159,12 @@ describe("append-clean invariant (plan risk #10)", () => {
     }
   });
 
-  test("baseline (index 0) is untouched after append", () => {
+  test("baseline (index 0) is untouched after append; the real iter3 stays at index 4", () => {
     const arr = [...ENCORE_ITERATIONS, ITER1];
     expect(arr[0]).toBe(BASELINE_ITERATION);
     expect(arr[0].overall).toBe(6.4);
+    expect(arr[4].label).toBe("iter3");
+    expect(arr[5]).toBe(ITER1);
   });
 
   test("axisDelta(iter1, baseline) = +1.10 for overall, all positive", () => {

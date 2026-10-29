@@ -291,20 +291,21 @@ async function vlmCritique(pngPath, ctx) {
 }
 
 /* ────────────────── capture + audit per viewport ────────────────── */
-async function capture(page, url, device, outDir, slug) {
+async function capture(page, url, device, outDir, slug, scheme = "dark") {
+  await page.emulateMedia({ reducedMotion: "reduce", colorScheme: scheme }); // the settled state; the SCHEME the page ships dark-first (the F12-class finding: playwright defaults to light, and a dark-first page must be audited in BOTH schemes — the landing's contrast_audit contract)
   await page.goto(url, { waitUntil: "networkidle", timeout: 45000 });
-  await page.emulateMedia({ reducedMotion: "reduce" }); // audit the settled state, not mid-flight reveals
   await new Promise((r) => setTimeout(r, 900));         // let reveals settle (base-state-finished rule)
 
   const audit = await page.evaluate(AUDIT);
   const vitals = await page.evaluate(() => window.__vitals);
   const shots = [];
 
-  const full = join(outDir, `${slug}-${device}-full.png`);
+  const suffix = scheme === "dark" ? "" : "-light";
+  const full = join(outDir, `${slug}-${device}${suffix}-full.png`);
   await page.screenshot({ path: full, fullPage: true });
-  shots.push({ shot: `${slug}-${device}-full.png`, kind: "full", device });
+  shots.push({ shot: `${slug}-${device}${suffix}-full.png`, kind: "full", device, scheme });
 
-  if (!FULL_ONLY) {
+  if (!FULL_ONLY && scheme === "dark") {
     const bands = await page.$$eval("main > section, main > header, main > footer, body > section", (els) =>
       els.map((el, i) => {
         const r = el.getBoundingClientRect();
@@ -317,7 +318,7 @@ async function capture(page, url, device, outDir, slug) {
       await new Promise((r) => setTimeout(r, 350));
       const name = `${slug}-${device}-band${String(b.i).padStart(2, "0")}.png`;
       await page.screenshot({ path: join(outDir, name) }); // viewport shot: the band as a visitor sees it
-      shots.push({ shot: name, kind: "band", device, label: b.label });
+      shots.push({ shot: name, kind: "band", device, scheme: "dark", label: b.label });
     }
     await page.evaluate(() => window.scrollTo(0, 0));
   }
@@ -339,12 +340,19 @@ const results = { desktop: null, mobile: null };
 try {
   const desktop = await browser.newPage({ viewport: { width: 1440, height: 900 } });
   await desktop.addInitScript(INIT);
-  results.desktop = await capture(desktop, url, "desktop", outDir, slug);
+  results.desktop = await capture(desktop, url, "desktop", outDir, slug, "dark");
+  // the light-scheme twin (full-page + audit only — the page ships dark-first, but the landing contract audits both and so does the rubric)
+  const desktopLight = await browser.newPage({ viewport: { width: 1440, height: 900 } });
+  await desktopLight.addInitScript(INIT);
+  const lightShots = await capture(desktopLight, url, "desktop", outDir, slug, "light");
+  results.desktopLight = { audit: lightShots.audit, vitals: lightShots.vitals, shots: [] };
+  results.desktop.shots.push(...lightShots.shots);
   await desktop.close();
+  await desktopLight.close();
 
   const mobile = await browser.newPage({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
   await mobile.addInitScript(INIT);
-  results.mobile = await capture(mobile, url, "mobile", outDir, slug);
+  results.mobile = await capture(mobile, url, "mobile", outDir, slug, "dark");
   await mobile.close();
 } finally {
   await browser.close();
@@ -377,9 +385,9 @@ for (const axis of RUBRIC.vlmAxes) {
 }
 const vlmFailAxes = Object.entries(axisMeans)
   .filter(([k, v]) => v !== null && v < RUBRIC.vlmFloor).map(([k, v]) => `${k} ${v}<${RUBRIC.vlmFloor}`);
-const d = results.desktop.audit, m = results.mobile.audit;
+const d = results.desktop.audit, m = results.mobile.audit, dl = results.desktopLight.audit;
 const gates = {
-  contrastViolations: { value: d.contrast.violations.length + m.contrast.violations.length, max: RUBRIC.contrastViolations, pass: d.contrast.violations.length + m.contrast.violations.length <= RUBRIC.contrastViolations },
+  contrastViolations: { value: d.contrast.violations.length + m.contrast.violations.length + dl.contrast.violations.length, max: RUBRIC.contrastViolations, pass: d.contrast.violations.length + m.contrast.violations.length + dl.contrast.violations.length <= RUBRIC.contrastViolations },
   fontSizes: { value: d.type.distinctSizes, max: RUBRIC.fontSizesMax, pass: d.type.distinctSizes <= RUBRIC.fontSizesMax },
   offGridPct: { value: d.spacing.offGridPct, max: RUBRIC.offGridMaxPct, pass: d.spacing.offGridPct <= RUBRIC.offGridMaxPct },
   headingSkips: { value: d.headings.skips.length, max: RUBRIC.headingSkips, pass: d.headings.skips.length <= RUBRIC.headingSkips },
@@ -398,7 +406,7 @@ const receipt = {
   route: ROUTE, url, label: LABEL, file: FILE || undefined,
   generatedAt: new Date().toISOString(),
   rubric: RUBRIC,
-  audit: { desktop: results.desktop.audit, mobile: results.mobile.audit },
+  audit: { desktop: results.desktop.audit, desktopLight: results.desktopLight.audit, mobile: results.mobile.audit },
   vitals: { desktop: results.desktop.vitals, mobile: results.mobile.vitals },
   critiques,
   axisMeans,
@@ -413,7 +421,7 @@ writeFileSync(receiptPath, JSON.stringify(receipt, null, 2) + "\n");
 
 /* report */
 console.log(`\ndesign critic — ${ROUTE} [${LABEL}]`);
-console.log(`  contrast: min ${d.contrast.min} (desktop) · violations ${gates.contrastViolations.value}`);
+console.log(`  contrast: min ${d.contrast.min} (desktop dark) / ${dl.contrast.min} (light) · violations ${gates.contrastViolations.value}`);
 console.log(`  type: ${d.type.distinctSizes} distinct sizes · spacing: ${d.spacing.offGridPct}% off-grid (${d.spacing.samples} samples)`);
 console.log(`  headings: ${d.headings.skips.length} skips · alts missing: ${gates.missingAlts.value} · mobile overflow: ${m.overflowX}px`);
 console.log(`  vitals (desktop, localhost): FCP ${gates.fcpMs.value}ms · LCP ${gates.lcpMs.value}ms · CLS ${gates.cls.value} · TBT ${gates.tbtMs.value}ms`);

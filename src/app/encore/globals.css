@@ -1,0 +1,335 @@
+/*
+ * Encore — the /encore route's scoped stylesheet (the cadence/nocturne
+ * pattern).
+ *
+ * Embedded inside the unown landing app, this file is imported ONLY
+ * by src/app/encore/layout.tsx, so Next injects it for /encore routes
+ * alone — the landing page never downloads it. The embedding
+ * adaptations:
+ *
+ *   1. `@source` scoping — with two Tailwind v4 passes in one repo,
+ *      this file's pass must generate utilities for the Encore trees
+ *      only (components/encore, lib/encore, app/encore), never the
+ *      landing's.
+ *   2. The `:root` re-anchoring — under the landing's root layout the
+ *      page elements are SHARED; the Encore app re-anchors its tokens
+ *      onto `.encore-scope` so it must not restyle the host.
+ *
+ * Design system (plan §4): Encore INHERITS the landing token system —
+ * GBA 5-bit dark scheme (canvas/panel/panel-2/line/ink/dim/faint/
+ * gold/gold-soft/poke, all defined by the root `@theme` in
+ * `src/app/globals.css` and restyled by the root layout's light
+ * scheme). Encore invents no new color family.
+ *
+ * The type ramp (plan §4.1) — EXACTLY 8 distinct sizes, nothing else:
+ *
+ *   role        size    tracking   lh     face
+ *   eyebrow     12px    +0.08em    1.0   mono caps
+ *   caption     12px    0          1.5   sans
+ *   body-sm     14px    0          1.5   sans
+ *   body        16px    0          1.6   sans
+ *   body-lg     18px    0          1.6   sans
+ *   display-4   32px    -0.015em   1.1   sans
+ *   display-3   48px    -0.015em   1.1   sans
+ *   display-2   64px    -0.02em    1.05  sans
+ *
+ * The retro accent face (`--font-display`, Pixelify Sans — owned by
+ * the root layout's next/font) is used ONLY for the hero glyph-decode
+ * kicker and the section kickers, never body copy (plan risk #3).
+ *
+ * Scheme (iter2 contrast repair): Encore does NOT pin `color-scheme:
+ * dark` and does NOT re-anchor its panel tokens. It inherits the
+ * landing's dual-declared palette exactly — the dark default of the
+ * root `@theme` renders as today; under a light OS scheme (or
+ * `data-theme="light"`) the root's light block flips every token
+ * (light panels, dark ink, dark amber/poke) and Encore restyles
+ * for free, the landing's own pattern (`src/app/globals.css`
+ * lines 178-206). A color that only passes on one scheme must be
+ * a token that flips, never a literal. `text-poke` / `text-amber`
+ * keep compiling to the same `var()` references; the vars flip
+ * instead of being pinned.
+ *
+ * Spacing (plan §4.2): every value on the 4/8 grid —
+ * 4/8/12/16/24/32/48/64/96. 4px is for micro-adjustments only.
+ *
+ * Motion (plan §4.4): 150/250/400ms, ease-out, one spring (the
+ * session-3b before/after slider thumb — declared as a token now).
+ * EVERY effect is behind `prefers-reduced-motion: reduce`; the
+ * reduced render IS the finished state (reveals settle to the
+ * base-finished card, never a blank frame).
+ */
+@import "tailwindcss";
+
+@source "../../../components/encore";
+@source "../../../lib/encore";
+@source "../../encore";
+
+/* ── scope wrapper ───────────────────────────────────────────────── */
+
+/* The wrapper the encore layout renders. Under the landing's root
+ * layout, <html>/<body> are shared, so the app re-anchors onto this
+ * scope class. The color tokens are the LANDING's, defined in
+ * `src/app/globals.css`'s root `@theme` — we inherit, we do not
+ * invent. */
+/* No `color-scheme` pin (iter2): the landing root leaves the page to
+ * follow the OS scheme + the `data-theme` toggle, so native form
+ * chrome/scrollbars must too. A pinned `dark` forced dark native
+ * controls onto the light canvas. */
+.encore-scope {
+  background: var(--color-canvas, #102039);
+  color: var(--color-ink, #dee6ee);
+  font-family: var(--font-geist-sans, ui-sans-serif, system-ui,
+    -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial,
+    sans-serif);
+  min-height: 100dvh;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Motion tokens (plan §4.4). */
+.encore-scope {
+  --encore-fast: 150ms;
+  --encore-base: 250ms;
+  --encore-slow: 400ms;
+  /* The ONE interactive spring — the session-3b before/after slider
+   * thumb (user-triggered only). */
+  --encore-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+  /* Type ramp (plan §4.1) — 8 distinct values, used as utility
+   * classes below. Tailwind's `text-[64px]` arbitrary values would
+   * create unbounded new sizes; pinning them here keeps the census
+   * ≤ 8 (the Phase-4 audit gate). */
+  --encore-t-eyebrow: 12px;
+  --encore-t-caption: 12px;
+  --encore-t-body-sm: 14px;
+  --encore-t-body: 16px;
+  --encore-t-body-lg: 18px;
+  --encore-t-display-4: 32px;
+  --encore-t-display-3: 48px;
+  --encore-t-display-2: 64px;
+}
+
+/* ── 8-size type ramp as utility classes ─────────────────────────── */
+
+.encore-scope .encore-type-eyebrow {
+  font-family: var(--font-geist-mono, ui-monospace, SFMono-Regular,
+    Menlo, Consolas, "Liberation Mono", monospace);
+  font-size: var(--encore-t-eyebrow);
+  line-height: 1;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  font-weight: 500;
+}
+
+.encore-scope .encore-type-caption {
+  font-size: var(--encore-t-caption);
+  line-height: 1.5;
+}
+
+.encore-scope .encore-type-body-sm {
+  font-size: var(--encore-t-body-sm);
+  line-height: 1.5;
+}
+
+.encore-scope .encore-type-body {
+  font-size: var(--encore-t-body);
+  line-height: 1.6;
+}
+
+.encore-scope .encore-type-body-lg {
+  font-size: var(--encore-t-body-lg);
+  line-height: 1.6;
+}
+
+.encore-scope .encore-type-display-4 {
+  font-size: var(--encore-t-display-4);
+  line-height: 1.1;
+  letter-spacing: -0.015em;
+}
+
+.encore-scope .encore-type-display-3 {
+  font-size: var(--encore-t-display-3);
+  line-height: 1.1;
+  letter-spacing: -0.015em;
+}
+
+.encore-scope .encore-type-display-2 {
+  font-size: var(--encore-t-display-2);
+  line-height: 1.05;
+  letter-spacing: -0.02em;
+}
+
+/* The retro accent face (plan §4.1) — `--font-display` is Pixelify
+ * Sans, owned by the root layout's next/font. Encore uses it ONLY
+ * for the hero glyph-decode kicker and the section kickers, never
+ * body (risk #3). */
+.encore-scope .encore-face-accent {
+  font-family: var(--font-display, var(--font-geist-sans, system-ui));
+  letter-spacing: 0.02em;
+}
+
+/* ── layout (plan §4.5) ──────────────────────────────────────────── */
+
+/* max-width: 1200px centered container; padding-inline 24 desktop /
+ * 16 mobile (the 390px covenant — no band may overflow). */
+.encore-scope .encore-container {
+  max-width: 1200px;
+  margin-inline: auto;
+  padding-inline: 16px;
+}
+@media (min-width: 768px) {
+  .encore-scope .encore-container {
+    padding-inline: 24px;
+  }
+}
+
+/* Section padding: 96 desktop / 64 mobile vertical. */
+.encore-scope .encore-section {
+  padding-block: 64px;
+}
+@media (min-width: 768px) {
+  .encore-scope .encore-section {
+    padding-block: 96px;
+  }
+}
+
+/* ── reveal motion (plan §4.4) ───────────────────────────────────── */
+
+/* One-shot band/receipt-card reveal: base-finished card, never a
+ * blank frame. Under reduced motion the element renders at the
+ * finished state immediately (opacity 1, no transform) — the
+ * reduced render IS the finished state. */
+.encore-reveal {
+  opacity: 1;
+  transform: none;
+}
+
+/* ── before/after slider (plan §4.4 — the ONE interactive spring) ── */
+
+/* ── the framed comparison (iter1 work order 5 — band03) ───────── */
+
+/* The BEFORE/AFTER hero-shot container: a DEFINED border
+ * (`line-bright` over the `panel-2` backdrop, so the shot's own
+ * pixels read against the dark section instead of the raw
+ * "screenshot of a screenshot" edge), plus a subtle inset ring +
+ * soft drop shadow — token colors only, no invented hues.
+ * The shot images are `image-rendering: auto` (crisp scaling at
+ * any scale — no blur-up artifacts; the 1440-wide shot at the
+ * 768px max-w container is ~53% scale, acceptable when it's a
+ * clean downscale). */
+.encore-scope .encore-framed {
+  box-shadow: 0 12px 32px rgb(0 0 0 / 0.45),
+    inset 0 0 0 1px rgb(255 255 255 / 0.06);
+}
+.encore-scope .encore-crisp {
+  image-rendering: auto;
+}
+
+/* ── the stat-grid optical alignment (iter1 work order 4 — band01) ── */
+
+/* The four KPI headline numbers read as ONE system: same size tier
+ * (body-lg, `tabular-nums` so the digit columns line up), same
+ * font weight, same baseline. The receipt-footnote row (short ref,
+ * ≤28 chars) is pinned to the card's bottom edge with `mt-auto` so
+ * '23' + '0' align optically with '6.40' + '32.7%' — no more
+ * touching/float pairs (the uneven-baseline defect). */
+.encore-scope .encore-kpi .encore-type-body-lg {
+  height: 1.6em;
+  display: flex;
+  align-items: baseline;
+}
+.encore-scope .encore-kpi [title] {
+  margin-top: auto;
+}
+
+/* The native range input that drives the AFTER image's clip-path.
+ * The thumb is the one interactive spring in the design — user
+ * triggered, behind reduced-motion. The input is invisible over
+ * the comparison (transparent track); the thumb is the gold dot
+ * the user grabs. */
+.encore-scope .encore-slider {
+  width: calc(100% - 32px);
+  height: 20px;
+  appearance: none;
+  -webkit-appearance: none;
+  background: transparent;
+  cursor: pointer;
+  z-index: 10;
+}
+/* The track (invisible — the comparison images are the track) */
+.encore-scope .encore-slider::-webkit-slider-runnable-track {
+  height: 4px;
+  background: var(--color-line, #414a6a);
+  border-radius: 2px;
+}
+.encore-scope .encore-slider::-moz-range-track {
+  height: 4px;
+  background: var(--color-line, #414a6a);
+  border-radius: 2px;
+}
+/* The thumb — the spring, gold, 16px */
+.encore-scope .encore-slider::-webkit-slider-thumb {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--color-gold, #ffc55a);
+  border: 2px solid var(--color-canvas, #102039);
+  margin-top: -6px;
+  transition: transform var(--encore-spring);
+}
+.encore-scope .encore-slider::-moz-range-thumb {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--color-gold, #ffc55a);
+  border: 2px solid var(--color-canvas, #102039);
+  transition: transform var(--encore-spring);
+}
+.encore-scope .encore-slider:focus-visible {
+  outline: 2px solid var(--color-gold, #ffc55a);
+  outline-offset: 2px;
+}
+
+/* ── reduced-motion guards (plan §4.4) ───────────────────────────── */
+
+@media (prefers-reduced-motion: reduce) {
+  /* Every Encore animation is OFF; the render shows the finished
+   * state directly. */
+  .encore-scope *,
+  .encore-scope *::before,
+  .encore-scope *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+  .encore-reveal {
+    opacity: 1 !important;
+    transform: none !important;
+  }
+}
+
+/* ── visible focus ring ──────────────────────────────────────────── */
+
+.encore-scope :focus-visible {
+  outline: 2px solid var(--color-gold, #ffc55a);
+  outline-offset: 2px;
+}
+
+/* ── embed-mode tighter paddings (plan §3.1) ─────────────────────── */
+
+/* When embedded on the landing's live-demo iframe, tighten the band
+ * padding so the strip / stepper fit the frame. */
+.encore-scope.embedded .encore-section {
+  padding-block: 48px;
+}
+
+/* ── scheme flip (iter2 contrast repair) ──────────────────────── */
+
+/* No per-scheme overrides in this file: `--color-poke` and
+ * `--color-amber` are dual-declared on :root by the landing's light
+ * block (`#732020` / `#6a3108`) and flip under `prefers-color-scheme`
+ * or `data-theme` exactly like every other landing token. Inside
+ * `.encore-scope` the inherited values already yield the scheme-
+ * correct pair — pinning them here (as iter1 did) is what broke the
+ * 27 light violations, so no override is added. */

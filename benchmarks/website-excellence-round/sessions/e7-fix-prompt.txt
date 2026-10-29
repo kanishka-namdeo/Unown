@@ -1,0 +1,28 @@
+One surgical fix, precisely diagnosed. The 390px mobile covenant still
+fails by 42px (scrollWidth 432) and the culprit is EXACTLY ONE element:
+the sr-only axis data table in src/components/encore/views/baseline.tsx
+(<table className="sr-only"><caption>The seven VLM axis means from the
+baseline receipt</caption>...).
+
+Diagnosis (verified by computed-style probe): Tailwind v4's .sr-only sets
+width: 1px, but the scoped globals.css styles tables with a HIGHER-
+specificity selector that overrides the width on table elements — the
+table re-expands to its natural 392px layout width inside the padded
+container (left: 40, right: 432) even though it is position: absolute and
+visually clipped. The class works on DIVs because divs carry no table
+width semantics.
+
+The fix: wrap the table in a <div className="sr-only"> and remove the
+class from the <table> itself (the div gets the 1px clip; the table inside
+inherits the hidden context with zero layout footprint). Keep the table's
+caption/semantics EXACTLY as they are — screen readers lose nothing.
+
+Then verify and report:
+1. The document has ZERO horizontal overflow at 390px — check with this
+   exact pattern in a quick probe or by reasoning: documentElement.
+   scrollWidth === 390.
+2. `bun test src/components/encore` green (53 tests; update any test that
+   queried table.sr-only directly).
+3. `bun run typecheck` + `bun run lint` clean.
+
+Nothing else changes. Rules: lib/, landing, receipts, AGENTS.md untouched.

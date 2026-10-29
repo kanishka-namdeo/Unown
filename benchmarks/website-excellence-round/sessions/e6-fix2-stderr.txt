@@ -1,0 +1,4 @@
+unown: resumed by session id — 2026-10-29T16-30-27-745Z_01a1887f-9fa1-77ea-8c7e-5ba53dcf3c8e.jsonl (01a1887f-9fa1-77ea-8c7e-5ba53dcf3c8e)
+unown: --max-turns 25 reached — the run stopped after 25 completed turn(s)
+Request was aborted
+unown: the --max-turns cap hit mid-work — no answer was produced; reported as error, not success

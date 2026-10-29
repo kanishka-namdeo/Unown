@@ -1,0 +1,26 @@
+You hit the turn cap. State: all four views EXIST (iterations.tsx, tools.tsx,
+failures.tsx, finale.tsx) and typecheck + lint are clean — but the bands are
+NOT yet wired into src/app/encore/page.tsx, and the test suite still has the
+original 24 tests (your new tests are not written). You had diagnosed the
+test conflict yourself: the tools band renders two AxisBars with
+axis="overall" (DISCRIMINATION.calibBad=1.5 and baseline=6.4) which adds
+extra axis-value-overall cells the existing getAllByTestId('axis-value-
+overall') loop doesn't expect.
+
+This session, in order:
+1. Wire the four bands into src/app/encore/page.tsx after loop.tsx (plan
+   order: iterations, tools, failures, finale). Extend the reset handshake
+   to clear the slider position too (shape+origin check unchanged).
+2. Fix the existing test conflict you diagnosed (scope the assertions to
+   the band under test, e.g. within(container) queries — do not weaken the
+   tests).
+3. Write the NEW tests per plan §6.2: the slider drags + keyboard arrows;
+   the delta table shows the exact seeded deltas; each new band renders
+   its receipt numbers; the tools band shows both tool cards and the
+   discrimination pair (1.5 vs 6.4); the failures band shows the F10/F11
+   entries; the reset clears the slider position.
+4. Run and report exact counts for: `bun test src/components/encore`,
+   `bun run typecheck`, `bun run lint`.
+
+Rules unchanged: no lib edits, no landing edits, no AGENTS.md, no
+receipts, no fake media.

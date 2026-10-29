@@ -1,0 +1,60 @@
+Implement Phase 3b (the second UI session) of the Encore build contract at
+benchmarks/website-excellence-round/plan.md. Session 3a already shipped the
+frame + bands 1-3 (hero, baseline, loop) with 24 green component tests in
+src/components/encore/__tests__/encore.test.tsx — read those files first to
+match their conventions exactly (the shell's SectionHead, the primitives,
+the seed imports, the test patterns), then read plan sections 4, 5.4-5.7
+and 6.
+
+Scope for THIS session — bands 4-7:
+- src/components/encore/views/iterations.tsx — THE FLAGSHIP BAND per plan
+  §5.4: the BEFORE/AFTER drag comparison (a native range input per risk #1
+  — keyboard + screen reader by construction, honest aria-labels and alts)
+  comparing two full-page desktop shots of Encore's own build iterations,
+  plus the score-delta table between the receipts (axis by axis, the
+  improvement math from stats.ts). The image pair paths come from the seed
+  constants (the seed names them — check src/lib/encore/seed.ts for the
+  iteration image fields; if absent, read the paths from the ENCORE_
+  ITERATIONS entries' receipt paths convention and declare them as local
+  constants with a TODO-free provenance comment naming the receipts they
+  will stage from). The images do not exist yet — the critique loop stages
+  them after this session; the component must render with them present and
+  the test must assert the declared paths + the delta table math, not file
+  existence.
+- src/components/encore/views/tools.tsx — the tool cards per plan §5.5:
+  design_critic (its receipt: the baseline + the calibration) and the
+  calibration fixture (the 1.5-vs-6.4 discrimination story as accessible
+  AxisBars), every number from the seed
+- src/components/encore/views/failures.tsx — the F-ledger per plan §5.6:
+  the F10/F11 entries from the seed (FChip primitive), each with its
+  one-line root cause and its fix-ref link, the "every failure became a
+  benchmark" framing
+- src/components/encore/views/finale.tsx — the program's success question
+  and its answer per plan §5.7, the CTA back to the gallery (a plain link
+  to /#live-demos or the gallery anchor the landing uses — check
+  src/components/landing/shell.tsx NAV_ENTRIES for the right anchor)
+- Wire the four bands into src/app/encore/page.tsx (after loop.tsx, in
+  plan order)
+- Extend the reset handshake: reset also clears the slider position (the
+  listener already exists from session 3a — extend its action, keep the
+  shape+origin check)
+- Component tests (extend src/components/encore/__tests__/encore.test.tsx
+  or add colocated suites per the plan): the slider drags (value changes
+  the clip), keyboard steps (arrow keys move the range), the delta table
+  shows the exact seeded deltas, each new band renders its receipt
+  numbers, the tools band shows both tool cards, the failures band shows
+  the F-ledger entries, the reset clears the slider
+
+Design rules (plan §4 — BINDING, unchanged): the 8-size type ramp, 4/8
+spacing grid, the named color pairs, 150/250/400ms motion behind
+prefers-reduced-motion, max-w container, the 390px covenant. The retro
+accent face only for kickers.
+
+Rules: lib/ is DONE — do not edit src/lib/encore/**; no landing changes;
+no next.config.ts; no fake media (no placeholder images); colocated tests;
+`bun test src/components/encore` green; `bun run typecheck` + `bun run
+lint` clean — run all three before finishing. Do NOT edit .unown/**, any
+AGENTS.md, any receipt, the plan, the siblings.
+
+Finish by reporting: the band list, the test count, the exact results of
+the three gates.

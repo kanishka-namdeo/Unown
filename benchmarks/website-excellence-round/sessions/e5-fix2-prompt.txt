@@ -1,0 +1,17 @@
+You hit the turn cap mid-rewrite. Current state: src/components/encore/
+views/tools.tsx has a DUPLICATE export — `Tools` declared at line 42 AND
+at line 190 (your rewrite wrote a new version without removing the old
+one; typecheck errors TS2323/TS2484 confirm). Everything else may be fine.
+
+This session:
+1. Fix tools.tsx: remove the OLD Tools component (keep your NEW version —
+   the one matching the work orders), one export only.
+2. Run ALL THREE gates and fix anything else your rewrite left dangling:
+   `bun test src/components/encore`, `bun run typecheck`, `bun run lint`.
+3. Verify the work orders actually landed (spot-check): receipt short-refs
+   (no full paths inline anywhere), the compare band uses baseline-hero.png
+   + the designed "in flight" placeholder for the after pane, the 390px
+   covenant holds in every band (mentally or via the test).
+
+Report the exact gate results and a one-line-per-work-order confirmation.
+Rules unchanged: lib untouched, landing untouched, receipts untouched.

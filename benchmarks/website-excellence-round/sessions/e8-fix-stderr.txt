@@ -1,0 +1,3 @@
+unown: --max-turns 20 reached — the run stopped after 20 completed turn(s)
+Request was aborted
+unown: the --max-turns cap hit mid-work — no answer was produced; reported as error, not success

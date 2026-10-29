@@ -1,0 +1,11 @@
+Lib done (70 tests green). Finish the component now:
+1. iterations.tsx: ITERATION_AFTER_IMG -> "/landing/encore/iterations/
+   final-hero.png"; hasAfter -> true (the after image exists — remove the
+   placeholder branch entirely, both images render); honest alts (the
+   landing baseline 23 font sizes/32.7% off-grid vs the encore final 6
+   font sizes/0% off-grid/all objective gates passing).
+2. Update the component tests that pinned the old paths or the
+   placeholder (keep coverage: both images render, the alts carry the
+   receipt numbers).
+3. Run ALL FOUR and report exact counts: `bun test src/lib/encore`,
+   `bun test src/components/encore`, `bun run typecheck`, `bun run lint`.

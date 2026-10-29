@@ -172,20 +172,262 @@ export const DISCRIMINATION: {
   separation: 4.9,
 };
 
+/* ── iter0–iter3 gate maps (the critique-loop receipts) ──────────── */
+
+/**
+ * @provenance benchmarks/website-excellence-round/critiques/20261029-161216-iter0-encore.json
+ */
+const ITER0_AXES: EncoreAxisMap = {
+  hierarchy: 6.4,
+  typography: 6.1,
+  spacing: 5.92,
+  color: 7.24,
+  alignment: 7.03,
+  density: 6.47,
+  overall: 6.27,
+};
+
+/**
+ * @provenance benchmarks/website-excellence-round/critiques/20261029-161216-iter0-encore.json
+ */
+const ITER0_GATES: EncoreGateMap = {
+  contrastViolations: gate(0, true, { max: 0 }),
+  fontSizes: gate(6, true, { max: 8 }),
+  offGridPct: gate(0, true, { max: 15 }),
+  headingSkips: gate(0, true, { max: 0 }),
+  missingAlts: gate(0, true, { max: 0 }),
+  mobileOverflow: gate(42, false, { max: 0 }),
+  fcpMs: gate(212, true, { max: 1800 }),
+  lcpMs: gate(212, true, { max: 2500 }),
+  cls: gate(0, true, { max: 0.1 }),
+  tbtMs: gate(19, true, { max: 200 }),
+  vlmAxes: gate(ITER0_AXES, false, {
+    floor: 7,
+    failures: [
+      "hierarchy 6.4<7",
+      "typography 6.1<7",
+      "spacing 5.92<7",
+      "density 6.47<7",
+      "overall 6.27<7",
+    ],
+  }),
+};
+
+/**
+ * @provenance benchmarks/website-excellence-round/critiques/20261029-162927-iter1-encore.json
+ */
+const ITER1_AXES: EncoreAxisMap = {
+  hierarchy: 6.37,
+  typography: 5.93,
+  spacing: 6.03,
+  color: 6.17,
+  alignment: 6.93,
+  density: 6.4,
+  overall: 6,
+};
+
+/**
+ * @provenance benchmarks/website-excellence-round/critiques/20261029-162927-iter1-encore.json
+ */
+const ITER1_GATES: EncoreGateMap = {
+  contrastViolations: gate(0, true, { max: 0 }),
+  fontSizes: gate(6, true, { max: 8 }),
+  offGridPct: gate(0, true, { max: 15 }),
+  headingSkips: gate(0, true, { max: 0 }),
+  missingAlts: gate(0, true, { max: 0 }),
+  mobileOverflow: gate(42, false, { max: 0 }),
+  fcpMs: gate(232, true, { max: 1800 }),
+  lcpMs: gate(232, true, { max: 2500 }),
+  cls: gate(0, true, { max: 0.1 }),
+  tbtMs: gate(1, true, { max: 200 }),
+  vlmAxes: gate(ITER1_AXES, false, {
+    floor: 7,
+    failures: [
+      "hierarchy 6.37<7",
+      "typography 5.93<7",
+      "spacing 6.03<7",
+      "color 6.17<7",
+      "alignment 6.93<7",
+      "density 6.4<7",
+      "overall 6<7",
+    ],
+  }),
+};
+
+/**
+ * @provenance benchmarks/website-excellence-round/critiques/20261029-165327-iter2-encore.json
+ */
+const ITER2_AXES: EncoreAxisMap = {
+  hierarchy: 6.41,
+  typography: 6,
+  spacing: 5.88,
+  color: 6.12,
+  alignment: 6.94,
+  density: 6.24,
+  overall: 6,
+};
+
+/**
+ * @provenance benchmarks/website-excellence-round/critiques/20261029-165327-iter2-encore.json
+ */
+const ITER2_GATES: EncoreGateMap = {
+  contrastViolations: gate(27, false, { max: 0 }),
+  fontSizes: gate(6, true, { max: 8 }),
+  offGridPct: gate(0, true, { max: 15 }),
+  headingSkips: gate(0, true, { max: 0 }),
+  missingAlts: gate(0, true, { max: 0 }),
+  mobileOverflow: gate(0, true, { max: 0 }),
+  fcpMs: gate(204, true, { max: 1800 }),
+  lcpMs: gate(204, true, { max: 2500 }),
+  cls: gate(0, true, { max: 0.1 }),
+  tbtMs: gate(7, true, { max: 200 }),
+  vlmAxes: gate(ITER2_AXES, false, {
+    floor: 7,
+    failures: [
+      "hierarchy 6.41<7",
+      "typography 6<7",
+      "spacing 5.88<7",
+      "color 6.12<7",
+      "alignment 6.94<7",
+      "density 6.24<7",
+      "overall 6<7",
+    ],
+  }),
+};
+
+/**
+ * @provenance benchmarks/website-excellence-round/critiques/20261029-170148-iter3-encore.json
+ */
+const ITER3_AXES: EncoreAxisMap = {
+  hierarchy: 6.32,
+  typography: 6.26,
+  spacing: 6,
+  color: 6.65,
+  alignment: 7.12,
+  density: 6.74,
+  overall: 6.22,
+};
+
+/**
+ * @provenance benchmarks/website-excellence-round/critiques/20261029-170148-iter3-encore.json
+ */
+const ITER3_GATES: EncoreGateMap = {
+  contrastViolations: gate(0, true, { max: 0 }),
+  fontSizes: gate(6, true, { max: 8 }),
+  offGridPct: gate(0, true, { max: 15 }),
+  headingSkips: gate(0, true, { max: 0 }),
+  missingAlts: gate(0, true, { max: 0 }),
+  mobileOverflow: gate(0, true, { max: 0 }),
+  fcpMs: gate(216, true, { max: 1800 }),
+  lcpMs: gate(216, true, { max: 2500 }),
+  cls: gate(0, true, { max: 0.1 }),
+  tbtMs: gate(0, true, { max: 200 }),
+  vlmAxes: gate(ITER3_AXES, false, {
+    floor: 7,
+    failures: [
+      "hierarchy 6.32<7",
+      "typography 6.26<7",
+      "spacing 6<7",
+      "color 6.65<7",
+      "density 6.74<7",
+      "overall 6.22<7",
+    ],
+  }),
+};
+
+/* ── the four critique-loop iterations (Phase 4) ────────────────── */
+
+/**
+ * @provenance benchmarks/website-excellence-round/critiques/20261029-161216-iter0-encore.json
+ *
+ * Encore's first both-scheme critique. The objective discipline gates
+ * held on the first build (6 font sizes, 0% off-grid); the verdict
+ * FAILs on mobileOverflow 42px + 5 VLM axes under the floor.
+ */
+export const ITER0: Iteration = {
+  label: "iter0",
+  timestamp: "2026-10-29T16:12:16.353Z",
+  receiptPath:
+    "benchmarks/website-excellence-round/critiques/20261029-161216-iter0-encore.json",
+  overall: 6.27,
+  axes: ITER0_AXES,
+  gates: ITER0_GATES,
+  passed: false,
+};
+
+/**
+ * @provenance benchmarks/website-excellence-round/critiques/20261029-162927-iter1-encore.json
+ *
+ * The 42px overflow survived the round; all 7 VLM axes fell under the
+ * floor — overall 6.0.
+ */
+export const ITER1: Iteration = {
+  label: "iter1",
+  timestamp: "2026-10-29T16:29:27.610Z",
+  receiptPath:
+    "benchmarks/website-excellence-round/critiques/20261029-162927-iter1-encore.json",
+  overall: 6,
+  axes: ITER1_AXES,
+  gates: ITER1_GATES,
+  passed: false,
+};
+
+/**
+ * @provenance benchmarks/website-excellence-round/critiques/20261029-165327-iter2-encore.json
+ *
+ * The mobile overflow was fixed (0px) but the dark-scheme contrast
+ * fix introduced 27 light-scheme violations — the both-scheme audit
+ * the loop added after F14 caught its own regression.
+ */
+export const ITER2: Iteration = {
+  label: "iter2",
+  timestamp: "2026-10-29T16:53:27.701Z",
+  receiptPath:
+    "benchmarks/website-excellence-round/critiques/20261029-165327-iter2-encore.json",
+  overall: 6,
+  axes: ITER2_AXES,
+  gates: ITER2_GATES,
+  passed: false,
+};
+
+/**
+ * @provenance benchmarks/website-excellence-round/critiques/20261029-170148-iter3-encore.json
+ *
+ * The final receipt: every objective gate passes (0 contrast
+ * violations in both schemes, 6 font sizes, 0% off-grid, 0px
+ * overflow). The verdict stays `passed: false` — the VLM 7.0 floor
+ * (overall 6.22) is the single-judge opinion, not an objective gate.
+ */
+export const ITER3: Iteration = {
+  label: "iter3",
+  timestamp: "2026-10-29T17:01:48.298Z",
+  receiptPath:
+    "benchmarks/website-excellence-round/critiques/20261029-170148-iter3-encore.json",
+  overall: 6.22,
+  axes: ITER3_AXES,
+  gates: ITER3_GATES,
+  passed: false,
+};
+
 /* ── ENCORE_ITERATIONS (chronological — iterations APPEND) ───────── */
 
 /**
- * @provenance both receipts above.
+ * @provenance all five receipts above (baseline + the four critique-loop
+ * receipts).
  *
  * Chronological array — a new receipt = one appended entry here + one
  * appended seed.test.ts test. No re-sort, no re-count of the baseline.
- * The calibration fixture is NOT a landing-page iteration (different url,
- * different purpose); it lives in DISCRIMINATION, not in this array.
+ * The calibration fixture is NOT a landing-page iteration (different
+ * route, different purpose); it lives in DISCRIMINATION, not in this
+ * array.
  */
 export const ENCORE_ITERATIONS: Iteration[] = [
-  BASELINE_ITERATION, // iteration 0 — the baseline
-  // future receipts append here:
-  // ITER1, ITER2, …
+  BASELINE_ITERATION, // entry 0 — the landing baseline
+  ITER0,
+  ITER1,
+  ITER2,
+  ITER3, // the final receipt — all objective gates PASS
+  // future receipts append here
 ];
 
 /* ── F_LEDGER ──────────────────────────────────────────────────────── */

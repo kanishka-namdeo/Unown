@@ -1,0 +1,994 @@
+{
+  "schema": "website-excellence/critique/1",
+  "route": "/encore",
+  "url": "http://127.0.0.1:3211/encore",
+  "label": "iter1c",
+  "generatedAt": "2026-10-29T16:41:22.368Z",
+  "rubric": {
+    "vlmAxes": [
+      "hierarchy",
+      "typography",
+      "spacing",
+      "color",
+      "alignment",
+      "density",
+      "overall"
+    ],
+    "vlmFloor": 7,
+    "contrastViolations": 0,
+    "fontSizesMax": 8,
+    "offGridMaxPct": 15,
+    "headingSkips": 0,
+    "missingAlts": 0,
+    "mobileOverflow": 0,
+    "fcpMs": 1800,
+    "lcpMs": 2500,
+    "cls": 0.1,
+    "tbtMs": 200
+  },
+  "audit": {
+    "desktop": {
+      "contrast": {
+        "min": 4.69,
+        "mean": 9.52,
+        "violations": []
+      },
+      "type": {
+        "distinctSizes": 6,
+        "sizes": [
+          {
+            "size": "12px",
+            "uses": 171
+          },
+          {
+            "size": "14px",
+            "uses": 25
+          },
+          {
+            "size": "16px",
+            "uses": 30
+          },
+          {
+            "size": "18px",
+            "uses": 18
+          },
+          {
+            "size": "32px",
+            "uses": 6
+          },
+          {
+            "size": "48px",
+            "uses": 3
+          }
+        ]
+      },
+      "spacing": {
+        "samples": 58,
+        "offGrid": 0,
+        "offGridPct": 0
+      },
+      "headings": {
+        "order": [
+          1,
+          2,
+          3,
+          3,
+          2,
+          3,
+          2,
+          3,
+          2,
+          3,
+          3,
+          2,
+          2
+        ],
+        "skips": []
+      },
+      "images": {
+        "total": 1,
+        "missingAlts": 0
+      },
+      "overflowX": 0
+    },
+    "desktopLight": {
+      "contrast": {
+        "min": 1.09,
+        "mean": 9.2,
+        "violations": [
+          {
+            "text": "6.50",
+            "ratio": 1.78,
+            "need": 4.5,
+            "size": "12px",
+            "weight": "400",
+            "selector": "span.encore-type-caption"
+          },
+          {
+            "text": "6.79",
+            "ratio": 1.78,
+            "need": 4.5,
+            "size": "12px",
+            "weight": "400",
+            "selector": "span.encore-type-caption"
+          },
+          {
+            "text": "6.08",
+            "ratio": 1.78,
+            "need": 4.5,
+            "size": "12px",
+            "weight": "400",
+            "selector": "span.encore-type-caption"
+          },
+          {
+            "text": "6.71",
+            "ratio": 1.78,
+            "need": 4.5,
+            "size": "12px",
+            "weight": "400",
+            "selector": "span.encore-type-caption"
+          },
+          {
+            "text": "6.40",
+            "ratio": 1.78,
+            "need": 4.5,
+            "size": "12px",
+            "weight": "400",
+            "selector": "span.encore-type-caption"
+          },
+          {
+            "text": "6.40",
+            "ratio": 1.67,
+            "need": 3,
+            "size": "48px",
+            "weight": "600",
+            "selector": "span.encore-type-display-3"
+          },
+          {
+            "text": "FAIL",
+            "ratio": 1.67,
+            "need": 4.5,
+            "size": "12px",
+            "weight": "500",
+            "selector": "span.encore-type-eyebrow"
+          },
+          {
+            "text": "23",
+            "ratio": 1.78,
+            "need": 4.5,
+            "size": "18px",
+            "weight": "600",
+            "selector": "span.encore-type-body-lg"
+          },
+          {
+            "text": "32.7%",
+            "ratio": 1.78,
+            "need": 4.5,
+            "size": "18px",
+            "weight": "600",
+            "selector": "span.encore-type-body-lg"
+          },
+          {
+            "text": "23",
+            "ratio": 1.67,
+            "need": 4.5,
+            "size": "12px",
+            "weight": "500",
+            "selector": "span.encore-type-caption"
+          },
+          {
+            "text": "FAIL",
+            "ratio": 1.67,
+            "need": 4.5,
+            "size": "12px",
+            "weight": "500",
+            "selector": "span.encore-type-eyebrow"
+          },
+          {
+            "text": "32.7%",
+            "ratio": 1.67,
+            "need": 4.5,
+            "size": "12px",
+            "weight": "500",
+            "selector": "span.encore-type-caption"
+          },
+          {
+            "text": "FAIL",
+            "ratio": 1.67,
+            "need": 4.5,
+            "size": "12px",
+            "weight": "500",
+            "selector": "span.encore-type-eyebrow"
+          },
+          {
+            "text": "5 under",
+            "ratio": 1.67,
+            "need": 4.5,
+            "size": "12px",
+            "weight": "500",
+            "selector": "span.encore-type-caption"
+          },
+          {
+            "text": "UNDER",
+            "ratio": 1.67,
+            "need": 4.5,
+            "size": "12px",
+            "weight": "500",
+            "selector": "span.encore-type-eyebrow"
+          },
+          {
+            "text": "6.50",
+            "ratio": 1.78,
+            "need": 4.5,
+            "size": "12px",
+            "weight": "400",
+            "selector": "span.encore-type-caption"
+          },
+          {
+            "text": "6.79",
+            "ratio": 1.78,
+            "need": 4.5,
+            "size": "12px",
+            "weight": "400",
+            "selector": "span.encore-type-caption"
+          },
+          {
+            "text": "6.08",
+            "ratio": 1.78,
+            "need": 4.5,
+            "size": "12px",
+            "weight": "400",
+            "selector": "span.encore-type-caption"
+          },
+          {
+            "text": "6.71",
+            "ratio": 1.78,
+            "need": 4.5,
+            "size": "12px",
+            "weight": "400",
+            "selector": "span.encore-type-caption"
+          },
+          {
+            "text": "6.40",
+            "ratio": 1.78,
+            "need": 4.5,
+            "size": "12px",
+            "weight": "400",
+            "selector": "span.encore-type-caption"
+          },
+          {
+            "text": "1.50",
+            "ratio": 1.67,
+            "need": 4.5,
+            "size": "12px",
+            "weight": "700",
+            "selector": "strong.text-poke"
+          },
+          {
+            "text": "1.50",
+            "ratio": 1.67,
+            "need": 4.5,
+            "size": "12px",
+            "weight": "400",
+            "selector": "span.encore-type-caption"
+          },
+          {
+            "text": "6.40",
+            "ratio": 1.67,
+            "need": 4.5,
+            "size": "12px",
+            "weight": "400",
+            "selector": "span.encore-type-caption"
+          },
+          {
+            "text": "docs/website-excellence-session.md CP0 —",
+            "ratio": 1.09,
+            "need": 4.5,
+            "size": "14px",
+            "weight": "400",
+            "selector": "a.text-amber"
+          },
+          {
+            "text": "3c4cf87",
+            "ratio": 1.09,
+            "need": 4.5,
+            "size": "14px",
+            "weight": "400",
+            "selector": "code.font-mono"
+          },
+          {
+            "text": "docs/website-excellence-session.md CP0 —",
+            "ratio": 1.09,
+            "need": 4.5,
+            "size": "14px",
+            "weight": "400",
+            "selector": "a.text-amber"
+          },
+          {
+            "text": "89535c6",
+            "ratio": 1.09,
+            "need": 4.5,
+            "size": "14px",
+            "weight": "400",
+            "selector": "code.font-mono"
+          }
+        ]
+      },
+      "type": {
+        "distinctSizes": 6,
+        "sizes": [
+          {
+            "size": "12px",
+            "uses": 171
+          },
+          {
+            "size": "14px",
+            "uses": 25
+          },
+          {
+            "size": "16px",
+            "uses": 30
+          },
+          {
+            "size": "18px",
+            "uses": 18
+          },
+          {
+            "size": "32px",
+            "uses": 6
+          },
+          {
+            "size": "48px",
+            "uses": 3
+          }
+        ]
+      },
+      "spacing": {
+        "samples": 58,
+        "offGrid": 0,
+        "offGridPct": 0
+      },
+      "headings": {
+        "order": [
+          1,
+          2,
+          3,
+          3,
+          2,
+          3,
+          2,
+          3,
+          2,
+          3,
+          3,
+          2,
+          2
+        ],
+        "skips": []
+      },
+      "images": {
+        "total": 1,
+        "missingAlts": 0
+      },
+      "overflowX": 0
+    },
+    "mobile": {
+      "contrast": {
+        "min": 4.69,
+        "mean": 9.33,
+        "violations": []
+      },
+      "type": {
+        "distinctSizes": 6,
+        "sizes": [
+          {
+            "size": "12px",
+            "uses": 170
+          },
+          {
+            "size": "14px",
+            "uses": 25
+          },
+          {
+            "size": "16px",
+            "uses": 29
+          },
+          {
+            "size": "18px",
+            "uses": 18
+          },
+          {
+            "size": "32px",
+            "uses": 6
+          },
+          {
+            "size": "48px",
+            "uses": 3
+          }
+        ]
+      },
+      "spacing": {
+        "samples": 58,
+        "offGrid": 0,
+        "offGridPct": 0
+      },
+      "headings": {
+        "order": [
+          1,
+          2,
+          3,
+          3,
+          2,
+          3,
+          2,
+          3,
+          2,
+          3,
+          3,
+          2,
+          2
+        ],
+        "skips": []
+      },
+      "images": {
+        "total": 1,
+        "missingAlts": 0
+      },
+      "overflowX": 42
+    }
+  },
+  "vitals": {
+    "desktop": {
+      "fcp": 212,
+      "lcp": 212,
+      "cls": 0,
+      "tbt": 20
+    },
+    "mobile": {
+      "fcp": 140,
+      "lcp": 140,
+      "cls": 0,
+      "tbt": 19
+    }
+  },
+  "critiques": [
+    {
+      "shot": "encore-desktop-full.png",
+      "device": "desktop",
+      "kind": "full",
+      "label": null,
+      "scores": {
+        "hierarchy": 7.2,
+        "typography": 6.8,
+        "spacing": 5.5,
+        "color": 8.5,
+        "alignment": 8,
+        "density": 7.5,
+        "overall": 7.4
+      },
+      "defects": [
+        "The '7 VLM axis means' bar charts (Section 2 & 3) use indistinct row labels against dark backgrounds, forcing squinting to differentiate 'MEMORY' from 'TYPOGRAPHY'.",
+        "Excessive, unmodulated vertical whitespace (rhythm of ~100px) between major text blocks creates a disjointed scroll, breaking visual continuity in sections 3, 4, and 5.",
+        "The '7 gates' data table in Section 2 suffers from low contrast in its muted cells, and the 8 distinct status colors create visual noise rather than clear signal.",
+        "Typography scale lacks a clear middle tier; body copy sits uncomfortably close in size to subheads and monospace data rows, flattening the visual hierarchy.",
+        "The 'Unown' screenshot simulation in Section 4 acts as a heavy, disconnected visual block that clashes with the dark UI aesthetic of the surrounding page."
+      ],
+      "improvements": [
+        "Tighten vertical spacing rhythm to a consistent 48px grid to create a calm, focused scroll experience."
+      ]
+    },
+    {
+      "shot": "encore-desktop-band00.png",
+      "device": "desktop",
+      "kind": "band",
+      "label": "Every great performance earns an encore.",
+      "scores": {
+        "hierarchy": 9,
+        "typography": 6,
+        "spacing": 8,
+        "color": 7,
+        "alignment": 9,
+        "density": 7,
+        "overall": 8
+      },
+      "defects": [
+        "Body copy line height in the description paragraph is set too loose, creating a disjointed visual rhythm compared to the tight, professional headline spacing.",
+        "The color of the values in the bottom metric table (e.g., 6.50, 7.25) uses a muted maroon hue on a dark background, creating low contrast that violates accessibility standards for data legibility.",
+        "The two primary CTA buttons (gold and dark blue) are of identical weight and visual mass, lacking a clear primary/secondary distinction that would guide user intent effectively.",
+        "The typography in the bottom chart labels is extremely small and dense, functioning more like terminal metadata than a readable, well-scaled interface element for a desktop display.",
+        "There is an excessive amount of empty whitespace in the margins on the left and right, causing the content to feel vertically center-aligned but spatially lost in a desktop viewport band."
+      ],
+      "improvements": [
+        "Reduce the line-height of the main description paragraph to tighten the reading flow.",
+        "Increase the contrast of the values in the metric table by using a brighter gold or white color.",
+        "Make the gold 'See the loop' button slightly larger or more prominent to establish clear visual hierarchy."
+      ]
+    },
+    {
+      "shot": "encore-desktop-band01.png",
+      "device": "desktop",
+      "kind": "band",
+      "label": "The receipt before the fix",
+      "scores": {
+        "hierarchy": 7,
+        "typography": 6,
+        "spacing": 7,
+        "color": 5,
+        "alignment": 8,
+        "density": 6,
+        "overall": 6
+      },
+      "defects": [
+        "The red 'FAIL' status color and numbers have low contrast against the dark blue card background, failing WCAG AA for legibility.",
+        "The repetition of '20261029_e-root.json' under every single metric in the summary grid is visual noise that breaks the calm density.",
+        "The 'FAIL' pill badge next to the large 6.40 score feels disproportionately small and visually disconnected from the primary data point.",
+        "The gold/yellow color used for 'PASS' status and 'THE BASELINE' label lacks distinctiveness, creating a muddy semantic state against the warm brand palette.",
+        "The '11 gates' section header feels cramped and lacks vertical breathing room before the grid of metrics begins."
+      ],
+      "improvements": [
+        "Increase contrast for red status text and add a subtle background tint to the pill badges.",
+        "Remove redundant file path labels from individual metrics; centralize metadata in the card header.",
+        "Expand the 'FAIL' badge size to match the visual weight of the 6.40 score."
+      ]
+    },
+    {
+      "shot": "encore-desktop-band02.png",
+      "device": "desktop",
+      "kind": "band",
+      "label": "A measured critique loop, receipted",
+      "scores": {
+        "hierarchy": 7,
+        "typography": 6,
+        "spacing": 6,
+        "color": 4,
+        "alignment": 8,
+        "density": 8,
+        "overall": 6
+      },
+      "defects": [
+        "The gold accent on the '1. build' active state is severely washed out, destroying contrast ratios and losing the 'warm ink' brand promise",
+        "The '1/6' metadata label lacks sufficient vertical whitespace from the step title, creating a cramped, accidental collision",
+        "The footer technical paragraph has no visual demarcation (like a subtle top border or reduced opacity), making it read as noise rather than metadata",
+        "The gap between the sub-header paragraph and the horizontal step-pill row is disproportionately large compared to the tight card interior spacing",
+        "Using gold on the 'THE LOOP' eyebrow text and buttons against the dark background creates a glaring, high-glare effect that competes with the H1"
+      ],
+      "improvements": [
+        "Deepen gold to amber, raising button/eyebrow contrast ratios for legibility",
+        "Add a 1px top border to the metadata paragraph for clear separation",
+        "Shrink the vertical gutter between the paragraph and the step-pill row"
+      ]
+    },
+    {
+      "shot": "encore-desktop-band03.png",
+      "device": "desktop",
+      "kind": "band",
+      "label": "Before and after, receipted",
+      "scores": {
+        "hierarchy": 7,
+        "typography": 6,
+        "spacing": 5,
+        "color": 7,
+        "alignment": 8,
+        "density": 7,
+        "overall": 6
+      },
+      "defects": [
+        "Eyebrow 'THE ITERATIONS' is disproportionately large; the uppercase treatment fights the h1 instead of yielding to it, blurring the hierarchy between section and sub-section.",
+        "The interaction hint (keyboard shortcut) is orphaned in the negative space, failing to visually tether to the interactive artifact it explains, breaking the logical reading flow.",
+        "Bottom caption text (before/after receipts) lacks sufficient color contrast against the dark-navy background, failing WCAG legibility standards for secondary text.",
+        "Vertical rhythm is inconsistent: the generous 40px+ gap between the paragraph and the screenshot is arbitrary, while the 'receipted' caption at the very bottom feels cramped and disconnected.",
+        "The gold used for the eyebrow and the UI buttons introduces a competing 'warm' accent that undermines the requested 'warm paper/ink' aesthetic, creating visual noise against the cool dark-navy."
+      ],
+      "improvements": [
+        "Reduce eyebrow font size to 12px and add 200ms of letter-spacing to establish superior restraint.",
+        "Attach interaction hints directly to the artifact border with a subtle, low-opacity gold pill.",
+        "Increase bottom caption font size to 14px and shift color to 'warm-gray' for WCAG compliance."
+      ]
+    },
+    {
+      "shot": "encore-desktop-band04.png",
+      "device": "desktop",
+      "kind": "band",
+      "label": "Two tools, built this round",
+      "scores": {
+        "hierarchy": 8.5,
+        "typography": 7,
+        "spacing": 7.5,
+        "color": 6.5,
+        "alignment": 9,
+        "density": 8,
+        "overall": 7.5
+      },
+      "defects": [
+        "The 'HEADLINE' box in the left card is too prominent; its bold text and large type weight creates a jarring visual interruption that competes with the card title.",
+        "Contrast is low on 'receipt: design-critic' and 'Provenance' text; the dark blue on dark blue background is illegible and fails WCAG AA on small text.",
+        "The bar graph in the right card has a misaligned '1.50' label floating in space with no clear relation to the bar's length or axis, making it hard to read.",
+        "The gold 'THE TOOLS' eyebrow label and section header are close in color, reducing visual separation; the eyebrow should be bolder or more distinct.",
+        "The cards have too much vertical padding, creating dead space between the body text and the receipt line; the content feels vertically stretched."
+      ],
+      "improvements": [
+        "Reduce the 'HEADLINE' box impact; use a border only, not a filled background, and smaller font weight.",
+        "Increase contrast on 'receipt' and 'Provenance' lines to light gray (minimum #888) for WCAG AA compliance.",
+        "Tighten the vertical spacing inside cards; reduce padding to create a denser, more balanced composition."
+      ]
+    },
+    {
+      "shot": "encore-desktop-band05.png",
+      "device": "desktop",
+      "kind": "band",
+      "label": "Every failure became a benchmark",
+      "scores": {
+        "hierarchy": 6,
+        "typography": 7,
+        "spacing": 5,
+        "color": 6,
+        "alignment": 8,
+        "density": 6,
+        "overall": 6
+      },
+      "defects": [
+        "The 'CLOSED' status badges lack visual distinction; their border-only style competes with the F10/F11 identifiers rather than signaling state.",
+        "Fix-reference links (e.g., 'docs/website-excellence-session.md') use a generic gold underline that breaks the hand-drawn brand language and feels like a hyperlink, not a receipt.",
+        "Excessive vertical whitespace between the two ledger cards and the closing paragraph creates a disjointed rhythm, undermining the 'calm density' goal.",
+        "The sub-headline text ('The round's POs and PIs...') has low contrast against the dark background, failing WCAG AA for small text sizes.",
+        "The F10 and F11 cards are identical in structure but lack a subtle visual anchor (like a left-border or icon) to differentiate the failure ID from the description text."
+      ],
+      "improvements": [
+        "Increase sub-headline contrast to at least 4.5:1 against the background for accessibility compliance.",
+        "Reduce vertical spacing between cards and text to establish a tighter, more rhythmic flow.",
+        "Restyle fix-reference links with hand-drawn glyphs or a distinct underline to match the brand."
+      ]
+    },
+    {
+      "shot": "encore-desktop-band06.png",
+      "device": "desktop",
+      "kind": "band",
+      "label": "The question the round set out to answer",
+      "scores": {
+        "hierarchy": 9,
+        "typography": 9,
+        "spacing": 9,
+        "color": 8,
+        "alignment": 9,
+        "density": 9,
+        "overall": 9
+      },
+      "defects": [
+        "Excessive vertical whitespace between the top paragraph and 'THE FINALE' disrupts the visual flow and makes the layout feel fragmented rather than cohesive.",
+        "The large empty gap between the CTA buttons and the footer metadata creates an unbalanced bottom section that feels disconnected from the primary content cluster above.",
+        "The code-like metadata text at the bottom center is too low-contrast and small, making it difficult to read against the dark background without straining.",
+        "The blockquote's gold left border is thin and visually underweight compared to the boldness of the main heading, causing it to lack sufficient presence.",
+        "The two CTA buttons, while distinct, have slightly uneven visual weight due to the primary button's bright gold fill competing aggressively with the dark ghost button."
+      ],
+      "improvements": [
+        "Reduce the vertical gap between the top paragraph and the section header to tighten the flow.",
+        "Increase the bottom footer text size and opacity to improve legibility and anchor the layout.",
+        "Bold the gold blockquote border to match the visual weight of the header and improve hierarchy."
+      ]
+    },
+    {
+      "shot": "encore-desktop-light-full.png",
+      "device": "desktop",
+      "kind": "full",
+      "label": null,
+      "scores": {
+        "hierarchy": 8,
+        "typography": 7,
+        "spacing": 8,
+        "color": 9,
+        "alignment": 9,
+        "density": 9,
+        "overall": 8
+      },
+      "defects": [
+        "The 'Before/After' comparison mockup uses low-contrast pastel colors that undermine the WCAG legibility claim on the warm paper background",
+        "The 'Axis-by-axis data' table has poor visual rhythm; baseline, current, and delta columns lack strong typographic distinction",
+        "Hero section secondary text is slightly cramped against the action buttons, breaking the calm density elsewhere on the page",
+        "The 'VLM axis means' and 'Hermes' bar charts are identical in visual weight, causing the user's eye to bounce rather than flow hierarchically",
+        "Monospace terminal snippets lack sufficient padding and line-height to match the precision of the surrounding serif typography"
+      ],
+      "improvements": [
+        "Increase baseline table column padding and add a muted vertical rule to improve data scanability",
+        "Boost hero subtext line-height by 10% to restore the breathing room lost in that section",
+        "Introduce a subtle background hue shift to the 'After' mockup to anchor it visually against the paper"
+      ]
+    },
+    {
+      "shot": "encore-mobile-full.png",
+      "device": "mobile",
+      "kind": "full",
+      "label": null,
+      "scores": {
+        "hierarchy": 8,
+        "typography": 6,
+        "spacing": 5,
+        "color": 7,
+        "alignment": 9,
+        "density": 7,
+        "overall": 6
+      },
+      "defects": [
+        "The 'hand-drawn' brand glyphs are reduced to illegible, cramped data bars in the 'Baseline' section, destroying the visual metaphor.",
+        "Spacing rhythm is completely broken: the '6.40' score is crammed tightly against the 2x2 stats grid with inconsistent vertical padding.",
+        "Typography scale is chaotic: the monospace font is used for everything (headers, data, code, captions), causing a loss of typographic hierarchy.",
+        "Contrast is poor: the orange/gold text on the mid-tone dark blue background falls below WCAG AA, particularly on the 'FAIL' labels.",
+        "Visual alignment is inconsistent: the 'gates' table mixes left-aligned text with right-aligned numbers without a clear column rule."
+      ],
+      "improvements": [
+        "Increase vertical breathing room between section headers and their data grids to restore calm density."
+      ]
+    },
+    {
+      "shot": "encore-mobile-band00.png",
+      "device": "mobile",
+      "kind": "band",
+      "label": "Every great performance earns an encore.",
+      "scores": {
+        "hierarchy": 6,
+        "typography": 7,
+        "spacing": 6,
+        "color": 8,
+        "alignment": 7,
+        "density": 7,
+        "overall": 6
+      },
+      "defects": [
+        "Inconsistent CTA hierarchy: primary 'See the loop' and secondary 'Read the receipts' share identical visual weight and vertical padding, failing to establish clear action priority.",
+        "Orphaned microcopy at bottom ('Baseline axis means...') floats in unstructured whitespace, disconnected from the header and main content, breaking the visual rhythm.",
+        "The 'encore' headline word is colored gold but lacks sufficient contrast against the dark navy background, failing WCAG AA legibility standards.",
+        "Vertical spacing between the hero block, paragraph text, and CTA buttons is uneven, creating a disjointed, floating feel rather than a cohesive column.",
+        "The small top label 'ENCORE' is too small and low-contrast to function effectively as a section identifier in mobile viewport."
+      ],
+      "improvements": [
+        "Brighten the 'encore' gold text or add a subtle text-shadow for better legibility."
+      ]
+    },
+    {
+      "shot": "encore-mobile-band01.png",
+      "device": "mobile",
+      "kind": "band",
+      "label": "The receipt before the fix",
+      "scores": {
+        "hierarchy": 6,
+        "typography": 7,
+        "spacing": 5,
+        "color": 4,
+        "alignment": 6,
+        "density": 5,
+        "overall": 5
+      },
+      "defects": [
+        "Red-on-dark contrast (6.40, FAIL) is a WCAG catastrophe; fail-state text is effectively unreadable against the navy background.",
+        "The 2x2 data grid has no visual gridlines, causing left and right columns to blur into a chaotic, unstructured block.",
+        "The monospaced filenames under every metric are truncated and redundant, adding immense visual noise without providing context.",
+        "The vertical rhythm is broken by the cramped 11 gates section, where row padding is inconsistent with the spacing of the main metrics above.",
+        "The PASS/FAIL indicators clash with their respective text colors; the red FAIL text on a reddish-tinted dark background has poor legibility."
+      ],
+      "improvements": [
+        "Increase red hex brightness to 3.5:1+ for WCAG AA compliance on all fail-states.",
+        "Add 1px vertical borders to the metrics grid to enforce column alignment.",
+        "Remove redundant filenames; consolidate metadata into a single collapsible footer."
+      ]
+    },
+    {
+      "shot": "encore-mobile-band02.png",
+      "device": "mobile",
+      "kind": "band",
+      "label": "A measured critique loop, receipted",
+      "scores": {
+        "hierarchy": 8,
+        "typography": 8,
+        "spacing": 7,
+        "color": 9,
+        "alignment": 9,
+        "density": 8,
+        "overall": 8
+      },
+      "defects": [
+        "Visual weight of the active '1. build' state is too subtle; the gold border is lost against the dark card background and competes with the static step numbers.",
+        "Inconsistent spacing rhythm: the vertical gap between the step-pill grid and the large detail card is too tight compared to the generous whitespace above the H1.",
+        "The bottom utility text uses a low-contrast slate-grey that likely fails WCAG AA against the navy background.",
+        "The '1/6' progress indicator in the card header is visually weak and lacks clear typographic hierarchy compared to the bold 'build' title.",
+        "The monospace code snippet lacks distinct background shading or syntax highlighting, blending poorly with the surrounding description text."
+      ],
+      "improvements": [
+        "Increase active pill border thickness and add a subtle gold glow to establish clear focus state.",
+        "Increase vertical margin below the step-pill grid to match the consistent rhythmic 8pt spacing scale.",
+        "Brighten the bottom body text to off-white to ensure WCAG-compliant contrast on the dark background."
+      ]
+    },
+    {
+      "shot": "encore-mobile-band03.png",
+      "device": "mobile",
+      "kind": "band",
+      "label": "Before and after, receipted",
+      "scores": {
+        "hierarchy": 4,
+        "typography": 3,
+        "spacing": 5,
+        "color": 6,
+        "alignment": 4,
+        "density": 5,
+        "overall": 4
+      },
+      "defects": [
+        "The 'Hierachy' (typo of Hierarchy) data table at the very bottom completely lacks zebra-stripes or row dividers, making the numbers 6.50, 6.50, and 0.00 visually merge into an unreadable block against the dark background.",
+        "The caption text beneath the interactive drag-comparison modal is crammed into a single, poorly-aligned line ('before - receipt: baseline after - receipt: baseline — in flight'), failing basic WCAG line-length and whitespace principles.",
+        "The 'Axis-by-axis delta' section header immediately below the screenshot introduces a completely new data-dense module but is completely broken off at the mobile viewport boundary, leaving the user with a jarring cliff-edge with no visual cue of continuation.",
+        "The typographic hierarchy between the 'BEFORE / AFTER' labels and the '6.40' values inside the modal is completely lost; both sit in the same muted, low-contrast pill style, failing to establish which element is the state and which is the metric.",
+        "There is a massive, unexplained visual void between the primary body paragraph and the sub-instruction text ('Drag to reveal the after state...'), breaking the established 8pt spacing rhythm and diluting the section's narrative flow."
+      ],
+      "improvements": [
+        "Fix 'Hierachy' typo and add distinct row backgrounds or dividers to the bottom data table.",
+        "Format the 'receipt: baseline' captions into clean, stacked two-line lists using proper whitespace.",
+        "Ensure the 'Axis-by-axis delta' module has enough bottom padding to not crop on scroll."
+      ]
+    },
+    {
+      "shot": "encore-mobile-band04.png",
+      "device": "mobile",
+      "kind": "band",
+      "label": "Two tools, built this round",
+      "scores": {
+        "hierarchy": 5,
+        "typography": 5,
+        "spacing": 5,
+        "color": 6,
+        "alignment": 7,
+        "density": 5,
+        "overall": 5
+      },
+      "defects": [
+        "The mobile type scale is broken: the 'HEADLINE' overline inside the receipt box is rendered at roughly the same visual weight as the body copy above it, creating no hierarchy.",
+        "Contrast failure: the muted grey body text ('The design critic...') and the secondary link ('receipt:...') appear to hover around 4:1 on the dark navy background, failing WCAG AA for non-large text.",
+        "The 'HEADLINE' label is visually disconnected from the golden verdict text below it due to inconsistent vertical tracking, making the callout look like two separate, unrelated UI elements.",
+        "The right edge of the '6.40 baseline, verdict FAIL...' callout box sits flush against the right margin of its parent container, creating a cramped, unpolished feeling that breaks the section's outer padding rhythm.",
+        "The spacing rhythm is inconsistent: there is a large vertical gap between the H2 and the paragraph, but a tighter gap between the paragraph and the first card, disrupting the section's visual flow."
+      ],
+      "improvements": [
+        "Increase 'HEADLINE' size to 14px and add letter-spacing to separate it from the 16px body.",
+        "Boost secondary text contrast to at least #9CA3AF to pass WCAG AA.",
+        "Add 24px internal padding to the golden verdict callout box.",
+        "Unify vertical spacing to a strict 8px grid throughout the section.",
+        "Increase top padding on the 'design_critic.mjs' card for visual balance."
+      ]
+    },
+    {
+      "shot": "encore-mobile-band05.png",
+      "device": "mobile",
+      "kind": "band",
+      "label": "Every failure became a benchmark",
+      "scores": {
+        "hierarchy": 7,
+        "typography": 6,
+        "spacing": 7,
+        "color": 8,
+        "alignment": 8,
+        "density": 6,
+        "overall": 7
+      },
+      "defects": [
+        "Low contrast on 'F10' and 'F11' tag labels: light blue text on the mid-blue card background fails WCAG AA legibility standards.",
+        "Cognitive density in F10 card: the root cause, fix, and CPO are lumped into a single text block without hierarchy or visual separation.",
+        "Typography inconsistency: 'CLOSED' status badge uses a monospaced font while body copy is a sans-serif, breaking the type rhythm.",
+        "Awkward line-wrapping in the H1 'Every failure became a benchmark' where 'a benchmark' feels disconnected from the leading phrase."
+      ],
+      "improvements": [
+        "Brighten the F-number tag labels to gold or off-white to meet strict contrast requirements."
+      ]
+    },
+    {
+      "shot": "encore-mobile-band06.png",
+      "device": "mobile",
+      "kind": "band",
+      "label": "The question the round set out to answer",
+      "scores": {
+        "hierarchy": 6,
+        "typography": 5,
+        "spacing": 6,
+        "color": 5,
+        "alignment": 6,
+        "density": 6,
+        "overall": 5
+      },
+      "defects": [
+        "The 22px '6.40' gold metric lacks WCAG contrast against the #1B2A4B card background (ratio ~2.8:1 vs 4.5:1 needed for large text).",
+        "Italicized quote with gold left border creates visual noise; the border extends past the text block's vertical rhythm, breaking the 8px spacing scale.",
+        "'Back to the gallery' CTA (solid gold) has stronger visual weight than 'Read the session log' (ghost), inverting intent priority for a finale section.",
+        "Type scale inconsistency: 'THE FINALE' eyebrow (11px, tracking +2px) sits below the 32px H2 with no consistent modular ratio between eyebrow/H2/lede/quote/card-body.",
+        "Card padding (24px) creates 40px gap to the H2 above, then 32px gap to CTA row — inconsistent vertical rhythm that disrupts section pacing."
+      ],
+      "improvements": [
+        "Raise '6.40' gold to #FFD700 and card bg to #0F172A for WCAG 4.5:1 contrast",
+        "Align gold quote border to text cap-height, remove 12px overhang at bottom edge",
+        "Establish 8pt modular scale: eyebrow 11/13, H2 32/40, lede 16/24, body 14/20, metric 28/34",
+        "Invert CTA visual weight: make 'Read the session log' solid gold, 'Back' ghost"
+      ]
+    }
+  ],
+  "axisMeans": {
+    "hierarchy": 6.98,
+    "typography": 6.34,
+    "spacing": 6.29,
+    "color": 6.71,
+    "alignment": 7.76,
+    "density": 6.85,
+    "overall": 6.46
+  },
+  "gates": {
+    "contrastViolations": {
+      "value": 27,
+      "max": 0,
+      "pass": false
+    },
+    "fontSizes": {
+      "value": 6,
+      "max": 8,
+      "pass": true
+    },
+    "offGridPct": {
+      "value": 0,
+      "max": 15,
+      "pass": true
+    },
+    "headingSkips": {
+      "value": 0,
+      "max": 0,
+      "pass": true
+    },
+    "missingAlts": {
+      "value": 0,
+      "max": 0,
+      "pass": true
+    },
+    "mobileOverflow": {
+      "value": 42,
+      "max": 0,
+      "pass": false
+    },
+    "fcpMs": {
+      "value": 212,
+      "max": 1800,
+      "pass": true
+    },
+    "lcpMs": {
+      "value": 212,
+      "max": 2500,
+      "pass": true
+    },
+    "cls": {
+      "value": 0,
+      "max": 0.1,
+      "pass": true
+    },
+    "tbtMs": {
+      "value": 20,
+      "max": 200,
+      "pass": true
+    },
+    "vlmAxes": {
+      "value": {
+        "hierarchy": 6.98,
+        "typography": 6.34,
+        "spacing": 6.29,
+        "color": 6.71,
+        "alignment": 7.76,
+        "density": 6.85,
+        "overall": 6.46
+      },
+      "floor": 7,
+      "pass": false,
+      "failures": [
+        "hierarchy 6.98<7",
+        "typography 6.34<7",
+        "spacing 6.29<7",
+        "color 6.71<7",
+        "density 6.85<7",
+        "overall 6.46<7"
+      ]
+    }
+  },
+  "passed": false,
+  "shotsDir": "/home/z/my-project/unown/download/design-critic/iter1c/encore",
+  "wallSeconds": 89.2
+}

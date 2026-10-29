@@ -1,0 +1,16 @@
+You hit the turn cap at work order 3. State: the delta-table mobile
+restyle is partially done (1 test failing — check which), the overflow
+probe still shows scrollWidth 432 on the 390 viewport (12 offender
+elements — the stacked variant is not fully landed or a wrapper still
+overflows), typecheck clean.
+
+Finish ALL remaining work orders this session, in this order:
+1. Complete work order 1 — the <480px stacked delta table; ZERO document
+   horizontal overflow at 390px (re-verify: the probe pattern is
+   documentElement.scrollWidth === 390). Fix the failing test.
+2. Work orders 2-6 from your previous prompt (the two contrast defects,
+   the hero type scale, the stat grid optical alignment, the compare-shot
+   framing, the CLOSED badge container).
+
+Then ALL THREE gates with exact results: `bun test src/components/encore`,
+`bun run typecheck`, `bun run lint`. Rules unchanged.

@@ -1,0 +1,9 @@
+You spent your turns planning and edited NOTHING — the table still reads
+<table className="sr-only"> at baseline.tsx line 159. APPLY THE EDIT NOW:
+
+1. Wrap that table in <div className="sr-only"> ... </div> and change the
+   table's className from "sr-only" to no class (the div owns the clip;
+   the table keeps its caption, scope attrs and rows exactly as-is).
+2. Run `bun test src/components/encore` — must stay 53/53.
+3. Run `bun run typecheck` and `bun run lint` — must be clean.
+4. Report the three results. Done. No probe script, no further reading.

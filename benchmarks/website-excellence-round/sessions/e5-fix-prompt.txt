@@ -1,0 +1,83 @@
+The critique loop ran on /encore (receipts: benchmarks/
+website-excellence-round/critiques/20261029-161216-iter0-encore.json —
+READ IT, including every per-shot critique) and the rubric FAILED: overall
+6.27 (floor 7.0), mobile overflow 42px (gate 0). The objective discipline
+held beautifully (6 font sizes, 0% off-grid, 0 contrast violations) — the
+defects are craft defects. Fix them ALL in this session, in src/components/
+encore/** and src/app/encore/globals.css ONLY.
+
+The defect digest, deduplicated into work orders (each traces to the
+receipt's critiques — verify against it):
+
+1. THE 42PX MOBILE OVERFLOW (the failing gate — fix first, then re-measure
+   mentally at 390px for EVERY band): the long monospace receipt paths
+   ("benchmarks/website-excellence-round/critiques/20261029-...json")
+   render unbreakable and push past 390px, wrapping to 4 vertical lines.
+   Fix: NEVER render full receipt paths inline — show a short ref (e.g.
+   "receipt · baseline" or "…145746-baseline.json") with the full path in
+   the title attribute and a link; apply break-all + smaller mono only
+   where a path must show; audit every band for the widest element at
+   390px (tables, axis strips, chips).
+
+2. THE COMPARE BAND (iterations.tsx) — redesign the comparison to use
+   VIEWPORT-SCALE shots, not full-page: the declared constants change to
+   /landing/encore/iterations/baseline-hero.png (STAGED — the landing
+   baseline hero, 1440x900) and /landing/encore/iterations/iter1-hero.png
+   (NOT yet staged — the after shot lands after your fixes; render the
+   after pane with an honest designed placeholder state: a bordered panel
+   reading "iteration 1 — in flight" with the receipt reference, NEVER a
+   broken-image icon or an empty void). Also fix: the BEFORE/AFTER chips
+   colliding with the headline text; the "Drag to reveal" micro-copy
+   contrast (nearly invisible on dark); keep the native range input
+   semantics exactly (risk #1 unchanged).
+
+3. RECEIPT-PATH NOISE (multiple bands): the repeated "receipt:
+   benchmarks/..." sub-labels under every metric are the top noise
+   complaint. One short provenance line per band (the short-ref pattern
+   from work order 1), title attribute carrying the full path.
+
+4. TYPE HIERARCHY COMPRESSION: "6.40 bolded but not sized up — it fails
+   to dominate"; H2s and lead paragraphs too close; micro-text creating
+   unbalanced scale. Fix: the receipt-card overall score becomes a
+   display-size number (48px tier); strengthen H2-vs-lead separation
+   (weight + the 32px tier, not a new size — the census gate is <= 8 and
+   you are at 6, you may add UP TO 2 sizes if the ramp needs them);
+   micro-text floor stays 12px.
+
+5. MONOSPACE OVERUSE: mono is for CODE only — the receipt paths,
+   kickers, artifact lines and metadata that currently use mono switch to
+   the sans at appropriate sizes (keep mono for actual code/commands).
+
+6. ALIGNMENT PASSES: the two tool cards' receipt blocks sit at different
+   y (align-items + matching internal structure); the F-cards' 24px-top/
+   16px-bottom padding asymmetry (make it symmetric); the citation bar
+   height mismatch; the gates' red-border harshness (soften to the token
+   system's fail color at lower emphasis — keep FAIL/UNDER legible).
+
+7. CONTRAST MICRO-FIXES (dark scheme): "Drag to reveal" caption; the
+   "artifact" line in the loop cards; the CLOSED label luminance against
+   body text; the secondary CTA's weight. All must clear 4.5:1 (the
+   named-pairs rule — dim on panel-2, never faint on panel-2).
+
+8. MOBILE POLISH: the hero sub-copy's awkward three-line wrap (widen the
+   text block); the CTA stack balance (secondary CTA reads as passive
+   text — give it a real affordance); the footer bottom copy cut off;
+   "THE LOOP"/"THE ITERATIONS" kicker contention.
+
+9. THE EMPTY CANVAS: band03's "massive empty blue viewport" — that was
+   the missing images; work order 2 fixes it. Confirm the band renders
+   compact and intentional with the hero-pair layout.
+
+Verification before you finish (all three, exact counts reported):
+- `bun test src/components/encore` green (update the tests that pinned
+  the old image paths / path-render patterns — the short-ref pattern
+  needs its own assertions)
+- `bun run typecheck` + `bun run lint` clean
+- A mental 390px audit of every band: no element may exceed the viewport
+  width; the receipt short-refs never wrap to more than one line
+
+Rules: lib/ stays UNTOUCHED except — you MAY NOT edit it at all; if a
+seed field blocks a fix, adapt the component, not the seed. No landing
+edits. No new dependencies. The type census stays <= 8 distinct sizes.
+Motion rules unchanged. Do NOT edit .unown/**, AGENTS.md, receipts, the
+plan, siblings.

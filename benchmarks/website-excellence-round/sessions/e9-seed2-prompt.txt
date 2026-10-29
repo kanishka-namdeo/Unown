@@ -1,0 +1,42 @@
+You read everything and wrote NOTHING before the cap. APPLY THE EDITS NOW.
+All the data you need is below — no more file reading except the seed,
+its test, and the iterations component.
+
+THE RECEIPT DIGEST (verbatim from the committed JSONs — every number
+below IS the receipt; the drift gate will verify):
+
+iter0 = 20261029-161216-iter0-encore.json, generatedAt 2026-10-29T16:12:16.353Z:
+  axes {hierarchy 6.4, typography 6.1, spacing 5.92, color 7.24, alignment 7.03, density 6.47, overall 6.27}
+  gates {fontSizes 6, offGridPct 0, contrastViolations 0, mobileOverflow 42, headingSkips 0, missingAlts 0, fcpMs 212, lcpMs 212, cls 0, tbtMs 19}
+  failing: mobileOverflow, vlmAxes
+iter1 = 20261029-162927-iter1-encore.json, generatedAt 2026-10-29T16:29:27.610Z:
+  axes {hierarchy 6.37, typography 5.93, spacing 6.03, color 6.17, alignment 6.93, density 6.4, overall 6.0}
+  gates {fontSizes 6, offGridPct 0, contrastViolations 0, mobileOverflow 42, headingSkips 0, missingAlts 0, fcpMs 232, lcpMs 232, cls 0, tbtMs 1}
+  failing: mobileOverflow, vlmAxes
+iter2 = 20261029-165327-iter2-encore.json, generatedAt 2026-10-29T16:53:27.701Z:
+  axes {hierarchy 6.41, typography 6.0, spacing 5.88, color 6.12, alignment 6.94, density 6.24, overall 6.0}
+  gates {fontSizes 6, offGridPct 0, contrastViolations 27, mobileOverflow 0, headingSkips 0, missingAlts 0, fcpMs 204, lcpMs 204, cls 0, tbtMs 7}
+  failing: contrastViolations, vlmAxes
+iter3 = 20261029-170148-iter3-encore.json, generatedAt 2026-10-29T17:01:48.298Z:
+  axes {hierarchy 6.32, typography 6.26, spacing 6.0, color 6.65, alignment 7.12, density 6.74, overall 6.22}
+  gates {fontSizes 6, offGridPct 0, contrastViolations 0, mobileOverflow 0, headingSkips 0, missingAlts 0, fcpMs 216, lcpMs 216, cls 0, tbtMs 0}
+  failing: vlmAxes only (ALL objective gates pass)
+
+THE EDITS (in order, then stop):
+1. src/lib/encore/seed.ts — append iter0/iter1/iter2/iter3 to
+   ENCORE_ITERATIONS after the baseline entry, same shape as the baseline
+   entry, each with its @provenance comment naming the receipt file.
+2. src/lib/encore/seed.test.ts — extend the drift gate: for each of the
+   four receipts, load the JSON and assert the seed entry equals it
+   field-by-field (same pattern as the baseline assertions).
+3. src/components/encore/views/iterations.tsx —
+   ITERATION_AFTER_IMG -> "/landing/encore/iterations/final-hero.png";
+   remove the "in flight" placeholder pane (the after image exists); the
+   before/after pair is baseline-hero.png (landing baseline) vs
+   final-hero.png (iter3); alt texts describe them honestly (23 font
+   sizes/32.7% off-grid vs 6 font sizes/0% off-grid/all objective gates).
+4. Update the component tests that pinned the old paths/placeholder.
+5. Run and report exact counts: `bun test src/lib/encore`, `bun test
+   src/components/encore`, `bun run typecheck`, `bun run lint`.
+
+Rules: landing files, AGENTS.md, receipts untouched; census <= 8.

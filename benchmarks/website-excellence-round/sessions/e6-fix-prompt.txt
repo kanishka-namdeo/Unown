@@ -1,0 +1,45 @@
+Second critique round (receipt: benchmarks/website-excellence-round/
+critiques/20261029-162927-iter1-encore.json — read it). The objective
+audit found the REAL mobile overflow culprit (the receipt paths were NOT
+it): the iterations band's DELTA TABLE — its tr/td elements extend to
+right:432 on the 390px viewport (42px over). Fix these work orders in
+src/components/encore/** and src/app/encore/globals.css only:
+
+1. THE DELTA TABLE (the failing mobile gate): at <480px the axis table
+   restyles as STACKED rows (one card per axis: the axis name, the
+   before -> after values, the delta chip — the Linear/Stripe mobile
+   pattern; never a horizontally-scrolling table). Desktop keeps the
+   table. The document must have ZERO horizontal overflow at 390px.
+
+2. THE TWO MEASURABLE CONTRAST DEFECTS (both named in the critique, both
+   WCAG-checkable — fix to >= 4.5:1 against their actual surfaces):
+   - the red FAIL badges on the dark card (band01)
+   - the fix-ref pale-gold links on dark navy (band05)
+
+3. THE HERO TYPE SCALE (band00): the 'ENCORE' eyebrow and the headline
+   share near-identical visual weight — the eyebrow drops to the 12px
+   caps tier with tracking, clearly subordinate; the 'encore.' accent
+   word in the headline loses its jarring weight/color jump (keep the
+   gold accent, harmonize the size/weight so it reads as ONE line).
+
+4. THE STAT GRID OPTICAL ALIGNMENT (band01): '23' and '0' don't align
+   optically with '6.40' and '32.7%' — uniform numeric presentation
+   (same size tier, same tabular-nums, same baseline) so the four KPIs
+   read as one system.
+
+5. THE COMPARE-SHOT PRESENTATION (band03): the hero shot reads as a
+   "screenshot of a screenshot" with poor edge definition — give the
+   comparison a proper framed presentation: a defined border, a subtle
+   shadow or inset ring (token-system colors), enough width that the
+   shot's own text is legible (full container width on mobile; the
+   1440-wide shot at 768px max-w container is ~53% scale — acceptable,
+   but ensure crisp rendering: image-rendering auto, no blur-up
+   artifacts).
+
+6. THE 'CLOSED' BADGE (failures band): give it a real badge container
+   (bordered chip) so it reads as a semantic status, not stray text.
+
+Verification (all, exact results reported): `bun test src/components/
+encore` green (update the delta-table tests for the stacked variant),
+`bun run typecheck`, `bun run lint` clean. Rules: lib/, landing,
+receipts, AGENTS.md untouched; type census <= 8; no new deps.

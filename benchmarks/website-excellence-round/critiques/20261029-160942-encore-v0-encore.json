@@ -1,0 +1,711 @@
+{
+  "schema": "website-excellence/critique/1",
+  "route": "/encore",
+  "url": "http://127.0.0.1:3211/encore",
+  "label": "encore-v0",
+  "generatedAt": "2026-10-29T16:09:42.555Z",
+  "rubric": {
+    "vlmAxes": [
+      "hierarchy",
+      "typography",
+      "spacing",
+      "color",
+      "alignment",
+      "density",
+      "overall"
+    ],
+    "vlmFloor": 7,
+    "contrastViolations": 0,
+    "fontSizesMax": 8,
+    "offGridMaxPct": 15,
+    "headingSkips": 0,
+    "missingAlts": 0,
+    "mobileOverflow": 0,
+    "fcpMs": 1800,
+    "lcpMs": 2500,
+    "cls": 0.1,
+    "tbtMs": 200
+  },
+  "audit": {
+    "desktop": {
+      "contrast": {
+        "min": 6.71,
+        "mean": 9.43,
+        "violations": []
+      },
+      "type": {
+        "distinctSizes": 6,
+        "sizes": [
+          {
+            "size": "12px",
+            "uses": 177
+          },
+          {
+            "size": "14px",
+            "uses": 18
+          },
+          {
+            "size": "16px",
+            "uses": 28
+          },
+          {
+            "size": "18px",
+            "uses": 18
+          },
+          {
+            "size": "32px",
+            "uses": 7
+          },
+          {
+            "size": "48px",
+            "uses": 2
+          }
+        ]
+      },
+      "spacing": {
+        "samples": 54,
+        "offGrid": 0,
+        "offGridPct": 0
+      },
+      "headings": {
+        "order": [
+          1,
+          2,
+          3,
+          3,
+          2,
+          3,
+          2,
+          3,
+          2,
+          3,
+          3,
+          2,
+          2
+        ],
+        "skips": []
+      },
+      "images": {
+        "total": 2,
+        "missingAlts": 0
+      },
+      "overflowX": 0
+    },
+    "mobile": {
+      "contrast": {
+        "min": 6.71,
+        "mean": 9.43,
+        "violations": []
+      },
+      "type": {
+        "distinctSizes": 6,
+        "sizes": [
+          {
+            "size": "12px",
+            "uses": 177
+          },
+          {
+            "size": "14px",
+            "uses": 18
+          },
+          {
+            "size": "16px",
+            "uses": 28
+          },
+          {
+            "size": "18px",
+            "uses": 18
+          },
+          {
+            "size": "32px",
+            "uses": 7
+          },
+          {
+            "size": "48px",
+            "uses": 2
+          }
+        ]
+      },
+      "spacing": {
+        "samples": 54,
+        "offGrid": 0,
+        "offGridPct": 0
+      },
+      "headings": {
+        "order": [
+          1,
+          2,
+          3,
+          3,
+          2,
+          3,
+          2,
+          3,
+          2,
+          3,
+          3,
+          2,
+          2
+        ],
+        "skips": []
+      },
+      "images": {
+        "total": 2,
+        "missingAlts": 0
+      },
+      "overflowX": 42
+    }
+  },
+  "vitals": {
+    "desktop": {
+      "fcp": 0,
+      "lcp": 548,
+      "cls": 0,
+      "tbt": 0
+    },
+    "mobile": {
+      "fcp": 0,
+      "lcp": 144,
+      "cls": 0,
+      "tbt": 9
+    }
+  },
+  "critiques": [
+    {
+      "shot": "encore-desktop-full.png",
+      "device": "desktop",
+      "kind": "full",
+      "label": null,
+      "scores": {
+        "hierarchy": 7,
+        "typography": 6,
+        "spacing": 8,
+        "color": 8,
+        "alignment": 7,
+        "density": 8,
+        "overall": 7
+      },
+      "defects": [
+        "The central timeline section 'Before and after, received' contains a massive, empty rectangular void in the middle, breaking the vertical flow and wasting significant viewport space.",
+        "Contrast for body text and labels is extremely low, with gray text on the off-white background likely failing WCAG AA standards, reducing legibility.",
+        "The bar charts use a raw, dark brown color that clashes with the soft, paper-texture background and the warm gold accent palette, creating visual noise.",
+        "Type hierarchy feels compressed; H2s and lead paragraphs are too close in size, and the overall density feels cramped rather than calm."
+      ],
+      "improvements": [
+        "Increase base font size and line height to improve legibility and reduce the cramped visual density.",
+        "Fill the empty void in the timeline section with a placeholder or remove the space entirely.",
+        "Boost text contrast by darkening body copy and using the gold accent for higher-impact data points."
+      ]
+    },
+    {
+      "shot": "encore-desktop-band00.png",
+      "device": "desktop",
+      "kind": "band",
+      "label": "Every great performance earns an encore.",
+      "scores": {
+        "hierarchy": 7,
+        "typography": 8,
+        "spacing": 6,
+        "color": 7,
+        "alignment": 8,
+        "density": 6,
+        "overall": 7
+      },
+      "defects": [
+        "The 'ENCORE' label next to the glyph icon is left-aligned to the glyph, breaking the otherwise strict center-axis symmetry of the hero block.",
+        "The data table below the CTA buttons is visually underweight; its muted, grayed-out palette makes the quantitative proof feel like a footnote rather than the headline feature the copy promises.",
+        "The vertical gap between the two CTA buttons and the table caption below is excessive, breaking the rhythm and creating a 'dead zone' that disconnects the action from the evidence.",
+        "The table's column alignment is inconsistent: category labels are right-aligned while the score values are right-aligned, but the bars themselves create a visual 'gap' in the middle that makes scanning difficult.",
+        "The 'overall' score (6.40) and 'floor' (7.0) text is extremely small and low-contrast, likely failing WCAG AA for legibility on standard displays."
+      ],
+      "improvements": [
+        "Center the glyph and 'ENCORE' text as a single rigid unit to restore perfect vertical axis symmetry.",
+        "Increase the table's visual weight; use darker ink for bars and higher contrast for scores to anchor the proof.",
+        "Reduce vertical whitespace between CTA and table; tighten the rhythm to connect the action with the data."
+      ]
+    },
+    {
+      "shot": "encore-desktop-band01.png",
+      "device": "desktop",
+      "kind": "band",
+      "label": "The receipt before the fix",
+      "scores": {
+        "hierarchy": 4,
+        "typography": 3,
+        "spacing": 5,
+        "color": 5,
+        "alignment": 6,
+        "density": 5,
+        "overall": 4
+      },
+      "defects": [
+        "The '11 gates' section lacks a clear container or boundary, making it feel like a separate, unstructured list rather than part of the main receipt card.",
+        "The repeated 'receipt: benchmarks/...' path in the four metric columns is noisy and redundant, destroying the calm density of the component.",
+        "Contrast violation: the dark text on the off-white background for the gate names (e.g., 'CONTRASTVIOLATIONS') is too light and muddy, failing WCAG AA standards.",
+        "The red 'FAIL' and 'UNDER' tags are visually aggressive and lack a consistent, sophisticated color system; the red is too saturated and feels like an error state.",
+        "The type scale is inconsistent; the '6.40', '23', '32.7%', and '0' are large, but the labels below them ('Overall', 'Distinct font sizes', etc.) are too small and weak, breaking the hierarchy."
+      ],
+      "improvements": [
+        "Collapse redundant receipt paths into a single, shared context line for all four metrics.",
+        "Introduce a stronger, warmer color palette for FAIL/UNDER states to match the ink/gold brand.",
+        "Use a more confident type scale with clear, legible labels for each metric and gate."
+      ]
+    },
+    {
+      "shot": "encore-desktop-band02.png",
+      "device": "desktop",
+      "kind": "band",
+      "label": "A measured critique loop, receipted",
+      "scores": {
+        "hierarchy": 7,
+        "typography": 8,
+        "spacing": 8,
+        "color": 8,
+        "alignment": 8,
+        "density": 9,
+        "overall": 8
+      },
+      "defects": [
+        "The 'artifact' label line ('artifact `next build` exit 0') at the bottom of the card has weak, inconsistent visual weight; the backticks are rendered in the same muted green as the label, making the command read as metadata rather than a key receipt.",
+        "The six-step tabs use a very subtle 1px border that disappears on high-DPI screens, and the active state (1. build) relies only on a slightly lighter background, creating a focus state that fails WCAG 2.1 for non-color differences.",
+        "The '1/6' counter and the 'build' heading are left-aligned to the card’s inner gutter, while the tab group above is aligned to the outer content gutter, creating a visible 12px horizontal jump that breaks the vertical axis.",
+        "The small explanatory paragraph below the card wraps to two lines with an orphaned word 'receipt' on the second line, indicating the max-width is not set to prevent awkward typographic breaks.",
+        "The color palette for the inactive tabs (2-6) has a desaturated, greenish-grey tone that reads as disabled or error state rather than interactive, muddying the affordance of the step navigation."
+      ],
+      "improvements": [
+        "Increase tab height and add a 2px bottom-border accent on active state.",
+        "Align the inner card text to the same left edge as the tabs.",
+        "Increase font size and weight of the 'artifact' command to 14px."
+      ]
+    },
+    {
+      "shot": "encore-desktop-band03.png",
+      "device": "desktop",
+      "kind": "band",
+      "label": "Before and after, receipted",
+      "scores": {
+        "hierarchy": 3,
+        "typography": 5,
+        "spacing": 7,
+        "color": 4,
+        "alignment": 4,
+        "density": 5,
+        "overall": 4
+      },
+      "defects": [
+        "Broken image placeholder at the top of the compare band; visible alt text overlaps the 'BEFORE' indicator, shattering the layout.",
+        "Color-contrast failure: the dark brown instruction text is unreadable against the pale green background.",
+        "The 400+px empty canvas in the compare tool makes it look like a failed render rather than an interactive demo.",
+        "The footer file paths are unaligned (ragged right) and visually disconnected from the interactive slider above.",
+        "The type hierarchy is flat; the secondary instruction text and the primary H1 lack sufficient size and weight differentiation."
+      ],
+      "improvements": [
+        "Fix broken image rendering; ensure alt text remains hidden until the user explicitly interacts.",
+        "Increase background contrast to a muted ink tone so the text becomes WCAG-legible.",
+        "Add a low-opacity Unown-glyph watermark or grid to fill the dead space in the slider."
+      ]
+    },
+    {
+      "shot": "encore-desktop-band04.png",
+      "device": "desktop",
+      "kind": "band",
+      "label": "Two tools, built this round",
+      "scores": {
+        "hierarchy": 4,
+        "typography": 4,
+        "spacing": 4,
+        "color": 6,
+        "alignment": 4,
+        "density": 4,
+        "overall": 4
+      },
+      "defects": [
+        "Card headers 'design_critic.mjs' are misaligned vertically between left and right cards, breaking the horizontal scan line.",
+        "The left card's inner code block is vertically offset from the right card's inner block, creating an unbalanced and chaotic visual rhythm.",
+        "The 'receipt:' footnote at the bottom of each card is cramped against the inner block, creating a dense, unreadable cluster that violates the calm density goal.",
+        "The 'THE TOOLS' eyebrow text is visually weak and poorly contrasted against the paper background, failing to establish a clear top-down hierarchy.",
+        "The two inner code blocks use a generic gray background that feels out of place against the warm, hand-drawn Unown brand identity; it looks like a default IDE theme."
+      ],
+      "improvements": [
+        "Align card headers and inner blocks to a shared horizontal baseline for visual cohesion.",
+        "Increase bottom padding on inner blocks to separate them from receipt footnotes.",
+        "Replace gray code blocks with dark-ink on-paper styles to match brand palette."
+      ]
+    },
+    {
+      "shot": "encore-desktop-band05.png",
+      "device": "desktop",
+      "kind": "band",
+      "label": "Every failure became a benchmark",
+      "scores": {
+        "hierarchy": 6,
+        "typography": 5,
+        "spacing": 6,
+        "color": 4,
+        "alignment": 7,
+        "density": 6,
+        "overall": 5
+      },
+      "defects": [
+        "Header and card title text have dangerously low contrast against the warm paper background, failing basic legibility.",
+        "Cards are visually muddy: the beige fill and muted text create a low-contrast, monochromatic blob that buries the 'CLOSED' status and body copy.",
+        "Type scale is flat and undisciplined; the small 'fix-ref' monospace links and dense card text lack clear size or weight differentiation, causing eye strain.",
+        "Spacing rhythm is inconsistent; the large empty gutters below the cards and above 'THE FINALE' break the visual flow and create dead space.",
+        "The small, uppercase 'THE FAILURES' and 'THE FINALE' labels are too low-contrast to function as effective section markers, reducing the hierarchy's clarity."
+      ],
+      "improvements": [
+        "Increase text contrast to meet WCAG AA, especially for headers and card body copy.",
+        "Give cards a distinct background or border to improve legibility and visual separation.",
+        "Tighten the vertical spacing rhythm between cards, text blocks, and section labels."
+      ]
+    },
+    {
+      "shot": "encore-desktop-band06.png",
+      "device": "desktop",
+      "kind": "band",
+      "label": "The question the round set out to answer",
+      "scores": {
+        "hierarchy": 6,
+        "typography": 7,
+        "spacing": 5,
+        "color": 7,
+        "alignment": 6,
+        "density": 6,
+        "overall": 6
+      },
+      "defects": [
+        "Vertical rhythm is broken by a massive, empty gap between the top paragraph and the 'THE FINALE' eyebrow, creating a visual vacuum.",
+        "The primary call-to-action 'Back to the gallery' is a heavy dark block that reads like a secondary or destructive button, competing aggressively with the page headline.",
+        "The central block (question + answer box) is tightly crammed, with the answer box wrapping long file paths that create dense, hard-to-scan clusters.",
+        "Eyebrow label 'THE FINALE' is set in a warm gold that clashes slightly with the cool grey-blue used for the main headline, disrupting brand cohesion.",
+        "The left-aligned vertical rule next to the quote feels disconnected and arbitrarily sized, breaking the otherwise centered, symmetrical composition of the section."
+      ],
+      "improvements": [
+        "Reduce the vertical whitespace above the eyebrow to establish a consistent, tight spacing scale.",
+        "Invert button styles: make 'Read the session log' the primary filled action.",
+        "Increase line-height and max-width of the code path to improve scanability and reduce visual density."
+      ]
+    },
+    {
+      "shot": "encore-mobile-full.png",
+      "device": "mobile",
+      "kind": "full",
+      "label": null,
+      "scores": {
+        "hierarchy": 6,
+        "typography": 5,
+        "spacing": 4,
+        "color": 6,
+        "alignment": 5,
+        "density": 4,
+        "overall": 5
+      },
+      "defects": [
+        "The 7 VM axis means bar-chart has no visible Y-axis scale, making values unreadable and the 'measured' claim hollow.",
+        "The 'before and after' comparison section is broken: it is not a drag interaction but a garbled, overlapping text-wall that fails its own copy.",
+        "Spacing rhythm is incoherent: inconsistent vertical margins between the 11-gates list, the tool cards, and the failure log make scanning chaotic.",
+        "The '11 gates' table crams PASS/FAIL status with raw file paths into dense rows, breaking WCAG legibility and calm density.",
+        "Primary CTA color flips: 'See the loop' is dark on light, but the closing 'Back to the gallery' is light text on a brown box, creating inconsistent affordance."
+      ],
+      "improvements": [
+        "Add a real Y-axis and consistent ticks to the VM means bar chart.",
+        "Replace the broken before/after wall with a clean toggle of two screenshots.",
+        "Establish a strict 8pt vertical spacing rhythm and uniform card padding across all sections."
+      ]
+    },
+    {
+      "shot": "encore-mobile-band00.png",
+      "device": "mobile",
+      "kind": "band",
+      "label": "Every great performance earns an encore.",
+      "scores": {
+        "hierarchy": 6.5,
+        "typography": 6.8,
+        "spacing": 7.2,
+        "color": 7.25,
+        "alignment": 7.19,
+        "density": 6.71,
+        "overall": 6.4
+      },
+      "defects": [
+        "The eyebrow label 'ENCORE' lacks a typographic step; it is visually disconnected and feels like a floating artifact above the headline.",
+        "The sub-headline paragraph is center-aligned with a ragged, uneven right edge, breaking the visual rhythm and creating a chaotic, unreadable flow.",
+        "The secondary CTA 'Read the receipts' is visually weak and inconsistent with the primary button's weight, making the interaction hierarchy ambiguous.",
+        "The footer metric strip (HIERARCHY-DENSITY) introduces a jarring, meta-layer that clashes with the 'dark-first' Unown brand tone and feels like a debug overlay.",
+        "The gold accent color used in 'encore.' has insufficient contrast against the paper background, failing WCAG AA for large text."
+      ],
+      "improvements": [
+        "Left-align all body copy to establish a disciplined, consistent visual reading flow.",
+        "Increase the contrast ratio of the gold accent text to meet accessibility standards.",
+        "Remove the meta-metric strip to preserve the intended dark, artistic brand atmosphere."
+      ]
+    },
+    {
+      "shot": "encore-mobile-band01.png",
+      "device": "mobile",
+      "kind": "band",
+      "label": "The receipt before the fix",
+      "scores": {
+        "hierarchy": 4,
+        "typography": 5,
+        "spacing": 5,
+        "color": 6,
+        "alignment": 5,
+        "density": 3,
+        "overall": 5
+      },
+      "defects": [
+        "The top 'receipt' card overflows its boundary, clipping the 'FA' badge and leaving the right side of the row ragged and unbalanced.",
+        "In the 'Distinct font sizes' column, the long file path 'benchmarks/...' wraps awkwardly and collides with the edge, breaking the 2-column alignment.",
+        "The 2x2 metrics grid lacks a consistent vertical rhythm; the gaps between the number, label, and path are inconsistent across all four quadrants.",
+        "The top section's eyebrow ('THE BASELINE') uses a warm gold that feels disconnected from the dark, clinical, monospace-heavy data grid below it.",
+        "The top receipt card's background is a muddy gray, which fails to distinguish the 'pre-fix' state from the 'post-fix' green state sufficiently, causing visual noise."
+      ],
+      "improvements": [
+        "Increase right padding in the top receipt card to prevent the 'FA' badge from clipping the edge.",
+        "Enforce a consistent 24px vertical gap between all metric elements in the 2x2 grid.",
+        "Add a 1px 10% white border to all metric cards to define their edges against the dark background."
+      ]
+    },
+    {
+      "shot": "encore-mobile-band02.png",
+      "device": "mobile",
+      "kind": "band",
+      "label": "A measured critique loop, receipted",
+      "scores": {
+        "hierarchy": 5,
+        "typography": 6,
+        "spacing": 7,
+        "color": 6,
+        "alignment": 8,
+        "density": 6,
+        "overall": 6
+      },
+      "defects": [
+        "Step 1 button has a red border, implying error state, which contradicts the 'receipted success' narrative and is jarring against the warm paper palette",
+        "The '1/6' label in the detail card is very small and low-contrast, making the current step indicator feel lost and illegible on mobile",
+        "Visual hierarchy between the 6 numbered step buttons is flat; all appear as equivalent 'chips,' failing to visually distinguish the active step from the inactive ones",
+        "Large vertical whitespace at the bottom of the screenshot before 'THE ITERATIONS' breaks the visual rhythm and makes the section feel like it cut off prematurely",
+        "Typography contrast between the dark blue body text and the warm beige background is slightly too high, causing potential eye fatigue and lacking the 'ink on paper' subtle brand aesthetic"
+      ],
+      "improvements": [
+        "Remove red border on active step; use subtle gold fill or increased font weight instead.",
+        "Bold the '1/6' and active step label to clearly anchor the user's position.",
+        "Reduce bottom whitespace to restore consistent vertical spacing rhythm in the mobile band."
+      ]
+    },
+    {
+      "shot": "encore-mobile-band03.png",
+      "device": "mobile",
+      "kind": "band",
+      "label": "Before and after, receipted",
+      "scores": {
+        "hierarchy": 4,
+        "typography": 3,
+        "spacing": 5,
+        "color": 4,
+        "alignment": 5,
+        "density": 6,
+        "overall": 4
+      },
+      "defects": [
+        "In the interactive comparison panel, the small 'BEFORE / AFTER' pill labels have severe WCAG contrast failure; they are faint beige text on a lighter beige pill background, nearly illegible against the paper canvas.",
+        "The image alt-text (starting 'Baseline 1440x900...') is visible at the top-left of the comparison panel as raw, unstyled text, breaking the visual frame and looking like a broken asset state.",
+        "The instruction paragraph 'Drag to reveal...' is typeset with nearly identical weight and size to the main descriptive paragraph above it, creating a confusing visual equalizer instead of a distinct, secondary functional cue.",
+        "The footer labels 'before receipt' and 'after receipt' are a raw, unstyled text block that visually feels 'orphaned' from the interactive panel above, violating the brand's disciplined paper/ink aesthetic and acting as a visual 'leak'.",
+        "Vertical spacing is inconsistent: the space below the main description is vast, but the gap between the comparison widget and its footer labels is uncomfortably tight and disconnected from the 'Axis-by-axis delta' header below."
+      ],
+      "improvements": [
+        "Increase contrast on 'BEFORE/AFTER' labels to dark ink on gold to meet WCAG AA. Clear the alt text and re-render the comparison panel without a visual border to feel intentional. Differentiate the 'Drag to reveal' instruction with a distinct UI accent color to separate it from the body text. Unify the footer receipt labels with the main panel using a subtle dividers or card structure. Create a consistent vertical rhythm using an 8pt grid to manage the distance between the paragraphs, interactive widget, and the subsequent heading."
+      ]
+    },
+    {
+      "shot": "encore-mobile-band04.png",
+      "device": "mobile",
+      "kind": "band",
+      "label": "Two tools, built this round",
+      "scores": {
+        "hierarchy": 7,
+        "typography": 7,
+        "spacing": 5,
+        "color": 6,
+        "alignment": 8,
+        "density": 6,
+        "overall": 6
+      },
+      "defects": [
+        "The card headers ('design_critic.mjs') use a color that fails WCAG AA contrast against the beige card background, reducing legibility of the primary labels.",
+        "The nested gray inner box for the 'headline' fixture feels jarring and visually disconnected; its border and background are too generic and don't follow the warm/ink/gold brand system.",
+        "The typeface for the nested text inside the gray box switches to a serif font that is inconsistent with the monospaced aesthetic of the filenames, creating a typographical conflict.",
+        "The spacing (rhythm) between the description text and the card headers is cramped, lacking the breathing room of elite 'calm density' standards.",
+        "The body text paragraph 'The design critic and its calibration fixture' sits too close to the top, creating an unbalanced top margin compared to the tight margins within the cards."
+      ],
+      "improvements": [
+        "Darken the 'design_critic' card header ink to 85% opacity to ensure WCAG legibility on the beige background.",
+        "Replace the nested gray box with a subtle 1px gold border and transparent paper-fill background.",
+        "Increase vertical spacing rhythm between card paragraphs to establish a disciplined, calm mobile viewport hierarchy."
+      ]
+    },
+    {
+      "shot": "encore-mobile-band05.png",
+      "device": "mobile",
+      "kind": "band",
+      "label": "Every failure became a benchmark",
+      "scores": {
+        "hierarchy": 6.5,
+        "typography": 7.2,
+        "spacing": 5.8,
+        "color": 8.4,
+        "alignment": 9,
+        "density": 7.6,
+        "overall": 7.1
+      },
+      "defects": [
+        "Header 'THE FAILURES' label is 24px from block but only 16px from H1, breaking vertical rhythm.",
+        "H1 'Every failure...' has excessive letter-spacing (-0.5px+) that feels cramped at 32px mobile.",
+        "F10/F11 cards have inconsistent internal padding—left margin to text is 12px but right is 16px, creating asymmetric whitespace.",
+        "'CLOSED' status label uses uppercase with tracking but no visual weight differentiation from adjacent body text.",
+        "fix-ref underlines are full-width and visually noisy, competing with primary content links."
+      ],
+      "improvements": [
+        "Increase H1 to -0.25px tracking; add 8px breathing room after 'THE FAILURES' label.",
+        "Standardize card padding to 16px all sides; align text left-margin with card border.",
+        "Make 'CLOSED' bold 13px/500, not uppercase; reduce underline weight to 1px for fix-refs."
+      ]
+    },
+    {
+      "shot": "encore-mobile-band06.png",
+      "device": "mobile",
+      "kind": "band",
+      "label": "The question the round set out to answer",
+      "scores": {
+        "hierarchy": 4,
+        "typography": 5,
+        "spacing": 3,
+        "color": 2,
+        "alignment": 6,
+        "density": 7,
+        "overall": 4
+      },
+      "defects": [
+        "WCAG contrast failure on body text and footer against the pale beige background, making text nearly illegible. The '6.40' score is rendered in a low-saturation gold on a light beige card, failing accessibility contrast requirements. Vertical rhythm is broken by inconsistent margins: the 'THE FINALE' label is cramped, while the two CTAs at the bottom are unnaturally separated by a large dead zone. The footer text at the bottom is cut off and overlaps with the CTA buttons, indicating a layout overflow or scrolling issue. The blockquote styling for the 'Current answer' section is visually noisy, using a solid beige box with a heavy 1px border that fights with the primary text hierarchy."
+      ],
+      "improvements": [
+        "Increase contrast of body text to #1A1A1A or #333333. Deepen gold accent to #8B5A2B for WCAG compliance. Increase vertical padding between CTA buttons to establish a clear, consistent 8pt grid rhythm."
+      ]
+    },
+    {
+      "shot": "encore-mobile-band07.png",
+      "device": "mobile",
+      "kind": "band",
+      "label": "band-7",
+      "scores": {
+        "hierarchy": 4,
+        "typography": 3,
+        "spacing": 5,
+        "color": 2,
+        "alignment": 6,
+        "density": 4,
+        "overall": 3
+      },
+      "defects": [
+        "Headline uses a generic sans-serif instead of the specified hand-drawn Unown glyphs, completely breaking brand continuity.",
+        "The beige background and pale text in the 'Current answer' block fail WCAG contrast ratios severely, making the text nearly illegible.",
+        "Typography mixing sans-serif headings with serif body copy and monospace data creates a chaotic visual hierarchy that lacks discipline.",
+        "The primary call-to-action button uses a muddy dark brown that clashes with the warm paper/ink/gold palette and lacks visual prominence.",
+        "Vertical spacing rhythm is inconsistent; the gap between the quote and the beige card is significantly larger than the gap to the buttons."
+      ],
+      "improvements": [
+        "Replace system fonts with consistent hand-drawn Unown glyphs and monospace for data.",
+        "Invert beige card to dark ink with gold text to achieve WCAG-legible contrast.",
+        "Establish a strict 4pt spacing grid to unify rhythm and density."
+      ]
+    }
+  ],
+  "axisMeans": {
+    "hierarchy": 5.35,
+    "typography": 5.53,
+    "spacing": 5.65,
+    "color": 5.69,
+    "alignment": 6.42,
+    "density": 5.84,
+    "overall": 5.38
+  },
+  "gates": {
+    "contrastViolations": {
+      "value": 0,
+      "max": 0,
+      "pass": true
+    },
+    "fontSizes": {
+      "value": 6,
+      "max": 8,
+      "pass": true
+    },
+    "offGridPct": {
+      "value": 0,
+      "max": 15,
+      "pass": true
+    },
+    "headingSkips": {
+      "value": 0,
+      "max": 0,
+      "pass": true
+    },
+    "missingAlts": {
+      "value": 0,
+      "max": 0,
+      "pass": true
+    },
+    "mobileOverflow": {
+      "value": 42,
+      "max": 0,
+      "pass": false
+    },
+    "fcpMs": {
+      "value": 0,
+      "max": 1800,
+      "pass": true
+    },
+    "lcpMs": {
+      "value": 548,
+      "max": 2500,
+      "pass": true
+    },
+    "cls": {
+      "value": 0,
+      "max": 0.1,
+      "pass": true
+    },
+    "tbtMs": {
+      "value": 0,
+      "max": 200,
+      "pass": true
+    },
+    "vlmAxes": {
+      "value": {
+        "hierarchy": 5.35,
+        "typography": 5.53,
+        "spacing": 5.65,
+        "color": 5.69,
+        "alignment": 6.42,
+        "density": 5.84,
+        "overall": 5.38
+      },
+      "floor": 7,
+      "pass": false,
+      "failures": [
+        "hierarchy 5.35<7",
+        "typography 5.53<7",
+        "spacing 5.65<7",
+        "color 5.69<7",
+        "alignment 6.42<7",
+        "density 5.84<7",
+        "overall 5.38<7"
+      ]
+    }
+  },
+  "passed": false,
+  "shotsDir": "/home/z/my-project/unown/download/design-critic/encore-v0/encore",
+  "wallSeconds": 78.4
+}

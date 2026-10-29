@@ -1,0 +1,20 @@
+You hit the turn cap mid-session. Your files all exist and typecheck + lint are CLEAN: layout.tsx, page.tsx, globals.css, favicon.svg, shell.tsx, primitives.tsx, views/{hero,baseline,loop}.tsx. What is MISSING, and all this session does:
+
+1. The component tests — src/components/encore/__tests__/ per plan §6.2/§6.3:
+   - each band renders its receipt numbers from the seed (assert the exact
+     seeded values appear in the DOM: overall 6.40, 23 font sizes, 32.7%
+     off-grid, the seven axis means)
+   - the stepper steps by keyboard (tablist semantics)
+   - the reset handshake test (plan §6.3, risk #7: shape check + origin,
+     the happy-dom window.origin quirk pinned with logged origins)
+   - whatever the shell/primitives need pinned (SectionHead renders, the
+     GateChip pass/fail states)
+2. If the reset handshake listener is not yet wired (check page.tsx /
+   shell.tsx for the "encore-reset" postMessage listener), wire it per
+   plan §3.4 and cover it with the test above.
+3. Check the embed prop actually flows (?embed=1 -> the tighter chrome).
+
+Do NOT rewrite the views — they are done. Do not edit lib/, landing,
+receipts, AGENTS.md, .unown/**. Finish by running ALL THREE and reporting
+exact counts: `bun test src/components/encore`, `bun run typecheck`,
+`bun run lint`.

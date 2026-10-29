@@ -90,21 +90,56 @@ design-token synthesis the flagship and the rubric both consume.
 
 ## Checkpoint 2 — the critique infrastructure
 
-**PLANNED.** The self-critique loop every UI iteration runs: build →
-screenshot (full-page + per-band, desktop + mobile) → objective audit
-(WCAG contrast, type-scale fit, spacing-grid conformance, heading order,
-core web vitals) → VLM critique through Agnes (structured JSON verdict,
-scored axes, defects, improvements) → fix → re-score. All receipts under
-`benchmarks/website-excellence-round/`. The rubric and its thresholds are
-the benchmark contract; a run without a receipt never counts.
+**DONE.** `scripts/design_critic.mjs` (npm: `critic:design`) — the
+self-critique driver: any route of the production standalone build (or any
+local HTML file) at desktop 1440 + mobile 390, per-band + full-page shots
+under reduced-motion, the objective in-page audit (WCAG contrast per text
+node vs composited background, type-scale census, 4px-grid conformance,
+heading order, alts, overflow), cold-load FCP/LCP/CLS/TBT via buffered
+PerformanceObservers, and the strict-JSON 7-axis VLM critique through the
+bridge — one committed receipt per run
+(`benchmarks/website-excellence-round/critiques/`, schema
+`website-excellence/critique/1`). `--enforce` turns a rubric fail into
+exit 1. The calibration fixture
+(`scripts/design_critic_calibration.html`) is the known-bad anchor. The
+contracts: the round's [`README.md`](../benchmarks/website-excellence-round/README.md)
++ [`rubric.md`](../benchmarks/website-excellence-round/rubric.md); the gap
+audit it answers: [`website-excellence-gap-analysis.md`](website-excellence-gap-analysis.md).
+
+**VERIFIED.** The baseline receipt
+([`20261029-145746-baseline-root.json`](../benchmarks/website-excellence-round/critiques/20261029-145746-baseline-root.json)):
+the landing page at `89535c6` — overall **6.40**/10 (hierarchy 6.50 ·
+typography 6.79 · spacing 6.08 · color 7.25 · alignment 7.19 · density
+6.71), **23 distinct font sizes** (gate ≤ 8), **32.7% off-grid spacing**
+(gate ≤ 15%), 0 contrast violations (min 5.95:1), 0 heading skips, 0
+missing alts, 0 mobile overflow, FCP/LCP/CLS/TBT 276ms/276ms/0/61ms —
+rubric FAIL on type scale + spacing + five VLM axes. The calibration
+receipt
+([`20261029-145834-calib-bad-root.json`](../benchmarks/website-excellence-round/critiques/20261029-145834-calib-bad-root.json)):
+the known-bad fixture scores **1.5** overall (every axis 1.0–2.5, 26
+contrast violations, 100% off-grid) — a 4.9-point separation from the real
+page: the judge discriminates. Honest headline: the fixture's deliberate
+type chaos (10 sizes) is MORE disciplined than the real page's 23. Docs
+gates green (`check:docs` 84 files, instruction-chars 46 files 0 findings);
+pushed as `0eb9e76`.
+
+**NEXT.** The flagship app (CP3) — the plan session E1 wrote
+[`plan.md`](../benchmarks/website-excellence-round/plan.md) (192 lines, all
+8 sections, 29 turns / 207k-in tokens); the lib session E2 landed 4 modules
++ the drift gate, 64/64 green (one resume: the gate-count off-by-one and
+the self-scanning determinism invariant, both fixed in 15 turns).
 
 ## Checkpoint 3 — the flagship app
 
-**PLANNED.** `/cadenza` — the virtuoso showcase: the Website Excellence
-Program's own story (iterations, before/after comparisons, scores with
-receipts, the failure ledger, the tools and learning artifacts) as an
-elite-grade interactive experience — built by Unown sessions phase by
-phase (plan → lib → UI → embed/landing), zero human edits, the critique
+**IN PROGRESS.** `/encore` — "the earned performance" (the naming receipt:
+the eighth app, built by everything seven apps of practice taught the
+platform; collision-checked — Adobe Encore discontinued 2014, encore.org
+nonprofit, no dev-tool/AI-space collision, lexically distinct from all
+seven siblings). The showcase of the program's own measured story: the
+baseline receipt, the iteration receipts, the tools, the F-ledger, the
+learning — every number traced to a committed receipt, the seed drift gate
+proving it. Built by Unown sessions phase by phase (E1 plan → E2 lib →
+E3/E4 UI → the critique loop → E5 landing), zero human edits, the critique
 loop between phases as the QA gate.
 
 ## Checkpoint 4 — the learning pipeline
