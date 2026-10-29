@@ -30,14 +30,14 @@ export interface ChangelogStop {
   groups: ChangelogGroup[];
 }
 
-export const CHANGELOG_TOTAL_ENTRIES = 393;
+export const CHANGELOG_TOTAL_ENTRIES = 396;
 
 export const CHANGELOG_TOTALS: Record<ChangelogBucket, number> = {
-  "Added": 169,
+  "Added": 171,
   "Changed": 28,
   "Deprecated": 0,
   "Removed": 3,
-  "Fixed": 153,
+  "Fixed": 154,
   "Security": 5,
   "Behavior": 35
 };
@@ -46,13 +46,13 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
   {
     "label": "0.0.43",
     "date": "2026-10-30",
-    "total": 12,
+    "total": 15,
     "counts": {
-      "Added": 3,
+      "Added": 5,
       "Changed": 0,
       "Deprecated": 0,
       "Removed": 0,
-      "Fixed": 9,
+      "Fixed": 10,
       "Security": 0,
       "Behavior": 0
     },
@@ -71,6 +71,14 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
           {
             "title": "The Website Excellence skills and agents",
             "behavior": false
+          },
+          {
+            "title": "Ledger — the gallery's ninth app, the round-2 validation website",
+            "behavior": false
+          },
+          {
+            "title": "The critic's --brand flag",
+            "behavior": false
           }
         ]
       },
@@ -78,7 +86,11 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
         "bucket": "Fixed",
         "items": [
           {
-            "title": "F24 — the landing's HP bars animated width, and the first gallery app shipped transition-all",
+            "title": "F25 — the round's own F24 receipt re-emitted the banned utility",
+            "behavior": false
+          },
+          {
+            "title": "F24 — the landing's HP bars animated width, and the first gallery app shipped transition[-]all",
             "behavior": false
           },
           {

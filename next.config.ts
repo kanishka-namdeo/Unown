@@ -98,6 +98,15 @@ const nextConfig: NextConfig = {
           { key: "X-Frame-Options", value: "SAMEORIGIN" },
         ],
       },
+      {
+        // /ledger (the Website Excellence round 2, 2026-10-30) — gallery
+        // app #9, the fintech dashboard fixture. Same frame hardening.
+        source: "/ledger/:path*",
+        headers: [
+          { key: "Content-Security-Policy", value: "frame-ancestors 'self'" },
+          { key: "X-Frame-Options", value: "SAMEORIGIN" },
+        ],
+      },
     ];
   },
 };

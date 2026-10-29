@@ -1,0 +1,573 @@
+{
+  "schema": "website-excellence/critique/2",
+  "route": "/ledger",
+  "url": "http://127.0.0.1:3211/ledger",
+  "label": "ledger-iter1",
+  "brand": "the Ledger fixture's own identity: a warm-paper fintech dashboard in the Mercury/Anthropic lane — ivory paper, one clay accent, serif numbers-as-headlines, small tool-like radii, light-first",
+  "generatedAt": "2026-10-29T20:52:48.513Z",
+  "rubric": {
+    "vlmAxes": [
+      "hierarchy",
+      "typography",
+      "spacing",
+      "color",
+      "alignment",
+      "density",
+      "overall"
+    ],
+    "vlmFloor": 7,
+    "contrastViolations": 0,
+    "fontSizesMax": 8,
+    "offGridMaxPct": 15,
+    "headingSkips": 0,
+    "missingAlts": 0,
+    "mobileOverflow": 0,
+    "fcpMs": 1800,
+    "lcpMs": 2500,
+    "cls": 0.1,
+    "tbtMs": 200,
+    "weightCeiling": 600,
+    "weightSetMax": 4,
+    "trackingOffendersMax": 3,
+    "neutralHueSpreadMax": 30,
+    "accentClustersMax": 2,
+    "animLayoutPropsMax": 0,
+    "breakpointsMax": 8
+  },
+  "audit": {
+    "desktop": {
+      "contrast": {
+        "min": 16.91,
+        "mean": 16.91,
+        "violations": []
+      },
+      "type": {
+        "distinctSizes": 2,
+        "sizes": [
+          {
+            "size": "14px",
+            "uses": 3
+          },
+          {
+            "size": "24px",
+            "uses": 1
+          }
+        ]
+      },
+      "spacing": {
+        "samples": 2,
+        "offGrid": 0,
+        "offGridPct": 0
+      },
+      "headings": {
+        "order": [
+          1
+        ],
+        "skips": []
+      },
+      "images": {
+        "total": 0,
+        "missingAlts": 0
+      },
+      "overflowX": 0,
+      "craft": {
+        "weights": {
+          "distinct": 2,
+          "max": 500,
+          "census": [
+            {
+              "weight": 400,
+              "uses": 1
+            },
+            {
+              "weight": 500,
+              "uses": 3
+            }
+          ]
+        },
+        "tracking": {
+          "offenders": [],
+          "total": 0
+        },
+        "neutralHue": {
+          "n": 0,
+          "meanDeg": null,
+          "stdDeg": null
+        },
+        "accents": {
+          "clusters": 0,
+          "buckets": [],
+          "sampled": 0
+        },
+        "anim": {
+          "props": [
+            "--tw-gradient-from",
+            "--tw-gradient-to",
+            "--tw-gradient-via",
+            "-webkit-backdrop-filter",
+            "all",
+            "backdrop-filter",
+            "background-color",
+            "border-color",
+            "box-shadow",
+            "color",
+            "content-visibility",
+            "display",
+            "fill",
+            "filter",
+            "height",
+            "opacity",
+            "outline-color",
+            "overlay",
+            "pointer-events",
+            "rotate",
+            "scale",
+            "stroke",
+            "stroke-dashoffset",
+            "text-decoration-color",
+            "transform",
+            "translate"
+          ],
+          "layoutViolations": [],
+          "usesAll": true,
+          "hasKeyframes": true,
+          "hasReducedMotionGuard": true
+        },
+        "breakpoints": {
+          "count": 6,
+          "values": [
+            "40rem",
+            "48rem",
+            "64rem",
+            "80rem",
+            "96rem",
+            "430px"
+          ]
+        }
+      }
+    },
+    "desktopLight": {
+      "contrast": {
+        "min": 17.93,
+        "mean": 17.93,
+        "violations": []
+      },
+      "type": {
+        "distinctSizes": 2,
+        "sizes": [
+          {
+            "size": "14px",
+            "uses": 3
+          },
+          {
+            "size": "24px",
+            "uses": 1
+          }
+        ]
+      },
+      "spacing": {
+        "samples": 2,
+        "offGrid": 0,
+        "offGridPct": 0
+      },
+      "headings": {
+        "order": [
+          1
+        ],
+        "skips": []
+      },
+      "images": {
+        "total": 0,
+        "missingAlts": 0
+      },
+      "overflowX": 0,
+      "craft": {
+        "weights": {
+          "distinct": 2,
+          "max": 500,
+          "census": [
+            {
+              "weight": 400,
+              "uses": 1
+            },
+            {
+              "weight": 500,
+              "uses": 3
+            }
+          ]
+        },
+        "tracking": {
+          "offenders": [],
+          "total": 0
+        },
+        "neutralHue": {
+          "n": 0,
+          "meanDeg": null,
+          "stdDeg": null
+        },
+        "accents": {
+          "clusters": 0,
+          "buckets": [],
+          "sampled": 0
+        },
+        "anim": {
+          "props": [
+            "--tw-gradient-from",
+            "--tw-gradient-to",
+            "--tw-gradient-via",
+            "-webkit-backdrop-filter",
+            "all",
+            "backdrop-filter",
+            "background-color",
+            "border-color",
+            "box-shadow",
+            "color",
+            "content-visibility",
+            "display",
+            "fill",
+            "filter",
+            "height",
+            "opacity",
+            "outline-color",
+            "overlay",
+            "pointer-events",
+            "rotate",
+            "scale",
+            "stroke",
+            "stroke-dashoffset",
+            "text-decoration-color",
+            "transform",
+            "translate"
+          ],
+          "layoutViolations": [],
+          "usesAll": true,
+          "hasKeyframes": true,
+          "hasReducedMotionGuard": true
+        },
+        "breakpoints": {
+          "count": 6,
+          "values": [
+            "40rem",
+            "48rem",
+            "64rem",
+            "80rem",
+            "96rem",
+            "430px"
+          ]
+        }
+      }
+    },
+    "mobile": {
+      "contrast": {
+        "min": 16.91,
+        "mean": 16.91,
+        "violations": []
+      },
+      "type": {
+        "distinctSizes": 2,
+        "sizes": [
+          {
+            "size": "14px",
+            "uses": 3
+          },
+          {
+            "size": "24px",
+            "uses": 1
+          }
+        ]
+      },
+      "spacing": {
+        "samples": 2,
+        "offGrid": 0,
+        "offGridPct": 0
+      },
+      "headings": {
+        "order": [
+          1
+        ],
+        "skips": []
+      },
+      "images": {
+        "total": 0,
+        "missingAlts": 0
+      },
+      "overflowX": 0,
+      "craft": {
+        "weights": {
+          "distinct": 2,
+          "max": 500,
+          "census": [
+            {
+              "weight": 400,
+              "uses": 1
+            },
+            {
+              "weight": 500,
+              "uses": 3
+            }
+          ]
+        },
+        "tracking": {
+          "offenders": [],
+          "total": 0
+        },
+        "neutralHue": {
+          "n": 0,
+          "meanDeg": null,
+          "stdDeg": null
+        },
+        "accents": {
+          "clusters": 0,
+          "buckets": [],
+          "sampled": 0
+        },
+        "anim": {
+          "props": [
+            "--tw-gradient-from",
+            "--tw-gradient-to",
+            "--tw-gradient-via",
+            "-webkit-backdrop-filter",
+            "all",
+            "backdrop-filter",
+            "background-color",
+            "border-color",
+            "box-shadow",
+            "color",
+            "content-visibility",
+            "display",
+            "fill",
+            "filter",
+            "height",
+            "opacity",
+            "outline-color",
+            "overlay",
+            "pointer-events",
+            "rotate",
+            "scale",
+            "stroke",
+            "stroke-dashoffset",
+            "text-decoration-color",
+            "transform",
+            "translate"
+          ],
+          "layoutViolations": [],
+          "usesAll": true,
+          "hasKeyframes": true,
+          "hasReducedMotionGuard": true
+        },
+        "breakpoints": {
+          "count": 6,
+          "values": [
+            "40rem",
+            "48rem",
+            "64rem",
+            "80rem",
+            "96rem",
+            "430px"
+          ]
+        }
+      }
+    }
+  },
+  "vitals": {
+    "desktop": {
+      "fcp": 0,
+      "lcp": 272,
+      "cls": 0,
+      "tbt": 0
+    },
+    "mobile": {
+      "fcp": 0,
+      "lcp": 192,
+      "cls": 0,
+      "tbt": 0
+    }
+  },
+  "critiques": [
+    {
+      "shot": "ledger-desktop-full.png",
+      "device": "desktop",
+      "kind": "full",
+      "label": null,
+      "error": "vlm returned unparseable JSON twice"
+    },
+    {
+      "shot": "ledger-desktop-light-full.png",
+      "device": "desktop",
+      "kind": "full",
+      "label": null,
+      "scores": {
+        "hierarchy": 7,
+        "typography": 5,
+        "spacing": 4,
+        "color": 4,
+        "alignment": 5,
+        "density": 3,
+        "overall": 5
+      },
+      "defects": [
+        "The clay accent color from the brand fixture is completely absent; the dark Reload button and neutral icon break the established warm-paper, single-accent palette.",
+        "The massive, unfocused empty space surrounding the small text block creates a severe imbalance, failing to establish the calm density expected of a dashboard identity.",
+        "The sans-serif headline font clashes with the specified 'serif numbers-as-headlines' brand directive, making the visual identity feel generic and disconnected from the Ledger fixture."
+      ],
+      "improvements": [
+        "Implement a 12-column grid to anchor the state block within the established dashboard layout rhythm."
+      ]
+    },
+    {
+      "shot": "ledger-mobile-full.png",
+      "device": "mobile",
+      "kind": "full",
+      "label": null,
+      "scores": {
+        "hierarchy": 7,
+        "typography": 7,
+        "spacing": 6,
+        "color": 5,
+        "alignment": 7,
+        "density": 6,
+        "overall": 6
+      },
+      "defects": [
+        "Background is dead black instead of the warm ivory paper specified for the Unown brand identity.",
+        "Typography is generic sans-serif, violating the 'serif numbers-as-headlines' and Mercury/Anthropic aesthetic.",
+        "Missing the warm clay accent color; primary CTA is just white, making the brand identity invisible.",
+        "Corner radii on buttons are slightly off, lacking the 'small tool-like' precision requested.",
+        "Spacing rhythm is acceptable for an error state but feels standard browser-default rather than custom designed."
+      ],
+      "improvements": [
+        "Swap black background for Unown's warm ivory paper color to instantly align with brand identity.",
+        "Apply serif typeface to headlines and numbers to establish the refined Mercury/Anthropic typographic lane.",
+        "Introduce clay accent color for the primary 'Reload' action to create clear visual hierarchy."
+      ]
+    }
+  ],
+  "axisMeans": {
+    "hierarchy": 7,
+    "typography": 6,
+    "spacing": 5,
+    "color": 4.5,
+    "alignment": 6,
+    "density": 4.5,
+    "overall": 5.5
+  },
+  "gates": {
+    "contrastViolations": {
+      "value": 0,
+      "max": 0,
+      "pass": true
+    },
+    "fontSizes": {
+      "value": 2,
+      "max": 8,
+      "pass": true
+    },
+    "offGridPct": {
+      "value": 0,
+      "max": 15,
+      "pass": true
+    },
+    "headingSkips": {
+      "value": 0,
+      "max": 0,
+      "pass": true
+    },
+    "missingAlts": {
+      "value": 0,
+      "max": 0,
+      "pass": true
+    },
+    "mobileOverflow": {
+      "value": 0,
+      "max": 0,
+      "pass": true
+    },
+    "fcpMs": {
+      "value": 0,
+      "max": 1800,
+      "pass": true
+    },
+    "lcpMs": {
+      "value": 272,
+      "max": 2500,
+      "pass": true
+    },
+    "cls": {
+      "value": 0,
+      "max": 0.1,
+      "pass": true
+    },
+    "tbtMs": {
+      "value": 0,
+      "max": 200,
+      "pass": true
+    },
+    "vlmAxes": {
+      "value": {
+        "hierarchy": 7,
+        "typography": 6,
+        "spacing": 5,
+        "color": 4.5,
+        "alignment": 6,
+        "density": 4.5,
+        "overall": 5.5
+      },
+      "floor": 7,
+      "pass": false,
+      "failures": [
+        "typography 6<7",
+        "spacing 5<7",
+        "color 4.5<7",
+        "alignment 6<7",
+        "density 4.5<7",
+        "overall 5.5<7"
+      ]
+    },
+    "weightCeiling": {
+      "value": 500,
+      "max": 600,
+      "pass": true
+    },
+    "weightSet": {
+      "value": 2,
+      "max": 4,
+      "pass": true
+    },
+    "trackingCurve": {
+      "value": 0,
+      "max": 3,
+      "pass": true
+    },
+    "neutralHueSpread": {
+      "value": null,
+      "max": 30,
+      "sampled": 0,
+      "pass": true
+    },
+    "accentClusters": {
+      "value": 0,
+      "max": 2,
+      "sampled": 0,
+      "pass": true
+    },
+    "animLayoutProps": {
+      "value": 2,
+      "max": 0,
+      "props": [],
+      "pass": false
+    },
+    "reducedMotionGuard": {
+      "value": true,
+      "max": 1,
+      "pass": true
+    },
+    "breakpoints": {
+      "value": 6,
+      "max": 8,
+      "pass": true
+    }
+  },
+  "passed": false,
+  "shotsDir": "/home/z/unown/download/design-critic/ledger-iter1/ledger",
+  "wallSeconds": 19.4
+}

@@ -97,7 +97,7 @@ export function LiveDemoSection() {
               the scroll budget contract makes the band pay for its own
               height, and every word here is one the frame shows for free. */}
           <p className="mt-5 max-w-2xl text-[15px] leading-relaxed text-dim">
-            Eight apps, live. Pick one.
+            Nine apps, live. Pick one.
           </p>
         </FadeUp>
 

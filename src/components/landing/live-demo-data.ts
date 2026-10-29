@@ -276,6 +276,30 @@ export const LIVE_DEMO_APPS: LiveDemoApp[] = [
         "https://github.com/kanishka-namdeo/Unown/blob/main/docs/encore-demo-session.md",
     },
   },
+  {
+    // The round-2 validation app (2026-10-30): the fintech dashboard —
+    // the one gallery type never exercised, built under the round's new
+    // capabilities (the craft axes + the website skills), warm-paper to
+    // the landing's dark GBA, all gates green on iteration 3.
+    id: "ledger",
+    name: "Ledger",
+    route: "/ledger",
+    url: "unown-nine.vercel.app/ledger?embed=1",
+    poster: "/landing/ledger/poster.png",
+    posterAlt:
+      "Ledger — the fintech treasury dashboard unown built: warm-paper design system, numbers as headlines, a clamped cash-flow chart and a sortable ledger, running live",
+    resetType: "ledger-reset",
+    receipt: {
+      sessions: 1,
+      toolCalls: 0,
+      files: 11,
+      tests: 22,
+      commits: 1,
+      embeddingAdaptations: 0,
+      receiptDoc:
+        "https://github.com/kanishka-namdeo/Unown/blob/main/benchmarks/website-excellence-round-2/ledger-plan.md",
+    },
+  },
 ];
 
 /** The band's default app (the first entry — Sigil Focus). */

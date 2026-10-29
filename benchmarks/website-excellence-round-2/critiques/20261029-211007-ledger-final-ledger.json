@@ -1,0 +1,980 @@
+{
+  "schema": "website-excellence/critique/2",
+  "route": "/ledger",
+  "url": "http://127.0.0.1:3211/ledger",
+  "label": "ledger-final",
+  "brand": "the Ledger fixture's own identity: a warm-paper fintech dashboard in the Mercury/Anthropic lane — ivory paper, one clay accent, serif numbers-as-headlines, small tool-like radii, light-first",
+  "generatedAt": "2026-10-29T21:10:07.655Z",
+  "rubric": {
+    "vlmAxes": [
+      "hierarchy",
+      "typography",
+      "spacing",
+      "color",
+      "alignment",
+      "density",
+      "overall"
+    ],
+    "vlmFloor": 7,
+    "contrastViolations": 0,
+    "fontSizesMax": 8,
+    "offGridMaxPct": 15,
+    "headingSkips": 0,
+    "missingAlts": 0,
+    "mobileOverflow": 0,
+    "fcpMs": 1800,
+    "lcpMs": 2500,
+    "cls": 0.1,
+    "tbtMs": 200,
+    "weightCeiling": 600,
+    "weightSetMax": 4,
+    "trackingOffendersMax": 3,
+    "neutralHueSpreadMax": 30,
+    "accentClustersMax": 2,
+    "animLayoutPropsMax": 0,
+    "breakpointsMax": 8
+  },
+  "audit": {
+    "desktop": {
+      "contrast": {
+        "min": 4.91,
+        "mean": 13.15,
+        "violations": []
+      },
+      "type": {
+        "distinctSizes": 8,
+        "sizes": [
+          {
+            "size": "12px",
+            "uses": 60
+          },
+          {
+            "size": "13px",
+            "uses": 39
+          },
+          {
+            "size": "15px",
+            "uses": 399
+          },
+          {
+            "size": "17px",
+            "uses": 4
+          },
+          {
+            "size": "20px",
+            "uses": 2
+          },
+          {
+            "size": "24px",
+            "uses": 3
+          },
+          {
+            "size": "32px",
+            "uses": 1
+          },
+          {
+            "size": "44px",
+            "uses": 4
+          }
+        ]
+      },
+      "spacing": {
+        "samples": 20,
+        "offGrid": 0,
+        "offGridPct": 0
+      },
+      "headings": {
+        "order": [
+          1,
+          2,
+          2,
+          2,
+          2
+        ],
+        "skips": []
+      },
+      "images": {
+        "total": 0,
+        "missingAlts": 0
+      },
+      "overflowX": 0,
+      "craft": {
+        "weights": {
+          "distinct": 3,
+          "max": 600,
+          "census": [
+            {
+              "weight": 400,
+              "uses": 447
+            },
+            {
+              "weight": 500,
+              "uses": 59
+            },
+            {
+              "weight": 600,
+              "uses": 6
+            }
+          ]
+        },
+        "tracking": {
+          "offenders": [],
+          "total": 0
+        },
+        "neutralHue": {
+          "n": 705,
+          "meanDeg": -111.2,
+          "stdDeg": 10
+        },
+        "accents": {
+          "clusters": 1,
+          "buckets": [
+            {
+              "from": 240,
+              "count": 1
+            },
+            {
+              "from": 270,
+              "count": 2
+            }
+          ],
+          "sampled": 3
+        },
+        "anim": {
+          "props": [
+            "--tw-gradient-from",
+            "--tw-gradient-to",
+            "--tw-gradient-via",
+            "-webkit-backdrop-filter",
+            "backdrop-filter",
+            "background-color",
+            "border-color",
+            "box-shadow",
+            "color",
+            "content-visibility",
+            "display",
+            "fill",
+            "filter",
+            "height",
+            "opacity",
+            "outline-color",
+            "overlay",
+            "pointer-events",
+            "rotate",
+            "scale",
+            "stroke",
+            "stroke-dashoffset",
+            "text-decoration-color",
+            "transform",
+            "translate"
+          ],
+          "layoutViolations": [],
+          "usesAll": false,
+          "hasKeyframes": true,
+          "hasReducedMotionGuard": true
+        },
+        "breakpoints": {
+          "count": 6,
+          "values": [
+            "40rem",
+            "48rem",
+            "64rem",
+            "80rem",
+            "96rem",
+            "430px"
+          ]
+        }
+      }
+    },
+    "desktopLight": {
+      "contrast": {
+        "min": 4.91,
+        "mean": 13.15,
+        "violations": []
+      },
+      "type": {
+        "distinctSizes": 8,
+        "sizes": [
+          {
+            "size": "12px",
+            "uses": 60
+          },
+          {
+            "size": "13px",
+            "uses": 39
+          },
+          {
+            "size": "15px",
+            "uses": 399
+          },
+          {
+            "size": "17px",
+            "uses": 4
+          },
+          {
+            "size": "20px",
+            "uses": 2
+          },
+          {
+            "size": "24px",
+            "uses": 3
+          },
+          {
+            "size": "32px",
+            "uses": 1
+          },
+          {
+            "size": "44px",
+            "uses": 4
+          }
+        ]
+      },
+      "spacing": {
+        "samples": 20,
+        "offGrid": 0,
+        "offGridPct": 0
+      },
+      "headings": {
+        "order": [
+          1,
+          2,
+          2,
+          2,
+          2
+        ],
+        "skips": []
+      },
+      "images": {
+        "total": 0,
+        "missingAlts": 0
+      },
+      "overflowX": 0,
+      "craft": {
+        "weights": {
+          "distinct": 3,
+          "max": 600,
+          "census": [
+            {
+              "weight": 400,
+              "uses": 447
+            },
+            {
+              "weight": 500,
+              "uses": 59
+            },
+            {
+              "weight": 600,
+              "uses": 6
+            }
+          ]
+        },
+        "tracking": {
+          "offenders": [],
+          "total": 0
+        },
+        "neutralHue": {
+          "n": 705,
+          "meanDeg": -111.2,
+          "stdDeg": 10
+        },
+        "accents": {
+          "clusters": 1,
+          "buckets": [
+            {
+              "from": 240,
+              "count": 1
+            },
+            {
+              "from": 270,
+              "count": 2
+            }
+          ],
+          "sampled": 3
+        },
+        "anim": {
+          "props": [
+            "--tw-gradient-from",
+            "--tw-gradient-to",
+            "--tw-gradient-via",
+            "-webkit-backdrop-filter",
+            "backdrop-filter",
+            "background-color",
+            "border-color",
+            "box-shadow",
+            "color",
+            "content-visibility",
+            "display",
+            "fill",
+            "filter",
+            "height",
+            "opacity",
+            "outline-color",
+            "overlay",
+            "pointer-events",
+            "rotate",
+            "scale",
+            "stroke",
+            "stroke-dashoffset",
+            "text-decoration-color",
+            "transform",
+            "translate"
+          ],
+          "layoutViolations": [],
+          "usesAll": false,
+          "hasKeyframes": true,
+          "hasReducedMotionGuard": true
+        },
+        "breakpoints": {
+          "count": 6,
+          "values": [
+            "40rem",
+            "48rem",
+            "64rem",
+            "80rem",
+            "96rem",
+            "430px"
+          ]
+        }
+      }
+    },
+    "mobile": {
+      "contrast": {
+        "min": 4.91,
+        "mean": 13.19,
+        "violations": []
+      },
+      "type": {
+        "distinctSizes": 8,
+        "sizes": [
+          {
+            "size": "12px",
+            "uses": 60
+          },
+          {
+            "size": "13px",
+            "uses": 39
+          },
+          {
+            "size": "15px",
+            "uses": 395
+          },
+          {
+            "size": "17px",
+            "uses": 4
+          },
+          {
+            "size": "20px",
+            "uses": 2
+          },
+          {
+            "size": "24px",
+            "uses": 3
+          },
+          {
+            "size": "32px",
+            "uses": 1
+          },
+          {
+            "size": "44px",
+            "uses": 4
+          }
+        ]
+      },
+      "spacing": {
+        "samples": 20,
+        "offGrid": 0,
+        "offGridPct": 0
+      },
+      "headings": {
+        "order": [
+          1,
+          2,
+          2,
+          2,
+          2
+        ],
+        "skips": []
+      },
+      "images": {
+        "total": 0,
+        "missingAlts": 0
+      },
+      "overflowX": 0,
+      "craft": {
+        "weights": {
+          "distinct": 3,
+          "max": 600,
+          "census": [
+            {
+              "weight": 400,
+              "uses": 443
+            },
+            {
+              "weight": 500,
+              "uses": 59
+            },
+            {
+              "weight": 600,
+              "uses": 6
+            }
+          ]
+        },
+        "tracking": {
+          "offenders": [],
+          "total": 0
+        },
+        "neutralHue": {
+          "n": 700,
+          "meanDeg": -111.3,
+          "stdDeg": 10
+        },
+        "accents": {
+          "clusters": 1,
+          "buckets": [
+            {
+              "from": 240,
+              "count": 1
+            },
+            {
+              "from": 270,
+              "count": 2
+            }
+          ],
+          "sampled": 3
+        },
+        "anim": {
+          "props": [
+            "--tw-gradient-from",
+            "--tw-gradient-to",
+            "--tw-gradient-via",
+            "-webkit-backdrop-filter",
+            "backdrop-filter",
+            "background-color",
+            "border-color",
+            "box-shadow",
+            "color",
+            "content-visibility",
+            "display",
+            "fill",
+            "filter",
+            "height",
+            "opacity",
+            "outline-color",
+            "overlay",
+            "pointer-events",
+            "rotate",
+            "scale",
+            "stroke",
+            "stroke-dashoffset",
+            "text-decoration-color",
+            "transform",
+            "translate"
+          ],
+          "layoutViolations": [],
+          "usesAll": false,
+          "hasKeyframes": true,
+          "hasReducedMotionGuard": true
+        },
+        "breakpoints": {
+          "count": 6,
+          "values": [
+            "40rem",
+            "48rem",
+            "64rem",
+            "80rem",
+            "96rem",
+            "430px"
+          ]
+        }
+      }
+    }
+  },
+  "vitals": {
+    "desktop": {
+      "fcp": 220,
+      "lcp": 220,
+      "cls": 0,
+      "tbt": 1
+    },
+    "mobile": {
+      "fcp": 188,
+      "lcp": 188,
+      "cls": 0,
+      "tbt": 0
+    }
+  },
+  "critiques": [
+    {
+      "shot": "ledger-desktop-full.png",
+      "device": "desktop",
+      "kind": "full",
+      "label": null,
+      "scores": {
+        "hierarchy": 9,
+        "typography": 9,
+        "spacing": 10,
+        "color": 9,
+        "alignment": 10,
+        "density": 9,
+        "overall": 9
+      },
+      "defects": [
+        "Header row is truncated: '80 Oct 2026 - In $47.4k...' cuts off at the right viewport edge, breaking the calm grid.",
+        "Chart x-axis labels are illegible: 'SCRUB DAYS' text and tick labels are too light and small to meet WCAG contrast ratios.",
+        "Status tags like 'pending' and 'failed' rely on color and low-contrast text, making them difficult to distinguish for colorblind users or in low-light conditions.",
+        "The 'Where it went' table header 'STATUS :' and 'ACCOUNT' columns are visually cramped against the right edge, creating tension in the otherwise generous layout.",
+        "The 'DISCLOSURES' section is a monolithic gray block that disrupts the paper-white rhythm and buries the 'not a bank' disclaimer in low-contrast text."
+      ],
+      "improvements": [
+        "Fix header row truncation to ensure full data visibility on standard desktop viewports.",
+        "Increase chart axis text size and contrast to meet WCAG AA standards for legibility.",
+        "Add text labels to status tags to ensure accessibility for all users."
+      ]
+    },
+    {
+      "shot": "ledger-desktop-band00.png",
+      "device": "desktop",
+      "kind": "band",
+      "label": "The company's money, in plain figures",
+      "scores": {
+        "hierarchy": 9,
+        "typography": 8,
+        "spacing": 7,
+        "color": 8,
+        "alignment": 7,
+        "density": 8,
+        "overall": 8
+      },
+      "defects": [
+        "Horizontal clipping on the top-right card, causing the 'vs prior quarter' text to run off the edge without padding or scroll.",
+        "Inconsistent baseline alignment: the subtext on the Runway card is not vertically aligned with the '4 accounts' subtext on the Cash Position card.",
+        "The chart x-axis timeline is visually disconnected from the '30 Oct 2026' legend metadata, creating a spatial gap between data and context.",
+        "The scrubber handle (orange dot) is too far right, visually unbalanced and not centered relative to the active 90-day data range.",
+        "Type scale inconsistency: 'Annualized Revenue' is slightly larger than 'Runway', breaking the uniform rhythm of the four top cards."
+      ],
+      "improvements": [
+        "Increase horizontal padding on the right-side card to prevent text clipping and overflow.",
+        "Align all card footers to a single, consistent baseline grid for better visual cohesion.",
+        "Add left-aligned time labels under the x-axis to anchor the chart timeline properly."
+      ]
+    },
+    {
+      "shot": "ledger-desktop-band01.png",
+      "device": "desktop",
+      "kind": "band",
+      "label": "In, out, and the net between",
+      "scores": {
+        "hierarchy": 7,
+        "typography": 8,
+        "spacing": 6,
+        "color": 7,
+        "alignment": 8,
+        "density": 7,
+        "overall": 7
+      },
+      "defects": [
+        "The large dead vertical space between the chart card’s legend (net/inflow/outflow) and the 'TRANSACTIONS' eyebrow breaks the rhythm and wastes ~120px of real estate.",
+        "The 'SCRUB DAYS' slider control is visually orphaned at the bottom-left of the chart card, disconnected from the data it manipulates and lacking any visible value readout or tick marks.",
+        "Header metadata ('30 Oct 2026 · in $47.4k...') is right-aligned but its baseline doesn't align with the H2 'In, out...' left baseline, creating a subtle eye-skip.",
+        "Table column 'AMOUNT' and 'STATUS' headers use a small, light-weight sans-serif that is barely legible against the ivory background at 100% zoom, failing WCAG for secondary text.",
+        "The 'settled' status pill has a low-contrast light-green background with dark-green text; the contrast ratio is likely below 4.5:1 for the small font size."
+      ],
+      "improvements": [
+        "Tighten vertical spacing: reduce gap between chart card and 'Where it went' section by 40%.",
+        "Align slider control to right or center it under chart; add visible value label next to handle.",
+        "Increase table header font weight to 500 and darken color to #444 for WCAG AA compliance."
+      ]
+    },
+    {
+      "shot": "ledger-desktop-band02.png",
+      "device": "desktop",
+      "kind": "band",
+      "label": "Where it went",
+      "scores": {
+        "hierarchy": 6,
+        "typography": 7,
+        "spacing": 8,
+        "color": 5,
+        "alignment": 9,
+        "density": 8,
+        "overall": 7
+      },
+      "defects": [
+        "The 'seeds fixture' label in the top right is truncated and collides with the viewport edge, destroying the clean fintech dashboard identity.",
+        "Status pills are inconsistent: 'pending' uses a beige background while 'failed' uses a jarring red, breaking the 'one clay accent' palette rule.",
+        "The eyebrow text 'TRANSACTIONS - THIS MONTH' is nearly invisible and lacks adequate spacing from the H1 'Where it went', muddying the visual hierarchy.",
+        "The date column uses a monospaced font while the rest of the table uses a sans-serif, creating a subtle typographic dissonance."
+      ],
+      "improvements": [
+        "Increase contrast on status pills to meet WCAG AA standards for legibility.",
+        "Unify the typeface for dates and amounts into a single clean sans-serif.",
+        "Add generous padding to the top-right metadata to prevent viewport truncation."
+      ]
+    },
+    {
+      "shot": "ledger-desktop-band03.png",
+      "device": "desktop",
+      "kind": "band",
+      "label": "Four buckets, one position",
+      "scores": {
+        "hierarchy": 9,
+        "typography": 9,
+        "spacing": 8,
+        "color": 8,
+        "alignment": 10,
+        "density": 8,
+        "overall": 9
+      },
+      "defects": [
+        "The 'ACCOUNTS' section label (00:29:00) is too faint; it lacks contrast against the ivory background, failing WCAG for non-essential text.",
+        "The 'The fine print' disclaimer section (00:29:46) is visually detached from the rest of the ledger; the grey box feels like a separate footer rather than part of the main data flow.",
+        "The sub-captions under the card titles (e.g., 'Day-to-day spend, cards, AP' at 00:28:34) are slightly cramped against the title above, reducing the breathing room characteristic of the 'calm density' baseline.",
+        "The account identifiers at the bottom of the cards (e.g., '9417 •••• 3382' at 00:28:44) are in a very small font that risks legibility on lower-DPI desktops.",
+        "The transition from the transaction table to the 'Four buckets' cards feels abrupt; there is no subtle divider or whitespace rhythm change to signal the shift in content type."
+      ],
+      "improvements": [
+        "Increase 'ACCOUNTS' label font weight or darken color for WCAG legibility.",
+        "Integrate disclaimer into main flow with a subtle top border instead of a grey box.",
+        "Increase vertical spacing between card titles and sub-captions to 4px."
+      ]
+    },
+    {
+      "shot": "ledger-desktop-band04.png",
+      "device": "desktop",
+      "kind": "band",
+      "label": "The fine print, on purpose",
+      "scores": {
+        "hierarchy": 7,
+        "typography": 8,
+        "spacing": 6,
+        "color": 8,
+        "alignment": 9,
+        "density": 8,
+        "overall": 8
+      },
+      "defects": [
+        "The 'DISCLOSURES' and 'ACCOUNTS' overline labels are severely low-contrast, using faint gray that likely fails WCAG AA for normal text.",
+        "Vertical spacing rhythm is broken: a massive, empty gap separates the four account cards from the disclosure block, making the layout feel fragmented.",
+        "The footer is isolated by a large void of empty background space, leaving the composition feeling top-heavy and unbalanced.",
+        "The legal copy in the disclosure section, while legible, has a slightly loose line height that hurts scanning efficiency compared to the tighter text above."
+      ],
+      "improvements": [
+        "Darken the 'ACCOUNTS' and 'DISCLOSURES' overline labels to improve contrast and readability",
+        "Tighten vertical spacing between the account cards and disclosure block for unity",
+        "Balance footer margin to prevent excessive whitespace at the bottom of the viewport"
+      ]
+    },
+    {
+      "shot": "ledger-desktop-light-full.png",
+      "device": "desktop",
+      "kind": "full",
+      "label": null,
+      "scores": {
+        "hierarchy": 6,
+        "typography": 7,
+        "spacing": 5,
+        "color": 6,
+        "alignment": 7,
+        "density": 7,
+        "overall": 6
+      },
+      "defects": [
+        "Typography: The serif numerals in the 'CASH POSITION' card ($3,733,800) lack sufficient font-weight to justify their massive scale against the tiny 10px labels, causing them to look airy and weak.",
+        "Alignment: The primary header 'The company's money, in plain figures' is horizontally misaligned with the 'CASH POSITION' card directly below it, breaking the left margin.",
+        "Color: The status pills use high-saturation greens and bright reds that break the 'warm-paper' muted brand lane, making them look like default UI controls rather than a calm fintech system.",
+        "Visual Hierarchy: The chart subtitle ('In, out, and the net between') is visually smaller than the meta-text ('TRANSACTIONS - THIS MONTH') on the transaction table, breaking the top-down reading order.",
+        "Layout: The 'SCROLL DAYS' slider sits in a massive empty white space, failing to utilize the horizontal room to improve the density of the chart section."
+      ],
+      "improvements": [
+        "Increase font weight of primary serif numerals to 400 or 500.",
+        "Align section headers to the left edge of the data cards.",
+        "Mutify status pill colors to match the paper/clay palette.",
+        "Scale up section titles in the table and chart areas.",
+        "Move the days slider closer to the chart for better grouping."
+      ]
+    },
+    {
+      "shot": "ledger-mobile-full.png",
+      "device": "mobile",
+      "kind": "full",
+      "label": null,
+      "scores": {
+        "hierarchy": 7,
+        "typography": 6,
+        "spacing": 8,
+        "color": 7,
+        "alignment": 8,
+        "density": 7,
+        "overall": 6
+      },
+      "defects": [
+        "The clay accent color used in the 'Open an account' button, chart lines, and '12.7%' pill is too light against the warm paper background, failing WCAG AA contrast for small text.",
+        "The '12 rows' and 'seeded fixture' subtext under the 'Where it went' header has extremely low contrast and is nearly illegible.",
+        "The cash flow chart is rendered with very faint, washed-out lines that blend into the background, destroying the data's legibility and breaking the 'serif numbers' boldness of the rest of the UI.",
+        "The transaction table's right-aligned amounts (AMOUNT column) appear visually truncated or crammed against the right edge, lacking a clear, consistent right-alignment padding gutter for the currency values.",
+        "The monospace font used for card numbers (e.g., '9417 •••• 3382') and secondary data looks too small and low-contrast, straining the eye on a mobile viewport."
+      ],
+      "improvements": [
+        "Darken clay accent to a rich terracotta for WCAG AA contrast compliance across all UI elements.",
+        "Increase chart line opacity to 80% and add subtle background gridlines to restore data legibility.",
+        "Apply consistent 24px right-padding to the transaction table's amount column to prevent edge cramping."
+      ]
+    },
+    {
+      "shot": "ledger-mobile-band00.png",
+      "device": "mobile",
+      "kind": "band",
+      "label": "The company's money, in plain figures",
+      "scores": {
+        "hierarchy": 8,
+        "typography": 9,
+        "spacing": 7,
+        "color": 7,
+        "alignment": 8,
+        "density": 8,
+        "overall": 8
+      },
+      "defects": [
+        "Top header 'OVERVIEW AS OF 30 OCT 2026' is cut off mid-glyph at the viewport edge, breaking the eyebrow and causing a broken first impression.",
+        "Card inner padding and label-to-number spacing varies slightly; 'RUNWAY' card uses more vertical space than 'CASH POSITION' despite smaller content, disrupting rhythm.",
+        "Delta chips (green/red) use inconsistent visual weight against the card background; the red 42.5% chip's border and fill create slightly higher contrast than the green chip, reading as uneven severity.",
+        "Serif figures ($3,733,800 vs $107,211 vs 17 mo) use the same scale, so the '17 mo' feels visually weaker than the currency figures despite being a key KPI.",
+        "Alignment of the small supporting text ('4 accounts · seeded fixture Q4 FY26') sits flush left but optically drifts from the number above due to the leading space after the bullet."
+      ],
+      "improvements": [
+        "Fix clipped eyebrow; add top padding or move header inside the card grid so nothing is cut at the viewport edge.",
+        "Normalize all KPI cards to identical min-height, padding, and label-to-figure gap for a strict vertical rhythm.",
+        "Equalize delta chip visual weight; match border, fill, and type size between green and red chips so severity reads symmetrically."
+      ]
+    },
+    {
+      "shot": "ledger-mobile-band01.png",
+      "device": "mobile",
+      "kind": "band",
+      "label": "In, out, and the net between",
+      "scores": {
+        "hierarchy": 6,
+        "typography": 5,
+        "spacing": 6,
+        "color": 7,
+        "alignment": 6,
+        "density": 5,
+        "overall": 5
+      },
+      "defects": [
+        "Chart is visually broken: dense red spike lines obscure the intended 'in/out/net' distinction, rendering the data nearly unreadable.",
+        "Typography contrast is weak: the 'In, out, and the net between' headline is small and muted relative to the 'Where it went' headline below, inverting visual hierarchy.",
+        "The 'SCRUB DAYS' slider is vertically misaligned with the 'Y-axis clamps...' caption text, creating an awkward visual gap.",
+        "The transaction table header 'AMOU' is cut off, and the negative value '-$4,' is incomplete, indicating a critical layout overflow error.",
+        "The 'SCRUB DAYS' control lacks clear affordance; the track is faint and the thumb is disconnected from its purpose."
+      ],
+      "improvements": [
+        "Redraw chart with distinct line weights and colors for in/out/net to ensure data legibility.",
+        "Increase headline font size and weight for 'In, out...' to establish clear primary hierarchy.",
+        "Fix table overflow to display full 'AMOUNT' header and complete transaction values."
+      ]
+    },
+    {
+      "shot": "ledger-mobile-band02.png",
+      "device": "mobile",
+      "kind": "band",
+      "label": "Where it went",
+      "scores": {
+        "hierarchy": 7,
+        "typography": 8,
+        "spacing": 7,
+        "color": 6,
+        "alignment": 9,
+        "density": 8,
+        "overall": 7
+      },
+      "defects": [
+        "Mobile truncation of 'MERCHANT' and 'AMOUNT' headers due to lack of overflow handling or abbreviations.",
+        "Right-aligned column amounts (e.g., '–$4', '–$9,') are visibly clipped, breaking data legibility.",
+        "Date column 'DATE ▼' has inconsistent vertical alignment with merchant names, causing a visual jitter.",
+        "Green text (e.g., '$48,') on the light paper background fails WCAG contrast for smaller type.",
+        "Row dividers lack sufficient padding-top/bottom, making the list feel cramped and dense."
+      ],
+      "improvements": [
+        "Replace 'MERCHANT' with 'NAME' and 'AMOUNT' with '$' to prevent mobile truncation.",
+        "Expand right padding and font sizing to prevent numerical data clipping on mobile.",
+        "Increase row vertical padding to 16px to improve calm density and readability."
+      ]
+    },
+    {
+      "shot": "ledger-mobile-band03.png",
+      "device": "mobile",
+      "kind": "band",
+      "label": "Four buckets, one position",
+      "scores": {
+        "hierarchy": 8,
+        "typography": 7,
+        "spacing": 6,
+        "color": 8,
+        "alignment": 7,
+        "density": 7,
+        "overall": 7
+      },
+      "defects": [
+        "Cards float without a unifying container; the group reads as four disconnected tiles rather than one ledger section.",
+        "Horizontal padding inside each card is inconsistent with the section header's left edge, breaking the intended vertical alignment grid.",
+        "Monospaced account suffix (e.g., '9417 •••• 3382') is visually noisy and weakly related to the amount, cluttering the 'headline number' moment.",
+        "'Four buckets, one position' headline is heavy relative to the thin card typography, making the section header feel more important than the data it introduces.",
+        "Vertical gap between the last card and the next section starts tighter than the rhythm established above, breaking spacing consistency."
+      ],
+      "improvements": [
+        "Wrap cards in a single bordered panel; inset each card 16px with internal padding 24px.",
+        "Snap all left edges to one 24px grid; align account suffix to amount baseline.",
+        "Shrink monospace suffix to 11px, 60% opacity; add 'Account' label for clarity."
+      ]
+    },
+    {
+      "shot": "ledger-mobile-band04.png",
+      "device": "mobile",
+      "kind": "band",
+      "label": "The fine print, on purpose",
+      "scores": {
+        "hierarchy": 8,
+        "typography": 9,
+        "spacing": 7,
+        "color": 7,
+        "alignment": 9,
+        "density": 9,
+        "overall": 8
+      },
+      "defects": [
+        "Tax card: '9417 .... 2296' is rendered in a tiny 8-9px sans-serif, creating a weak, noisy footer that fails to match the serif numeric hierarchy of $366,800.",
+        "Disclosures container: The grey background box creates a heavy visual wall that competes with the 'Tax' card above, breaking the calm density and warm-paper continuity.",
+        "Typography: The body text within 'The fine print' uses a monospace or narrow sans-serif that clashes with the elegant serif headline, creating a typographic disconnect.",
+        "Footer: 'Not a bank . Not advice' is visually underwhelming, using dots as separators which feels like a code placeholder rather than a designed element.",
+        "Spacing: The vertical gap between the 'Tax' card and the 'Disclosures' section is inconsistent with the gap between the 'Disclosures' box and the footer."
+      ],
+      "improvements": [
+        "Upgrade the 9417 account number to the brand serif typeface for numeric consistency and elegance.",
+        "Remove the grey background box from disclosures, using whitespace and a subtle hairline for separation.",
+        "Replace the dot separators in the footer with subtle vertical rules or increased tracking."
+      ]
+    }
+  ],
+  "axisMeans": {
+    "hierarchy": 7.46,
+    "typography": 7.69,
+    "spacing": 7,
+    "color": 7.15,
+    "alignment": 8.23,
+    "density": 7.62,
+    "overall": 7.31
+  },
+  "gates": {
+    "contrastViolations": {
+      "value": 0,
+      "max": 0,
+      "pass": true
+    },
+    "fontSizes": {
+      "value": 8,
+      "max": 8,
+      "pass": true
+    },
+    "offGridPct": {
+      "value": 0,
+      "max": 15,
+      "pass": true
+    },
+    "headingSkips": {
+      "value": 0,
+      "max": 0,
+      "pass": true
+    },
+    "missingAlts": {
+      "value": 0,
+      "max": 0,
+      "pass": true
+    },
+    "mobileOverflow": {
+      "value": 0,
+      "max": 0,
+      "pass": true
+    },
+    "fcpMs": {
+      "value": 220,
+      "max": 1800,
+      "pass": true
+    },
+    "lcpMs": {
+      "value": 220,
+      "max": 2500,
+      "pass": true
+    },
+    "cls": {
+      "value": 0,
+      "max": 0.1,
+      "pass": true
+    },
+    "tbtMs": {
+      "value": 1,
+      "max": 200,
+      "pass": true
+    },
+    "vlmAxes": {
+      "value": {
+        "hierarchy": 7.46,
+        "typography": 7.69,
+        "spacing": 7,
+        "color": 7.15,
+        "alignment": 8.23,
+        "density": 7.62,
+        "overall": 7.31
+      },
+      "floor": 7,
+      "pass": true,
+      "failures": []
+    },
+    "weightCeiling": {
+      "value": 600,
+      "max": 600,
+      "pass": true
+    },
+    "weightSet": {
+      "value": 3,
+      "max": 4,
+      "pass": true
+    },
+    "trackingCurve": {
+      "value": 0,
+      "max": 3,
+      "pass": true
+    },
+    "neutralHueSpread": {
+      "value": 10,
+      "max": 30,
+      "sampled": 705,
+      "pass": true
+    },
+    "accentClusters": {
+      "value": 1,
+      "max": 2,
+      "sampled": 3,
+      "pass": true
+    },
+    "animLayoutProps": {
+      "value": 0,
+      "max": 0,
+      "props": [],
+      "pass": true
+    },
+    "reducedMotionGuard": {
+      "value": true,
+      "max": 1,
+      "pass": true
+    },
+    "breakpoints": {
+      "value": 6,
+      "max": 8,
+      "pass": true
+    }
+  },
+  "passed": true,
+  "shotsDir": "/home/z/unown/download/design-critic/ledger-final/ledger",
+  "wallSeconds": 59.7
+}

@@ -10,7 +10,8 @@
 - [F21 — the release that shipped while its own CI was red](#f21--the-release-that-shipped-while-its-own-ci-was-red)
 - [F22 — the encore round's growth breached the scroll-budget ceiling it claimed to hold](#f22--the-encore-rounds-growth-breached-the-scroll-budget-ceiling-it-claimed-to-hold)
 - [F23 — a hosted-runner DNS blip red all of main's CI](#f23--a-hosted-runner-dns-blip-red-all-of-mains-ci)
-- [F24 — the landing's HP bars animated width, and the first gallery app shipped transition-all](#f24--the-landings-hp-bars-animated-width-and-the-first-gallery-app-shipped-transition-all)
+- [F24 — the landing's HP bars animated width, and the first gallery app shipped transition[-]all](#f24--the-landings-hp-bars-animated-width-and-the-first-gallery-app-shipped-transition[-]all)
+- [F25 — the round's own F24 receipt re-emitted the banned utility (the F20 trap, repeated)](#f25--the-rounds-own-f24-receipt-re-emitted-the-banned-utility-the-f20-trap-repeated)
 
 ---
 
@@ -150,13 +151,13 @@ future mac-only network claim.
 
 ---
 
-## F24 — the landing's HP bars animated width, and the first gallery app shipped transition-all
+## F24 — the landing's HP bars animated width, and the first gallery app shipped transition[-]all
 
 **Failure.** The craft axes' first run against the real landing found
 the animated-property whitelist violated from both directions: the
 landing's `.gb-hp > i` (the dex/benchmark HP bars) transitioned `width`
 (a layout property — `transition: width 400ms steps(12, end)`), and four
-hand-written `transition-all` usages shipped in the vendored accordion
+hand-written `transition[-]all` usages shipped in the vendored accordion
 plus the FIRST gallery app's components (focus-timer, task-card, header).
 
 **Reproduction.** `node scripts/design_critic.mjs --route / --label
@@ -167,7 +168,7 @@ transition:all` (the 16 included Tailwind v4's individual `translate`/
 discrete `display`/`overlay`/`pointer-events` steps; `usesAll: true`).
 
 **Root cause.** The bars predate the rule: `width` is the naive fill
-level, and `transition-all` is the lazy transition — both were
+level, and `transition[-]all` is the lazy transition — both were
 acceptable patterns when those components were written (the sigil app is
 the FIRST gallery app) and nothing measured animated properties before
 this round's craft axes existed.
@@ -176,7 +177,7 @@ this round's craft axes existed.
 `transform-origin: left` on a full-width element (identical stepped
 drain, compositor-only); framer's mount effect on the benchmark bars
 moved from scaleX (which now carries the level) to `clip-path` inset
-wipe (paint-only). The four `transition-all`s became explicit property
+wipe (paint-only). The four `transition[-]all`s became explicit property
 lists (`transition-[transform,border-color,box-shadow]` etc.).
 
 **Benchmark / regression net.** The craft axes themselves: `animLayoutProps
@@ -186,3 +187,35 @@ documented in the rubric) and `usesAll` flagged. The post-fix receipt
 (`craft-landing`, committed): `anim: 0 layout props · prm guard true`,
 and the known-bad calibration fixture still FAILS the weight gate (700
 detected) — the axis discriminates both ways.
+
+---
+
+## F25 — the round's own F24 receipt re-emitted the banned utility (the F20 trap, repeated)
+
+**Failure.** The Ledger app's iter2 critique still reported
+`usesAll: true` — the `.transition[-]all` utility was emitted in the
+production CSS — although every hand-written usage had been fixed in
+F24 and no component used it.
+
+**Reproduction.** `grep -rln "transition-all" --include="*.md" .` at
+iter2: three tracked files carried the literal token — the F24 entry
+in CHANGELOG.md (the body, beyond the already-defused title), this
+validation log's F24 entry, and the session doc — and Tailwind v4's
+source detection scans every tracked text file, so the documentation
+itself was a CSS source.
+
+**Root cause.** F20 documented this exact mechanism ("a repo-wide CSS
+rule enforced by emitted-utility gates is violated by DOCUMENTATION
+that quotes the utility — defuse by bracket-breaking the tokens") and
+the F24 fix bracket-broke the CHANGELOG title — but the F24 entry's
+BODY and the round's own receipts then quoted the token raw. The
+lesson existed and was not applied at write time.
+
+**Fix implemented.** All tracked occurrences bracket-broken
+(`transition[-]all`); the changelog rail regenerated. The session rule
+going forward: **the defusal happens when the prose is written, in the
+same edit** — never as a follow-up the gate has to catch.
+
+**Benchmark / regression net.** The critic's `usesAll` flag is the
+net (it caught this within one iteration); the sweep command is
+recorded here for the next round's checklist.

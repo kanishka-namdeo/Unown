@@ -1,0 +1,2083 @@
+{
+  "schema": "website-excellence/critique/2",
+  "route": "/ledger",
+  "url": "http://localhost:3000/ledger",
+  "label": "ledger-v0",
+  "generatedAt": "2026-10-29T20:48:45.487Z",
+  "rubric": {
+    "vlmAxes": [
+      "hierarchy",
+      "typography",
+      "spacing",
+      "color",
+      "alignment",
+      "density",
+      "overall"
+    ],
+    "vlmFloor": 7,
+    "contrastViolations": 0,
+    "fontSizesMax": 8,
+    "offGridMaxPct": 15,
+    "headingSkips": 0,
+    "missingAlts": 0,
+    "mobileOverflow": 0,
+    "fcpMs": 1800,
+    "lcpMs": 2500,
+    "cls": 0.1,
+    "tbtMs": 200,
+    "weightCeiling": 600,
+    "weightSetMax": 4,
+    "trackingOffendersMax": 3,
+    "neutralHueSpreadMax": 30,
+    "accentClustersMax": 2,
+    "animLayoutPropsMax": 0,
+    "breakpointsMax": 8
+  },
+  "audit": {
+    "desktop": {
+      "contrast": {
+        "min": 3.05,
+        "mean": 12.77,
+        "violations": [
+          {
+            "text": "Open an account",
+            "ratio": 3.9,
+            "need": 4.5,
+            "size": "15px",
+            "weight": "500",
+            "selector": "a.inline-flex"
+          },
+          {
+            "text": "Overview · as of 30 Oct 2026",
+            "ratio": 3.24,
+            "need": 4.5,
+            "size": "12px",
+            "weight": "500",
+            "selector": "p.lg-micro"
+          },
+          {
+            "text": "Cash position",
+            "ratio": 3.24,
+            "need": 4.5,
+            "size": "12px",
+            "weight": "500",
+            "selector": "p.lg-micro"
+          },
+          {
+            "text": "4 accounts · seeded fixture Q4 FY26",
+            "ratio": 3.24,
+            "need": 4.5,
+            "size": "12px",
+            "weight": "400",
+            "selector": "p.mt-3"
+          },
+          {
+            "text": "Net cash flow, 30d",
+            "ratio": 3.24,
+            "need": 4.5,
+            "size": "12px",
+            "weight": "500",
+            "selector": "p.lg-micro"
+          },
+          {
+            "text": "90-day series · seeded fixture",
+            "ratio": 3.24,
+            "need": 4.5,
+            "size": "12px",
+            "weight": "400",
+            "selector": "p.mt-3"
+          },
+          {
+            "text": "Runway",
+            "ratio": 3.24,
+            "need": 4.5,
+            "size": "12px",
+            "weight": "500",
+            "selector": "p.lg-micro"
+          },
+          {
+            "text": "$214,000/mo burn · seeded",
+            "ratio": 3.24,
+            "need": 4.5,
+            "size": "12px",
+            "weight": "400",
+            "selector": "p.mt-3"
+          },
+          {
+            "text": "Annualized revenue",
+            "ratio": 3.24,
+            "need": 4.5,
+            "size": "12px",
+            "weight": "500",
+            "selector": "p.lg-micro"
+          },
+          {
+            "text": "trailing 12mo · seeded fixture",
+            "ratio": 3.24,
+            "need": 4.5,
+            "size": "12px",
+            "weight": "400",
+            "selector": "p.mt-3"
+          },
+          {
+            "text": "Cash flow · 90 days",
+            "ratio": 3.24,
+            "need": 4.5,
+            "size": "12px",
+            "weight": "500",
+            "selector": "p.lg-micro"
+          },
+          {
+            "text": "Scrub days",
+            "ratio": 3.24,
+            "need": 4.5,
+            "size": "12px",
+            "weight": "500",
+            "selector": "label.lg-micro"
+          },
+          {
+            "text": "Transactions · this month",
+            "ratio": 3.24,
+            "need": 4.5,
+            "size": "12px",
+            "weight": "500",
+            "selector": "p.lg-micro"
+          },
+          {
+            "text": "Merchant",
+            "ratio": 3.24,
+            "need": 4.5,
+            "size": "12px",
+            "weight": "500",
+            "selector": "button.lg-micro"
+          },
+          {
+            "text": "↕",
+            "ratio": 3.24,
+            "need": 4.5,
+            "size": "9px",
+            "weight": "500",
+            "selector": "span.text-[9px]"
+          },
+          {
+            "text": "Amount",
+            "ratio": 3.24,
+            "need": 4.5,
+            "size": "12px",
+            "weight": "500",
+            "selector": "button.lg-micro"
+          },
+          {
+            "text": "↕",
+            "ratio": 3.24,
+            "need": 4.5,
+            "size": "9px",
+            "weight": "500",
+            "selector": "span.text-[9px]"
+          },
+          {
+            "text": "Status",
+            "ratio": 3.24,
+            "need": 4.5,
+            "size": "12px",
+            "weight": "500",
+            "selector": "button.lg-micro"
+          },
+          {
+            "text": "↕",
+            "ratio": 3.24,
+            "need": 4.5,
+            "size": "9px",
+            "weight": "500",
+            "selector": "span.text-[9px]"
+          },
+          {
+            "text": "Account",
+            "ratio": 3.24,
+            "need": 4.5,
+            "size": "12px",
+            "weight": "500",
+            "selector": "span.lg-micro"
+          },
+          {
+            "text": "Infrastructure",
+            "ratio": 3.24,
+            "need": 4.5,
+            "size": "12px",
+            "weight": "400",
+            "selector": "p.text-[12px]"
+          },
+          {
+            "text": "Revenue",
+            "ratio": 3.24,
+            "need": 4.5,
+            "size": "12px",
+            "weight": "400",
+            "selector": "p.text-[12px]"
+          },
+          {
+            "text": "Payroll",
+            "ratio": 3.24,
+            "need": 4.5,
+            "size": "12px",
+            "weight": "400",
+            "selector": "p.text-[12px]"
+          },
+          {
+            "text": "Infrastructure",
+            "ratio": 3.24,
+            "need": 4.5,
+            "size": "12px",
+            "weight": "400",
+            "selector": "p.text-[12px]"
+          },
+          {
+            "text": "Professional",
+            "ratio": 3.24,
+            "need": 4.5,
+            "size": "12px",
+            "weight": "400",
+            "selector": "p.text-[12px]"
+          },
+          {
+            "text": "Software",
+            "ratio": 3.24,
+            "need": 4.5,
+            "size": "12px",
+            "weight": "400",
+            "selector": "p.text-[12px]"
+          },
+          {
+            "text": "Revenue",
+            "ratio": 3.24,
+            "need": 4.5,
+            "size": "12px",
+            "weight": "400",
+            "selector": "p.text-[12px]"
+          },
+          {
+            "text": "Office",
+            "ratio": 3.24,
+            "need": 4.5,
+            "size": "12px",
+            "weight": "400",
+            "selector": "p.text-[12px]"
+          },
+          {
+            "text": "Travel",
+            "ratio": 3.24,
+            "need": 4.5,
+            "size": "12px",
+            "weight": "400",
+            "selector": "p.text-[12px]"
+          },
+          {
+            "text": "Travel",
+            "ratio": 3.24,
+            "need": 4.5,
+            "size": "12px",
+            "weight": "400",
+            "selector": "p.text-[12px]"
+          },
+          {
+            "text": "Tax",
+            "ratio": 3.24,
+            "need": 4.5,
+            "size": "12px",
+            "weight": "400",
+            "selector": "p.text-[12px]"
+          },
+          {
+            "text": "Payroll",
+            "ratio": 3.24,
+            "need": 4.5,
+            "size": "12px",
+            "weight": "400",
+            "selector": "p.text-[12px]"
+          },
+          {
+            "text": "Accounts",
+            "ratio": 3.24,
+            "need": 4.5,
+            "size": "12px",
+            "weight": "500",
+            "selector": "p.lg-micro"
+          },
+          {
+            "text": "Day-to-day spend, cards, AP",
+            "ratio": 3.24,
+            "need": 4.5,
+            "size": "12px",
+            "weight": "400",
+            "selector": "p.mt-1"
+          },
+          {
+            "text": "9417 •••• 3382",
+            "ratio": 3.24,
+            "need": 4.5,
+            "size": "12px",
+            "weight": "400",
+            "selector": "p.lg-num"
+          },
+          {
+            "text": "Salaries, benefits, contractor invoices",
+            "ratio": 3.24,
+            "need": 4.5,
+            "size": "12px",
+            "weight": "400",
+            "selector": "p.mt-1"
+          },
+          {
+            "text": "9417 •••• 5107",
+            "ratio": 3.24,
+            "need": 4.5,
+            "size": "12px",
+            "weight": "400",
+            "selector": "p.lg-num"
+          },
+          {
+            "text": "Six-month operating cushion",
+            "ratio": 3.24,
+            "need": 4.5,
+            "size": "12px",
+            "weight": "400",
+            "selector": "p.mt-1"
+          },
+          {
+            "text": "9417 •••• 8841",
+            "ratio": 3.24,
+            "need": 4.5,
+            "size": "12px",
+            "weight": "400",
+            "selector": "p.lg-num"
+          },
+          {
+            "text": "Estimated quarterly set-aside",
+            "ratio": 3.24,
+            "need": 4.5,
+            "size": "12px",
+            "weight": "400",
+            "selector": "p.mt-1"
+          },
+          {
+            "text": "9417 •••• 2296",
+            "ratio": 3.24,
+            "need": 4.5,
+            "size": "12px",
+            "weight": "400",
+            "selector": "p.lg-num"
+          },
+          {
+            "text": "Disclosures",
+            "ratio": 3.05,
+            "need": 4.5,
+            "size": "12px",
+            "weight": "500",
+            "selector": "p.lg-micro"
+          },
+          {
+            "text": "Read the build contract",
+            "ratio": 3.9,
+            "need": 4.5,
+            "size": "13px",
+            "weight": "400",
+            "selector": "a.text-[var(--lg-clay)]"
+          },
+          {
+            "text": "Not a bank · Not advice · Just typograph",
+            "ratio": 3.24,
+            "need": 4.5,
+            "size": "12px",
+            "weight": "400",
+            "selector": "p.lg-num"
+          }
+        ]
+      },
+      "type": {
+        "distinctSizes": 9,
+        "sizes": [
+          {
+            "size": "9px",
+            "uses": 4
+          },
+          {
+            "size": "12px",
+            "uses": 55
+          },
+          {
+            "size": "13px",
+            "uses": 39
+          },
+          {
+            "size": "15px",
+            "uses": 399
+          },
+          {
+            "size": "17px",
+            "uses": 4
+          },
+          {
+            "size": "20px",
+            "uses": 2
+          },
+          {
+            "size": "24px",
+            "uses": 3
+          },
+          {
+            "size": "32px",
+            "uses": 1
+          },
+          {
+            "size": "44px",
+            "uses": 4
+          }
+        ]
+      },
+      "spacing": {
+        "samples": 19,
+        "offGrid": 0,
+        "offGridPct": 0
+      },
+      "headings": {
+        "order": [
+          1,
+          2,
+          2,
+          2,
+          2
+        ],
+        "skips": []
+      },
+      "images": {
+        "total": 0,
+        "missingAlts": 0
+      },
+      "overflowX": 0,
+      "craft": {
+        "weights": {
+          "distinct": 4,
+          "max": 700,
+          "census": [
+            {
+              "weight": 400,
+              "uses": 352
+            },
+            {
+              "weight": 500,
+              "uses": 59
+            },
+            {
+              "weight": 600,
+              "uses": 6
+            },
+            {
+              "weight": 700,
+              "uses": 94
+            }
+          ]
+        },
+        "tracking": {
+          "offenders": [],
+          "total": 0
+        },
+        "neutralHue": {
+          "n": 702,
+          "meanDeg": -111,
+          "stdDeg": 10.1
+        },
+        "accents": {
+          "clusters": 0,
+          "buckets": [
+            {
+              "from": 240,
+              "count": 1
+            },
+            {
+              "from": 270,
+              "count": 1
+            }
+          ],
+          "sampled": 2
+        },
+        "anim": {
+          "props": [
+            "--tw-gradient-from",
+            "--tw-gradient-to",
+            "--tw-gradient-via",
+            "-webkit-backdrop-filter",
+            "all",
+            "backdrop-filter",
+            "background-color",
+            "border-color",
+            "box-shadow",
+            "color",
+            "content-visibility",
+            "display",
+            "fill",
+            "filter",
+            "height",
+            "opacity",
+            "outline-color",
+            "overlay",
+            "pointer-events",
+            "rotate",
+            "scale",
+            "stroke",
+            "stroke-dashoffset",
+            "text-decoration-color",
+            "transform",
+            "translate"
+          ],
+          "layoutViolations": [
+            "stroke-dashoffset"
+          ],
+          "usesAll": true,
+          "hasKeyframes": true,
+          "hasReducedMotionGuard": true
+        },
+        "breakpoints": {
+          "count": 6,
+          "values": [
+            "40rem",
+            "48rem",
+            "64rem",
+            "80rem",
+            "96rem",
+            "430px"
+          ]
+        }
+      }
+    },
+    "desktopLight": {
+      "contrast": {
+        "min": 3.05,
+        "mean": 12.77,
+        "violations": [
+          {
+            "text": "Open an account",
+            "ratio": 3.9,
+            "need": 4.5,
+            "size": "15px",
+            "weight": "500",
+            "selector": "a.inline-flex"
+          },
+          {
+            "text": "Overview · as of 30 Oct 2026",
+            "ratio": 3.24,
+            "need": 4.5,
+            "size": "12px",
+            "weight": "500",
+            "selector": "p.lg-micro"
+          },
+          {
+            "text": "Cash position",
+            "ratio": 3.24,
+            "need": 4.5,
+            "size": "12px",
+            "weight": "500",
+            "selector": "p.lg-micro"
+          },
+          {
+            "text": "4 accounts · seeded fixture Q4 FY26",
+            "ratio": 3.24,
+            "need": 4.5,
+            "size": "12px",
+            "weight": "400",
+            "selector": "p.mt-3"
+          },
+          {
+            "text": "Net cash flow, 30d",
+            "ratio": 3.24,
+            "need": 4.5,
+            "size": "12px",
+            "weight": "500",
+            "selector": "p.lg-micro"
+          },
+          {
+            "text": "90-day series · seeded fixture",
+            "ratio": 3.24,
+            "need": 4.5,
+            "size": "12px",
+            "weight": "400",
+            "selector": "p.mt-3"
+          },
+          {
+            "text": "Runway",
+            "ratio": 3.24,
+            "need": 4.5,
+            "size": "12px",
+            "weight": "500",
+            "selector": "p.lg-micro"
+          },
+          {
+            "text": "$214,000/mo burn · seeded",
+            "ratio": 3.24,
+            "need": 4.5,
+            "size": "12px",
+            "weight": "400",
+            "selector": "p.mt-3"
+          },
+          {
+            "text": "Annualized revenue",
+            "ratio": 3.24,
+            "need": 4.5,
+            "size": "12px",
+            "weight": "500",
+            "selector": "p.lg-micro"
+          },
+          {
+            "text": "trailing 12mo · seeded fixture",
+            "ratio": 3.24,
+            "need": 4.5,
+            "size": "12px",
+            "weight": "400",
+            "selector": "p.mt-3"
+          },
+          {
+            "text": "Cash flow · 90 days",
+            "ratio": 3.24,
+            "need": 4.5,
+            "size": "12px",
+            "weight": "500",
+            "selector": "p.lg-micro"
+          },
+          {
+            "text": "Scrub days",
+            "ratio": 3.24,
+            "need": 4.5,
+            "size": "12px",
+            "weight": "500",
+            "selector": "label.lg-micro"
+          },
+          {
+            "text": "Transactions · this month",
+            "ratio": 3.24,
+            "need": 4.5,
+            "size": "12px",
+            "weight": "500",
+            "selector": "p.lg-micro"
+          },
+          {
+            "text": "Merchant",
+            "ratio": 3.24,
+            "need": 4.5,
+            "size": "12px",
+            "weight": "500",
+            "selector": "button.lg-micro"
+          },
+          {
+            "text": "↕",
+            "ratio": 3.24,
+            "need": 4.5,
+            "size": "9px",
+            "weight": "500",
+            "selector": "span.text-[9px]"
+          },
+          {
+            "text": "Amount",
+            "ratio": 3.24,
+            "need": 4.5,
+            "size": "12px",
+            "weight": "500",
+            "selector": "button.lg-micro"
+          },
+          {
+            "text": "↕",
+            "ratio": 3.24,
+            "need": 4.5,
+            "size": "9px",
+            "weight": "500",
+            "selector": "span.text-[9px]"
+          },
+          {
+            "text": "Status",
+            "ratio": 3.24,
+            "need": 4.5,
+            "size": "12px",
+            "weight": "500",
+            "selector": "button.lg-micro"
+          },
+          {
+            "text": "↕",
+            "ratio": 3.24,
+            "need": 4.5,
+            "size": "9px",
+            "weight": "500",
+            "selector": "span.text-[9px]"
+          },
+          {
+            "text": "Account",
+            "ratio": 3.24,
+            "need": 4.5,
+            "size": "12px",
+            "weight": "500",
+            "selector": "span.lg-micro"
+          },
+          {
+            "text": "Infrastructure",
+            "ratio": 3.24,
+            "need": 4.5,
+            "size": "12px",
+            "weight": "400",
+            "selector": "p.text-[12px]"
+          },
+          {
+            "text": "Revenue",
+            "ratio": 3.24,
+            "need": 4.5,
+            "size": "12px",
+            "weight": "400",
+            "selector": "p.text-[12px]"
+          },
+          {
+            "text": "Payroll",
+            "ratio": 3.24,
+            "need": 4.5,
+            "size": "12px",
+            "weight": "400",
+            "selector": "p.text-[12px]"
+          },
+          {
+            "text": "Infrastructure",
+            "ratio": 3.24,
+            "need": 4.5,
+            "size": "12px",
+            "weight": "400",
+            "selector": "p.text-[12px]"
+          },
+          {
+            "text": "Professional",
+            "ratio": 3.24,
+            "need": 4.5,
+            "size": "12px",
+            "weight": "400",
+            "selector": "p.text-[12px]"
+          },
+          {
+            "text": "Software",
+            "ratio": 3.24,
+            "need": 4.5,
+            "size": "12px",
+            "weight": "400",
+            "selector": "p.text-[12px]"
+          },
+          {
+            "text": "Revenue",
+            "ratio": 3.24,
+            "need": 4.5,
+            "size": "12px",
+            "weight": "400",
+            "selector": "p.text-[12px]"
+          },
+          {
+            "text": "Office",
+            "ratio": 3.24,
+            "need": 4.5,
+            "size": "12px",
+            "weight": "400",
+            "selector": "p.text-[12px]"
+          },
+          {
+            "text": "Travel",
+            "ratio": 3.24,
+            "need": 4.5,
+            "size": "12px",
+            "weight": "400",
+            "selector": "p.text-[12px]"
+          },
+          {
+            "text": "Travel",
+            "ratio": 3.24,
+            "need": 4.5,
+            "size": "12px",
+            "weight": "400",
+            "selector": "p.text-[12px]"
+          },
+          {
+            "text": "Tax",
+            "ratio": 3.24,
+            "need": 4.5,
+            "size": "12px",
+            "weight": "400",
+            "selector": "p.text-[12px]"
+          },
+          {
+            "text": "Payroll",
+            "ratio": 3.24,
+            "need": 4.5,
+            "size": "12px",
+            "weight": "400",
+            "selector": "p.text-[12px]"
+          },
+          {
+            "text": "Accounts",
+            "ratio": 3.24,
+            "need": 4.5,
+            "size": "12px",
+            "weight": "500",
+            "selector": "p.lg-micro"
+          },
+          {
+            "text": "Day-to-day spend, cards, AP",
+            "ratio": 3.24,
+            "need": 4.5,
+            "size": "12px",
+            "weight": "400",
+            "selector": "p.mt-1"
+          },
+          {
+            "text": "9417 •••• 3382",
+            "ratio": 3.24,
+            "need": 4.5,
+            "size": "12px",
+            "weight": "400",
+            "selector": "p.lg-num"
+          },
+          {
+            "text": "Salaries, benefits, contractor invoices",
+            "ratio": 3.24,
+            "need": 4.5,
+            "size": "12px",
+            "weight": "400",
+            "selector": "p.mt-1"
+          },
+          {
+            "text": "9417 •••• 5107",
+            "ratio": 3.24,
+            "need": 4.5,
+            "size": "12px",
+            "weight": "400",
+            "selector": "p.lg-num"
+          },
+          {
+            "text": "Six-month operating cushion",
+            "ratio": 3.24,
+            "need": 4.5,
+            "size": "12px",
+            "weight": "400",
+            "selector": "p.mt-1"
+          },
+          {
+            "text": "9417 •••• 8841",
+            "ratio": 3.24,
+            "need": 4.5,
+            "size": "12px",
+            "weight": "400",
+            "selector": "p.lg-num"
+          },
+          {
+            "text": "Estimated quarterly set-aside",
+            "ratio": 3.24,
+            "need": 4.5,
+            "size": "12px",
+            "weight": "400",
+            "selector": "p.mt-1"
+          },
+          {
+            "text": "9417 •••• 2296",
+            "ratio": 3.24,
+            "need": 4.5,
+            "size": "12px",
+            "weight": "400",
+            "selector": "p.lg-num"
+          },
+          {
+            "text": "Disclosures",
+            "ratio": 3.05,
+            "need": 4.5,
+            "size": "12px",
+            "weight": "500",
+            "selector": "p.lg-micro"
+          },
+          {
+            "text": "Read the build contract",
+            "ratio": 3.9,
+            "need": 4.5,
+            "size": "13px",
+            "weight": "400",
+            "selector": "a.text-[var(--lg-clay)]"
+          },
+          {
+            "text": "Not a bank · Not advice · Just typograph",
+            "ratio": 3.24,
+            "need": 4.5,
+            "size": "12px",
+            "weight": "400",
+            "selector": "p.lg-num"
+          }
+        ]
+      },
+      "type": {
+        "distinctSizes": 9,
+        "sizes": [
+          {
+            "size": "9px",
+            "uses": 4
+          },
+          {
+            "size": "12px",
+            "uses": 55
+          },
+          {
+            "size": "13px",
+            "uses": 39
+          },
+          {
+            "size": "15px",
+            "uses": 399
+          },
+          {
+            "size": "17px",
+            "uses": 4
+          },
+          {
+            "size": "20px",
+            "uses": 2
+          },
+          {
+            "size": "24px",
+            "uses": 3
+          },
+          {
+            "size": "32px",
+            "uses": 1
+          },
+          {
+            "size": "44px",
+            "uses": 4
+          }
+        ]
+      },
+      "spacing": {
+        "samples": 19,
+        "offGrid": 0,
+        "offGridPct": 0
+      },
+      "headings": {
+        "order": [
+          1,
+          2,
+          2,
+          2,
+          2
+        ],
+        "skips": []
+      },
+      "images": {
+        "total": 0,
+        "missingAlts": 0
+      },
+      "overflowX": 0,
+      "craft": {
+        "weights": {
+          "distinct": 4,
+          "max": 700,
+          "census": [
+            {
+              "weight": 400,
+              "uses": 352
+            },
+            {
+              "weight": 500,
+              "uses": 59
+            },
+            {
+              "weight": 600,
+              "uses": 6
+            },
+            {
+              "weight": 700,
+              "uses": 94
+            }
+          ]
+        },
+        "tracking": {
+          "offenders": [],
+          "total": 0
+        },
+        "neutralHue": {
+          "n": 702,
+          "meanDeg": -111,
+          "stdDeg": 10.1
+        },
+        "accents": {
+          "clusters": 0,
+          "buckets": [
+            {
+              "from": 240,
+              "count": 1
+            },
+            {
+              "from": 270,
+              "count": 1
+            }
+          ],
+          "sampled": 2
+        },
+        "anim": {
+          "props": [
+            "--tw-gradient-from",
+            "--tw-gradient-to",
+            "--tw-gradient-via",
+            "-webkit-backdrop-filter",
+            "all",
+            "backdrop-filter",
+            "background-color",
+            "border-color",
+            "box-shadow",
+            "color",
+            "content-visibility",
+            "display",
+            "fill",
+            "filter",
+            "height",
+            "opacity",
+            "outline-color",
+            "overlay",
+            "pointer-events",
+            "rotate",
+            "scale",
+            "stroke",
+            "stroke-dashoffset",
+            "text-decoration-color",
+            "transform",
+            "translate"
+          ],
+          "layoutViolations": [
+            "stroke-dashoffset"
+          ],
+          "usesAll": true,
+          "hasKeyframes": true,
+          "hasReducedMotionGuard": true
+        },
+        "breakpoints": {
+          "count": 6,
+          "values": [
+            "40rem",
+            "48rem",
+            "64rem",
+            "80rem",
+            "96rem",
+            "430px"
+          ]
+        }
+      }
+    },
+    "mobile": {
+      "contrast": {
+        "min": 3.05,
+        "mean": 12.82,
+        "violations": [
+          {
+            "text": "Open an account",
+            "ratio": 3.9,
+            "need": 4.5,
+            "size": "15px",
+            "weight": "500",
+            "selector": "a.inline-flex"
+          },
+          {
+            "text": "Overview · as of 30 Oct 2026",
+            "ratio": 3.24,
+            "need": 4.5,
+            "size": "12px",
+            "weight": "500",
+            "selector": "p.lg-micro"
+          },
+          {
+            "text": "Cash position",
+            "ratio": 3.24,
+            "need": 4.5,
+            "size": "12px",
+            "weight": "500",
+            "selector": "p.lg-micro"
+          },
+          {
+            "text": "4 accounts · seeded fixture Q4 FY26",
+            "ratio": 3.24,
+            "need": 4.5,
+            "size": "12px",
+            "weight": "400",
+            "selector": "p.mt-3"
+          },
+          {
+            "text": "Net cash flow, 30d",
+            "ratio": 3.24,
+            "need": 4.5,
+            "size": "12px",
+            "weight": "500",
+            "selector": "p.lg-micro"
+          },
+          {
+            "text": "90-day series · seeded fixture",
+            "ratio": 3.24,
+            "need": 4.5,
+            "size": "12px",
+            "weight": "400",
+            "selector": "p.mt-3"
+          },
+          {
+            "text": "Runway",
+            "ratio": 3.24,
+            "need": 4.5,
+            "size": "12px",
+            "weight": "500",
+            "selector": "p.lg-micro"
+          },
+          {
+            "text": "$214,000/mo burn · seeded",
+            "ratio": 3.24,
+            "need": 4.5,
+            "size": "12px",
+            "weight": "400",
+            "selector": "p.mt-3"
+          },
+          {
+            "text": "Annualized revenue",
+            "ratio": 3.24,
+            "need": 4.5,
+            "size": "12px",
+            "weight": "500",
+            "selector": "p.lg-micro"
+          },
+          {
+            "text": "trailing 12mo · seeded fixture",
+            "ratio": 3.24,
+            "need": 4.5,
+            "size": "12px",
+            "weight": "400",
+            "selector": "p.mt-3"
+          },
+          {
+            "text": "Cash flow · 90 days",
+            "ratio": 3.24,
+            "need": 4.5,
+            "size": "12px",
+            "weight": "500",
+            "selector": "p.lg-micro"
+          },
+          {
+            "text": "Scrub days",
+            "ratio": 3.24,
+            "need": 4.5,
+            "size": "12px",
+            "weight": "500",
+            "selector": "label.lg-micro"
+          },
+          {
+            "text": "Transactions · this month",
+            "ratio": 3.24,
+            "need": 4.5,
+            "size": "12px",
+            "weight": "500",
+            "selector": "p.lg-micro"
+          },
+          {
+            "text": "Merchant",
+            "ratio": 3.24,
+            "need": 4.5,
+            "size": "12px",
+            "weight": "500",
+            "selector": "button.lg-micro"
+          },
+          {
+            "text": "↕",
+            "ratio": 3.24,
+            "need": 4.5,
+            "size": "9px",
+            "weight": "500",
+            "selector": "span.text-[9px]"
+          },
+          {
+            "text": "Amount",
+            "ratio": 3.24,
+            "need": 4.5,
+            "size": "12px",
+            "weight": "500",
+            "selector": "button.lg-micro"
+          },
+          {
+            "text": "↕",
+            "ratio": 3.24,
+            "need": 4.5,
+            "size": "9px",
+            "weight": "500",
+            "selector": "span.text-[9px]"
+          },
+          {
+            "text": "Status",
+            "ratio": 3.24,
+            "need": 4.5,
+            "size": "12px",
+            "weight": "500",
+            "selector": "button.lg-micro"
+          },
+          {
+            "text": "↕",
+            "ratio": 3.24,
+            "need": 4.5,
+            "size": "9px",
+            "weight": "500",
+            "selector": "span.text-[9px]"
+          },
+          {
+            "text": "Account",
+            "ratio": 3.24,
+            "need": 4.5,
+            "size": "12px",
+            "weight": "500",
+            "selector": "span.lg-micro"
+          },
+          {
+            "text": "Infrastructure",
+            "ratio": 3.24,
+            "need": 4.5,
+            "size": "12px",
+            "weight": "400",
+            "selector": "p.text-[12px]"
+          },
+          {
+            "text": "Revenue",
+            "ratio": 3.24,
+            "need": 4.5,
+            "size": "12px",
+            "weight": "400",
+            "selector": "p.text-[12px]"
+          },
+          {
+            "text": "Payroll",
+            "ratio": 3.24,
+            "need": 4.5,
+            "size": "12px",
+            "weight": "400",
+            "selector": "p.text-[12px]"
+          },
+          {
+            "text": "Infrastructure",
+            "ratio": 3.24,
+            "need": 4.5,
+            "size": "12px",
+            "weight": "400",
+            "selector": "p.text-[12px]"
+          },
+          {
+            "text": "Professional",
+            "ratio": 3.24,
+            "need": 4.5,
+            "size": "12px",
+            "weight": "400",
+            "selector": "p.text-[12px]"
+          },
+          {
+            "text": "Software",
+            "ratio": 3.24,
+            "need": 4.5,
+            "size": "12px",
+            "weight": "400",
+            "selector": "p.text-[12px]"
+          },
+          {
+            "text": "Revenue",
+            "ratio": 3.24,
+            "need": 4.5,
+            "size": "12px",
+            "weight": "400",
+            "selector": "p.text-[12px]"
+          },
+          {
+            "text": "Office",
+            "ratio": 3.24,
+            "need": 4.5,
+            "size": "12px",
+            "weight": "400",
+            "selector": "p.text-[12px]"
+          },
+          {
+            "text": "Travel",
+            "ratio": 3.24,
+            "need": 4.5,
+            "size": "12px",
+            "weight": "400",
+            "selector": "p.text-[12px]"
+          },
+          {
+            "text": "Travel",
+            "ratio": 3.24,
+            "need": 4.5,
+            "size": "12px",
+            "weight": "400",
+            "selector": "p.text-[12px]"
+          },
+          {
+            "text": "Tax",
+            "ratio": 3.24,
+            "need": 4.5,
+            "size": "12px",
+            "weight": "400",
+            "selector": "p.text-[12px]"
+          },
+          {
+            "text": "Payroll",
+            "ratio": 3.24,
+            "need": 4.5,
+            "size": "12px",
+            "weight": "400",
+            "selector": "p.text-[12px]"
+          },
+          {
+            "text": "Accounts",
+            "ratio": 3.24,
+            "need": 4.5,
+            "size": "12px",
+            "weight": "500",
+            "selector": "p.lg-micro"
+          },
+          {
+            "text": "Day-to-day spend, cards, AP",
+            "ratio": 3.24,
+            "need": 4.5,
+            "size": "12px",
+            "weight": "400",
+            "selector": "p.mt-1"
+          },
+          {
+            "text": "9417 •••• 3382",
+            "ratio": 3.24,
+            "need": 4.5,
+            "size": "12px",
+            "weight": "400",
+            "selector": "p.lg-num"
+          },
+          {
+            "text": "Salaries, benefits, contractor invoices",
+            "ratio": 3.24,
+            "need": 4.5,
+            "size": "12px",
+            "weight": "400",
+            "selector": "p.mt-1"
+          },
+          {
+            "text": "9417 •••• 5107",
+            "ratio": 3.24,
+            "need": 4.5,
+            "size": "12px",
+            "weight": "400",
+            "selector": "p.lg-num"
+          },
+          {
+            "text": "Six-month operating cushion",
+            "ratio": 3.24,
+            "need": 4.5,
+            "size": "12px",
+            "weight": "400",
+            "selector": "p.mt-1"
+          },
+          {
+            "text": "9417 •••• 8841",
+            "ratio": 3.24,
+            "need": 4.5,
+            "size": "12px",
+            "weight": "400",
+            "selector": "p.lg-num"
+          },
+          {
+            "text": "Estimated quarterly set-aside",
+            "ratio": 3.24,
+            "need": 4.5,
+            "size": "12px",
+            "weight": "400",
+            "selector": "p.mt-1"
+          },
+          {
+            "text": "9417 •••• 2296",
+            "ratio": 3.24,
+            "need": 4.5,
+            "size": "12px",
+            "weight": "400",
+            "selector": "p.lg-num"
+          },
+          {
+            "text": "Disclosures",
+            "ratio": 3.05,
+            "need": 4.5,
+            "size": "12px",
+            "weight": "500",
+            "selector": "p.lg-micro"
+          },
+          {
+            "text": "Read the build contract",
+            "ratio": 3.9,
+            "need": 4.5,
+            "size": "13px",
+            "weight": "400",
+            "selector": "a.text-[var(--lg-clay)]"
+          },
+          {
+            "text": "Not a bank · Not advice · Just typograph",
+            "ratio": 3.24,
+            "need": 4.5,
+            "size": "12px",
+            "weight": "400",
+            "selector": "p.lg-num"
+          }
+        ]
+      },
+      "type": {
+        "distinctSizes": 9,
+        "sizes": [
+          {
+            "size": "9px",
+            "uses": 4
+          },
+          {
+            "size": "12px",
+            "uses": 55
+          },
+          {
+            "size": "13px",
+            "uses": 39
+          },
+          {
+            "size": "15px",
+            "uses": 395
+          },
+          {
+            "size": "17px",
+            "uses": 4
+          },
+          {
+            "size": "20px",
+            "uses": 2
+          },
+          {
+            "size": "24px",
+            "uses": 3
+          },
+          {
+            "size": "32px",
+            "uses": 1
+          },
+          {
+            "size": "44px",
+            "uses": 4
+          }
+        ]
+      },
+      "spacing": {
+        "samples": 19,
+        "offGrid": 0,
+        "offGridPct": 0
+      },
+      "headings": {
+        "order": [
+          1,
+          2,
+          2,
+          2,
+          2
+        ],
+        "skips": []
+      },
+      "images": {
+        "total": 0,
+        "missingAlts": 0
+      },
+      "overflowX": 252,
+      "craft": {
+        "weights": {
+          "distinct": 4,
+          "max": 700,
+          "census": [
+            {
+              "weight": 400,
+              "uses": 348
+            },
+            {
+              "weight": 500,
+              "uses": 59
+            },
+            {
+              "weight": 600,
+              "uses": 6
+            },
+            {
+              "weight": 700,
+              "uses": 94
+            }
+          ]
+        },
+        "tracking": {
+          "offenders": [],
+          "total": 0
+        },
+        "neutralHue": {
+          "n": 697,
+          "meanDeg": -111,
+          "stdDeg": 10.1
+        },
+        "accents": {
+          "clusters": 0,
+          "buckets": [
+            {
+              "from": 240,
+              "count": 1
+            },
+            {
+              "from": 270,
+              "count": 1
+            }
+          ],
+          "sampled": 2
+        },
+        "anim": {
+          "props": [
+            "--tw-gradient-from",
+            "--tw-gradient-to",
+            "--tw-gradient-via",
+            "-webkit-backdrop-filter",
+            "all",
+            "backdrop-filter",
+            "background-color",
+            "border-color",
+            "box-shadow",
+            "color",
+            "content-visibility",
+            "display",
+            "fill",
+            "filter",
+            "height",
+            "opacity",
+            "outline-color",
+            "overlay",
+            "pointer-events",
+            "rotate",
+            "scale",
+            "stroke",
+            "stroke-dashoffset",
+            "text-decoration-color",
+            "transform",
+            "translate"
+          ],
+          "layoutViolations": [
+            "stroke-dashoffset"
+          ],
+          "usesAll": true,
+          "hasKeyframes": true,
+          "hasReducedMotionGuard": true
+        },
+        "breakpoints": {
+          "count": 6,
+          "values": [
+            "40rem",
+            "48rem",
+            "64rem",
+            "80rem",
+            "96rem",
+            "430px"
+          ]
+        }
+      }
+    }
+  },
+  "vitals": {
+    "desktop": {
+      "fcp": 284,
+      "lcp": 284,
+      "cls": 0,
+      "tbt": 9
+    },
+    "mobile": {
+      "fcp": 128,
+      "lcp": 128,
+      "cls": 0,
+      "tbt": 4
+    }
+  },
+  "critiques": [
+    {
+      "shot": "ledger-desktop-full.png",
+      "device": "desktop",
+      "kind": "full",
+      "label": null,
+      "scores": {
+        "hierarchy": 4,
+        "typography": 3,
+        "spacing": 3,
+        "color": 2,
+        "alignment": 5,
+        "density": 4,
+        "overall": 3
+      },
+      "defects": [
+        "Brand identity absence: the 'warm paper/ink/gold, hand-drawn Unown glyphs, dark-first' directive is completely ignored in favor of a cold, sterile white fintech default.",
+        "Contrast violation: the 'RUNWAY' section label in the top card row is nearly invisible (light gray on white), failing WCAG AA legibility standards.",
+        "Spacing rhythm failure: excessive vertical padding in the transaction table rows creates a sparse, washed-out feel that contradicts the 'calm density' requirement.",
+        "Crispness degradation: the hand-drawn aesthetic of the line graph is lost, appearing as thin, aliased strokes rather than intentional ink on paper.",
+        "Lack of visual hierarchy: headings (e.g., 'In, out, and the net between') and labels compete for attention; key data points aren't differentiated with weight or size.",
+        "Alignment issues: the top KPI card row has inconsistent baseline alignment for sub-labels (some on one line, some on two)."
+      ],
+      "improvements": [
+        "Adopt dark-first UI with warm paper/gold accents to match brand.",
+        "Increase heading weight and establish a clear type scale for hierarchy.",
+        "Tighten transaction table row padding for calm, intentional density."
+      ]
+    },
+    {
+      "shot": "ledger-desktop-band00.png",
+      "device": "desktop",
+      "kind": "band",
+      "label": "The company's money, in plain figures",
+      "scores": {
+        "hierarchy": 6,
+        "typography": 5,
+        "spacing": 6,
+        "color": 4,
+        "alignment": 7,
+        "density": 5,
+        "overall": 5
+      },
+      "defects": [
+        "The giant spike in the cash-flow chart visually dwarfs all other data points, making the rest of the 90-day series invisible and breaking the visual hierarchy of the graph area.",
+        "The red/green badge system (e.g., '▼ 42.5%') is not only low-contrast against the off-white background but also fails WCAG AA for accessibility, relying on color alone to convey meaning without sufficient contrast or text alternatives.",
+        "The typography scale for the sub-labels under the KPI cards (e.g., '4 accounts · seeded fixture Q4 FY26') is too small and light gray, making it nearly illegible and creating a weak secondary hierarchy tier.",
+        "The horizontal scrubber bar at the bottom of the chart is visually disconnected from the data visualization above it, sitting in its own isolated row without a clear spatial relationship to the graph, which fragments the interaction model.",
+        "The right-aligned metadata next to the 'In, out, and the net between' heading (date, in/out/net values) is misaligned with the heading's baseline and feels tacked-on, disrupting the calm density of the section header."
+      ],
+      "improvements": [
+        "Scale the chart Y-axis to normalize the spike, making the 90-day trend legible and hierarchically balanced.",
+        "Increase the contrast of red/green badges and add textual cues (e.g., 'DECREASE') for WCAG AA compliance.",
+        "Unify the vertical spacing between the chart, scrubber, and legend to create a cohesive interactive module."
+      ]
+    },
+    {
+      "shot": "ledger-desktop-band01.png",
+      "device": "desktop",
+      "kind": "band",
+      "label": "In, out, and the net between",
+      "scores": {
+        "hierarchy": 8,
+        "typography": 7,
+        "spacing": 7,
+        "color": 9,
+        "alignment": 9,
+        "density": 8,
+        "overall": 8
+      },
+      "defects": [
+        "The 'In, out, and the net between' H1 is set in a bold sans-serif that completely breaks from the established mono/serif type discipline, creating a jarring tonal shift.",
+        "The right-aligned summary text ('30 Oct 2026 · in $47.4k...') on the section header line suffers from low contrast and is visually disconnected from the main title on the left.",
+        "The vertical whitespace between the scrub slider control and the 'TRANSACTIONS' subheader is excessive, disrupting the vertical rhythm and making the two components feel like unrelated islands.",
+        "The 'Where it went' H2 is nearly the same visual weight and size as the H1 above it, failing to establish a clear, stepped type hierarchy.",
+        "The line for 'Vercel' at the very bottom of the viewport is clipped, indicating poor consideration for scroll affordance or row padding, making the table feel cramped."
+      ],
+      "improvements": [
+        "Align H1 and H2 type scales to the mono or serif font stack for consistent brand voice.",
+        "Reduce vertical whitespace between the scrub slider and the transactions section header to tighten rhythm.",
+        "Increase row padding and add a bottom scroll indicator to the transaction list to prevent clipping."
+      ]
+    },
+    {
+      "shot": "ledger-desktop-band02.png",
+      "device": "desktop",
+      "kind": "band",
+      "label": "Where it went",
+      "scores": {
+        "hierarchy": 4,
+        "typography": 3,
+        "spacing": 4,
+        "color": 3,
+        "alignment": 4,
+        "density": 5,
+        "overall": 3
+      },
+      "defects": [
+        "Eyebrow label 'TRANSACTIONS · THIS MONTH' is barely legible, rendering at ~50% contrast against paper and collapsing the visual hierarchy that 'Where it went' should anchor.",
+        "Typeface is a plain monospace sans with no display voice—zero trace of the hand-drawn Unown-glyph, warm ink, or gold brand system; the section reads like a default terminal dump.",
+        "Status pills ('settled', 'pending', 'failed') are the only color moments but feel accidental; 'pending' in muddy beige and 'failed' in washed red neither read as semantic signals against the light background, hurting WCAG contrast.",
+        "Currency amounts are right-aligned but inconsistent: negative values carry a '−' while positives don't, breaking the tabular figure rhythm and making the AMOUNT column visually jagged.",
+        "Row rhythm is loose—the generous top/bottom padding fights the thin 1px dividers, producing accidental double-rule density that feels like a print stylesheet leaked into a desktop app."
+      ],
+      "improvements": [
+        "Introduce a display typeface and brand-glyph markers to reclaim visual hierarchy.",
+        "Unify the type scale, tighten row padding, and add semantic status colors.",
+        "Right-align figures with consistent sign glyphs and stronger eyebrow contrast."
+      ]
+    },
+    {
+      "shot": "ledger-desktop-band03.png",
+      "device": "desktop",
+      "kind": "band",
+      "label": "Four buckets, one position",
+      "scores": {
+        "hierarchy": 6,
+        "typography": 7,
+        "spacing": 5,
+        "color": 4,
+        "alignment": 8,
+        "density": 6,
+        "overall": 5
+      },
+      "defects": [
+        "Complete absence of Unown brand identity: no hand-drawn glyphs, no warm paper/ink/gold palette, no Game-Boy-inspired components; reads as a generic Figma template.",
+        "The 'Four buckets, one position' heading is visually detached and too close to the table above, creating a confusing vertical rhythm that fails to group the section logically.",
+        "The 'DISCLOSURES' section uses a muddy grayish-green background that clashes with the neutral whites of the cards and reduces the legibility of the fine print.",
+        "Low-contrast typographic choices: the gray 'settled' pill on white and the light gray account masks (9417 ••••) likely fail WCAG AA standards for body text.",
+        "Inconsistent card density: the four account cards feel sparse and floaty compared to the cramped disclosure text below, breaking the 'calm density' requirement."
+      ],
+      "improvements": [
+        "Inject Unown brand: apply warm paper background, gold accents, and hand-drawn glyph icons to all buckets.",
+        "Increase vertical spacing before the section heading and use a darker, high-contrast background for disclosures.",
+        "Standardize the type scale: increase contrast on micro-text and align card metadata with a strict baseline grid."
+      ]
+    },
+    {
+      "shot": "ledger-desktop-band04.png",
+      "device": "desktop",
+      "kind": "band",
+      "label": "The fine print, on purpose",
+      "scores": {
+        "hierarchy": 6,
+        "typography": 4,
+        "spacing": 5,
+        "color": 5,
+        "alignment": 8,
+        "density": 5,
+        "overall": 5
+      },
+      "defects": [
+        "The hand-drawn Unown-alphabet glyph identity (the brand's stated core) is completely absent from the visible viewport — no glyph markers in the ACCOUNTS header, card labels, or disclosure section, leaving the 'fine print' section visually generic and off-brand.",
+        "Typography lacks a disciplined scale: the tiny monospace-looking 'ACCOUNTS' and 'DISCLOSURES' eyebrows, the heavy black 'Four buckets, one position' heading, the card titles, the tabular-numeral card values, and the small grey disclosure paragraph create at least 6+ conflicting type voices with no clear ratio, breaking the 'warm paper/ink' feel for a cold, default-system look.",
+        "Color and contrast are flat and low-contrast: near-black text on near-white with grey secondary text and only a faint sage-green pill; no 'warm paper/ink/gold' palette is present, and the light-grey card borders and 'settle' text fail to establish a legible, intentional dark-first hierarchy.",
+        "Spacing rhythm is broken by the large empty paper-white gap between the 'Four buckets, one position' card row and the full-width 'DISCLOSURES' panel, and the inconsistent vertical padding between section eyebrows, headings, and content creates an uneven vertical cadence.",
+        "The footer line 'Ledger — a design fixture…' is misaligned and visually disconnected: the left text and the right-side 'Not a bank · Not advice · Just typography' sit at different optical baselines with no container or rule tying them together, and the orange 'Read the build contract.' link clashes with the stated ink/gold palette."
+      ],
+      "improvements": [
+        "Redraw the whole section in the dark-first paper/ink/gold palette with WCAG-legible contrast and gold accent lines.",
+        "Rebuild a strict 3-step type scale: large ink heading, warm-mid card labels, small mono disclosure text.",
+        "Unify vertical rhythm with consistent section padding and collapse the dead gap before disclosures."
+      ]
+    },
+    {
+      "shot": "ledger-desktop-light-full.png",
+      "device": "desktop",
+      "kind": "full",
+      "label": null,
+      "scores": {
+        "hierarchy": 7,
+        "typography": 6,
+        "spacing": 8,
+        "color": 8,
+        "alignment": 8,
+        "density": 9,
+        "overall": 7
+      },
+      "defects": [
+        "Type scale is monotonous: every major heading ('The company's money...', 'In, out...', 'Where it went') sits at the same ~32px weight, flattening the visual hierarchy",
+        "The 'Runway' metric card is the only one without a colored delta badge, creating an inconsistent visual rhythm in the KPI row",
+        "The 80-day cash flow chart has zero axis labels or gridlines, making the data completely uninterpretable to users who aren't already experts",
+        "The 'scrub days' interaction label and the chart legend sit on separate lines, creating awkward vertical whitespace that breaks the section's density",
+        "Status badges use low-contrast muted colors (pale green 'settled', pale amber 'pending') that fail WCAG AA against the light card background"
+      ],
+      "improvements": [
+        "Implement a distinct type scale: 40px for page titles, 28px for section headers, smaller for card labels",
+        "Add explicit gridlines and Y-axis labels to the cash flow chart for data interpretability",
+        "Increase contrast of status badge text and background to meet WCAG AA standards"
+      ]
+    },
+    {
+      "shot": "ledger-mobile-full.png",
+      "device": "mobile",
+      "kind": "full",
+      "label": null,
+      "scores": {
+        "hierarchy": 7,
+        "typography": 6,
+        "spacing": 5,
+        "color": 8,
+        "alignment": 7,
+        "density": 6,
+        "overall": 6
+      },
+      "defects": [
+        "The transaction table's column spacing is uneven; the 'MERCHANT' column cramps the category labels (e.g., 'Infrastructure', 'Revenue') too tightly under the name, breaking the left-aligned rhythm.",
+        "The 'SCRUB DAYS' slider row has weak visual hierarchy; the grey track and muted labels cause it to vanish into the white background, making the 'net / inflow / outflow' legend below feel disconnected.",
+        "The 'Four buckets' card list suffers from vertical crowding; the 8-digit account numbers and sub-headers feel too close to the card borders, creating a noisy, uncalibrated vertical rhythm.",
+        "The top 'Open an account' button's terracotta red is the only saturated color on a monochromatic, warm-grey canvas; it feels jarringly out of place without a secondary accent to balance it.",
+        "In the disclosure section, the legal text block is set in a slightly larger, less legible typeface than the rest of the page, and the line-height is too tight for the dense text, violating WCAG-legible contrast at small sizes."
+      ],
+      "improvements": [
+        "Standardize table cell padding to 12px vertical to recover lost breathing room in the 12-row list.",
+        "Increase scrubber and legend contrast with a darker, gold-tinted track and 500-weight labels.",
+        "Break the four-bucket card content into a stricter 4px-base spacing grid for calm density."
+      ]
+    },
+    {
+      "shot": "ledger-mobile-band00.png",
+      "device": "mobile",
+      "kind": "band",
+      "label": "The company's money, in plain figures",
+      "scores": {
+        "hierarchy": 8,
+        "typography": 9,
+        "spacing": 7,
+        "color": 7,
+        "alignment": 8,
+        "density": 8,
+        "overall": 8
+      },
+      "defects": [
+        "The main headline wraps so that 'plain figures' is split across two lines with 'figures' orphaned on its own, breaking the section's visual entry point. | 'figures' in top-left",
+        "Label rows like 'NET CASH FLOW, 30D' use wide-tracking monospace that feels inconsistent with the otherwise serifed, hand-drawn brand language. | upper card labels",
+        "The delta chips (▲ 12.7%, ▼ 42.5%) are small, low-contrast, and visually disconnected from the headline numbers; the green/red fills sit on a near-white card with weak WCAG contrast. | delta chips inside each card",
+        "Spacing rhythm between the eyebrow label, the large figure, and the meta line is inconsistent across cards — Cash Position has tight label-to-figure gap while Net Cash Flow is slightly looser. | vertical gaps in each card",
+        "Cards are separated by 1px lines that disappear at the bottom of the viewport, creating a ragged lower boundary that reads as an unfinished crop rather than a deliberate section break. | bottom card edge"
+      ],
+      "improvements": [
+        "Rewrap headline to 'The company's money, in plain figures' on two balanced lines.",
+        "Raise delta chip text to 13px min, use solid ink on tinted background for 4.5:1 contrast.",
+        "Unify card label typeface to match brand; keep monospace only for figures.",
+        "Set consistent 20px label-to-figure and 12px figure-to-meta spacing across all cards.",
+        "Give cards a soft warm border and 24px inter-card margin to read as discrete blocks."
+      ]
+    },
+    {
+      "shot": "ledger-mobile-band01.png",
+      "device": "mobile",
+      "kind": "band",
+      "label": "In, out, and the net between",
+      "scores": {
+        "hierarchy": 8,
+        "typography": 9,
+        "spacing": 7,
+        "color": 9,
+        "alignment": 8,
+        "density": 8,
+        "overall": 8
+      },
+      "defects": [
+        "The transaction table's 'AMOU' header is clipped, suggesting a lack of right-padding or a fixed-width constraint that fails on mobile viewports.",
+        "The 'SCRUB DAYS' control is visually weak; the label and track are too low-contrast against the paper background, lacking affordance.",
+        "The chart's single prominent spike (outflow) dominates the visual field, making the 'net' and 'inflow' data nearly invisible, failing to communicate the 'between' promise.",
+        "Vertical rhythm is inconsistent: the gap between the subtitle and the card is tighter than the gap between the card and the next section header.",
+        "The monospace font used for data (dates, values) is slightly too small, reducing legibility on smaller mobile screens."
+      ],
+      "improvements": [
+        "Fix table column widths to prevent header truncation and ensure responsive fit.",
+        "Increase contrast and stroke weight of the scrub control for clarity.",
+        "Scale chart Y-axis to normalize spikes, improving visibility of baseline trends."
+      ]
+    },
+    {
+      "shot": "ledger-mobile-band02.png",
+      "device": "mobile",
+      "kind": "band",
+      "label": "Where it went",
+      "scores": {
+        "hierarchy": 6,
+        "typography": 5,
+        "spacing": 4,
+        "color": 7,
+        "alignment": 4,
+        "density": 5,
+        "overall": 5
+      },
+      "defects": [
+        "Right-aligned 'AMOUNT' column is hard-clipped, cutting off values and column header",
+        "Vertical rhythm is inconsistent; row heights and text baselines feel random",
+        "Monospace dates are set in a light gray that lacks WCAG contrast against the off-white background",
+        "Primary merchant names are too small and lack strong weight to lead the visual hierarchy",
+        "Hand-drawn ink style is not visible, causing a brand disconnect with the Unown aesthetic"
+      ],
+      "improvements": [
+        "Unclip right column, expand viewport padding to reveal complete currency values",
+        "Establish strict baseline grid, align row text to consistent vertical rhythm",
+        "Darken date text to #555+ for legibility, increase merchant name font weight"
+      ]
+    },
+    {
+      "shot": "ledger-mobile-band03.png",
+      "device": "mobile",
+      "kind": "band",
+      "label": "Four buckets, one position",
+      "scores": {
+        "hierarchy": 8,
+        "typography": 7,
+        "spacing": 6,
+        "color": 7,
+        "alignment": 9,
+        "density": 8,
+        "overall": 7
+      },
+      "defects": [
+        "The monospace numerals ($1,284,600) clash with the brand's hand-drawn Unown aesthetic, feeling like a standard dev tool rather than a bespoke interface.",
+        "The '9417 **** 3382' account identifiers use an extremely light gray that likely falls below WCAG AA contrast thresholds, making them difficult to read on the white card background.",
+        "The vertical gap between the 'ACCOUNTS' eyebrow and the main heading is inconsistent with the tight vertical rhythm seen inside the cards below.",
+        "The cards are visually identical in structure and weight, failing to establish a visual hierarchy for the primary 'Operating' bucket versus secondary items like 'Tax'.",
+        "The lack of any visual texture or 'ink' in the card backgrounds feels sterile and contradicts the 'warm paper' brand description."
+      ],
+      "improvements": [
+        "Increase the opacity of the account number text to at least 45% black for legibility.",
+        "Introduce a subtle border highlight or gold accent to the first card to establish visual priority.",
+        "Reduce the spacing between the eyebrow and main heading to improve typographic grouping."
+      ]
+    },
+    {
+      "shot": "ledger-mobile-band04.png",
+      "device": "mobile",
+      "kind": "band",
+      "label": "The fine print, on purpose",
+      "scores": {
+        "hierarchy": 4,
+        "typography": 2,
+        "spacing": 4,
+        "color": 3,
+        "alignment": 6,
+        "density": 7,
+        "overall": 3
+      },
+      "defects": [
+        "The section eyebrow 'ACCOUNTS' is illegible and disconnected from the 'Four buckets' title, failing visual hierarchy.",
+        "The 'fine print' card titles use a clean sans-serif, while the amounts use a crude monospace typeface that looks like a terminal default, destroying the warm brand cohesion.",
+        "The 'Payroll' card lacks a visible amount row that is present in every other card, creating a fatal inconsistency in the repeating pattern.",
+        "The vertical spacing between the four white cards is nearly zero, making them read as one blurry block rather than distinct, tappable entities.",
+        "The overall palette is a cold, low-contrast gray on white, completely missing the 'dark-first' and 'ink/gold' aesthetic mandated for the Unown brand."
+      ],
+      "improvements": [
+        "Apply a strict dark-mode palette with high-contrast warm gold accents to the cards.",
+        "Standardize a single, legible display typeface across card headers and data values.",
+        "Add explicit 16px top and bottom spacing rhythm between every individual card container."
+      ]
+    }
+  ],
+  "axisMeans": {
+    "hierarchy": 6.31,
+    "typography": 5.62,
+    "spacing": 5.46,
+    "color": 5.85,
+    "alignment": 7,
+    "density": 6.46,
+    "overall": 5.62
+  },
+  "gates": {
+    "contrastViolations": {
+      "value": 132,
+      "max": 0,
+      "pass": false
+    },
+    "fontSizes": {
+      "value": 9,
+      "max": 8,
+      "pass": false
+    },
+    "offGridPct": {
+      "value": 0,
+      "max": 15,
+      "pass": true
+    },
+    "headingSkips": {
+      "value": 0,
+      "max": 0,
+      "pass": true
+    },
+    "missingAlts": {
+      "value": 0,
+      "max": 0,
+      "pass": true
+    },
+    "mobileOverflow": {
+      "value": 252,
+      "max": 0,
+      "pass": false
+    },
+    "fcpMs": {
+      "value": 284,
+      "max": 1800,
+      "pass": true
+    },
+    "lcpMs": {
+      "value": 284,
+      "max": 2500,
+      "pass": true
+    },
+    "cls": {
+      "value": 0,
+      "max": 0.1,
+      "pass": true
+    },
+    "tbtMs": {
+      "value": 9,
+      "max": 200,
+      "pass": true
+    },
+    "vlmAxes": {
+      "value": {
+        "hierarchy": 6.31,
+        "typography": 5.62,
+        "spacing": 5.46,
+        "color": 5.85,
+        "alignment": 7,
+        "density": 6.46,
+        "overall": 5.62
+      },
+      "floor": 7,
+      "pass": false,
+      "failures": [
+        "hierarchy 6.31<7",
+        "typography 5.62<7",
+        "spacing 5.46<7",
+        "color 5.85<7",
+        "density 6.46<7",
+        "overall 5.62<7"
+      ]
+    },
+    "weightCeiling": {
+      "value": 700,
+      "max": 600,
+      "pass": false
+    },
+    "weightSet": {
+      "value": 4,
+      "max": 4,
+      "pass": true
+    },
+    "trackingCurve": {
+      "value": 0,
+      "max": 3,
+      "pass": true
+    },
+    "neutralHueSpread": {
+      "value": 10.1,
+      "max": 30,
+      "sampled": 702,
+      "pass": true
+    },
+    "accentClusters": {
+      "value": 0,
+      "max": 2,
+      "sampled": 2,
+      "pass": true
+    },
+    "animLayoutProps": {
+      "value": 4,
+      "max": 0,
+      "props": [
+        "stroke-dashoffset"
+      ],
+      "pass": false
+    },
+    "reducedMotionGuard": {
+      "value": true,
+      "max": 1,
+      "pass": true
+    },
+    "breakpoints": {
+      "value": 6,
+      "max": 8,
+      "pass": true
+    }
+  },
+  "passed": false,
+  "shotsDir": "/home/z/unown/download/design-critic/ledger-v0/ledger",
+  "wallSeconds": 64
+}

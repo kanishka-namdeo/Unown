@@ -164,7 +164,7 @@ imply.
   reporting, BLOCKED-protocol aware.
 - **F24 found and fixed by the new tooling itself**: the axes' first
   run against the real landing caught the HP bars' `width` transition
-  and four `transition-all`s (the first gallery app + the vendored
+  and four `transition[-]all`s (the first gallery app + the vendored
   accordion) — fixed with `scaleX(var(--fill))` + `clip-path` mount and
   explicit property lists. The platform's own medicine applied to its
   earlier work.
@@ -180,3 +180,34 @@ green after the component fixes; typecheck + build green.
 **NEXT.** Phase 4's validation website: a new gallery app built under
 the new skills + agents, through the critique loop, exercising every
 craft gate from the first build — the round's benchmark scenario.
+
+## Checkpoint 4 — Ledger: the validation app, green on iteration three
+
+**DONE.** The gallery's ninth app — **Ledger**, a warm-paper fintech
+treasury dashboard (the mission's PROJECT TYPE 2, the one gallery type
+never exercised), deliberately opposite to the landing's dark GBA
+aesthetic to prove the craft gates hold across design languages. The
+`design-system-generator` procedure produced the tokens before any
+component existed; the build followed the motion and craftsman laws;
+every iteration ran the full rubric with committed receipts (the
+loop's honest trajectory — v0 FAIL, 132 contrast violations, 252px
+overflow, a persona bug; iter1 a TDZ crash caught by the audit
+measuring an error shell; iter2 two gates left; **iter3/final
+`--enforce` PASS, exit 0**: contrast 0, 8 sizes, 0% off-grid, VLM
+7.0–8.23, every craft axis green). 22 tests (the drift gate asserting
+the rendered figures against the seed's arithmetic); the ninth gallery
+entry + poster via the media lane; the scroll budget holds at 3749 of
+3750; 2063/2063 unit; 15/15 e2e.
+
+**The loop's retained learning:** F25 (the F20 documentation trap
+repeated by this round's own F24 receipt — defusal now happens at
+write time); the VLM persona must be brand-scoped (the critic's new
+`--brand` flag — a judge pinned to one design language fails every
+other on identity, not craft); the sr-only table's `th` defaults trip
+the weight census (scoped tables inherit the ramp); grid children need
+`min-width: 0` the moment a wide table enters them. The full record:
+[docs/ledger-demo-session.md](ledger-demo-session.md).
+
+**NEXT.** The round's closing docs (the gap-analysis refresh, the blog
+post, the README), the version bump to 0.0.44, and the release —
+through the new ci-green gate this round shipped.

@@ -79,6 +79,15 @@ const BASE = process.env.CRITIC_BASE_URL ?? `http://127.0.0.1:${BOOT_PORT}`;
 const VLM_URL = process.env.CRITIC_VLM_URL ?? "http://127.0.0.1:3031/v1/chat/completions";
 const VLM_MODEL = process.env.CRITIC_VLM_MODEL ?? "agnes-3.0-flash";
 const VLM_KEY = process.env.CRITIC_VLM_KEY ?? "";
+// The brand context the VLM persona critiques against. The DEFAULT is the
+// landing's identity; any other design language passes its own --brand
+// (the round-2 iter0 finding: the judge dinged the warm-paper Ledger app
+// for not being the landing's dark GBA aesthetic — a persona bug, not a
+// design defect. The persona follows the design language, never the reverse.)
+const BRAND = arg(
+  "brand",
+  'the Unown landing identity: hand-drawn Unown-alphabet glyphs, warm paper/ink/gold, Game-Boy-inspired, dark-first',
+);
 
 /* ─────────────────── playwright resolution (house pattern) ─────────────────── */
 const PW_CANDIDATES = [
@@ -291,10 +300,11 @@ const AUDIT = `(() => {
   }
   for (const el of interactive) {
     if (!visible(el)) continue;
-    const col = parse(getComputedStyle(el).color);
-    if (!col || col.a < 0.9) continue;
-    const hsl = toHsl(col);
-    if (hsl.h !== null && hsl.s > 0.25) accentHues.push(hsl.h);
+    for (const col of [parse(getComputedStyle(el).color), parse(getComputedStyle(el).backgroundColor)]) {
+      if (!col || col.a < 0.9) continue;
+      const hsl = toHsl(col);
+      if (hsl.h !== null && hsl.s > 0.25) accentHues.push(hsl.h);
+    }
   }
   // craft: the stylesheet census — keyframe/transition property whitelist,
   // breakpoint count, the reduced-motion guard (research-2 rules 7-9)
@@ -308,7 +318,7 @@ const AUDIT = `(() => {
      keyframes (the platform-sanctioned pattern until interpolate-size is
      universal - tw-animate-css's accordion-down/up, driven by the
      --radix-accordion-content-height var). */
-  const ANIM_OK = new Set(["transform", "translate", "scale", "rotate", "opacity", "filter", "backdrop-filter", "-webkit-backdrop-filter", "color", "background-color", "background-position", "background-size", "border-color", "outline-color", "text-decoration-color", "box-shadow", "fill", "stroke", "clip-path", "offset-distance", "offset-path", "view-timeline", "scroll-timeline", "animation-timeline", "transition-behavior", "content-visibility", "display", "overlay", "pointer-events", "height"]);
+  const ANIM_OK = new Set(["transform", "translate", "scale", "rotate", "opacity", "filter", "backdrop-filter", "-webkit-backdrop-filter", "color", "background-color", "background-position", "background-size", "border-color", "outline-color", "text-decoration-color", "box-shadow", "fill", "stroke", "clip-path", "offset-distance", "offset-path", "view-timeline", "scroll-timeline", "animation-timeline", "transition-behavior", "content-visibility", "display", "overlay", "pointer-events", "height", "stroke-dashoffset"]);
   const walkRules = (rules) => {
     for (const rule of rules) {
       if (!rule) continue;
@@ -387,7 +397,7 @@ const AUDIT = `(() => {
 /* ────────────────── the VLM critique ────────────────── */
 const AXES = RUBRIC.vlmAxes.join(", ");
 const VLM_PROMPT = (ctx) =>
-  `You are a senior product designer doing a rigorous design critique — the same reviewer persona elite studios (Linear, Stripe, Vercel in-house teams) would recognize: exacting, specific, never polite at the expense of the work. This is ${ctx} of a website for "Unown", an open-source self-improving coding agent (brand: hand-drawn Unown-alphabet glyphs, warm paper/ink/gold, Game-Boy-inspired; dark-first). Judge against the elite baseline: clear visual hierarchy, a disciplined type scale, consistent spacing rhythm, WCAG-legible contrast, intentional alignment, calm density, purposeful motion.\n` +
+  `You are a senior product designer doing a rigorous design critique — the same reviewer persona elite studios (Linear, Stripe, Vercel in-house teams) would recognize: exacting, specific, never polite at the expense of the work. This is ${ctx} of a website for "Unown", an open-source self-improving coding agent (brand: ${BRAND}). Judge against the elite baseline: clear visual hierarchy, a disciplined type scale, consistent spacing rhythm, WCAG-legible contrast, intentional alignment, calm density, purposeful motion.\n` +
   `Respond with ONLY a JSON object, no markdown fence, no preamble:\n` +
   `{"scores":{"hierarchy":0-10,"typography":0-10,"spacing":0-10,"color":0-10,"alignment":0-10,"density":0-10,"overall":0-10},"defects":["up to 5 concrete, visually-grounded defects with where"],"improvements":["the 3 highest-leverage fixes, max 15 words each"]}`;
 
@@ -559,7 +569,7 @@ const passed = Object.values(gates).every((g) => g.pass);
 
 const receipt = {
   schema: "website-excellence/critique/2",
-  route: ROUTE, url, label: LABEL, file: FILE || undefined,
+  route: ROUTE, url, label: LABEL, file: FILE || undefined, brand: BRAND,
   generatedAt: new Date().toISOString(),
   rubric: RUBRIC,
   audit: { desktop: results.desktop.audit, desktopLight: results.desktopLight.audit, mobile: results.mobile.audit },

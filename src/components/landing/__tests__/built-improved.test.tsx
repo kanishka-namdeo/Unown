@@ -103,10 +103,10 @@ describe("built-improved band (the SOTA round's showcase)", () => {
     expect(container.textContent).toContain("The mission's rounds");
     // The lede derives its app count from the gallery's own data — the
     // gallery is the single source for what was built (no duplicate 5).
-    expect(LIVE_DEMO_APPS.length).toBe(8);
-    expect(LIVE_DEMO_APPS[LIVE_DEMO_APPS.length - 1]?.id).toBe("encore");
-    expect(LIVE_DEMO_APPS[LIVE_DEMO_APPS.length - 1]?.name).toBe("Encore");
-    expect(container.textContent).toContain("(Encore, the eighth app)");
+    expect(LIVE_DEMO_APPS.length).toBe(9);
+    expect(LIVE_DEMO_APPS[LIVE_DEMO_APPS.length - 1]?.id).toBe("ledger");
+    expect(LIVE_DEMO_APPS[LIVE_DEMO_APPS.length - 1]?.name).toBe("Ledger");
+    expect(container.textContent).toContain("(Ledger, the ninth app)");
   });
 
   test("ordinalOf: the word form through ninth, the bare Nth after", () => {
