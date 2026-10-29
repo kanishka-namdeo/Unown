@@ -1,0 +1,7 @@
+Continue Phase 2 (API). Route directories exist but route files are mostly
+unwritten. Write the route handler files NOW, group by group in plan §3
+order: auth, tenants/members/invites, services, rotations, alerts,
+incidents, runbooks, postmortems, analytics, status, reset. Wire each to
+the lib domain modules. After each 3-4 groups, run `bun test src/app/nocturne`
+if tests exist, else continue writing. Minimal exploration — you have the
+plan; write files.

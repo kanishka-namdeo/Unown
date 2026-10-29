@@ -1,0 +1,34 @@
+A precise defect report to fix (operator-traced; you misdiagnosed it as an
+RBAC carve-out issue across two sessions — the real bug is below).
+
+DEFECT: session-id collision in src/app/nocturne/api/_state.ts loginSession.
+It builds the session row with createSession(userId, tenantId, nowClock(),
+s.seq) — reading the state's seq counter WITHOUT bumping it. store.nextId()
+is the only allocator that bumps seq. So two loginSession calls with no
+other seq-bumping operation between them mint IDENTICAL session ids, and
+findStoredSession resolves by first match — the second user's cookie
+authenticates as the FIRST user's session.
+
+Repro (benchmarks/nocturne-round/sessions/debug-theo.ts already runs it):
+login theo -> create override (bumps seq via nc_ovr_100) -> login sam ->
+login theo again: theo's second session collides with sam's, his DELETE
+resolves role=responder user=sam, and the "admin deletes a teammate's
+override" test 403s. This is a P0: in a real deployment one user could act
+as another.
+
+FIX:
+1. In loginSession (src/app/nocturne/api/_state.ts): allocate the session
+   id through nextId("ses") (the seq-bumping allocator), keeping
+   createSession for the row shape if convenient — but the id must come
+   from the bumping allocator, not a raw s.seq read.
+2. Add a regression test to the API test lane (e.g. in
+   src/app/nocturne/api/__tests__/auth.test.ts): three consecutive
+   loginSessions (theo, sam, theo) must yield three DISTINCT session ids,
+   and each cookie must resolve to its OWN user — the collision pin.
+3. Run `bun test src/app/nocturne` (the rotations admin-delete test must
+   pass), then full `bun test src` green, then `bun run typecheck` clean.
+4. Check the same pattern anywhere else in src/app/nocturne/ that calls
+   createSession or reads s.seq directly for ids — fix them all the same
+   way if any exist.
+
+Write the fix + the regression test; no other changes.

@@ -51,6 +51,63 @@ use it from session one).
 
 ---
 
+## F9 — session-id collision in loginSession (a P0 the API test lane surfaced, the agent misdiagnosed twice, the operator traced, and the fed diagnosis converged in one session)
+
+**Failure (N13–N14, surfaced by `rotations.test.ts`).** The test "an admin
+deletes a teammate's override → 204" failed persistently: the admin's DELETE
+returned 403 with `permission: rotation.override` while every unit-level
+RBAC check passed in isolation.
+
+**Reproduction.**
+[`sessions/debug-theo.ts`](sessions/debug-theo.ts) (the operator's trace
+script, kept as the receipt): `loginSession(theo)` → create an override
+(seq bumps via `nc_ovr_100`) → `loginSession(sam)` → `loginSession(theo)`
+again — theo's second session id collides with sam's, `sessionFromRequest`
+resolves theo's cookie to **sam's session** (role responder), and the
+admin-lane DELETE 403s.
+
+**Root cause.** `src/app/nocturne/api/_state.ts:loginSession` built the
+session row with `createSession(userId, tenantId, nowClock(), s.seq)` —
+reading the state's `seq` counter WITHOUT bumping it (`store.nextId()` is
+the only bumping allocator). Two consecutive logins with no other
+seq-bumping operation between them minted IDENTICAL session ids
+(`nc_ses_<seq>`), and `findStoredSession` resolves by first match — in a
+real deployment, the second user to log in could act as the first. The
+domain module's `sessions.test.ts` never caught it because it exercised
+`createSession` one row at a time, never two consecutive state-level
+logins.
+
+**Memory contribution analysis.** The project memory carried the RBAC
+carve-out semantics correctly (the agent re-derived them each session), but
+nothing pinned the "ids must come from the bumping allocator" invariant —
+the failure mode lived in the gap between the domain contract (fugue `seq`
+pattern, plan §1) and the API state layer's implementation.
+
+**Benchmark created.** The regression pin added to
+`src/app/nocturne/api/__tests__/auth.test.ts` (N15): three consecutive
+loginSessions (theo, sam, theo) must yield three DISTINCT session ids and
+each cookie must resolve to its own user — plus the pre-existing
+admin-delete test as the behavioral pin.
+
+**Improvement implemented + rerun.** N15 (a fresh session fed the precise
+diagnosis): `loginSession` now allocates through `nextId("ses")` — 14 turns,
+one pass. Re-run: API suite 78/78 green, full repo 1880/1880 green
+(was 1879/1), typecheck clean.
+
+**Honest UX finding.** The agent's own fix loop did NOT converge on this
+across two sessions (N13 circled the permission gate; N14 "misread its own
+edits" — visible context drag at 520 s/capped). The operator had to
+intervene with the trace (1 intervention row). The counter-signal worth
+keeping: once fed a precise repro, the same agent fixed it cleanly in 14
+turns — the failure was diagnosis, not execution. Candidate for a minted
+task (diagnose-an-id-collision-from-a-repro) and a memory rule (ids come
+from the bumping allocator, never a raw `s.seq` read).
+
+**Retention.** Regression test in the suite — the scenario now passes
+consistently (re-run verified above).
+
+---
+
 ## Positive validations (defects the system caught itself — recorded so the
 loop's defenses are visible)
 

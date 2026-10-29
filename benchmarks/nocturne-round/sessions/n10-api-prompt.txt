@@ -1,0 +1,32 @@
+You are executing Phase 2 (API) of the Nocturne build — gallery app #7, the
+AI-native incident operations platform. The domain layer is complete and
+green: src/lib/nocturne/ (40 files, 360/360 tests, typecheck clean).
+
+Read benchmarks/nocturne-round/plan.md section 3 (the complete API route
+map, ~50 routes with the 401/403/404/402/400 ladder) and section 2, then
+study ONE sibling API surface for the route-file conventions (src/app/aria/
+— _auth/_rate/_state helpers, error body shapes, cookie handling) — do NOT
+re-read every sibling.
+
+Then implement the complete API layer: every route in plan §3 as Next.js
+App Router route handlers under src/app/nocturne/api/, wired to the
+src/lib/nocturne/ domain modules via a per-route store/context helper
+(follow aria's src/app/aria/api/ structure exactly).
+
+Hard requirements:
+- the full status ladder per plan §3: 401 unauthenticated, 403 forbidden
+  with permission, 404 not-found for cross-tenant (never 403), 402
+  quota_exceeded, 400 validation with error list
+- session cookie handling per the parley/aria pattern (HMAC-signed,
+  Set-Cookie on login, cleared on logout)
+- fail-closed tenancy on every tenant-scoped route
+- one test file per route group per plan §5's API test plan (~14 files),
+  using the aria API test conventions (bun:test, in-memory store or temp
+  store, fetch-level tests against the handlers)
+- run `bun test src/app/nocturne` and fix until green; then `bun test src`
+  must stay green (the full repo suite); `bun run typecheck` clean
+- write code and tests only; do not commit; do not touch anything outside
+  src/app/nocturne/ (and only read src/lib/nocturne/, src/app/aria/)
+
+Work route-group by route-group in the plan's order. If you run out of
+turns, leave the suite runnable.

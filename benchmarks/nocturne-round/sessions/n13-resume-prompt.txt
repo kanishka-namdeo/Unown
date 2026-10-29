@@ -1,0 +1,6 @@
+Continue Phase 2 (API). Write the remaining route groups NOW: runbooks,
+components, postmortems, audit, analytics, status (public), demo/reset —
+per plan §3. Then write the API test files per plan §5 (~14 files, aria
+conventions, one per route group). Then run `bun test src/app/nocturne`,
+fix until green, and verify `bun test src` full-repo green + `bun run
+typecheck` clean. Write files; minimal exploration.

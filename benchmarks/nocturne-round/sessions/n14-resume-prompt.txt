@@ -1,0 +1,7 @@
+Finish Phase 2 (API). Suite stands 75 pass / 1 fail across 4 test files (76
+tests). You were fixing the override DELETE permission: a responder may
+delete an override they COVER (userId=self) OR one covering THEM
+(forUserId=self). Apply that fix. Then: if plan §5 calls for more test
+files than the 4 that exist, write the missing ones (one per route group);
+re-run `bun test src/app/nocturne` to green; then the full-repo
+`bun test src` green; then `bun run typecheck` clean. Minimal exploration.
