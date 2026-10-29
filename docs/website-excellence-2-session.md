@@ -240,3 +240,27 @@ budget 3,756 ≤ 3,780 in BOTH twins, `bun bin/unown --version` = 0.0.44
 **NEXT.** Push, wait for CI to conclude green (never cancelled
 mid-flight — the round's own law), then the v0.0.44 tag: the first
 release to run through the ci-green gate this round shipped.
+
+## The release, verified end to end
+
+CI concluded **success** on `9193da8b` (deploy-verify green beside
+it), the tag `v0.0.44` went up, and the Release workflow ran through
+the round's own gate: **"CI green on the tagged commit — completed,
+success"** — the F21 fix's first real-world pass, on the release that
+shipped it. The full pipeline completed **success**: the 3-OS release
+assertions, the production build + six per-OS standalone binaries +
+SBOM + attestations, the artifact smoke on five platforms, the
+published Release (13 assets), the feed gate and the smoke-install
+matrix. Verified like a user: the linux-x64 archive downloaded,
+extracted, ran (`--version` = 0.0.44) and its SHA-256 matched the
+published `sha256sums.txt` byte for byte.
+
+**The round's success question, answered with receipts:** the platform
+that shipped v0.0.44 measures design in six axes the platform that
+shipped v0.0.42 could not see; it carries six website skills and four
+specialist agents where it carried none; its releases cannot ship
+while their CI is red; and its validation app — built entirely under
+the new capabilities — passed the full `--enforce` rubric on iteration
+three of a loop whose every failure was caught by tooling, ledgered,
+and fixed. The next website this platform builds starts from all of
+it.
