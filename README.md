@@ -51,7 +51,7 @@ flowchart TB
         PM("project memory<br>.unown/memory/project.md")
     end
     subgraph dash["mission control"]
-        UI["unown dashboard (TUI)<br>11 screens · live SSE feed"]
+        UI["unown dashboard (TUI)<br>12 screens · live SSE feed"]
     end
     subgraph engine["self-learning engine :3030"]
         ENG["memory · harness · dream<br>router · sandbox"]
@@ -408,7 +408,7 @@ The dashboard is a live window onto the engine — every number below is real da
 | ![Memory — the four tiers, per-project memories, injection budget and version history](public/landing/tui/dashboard/stills/02-memory.png) | ![The embedded /dashboard mount inside a live session](public/landing/tui/dashboard/stills/12-embedded-mount.png) |
 | ![Learning Lab — harness cycles, improvements and run transcripts](public/landing/tui/dashboard/stills/06-learning-lab.png) | ![Hooks — the guardrail decision log](public/landing/tui/dashboard/stills/07-hooks.png) |
 
-The eleven screens: **Overview** (KPI band, benchmark task table, live activity rail) · **Memory** (the four tiers + project tiers, budget meter, version history, rollback) · **Learning Lab** (harness cycles, improvements, runs and transcripts) · **Dreams** (AutoDream sessions and pending notes) · **Notes** (the session-note inbox) · **Skills** (the self-minted library) · **Hooks** (the guardrail decision log) · **Gateway** (bridge health and upstream) · **Router** (background jobs + sandboxes) · **Routines** (scheduled recurring runs) · **Web Cache** (the persistent web results store). Provider management is one screen away too — `/providers` in a live session, `unown providers` on the CLI ([docs/providers.md](docs/providers.md)).
+The twelve screens: **Overview** (KPI band, benchmark task table, live activity rail) · **Memory** (the four tiers + project tiers, budget meter, version history, rollback) · **Learning Lab** (harness cycles, improvements, runs and transcripts) · **Dreams** (AutoDream sessions and pending notes) · **Notes** (the session-note inbox) · **Skills** (the self-minted library) · **Hooks** (the guardrail decision log) · **Router** (background jobs + sandboxes) · **Recovery** (the observability round's triage: failed jobs, failed runs and recent denials, worst-first with drill-ins) · **Gateway** (bridge health and upstream) · **Routines** (scheduled recurring runs) · **Web Cache** (the persistent web results store). Provider management is one screen away too — `/providers` in a live session, `unown providers` on the CLI ([docs/providers.md](docs/providers.md)).
 
 Stills are PTY captures of real `unown dashboard` sessions (pane-audited; the capture lane is [scripts/tui-capture/](scripts/tui-capture/)).
 

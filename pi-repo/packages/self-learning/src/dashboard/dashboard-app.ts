@@ -31,6 +31,7 @@ import { createNotesScreen } from "./screens/notes-screen.ts";
 import { createSkillsScreen } from "./screens/skills-screen.ts";
 import { createLabScreen } from "./screens/lab-screen.ts";
 import { createHooksScreen } from "./screens/hooks-screen.ts";
+import { createRecoveryScreen } from "./screens/recovery-screen.ts";
 import { createRouterScreen } from "./screens/router-screen.ts";
 import { createGatewayScreen } from "./screens/gateway-screen.ts";
 import { createAutomationsScreen } from "./screens/automations-screen.ts";
@@ -57,6 +58,7 @@ export const SCREEN_SPECS: ScreenSpec[] = [
         { id: "lab", title: "Learning Lab", group: "learning", resources: ["cycles", "improvements", "runs", "liveRuns", "tasks"] },
         { id: "hooks", title: "Hooks", group: "learning", resources: ["hooks"] },
         { id: "router", title: "Router", group: "learning", resources: ["jobs", "sandboxes"] },
+        { id: "recovery", title: "Recovery", group: "operations", resources: ["jobs", "runs", "hooks"] },
         { id: "gateway", title: "Gateway", group: "operations", resources: ["bridge"] },
         { id: "automations", title: "Routines", group: "operations", resources: ["automations"] },
         { id: "webcache", title: "Web Cache", group: "operations", resources: ["webcache"] },
@@ -272,6 +274,8 @@ export class DashboardApp {
                                 return createLabScreen;
                         case "hooks":
                                 return createHooksScreen;
+                        case "recovery":
+                                return createRecoveryScreen;
                         case "router":
                                 return createRouterScreen;
                         case "gateway":
