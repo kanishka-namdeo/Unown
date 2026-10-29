@@ -15,7 +15,7 @@
 - [The 15 most transferable ideas](#the-15-most-transferable-ideas)
 - [Unown's gap analysis](#unowns-gap-analysis)
 - [What this round adopts, and what it rejects](#what-this-round-adopts-and-what-it-rejects)
-- [Related pages](#related-pages)
+
 
 Related pages: [the observability round session record](observability-round-session.md) · [the TUI observability audit](tui-observability-audit.md) · [the user journeys](observability-user-journeys.md) · [the 24-system mission consolidation](competitor-comparison-report.md) · [the SOTA round research](sota-round-competitor-research.md)
 

@@ -20,7 +20,7 @@
 - [The ambiguity ledger](#the-ambiguity-ledger)
 - [Benchmark tasks](#benchmark-tasks)
 - [The information architecture](#the-information-architecture)
-- [Related pages](#related-pages)
+
 
 Related pages: [the observability round session record](observability-round-session.md) · [the competitor research](observability-competitor-research.md) · [the user journeys](observability-user-journeys.md) · [the dashboard plan](tui-dashboard-plan.md) · [the split view](split-view.md)
 

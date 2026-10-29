@@ -17,7 +17,7 @@
 - [The product manager](#the-product-manager)
 - [The devops engineer](#the-devops-engineer)
 - [The cross-persona synthesis](#the-cross-persona-synthesis)
-- [Related pages](#related-pages)
+
 
 Related pages: [the observability round session record](observability-round-session.md) · [the competitor research](observability-competitor-research.md) · [the TUI observability audit](tui-observability-audit.md)
 

@@ -12,7 +12,7 @@
 > next, so an interrupted session resumes from the last green state.
 
 - [Checkpoint 0 — setup, the stack verified, and the mission opened](#checkpoint-0--setup-the-stack-verified-and-the-mission-opened)
-- [Checkpoint 1 — phases 1–4: the research, the journeys, the audit, the architecture](#checkpoint-1--phases-1-4-the-research-the-journeys-the-audit-the-architecture)
+- [Checkpoint 1 — phases 1-4: the research, the journeys, the audit, the architecture](#checkpoint-1--phases-1-4-the-research-the-journeys-the-audit-the-architecture)
 
 ## The contract
 
@@ -55,7 +55,7 @@ as parallel subagents against live sources; the repo's own prior
 research mined for what is already known; the TUI surface inventory
 (the Phase 3 audit's raw material) mapped in full.
 
-## Checkpoint 1 — phases 1–4: the research, the journeys, the audit, the architecture
+## Checkpoint 1 — phases 1-4: the research, the journeys, the audit, the architecture
 
 **DONE.** Three parallel subagents: (a) the full TUI surface inventory —
 every screen, command, keybinding, widget, overlay, footer segment and
