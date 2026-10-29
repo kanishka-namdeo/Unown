@@ -44,6 +44,31 @@ describe("shouldRecap — the idle threshold", () => {
 	});
 });
 
+describe("buildRecapDigest — persisted toolCall blocks use `name`, not `toolName`", () => {
+	// The observability round's brief printed "unknown" for every persisted
+	// digest tool (live events carry toolName; stored entries carry name).
+	// Pin BOTH shapes so the digest stays honest across both entry kinds.
+	test("persisted entries contribute real tool names and file paths", () => {
+		const entry = {
+			type: "message",
+			ts: Date.now(),
+			message: {
+				role: "assistant",
+				content: [
+					{ type: "toolCall", id: "c1", name: "edit", arguments: { file_path: "src/auth.ts" } },
+					{ type: "toolCall", id: "c2", toolName: "bash", arguments: { command: "npm test" } },
+				],
+			},
+		};
+		const digest = buildRecapDigest([entry], 0, 0);
+		expect(digest.toolCalls).toBe(2);
+		expect(digest.toolsUsed).toContain("edit");
+		expect(digest.toolsUsed).toContain("bash");
+		expect(digest.toolsUsed).not.toContain("unknown");
+		expect(digest.filesTouched).toContain("src/auth.ts");
+	});
+});
+
 describe("buildRecapDigest — session entries", () => {
 	test("counts turns, tool calls, files; carries previews", () => {
 		const now = Date.now();

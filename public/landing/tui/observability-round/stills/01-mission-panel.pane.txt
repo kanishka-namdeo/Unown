@@ -1,0 +1,36 @@
+
+ unown v0.0.44
+ escape interrupt · ctrl+c/ctrl+d clear/exit · ? help · ctrl+k palette · / commands · ! bash · ctrl+o more
+ Press ctrl+o to show full startup help and loaded resources.
+
+ unown can explain its own features and look up its docs. Ask it how to use or extend unown.
+
+
+── Context ──
+  memory/how-to-use.md (guide: how to read the memory tiers), memory/tier0-policy.md (enterprise policy — highest authority),
+.unown/memory/project.md (project memory — provenance in the injected header), memory/tier2-user.md (user memory — global
+preferences), .unown/memory/local.md (local overrides — highest precedence)
+
+── Skills ──
+  methodical-debugging, repo-exploration, unown-self-learning, verification-first
+
+── Extensions ──
+  <inline:6>
+
+── Themes ──
+  unown
+
+
+ mission pinned: make the fixture app build green
+ An active /goal still takes precedence; /mission clear removes it.
+
+
+ ● mission — make the fixture app build green (user · 0m)
+ ○ no tracked steps · conf ✓ · 0m in session
+»───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+/tmp/obs-fixture
+ctx ▕░░░░░░░░░░▏ 0.0%/524k (auto)                                                                                agnes-3.0-flash
+memory: up · old build
+? help · ctrl+k palette · / commands · ! bash · ctrl+o tools · esc-esc tree

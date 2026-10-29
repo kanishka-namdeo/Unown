@@ -75,68 +75,68 @@
 import { readFileSync } from "node:fs";
 import { type EngineProbe, type EngineProbeKind, probeEngine } from "./engine-probe.ts";
 import {
-	autoStartDisabled,
-	type DreamNews,
-	evaluateSpawnGate,
-	markEngineHealthy,
-	parseDreamNews,
-	readSpawnState,
-	SPAWN_DISABLED,
-	type SpawnState,
-	spawnEngineDetached,
+        autoStartDisabled,
+        type DreamNews,
+        evaluateSpawnGate,
+        markEngineHealthy,
+        parseDreamNews,
+        readSpawnState,
+        SPAWN_DISABLED,
+        type SpawnState,
+        spawnEngineDetached,
 } from "./engine-supervisor.ts";
 import {
-	agentGitSha,
-	agentVersion,
-	codeMtimeMs,
-	compareEngineBuild,
-	type EngineBuildComparison,
-	type EngineBuildRef,
-	formatDuration,
+        agentGitSha,
+        agentVersion,
+        codeMtimeMs,
+        compareEngineBuild,
+        type EngineBuildComparison,
+        type EngineBuildRef,
+        formatDuration,
 } from "./engine-version.ts";
 import { ENGINE_URL, outboxStats, projectMemoryPath, readProjectProvenance, slugifyPath } from "./term.ts";
 
 export type EngineState = "unknown" | "up" | "starting" | "down" | "paused" | "blocked";
 
 export interface EngineStatusInfo {
-	state: EngineState;
-	/** Epoch ms of the last state transition. */
-	since: number;
-	/** Epoch ms of the last completed probe (any outcome). */
-	lastProbeAt: number;
-	pid?: number;
-	busyMs?: number;
-	activeJob?: string;
-	queuedNotes: number;
-	droppedNotes: number;
-	/** H1 (2026-10-26): notes dead-lettered to notes/dead/ after exhausting ingest attempts. */
-	deadNotes: number;
-	/** The supervisor's crash-loop circuit, for /engine + doctor diagnosis. */
-	spawn: SpawnState;
-	/** M8: the engine's reported build (the /api/overview version block) —
-	 *  present only when an up probe observed one (pre-M8 engines answer
-	 *  up without it, and a down probe has nothing to report). */
-	engineVersion?: EngineBuildRef;
-	/** M8: the version-skew verdict of the last up probe (fresh /
-	 *  old-build / stale / ancient / ahead / unknown) — drives the footer
-	 *  suffix, the fresh→stale toast and /engine's build line. */
-	buildVerdict?: EngineBuildComparison;
-	/** The last probe's taxonomy when it was not "ok" — why the engine is
-	 *  blocked (token/port/version/no answer) and who owns it. */
-	probe?: EngineProbe;
+        state: EngineState;
+        /** Epoch ms of the last state transition. */
+        since: number;
+        /** Epoch ms of the last completed probe (any outcome). */
+        lastProbeAt: number;
+        pid?: number;
+        busyMs?: number;
+        activeJob?: string;
+        queuedNotes: number;
+        droppedNotes: number;
+        /** H1 (2026-10-26): notes dead-lettered to notes/dead/ after exhausting ingest attempts. */
+        deadNotes: number;
+        /** The supervisor's crash-loop circuit, for /engine + doctor diagnosis. */
+        spawn: SpawnState;
+        /** M8: the engine's reported build (the /api/overview version block) —
+         *  present only when an up probe observed one (pre-M8 engines answer
+         *  up without it, and a down probe has nothing to report). */
+        engineVersion?: EngineBuildRef;
+        /** M8: the version-skew verdict of the last up probe (fresh /
+         *  old-build / stale / ancient / ahead / unknown) — drives the footer
+         *  suffix, the fresh→stale toast and /engine's build line. */
+        buildVerdict?: EngineBuildComparison;
+        /** The last probe's taxonomy when it was not "ok" — why the engine is
+         *  blocked (token/port/version/no answer) and who owns it. */
+        probe?: EngineProbe;
 }
 
 /** Probe cadence: 30s default, floor 5s (env-tunable for tests + demos). */
 function probeIntervalMs(): number {
-	const n = Number(process.env.PI_ENGINE_PROBE_INTERVAL_MS ?? "");
-	return Number.isFinite(n) && n >= 5_000 ? Math.floor(n) : 30_000;
+        const n = Number(process.env.PI_ENGINE_PROBE_INTERVAL_MS ?? "");
+        return Number.isFinite(n) && n >= 5_000 ? Math.floor(n) : 30_000;
 }
 
 /** Probe timeout: well under the 1s interactive-perception budget; loopback
  * refusal is instant, so this only bites a hanging port — in the background. */
 function probeTimeoutMs(): number {
-	const n = Number(process.env.PI_ENGINE_PROBE_TIMEOUT_MS ?? "");
-	return Number.isFinite(n) && n >= 100 ? Math.floor(n) : 700;
+        const n = Number(process.env.PI_ENGINE_PROBE_TIMEOUT_MS ?? "");
+        return Number.isFinite(n) && n >= 100 ? Math.floor(n) : 700;
 }
 
 /**
@@ -160,12 +160,12 @@ function probeTimeoutMs(): number {
  * whether to wait. A missing/negative/NaN busyMs degrades to job-name-only.
  */
 function engineBusySuffix(info: EngineStatusInfo): string {
-	if (!info.activeJob) return "";
-	const ms = info.busyMs ?? 0;
-	const mins = Number.isFinite(ms) && ms > 0 ? Math.floor(ms / 60_000) : 0;
-	if (mins <= 0) return ` · ${info.activeJob}`;
-	if (mins < 60) return ` · ${info.activeJob} ${mins}m`;
-	return ` · ${info.activeJob} ${Math.floor(mins / 60)}h${mins % 60}m`;
+        if (!info.activeJob) return "";
+        const ms = info.busyMs ?? 0;
+        const mins = Number.isFinite(ms) && ms > 0 ? Math.floor(ms / 60_000) : 0;
+        if (mins <= 0) return ` · ${info.activeJob}`;
+        if (mins < 60) return ` · ${info.activeJob} ${mins}m`;
+        return ` · ${info.activeJob} ${Math.floor(mins / 60)}h${mins % 60}m`;
 }
 
 /** The footer line for a state (undefined = nothing worth a line — never
@@ -187,76 +187,76 @@ function engineBusySuffix(info: EngineStatusInfo): string {
  * and nothing else — a warning line with a delight meter bolted on would
  * undercut both halves. */
 export function engineFooterText(info: EngineStatusInfo, memoryBar?: string): string {
-	switch (info.state) {
-		case "up": {
-			const v = info.buildVerdict?.verdict;
-			if (v === "old-build") return "memory: up · old build";
-			if (v === "stale") return `memory: up · stale (v${info.engineVersion?.version ?? "?"})`;
-			if (v === "ancient") return `memory: up · very stale (v${info.engineVersion?.version ?? "?"})`;
-			return `memory: up${engineBusySuffix(info)}${memoryBar ? ` · ${memoryBar}` : ""}`;
-		}
-		case "starting":
-			return "memory: starting…";
-		case "down":
-			return info.queuedNotes > 0 ? `memory: down · ${info.queuedNotes} queued` : "memory: down";
-		case "paused":
-			return "memory: paused · /engine";
-		case "blocked": {
-			const kind = info.probe?.kind;
-			const label =
-				kind === "unauthorized"
-					? "token"
-					: kind === "occupied"
-						? "port"
-						: kind === "incompatible"
-							? "version"
-							: "no answer";
-			return `memory: blocked · ${label}`;
-		}
-		default:
-			return "memory: --";
-	}
+        switch (info.state) {
+                case "up": {
+                        const v = info.buildVerdict?.verdict;
+                        if (v === "old-build") return "memory: up · old build";
+                        if (v === "stale") return `memory: up · stale (v${info.engineVersion?.version ?? "?"})`;
+                        if (v === "ancient") return `memory: up · very stale (v${info.engineVersion?.version ?? "?"})`;
+                        return `memory: up${engineBusySuffix(info)}${memoryBar ? ` · ${memoryBar}` : ""}`;
+                }
+                case "starting":
+                        return "memory: starting…";
+                case "down":
+                        return info.queuedNotes > 0 ? `memory: down · ${info.queuedNotes} queued` : "memory: down";
+                case "paused":
+                        return "memory: paused · /engine";
+                case "blocked": {
+                        const kind = info.probe?.kind;
+                        const label =
+                                kind === "unauthorized"
+                                        ? "token"
+                                        : kind === "occupied"
+                                                ? "port"
+                                                : kind === "incompatible"
+                                                        ? "version"
+                                                        : "no answer";
+                        return `memory: blocked · ${label}`;
+                }
+                default:
+                        return "memory: --";
+        }
 }
 
 /** Toast text for a transition (undefined = no toast). */
 export function engineToastText(
-	prev: EngineState,
-	next: EngineState,
-	queued: number,
-	probe?: EngineProbe,
+        prev: EngineState,
+        next: EngineState,
+        queued: number,
+        probe?: EngineProbe,
 ): { message: string; level: "info" | "warning" } | undefined {
-	if (prev === next || next === "unknown" || prev === "unknown") return undefined;
-	if (next === "blocked") {
-		const owner = probe?.owner?.pid ? ` (pid ${probe.owner.pid})` : "";
-		const why =
-			probe?.kind === "unauthorized"
-				? "another install's engine owns the port"
-				: probe?.kind === "occupied"
-					? "the port is held by another process"
-					: probe?.kind === "incompatible"
-						? "the engine build is incompatible"
-						: "the engine is not answering";
-		return {
-			message: `memory engine blocked — ${why}${owner}; run \`unown engine status\`; chat unaffected`,
-			level: "warning",
-		};
-	}
-	if (next === "paused")
-		return {
-			message:
-				"memory engine won't start (repeated failures) — run `unown engine status`; chat unaffected, notes keep queuing locally",
-			level: "warning",
-		};
-	if (next === "down")
-		return {
-			message: "memory engine unreachable — chat unaffected, notes queue locally",
-			level: "warning",
-		};
-	if (next === "up") {
-		const draining = prev !== "starting" && queued > 0 ? ` — draining ${queued} queued note(s)` : "";
-		return { message: `memory engine online — learning resumed${draining}`, level: "info" };
-	}
-	return undefined;
+        if (prev === next || next === "unknown" || prev === "unknown") return undefined;
+        if (next === "blocked") {
+                const owner = probe?.owner?.pid ? ` (pid ${probe.owner.pid})` : "";
+                const why =
+                        probe?.kind === "unauthorized"
+                                ? "another install's engine owns the port"
+                                : probe?.kind === "occupied"
+                                        ? "the port is held by another process"
+                                        : probe?.kind === "incompatible"
+                                                ? "the engine build is incompatible"
+                                                : "the engine is not answering";
+                return {
+                        message: `memory engine blocked — ${why}${owner}; run \`unown engine status\`; chat unaffected`,
+                        level: "warning",
+                };
+        }
+        if (next === "paused")
+                return {
+                        message:
+                                "memory engine won't start (repeated failures) — run `unown engine status`; chat unaffected, notes keep queuing locally",
+                        level: "warning",
+                };
+        if (next === "down")
+                return {
+                        message: "memory engine unreachable — chat unaffected, notes queue locally",
+                        level: "warning",
+                };
+        if (next === "up") {
+                const draining = prev !== "starting" && queued > 0 ? ` — draining ${queued} queued note(s)` : "";
+                return { message: `memory engine online — learning resumed${draining}`, level: "info" };
+        }
+        return undefined;
 }
 
 /**
@@ -269,15 +269,15 @@ export function engineToastText(
  * until `unown engine restart`. Pure so the copy is pinnable.
  */
 export function engineBuildToastText(
-	engine: EngineBuildRef | undefined,
-	now: number = Date.now(),
+        engine: EngineBuildRef | undefined,
+        now: number = Date.now(),
 ): { message: string; level: "info" | "warning" } {
-	const v = engine?.version ?? "unknown";
-	const age = engine?.bootedAt ? formatDuration(Math.max(0, now - engine.bootedAt)) : "unknown";
-	return {
-		message: `memory engine is an older build (v${v}, booted ${age} ago) — run \`unown engine restart\`; chat unaffected`,
-		level: "info",
-	};
+        const v = engine?.version ?? "unknown";
+        const age = engine?.bootedAt ? formatDuration(Math.max(0, now - engine.bootedAt)) : "unknown";
+        return {
+                message: `memory engine is an older build (v${v}, booted ${age} ago) — run \`unown engine restart\`; chat unaffected`,
+                level: "info",
+        };
 }
 
 // ---------------------------------------------------------------------------
@@ -286,12 +286,12 @@ export function engineBuildToastText(
 
 /** The disk-derived facts behind the footer's delight segment. */
 export interface MemoryBarInfo {
-	/** Provenance sidecar version; 0 when the sidecar is absent (never dreamed). */
-	version: number;
-	/** "- " bullets under "## " sections in project.md. */
-	rules: number;
-	/** Provenance `at` (epoch ms); undefined when the sidecar is absent. */
-	dreamedAt?: number;
+        /** Provenance sidecar version; 0 when the sidecar is absent (never dreamed). */
+        version: number;
+        /** "- " bullets under "## " sections in project.md. */
+        rules: number;
+        /** Provenance `at` (epoch ms); undefined when the sidecar is absent. */
+        dreamedAt?: number;
 }
 
 /** Count the bullet rules under "## " sections — the project-memory render's
@@ -300,16 +300,16 @@ export interface MemoryBarInfo {
  *  before the first section don't count: no render shape produces them, and
  *  a hand-written preamble is not the engine's learning. */
 export function countProjectRules(content: string): number {
-	let inSection = false;
-	let n = 0;
-	for (const line of content.split(/\r?\n/)) {
-		if (/^##\s/.test(line)) {
-			inSection = true;
-			continue;
-		}
-		if (inSection && /^- /.test(line)) n++;
-	}
-	return n;
+        let inSection = false;
+        let n = 0;
+        for (const line of content.split(/\r?\n/)) {
+                if (/^##\s/.test(line)) {
+                        inSection = true;
+                        continue;
+                }
+                if (inSection && /^- /.test(line)) n++;
+        }
+        return n;
 }
 
 /** Humanize a dreamed age the way engineBusySuffix humanizes job elapsed —
@@ -319,13 +319,13 @@ export function countProjectRules(content: string): number {
  *  contract already accepts for the activity suffix, never the twice-a-
  *  minute seconds granularity it forbids. */
 export function humanizeDreamAge(ageMs: number): string {
-	const s = Math.max(0, Math.floor(ageMs / 1000));
-	if (s < 60) return "just now";
-	const m = Math.floor(s / 60);
-	if (m < 60) return `${m}m ago`;
-	const h = Math.floor(m / 60);
-	if (h < 24) return `${h}h ago`;
-	return `${Math.floor(h / 24)}d ago`;
+        const s = Math.max(0, Math.floor(ageMs / 1000));
+        if (s < 60) return "just now";
+        const m = Math.floor(s / 60);
+        if (m < 60) return `${m}m ago`;
+        const h = Math.floor(m / 60);
+        if (h < 24) return `${h}h ago`;
+        return `${Math.floor(h / 24)}d ago`;
 }
 
 /** The one-line bar: `mem ▕█░░▏ v17 · 4 rules · dreamed 12m ago`.
@@ -337,12 +337,12 @@ export function humanizeDreamAge(ageMs: number): string {
  *  400-rule project pins the meter full rather than overflowing it; the
  *  honest count rides next to it in plain digits). */
 export function formatMemoryBar(info: MemoryBarInfo, now: number = Date.now()): string {
-	const cells = 4;
-	const clampedRules = Math.min(Math.max(info.rules, 0), 16);
-	const filled = Math.max(0, Math.min(cells, Math.round((clampedRules / 16) * cells)));
-	const bar = "█".repeat(filled) + "░".repeat(cells - filled);
-	const dreamed = info.dreamedAt !== undefined ? ` · dreamed ${humanizeDreamAge(now - info.dreamedAt)}` : "";
-	return `mem ▕${bar}▏ v${info.version} · ${info.rules} rule${info.rules === 1 ? "" : "s"}${dreamed}`;
+        const cells = 4;
+        const clampedRules = Math.min(Math.max(info.rules, 0), 16);
+        const filled = Math.max(0, Math.min(cells, Math.round((clampedRules / 16) * cells)));
+        const bar = "█".repeat(filled) + "░".repeat(cells - filled);
+        const dreamed = info.dreamedAt !== undefined ? ` · dreamed ${humanizeDreamAge(now - info.dreamedAt)}` : "";
+        return `mem ▕${bar}▏ v${info.version} · ${info.rules} rule${info.rules === 1 ? "" : "s"}${dreamed}`;
 }
 
 /** Read the bar's facts from the project's own files. null = no project
@@ -350,17 +350,17 @@ export function formatMemoryBar(info: MemoryBarInfo, now: number = Date.now()): 
  *  which is exactly the pre-M3 footer. A missing sidecar is NOT null: the
  *  memory file exists, it just was never dreamed (v0, no dreamed segment). */
 export function readMemoryBarInfo(projectDir: string): MemoryBarInfo | null {
-	try {
-		const content = readFileSync(projectMemoryPath(projectDir), "utf8");
-		const provenance = readProjectProvenance(projectDir);
-		return {
-			version: provenance?.version ?? 0,
-			rules: countProjectRules(content),
-			dreamedAt: provenance?.at,
-		};
-	} catch {
-		return null;
-	}
+        try {
+                const content = readFileSync(projectMemoryPath(projectDir), "utf8");
+                const provenance = readProjectProvenance(projectDir);
+                return {
+                        version: provenance?.version ?? 0,
+                        rules: countProjectRules(content),
+                        dreamedAt: provenance?.at,
+                };
+        } catch {
+                return null;
+        }
 }
 
 // ---------------------------------------------------------------------------
@@ -389,56 +389,65 @@ export const DREAM_NEWS_MAX_AGE_MS = 3_600_000;
  *     Map for exactly this session's lifetime);
  *   - only fresh ones (≤ DREAM_NEWS_MAX_AGE_MS old) — stale news is no news. */
 export function shouldToastDreamNews(
-	seen: Map<string, string> | null | undefined,
-	news: DreamNews | null | undefined,
-	projectSlug: string | undefined,
-	now: number = Date.now(),
+        seen: Map<string, string> | null | undefined,
+        news: DreamNews | null | undefined,
+        projectSlug: string | undefined,
+        now: number = Date.now(),
 ): boolean {
-	if (!news || !projectSlug) return false;
-	if (news.project !== projectSlug) return false;
-	if (!(news.added > 0)) return false;
-	if (news.id === seen?.get(projectSlug)) return false;
-	if (!(now - news.at <= DREAM_NEWS_MAX_AGE_MS)) return false;
-	return true;
+        if (!news || !projectSlug) return false;
+        if (news.project !== projectSlug) return false;
+        if (!(news.added > 0)) return false;
+        if (news.id === seen?.get(projectSlug)) return false;
+        if (!(now - news.at <= DREAM_NEWS_MAX_AGE_MS)) return false;
+        return true;
 }
 
 /** The toast copy — the confirmation moment. The version pair is honest:
  *  project dreams allocate MAX(version)+1, so `from` is always `to - 1`
  *  (v0 → v1 on the first mint says "there was no prior version"). */
 export function dreamNewsToastText(news: DreamNews): string {
-	const rules = `${news.added} new rule${news.added === 1 ? "" : "s"}`;
-	return `✦ AutoDream learned ${rules} for this project (v${Math.max(0, news.version - 1)} → v${news.version})`;
+        const rules = `${news.added} new rule${news.added === 1 ? "" : "s"}`;
+        return `✦ AutoDream learned ${rules} for this project (v${Math.max(0, news.version - 1)} → v${news.version})`;
 }
 
 export interface EngineStatusHooks {
-	/** Footer line setter (ctx.ui.setStatus("engine", text) — guarded by caller). */
-	onFooter?: (text: string | undefined) => void;
-	/** Toast (ctx.ui.notify — guarded by caller). */
-	onToast?: (message: string, level: "info" | "warning") => void;
-	/** M3: the terminal session's project dir — drives the memory-bar
-	 *  segment (files read at probe cadence) and the dream-news project
-	 *  filter (slugified the same way the engine groups notes). */
-	projectDir?: string;
-	/** Injectable probe (tests); defaults to the taxonomy probe with the short timeout. */
-	probe?: () => Promise<{
-		up: boolean;
-		pid?: number;
-		busyMs?: number;
-		activeJob?: string;
-		version?: EngineBuildRef;
-		dreamNews?: DreamNews;
-		kind?: EngineProbeKind;
-		probe?: EngineProbe;
-	}>;
-	/** Injectable spawn kick (tests); defaults to the real gated supervisor call. */
-	kickSpawn?: () => Promise<boolean>;
+        /** Footer line setter (ctx.ui.setStatus("engine", text) — guarded by caller). */
+        onFooter?: (text: string | undefined) => void;
+        /** Toast (ctx.ui.notify — guarded by caller). */
+        onToast?: (message: string, level: "info" | "warning") => void;
+        /** The observability round's learning feed: fired at the same
+         * once-per-new-dream gate as the toast, with the toast's text — the
+         * feed records what the toast celebrated. */
+        onDreamNews?: (text: string) => void;
+        /** The observability round's learning feed: fired when the project's
+         * memory version advances between probe-cadence reads (a dream or a
+         * reconcile re-rendered the tier file). (from, to) — from is the
+         * previous read's version, not necessarily to-1. */
+        onMemoryVersion?: (from: number, to: number) => void;
+        /** M3: the terminal session's project dir — drives the memory-bar
+         *  segment (files read at probe cadence) and the dream-news project
+         *  filter (slugified the same way the engine groups notes). */
+        projectDir?: string;
+        /** Injectable probe (tests); defaults to the taxonomy probe with the short timeout. */
+        probe?: () => Promise<{
+                up: boolean;
+                pid?: number;
+                busyMs?: number;
+                activeJob?: string;
+                version?: EngineBuildRef;
+                dreamNews?: DreamNews;
+                kind?: EngineProbeKind;
+                probe?: EngineProbe;
+        }>;
+        /** Injectable spawn kick (tests); defaults to the real gated supervisor call. */
+        kickSpawn?: () => Promise<boolean>;
 }
 
 export interface EngineStatusLoop {
-	stop(): void;
-	info(): EngineStatusInfo;
-	/** Force an immediate probe (used by /engine for a fresh answer). */
-	probeNow(): Promise<EngineStatusInfo>;
+        stop(): void;
+        info(): EngineStatusInfo;
+        /** Force an immediate probe (used by /engine for a fresh answer). */
+        probeNow(): Promise<EngineStatusInfo>;
 }
 
 // ---------------------------------------------------------------------------
@@ -450,30 +459,30 @@ let loop: EngineStatusLoop | null = null;
 
 /** Latest known engine status for /engine, /learning and doctor (never probes). */
 export function getEngineStatusInfo(): EngineStatusInfo {
-	if (loop) return loop.info();
-	// No loop (print mode, CLI subcommands, tests): report from a cheap
-	// file-only snapshot — outbox counts + the spawn circuit, state unknown.
-	return snapshotOf("unknown");
+        if (loop) return loop.info();
+        // No loop (print mode, CLI subcommands, tests): report from a cheap
+        // file-only snapshot — outbox counts + the spawn circuit, state unknown.
+        return snapshotOf("unknown");
 }
 
 function snapshotOf(state: EngineState, extra?: Partial<EngineStatusInfo>): EngineStatusInfo {
-	const stats = outboxStats();
-	const snap: EngineStatusInfo = {
-		state,
-		since: extra?.since ?? Date.now(),
-		lastProbeAt: extra?.lastProbeAt ?? 0,
-		pid: extra?.pid,
-		busyMs: extra?.busyMs,
-		activeJob: extra?.activeJob,
-		queuedNotes: stats.queued,
-		droppedNotes: stats.dropped,
-		deadNotes: stats.dead,
-		spawn: readSpawnState(),
-		engineVersion: extra?.engineVersion,
-		buildVerdict: extra?.buildVerdict,
-	};
-	if (extra?.probe) snap.probe = extra.probe;
-	return snap;
+        const stats = outboxStats();
+        const snap: EngineStatusInfo = {
+                state,
+                since: extra?.since ?? Date.now(),
+                lastProbeAt: extra?.lastProbeAt ?? 0,
+                pid: extra?.pid,
+                busyMs: extra?.busyMs,
+                activeJob: extra?.activeJob,
+                queuedNotes: stats.queued,
+                droppedNotes: stats.dropped,
+                deadNotes: stats.dead,
+                spawn: readSpawnState(),
+                engineVersion: extra?.engineVersion,
+                buildVerdict: extra?.buildVerdict,
+        };
+        if (extra?.probe) snap.probe = extra.probe;
+        return snap;
 }
 
 /**
@@ -483,236 +492,245 @@ function snapshotOf(state: EngineState, extra?: Partial<EngineStatusInfo>): Engi
  * cares about the PROCESS, not the session branch).
  */
 export function startEngineStatusLoop(hooks: EngineStatusHooks = {}): EngineStatusLoop {
-	if (loop) return loop;
+        if (loop) return loop;
 
-	let state: EngineState = "unknown";
-	let since = Date.now();
-	let lastProbeAt = 0;
-	let detail: { pid?: number; busyMs?: number; activeJob?: string; probe?: EngineProbe } = {};
-	// M8: the last up-probe's version handshake — engine block + verdict.
-	// Cleared on a down probe (a stale verdict about an engine we cannot
-	// reach would be a lie on the footer).
-	let build: { engineVersion?: EngineBuildRef; buildVerdict?: EngineBuildComparison } = {};
-	// M8: the verdict the PREVIOUS up probe observed — the fresh→stale
-	// toast fires only on the transition, exactly once (undefined at
-	// session start ⇒ a session that begins stale stays quiet).
-	let lastBuildVerdict: ReturnType<typeof compareEngineBuild>["verdict"] | undefined;
-	// M3: the memory-bar segment — recomputed at PROBE cadence from the
-	// project's own files (two small reads), never per keystroke. undefined
-	// whenever there is nothing to show (no memory file / read error / no
-	// project dir — print mode and CLI subcommands never pass one), which
-	// leaves the pre-M3 footer byte-identical.
-	let memoryBar: string | undefined;
-	// M3: the dream-news latch — last-seen dream id per project slug, an
-	// IN-MEMORY Map held by this loop (the loop is the terminal session:
-	// started at session_start, stopped at session_shutdown). Deliberately
-	// NOT a persisted file: the 1h freshness window already bounds how long
-	// one dream can be news, so the worst case an in-memory latch permits —
-	// a second session re-announcing the same still-fresh learning ONCE,
-	// as its own welcome-back line — is the per-session semantics we want,
-	// while a state file would add home-dir bookkeeping (writes, pruning,
-	// versioning) to a cosmetic toast for zero user-visible benefit.
-	const dreamSeen = new Map<string, string>();
-	const projectSlug = hooks.projectDir ? slugifyPath(hooks.projectDir) : undefined;
-	let timer: ReturnType<typeof setInterval> | null = null;
-	// Fast re-probes after a spawn kick: 2s, 5s, 9s, 16s (bounded 4 tries).
-	let fastProbeTimers: Array<ReturnType<typeof setTimeout>> = [];
-	const probe =
-		hooks.probe ??
-		(async () => {
-			const p = await probeEngine({
-				endpoint: process.env.UNOWN_ENGINE_URL || ENGINE_URL,
-				timeoutMs: probeTimeoutMs(),
-			});
-			if (p.kind !== "ok") return { up: false, kind: p.kind, probe: p };
-			const body = p.body;
-			return {
-				up: true,
-				pid: body?.pid,
-				busyMs: body?.router?.busyMs,
-				activeJob: body?.router?.activeJob,
-				version: body?.version,
-				dreamNews: parseDreamNews(body?.dreamNews),
-				kind: "ok" as const,
-				probe: p,
-			};
-		});
-	const kickSpawn = hooks.kickSpawn ?? (() => spawnEngineDetached());
+        let state: EngineState = "unknown";
+        let since = Date.now();
+        let lastProbeAt = 0;
+        let detail: { pid?: number; busyMs?: number; activeJob?: string; probe?: EngineProbe } = {};
+        // M8: the last up-probe's version handshake — engine block + verdict.
+        // Cleared on a down probe (a stale verdict about an engine we cannot
+        // reach would be a lie on the footer).
+        let build: { engineVersion?: EngineBuildRef; buildVerdict?: EngineBuildComparison } = {};
+        // M8: the verdict the PREVIOUS up probe observed — the fresh→stale
+        // toast fires only on the transition, exactly once (undefined at
+        // session start ⇒ a session that begins stale stays quiet).
+        let lastBuildVerdict: ReturnType<typeof compareEngineBuild>["verdict"] | undefined;
+        // M3: the memory-bar segment — recomputed at PROBE cadence from the
+        // project's own files (two small reads), never per keystroke. undefined
+        // whenever there is nothing to show (no memory file / read error / no
+        // project dir — print mode and CLI subcommands never pass one), which
+        // leaves the pre-M3 footer byte-identical.
+        let memoryBar: string | undefined;
+        // The observability round: the previous probe's memory version, for the
+        // onMemoryVersion transition hook. undefined until the first read — a
+        // first read is a fact, not an event.
+        let lastMemoryVersion: number | undefined;
+        // M3: the dream-news latch — last-seen dream id per project slug, an
+        // IN-MEMORY Map held by this loop (the loop is the terminal session:
+        // started at session_start, stopped at session_shutdown). Deliberately
+        // NOT a persisted file: the 1h freshness window already bounds how long
+        // one dream can be news, so the worst case an in-memory latch permits —
+        // a second session re-announcing the same still-fresh learning ONCE,
+        // as its own welcome-back line — is the per-session semantics we want,
+        // while a state file would add home-dir bookkeeping (writes, pruning,
+        // versioning) to a cosmetic toast for zero user-visible benefit.
+        const dreamSeen = new Map<string, string>();
+        const projectSlug = hooks.projectDir ? slugifyPath(hooks.projectDir) : undefined;
+        let timer: ReturnType<typeof setInterval> | null = null;
+        // Fast re-probes after a spawn kick: 2s, 5s, 9s, 16s (bounded 4 tries).
+        let fastProbeTimers: Array<ReturnType<typeof setTimeout>> = [];
+        const probe =
+                hooks.probe ??
+                (async () => {
+                        const p = await probeEngine({
+                                endpoint: process.env.UNOWN_ENGINE_URL || ENGINE_URL,
+                                timeoutMs: probeTimeoutMs(),
+                        });
+                        if (p.kind !== "ok") return { up: false, kind: p.kind, probe: p };
+                        const body = p.body;
+                        return {
+                                up: true,
+                                pid: body?.pid,
+                                busyMs: body?.router?.busyMs,
+                                activeJob: body?.router?.activeJob,
+                                version: body?.version,
+                                dreamNews: parseDreamNews(body?.dreamNews),
+                                kind: "ok" as const,
+                                probe: p,
+                        };
+                });
+        const kickSpawn = hooks.kickSpawn ?? (() => spawnEngineDetached());
 
-	const publish = (next: EngineState, forceToast = false) => {
-		const prev = state;
-		if (prev !== next) since = Date.now();
-		state = next;
-		lastProbeAt = Date.now();
-		if (hooks.onFooter) hooks.onFooter(engineFooterText(info(), memoryBar));
-		if (prev !== next || forceToast) {
-			const toast = engineToastText(prev, next, outboxStats().queued, detail.probe);
-			if (toast && prev !== "unknown") hooks.onToast?.(toast.message, toast.level);
-			// prev === "unknown" (session start): footer appears silently — the
-			// initial state is a fact, not an event (deliberate engine-off users
-			// must not be greeted by a warning on every boot).
-		}
-	};
+        const publish = (next: EngineState, forceToast = false) => {
+                const prev = state;
+                if (prev !== next) since = Date.now();
+                state = next;
+                lastProbeAt = Date.now();
+                if (hooks.onFooter) hooks.onFooter(engineFooterText(info(), memoryBar));
+                if (prev !== next || forceToast) {
+                        const toast = engineToastText(prev, next, outboxStats().queued, detail.probe);
+                        if (toast && prev !== "unknown") hooks.onToast?.(toast.message, toast.level);
+                        // prev === "unknown" (session start): footer appears silently — the
+                        // initial state is a fact, not an event (deliberate engine-off users
+                        // must not be greeted by a warning on every boot).
+                }
+        };
 
-	const info = (): EngineStatusInfo => snapshotOf(state, { since, lastProbeAt, ...detail, ...build });
+        const info = (): EngineStatusInfo => snapshotOf(state, { since, lastProbeAt, ...detail, ...build });
 
-	/** M3: re-read the memory-bar facts. Runs inside runProbe (the probe
-	 *  cadence), wrapped so ANY failure simply drops the segment — the
-	 *  bar is decoration and must never be able to break the loop. */
-	const refreshMemoryBar = () => {
-		if (!hooks.projectDir) {
-			memoryBar = undefined;
-			return;
-		}
-		try {
-			const bar = readMemoryBarInfo(hooks.projectDir);
-			memoryBar = bar ? formatMemoryBar(bar) : undefined;
-		} catch {
-			memoryBar = undefined;
-		}
-	};
+        /** M3: re-read the memory-bar facts. Runs inside runProbe (the probe
+         *  cadence), wrapped so ANY failure simply drops the segment — the
+         *  bar is decoration and must never be able to break the loop. */
+        const refreshMemoryBar = () => {
+                if (!hooks.projectDir) {
+                        memoryBar = undefined;
+                        return;
+                }
+                try {
+                        const bar = readMemoryBarInfo(hooks.projectDir);
+                        memoryBar = bar ? formatMemoryBar(bar) : undefined;
+                        if (bar && typeof hooks.onMemoryVersion === "function" && lastMemoryVersion !== undefined && bar.version > lastMemoryVersion) {
+                                hooks.onMemoryVersion(lastMemoryVersion, bar.version);
+                        }
+                        if (bar) lastMemoryVersion = bar.version;
+                } catch {
+                        memoryBar = undefined;
+                }
+        };
 
-	/** M3: the dream-news toast decision for an up probe's news block.
-	 *  The latch is set BEFORE the toast fires, so even a throwing notify
-	 *  cannot double-fire on the next probe (30s later). */
-	const considerDreamNews = (news: DreamNews | undefined) => {
-		if (!news || !projectSlug) return;
-		if (!shouldToastDreamNews(dreamSeen, news, projectSlug)) return;
-		dreamSeen.set(projectSlug, news.id);
-		hooks.onToast?.(dreamNewsToastText(news), "info");
-	};
+        /** M3: the dream-news toast decision for an up probe's news block.
+         *  The latch is set BEFORE the toast fires, so even a throwing notify
+         *  cannot double-fire on the next probe (30s later). */
+        const considerDreamNews = (news: DreamNews | undefined) => {
+                if (!news || !projectSlug) return;
+                if (!shouldToastDreamNews(dreamSeen, news, projectSlug)) return;
+                dreamSeen.set(projectSlug, news.id);
+                hooks.onToast?.(dreamNewsToastText(news), "info");
+                hooks.onDreamNews?.(dreamNewsToastText(news));
+        };
 
-	/** M8: the version handshake of an up probe — classify the engine's
-	 *  build against ours, publish it, and fire the one-per-transition
-	 *  stale toast. The agent's sha is resolved lazily ONCE (a git spawn)
-	 *  and cached by engine-version.ts; codeMtimeMs is a statSync. */
-	const publishBuild = (engineVersion: EngineBuildRef | undefined) => {
-		const cmp = compareEngineBuild(
-			{ version: agentVersion(), gitSha: agentGitSha(), codeMtimeMs: codeMtimeMs() },
-			engineVersion,
-			Date.now(),
-		);
-		build = { engineVersion, buildVerdict: cmp }; // engineVersion absent on pre-M8 engines — the verdict says "unknown"
-		const staleish = cmp.verdict === "old-build" || cmp.verdict === "stale" || cmp.verdict === "ancient";
-		if (staleish && lastBuildVerdict === "fresh") {
-			const toast = engineBuildToastText(engineVersion);
-			hooks.onToast?.(toast.message, toast.level);
-		}
-		lastBuildVerdict = cmp.verdict;
-	};
+        /** M8: the version handshake of an up probe — classify the engine's
+         *  build against ours, publish it, and fire the one-per-transition
+         *  stale toast. The agent's sha is resolved lazily ONCE (a git spawn)
+         *  and cached by engine-version.ts; codeMtimeMs is a statSync. */
+        const publishBuild = (engineVersion: EngineBuildRef | undefined) => {
+                const cmp = compareEngineBuild(
+                        { version: agentVersion(), gitSha: agentGitSha(), codeMtimeMs: codeMtimeMs() },
+                        engineVersion,
+                        Date.now(),
+                );
+                build = { engineVersion, buildVerdict: cmp }; // engineVersion absent on pre-M8 engines — the verdict says "unknown"
+                const staleish = cmp.verdict === "old-build" || cmp.verdict === "stale" || cmp.verdict === "ancient";
+                if (staleish && lastBuildVerdict === "fresh") {
+                        const toast = engineBuildToastText(engineVersion);
+                        hooks.onToast?.(toast.message, toast.level);
+                }
+                lastBuildVerdict = cmp.verdict;
+        };
 
-	const runProbe = async (): Promise<EngineStatusInfo> => {
-		refreshMemoryBar(); // M3: bar facts ride the probe cadence (never per keystroke)
-		let probeKind: EngineProbeKind | undefined;
-		try {
-			const h = await probe();
-			probeKind = h.kind;
-			if (h.up) {
-				detail = { pid: h.pid, busyMs: h.busyMs, activeJob: h.activeJob, probe: h.probe };
-				publishBuild(h.version); // before publish(): the footer render reads it
-				markEngineHealthy(); // observed healthy → reset the crash-loop circuit
-				publish("up");
-				considerDreamNews(h.dreamNews); // after publish: the news toast is a rider on a healthy probe
-				return info();
-			}
-			detail = { probe: h.probe };
-		} catch {
-			/* probe errors are simply "down" — the taxonomy probe never throws,
-			 * but a custom probe might; never let the loop die. */
-			detail = {};
-		}
-		build = {};
-		// A foreign engine, an occupied port, an incompatible build or a hung
-		// port is not a crash: publish "blocked", do not kick, and do not start
-		// the fast re-probe ladder (nothing this loop can start would help).
-		const kind = probeKind ?? "refused";
-		if (kind !== "refused") {
-			publish("blocked");
-			return info();
-		}
-		// Down. Paused wins when the crash-loop circuit gave up; otherwise kick
-		// a (gated) auto-start and expect it up shortly.
-		const circuit = readSpawnState();
-		if (circuit.gaveUp) {
-			publish("paused");
-			return info();
-		}
-		let kicked = false;
-		if (!SPAWN_DISABLED && !autoStartDisabled()) kicked = await kickSpawn().catch(() => false);
-		publish(kicked ? "starting" : "down");
-		if (kicked) scheduleFastReprobes();
-		return info();
-	};
+        const runProbe = async (): Promise<EngineStatusInfo> => {
+                refreshMemoryBar(); // M3: bar facts ride the probe cadence (never per keystroke)
+                let probeKind: EngineProbeKind | undefined;
+                try {
+                        const h = await probe();
+                        probeKind = h.kind;
+                        if (h.up) {
+                                detail = { pid: h.pid, busyMs: h.busyMs, activeJob: h.activeJob, probe: h.probe };
+                                publishBuild(h.version); // before publish(): the footer render reads it
+                                markEngineHealthy(); // observed healthy → reset the crash-loop circuit
+                                publish("up");
+                                considerDreamNews(h.dreamNews); // after publish: the news toast is a rider on a healthy probe
+                                return info();
+                        }
+                        detail = { probe: h.probe };
+                } catch {
+                        /* probe errors are simply "down" — the taxonomy probe never throws,
+                         * but a custom probe might; never let the loop die. */
+                        detail = {};
+                }
+                build = {};
+                // A foreign engine, an occupied port, an incompatible build or a hung
+                // port is not a crash: publish "blocked", do not kick, and do not start
+                // the fast re-probe ladder (nothing this loop can start would help).
+                const kind = probeKind ?? "refused";
+                if (kind !== "refused") {
+                        publish("blocked");
+                        return info();
+                }
+                // Down. Paused wins when the crash-loop circuit gave up; otherwise kick
+                // a (gated) auto-start and expect it up shortly.
+                const circuit = readSpawnState();
+                if (circuit.gaveUp) {
+                        publish("paused");
+                        return info();
+                }
+                let kicked = false;
+                if (!SPAWN_DISABLED && !autoStartDisabled()) kicked = await kickSpawn().catch(() => false);
+                publish(kicked ? "starting" : "down");
+                if (kicked) scheduleFastReprobes();
+                return info();
+        };
 
-	const scheduleFastReprobes = () => {
-		for (const delay of [2_000, 5_000, 9_000, 16_000]) {
-			fastProbeTimers.push(
-				setTimeout(() => {
-					void runProbe();
-				}, delay).unref?.(),
-			);
-		}
-	};
+        const scheduleFastReprobes = () => {
+                for (const delay of [2_000, 5_000, 9_000, 16_000]) {
+                        fastProbeTimers.push(
+                                setTimeout(() => {
+                                        void runProbe();
+                                }, delay).unref?.(),
+                        );
+                }
+        };
 
-	const stop = () => {
-		if (timer) clearInterval(timer);
-		timer = null;
-		for (const t of fastProbeTimers) clearTimeout(t);
-		fastProbeTimers = [];
-		loop = null;
-	};
+        const stop = () => {
+                if (timer) clearInterval(timer);
+                timer = null;
+                for (const t of fastProbeTimers) clearTimeout(t);
+                fastProbeTimers = [];
+                loop = null;
+        };
 
-	timer = setInterval(() => {
-		void runProbe();
-	}, probeIntervalMs());
-	timer.unref?.();
-	void runProbe(); // first answer within ~1s of session start
+        timer = setInterval(() => {
+                void runProbe();
+        }, probeIntervalMs());
+        timer.unref?.();
+        void runProbe(); // first answer within ~1s of session start
 
-	loop = {
-		stop,
-		info,
-		probeNow: () => runProbe(),
-	};
-	return loop;
+        loop = {
+                stop,
+                info,
+                probeNow: () => runProbe(),
+        };
+        return loop;
 }
 
 /** Stop the loop if running (session_shutdown reason=quit). */
 export function stopEngineStatusLoop() {
-	loop?.stop();
-	loop = null;
+        loop?.stop();
+        loop = null;
 }
 
 /** Is a recent probe confidently down? (fast-path hint for note delivery —
  * the shutdown handler passes it as assumeDown so an engine-down quit never
  * pays the probe+POST round trips, even against a hanging port.) */
 export function engineAssumedDown(): boolean {
-	if (!loop) return false;
-	const info = loop.info();
-	if (info.state !== "down" && info.state !== "paused" && info.state !== "blocked") return false;
-	// Trust the snapshot only while fresh: 2x interval (or 60s floor) since
-	// the last probe; after that a delivery should re-probe for itself.
-	const maxAge = Math.max(60_000, 2 * probeIntervalMs());
-	return Date.now() - info.lastProbeAt < maxAge;
+        if (!loop) return false;
+        const info = loop.info();
+        if (info.state !== "down" && info.state !== "paused" && info.state !== "blocked") return false;
+        // Trust the snapshot only while fresh: 2x interval (or 60s floor) since
+        // the last probe; after that a delivery should re-probe for itself.
+        const maxAge = Math.max(60_000, 2 * probeIntervalMs());
+        return Date.now() - info.lastProbeAt < maxAge;
 }
 
 /** Human summary of the supervisor's crash-loop circuit, for /engine + CLI. */
 export function describeSpawnCircuit(state: SpawnState): string {
-	const cause =
-		state.lastCause === "unauthorized"
-			? "the engine rejected this CLI's token"
-			: state.lastCause === "occupied"
-				? "the port is held by another process"
-				: state.lastCause === "incompatible"
-					? "the engine build/API is incompatible"
-					: state.lastCause === "unreachable"
-						? "the engine did not answer"
-						: undefined;
-	if (state.gaveUp)
-		return `gave up after ${state.attempts} failed start(s)${cause ? ` — last probe: ${cause}` : ""} — run \`unown engine start\` (resets the circuit), and check .run/engine.log; if the DB is corrupt: \`unown engine repair\``;
-	if (cause) return `auto-start blocked — ${cause}; no spawn attempted (run \`unown engine status\` for the owner)`;
-	const gate = evaluateSpawnGate(state);
-	if (gate.reason === "backoff")
-		return `backing off — attempt ${state.attempts}, next auto-start in ${Math.ceil((gate.retryInMs ?? 0) / 1000)}s (auto-start works, just spaced out)`;
-	if (state.attempts === 0) return "idle — no failed starts recorded";
-	return `${state.attempts} recent attempt(s) recorded, auto-start allowed`;
+        const cause =
+                state.lastCause === "unauthorized"
+                        ? "the engine rejected this CLI's token"
+                        : state.lastCause === "occupied"
+                                ? "the port is held by another process"
+                                : state.lastCause === "incompatible"
+                                        ? "the engine build/API is incompatible"
+                                        : state.lastCause === "unreachable"
+                                                ? "the engine did not answer"
+                                                : undefined;
+        if (state.gaveUp)
+                return `gave up after ${state.attempts} failed start(s)${cause ? ` — last probe: ${cause}` : ""} — run \`unown engine start\` (resets the circuit), and check .run/engine.log; if the DB is corrupt: \`unown engine repair\``;
+        if (cause) return `auto-start blocked — ${cause}; no spawn attempted (run \`unown engine status\` for the owner)`;
+        const gate = evaluateSpawnGate(state);
+        if (gate.reason === "backoff")
+                return `backing off — attempt ${state.attempts}, next auto-start in ${Math.ceil((gate.retryInMs ?? 0) / 1000)}s (auto-start works, just spaced out)`;
+        if (state.attempts === 0) return "idle — no failed starts recorded";
+        return `${state.attempts} recent attempt(s) recorded, auto-start allowed`;
 }

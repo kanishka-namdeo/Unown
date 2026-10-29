@@ -1,0 +1,36 @@
+ mission pinned: make the fixture app build green
+ An active /goal still takes precedence; /mission clear removes it.
+
+» read README.md and reply with the single word DONE
+
+
+✓  read /tmp/obs-fixture/README.md
+
+
+ DONE
+
+ ── brief · back after 0m ──
+ mission: make the fixture app build green (user)
+ happened: 1 turn · 1 tool call · unknown
+ changed:  /tmp/obs-fixture/README.md
+ last:     DONE
+ why:      /brief mines the decisions when you want them
+ conf:     high — no failures this session
+ learned:  nothing new while you were away
+ session:  0m · 3.1k in / 33 out
+ remains:  nothing open — the last turn settled
+
+» reply with the single word OK
+
+ OK
+
+ ● mission — make the fixture app build green (user · 0m)
+ ○ no tracked steps · conf ✓ · 0m in session
+»───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+📂 1  README.md
+/tmp/obs-fixture
+ctx ▕░░░░░░░░░░▏ 2.5%/524k (auto) ↓35 ↑5.9k CH78.6% R34k                                                         agnes-3.0-flash
+conf ✓ memory: up · old build turn <1s · ttft <1s · ctx 3% · in 5.9k out 35 (cached 34k)
+? help · ctrl+k palette · / commands · ! bash · ctrl+o tools · esc-esc tree

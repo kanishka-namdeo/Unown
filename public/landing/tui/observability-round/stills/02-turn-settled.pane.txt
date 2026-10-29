@@ -1,0 +1,36 @@
+── Context ──
+  memory/how-to-use.md (guide: how to read the memory tiers), memory/tier0-policy.md (enterprise policy — highest authority),
+.unown/memory/project.md (project memory — provenance in the injected header), memory/tier2-user.md (user memory — global
+preferences), .unown/memory/local.md (local overrides — highest precedence)
+
+── Skills ──
+  methodical-debugging, repo-exploration, unown-self-learning, verification-first
+
+── Extensions ──
+  <inline:6>
+
+── Themes ──
+  unown
+
+
+ mission pinned: make the fixture app build green
+ An active /goal still takes precedence; /mission clear removes it.
+
+» read README.md and reply with the single word DONE
+
+
+✓  read /tmp/obs-fixture/README.md
+
+
+ ⠼ Reading README.md... 0:01
+
+ ● mission — make the fixture app build green (user · 0m)
+ ○ no tracked steps · conf ✓ · 0m in session
+»───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+📂 1  README.md
+/tmp/obs-fixture
+ctx ▕░░░░░░░░░░▏ 2.5%/524k (auto) ↓31 ↑2.8k CH79.1% R10k                                                         agnes-3.0-flash
+conf ✓ memory: up · old build turn <1s · ttft <1s · ctx 3% · in 2.8k out 31 (cached 10.5k)
+escape interrupt · ctrl+o tools · ctrl+t thinking

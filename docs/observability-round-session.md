@@ -13,6 +13,7 @@
 
 - [Checkpoint 0 — setup, the stack verified, and the mission opened](#checkpoint-0--setup-the-stack-verified-and-the-mission-opened)
 - [Checkpoint 1 — phases 1-4: the research, the journeys, the audit, the architecture](#checkpoint-1--phases-1-4-the-research-the-journeys-the-audit-the-architecture)
+- [Checkpoint 2 — phase 5, the in-session surfaces: panel, brief, recovery, confidence, feed](#checkpoint-2--phase-5-the-in-session-surfaces-panel-brief-recovery-confidence-feed)
 
 ## The contract
 
@@ -93,3 +94,42 @@ feed, M6 telemetry rollups, M7 the dashboard Recovery screen. Each
 milestone lands with pinning tests, `docs/usage.md` + `cli.ts` HELP sync
 where the surface changes, a CHANGELOG entry, capture-lane stills, and a
 push.
+
+## Checkpoint 2 — phase 5, the in-session surfaces: panel, brief, recovery, confidence, feed
+
+**DONE.** The audit's feature ledger implemented as three pure cores
+(`mission.ts` ~440 lines, `recovery.ts` ~200, `learning-feed.ts` ~230) plus
+the tools.ts wiring (the mission state + `unown-mission` persistence lane,
+the `tool_execution_end` classifier, the turn-boundary refresh pass, the
+slow overview poll, four new commands) and the engine-status/todo-bridge
+seams. Everything through pi's documented surfaces — no fork, no new
+dependency, TUI-only guards, subagents never see any of it.
+
+| Surface | What it answers (audit flags) |
+|---|---|
+| The mission panel (widget `unown-mission`, `/mission`) | A1 A2 A4 A5 B1 C2 E1 — objective pinned, progress derived, confidence + drivers, risks composed, learning fresh |
+| The auto-brief + `/brief` (mission.ts buildBrief) | E4 E5 D1 — the 60-second returning-user answer, deterministic on the prompt path; /brief adds the decision miner |
+| `/recovery` + the `health` footer chip (recovery.ts) | A3 E6 E7 — failures classified once at tool_execution_end, worst-first with fix paths |
+| The ambient learning feed + `/feed` + the `feed` chip (learning-feed.ts) | D1 E8 E9 — dream news, memory versions, improvements, notes consolidated |
+| Confidence scoring (mission.ts deriveConfidence) | A5 B3 D3 — receipts only: tool errors, verify failures, denials → ✓/◐/✗ |
+| Telemetry rollups | B2 — session cost/time in the panel and brief (the /usage attribution) |
+
+**VERIFIED:**
+
+| Gate | Result |
+|---|---|
+| `bun test test/` (self-learning suite, this machine) | 5045 tests — 4944 pass, 101 env-gated skips, **0 fail** (43 new pinning tests: mission 21, recovery 12, learning-feed 14... plus the recap persisted-name pin) |
+| Live PTY capture (`scripts/tui-capture/pty_capture_observability.py`) | all six surfaces asserted from the literal pane text against the real stack (bridge + engine + Agnes): the mission line, the conf chip, the brief's mission/happened/remains rows, the recovery/feed/brief cards — stills + pane dumps committed under `public/landing/tui/observability-round/stills/` |
+| Docs/env sync | `usage.md` (the Mission & observability section + 4 command rows), `configuration.md` + `.env.example` (UNOWN_MISSION_PANEL + the two rows that had drifted out of the example file) |
+| CHANGELOG | the observability round entry (Added + the two Fixed: the persisted-digest `unknown` tool names — a pre-existing recap.ts bug the brief's live capture caught — and the env-example sync gap) |
+
+**Dogfood finding fixed in-round** (failure → root cause → pin → fix): the
+brief's "happened" row printed `unknown` for every persisted tool —
+recap.ts read `toolName` from entries that carry `name`. Root-caused against
+the real session JSONL, pinned in `test/recap.test.ts`, fixed in the same
+change.
+
+**NEXT.** Phase 5's remaining milestone (M7): the dashboard Recovery screen
+composing failed jobs/runs/denials/dead letters; then Phase 6 dogfood
+validation (the OB-1..OB-8 benchmark receipts), Phase 7 trust tests, the
+landing/README/blog pass, and the v0.0.45 release with builds.

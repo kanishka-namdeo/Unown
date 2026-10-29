@@ -31,31 +31,31 @@ export const RECAP_IDLE_MINUTES_ENV = "UNOWN_RECAP_IDLE_MINUTES";
 export const DEFAULT_RECAP_IDLE_MINUTES = 3;
 
 export interface RecapConfig {
-	minutes?: number;
+        minutes?: number;
 }
 
 export interface RecapDecision {
-	action: "show" | "skip";
-	reason: string;
-	idleMinutes: number;
+        action: "show" | "skip";
+        reason: string;
+        idleMinutes: number;
 }
 
 export function resolveRecapConfig(cfg?: RecapConfig): Required<RecapConfig> {
-	const raw = process.env[RECAP_IDLE_MINUTES_ENV];
-	const envMinutes = typeof raw === "string" && raw.trim() !== "" ? Number(raw) : NaN;
-	const minutes = Number.isFinite(envMinutes) && envMinutes >= 0 ? envMinutes : (cfg?.minutes ?? DEFAULT_RECAP_IDLE_MINUTES);
-	return { minutes };
+        const raw = process.env[RECAP_IDLE_MINUTES_ENV];
+        const envMinutes = typeof raw === "string" && raw.trim() !== "" ? Number(raw) : NaN;
+        const minutes = Number.isFinite(envMinutes) && envMinutes >= 0 ? envMinutes : (cfg?.minutes ?? DEFAULT_RECAP_IDLE_MINUTES);
+        return { minutes };
 }
 
 /** Should the auto-recap fire for this idle gap? (0 = the kill switch.) Pure. */
 export function shouldRecap(idleMs: number, cfg?: RecapConfig): RecapDecision {
-	const { minutes } = resolveRecapConfig(cfg);
-	const idleMinutes = Number((Math.max(0, idleMs) / 60_000).toFixed(1));
-	if (minutes <= 0) return { action: "skip", reason: "auto-recap disabled (UNOWN_RECAP_IDLE_MINUTES=0)", idleMinutes };
-	if (idleMinutes < minutes) {
-		return { action: "skip", reason: `idle ${idleMinutes}m < ${minutes}m threshold`, idleMinutes };
-	}
-	return { action: "show", reason: `idle ${idleMinutes}m ≥ ${minutes}m`, idleMinutes };
+        const { minutes } = resolveRecapConfig(cfg);
+        const idleMinutes = Number((Math.max(0, idleMs) / 60_000).toFixed(1));
+        if (minutes <= 0) return { action: "skip", reason: "auto-recap disabled (UNOWN_RECAP_IDLE_MINUTES=0)", idleMinutes };
+        if (idleMinutes < minutes) {
+                return { action: "skip", reason: `idle ${idleMinutes}m < ${minutes}m threshold`, idleMinutes };
+        }
+        return { action: "show", reason: `idle ${idleMinutes}m ≥ ${minutes}m`, idleMinutes };
 }
 
 // ---------------------------------------------------------------------------
@@ -63,48 +63,52 @@ export function shouldRecap(idleMs: number, cfg?: RecapConfig): RecapDecision {
 // ---------------------------------------------------------------------------
 
 export interface RecapDigest {
-	turns: number;
-	userMessages: number;
-	assistantMessages: number;
-	toolCalls: number;
-	toolsUsed: string[];
-	filesTouched: string[];
-	/** Idle span the digest covers (minutes, 1dp). */
-	idleMinutes: number;
-	lastUserPreview: string;
-	lastAssistantPreview: string;
+        turns: number;
+        userMessages: number;
+        assistantMessages: number;
+        toolCalls: number;
+        toolsUsed: string[];
+        filesTouched: string[];
+        /** Idle span the digest covers (minutes, 1dp). */
+        idleMinutes: number;
+        lastUserPreview: string;
+        lastAssistantPreview: string;
 }
 
 const FILE_ARG_KEYS = ["file", "path", "file_path", "filename", "target_file", "filePath"];
 const PREVIEW_CHARS = 72;
 
 function textOf(content: unknown): string {
-	if (typeof content === "string") return content;
-	if (Array.isArray(content)) {
-		return content
-			.map((b: any) => (b?.type === "text" && typeof b.text === "string" ? b.text : ""))
-			.filter(Boolean)
-			.join(" ")
-			.trim();
-	}
-	return "";
+        if (typeof content === "string") return content;
+        if (Array.isArray(content)) {
+                return content
+                        .map((b: any) => (b?.type === "text" && typeof b.text === "string" ? b.text : ""))
+                        .filter(Boolean)
+                        .join(" ")
+                        .trim();
+        }
+        return "";
 }
 
 function collectToolFacts(message: any, tools: Map<string, number>, files: Set<string>): number {
-	let calls = 0;
-	const blocks = Array.isArray(message?.content) ? message.content : [];
-	for (const block of blocks) {
-		if (block?.type !== "toolCall") continue;
-		calls++;
-		const name = typeof block.toolName === "string" && block.toolName ? block.toolName : "unknown";
-		tools.set(name, (tools.get(name) ?? 0) + 1);
-		const args = block.arguments ?? {};
-		for (const key of FILE_ARG_KEYS) {
-			const v = (args as any)[key];
-			if (typeof v === "string" && v.trim()) files.add(v.trim());
-		}
-	}
-	return calls;
+        let calls = 0;
+        const blocks = Array.isArray(message?.content) ? message.content : [];
+        for (const block of blocks) {
+                if (block?.type !== "toolCall") continue;
+                calls++;
+                // Live events carry toolName; PERSISTED entries carry name (the
+                // observability round's brief surfaced the mismatch — every
+                // persisted digest printed "unknown"; pinned by test).
+                const rawName = block.toolName ?? block.name;
+                const name = typeof rawName === "string" && rawName ? rawName : "unknown";
+                tools.set(name, (tools.get(name) ?? 0) + 1);
+                const args = block.arguments ?? {};
+                for (const key of FILE_ARG_KEYS) {
+                        const v = (args as any)[key];
+                        if (typeof v === "string" && v.trim()) files.add(v.trim());
+                }
+        }
+        return calls;
 }
 
 /**
@@ -115,52 +119,52 @@ function collectToolFacts(message: any, tools: Map<string, number>, files: Set<s
  * throws.
  */
 export function buildRecapDigest(entries: unknown[], sinceTs: number, idleMs: number): RecapDigest {
-	const digest: RecapDigest = {
-		turns: 0,
-		userMessages: 0,
-		assistantMessages: 0,
-		toolCalls: 0,
-		toolsUsed: [],
-		filesTouched: [],
-		idleMinutes: Number((Math.max(0, idleMs) / 60_000).toFixed(1)),
-		lastUserPreview: "",
-		lastAssistantPreview: "",
-	};
-	const tools = new Map<string, number>();
-	const files = new Set<string>();
-	try {
-		for (const entry of entries ?? []) {
-			try {
-				if (!entry || (entry as any).type !== "message") continue;
-				const message = (entry as any).message;
-				if (!message || typeof (message as any).role !== "string") continue;
-				const ts = typeof (entry as any).ts === "number" ? (entry as any).ts : 0;
-				if (sinceTs > 0 && ts > 0 && ts < sinceTs) continue;
-				const text = textOf((message as any).content);
-				if ((message as any).role === "user") {
-					digest.userMessages++;
-					if (text) digest.lastUserPreview = text.slice(0, PREVIEW_CHARS);
-				} else if ((message as any).role === "assistant") {
-					digest.assistantMessages++;
-					digest.toolCalls += collectToolFacts(message, tools, files);
-					if (text) digest.lastAssistantPreview = text.slice(0, PREVIEW_CHARS);
-				}
-			} catch {
-				/* malformed entry — best-effort digest */
-			}
-		}
-		digest.turns = Math.min(digest.userMessages, digest.assistantMessages);
-		digest.toolsUsed = [...tools.entries()].sort((a, b) => b[1] - a[1]).map(([name, n]) => (n > 1 ? `${name}×${n}` : name));
-		digest.filesTouched = [...files].slice(0, 8);
-	} catch {
-		/* never throw from a digest */
-	}
-	return digest;
+        const digest: RecapDigest = {
+                turns: 0,
+                userMessages: 0,
+                assistantMessages: 0,
+                toolCalls: 0,
+                toolsUsed: [],
+                filesTouched: [],
+                idleMinutes: Number((Math.max(0, idleMs) / 60_000).toFixed(1)),
+                lastUserPreview: "",
+                lastAssistantPreview: "",
+        };
+        const tools = new Map<string, number>();
+        const files = new Set<string>();
+        try {
+                for (const entry of entries ?? []) {
+                        try {
+                                if (!entry || (entry as any).type !== "message") continue;
+                                const message = (entry as any).message;
+                                if (!message || typeof (message as any).role !== "string") continue;
+                                const ts = typeof (entry as any).ts === "number" ? (entry as any).ts : 0;
+                                if (sinceTs > 0 && ts > 0 && ts < sinceTs) continue;
+                                const text = textOf((message as any).content);
+                                if ((message as any).role === "user") {
+                                        digest.userMessages++;
+                                        if (text) digest.lastUserPreview = text.slice(0, PREVIEW_CHARS);
+                                } else if ((message as any).role === "assistant") {
+                                        digest.assistantMessages++;
+                                        digest.toolCalls += collectToolFacts(message, tools, files);
+                                        if (text) digest.lastAssistantPreview = text.slice(0, PREVIEW_CHARS);
+                                }
+                        } catch {
+                                /* malformed entry — best-effort digest */
+                        }
+                }
+                digest.turns = Math.min(digest.userMessages, digest.assistantMessages);
+                digest.toolsUsed = [...tools.entries()].sort((a, b) => b[1] - a[1]).map(([name, n]) => (n > 1 ? `${name}×${n}` : name));
+                digest.filesTouched = [...files].slice(0, 8);
+        } catch {
+                /* never throw from a digest */
+        }
+        return digest;
 }
 
 function quote(preview: string): string {
-	const clean = preview.replace(/\s+/g, " ").trim();
-	return clean ? ` ("${clean}${clean.length >= PREVIEW_CHARS ? "…" : ""}")` : "";
+        const clean = preview.replace(/\s+/g, " ").trim();
+        return clean ? ` ("${clean}${clean.length >= PREVIEW_CHARS ? "…" : ""}")` : "";
 }
 
 /**
@@ -169,18 +173,18 @@ function quote(preview: string): string {
  * (console output contract).
  */
 export function renderRecapDigestLine(digest: RecapDigest): string {
-	const parts: string[] = [];
-	parts.push(`while you were away (~${digest.idleMinutes}m idle):`);
-	const shape: string[] = [];
-	if (digest.turns > 0) shape.push(`${digest.turns} turn${digest.turns === 1 ? "" : "s"}`);
-	if (digest.toolCalls > 0) shape.push(`${digest.toolCalls} tool call${digest.toolCalls === 1 ? "" : "s"}`);
-	if (digest.filesTouched.length > 0) {
-		shape.push(`${digest.filesTouched.length} file${digest.filesTouched.length === 1 ? "" : "s"} touched`);
-	}
-	parts.push(shape.length ? shape.join(", ") : "no new turns");
-	if (digest.lastAssistantPreview) parts.push(`last answer${quote(digest.lastAssistantPreview)}`);
-	parts.push("(/recap for the fuller summary)");
-	return parts.join(" ");
+        const parts: string[] = [];
+        parts.push(`while you were away (~${digest.idleMinutes}m idle):`);
+        const shape: string[] = [];
+        if (digest.turns > 0) shape.push(`${digest.turns} turn${digest.turns === 1 ? "" : "s"}`);
+        if (digest.toolCalls > 0) shape.push(`${digest.toolCalls} tool call${digest.toolCalls === 1 ? "" : "s"}`);
+        if (digest.filesTouched.length > 0) {
+                shape.push(`${digest.filesTouched.length} file${digest.filesTouched.length === 1 ? "" : "s"} touched`);
+        }
+        parts.push(shape.length ? shape.join(", ") : "no new turns");
+        if (digest.lastAssistantPreview) parts.push(`last answer${quote(digest.lastAssistantPreview)}`);
+        parts.push("(/recap for the fuller summary)");
+        return parts.join(" ");
 }
 
 // ---------------------------------------------------------------------------
@@ -189,6 +193,6 @@ export function renderRecapDigestLine(digest: RecapDigest): string {
 
 /** The question handed to the side-question lane (btw.ts answerBtw). */
 export function buildRecapQuestion(turns: number): string {
-	const n = Number.isFinite(turns) && turns > 0 ? Math.min(turns, 12) : 6;
-	return `Write a ONE-sentence recap of what happened in this session's last ${n} turns: what was asked, what was changed (files/tools), and where things stand. Plain text, no markdown headers.`;
+        const n = Number.isFinite(turns) && turns > 0 ? Math.min(turns, 12) : 6;
+        return `Write a ONE-sentence recap of what happened in this session's last ${n} turns: what was asked, what was changed (files/tools), and where things stand. Plain text, no markdown headers.`;
 }
