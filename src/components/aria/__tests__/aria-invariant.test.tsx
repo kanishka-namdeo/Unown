@@ -295,3 +295,35 @@ function ClosedStageProbe({ dealId }: { dealId: string }) {
 }
 
 import { useAria } from "@/app/aria/client-store";
+
+/* ──────────────────────────────────────────────────────────────────
+ * F8 (the aria round's validation log) — the deal detail view is
+ * self-sufficient: a caller that switches to the view WITHOUT
+ * pre-fetching (the pipeline card did) can no longer strand it in
+ * the loading state forever.
+ * ───────────────────────────────────────────────────────────────── */
+
+describe("F8: DealDetailView self-fetches when its deal is not loaded", () => {
+  test("mounting without a pre-fetch renders the deal (no infinite loading)", async () => {
+    const restore = installFetchStub();
+    const OPEN_DEAL = SEED.deals.find((d) => d.tenantId === LUMEN.id && d.closedAt === null)!;
+    try {
+      const { container } = render(
+        <AriaProvider embed={false} hasSession={false}>
+          <DealDetailView dealId={OPEN_DEAL.id} onBack={() => {}} />
+        </AriaProvider>,
+      );
+      // Let the provider's bootstrap + the view's self-fetch settle.
+      await act(async () => {
+        await new Promise((r) => setTimeout(r, 0));
+      });
+      await act(async () => {
+        await new Promise((r) => setTimeout(r, 0));
+      });
+      const heading = container.querySelector("h2");
+      expect(heading?.textContent).toBe(OPEN_DEAL.id);
+    } finally {
+      restore();
+    }
+  });
+});

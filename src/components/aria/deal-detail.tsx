@@ -6,7 +6,7 @@
  * action). The stage picker + the note composer are the RBAC-
  * disabled-with-reason surfaces.
  */
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useAria } from "@/app/aria/client-store";
 import { Fact, NotesComposer, Timeline, GradeChip } from "./accounts";
 import { AvatarInitial, CategoryChip, ReasonGate, money } from "./primitives";
@@ -15,6 +15,16 @@ export function DealDetailView({ dealId, onBack }: { dealId: string; onBack: () 
   const aria = useAria();
   const detail = aria.dealDetail;
   const [note, setNote] = useState("");
+
+  // F8 (the aria round's validation log): the view self-fetches when its
+  // deal is not the one already loaded — a caller that switches to this
+  // view without pre-fetching (the pipeline card did) can no longer strand
+  // the view in the loading state forever.
+  useEffect(() => {
+    if (!detail || detail.deal.id !== dealId) {
+      void aria.openDealDetail(dealId);
+    }
+  }, [dealId, detail, aria.openDealDetail]);
 
   if (!detail || detail.deal.id !== dealId) {
     return (
