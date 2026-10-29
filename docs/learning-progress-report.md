@@ -94,3 +94,56 @@ free-tier upstream, serialized by the bridge. The measurement lane itself
 is free (zero LLM calls in the snapshot driver; the probe's recall is a
 lexical surface). The five real sessions cost 77,524 in / 8,532 out —
 the operator-visible axis the UX report carries.
+
+## The nocturne round addendum (2026-10-29, the seventh gallery app)
+
+The Evolution Programme's next leg — Nocturne, the AI-native incident-ops
+platform ([the session record](nocturne-demo-session.md)) — ran the same
+discipline against a much larger build. Three drained snapshots again
+([the receipts](../benchmarks/nocturne-round/snapshots/)), a 28-row
+[UX ledger](../benchmarks/nocturne-round/ux-ledger.md), and a six-entry
+failure chain ([the validation log](../benchmarks/nocturne-round/validation-log.md),
+F8–F13):
+
+| Metric | Baseline | Midpoint (lib) | Midpoint (api) | Final |
+|---|---|---|---|---|
+| Benchmark tasks | 6 (6 passing) | 6 (6 passing) | 6 (6 passing) | 6 (6 passing) |
+| Harness cycles | 0 | 6 | 7 | 3 *(post-reset engine)* |
+| Dreams | 0 | 13 | 16 | 4 *(post-reset engine)* |
+| Runs | 0 | 29 (27/29) | 37 (35/37) | 9 (9/9) |
+| Tracked memory | v4 / 73 bullets | v6 / 86 | — / 104 | v2-render / 89 (deduped) |
+| Staged skills | 0 | 1 (minted mid-build) | 2 | promoted + used |
+
+The asterisked final column is the round's environment event: the
+workspace was reset mid-round (container re-provision), which emptied the
+engine DB while the *tracked* memory — the file, the source of truth —
+survived through git and re-hydrated the tier at 89 deduplicated bullets.
+The pre-reset learning trajectory is receipted by the baseline and
+midpoint snapshots; the post-reset column shows the loop re-seeding
+itself from the carried artifact and continuing (9/9 runs, 4 dreams).
+
+**What the round adds to the trajectory picture:**
+
+- **Memory demonstrably carried the build.** Every one of the 28 ledger
+  rows is marked memory-used: the sibling patterns (parley tenancy, fugue
+  determinism, cadence chart conventions) were recalled from the tracked
+  memory rather than re-derived; the escalation-invariant lesson AutoDream
+  extracted mid-build (N8's seed bug) was used by the very next session.
+- **The honest cost of diagnosis.** The F9 session-id collision is the
+  round's most instructive data point: the agent's unaided fix loop did
+  not converge in two 40-turn sessions (misdiagnosing the RBAC carve-out
+  twice), but fed a precise repro it fixed the same defect in 14 turns.
+  The learning-system takeaway — diagnosis, not execution, is the gap —
+  is exactly the kind of failure the harness's mine-the-transcript loop
+  exists to convert into retained rules.
+- **The live-browser verification tier pays for itself.** F12 (the
+  provider/API shape mismatch) was invisible to 31 passing component
+  tests and caught only by the 10-step Chromium pass; after the fix the
+  pass ran 10/10 twice consecutively with zero console errors. The
+  verification lane is now part of the round closeout, alongside the
+  build and lint gates F10/F11 added.
+- **Skill minting closed the loop on a real failure.**
+  `fix-nocturne-seed-invariants` was minted from the build's own
+  escalation-invariant failure, promoted through the staged-skills human
+  gate, and subsequently used by the fix sessions — the full
+  fail → mint → promote → reuse arc, observed in one round.
