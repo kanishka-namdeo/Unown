@@ -1,0 +1,237 @@
+{
+ "label": "final",
+ "capturedAt": "2026-10-29T15:38:28",
+ "schema": "validation-round/1",
+ "drained": true,
+ "engine": {
+  "version": "self-learning v0.0.40",
+  "provider": "zai-bridge/agnes-3.0-flash",
+  "bridgeUpstreamOk": true
+ },
+ "memoryMetrics": {
+  "memoryVersions": {
+   "policy": 1,
+   "project": 3,
+   "user": 1,
+   "local": 1
+  },
+  "terminalMemory": {
+   "provenance": {
+    "version": 2,
+    "changedBy": "mem0",
+    "at": 1793287551431,
+    "sha256": "2e02783775e455979ee9700f55a9b255904cc55e243995abf5540faf407ac109",
+    "manualSha256": "64f2d1b1793fa5e12c6a356e2bcab16910e61b0d8b731f6b56b65d613f37e119",
+    "manualEdited": true
+   },
+   "contentChars": 14482,
+   "bulletCount": 89,
+   "sectionCount": 5,
+   "userSkills": [
+    "restart-engine",
+    "pre-commit-engine-check",
+    "fix-nocturne-seed-invariants",
+    "recover-failed-cycle",
+    "test-cadence-domain"
+   ],
+   "stagedSkills": []
+  },
+  "retrievalProbeResults": null
+ },
+ "learningMetrics": {
+  "tasks": [
+   {
+    "id": "fix-fizzbuzz",
+    "name": "Fix FizzBuzz",
+    "category": "bugfix",
+    "difficulty": 1,
+    "status": "regression",
+    "origin": "seed",
+    "pass_count": 1,
+    "fail_count": 0,
+    "created_at": 1793286269990
+   },
+   {
+    "id": "fix-drop-right",
+    "name": "Fix dropRight off-by-one",
+    "category": "bugfix",
+    "difficulty": 2,
+    "status": "regression",
+    "origin": "seed",
+    "pass_count": 1,
+    "fail_count": 0,
+    "created_at": 1793286269990
+   },
+   {
+    "id": "fix-csv-parser",
+    "name": "Fix CSV parsing",
+    "category": "bugfix",
+    "difficulty": 3,
+    "status": "regression",
+    "origin": "seed",
+    "pass_count": 1,
+    "fail_count": 0,
+    "created_at": 1793286269991
+   },
+   {
+    "id": "swap-if-else-messages",
+    "name": "Swap if/else branch bodies",
+    "category": "bugfix",
+    "difficulty": 3,
+    "status": "regression",
+    "origin": "seed",
+    "pass_count": 0,
+    "fail_count": 0,
+    "created_at": 1793286269991
+   },
+   {
+    "id": "impl-debounce",
+    "name": "Implement debounce",
+    "category": "implementation",
+    "difficulty": 4,
+    "status": "regression",
+    "origin": "seed",
+    "pass_count": 0,
+    "fail_count": 0,
+    "created_at": 1793286269990
+   },
+   {
+    "id": "impl-map-limit",
+    "name": "Implement mapLimit",
+    "category": "implementation",
+    "difficulty": 4,
+    "status": "regression",
+    "origin": "seed",
+    "pass_count": 0,
+    "fail_count": 0,
+    "created_at": 1793286269990
+   }
+  ],
+  "taskCount": 6,
+  "tasksPassing": 6,
+  "suiteStats": {
+   "total": 6,
+   "passing": 3,
+   "capability": 0,
+   "regression": 6,
+   "minted": 0,
+   "graduated": 0,
+   "quarantined": 0,
+   "saturated": false
+  },
+  "cycles": [
+   {
+    "task_id": "fix-csv-parser",
+    "status": "already-passing",
+    "iteration": 1,
+    "summary": "baseline passed — no improvement needed",
+    "shipped": 0,
+    "created_at": 1793288100973,
+    "ended_at": 1793288116510
+   },
+   {
+    "task_id": "fix-drop-right",
+    "status": "already-passing",
+    "iteration": 1,
+    "summary": "baseline passed — no improvement needed",
+    "shipped": 0,
+    "created_at": 1793287480506,
+    "ended_at": 1793287498580
+   },
+   {
+    "task_id": "fix-fizzbuzz",
+    "status": "already-passing",
+    "iteration": 1,
+    "summary": "baseline passed — no improvement needed",
+    "shipped": 0,
+    "created_at": 1793286870290,
+    "ended_at": 1793286876634
+   }
+  ],
+  "cycleCount": 3,
+  "cycleStatusCounts": {
+   "already-passing": 3
+  },
+  "improvements": [],
+  "improvementCount": 0,
+  "improvementsShipped": 0,
+  "dreams": [
+   {
+    "id": "554338df-c755-42a4-903a-ca646504b156",
+    "status": "done",
+    "notes": 3,
+    "created_at": 1793288216044,
+    "entries_merged": 0,
+    "entries_pruned": 3,
+    "entries_added": 3
+   },
+   {
+    "id": "cec3885f-bef3-4b8a-b8cc-bbda8d5f02a1",
+    "status": "done",
+    "notes": 3,
+    "created_at": 1793288120982,
+    "entries_merged": 0,
+    "entries_pruned": 0,
+    "entries_added": 3
+   },
+   {
+    "id": "project-3586f5fc-1ae5-4a3f-be08-95d92446ef79",
+    "status": "done",
+    "notes": 3,
+    "created_at": 1793287500518,
+    "entries_merged": 0,
+    "entries_pruned": 0,
+    "entries_added": 2
+   },
+   {
+    "id": "project-3580f69a-5b3c-4eb9-be68-672ca5787013",
+    "status": "done",
+    "notes": 2,
+    "created_at": 1793286880300,
+    "entries_merged": 0,
+    "entries_pruned": 0,
+    "entries_added": 3
+   }
+  ],
+  "dreamCount": 4,
+  "skills": [],
+  "skillCount": 0,
+  "runCount": 9,
+  "runStats": {
+   "tokensIn": 32996,
+   "tokensOut": 7085,
+   "toolCalls": 53
+  },
+  "passRate": {
+   "runsPassed": 9,
+   "runsTotal": 9
+  },
+  "noteCount": 14,
+  "notesPending": 3,
+  "hooks": {
+   "total": 133,
+   "denies": 0
+  },
+  "governor": {
+   "budget": {
+    "callsHour": 14,
+    "callsDay": 14,
+    "tokensHour": 72973,
+    "tokensDay": 72973,
+    "limits": {
+     "callsHour": 60,
+     "tokensHour": 200000,
+     "tokensDay": 2000000
+    },
+    "overBudget": false,
+    "reason": null
+   },
+   "breaker": {
+    "open": false,
+    "consecutiveFailures": 0,
+    "threshold": 3,
+    "retryInMs": 0
+   }
+  }
+ }
+}

@@ -236,11 +236,11 @@ export const LIVE_DEMO_APPS: LiveDemoApp[] = [
       "Nocturne — the incident-ops dashboard unown built: the live KPI band, open incidents with SLA countdowns, on-call rotations and runbooks, running live",
     resetType: "nocturne-reset",
     receipt: {
-      sessions: 19,
-      toolCalls: 0, // unreceipted in the round's envelopes — the aria count lands at close
-      files: 103,
-      tests: 466,
-      commits: 4,
+      sessions: 28,
+      toolCalls: 0, // unreceipted per-envelope in this round's ledger — the counted lane is files/tests/commits
+      files: 104,
+      tests: 473,
+      commits: 8,
       embeddingAdaptations: 6,
       receiptDoc:
         "https://github.com/kanishka-namdeo/Unown/blob/main/docs/nocturne-demo-session.md",

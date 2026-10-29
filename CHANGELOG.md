@@ -9,6 +9,21 @@ otherwise specified; the release tag must always equal package.json's version.
 
 Repo conventions: measured claims cite their receipts (`docs/testing-strategy.md`, `benchmarks/memory-eval/*/RESULTS.md`). Changes to agent behavior — prompts, default models, routing, guard rules, hooks, memory injection — are filed under **Agent Behavior**; the policy lives in [docs/BEHAVIOR.md](docs/BEHAVIOR.md).
 
+## [0.0.41] - 2026-10-29
+
+### Added
+
+- **Nocturne — the gallery's seventh app, an AI-native incident operations platform** (`src/lib/nocturne/` + `src/app/nocturne/` + `src/components/nocturne/`, embedded live at `/nocturne`): alert ingestion with dedup keys and windows, correlation into incidents, services with severity rules and tiered escalation policies, weekly on-call rotations with handoffs and latest-wins overrides, the triggered→acknowledged→resolved lifecycle with snooze, ack/resolve SLA timers with breach detection and at-risk bands, event-sourced timelines, per-service runbooks with checklists, a public per-tenant status page, postmortems with action items, and MTTA/MTTR + breach-rate + on-call-load analytics — all clock-injected and deterministic over a ~9-week seeded incident history. Built entirely by the agent across 28 ledgered headless sessions (104 files, 473 tests, zero human edits to app code) from its own 52,587-char build contract; verified by the 10-step live Chromium pass **10/10 twice consecutively with zero console errors**. The receipts: [the session record](docs/nocturne-demo-session.md), [the plan](benchmarks/nocturne-round/plan.md), [the UX ledger](benchmarks/nocturne-round/ux-ledger.md), [the validation log](benchmarks/nocturne-round/validation-log.md) (F8–F13), [the snapshots](benchmarks/nocturne-round/snapshots/), and [`ui-pass.mjs`](benchmarks/nocturne-round/ui-pass.mjs) — the round's live verification lane.
+- **The nocturne round's learning receipts** — the engine learning-state trajectory across the build (baseline: 6/6 tasks, memory v4/73 bullets → midpoint-api: 16 dreams, 37 runs, 104 bullets → final: the post-reset re-hydrated tier at 89 deduped bullets with 9/9 runs passing), the dream-minted `fix-nocturne-seed-invariants` skill (minted from the build's own seed-invariant failure, operator-promoted, then used by the later fix sessions), and the provider-shape + probe-skip regression pins (F12/F13).
+
+### Fixed
+
+- **F9 — session-id collision in the nocturne API's `loginSession` (a P0):** the session row was built with a raw `s.seq` read instead of the seq-bumping allocator, so two consecutive logins with no other id allocation between them minted identical session ids — the second user's cookie resolved to the first user's session (one user could act as another). Found by the API test lane, traced by the operator, fixed by the agent in one fed-diagnosis session (14 turns); pinned by the 3-login distinct-id regression test.
+- **F10 — the nocturne landing phase shipped a page/route conflict that broke the production build** (a page and a route handler can never share a Next.js segment): the public-status JSON route moved to `/nocturne/api/public-status/[slug]`; the build gate joined the closeout checklist.
+- **F11 — four lint errors shipped to main** (the closeout had skipped `bun run lint`): fixed; lint joined the pre-push checklist.
+- **F12 — provider/API shape mismatch on the nocturne detail lanes:** the rotations/runbooks/postmortems detail fetches parsed a nested shape the routes never sent — a live-browser-only crash (the component tests mocked provider state, never the real API shapes). Fixed with flattened-shape parsing + a view error boundary (a future view crash renders an inline card, never a blank screen) + the provider-shape regression pins.
+- **F13 — the unauthenticated session probe's 401 console noise:** the provider always ran the boot probe, logging `Failed to load resource` on the login and public-status surfaces; the aria `hasSession` pattern (server-side cookie read, skip the probe when absent) is now ported, taking the live pass to zero console errors.
+
 ## [0.0.40] - 2026-10-29
 
 ### Added

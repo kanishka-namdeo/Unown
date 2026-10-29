@@ -31,11 +31,29 @@ export interface BlogPost {
   html: string;
 }
 
-export const BLOG_TOTAL_POSTS = 22;
+export const BLOG_TOTAL_POSTS = 23;
 
-export const BLOG_TAGS: string[] = ["benchmarks","beta","browser","demo","design","engine","landing","learning","media","memory","meta","release","security","stress","subagents"];
+export const BLOG_TAGS: string[] = ["benchmarks","beta","browser","demo","design","engine","gallery","landing","learning","media","memory","meta","release","security","stress","subagents"];
 
 export const BLOG_POSTS: BlogPost[] = [
+  {
+    "slug": "2026-10-29-the-nocturne-round",
+    "title": "\"The nocturne round: the agent built an incident-ops platform — and got better building it\"",
+    "description": "\"Gallery app #7 — Nocturne, a multi-tenant incident-ops platform: 28 sessions, 473 tests, a 10/10 live browser pass, six failures pinned.\"",
+    "date": "2026-10-29",
+    "lastmod": "2026-10-29",
+    "tags": [
+      "gallery",
+      "learning",
+      "release"
+    ],
+    "type": "release",
+    "readingMinutes": 3,
+    "media": [
+      "/landing/nocturne/poster.png"
+    ],
+    "html": "<p>The gallery&#39;s seventh app is live: <strong><a href=\"/nocturne?embed=1\">Nocturne</a></strong> — an\nAI-native incident operations platform. Alerts arrive, deduplicate by key\nand window, and correlate into incidents; escalation policies page the\non-call rotation tier by tier while an incident sits unacknowledged; SLA\ntimers run the ack and resolve clocks with breach detection; every\nincident carries an event-sourced timeline, a runbook with a checklist,\nand eventually a postmortem with action items; a public status page shows\neach tenant&#39;s component health; and the analytics screen turns nine weeks\nof seeded incident history into MTTA, MTTR, breach rate and on-call load.\nIt is the PagerDuty domain, deterministic demo scope, running in your\nbrowser right now.</p>\n<h2>The build</h2>\n<p>The familiar gallery pattern taken to its largest scale yet:\nthe agent explored its own six siblings read-only, wrote itself a\n52,587-character build contract (every entity, every field, all ~50\nroutes with the full status ladder, the engine designs, the property\ninvariants), then executed it in phases — domain, API, UI, embed — across\n<strong>28 ledgered sessions, 104 files, 473 tests, zero human edits to app\ncode</strong>. The closeout was a ten-step live Chromium pass that walks the app\nexactly as a user would — login, dashboard, incident detail, acknowledge,\nservices, rotations, runbooks, analytics, the public status page, reset —\nand it finished <strong>10/10 twice consecutively with zero console errors</strong>.</p>\n<h2>The failure ledger</h2>\n<p>The round&#39;s real product, as always. Six failures, each with the full\nchain — reproduction, root cause, the benchmark that now pins it, the\nbefore/after rerun:</p>\n<ul>\n<li><strong>F8</strong> — the operator&#39;s own launcher violated the detached-session\ncontract and a shell timeout killed a live build session. The launcher\nwas rebuilt; every session after ran clean.</li>\n<li><strong>F9</strong> — a genuine P0: the API&#39;s <code>loginSession</code> read the id counter\nwithout bumping it, so two consecutive logins minted the <em>same session\nid</em> — the second user&#39;s cookie resolved to the first user&#39;s session.\nThe API test lane surfaced it; the agent&#39;s fix loop circled it twice\nwithout converging; the operator traced it to the id allocator; fed the\nprecise repro, the agent fixed it cleanly in 14 turns. The honest\nfinding: the failure was <em>diagnosis</em>, not execution.</li>\n<li><strong>F10/F11</strong> — the landing phase shipped a page/route segment conflict\nthat broke the production build, plus four lint errors. The build and\nlint gates joined the closeout checklist.</li>\n<li><strong>F12</strong> — the best catch of the round: the live browser pass exposed a\nprovider/API shape mismatch (the detail lanes parsed a nested shape the\nroutes never sent) that <strong>31 passing component tests had papered over</strong>\n— because they mocked provider state, never the real API shapes. The\nfix came with an error boundary and provider-shape regression pins.</li>\n<li><strong>F13</strong> — the unauthenticated session probe logged a 401 console error\non every anonymous visit. Aria had already solved this exact problem\none directory away; the pattern was ported and pinned. The lesson about\nlesson <em>transfer</em> is recorded with it.</li>\n</ul>\n<h2>The learning systems, live</h2>\n<p>The learning systems ran the whole time: AutoDream consolidated the\nbuild&#39;s session notes into project memory as the work happened — the\nescalation-invariant lesson it extracted mid-build was used by the very\nnext session — and minted the <code>fix-nocturne-seed-invariants</code> skill from\nthe build&#39;s own seed failure, which the operator promoted through the\nstaged-skills human gate and the later fix sessions then used. Mid-round,\nthe whole workspace was reset underneath us; every milestone had been\npushed, so nothing pushed was lost, and the un-pushed work was rebuilt in\nan afternoon. The receipts for all of it — the plan, the per-session UX\nledger, the failure ledger, the engine learning-state snapshots at\nbaseline, midpoint and final — live in\n<a href=\"https://github.com/kanishka-namdeo/Unown/tree/main/benchmarks/nocturne-round\"><code>benchmarks/nocturne-round/</code></a>.</p>\n<h2>Go break it</h2>\n<p>The gallery now has seven apps, each built by the agent and each round\nleaving the <em>next</em> round measurably better armed. Go break Nocturne — the\nreset button works.</p>\n"
+  },
   {
     "slug": "2026-10-29-the-sota-round",
     "title": "\"The SOTA round: Fugue, and the loop that watched it build\"",

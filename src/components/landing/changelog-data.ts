@@ -30,19 +30,73 @@ export interface ChangelogStop {
   groups: ChangelogGroup[];
 }
 
-export const CHANGELOG_TOTAL_ENTRIES = 365;
+export const CHANGELOG_TOTAL_ENTRIES = 372;
 
 export const CHANGELOG_TOTALS: Record<ChangelogBucket, number> = {
-  "Added": 161,
+  "Added": 163,
   "Changed": 28,
   "Deprecated": 0,
   "Removed": 3,
-  "Fixed": 134,
+  "Fixed": 139,
   "Security": 5,
   "Behavior": 34
 };
 
 export const CHANGELOG_STOPS: ChangelogStop[] = [
+  {
+    "label": "0.0.41",
+    "date": "2026-10-29",
+    "total": 7,
+    "counts": {
+      "Added": 2,
+      "Changed": 0,
+      "Deprecated": 0,
+      "Removed": 0,
+      "Fixed": 5,
+      "Security": 0,
+      "Behavior": 0
+    },
+    "groups": [
+      {
+        "bucket": "Added",
+        "items": [
+          {
+            "title": "Nocturne — the gallery's seventh app, an AI-native incident operations platform",
+            "behavior": false
+          },
+          {
+            "title": "The nocturne round's learning receipts",
+            "behavior": false
+          }
+        ]
+      },
+      {
+        "bucket": "Fixed",
+        "items": [
+          {
+            "title": "F9 — session-id collision in the nocturne API's loginSession (a P0)",
+            "behavior": false
+          },
+          {
+            "title": "F10 — the nocturne landing phase shipped a page/route conflict that broke the production build",
+            "behavior": false
+          },
+          {
+            "title": "F11 — four lint errors shipped to main",
+            "behavior": false
+          },
+          {
+            "title": "F12 — provider/API shape mismatch on the nocturne detail lanes",
+            "behavior": false
+          },
+          {
+            "title": "F13 — the unauthenticated session probe's 401 console noise",
+            "behavior": false
+          }
+        ]
+      }
+    ]
+  },
   {
     "label": "0.0.40",
     "date": "2026-10-29",

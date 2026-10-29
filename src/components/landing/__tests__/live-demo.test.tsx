@@ -105,10 +105,10 @@ describe("live-demo band (the gallery)", () => {
     expect(nocturne!.poster).toBe("/landing/nocturne/poster.png");
     expect(nocturne!.receipt.receiptDoc).toContain("nocturne-demo-session.md");
     // the counted receipts (the round's CP1–CP4 + the ledger)
-    expect(nocturne!.receipt.sessions).toBe(19);
-    expect(nocturne!.receipt.files).toBe(103);
-    expect(nocturne!.receipt.tests).toBe(466);
-    expect(nocturne!.receipt.commits).toBe(4);
+    expect(nocturne!.receipt.sessions).toBe(28);
+    expect(nocturne!.receipt.files).toBe(104);
+    expect(nocturne!.receipt.tests).toBe(473);
+    expect(nocturne!.receipt.commits).toBe(8);
   });
 
   test("every receipt chip reads from the ACTIVE app's data — switching tabs swaps the counts", () => {
