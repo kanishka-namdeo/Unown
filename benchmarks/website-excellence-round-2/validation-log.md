@@ -10,6 +10,7 @@
 - [F21 — the release that shipped while its own CI was red](#f21--the-release-that-shipped-while-its-own-ci-was-red)
 - [F22 — the encore round's growth breached the scroll-budget ceiling it claimed to hold](#f22--the-encore-rounds-growth-breached-the-scroll-budget-ceiling-it-claimed-to-hold)
 - [F23 — a hosted-runner DNS blip red all of main's CI](#f23--a-hosted-runner-dns-blip-red-all-of-mains-ci)
+- [F24 — the landing's HP bars animated width, and the first gallery app shipped transition-all](#f24--the-landings-hp-bars-animated-width-and-the-first-gallery-app-shipped-transition-all)
 
 ---
 
@@ -146,3 +147,42 @@ retry, one sleep) so a genuinely-broken remote still fails — the same
 step on a genuinely offline network fails twice in ~16s. The
 ubuntu/windows legs of the same matrix act as the control for any
 future mac-only network claim.
+
+---
+
+## F24 — the landing's HP bars animated width, and the first gallery app shipped transition-all
+
+**Failure.** The craft axes' first run against the real landing found
+the animated-property whitelist violated from both directions: the
+landing's `.gb-hp > i` (the dex/benchmark HP bars) transitioned `width`
+(a layout property — `transition: width 400ms steps(12, end)`), and four
+hand-written `transition-all` usages shipped in the vendored accordion
+plus the FIRST gallery app's components (focus-timer, task-card, header).
+
+**Reproduction.** `node scripts/design_critic.mjs --route / --label
+craft-smoke --no-vlm` at `f5b3290f`: `anim: 16 layout props +
+transition:all` (the 16 included Tailwind v4's individual `translate`/
+`scale`/`rotate` — compositing, initially misclassified — plus the real
+`width`, `height` from tw-animate's radix accordion keyframes, and the
+discrete `display`/`overlay`/`pointer-events` steps; `usesAll: true`).
+
+**Root cause.** The bars predate the rule: `width` is the naive fill
+level, and `transition-all` is the lazy transition — both were
+acceptable patterns when those components were written (the sigil app is
+the FIRST gallery app) and nothing measured animated properties before
+this round's craft axes existed.
+
+**Fix implemented.** The HP fill now rides `scaleX(var(--fill))` with
+`transform-origin: left` on a full-width element (identical stepped
+drain, compositor-only); framer's mount effect on the benchmark bars
+moved from scaleX (which now carries the level) to `clip-path` inset
+wipe (paint-only). The four `transition-all`s became explicit property
+lists (`transition-[transform,border-color,box-shadow]` etc.).
+
+**Benchmark / regression net.** The craft axes themselves: `animLayoutProps
+≤ 0` (the whitelist now correctly classifies Tailwind v4's individual
+transforms, discrete steps, and the radix accordion `height` exception —
+documented in the rubric) and `usesAll` flagged. The post-fix receipt
+(`craft-landing`, committed): `anim: 0 layout props · prm guard true`,
+and the known-bad calibration fixture still FAILS the weight gate (700
+detected) — the axis discriminates both ways.

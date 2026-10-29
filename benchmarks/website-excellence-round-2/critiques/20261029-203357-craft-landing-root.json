@@ -1,0 +1,918 @@
+{
+  "schema": "website-excellence/critique/2",
+  "route": "/",
+  "url": "http://localhost:3000/",
+  "label": "craft-landing",
+  "generatedAt": "2026-10-29T20:33:57.058Z",
+  "rubric": {
+    "vlmAxes": [
+      "hierarchy",
+      "typography",
+      "spacing",
+      "color",
+      "alignment",
+      "density",
+      "overall"
+    ],
+    "vlmFloor": 7,
+    "contrastViolations": 0,
+    "fontSizesMax": 8,
+    "offGridMaxPct": 15,
+    "headingSkips": 0,
+    "missingAlts": 0,
+    "mobileOverflow": 0,
+    "fcpMs": 1800,
+    "lcpMs": 2500,
+    "cls": 0.1,
+    "tbtMs": 200,
+    "weightCeiling": 600,
+    "weightSetMax": 4,
+    "trackingOffendersMax": 3,
+    "neutralHueSpreadMax": 30,
+    "accentClustersMax": 2,
+    "animLayoutPropsMax": 0,
+    "breakpointsMax": 8
+  },
+  "audit": {
+    "desktop": {
+      "contrast": {
+        "min": 4.14,
+        "mean": 9.45,
+        "violations": [
+          {
+            "text": "you chat",
+            "ratio": 4.14,
+            "need": 4.5,
+            "size": "10px",
+            "weight": "400",
+            "selector": "span.mt-0.5"
+          },
+          {
+            "text": "six tracks, measured",
+            "ratio": 4.14,
+            "need": 4.5,
+            "size": "10px",
+            "weight": "400",
+            "selector": "span.mt-0.5"
+          }
+        ]
+      },
+      "type": {
+        "distinctSizes": 23,
+        "sizes": [
+          {
+            "size": "8px",
+            "uses": 97
+          },
+          {
+            "size": "9px",
+            "uses": 122
+          },
+          {
+            "size": "9.5px",
+            "uses": 4
+          },
+          {
+            "size": "10px",
+            "uses": 135
+          },
+          {
+            "size": "10.5px",
+            "uses": 47
+          },
+          {
+            "size": "11px",
+            "uses": 164
+          },
+          {
+            "size": "11.5px",
+            "uses": 55
+          },
+          {
+            "size": "12px",
+            "uses": 87
+          },
+          {
+            "size": "12.5px",
+            "uses": 52
+          },
+          {
+            "size": "13px",
+            "uses": 112
+          },
+          {
+            "size": "13.5px",
+            "uses": 1
+          },
+          {
+            "size": "14px",
+            "uses": 31
+          },
+          {
+            "size": "14.5px",
+            "uses": 7
+          },
+          {
+            "size": "15px",
+            "uses": 54
+          },
+          {
+            "size": "16px",
+            "uses": 8
+          },
+          {
+            "size": "17px",
+            "uses": 1
+          },
+          {
+            "size": "18px",
+            "uses": 2
+          },
+          {
+            "size": "19px",
+            "uses": 20
+          },
+          {
+            "size": "24px",
+            "uses": 2
+          },
+          {
+            "size": "30px",
+            "uses": 4
+          },
+          {
+            "size": "36px",
+            "uses": 1
+          },
+          {
+            "size": "41.6px",
+            "uses": 10
+          },
+          {
+            "size": "68px",
+            "uses": 6
+          }
+        ]
+      },
+      "spacing": {
+        "samples": 487,
+        "offGrid": 158,
+        "offGridPct": 32.4
+      },
+      "headings": {
+        "order": [
+          1,
+          2,
+          3,
+          3,
+          3,
+          2,
+          2,
+          2,
+          2,
+          3,
+          2,
+          3,
+          3,
+          3,
+          3,
+          3,
+          3,
+          3,
+          2,
+          2,
+          3,
+          3,
+          3,
+          3,
+          3,
+          3,
+          3,
+          2,
+          2
+        ],
+        "skips": []
+      },
+      "images": {
+        "total": 20,
+        "missingAlts": 0
+      },
+      "overflowX": 0,
+      "craft": {
+        "weights": {
+          "distinct": 3,
+          "max": 600,
+          "census": [
+            {
+              "weight": 400,
+              "uses": 966
+            },
+            {
+              "weight": 500,
+              "uses": 27
+            },
+            {
+              "weight": 600,
+              "uses": 29
+            }
+          ]
+        },
+        "tracking": {
+          "offenders": [],
+          "total": 0
+        },
+        "neutralHue": {
+          "n": 22,
+          "meanDeg": -132.6,
+          "stdDeg": 2.7
+        },
+        "accents": {
+          "clusters": 2,
+          "buckets": [
+            {
+              "from": 210,
+              "count": 171
+            },
+            {
+              "from": 240,
+              "count": 50
+            }
+          ],
+          "sampled": 221
+        },
+        "anim": {
+          "props": [
+            "--tw-gradient-from",
+            "--tw-gradient-to",
+            "--tw-gradient-via",
+            "-webkit-backdrop-filter",
+            "backdrop-filter",
+            "background-color",
+            "border-color",
+            "box-shadow",
+            "color",
+            "content-visibility",
+            "display",
+            "fill",
+            "filter",
+            "height",
+            "opacity",
+            "outline-color",
+            "overlay",
+            "pointer-events",
+            "rotate",
+            "scale",
+            "stroke",
+            "text-decoration-color",
+            "transform",
+            "translate"
+          ],
+          "layoutViolations": [],
+          "usesAll": false,
+          "hasKeyframes": true,
+          "hasReducedMotionGuard": true
+        },
+        "breakpoints": {
+          "count": 6,
+          "values": [
+            "40rem",
+            "48rem",
+            "64rem",
+            "80rem",
+            "96rem",
+            "430px"
+          ]
+        }
+      }
+    },
+    "desktopLight": {
+      "contrast": {
+        "min": 5.95,
+        "mean": 9.75,
+        "violations": []
+      },
+      "type": {
+        "distinctSizes": 23,
+        "sizes": [
+          {
+            "size": "8px",
+            "uses": 97
+          },
+          {
+            "size": "9px",
+            "uses": 122
+          },
+          {
+            "size": "9.5px",
+            "uses": 4
+          },
+          {
+            "size": "10px",
+            "uses": 135
+          },
+          {
+            "size": "10.5px",
+            "uses": 47
+          },
+          {
+            "size": "11px",
+            "uses": 164
+          },
+          {
+            "size": "11.5px",
+            "uses": 55
+          },
+          {
+            "size": "12px",
+            "uses": 87
+          },
+          {
+            "size": "12.5px",
+            "uses": 52
+          },
+          {
+            "size": "13px",
+            "uses": 112
+          },
+          {
+            "size": "13.5px",
+            "uses": 1
+          },
+          {
+            "size": "14px",
+            "uses": 31
+          },
+          {
+            "size": "14.5px",
+            "uses": 7
+          },
+          {
+            "size": "15px",
+            "uses": 54
+          },
+          {
+            "size": "16px",
+            "uses": 8
+          },
+          {
+            "size": "17px",
+            "uses": 1
+          },
+          {
+            "size": "18px",
+            "uses": 2
+          },
+          {
+            "size": "19px",
+            "uses": 20
+          },
+          {
+            "size": "24px",
+            "uses": 2
+          },
+          {
+            "size": "30px",
+            "uses": 4
+          },
+          {
+            "size": "36px",
+            "uses": 1
+          },
+          {
+            "size": "41.6px",
+            "uses": 10
+          },
+          {
+            "size": "68px",
+            "uses": 6
+          }
+        ]
+      },
+      "spacing": {
+        "samples": 487,
+        "offGrid": 158,
+        "offGridPct": 32.4
+      },
+      "headings": {
+        "order": [
+          1,
+          2,
+          3,
+          3,
+          3,
+          2,
+          2,
+          2,
+          2,
+          3,
+          2,
+          3,
+          3,
+          3,
+          3,
+          3,
+          3,
+          3,
+          2,
+          2,
+          3,
+          3,
+          3,
+          3,
+          3,
+          3,
+          3,
+          2,
+          2
+        ],
+        "skips": []
+      },
+      "images": {
+        "total": 20,
+        "missingAlts": 0
+      },
+      "overflowX": 0,
+      "craft": {
+        "weights": {
+          "distinct": 3,
+          "max": 600,
+          "census": [
+            {
+              "weight": 400,
+              "uses": 966
+            },
+            {
+              "weight": 500,
+              "uses": 27
+            },
+            {
+              "weight": 600,
+              "uses": 29
+            }
+          ]
+        },
+        "tracking": {
+          "offenders": [],
+          "total": 0
+        },
+        "neutralHue": {
+          "n": 274,
+          "meanDeg": -119.6,
+          "stdDeg": 4.9
+        },
+        "accents": {
+          "clusters": 3,
+          "buckets": [
+            {
+              "from": 240,
+              "count": 17
+            },
+            {
+              "from": 210,
+              "count": 154
+            },
+            {
+              "from": 270,
+              "count": 50
+            }
+          ],
+          "sampled": 221
+        },
+        "anim": {
+          "props": [
+            "--tw-gradient-from",
+            "--tw-gradient-to",
+            "--tw-gradient-via",
+            "-webkit-backdrop-filter",
+            "backdrop-filter",
+            "background-color",
+            "border-color",
+            "box-shadow",
+            "color",
+            "content-visibility",
+            "display",
+            "fill",
+            "filter",
+            "height",
+            "opacity",
+            "outline-color",
+            "overlay",
+            "pointer-events",
+            "rotate",
+            "scale",
+            "stroke",
+            "text-decoration-color",
+            "transform",
+            "translate"
+          ],
+          "layoutViolations": [],
+          "usesAll": false,
+          "hasKeyframes": true,
+          "hasReducedMotionGuard": true
+        },
+        "breakpoints": {
+          "count": 6,
+          "values": [
+            "40rem",
+            "48rem",
+            "64rem",
+            "80rem",
+            "96rem",
+            "430px"
+          ]
+        }
+      }
+    },
+    "mobile": {
+      "contrast": {
+        "min": 4.14,
+        "mean": 9.45,
+        "violations": [
+          {
+            "text": "you chat",
+            "ratio": 4.14,
+            "need": 4.5,
+            "size": "10px",
+            "weight": "400",
+            "selector": "span.mt-0.5"
+          },
+          {
+            "text": "six tracks, measured",
+            "ratio": 4.14,
+            "need": 4.5,
+            "size": "10px",
+            "weight": "400",
+            "selector": "span.mt-0.5"
+          }
+        ]
+      },
+      "type": {
+        "distinctSizes": 24,
+        "sizes": [
+          {
+            "size": "8px",
+            "uses": 97
+          },
+          {
+            "size": "9px",
+            "uses": 120
+          },
+          {
+            "size": "9.5px",
+            "uses": 4
+          },
+          {
+            "size": "10px",
+            "uses": 132
+          },
+          {
+            "size": "10.5px",
+            "uses": 47
+          },
+          {
+            "size": "11px",
+            "uses": 165
+          },
+          {
+            "size": "11.5px",
+            "uses": 53
+          },
+          {
+            "size": "12px",
+            "uses": 87
+          },
+          {
+            "size": "12.5px",
+            "uses": 52
+          },
+          {
+            "size": "13px",
+            "uses": 107
+          },
+          {
+            "size": "13.5px",
+            "uses": 1
+          },
+          {
+            "size": "14px",
+            "uses": 31
+          },
+          {
+            "size": "14.5px",
+            "uses": 7
+          },
+          {
+            "size": "15px",
+            "uses": 54
+          },
+          {
+            "size": "16px",
+            "uses": 8
+          },
+          {
+            "size": "17px",
+            "uses": 20
+          },
+          {
+            "size": "18px",
+            "uses": 2
+          },
+          {
+            "size": "19px",
+            "uses": 1
+          },
+          {
+            "size": "20px",
+            "uses": 1
+          },
+          {
+            "size": "24px",
+            "uses": 1
+          },
+          {
+            "size": "28.8px",
+            "uses": 10
+          },
+          {
+            "size": "30px",
+            "uses": 4
+          },
+          {
+            "size": "36px",
+            "uses": 1
+          },
+          {
+            "size": "44px",
+            "uses": 6
+          }
+        ]
+      },
+      "spacing": {
+        "samples": 486,
+        "offGrid": 136,
+        "offGridPct": 28
+      },
+      "headings": {
+        "order": [
+          1,
+          2,
+          3,
+          3,
+          3,
+          2,
+          2,
+          2,
+          2,
+          3,
+          2,
+          3,
+          3,
+          3,
+          3,
+          3,
+          3,
+          3,
+          2,
+          2,
+          3,
+          3,
+          3,
+          3,
+          3,
+          3,
+          3,
+          2,
+          2
+        ],
+        "skips": []
+      },
+      "images": {
+        "total": 20,
+        "missingAlts": 0
+      },
+      "overflowX": 0,
+      "craft": {
+        "weights": {
+          "distinct": 3,
+          "max": 600,
+          "census": [
+            {
+              "weight": 400,
+              "uses": 955
+            },
+            {
+              "weight": 500,
+              "uses": 27
+            },
+            {
+              "weight": 600,
+              "uses": 29
+            }
+          ]
+        },
+        "tracking": {
+          "offenders": [],
+          "total": 0
+        },
+        "neutralHue": {
+          "n": 21,
+          "meanDeg": -132.5,
+          "stdDeg": 2.8
+        },
+        "accents": {
+          "clusters": 2,
+          "buckets": [
+            {
+              "from": 210,
+              "count": 165
+            },
+            {
+              "from": 240,
+              "count": 50
+            }
+          ],
+          "sampled": 215
+        },
+        "anim": {
+          "props": [
+            "--tw-gradient-from",
+            "--tw-gradient-to",
+            "--tw-gradient-via",
+            "-webkit-backdrop-filter",
+            "backdrop-filter",
+            "background-color",
+            "border-color",
+            "box-shadow",
+            "color",
+            "content-visibility",
+            "display",
+            "fill",
+            "filter",
+            "height",
+            "opacity",
+            "outline-color",
+            "overlay",
+            "pointer-events",
+            "rotate",
+            "scale",
+            "stroke",
+            "text-decoration-color",
+            "transform",
+            "translate"
+          ],
+          "layoutViolations": [],
+          "usesAll": false,
+          "hasKeyframes": true,
+          "hasReducedMotionGuard": true
+        },
+        "breakpoints": {
+          "count": 6,
+          "values": [
+            "40rem",
+            "48rem",
+            "64rem",
+            "80rem",
+            "96rem",
+            "430px"
+          ]
+        }
+      }
+    }
+  },
+  "vitals": {
+    "desktop": {
+      "fcp": 0,
+      "lcp": 324,
+      "cls": 0,
+      "tbt": 70
+    },
+    "mobile": {
+      "fcp": 220,
+      "lcp": 220,
+      "cls": 0,
+      "tbt": 13
+    }
+  },
+  "critiques": [],
+  "axisMeans": {
+    "hierarchy": null,
+    "typography": null,
+    "spacing": null,
+    "color": null,
+    "alignment": null,
+    "density": null,
+    "overall": null
+  },
+  "gates": {
+    "contrastViolations": {
+      "value": 4,
+      "max": 0,
+      "pass": false
+    },
+    "fontSizes": {
+      "value": 23,
+      "max": 8,
+      "pass": false
+    },
+    "offGridPct": {
+      "value": 32.4,
+      "max": 15,
+      "pass": false
+    },
+    "headingSkips": {
+      "value": 0,
+      "max": 0,
+      "pass": true
+    },
+    "missingAlts": {
+      "value": 0,
+      "max": 0,
+      "pass": true
+    },
+    "mobileOverflow": {
+      "value": 0,
+      "max": 0,
+      "pass": true
+    },
+    "fcpMs": {
+      "value": 0,
+      "max": 1800,
+      "pass": true
+    },
+    "lcpMs": {
+      "value": 324,
+      "max": 2500,
+      "pass": true
+    },
+    "cls": {
+      "value": 0,
+      "max": 0.1,
+      "pass": true
+    },
+    "tbtMs": {
+      "value": 70,
+      "max": 200,
+      "pass": true
+    },
+    "vlmAxes": {
+      "value": {
+        "hierarchy": null,
+        "typography": null,
+        "spacing": null,
+        "color": null,
+        "alignment": null,
+        "density": null,
+        "overall": null
+      },
+      "floor": 7,
+      "pass": true,
+      "failures": []
+    },
+    "weightCeiling": {
+      "value": 600,
+      "max": 600,
+      "pass": true
+    },
+    "weightSet": {
+      "value": 3,
+      "max": 4,
+      "pass": true
+    },
+    "trackingCurve": {
+      "value": 0,
+      "max": 3,
+      "pass": true
+    },
+    "neutralHueSpread": {
+      "value": 2.7,
+      "max": 30,
+      "sampled": 22,
+      "pass": true
+    },
+    "accentClusters": {
+      "value": 2,
+      "max": 2,
+      "sampled": 221,
+      "pass": true
+    },
+    "animLayoutProps": {
+      "value": 0,
+      "max": 0,
+      "props": [],
+      "pass": true
+    },
+    "reducedMotionGuard": {
+      "value": true,
+      "max": 1,
+      "pass": true
+    },
+    "breakpoints": {
+      "value": 6,
+      "max": 8,
+      "pass": true
+    }
+  },
+  "passed": false,
+  "shotsDir": "/home/z/unown/download/design-critic/craft-landing/root",
+  "wallSeconds": 19.3
+}

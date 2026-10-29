@@ -100,6 +100,8 @@ Agent definitions are Markdown files with YAML frontmatter, discovered from two 
 
 Load order is built-in → global → project; a definition with the same `name` as an earlier one wins, so a project file can override a global one — or even a built-in.
 
+This repo ships four project agents in `.unown/agents/` (the Website Excellence Programme's specialist lane): `design-reviewer` (runs `scripts/design_critic.mjs` on a built route and returns the receipted verdict + top fixes), `ux-critic` (the eight-pass friction review), `a11y-auditor` (the WCAG 2.2 zero-tolerance verdict) and `performance-engineer` (cold-load vitals + payload accounting). Each composes with the matching skill in `.unown/skills/` and cites receipts, never vibes.
+
 **Frontmatter contract:**
 
 | Field | Required | Meaning |

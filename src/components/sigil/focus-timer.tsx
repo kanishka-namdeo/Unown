@@ -142,7 +142,7 @@ export function FocusTimer({
                 strokeLinecap="round"
                 strokeDasharray={C}
                 strokeDashoffset={C - (pct / 100) * C}
-                className="transition-all duration-1000 ease-linear"
+                className="transition-[color,background-color,border-color] duration-1000 ease-linear"
               />
             </svg>
             <div className="absolute inset-0 flex flex-col items-center justify-center">

@@ -98,11 +98,14 @@ function BarRow({
     <div className="flex items-center gap-3 sm:gap-4">
       <span className="w-28 shrink-0 truncate font-mono text-[11px] text-dim sm:w-32">{label}</span>
       <div className="gb-hp min-w-0 flex-1" data-tone={tone} role="img" aria-label={`${label} ${pct.toFixed(1)}%`}>
+        {/* F24: the level rides scaleX on the element itself (the CSS var),
+            so framer's mount effect moved to clip-path — a wipe reads the
+            same as the old fill-up without either animation touching a
+            layout property. Reduced motion ships the finished bar. */}
         <motion.i
-          className="origin-left"
-          style={{ width: `${pct}%` }}
-          initial={{ opacity: 0, scaleX: reduced ? 1 : 0 }}
-          whileInView={{ opacity: 1, scaleX: 1 }}
+          style={{ "--fill": Math.max(0, Math.min(1, pct / 100)) } as React.CSSProperties}
+          initial={reduced ? { opacity: 0 } : { opacity: 0, clipPath: "inset(0 100% 0 0)" }}
+          whileInView={reduced ? { opacity: 1 } : { opacity: 1, clipPath: "inset(0 0% 0 0)" }}
           viewport={{ once: true, margin: "-40px" }}
           transition={{ duration: 0.9, delay, ease: "easeOut" }}
         />

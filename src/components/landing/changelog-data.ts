@@ -30,14 +30,14 @@ export interface ChangelogStop {
   groups: ChangelogGroup[];
 }
 
-export const CHANGELOG_TOTAL_ENTRIES = 390;
+export const CHANGELOG_TOTAL_ENTRIES = 393;
 
 export const CHANGELOG_TOTALS: Record<ChangelogBucket, number> = {
-  "Added": 168,
+  "Added": 169,
   "Changed": 28,
   "Deprecated": 0,
   "Removed": 3,
-  "Fixed": 151,
+  "Fixed": 153,
   "Security": 5,
   "Behavior": 35
 };
@@ -46,13 +46,13 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
   {
     "label": "0.0.43",
     "date": "2026-10-30",
-    "total": 9,
+    "total": 12,
     "counts": {
-      "Added": 2,
+      "Added": 3,
       "Changed": 0,
       "Deprecated": 0,
       "Removed": 0,
-      "Fixed": 7,
+      "Fixed": 9,
       "Security": 0,
       "Behavior": 0
     },
@@ -65,7 +65,11 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
             "behavior": false
           },
           {
-            "title": "The provider-workflow hardening round",
+            "title": "The craft axes",
+            "behavior": false
+          },
+          {
+            "title": "The Website Excellence skills and agents",
             "behavior": false
           }
         ]
@@ -73,6 +77,14 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
       {
         "bucket": "Fixed",
         "items": [
+          {
+            "title": "F24 — the landing's HP bars animated width, and the first gallery app shipped transition-all",
+            "behavior": false
+          },
+          {
+            "title": "The provider-workflow hardening round",
+            "behavior": false
+          },
           {
             "title": "F21 — releases no longer ship while their own CI is red",
             "behavior": false

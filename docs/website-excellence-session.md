@@ -103,7 +103,7 @@ bridge — one committed receipt per run
 exit 1. The calibration fixture
 (`scripts/design_critic_calibration.html`) is the known-bad anchor. The
 contracts: the round's [`README.md`](../benchmarks/website-excellence-round/README.md)
-+ [`rubric.md`](../benchmarks/website-excellence-round/rubric.md); the gap
++ [`rubric.md`](../benchmarks/website-excellence-round-2/rubric.md); the gap
 audit it answers: [`website-excellence-gap-analysis.md`](website-excellence-gap-analysis.md).
 
 **VERIFIED.** The baseline receipt

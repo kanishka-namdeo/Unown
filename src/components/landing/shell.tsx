@@ -216,7 +216,7 @@ export function HpBar({
         role="img"
         aria-label={caption ?? `${label} ${pct}%`}
       >
-        <i style={{ width: `${pct}%` }} />
+        <i style={{ "--fill": Math.max(0, Math.min(1, pct / 100)) } as React.CSSProperties} />
       </div>
       <span className="gb-term shrink-0 text-[17px] leading-none tabular-nums text-dim">
         {pct}%

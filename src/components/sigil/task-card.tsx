@@ -47,7 +47,7 @@ export function TaskCard({
       }}
       onDragEnd={() => setDragging(false)}
       aria-label={`${task.title}, priority ${task.priority}, column ${COLUMNS.find((c) => c.id === task.column)?.title ?? task.column}`}
-      className={`group cursor-grab rounded-lg border bg-sf-surface-2 p-3 transition-all active:cursor-grabbing ${
+      className={`group cursor-grab rounded-lg border bg-sf-surface-2 p-3 transition-[transform,border-color,box-shadow] active:cursor-grabbing ${
         dragging ? "opacity-50 ring-2 ring-sf-accent" : "border-sf-border"
       }`}
     >

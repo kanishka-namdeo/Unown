@@ -38,7 +38,7 @@ export function Header({ theme, onToggleTheme, view, onView, search, onSearch }:
               aria-label={n.aria}
               aria-current={active ? "page" : undefined}
               onClick={() => onView(n.id)}
-              className={`relative rounded-lg px-3 py-1.5 text-sm font-medium transition-all focus-visible:outline focus-visible:outline-2 focus-visible:outline-sf-accent focus-visible:outline-offset-2 ${
+              className={`relative rounded-lg px-3 py-1.5 text-sm font-medium transition-[color,background-color] focus-visible:outline focus-visible:outline-2 focus-visible:outline-sf-accent focus-visible:outline-offset-2 ${
                 active
                   ? "bg-sf-surface text-sf shadow-sm"
                   : "text-sf-dim hover:text-sf"

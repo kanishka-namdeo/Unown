@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * design_critic.mjs — the Website Excellence Round's self-critique driver.
+ * design_critic.mjs — the Website Excellence program's self-critique driver.
  *
  * One command runs the whole critique loop against a PRODUCTION build of any
  * route: per-band + full-page screenshots (desktop 1440 and mobile 390), the
@@ -11,10 +11,24 @@
  * every screenshot scored 0-10 on seven axes by agnes-3.0-flash through the
  * llm-bridge, STRICT JSON, aggregated into one committed receipt.
  *
- * The receipt is the benchmark artifact (benchmarks/website-excellence-round/
- * critiques/*.json): a run without a receipt never counts, and a score without
- * a pixel ground-truth is an opinion — which is why the objective audit rides
- * along in the same receipt, not in a separate opinionated report.
+ * The second excellence round (2026-10-30) adds the CRAFT axes — the six
+ * research-derived checks from docs/website-excellence-research-2.md, each a
+ * rule the nine-site sweep verified in live production CSS and phrased so a
+ * tool can enforce it: the weight census (ceiling 600, the Attio/Apple/
+ * Framer weight discipline), the tracking-vs-size curve (Apple's per-size
+ * optical tuning), the neutral-hue spread (Anthropic's tinted-ivory law:
+ * grays cluster around one hue), the accent census (one accent + one
+ * interactive variant — Apple #0071e3, Raycast #ff6363, Anthropic clay), the
+ * keyframe property whitelist (compositing/paint-only; layout properties and
+ * `transition: all` are violations; a prefers-reduced-motion guard must exist
+ * wherever keyframes do), and the breakpoint census (elite ships 2–6).
+ *
+ * The receipt is the benchmark artifact: a run without a receipt never counts,
+ * and a score without a pixel ground-truth is an opinion — which is why the
+ * objective audit rides along in the same receipt, not in a separate
+ * opinionated report. Receipts land in benchmarks/website-excellence-round-2/
+ * critiques/ (schema 2 — the round-1 dir keeps its committed schema-1 set for
+ * the encore drift gate).
  *
  * Usage:
  *   node scripts/design_critic.mjs --route / --label baseline
@@ -54,7 +68,7 @@ const LABEL = arg("label", "run");
 const OUT_ROOT = arg("out", join(process.cwd(), "download", "design-critic", LABEL));
 const RECEIPT_DIR = arg(
   "receipts",
-  join(process.cwd(), "benchmarks", "website-excellence-round", "critiques"),
+  join(process.cwd(), "benchmarks", "website-excellence-round-2", "critiques"),
 );
 const FULL_ONLY = has("full-only");
 const NO_VLM = has("no-vlm");
@@ -129,6 +143,14 @@ const RUBRIC = {
   missingAlts: 0,
   mobileOverflow: 0,          // no horizontal scroll on 390px
   fcpMs: 1800, lcpMs: 2500, cls: 0.1, tbtMs: 200, // the Core Web Vitals "good" band
+  /* -- the craft axes (round 2; every threshold cited in website-excellence-research-2.md) -- */
+  weightCeiling: 600,         // the Attio census (313 medium vs 1 bold); Apple/Framer/Airbnb never exceed 600 on marketing
+  weightSetMax: 4,            // Apple 3, Framer 2, Airbnb 3, Notion 4 - closed sets
+  trackingOffendersMax: 3,    // the Apple curve: negative >=40px, ~0 at 17-40px, <= +0.02em below; budget for one-off labels
+  neutralHueSpreadMax: 30,    // degrees - the tinted-ivory law: tinted grays cluster around one hue (circular stddev)
+  accentClustersMax: 2,       // one accent + one interactive variant (Apple, Raycast, Anthropic, Framer)
+  animLayoutPropsMax: 0,      // compositing/paint only - layout props and `all` are violations (Vercel guideline, web.dev)
+  breakpointsMax: 8,          // Framer 2, Apple 3, Airbnb 5, Notion 6 - plus framework overhead
 };
 
 /* ────────────────── the objective audit (in-page) ──────────────────
@@ -186,6 +208,11 @@ const AUDIT = `(() => {
   const fontSizes = new Map();
   const spacing = [];
   const offenders = { contrast: [], fonts: [], spacing: [] };
+  // craft collectors (round 2)
+  const weights = new Map();
+  const trackingCombos = new Map();  // distinct off-curve size+tracking pairs (a census, not a node count)
+  const tintedHues = [];      // hues of tinted grays (the neutral-hue spread)
+  const accentHues = [];      // hues of saturated interactive colors (the accent census)
   const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
   const seenEls = new Set();
   while (walker.nextNode()) {
@@ -196,6 +223,21 @@ const AUDIT = `(() => {
     seenEls.add(el);
     const s = getComputedStyle(el);
     if (s.fontSize && s.fontSize !== "0px") fontSizes.set(s.fontSize, (fontSizes.get(s.fontSize) || 0) + 1);
+    // craft: the weight census + the tracking-vs-size curve (research-2 rules 1-2)
+    const wNum = parseInt(s.fontWeight, 10);
+    if (Number.isFinite(wNum)) weights.set(wNum, (weights.get(wNum) || 0) + 1);
+    const px2 = parseFloat(s.fontSize);
+    if (px2 > 0) {
+      const lsRaw = s.letterSpacing;
+      const em = lsRaw === "normal" ? 0 : parseFloat(lsRaw) / px2;
+      if (Number.isFinite(em)) {
+        let ok;
+        if (px2 >= 40) ok = em <= 0.002;                       // display: negative expected (Apple -.005em at 56px, Notion -.048em at 96px)
+        else if (px2 >= 17) ok = em >= -0.03 && em <= 0.02;    // display-adjacent body: tightening allowed toward the display curve (Apple 0 at 32-40px, Notion -.035em at 54px, +.012em at 19-28px)
+        else ok = em <= 0.2;                                   // label: tracked small caps allowed (Raycast +.1-.3px, Airbnb .04em, the GBA pixel labels .14-.18em)
+        if (!ok) { const k = Math.round(px2) + "px@" + em.toFixed(3) + "em"; trackingCombos.set(k, (trackingCombos.get(k) || 0) + 1); }
+      }
+    }
     const fg = parse(s.color);
     const bg = bgOf(el);
     if (!fg || !bg) continue;
@@ -220,6 +262,79 @@ const AUDIT = `(() => {
       if (v > 0) { spacing.push(v); if (Math.round(v) % 4 !== 0) offenders.spacing.push({ selector: el.tagName.toLowerCase(), prop: k, value: s[k] }); }
     }
   }
+  // craft: the color census — every visible element contributes its opaque
+  // background and text colors; low-saturation ones feed the neutral-hue
+  // spread (the tinted-ivory law), saturated colors on INTERACTIVE elements
+  // feed the accent census (the one-accent law).
+  const toHsl = (c) => {
+    const mx = Math.max(c.r, c.g, c.b) / 255, mn = Math.min(c.r, c.g, c.b) / 255;
+    const l = (mx + mn) / 2, d = mx - mn;
+    if (d === 0) return { h: null, s: 0, l };
+    const r = c.r / 255, g = c.g / 255, b = c.b / 255;
+    const sat = l > 0.5 ? d / (2 - mx - mn) : d / (mx + mn);
+    let h;
+    if (mx === r / 255) h = ((g - b) / d + (g < b ? 6 : 0));
+    else if (mx === g / 255) h = (b - r) / d + 2;
+    else h = (r - g) / d + 4;
+    return { h: h * 60, s: sat, l };
+  };
+  const interactive = document.body.querySelectorAll('a, button, [role="button"], summary, input, select, [tabindex]:not([tabindex="-1"])');
+  for (const el of document.body.querySelectorAll("*")) {
+    if (!visible(el)) continue;
+    const s2 = getComputedStyle(el);
+    for (const col of [parse(s2.backgroundColor), parse(s2.color)]) {
+      if (!col || col.a < 0.9) continue;
+      const hsl = toHsl(col);
+      if (hsl.h === null) continue;           // pure gray: clusters trivially, never an offender
+      if (hsl.s >= 0.02 && hsl.s <= 0.30 && hsl.l >= 0.06 && hsl.l <= 0.94) tintedHues.push(hsl.h);
+    }
+  }
+  for (const el of interactive) {
+    if (!visible(el)) continue;
+    const col = parse(getComputedStyle(el).color);
+    if (!col || col.a < 0.9) continue;
+    const hsl = toHsl(col);
+    if (hsl.h !== null && hsl.s > 0.25) accentHues.push(hsl.h);
+  }
+  // craft: the stylesheet census — keyframe/transition property whitelist,
+  // breakpoint count, the reduced-motion guard (research-2 rules 7-9)
+  const animatedProps = new Set();
+  let hasKeyframes = false, hasPrm = false;
+  const bpSet = new Set();
+  /* Whitelisted animated properties: compositing (transform/opacity/filter +
+     Tailwind v4's individual translate/scale/rotate), paint (colors, shadow,
+     clip-path, motion-path), discrete steps (display/overlay/pointer-events -
+     the layer-swap pattern), and the height exception for the radix accordion
+     keyframes (the platform-sanctioned pattern until interpolate-size is
+     universal - tw-animate-css's accordion-down/up, driven by the
+     --radix-accordion-content-height var). */
+  const ANIM_OK = new Set(["transform", "translate", "scale", "rotate", "opacity", "filter", "backdrop-filter", "-webkit-backdrop-filter", "color", "background-color", "background-position", "background-size", "border-color", "outline-color", "text-decoration-color", "box-shadow", "fill", "stroke", "clip-path", "offset-distance", "offset-path", "view-timeline", "scroll-timeline", "animation-timeline", "transition-behavior", "content-visibility", "display", "overlay", "pointer-events", "height"]);
+  const walkRules = (rules) => {
+    for (const rule of rules) {
+      if (!rule) continue;
+      if (rule.type === 7 /* KEYFRAMES_RULE */) {
+        hasKeyframes = true;
+        for (const fr of rule.cssRules) for (let i = 0; i < fr.style.length; i++) animatedProps.add(fr.style.item(i));
+      } else if (rule.type === 4 /* MEDIA_RULE */) {
+        const mq = rule.conditionText || "";
+        if (mq.includes("prefers-reduced-motion")) hasPrm = true;
+        if (/width/.test(mq)) for (const m of mq.matchAll(/([0-9.]+)(px|r?em)(?![a-z])/g)) bpSet.add(m[1] + m[2]);
+        if (rule.cssRules) walkRules(rule.cssRules);
+      } else if (rule.style) {
+        const tp = rule.style.getPropertyValue("transition-property");
+        if (tp && tp !== "none") for (const p of tp.split(",").map((x) => x.trim())) animatedProps.add(p);
+        if (rule.cssRules) walkRules(rule.cssRules); // supports/nested
+      } else if (rule.cssRules) {
+        walkRules(rule.cssRules);
+      }
+    }
+  };
+  for (const sheet of document.styleSheets) {
+    let rules; try { rules = sheet.cssRules; } catch { continue; } // cross-origin: skip
+    if (rules) walkRules(rules);
+  }
+  const animViolations = [...animatedProps].filter((p) => p !== "all" ? !ANIM_OK.has(p) && !p.startsWith("--") : false);
+  const animAll = animatedProps.has("all");
   const headings = [...document.body.querySelectorAll("h1,h2,h3,h4,h5,h6")]
     .filter(visible).map((h) => +h.tagName[1]);
   const skips = [];
@@ -228,6 +343,29 @@ const AUDIT = `(() => {
   }
   const imgs = [...document.images];
   const missingAlts = imgs.filter((i) => visible(i) && !i.hasAttribute("alt")).length;
+  // craft: circular stats for the tinted-neutral hues (degrees)
+  const circ = (degs) => {
+    if (degs.length < 3) return { n: degs.length, meanDeg: null, stdDeg: null };
+    const rad = degs.map((d) => (d * Math.PI) / 180);
+    const x = rad.reduce((a, r) => a + Math.cos(r), 0) / rad.length;
+    const y = rad.reduce((a, r) => a + Math.sin(r), 0) / rad.length;
+    const r = Math.sqrt(x * x + y * y);
+    const mean = (Math.atan2(y, x) * 180) / Math.PI;
+    const std = Math.sqrt(-2 * Math.log(Math.max(r, 1e-9))) * (180 / Math.PI);
+    return { n: degs.length, meanDeg: +mean.toFixed(1), stdDeg: +std.toFixed(1) };
+  };
+  const hueClusters = (degs, bucket = 30) => {
+    if (!degs.length) return { clusters: 0, buckets: [] };
+    const bins = new Map();
+    for (const d of degs) {
+      const b = Math.floor((((d % 360) + 360) % 360) / bucket);
+      bins.set(b, (bins.get(b) || 0) + 1);
+    }
+    // wrap: the first and last bucket are the same hue family
+    let clusters = [...bins.entries()].filter(([, n]) => n >= 2).length;
+    if (bins.has(0) && bins.has(Math.floor(360 / bucket) - 1) && bins.get(0) + bins.get(Math.floor(360 / bucket) - 1) >= 2 && (bins.get(0) < 2 || bins.get(Math.floor(360 / bucket) - 1) < 2)) clusters = Math.max(0, clusters - 1);
+    return { clusters, buckets: [...bins.entries()].map(([b, n]) => ({ from: b * bucket, count: n })) };
+  };
   return {
     contrast: { min: contrast.length ? +Math.min(...contrast).toFixed(2) : null, mean: contrast.length ? +(contrast.reduce((a, b) => a + b, 0) / contrast.length).toFixed(2) : null, violations: offenders.contrast },
     type: { distinctSizes: fontSizes.size, sizes: [...fontSizes.entries()].sort((a, b) => parseFloat(a[0]) - parseFloat(b[0])).map(([s, n]) => ({ size: s, uses: n })) },
@@ -235,6 +373,14 @@ const AUDIT = `(() => {
     headings: { order: headings, skips },
     images: { total: imgs.length, missingAlts },
     overflowX: document.documentElement.scrollWidth - document.documentElement.clientWidth,
+    craft: {
+      weights: { distinct: weights.size, max: weights.size ? Math.max(...weights.keys()) : null, census: [...weights.entries()].sort((a, b) => a[0] - b[0]).map(([w, n]) => ({ weight: w, uses: n })) },
+      tracking: { offenders: [...trackingCombos.entries()].sort((a, b) => b[1] - a[1]).slice(0, 12).map(([combo, n]) => ({ combo, uses: n })), total: trackingCombos.size },
+      neutralHue: circ(tintedHues),
+      accents: { ...hueClusters(accentHues), sampled: accentHues.length },
+      anim: { props: [...animatedProps].sort(), layoutViolations: animViolations, usesAll: animAll, hasKeyframes, hasReducedMotionGuard: hasPrm },
+      breakpoints: { count: bpSet.size, values: [...bpSet].sort((a, b) => parseFloat(a) - parseFloat(b)) },
+    },
   };
 })()`;
 
@@ -398,11 +544,21 @@ const gates = {
   cls: { value: +results.desktop.vitals.cls.toFixed(3), max: RUBRIC.cls, pass: results.desktop.vitals.cls <= RUBRIC.cls },
   tbtMs: { value: Math.round(results.desktop.vitals.tbt), max: RUBRIC.tbtMs, pass: results.desktop.vitals.tbt <= RUBRIC.tbtMs },
   vlmAxes: { value: axisMeans, floor: RUBRIC.vlmFloor, pass: vlmFailAxes.length === 0, failures: vlmFailAxes },
+  /* the craft gates (round 2; desktop dark is the canonical measure, light scheme
+     joins where the rule is scheme-independent, mobile joins the anim census) */
+  weightCeiling: (() => { const v = Math.max(d.craft.weights.max ?? 0, dl.craft.weights.max ?? 0); return { value: v, max: RUBRIC.weightCeiling, pass: v <= RUBRIC.weightCeiling }; })(),
+  weightSet: (() => { const v = Math.max(d.craft.weights.distinct, dl.craft.weights.distinct); return { value: v, max: RUBRIC.weightSetMax, pass: v <= RUBRIC.weightSetMax }; })(),
+  trackingCurve: { value: d.craft.tracking.total + dl.craft.tracking.total, max: RUBRIC.trackingOffendersMax, pass: d.craft.tracking.total + dl.craft.tracking.total <= RUBRIC.trackingOffendersMax },
+  neutralHueSpread: (() => { const c = d.craft.neutralHue.n >= 3 ? d.craft.neutralHue : dl.craft.neutralHue; return { value: c.stdDeg, max: RUBRIC.neutralHueSpreadMax, sampled: c.n, pass: c.stdDeg === null || c.stdDeg <= RUBRIC.neutralHueSpreadMax }; })(),
+  accentClusters: (() => { const a = d.craft.accents; return { value: a.clusters, max: RUBRIC.accentClustersMax, sampled: a.sampled, pass: a.sampled < 3 || a.clusters <= RUBRIC.accentClustersMax }; })(),
+  animLayoutProps: (() => { const v = d.craft.anim.layoutViolations.length + m.craft.anim.layoutViolations.length + (d.craft.anim.usesAll ? 1 : 0) + (m.craft.anim.usesAll ? 1 : 0); return { value: v, max: RUBRIC.animLayoutPropsMax, props: [...new Set([...d.craft.anim.layoutViolations, ...m.craft.anim.layoutViolations])], pass: v <= RUBRIC.animLayoutPropsMax }; })(),
+  reducedMotionGuard: { value: d.craft.anim.hasKeyframes ? d.craft.anim.hasReducedMotionGuard : null, max: 1, pass: !d.craft.anim.hasKeyframes || d.craft.anim.hasReducedMotionGuard },
+  breakpoints: { value: d.craft.breakpoints.count, max: RUBRIC.breakpointsMax, pass: d.craft.breakpoints.count <= RUBRIC.breakpointsMax },
 };
 const passed = Object.values(gates).every((g) => g.pass);
 
 const receipt = {
-  schema: "website-excellence/critique/1",
+  schema: "website-excellence/critique/2",
   route: ROUTE, url, label: LABEL, file: FILE || undefined,
   generatedAt: new Date().toISOString(),
   rubric: RUBRIC,
@@ -426,5 +582,7 @@ console.log(`  type: ${d.type.distinctSizes} distinct sizes · spacing: ${d.spac
 console.log(`  headings: ${d.headings.skips.length} skips · alts missing: ${gates.missingAlts.value} · mobile overflow: ${m.overflowX}px`);
 console.log(`  vitals (desktop, localhost): FCP ${gates.fcpMs.value}ms · LCP ${gates.lcpMs.value}ms · CLS ${gates.cls.value} · TBT ${gates.tbtMs.value}ms`);
 if (!NO_VLM) console.log(`  vlm axes: ${RUBRIC.vlmAxes.map((a) => `${a} ${axisMeans[a] ?? "—"}`).join(" · ")}`);
+console.log(`  craft: weights ${d.craft.weights.census.map((w) => `${w.weight}x${w.uses}`).join("/")} (max ${gates.weightCeiling.value}) · tracking offenders ${gates.trackingCurve.value} · neutral hue ${d.craft.neutralHue.stdDeg ?? "—"}deg/${d.craft.neutralHue.n} · accent clusters ${gates.accentClusters.value}`);
+console.log(`  anim: ${d.craft.anim.layoutViolations.length + m.craft.anim.layoutViolations.length} layout props${d.craft.anim.usesAll ? " + transition:all" : ""} · prm guard ${gates.reducedMotionGuard.value} · breakpoints ${d.craft.breakpoints.count}`);
 console.log(`  rubric: ${passed ? "PASS" : "FAIL"} · receipt: ${receiptPath} · ${receipt.wallSeconds}s`);
 if (ENFORCE && !passed) process.exit(1);

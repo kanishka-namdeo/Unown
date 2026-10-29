@@ -15,7 +15,7 @@
 Related: [the round's session log](website-excellence-session.md) ·
 [the plan](../benchmarks/website-excellence-round/plan.md) ·
 [the validation log (F14–F18)](../benchmarks/website-excellence-round/validation-log.md) ·
-[the rubric](../benchmarks/website-excellence-round/rubric.md) ·
+[the rubric](../benchmarks/website-excellence-round-2/rubric.md) ·
 [the research](website-excellence-research.md)
 
 ## What the app is

@@ -136,3 +136,47 @@ the README table and `docs/AGENTS.md`.
 platform could not do at `661801fa`), then the round's builds: the
 critic's new objective axes and the website skills the ten rules
 imply.
+
+## Checkpoint 3 — the capability builds: craft axes, six skills, four agents
+
+**DONE.**
+
+- **The craft axes** (`scripts/design_critic.mjs`, schema
+  `website-excellence/critique/2`): six new objective gates, each a
+  research rule made mechanical — the weight census (ceiling 600, ≤4
+  distinct), the tracking-vs-size curve (distinct off-curve combos ≤3),
+  the tinted-neutral hue spread (≤30° circular stddev), the accent
+  cluster census (≤2 on interactive elements), the animated-property
+  whitelist (layout props + `transition: all` = violations;
+  Tailwind v4's individual transforms, discrete steps and the radix
+  accordion height exception correctly classified), the breakpoint
+  census (≤8), and the reduced-motion guard. Receipts moved to
+  `benchmarks/website-excellence-round-2/critiques/`; the rubric moved
+  and extended with the craft table.
+- **Six website skills** (`.unown/skills/`, committed):
+  `landing-page-architect`, `design-system-generator`, `ux-reviewer`,
+  `accessibility-auditor`, `motion-designer`, `frontend-craftsman` —
+  the mission's Phase-3 skills, each grounded in the two research
+  bases and each ending in its verification command.
+- **Four specialist agents** (`.unown/agents/`): `design-reviewer`
+  (the critique-lane gate), `ux-critic`, `a11y-auditor`,
+  `performance-engineer` — composable with the skills, receipts-only
+  reporting, BLOCKED-protocol aware.
+- **F24 found and fixed by the new tooling itself**: the axes' first
+  run against the real landing caught the HP bars' `width` transition
+  and four `transition-all`s (the first gallery app + the vendored
+  accordion) — fixed with `scaleX(var(--fill))` + `clip-path` mount and
+  explicit property lists. The platform's own medicine applied to its
+  earlier work.
+
+**VERIFIED.** The real landing passes ALL craft gates (weights
+400/500/600, tracking 0 offenders, neutral hue 2.7° over 22 grays,
+accents 2, anim 0 layout props, breakpoints 6, prm guard true); the
+known-bad calibration fixture still FAILS (weight 700 detected) — the
+axes discriminate both ways (receipts committed under
+`benchmarks/website-excellence-round-2/critiques/`). 2041/2041 unit
+green after the component fixes; typecheck + build green.
+
+**NEXT.** Phase 4's validation website: a new gallery app built under
+the new skills + agents, through the critique loop, exercising every
+craft gate from the first build — the round's benchmark scenario.

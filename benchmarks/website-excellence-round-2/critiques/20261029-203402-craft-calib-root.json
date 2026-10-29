@@ -1,0 +1,835 @@
+{
+  "schema": "website-excellence/critique/2",
+  "route": "/",
+  "url": "file:///home/z/unown/scripts/design_critic_calibration.html",
+  "label": "craft-calib",
+  "file": "scripts/design_critic_calibration.html",
+  "generatedAt": "2026-10-29T20:34:02.358Z",
+  "rubric": {
+    "vlmAxes": [
+      "hierarchy",
+      "typography",
+      "spacing",
+      "color",
+      "alignment",
+      "density",
+      "overall"
+    ],
+    "vlmFloor": 7,
+    "contrastViolations": 0,
+    "fontSizesMax": 8,
+    "offGridMaxPct": 15,
+    "headingSkips": 0,
+    "missingAlts": 0,
+    "mobileOverflow": 0,
+    "fcpMs": 1800,
+    "lcpMs": 2500,
+    "cls": 0.1,
+    "tbtMs": 200,
+    "weightCeiling": 600,
+    "weightSetMax": 4,
+    "trackingOffendersMax": 3,
+    "neutralHueSpreadMax": 30,
+    "accentClustersMax": 2,
+    "animLayoutPropsMax": 0,
+    "breakpointsMax": 8
+  },
+  "audit": {
+    "desktop": {
+      "contrast": {
+        "min": 1.42,
+        "mean": 1.88,
+        "violations": [
+          {
+            "text": "welcome to the fixture",
+            "ratio": 2.24,
+            "need": 3,
+            "size": "31px",
+            "weight": "700",
+            "selector": "h1"
+          },
+          {
+            "text": "a subheading that skips two levels",
+            "ratio": 1.78,
+            "need": 4.5,
+            "size": "13px",
+            "weight": "700",
+            "selector": "h4"
+          },
+          {
+            "text": "Lorum text at twenty seven pixels.",
+            "ratio": 1.97,
+            "need": 3,
+            "size": "27px",
+            "weight": "400",
+            "selector": "p.t1"
+          },
+          {
+            "text": "Text at twenty two pixels with no role.",
+            "ratio": 1.97,
+            "need": 4.5,
+            "size": "22px",
+            "weight": "400",
+            "selector": "p.t2"
+          },
+          {
+            "text": "Nineteen pixels of undifferentiated copy",
+            "ratio": 1.97,
+            "need": 4.5,
+            "size": "19px",
+            "weight": "400",
+            "selector": "p.t3"
+          },
+          {
+            "text": "Sixteen and a half pixels, still the sam",
+            "ratio": 1.97,
+            "need": 4.5,
+            "size": "16.5px",
+            "weight": "400",
+            "selector": "p.t4"
+          },
+          {
+            "text": "Fourteen pixels, faint grey, low contras",
+            "ratio": 1.97,
+            "need": 4.5,
+            "size": "14px",
+            "weight": "400",
+            "selector": "p.t5"
+          },
+          {
+            "text": "Twelve point five pixels of nothing in p",
+            "ratio": 1.97,
+            "need": 4.5,
+            "size": "12.5px",
+            "weight": "400",
+            "selector": "p.t6"
+          },
+          {
+            "text": "Ten pixels of unreadable filler text.",
+            "ratio": 1.97,
+            "need": 4.5,
+            "size": "10px",
+            "weight": "400",
+            "selector": "p.t7"
+          },
+          {
+            "text": "Nine pixels, the faintest of all.",
+            "ratio": 1.55,
+            "need": 4.5,
+            "size": "9px",
+            "weight": "400",
+            "selector": "p.t8"
+          },
+          {
+            "text": "A box with odd paddings (11/29) and equa",
+            "ratio": 1.79,
+            "need": 4.5,
+            "size": "14px",
+            "weight": "400",
+            "selector": "p.t5"
+          },
+          {
+            "text": "Another box, different arbitrary padding",
+            "ratio": 1.89,
+            "need": 4.5,
+            "size": "12.5px",
+            "weight": "400",
+            "selector": "p.t6"
+          },
+          {
+            "text": "footer text in the faintest grey, no alt",
+            "ratio": 1.42,
+            "need": 4.5,
+            "size": "10px",
+            "weight": "400",
+            "selector": "p.faint"
+          }
+        ]
+      },
+      "type": {
+        "distinctSizes": 10,
+        "sizes": [
+          {
+            "size": "9px",
+            "uses": 1
+          },
+          {
+            "size": "10px",
+            "uses": 2
+          },
+          {
+            "size": "12.5px",
+            "uses": 2
+          },
+          {
+            "size": "13px",
+            "uses": 1
+          },
+          {
+            "size": "14px",
+            "uses": 2
+          },
+          {
+            "size": "16.5px",
+            "uses": 1
+          },
+          {
+            "size": "19px",
+            "uses": 1
+          },
+          {
+            "size": "22px",
+            "uses": 1
+          },
+          {
+            "size": "27px",
+            "uses": 1
+          },
+          {
+            "size": "31px",
+            "uses": 1
+          }
+        ]
+      },
+      "spacing": {
+        "samples": 8,
+        "offGrid": 8,
+        "offGridPct": 100
+      },
+      "headings": {
+        "order": [
+          1,
+          4
+        ],
+        "skips": [
+          {
+            "from": "h1",
+            "to": "h4"
+          }
+        ]
+      },
+      "images": {
+        "total": 1,
+        "missingAlts": 1
+      },
+      "overflowX": 0,
+      "craft": {
+        "weights": {
+          "distinct": 2,
+          "max": 700,
+          "census": [
+            {
+              "weight": 400,
+              "uses": 11
+            },
+            {
+              "weight": 700,
+              "uses": 2
+            }
+          ]
+        },
+        "tracking": {
+          "offenders": [],
+          "total": 0
+        },
+        "neutralHue": {
+          "n": 0,
+          "meanDeg": null,
+          "stdDeg": null
+        },
+        "accents": {
+          "clusters": 0,
+          "buckets": [],
+          "sampled": 0
+        },
+        "anim": {
+          "props": [],
+          "layoutViolations": [],
+          "usesAll": false,
+          "hasKeyframes": false,
+          "hasReducedMotionGuard": false
+        },
+        "breakpoints": {
+          "count": 0,
+          "values": []
+        }
+      }
+    },
+    "desktopLight": {
+      "contrast": {
+        "min": 1.42,
+        "mean": 1.88,
+        "violations": [
+          {
+            "text": "welcome to the fixture",
+            "ratio": 2.24,
+            "need": 3,
+            "size": "31px",
+            "weight": "700",
+            "selector": "h1"
+          },
+          {
+            "text": "a subheading that skips two levels",
+            "ratio": 1.78,
+            "need": 4.5,
+            "size": "13px",
+            "weight": "700",
+            "selector": "h4"
+          },
+          {
+            "text": "Lorum text at twenty seven pixels.",
+            "ratio": 1.97,
+            "need": 3,
+            "size": "27px",
+            "weight": "400",
+            "selector": "p.t1"
+          },
+          {
+            "text": "Text at twenty two pixels with no role.",
+            "ratio": 1.97,
+            "need": 4.5,
+            "size": "22px",
+            "weight": "400",
+            "selector": "p.t2"
+          },
+          {
+            "text": "Nineteen pixels of undifferentiated copy",
+            "ratio": 1.97,
+            "need": 4.5,
+            "size": "19px",
+            "weight": "400",
+            "selector": "p.t3"
+          },
+          {
+            "text": "Sixteen and a half pixels, still the sam",
+            "ratio": 1.97,
+            "need": 4.5,
+            "size": "16.5px",
+            "weight": "400",
+            "selector": "p.t4"
+          },
+          {
+            "text": "Fourteen pixels, faint grey, low contras",
+            "ratio": 1.97,
+            "need": 4.5,
+            "size": "14px",
+            "weight": "400",
+            "selector": "p.t5"
+          },
+          {
+            "text": "Twelve point five pixels of nothing in p",
+            "ratio": 1.97,
+            "need": 4.5,
+            "size": "12.5px",
+            "weight": "400",
+            "selector": "p.t6"
+          },
+          {
+            "text": "Ten pixels of unreadable filler text.",
+            "ratio": 1.97,
+            "need": 4.5,
+            "size": "10px",
+            "weight": "400",
+            "selector": "p.t7"
+          },
+          {
+            "text": "Nine pixels, the faintest of all.",
+            "ratio": 1.55,
+            "need": 4.5,
+            "size": "9px",
+            "weight": "400",
+            "selector": "p.t8"
+          },
+          {
+            "text": "A box with odd paddings (11/29) and equa",
+            "ratio": 1.79,
+            "need": 4.5,
+            "size": "14px",
+            "weight": "400",
+            "selector": "p.t5"
+          },
+          {
+            "text": "Another box, different arbitrary padding",
+            "ratio": 1.89,
+            "need": 4.5,
+            "size": "12.5px",
+            "weight": "400",
+            "selector": "p.t6"
+          },
+          {
+            "text": "footer text in the faintest grey, no alt",
+            "ratio": 1.42,
+            "need": 4.5,
+            "size": "10px",
+            "weight": "400",
+            "selector": "p.faint"
+          }
+        ]
+      },
+      "type": {
+        "distinctSizes": 10,
+        "sizes": [
+          {
+            "size": "9px",
+            "uses": 1
+          },
+          {
+            "size": "10px",
+            "uses": 2
+          },
+          {
+            "size": "12.5px",
+            "uses": 2
+          },
+          {
+            "size": "13px",
+            "uses": 1
+          },
+          {
+            "size": "14px",
+            "uses": 2
+          },
+          {
+            "size": "16.5px",
+            "uses": 1
+          },
+          {
+            "size": "19px",
+            "uses": 1
+          },
+          {
+            "size": "22px",
+            "uses": 1
+          },
+          {
+            "size": "27px",
+            "uses": 1
+          },
+          {
+            "size": "31px",
+            "uses": 1
+          }
+        ]
+      },
+      "spacing": {
+        "samples": 8,
+        "offGrid": 8,
+        "offGridPct": 100
+      },
+      "headings": {
+        "order": [
+          1,
+          4
+        ],
+        "skips": [
+          {
+            "from": "h1",
+            "to": "h4"
+          }
+        ]
+      },
+      "images": {
+        "total": 1,
+        "missingAlts": 1
+      },
+      "overflowX": 0,
+      "craft": {
+        "weights": {
+          "distinct": 2,
+          "max": 700,
+          "census": [
+            {
+              "weight": 400,
+              "uses": 11
+            },
+            {
+              "weight": 700,
+              "uses": 2
+            }
+          ]
+        },
+        "tracking": {
+          "offenders": [],
+          "total": 0
+        },
+        "neutralHue": {
+          "n": 0,
+          "meanDeg": null,
+          "stdDeg": null
+        },
+        "accents": {
+          "clusters": 0,
+          "buckets": [],
+          "sampled": 0
+        },
+        "anim": {
+          "props": [],
+          "layoutViolations": [],
+          "usesAll": false,
+          "hasKeyframes": false,
+          "hasReducedMotionGuard": false
+        },
+        "breakpoints": {
+          "count": 0,
+          "values": []
+        }
+      }
+    },
+    "mobile": {
+      "contrast": {
+        "min": 1.42,
+        "mean": 1.88,
+        "violations": [
+          {
+            "text": "welcome to the fixture",
+            "ratio": 2.24,
+            "need": 3,
+            "size": "31px",
+            "weight": "700",
+            "selector": "h1"
+          },
+          {
+            "text": "a subheading that skips two levels",
+            "ratio": 1.78,
+            "need": 4.5,
+            "size": "13px",
+            "weight": "700",
+            "selector": "h4"
+          },
+          {
+            "text": "Lorum text at twenty seven pixels.",
+            "ratio": 1.97,
+            "need": 3,
+            "size": "27px",
+            "weight": "400",
+            "selector": "p.t1"
+          },
+          {
+            "text": "Text at twenty two pixels with no role.",
+            "ratio": 1.97,
+            "need": 4.5,
+            "size": "22px",
+            "weight": "400",
+            "selector": "p.t2"
+          },
+          {
+            "text": "Nineteen pixels of undifferentiated copy",
+            "ratio": 1.97,
+            "need": 4.5,
+            "size": "19px",
+            "weight": "400",
+            "selector": "p.t3"
+          },
+          {
+            "text": "Sixteen and a half pixels, still the sam",
+            "ratio": 1.97,
+            "need": 4.5,
+            "size": "16.5px",
+            "weight": "400",
+            "selector": "p.t4"
+          },
+          {
+            "text": "Fourteen pixels, faint grey, low contras",
+            "ratio": 1.97,
+            "need": 4.5,
+            "size": "14px",
+            "weight": "400",
+            "selector": "p.t5"
+          },
+          {
+            "text": "Twelve point five pixels of nothing in p",
+            "ratio": 1.97,
+            "need": 4.5,
+            "size": "12.5px",
+            "weight": "400",
+            "selector": "p.t6"
+          },
+          {
+            "text": "Ten pixels of unreadable filler text.",
+            "ratio": 1.97,
+            "need": 4.5,
+            "size": "10px",
+            "weight": "400",
+            "selector": "p.t7"
+          },
+          {
+            "text": "Nine pixels, the faintest of all.",
+            "ratio": 1.55,
+            "need": 4.5,
+            "size": "9px",
+            "weight": "400",
+            "selector": "p.t8"
+          },
+          {
+            "text": "A box with odd paddings (11/29) and equa",
+            "ratio": 1.79,
+            "need": 4.5,
+            "size": "14px",
+            "weight": "400",
+            "selector": "p.t5"
+          },
+          {
+            "text": "Another box, different arbitrary padding",
+            "ratio": 1.89,
+            "need": 4.5,
+            "size": "12.5px",
+            "weight": "400",
+            "selector": "p.t6"
+          },
+          {
+            "text": "footer text in the faintest grey, no alt",
+            "ratio": 1.42,
+            "need": 4.5,
+            "size": "10px",
+            "weight": "400",
+            "selector": "p.faint"
+          }
+        ]
+      },
+      "type": {
+        "distinctSizes": 10,
+        "sizes": [
+          {
+            "size": "9px",
+            "uses": 1
+          },
+          {
+            "size": "10px",
+            "uses": 2
+          },
+          {
+            "size": "12.5px",
+            "uses": 2
+          },
+          {
+            "size": "13px",
+            "uses": 1
+          },
+          {
+            "size": "14px",
+            "uses": 2
+          },
+          {
+            "size": "16.5px",
+            "uses": 1
+          },
+          {
+            "size": "19px",
+            "uses": 1
+          },
+          {
+            "size": "22px",
+            "uses": 1
+          },
+          {
+            "size": "27px",
+            "uses": 1
+          },
+          {
+            "size": "31px",
+            "uses": 1
+          }
+        ]
+      },
+      "spacing": {
+        "samples": 8,
+        "offGrid": 8,
+        "offGridPct": 100
+      },
+      "headings": {
+        "order": [
+          1,
+          4
+        ],
+        "skips": [
+          {
+            "from": "h1",
+            "to": "h4"
+          }
+        ]
+      },
+      "images": {
+        "total": 1,
+        "missingAlts": 1
+      },
+      "overflowX": 0,
+      "craft": {
+        "weights": {
+          "distinct": 2,
+          "max": 700,
+          "census": [
+            {
+              "weight": 400,
+              "uses": 11
+            },
+            {
+              "weight": 700,
+              "uses": 2
+            }
+          ]
+        },
+        "tracking": {
+          "offenders": [],
+          "total": 0
+        },
+        "neutralHue": {
+          "n": 0,
+          "meanDeg": null,
+          "stdDeg": null
+        },
+        "accents": {
+          "clusters": 0,
+          "buckets": [],
+          "sampled": 0
+        },
+        "anim": {
+          "props": [],
+          "layoutViolations": [],
+          "usesAll": false,
+          "hasKeyframes": false,
+          "hasReducedMotionGuard": false
+        },
+        "breakpoints": {
+          "count": 0,
+          "values": []
+        }
+      }
+    }
+  },
+  "vitals": {
+    "desktop": {
+      "fcp": 0,
+      "lcp": 104,
+      "cls": 0,
+      "tbt": 0
+    },
+    "mobile": {
+      "fcp": 0,
+      "lcp": 32,
+      "cls": 0,
+      "tbt": 0
+    }
+  },
+  "critiques": [],
+  "axisMeans": {
+    "hierarchy": null,
+    "typography": null,
+    "spacing": null,
+    "color": null,
+    "alignment": null,
+    "density": null,
+    "overall": null
+  },
+  "gates": {
+    "contrastViolations": {
+      "value": 39,
+      "max": 0,
+      "pass": false
+    },
+    "fontSizes": {
+      "value": 10,
+      "max": 8,
+      "pass": false
+    },
+    "offGridPct": {
+      "value": 100,
+      "max": 15,
+      "pass": false
+    },
+    "headingSkips": {
+      "value": 1,
+      "max": 0,
+      "pass": false
+    },
+    "missingAlts": {
+      "value": 2,
+      "max": 0,
+      "pass": false
+    },
+    "mobileOverflow": {
+      "value": 0,
+      "max": 0,
+      "pass": true
+    },
+    "fcpMs": {
+      "value": 0,
+      "max": 1800,
+      "pass": true
+    },
+    "lcpMs": {
+      "value": 104,
+      "max": 2500,
+      "pass": true
+    },
+    "cls": {
+      "value": 0,
+      "max": 0.1,
+      "pass": true
+    },
+    "tbtMs": {
+      "value": 0,
+      "max": 200,
+      "pass": true
+    },
+    "vlmAxes": {
+      "value": {
+        "hierarchy": null,
+        "typography": null,
+        "spacing": null,
+        "color": null,
+        "alignment": null,
+        "density": null,
+        "overall": null
+      },
+      "floor": 7,
+      "pass": true,
+      "failures": []
+    },
+    "weightCeiling": {
+      "value": 700,
+      "max": 600,
+      "pass": false
+    },
+    "weightSet": {
+      "value": 2,
+      "max": 4,
+      "pass": true
+    },
+    "trackingCurve": {
+      "value": 0,
+      "max": 3,
+      "pass": true
+    },
+    "neutralHueSpread": {
+      "value": null,
+      "max": 30,
+      "sampled": 0,
+      "pass": true
+    },
+    "accentClusters": {
+      "value": 0,
+      "max": 2,
+      "sampled": 0,
+      "pass": true
+    },
+    "animLayoutProps": {
+      "value": 0,
+      "max": 0,
+      "props": [],
+      "pass": true
+    },
+    "reducedMotionGuard": {
+      "value": null,
+      "max": 1,
+      "pass": true
+    },
+    "breakpoints": {
+      "value": 0,
+      "max": 8,
+      "pass": true
+    }
+  },
+  "passed": false,
+  "shotsDir": "/home/z/unown/download/design-critic/craft-calib/root",
+  "wallSeconds": 4.9
+}

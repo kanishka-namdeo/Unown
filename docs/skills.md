@@ -35,6 +35,8 @@ On first run, unown seeds four skills into `~/.unown/agent/skills/` (existing fi
 | `methodical-debugging` | A disciplined loop for unknown-cause failures: reproduce deterministically, shrink to a minimal reproducer, test one hypothesis at a time, instrument instead of guessing, then verify and add a regression test. |
 | `repo-exploration` | Orient before changing: map layout and entry points, read the nearest `AGENTS.md`/`CLAUDE.md` chain, read files fully before editing, and enumerate all usages before changing signatures. |
 
+This repo also carries the **Website Excellence Programme's six website skills** in `.unown/skills/` (committed, project-scoped): `landing-page-architect` (section sequencing, hero anatomy, conversion flow), `design-system-generator` (the ten enforceable rules as a generation procedure), `ux-reviewer` (the eight-pass friction review), `accessibility-auditor` (the WCAG 2.2 zero-tolerance layer), `motion-designer` (the 2026 compositing-only motion law) and `frontend-craftsman` (the pre-ship polish battery). UI-building sessions read the matching skill before the first edit; the `design-reviewer` agent runs the critique lane at checkpoints.
+
 ## Where skills live
 
 | Location | Scope | Notes |
