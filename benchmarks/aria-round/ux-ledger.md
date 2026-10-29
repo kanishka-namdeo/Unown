@@ -48,6 +48,12 @@ Column key:
 | A13 | repeat (resume) | API | finish routes + start tests | 40 (capped) | 222,579 / 17,071 | 379s | 0 | 0 | partial — 57 files, resumed | yes |
 | A14 | repeat (resume) | API | write the 14 API test files | 40 (capped) | 266,123 / 45,940 | 859s | 0 | 0 | partial — tests written, fix loop pending | yes |
 | A15 | repeat (resume) | API | the run/fix loop to green | 27 | 27,478 / 8,189 | 861s | 0 | 0 | completed — 210/210 green, typecheck + lint clean, lib fixes receipted | yes |
+| A16 | cold (build) | UI | read parley/cadence UI patterns for Phase 3 (capped mid-read) | 40 (capped) | 152,876 / 1,379 | 84s | 0 | 0 | partial — pattern exploration, resumed | yes |
+| A17 | repeat (resume) | UI | write provider + page + shell + login + dashboard + kanban + lists | 40 (capped) | 216,002 / 33,023 | 498s | 0 | 0 | partial — 10 components, resumed | yes |
+| A18 | repeat (resume) | UI | remaining components + the two test files | 40 (capped) | 341,316 / 29,672 | 530s | 0 | 0 | partial — 14 files + tests started, resumed | yes |
+| A19 | repeat (resume) | UI | test fix loop (embed-reset assertion, login render condition) | 40 (capped) | 257,700 / 25,313 | 530s | 0 | 0 | partial — fixes in flight, resumed | yes |
+| A20 | repeat (resume) | UI | continue fix loop; components file to 26 pass | 40 (capped) | 42,971 / 10,829 | 382s | 0 | 0 | partial — invariant file pending, resumed | yes |
+| A21 | repeat (resume) | UI | finish: all suites green | 19 | 537,444 / 7,875 | 580s | 0 | 0 | completed — 31 UI green; full aria surface 556/556; full repo 1,442/1,442; zero lib/API changes | yes |
 
 Notes on the rows:
 

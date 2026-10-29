@@ -83,7 +83,7 @@ build's contract.
 | Plan | 2 (40-turn exploration capped → 1-turn resume) | 40,292-char numbered build contract: data model (every field), 16 modules, ~50 routes with the auth ladder, the deterministic sequence-engine design, the 330-380-test plan, phases with acceptance criteria, 13 risks with mitigations, the embed contract — [`plan.md`](../benchmarks/aria-round/plan.md) | — |
 | Lib/domain | 6 sessions (5 capped resumes → 1 clean finish) | 16 modules + 18 test files, 7,146 LOC — **315 tests green** (2,520 expects), typecheck clean, full-repo suite 1,201 pass / 0 fail, zero files outside `src/lib/aria/` | (this round's next commits) |
 | API | 7 sessions (6 capped resumes → 1 clean finish; one fresh-session restart after the mega-session's context drag passed 900K input/40 turns) | ~50 routes across 10 groups with the 401/403/404/402/400 ladder, `aria-store` accessor, layout/page/globals stubs, 14 test files — **210 tests green** (1,077 expects), typecheck + lint clean, lib fixes receipted (the plan's `invites` array, the owner-carve-out refinement) | (this round's next commits) |
-| UI | (pending) | dashboard, kanban, record timelines, sequences, triage inbox, admin | — |
+| UI | 6 sessions (5 capped resumes → 1 clean finish) | AriaProvider client store (embed channel per §8.2), server-side embed/cookie read (the F3 pin), shell/login/dashboard/pipeline-kanban/deal-detail/accounts/contacts/leads/sequences/triage/reports/admin/primitives — RBAC-disabled-with-reason everywhere; **31 UI tests green**, full aria surface 556 green, typecheck clean, zero lib/API changes | (this round's next commits) |
 | E2E + review + drill | (pending) | Playwright e2e, reviewer passes, P0 pins, cold-start acceptance | — |
 | Landing embed | (pending) | gallery entry #6, embed contract patches, poster, copy, test pins | — |
 
@@ -149,8 +149,22 @@ next. A checkpoint is DONE only with measured numbers.
   way (the `invites` state array, the owner-seat carve-out refinement,
   visibility additions) — receipted in the diff. UX rows A9–A15
   ([the ledger](../benchmarks/aria-round/ux-ledger.md)).
-- [ ] **CP4 — UI phase** (dashboard/kanban/timelines/sequences/triage/
-  admin; component suite green).
+- [x] **CP4 — UI phase** (DONE — operator-verified): the `AriaProvider`
+  client store (the parley pattern — session bootstrap, 401-aware fetches,
+  the embed reset channel mounted only when `embed === true`, origin + shape
+  checked), the real `page.tsx` (server-side `searchParams.embed` + cookie
+  read via the Suspense/async-inner shape), and 13 components: the
+  role-gated shell, login (the 8 demo credentials), the 5-KPI dashboard
+  with drill-down, the pipeline kanban (stage picker, lost-reason gate
+  modal, closed-deal lock), record lists + details with timelines, the
+  sequences view (advance/exit + the mailbox drawer), the triage inbox,
+  the report tabs (forecast commit ladder + coverage), admin (members,
+  invites, the RBAC matrix, the filterable audit feed), and the primitives
+  (`ReasonGate`, accessible SVG, money/pct). `bun test src/components/aria`
+  **31 pass / 0 fail**; the full aria surface (lib + API + UI) **556 pass /
+  0 fail** (3,673 expects); typecheck clean. All defects were contained in
+  the new UI/test code — zero lib or API changes needed. UX rows A16–A21
+  ([the ledger](../benchmarks/aria-round/ux-ledger.md)).
 - [ ] **CP5 — e2e + adversarial review + cold-start drill** (Playwright
   e2e; reviewer subagent passes; P0 pins; a fresh-sandbox, zero-memory
   agent stands the app up from the repo alone).
