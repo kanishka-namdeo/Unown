@@ -52,8 +52,8 @@ describe("live-demo band (the gallery)", () => {
     expect(section?.textContent).toContain(LIVE_DEMO_APPS[0].url);
   });
 
-  test("the data file is a real gallery: six apps, distinct everything", () => {
-    expect(LIVE_DEMO_APPS.length).toBeGreaterThanOrEqual(6);
+  test("the data file is a real gallery: seven apps, distinct everything", () => {
+    expect(LIVE_DEMO_APPS.length).toBeGreaterThanOrEqual(7);
     const routes = new Set(LIVE_DEMO_APPS.map((a) => a.route));
     const posters = new Set(LIVE_DEMO_APPS.map((a) => a.poster));
     const resets = new Set(LIVE_DEMO_APPS.map((a) => a.resetType));
@@ -95,6 +95,20 @@ describe("live-demo band (the gallery)", () => {
     expect(aria!.route).toBe("/aria");
     expect(aria!.url).toContain("aria?embed=1");
     expect(aria!.receipt.receiptDoc).toContain("aria-demo-session.md");
+    // The nocturne entry (the nocturne round, gallery app #7) is present
+    // with its own reset type and a counted receipt block.
+    const nocturne = LIVE_DEMO_APPS.find((a) => a.id === "nocturne");
+    expect(nocturne).toBeTruthy();
+    expect(nocturne!.resetType).toBe("nocturne-reset");
+    expect(nocturne!.route).toBe("/nocturne");
+    expect(nocturne!.url).toContain("nocturne?embed=1");
+    expect(nocturne!.poster).toBe("/landing/nocturne/poster.png");
+    expect(nocturne!.receipt.receiptDoc).toContain("nocturne-demo-session.md");
+    // the counted receipts (the round's CP1–CP4 + the ledger)
+    expect(nocturne!.receipt.sessions).toBe(19);
+    expect(nocturne!.receipt.files).toBe(103);
+    expect(nocturne!.receipt.tests).toBe(466);
+    expect(nocturne!.receipt.commits).toBe(4);
   });
 
   test("every receipt chip reads from the ACTIVE app's data — switching tabs swaps the counts", () => {
@@ -232,6 +246,22 @@ describe("live-demo band (the gallery)", () => {
       expect(p5.type).toBe("aria-reset");
       expect(o5).toBe(window.origin);
       expect(o5).not.toBe("*");
+    }
+
+    // Switch to the nocturne app — the handshake posts the nocturne
+    // payload with a pinned origin (the seventh gallery app).
+    postMessage.mockClear();
+    const nocturneTab = tabs.findIndex((t) => t.textContent === "Nocturne");
+    if (nocturneTab >= 0) {
+      fireEvent.click(tabs[nocturneTab]);
+      fireEvent.click(
+        within(container as HTMLElement).getByRole("button", { name: /^reset/i }),
+      );
+      const [p6, o6] = postMessage.mock.calls[0] as [{ source: string; type: string }, string];
+      expect(p6.source).toBe("unown-landing");
+      expect(p6.type).toBe("nocturne-reset");
+      expect(o6).toBe(window.origin);
+      expect(o6).not.toBe("*");
     }
   });
 

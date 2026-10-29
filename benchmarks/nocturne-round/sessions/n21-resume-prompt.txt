@@ -1,0 +1,18 @@
+Finish Phase 4 (Embed). Remaining:
+1. The poster: public/landing/nocturne/poster.png — a REAL capture of the
+   live app. The dev server may still be running on :3000 (check `curl -s
+   localhost:3000` — if down, start `bun run dev` in the background and
+   wait for ready). Use the sibling poster pipeline: study
+   scripts/landing_shots.mjs (or however public/landing/aria/poster.png
+   was captured) and capture /nocturne?embed=1 at the sibling posters'
+   exact pixel dimensions. Do NOT draw a fake screenshot — a real
+   headless-Chromium capture of the running app only. If the environment
+   truly cannot run a browser, say so explicitly and stop that subtask.
+2. Fix the 4 failing landing tests (the gallery count/seven-apps pin, the
+   poster-exists pin, the reset-handshake pin, the built-improved-band
+   gallery ordinal pin) — update the pinned expectations to include the
+   seventh nocturne entry per the tests' own conventions.
+3. Re-verify: `bun test src` green, `bun run typecheck` clean,
+   `bun run build` succeeds.
+Note: the operator already fixed resetType to "nocturne-reset" (the
+provider listens for that exact type). Do not revert it.

@@ -68,6 +68,19 @@
  * incl. 49 routes + 14 api test files, 13 components + 2 component test
  * files, provider/page/layout/globals/css). Narrative:
  * docs/aria-demo-session.md.
+ *
+ * ── Nocturne (the nocturne round, 2026-10-29) ─────────────────────────
+ * Sources: the round's session ledger benchmarks/nocturne-round/ux-ledger.md
+ * — 19 agent sessions (N1–N19, the round's phase chain: plan → 7 lib → 7
+ * api → 4 ui, each capped phase a chunked resume-chain) · 103 files
+ * counted by the aria convention (find src/lib/nocturne src/app/nocturne
+ * src/components/nocturne -type f; toolCalls unreceipted in the ledger) ·
+ * git: the round's 4 app commits (c61c64c plan → ae8defe domain → a769ada
+ * api → d697079 ui; the operator's snapshot + housekeeping commits are
+ * not the round's) · tests: the nocturne surface's 466 green (360 lib +
+ * 78 api + 28 ui, the round's CP1–CP4 receipts) · files: 103 under src/.
+ * Narrative: docs/nocturne-demo-session.md (the round's session doc; the
+ * receipt link follows the aria convention).
  */
 export interface LiveDemoApp {
   id: string;
@@ -211,6 +224,26 @@ export const LIVE_DEMO_APPS: LiveDemoApp[] = [
       embeddingAdaptations: 5,
       receiptDoc:
         "https://github.com/kanishka-namdeo/Unown/blob/main/docs/aria-demo-session.md",
+    },
+  },
+  {
+    id: "nocturne",
+    name: "Nocturne",
+    route: "/nocturne",
+    url: "unown-nine.vercel.app/nocturne?embed=1",
+    poster: "/landing/nocturne/poster.png",
+    posterAlt:
+      "Nocturne — the incident-ops dashboard unown built: the live KPI band, open incidents with SLA countdowns, on-call rotations and runbooks, running live",
+    resetType: "nocturne-reset",
+    receipt: {
+      sessions: 19,
+      toolCalls: 0, // unreceipted in the round's envelopes — the aria count lands at close
+      files: 103,
+      tests: 466,
+      commits: 4,
+      embeddingAdaptations: 6,
+      receiptDoc:
+        "https://github.com/kanishka-namdeo/Unown/blob/main/docs/nocturne-demo-session.md",
     },
   },
 ];

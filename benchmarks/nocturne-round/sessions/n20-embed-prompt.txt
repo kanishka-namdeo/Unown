@@ -1,0 +1,49 @@
+You are executing Phase 4 (Embed + landing) of the Nocturne build — gallery
+app #7. Domain (360 tests), API (78 tests), UI (28 tests) are complete; the
+full-repo suite is 1909/1909, typecheck clean.
+
+Read how aria is embedded (next.config.ts CSP block for /aria/:path*,
+public/aria/favicon.svg, the gallery entry in
+src/components/landing/live-demo-data.ts with its counted receipts, the
+landing gallery tests, public/landing/aria/poster.png), then wire Nocturne
+in exactly the same lanes:
+
+1. next.config.ts — add the identical frame-hardening CSP block
+   (Content-Security-Policy frame-ancestors 'self' + X-Frame-Options
+   SAMEORIGIN) for /nocturne/:path*
+2. public/nocturne/favicon.svg — a nocturne-appropriate mark (the night
+   watch theme; keep it simple and consistent with the sibling favicons'
+   style/size)
+3. src/components/landing/live-demo-data.ts — gallery entry #7: id
+   "nocturne", name "Nocturne", route "/nocturne", url
+   "unown-nine.vercel.app/nocturne?embed=1", poster
+   "/landing/nocturne/poster.png" + posterAlt (describe the live incident
+   dashboard), resetType "nocturne", and an honest receipt block counted
+   from this round's actual telemetry (read
+   benchmarks/nocturne-round/ux-ledger.md and the repo state to count:
+   sessions = the N-build rows so far, toolCalls from the session envelopes
+   is unknown so use the aria receipt convention — count files (find
+   src/lib/nocturne src/app/nocturne src/components/nocturne -type f),
+   tests (bun test counts: 360 lib + 78 api + 28 ui = 466 nocturne tests),
+   commits (git log --oneline -- src/lib/nocturne | wc -l style), and
+   receiptDoc pointing at the repo path of the round's session doc
+   docs/nocturne-demo-session.md (do not create that doc; the receipt link
+   follows the aria convention)
+4. The poster: generate public/landing/nocturne/poster.png — study how the
+   sibling posters were made (scripts/landing_shots.mjs or the
+   tui-capture lane) and use the appropriate real-capture method against
+   the running app (bun run dev on :3000, navigate to /nocturne?embed=1,
+   screenshot the live dashboard at the sibling posters' pixel size). If a
+   real capture is not possible in this environment, state that clearly
+   and leave a placeholder note — do NOT fake a screenshot with a drawing.
+5. The landing gallery tests: run whatever test files cover
+   live-demo-data (find them) and add nocturne coverage in the same style
+   (gallery count, entry shape, poster existence, resetType wiring)
+
+Then verify, in order, and fix until green:
+- `bun test src` (the full suite — landing tests included)
+- `bun run typecheck`
+- `bun run build` (the production build must succeed)
+- `node scripts/landing_audit.mjs` if it exists and covers the gallery
+
+Write code only; do not commit; touch only the lanes listed above.

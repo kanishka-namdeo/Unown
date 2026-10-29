@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+  <!-- Nocturne favicon: the night-watch mark — a crescent moon over a
+       watchtower silhouette (on-call rotation through the night), one
+       warm accent dot for the live watch. Mirrors public/parley/favicon.svg
+       style: dark token bg + two-tone strokes, one warm accent dot. -->
+  <rect width="32" height="32" rx="7" fill="#0d0b14"/>
+  <!-- the watchtower (the night watch's post) -->
+  <g stroke="#4ade80" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <path d="M10 28v-9l6-5 6 5v9"/>
+    <line x1="6" y1="28" x2="26" y2="28"/>
+  </g>
+  <!-- the tower's lit window (someone is on watch) -->
+  <line x1="16" y1="18" x2="16" y2="23" stroke="#4ade80" stroke-width="2.5" stroke-linecap="round"/>
+  <!-- the crescent moon above the post -->
+  <path
+    d="M24 4.5a5.5 5.5 0 0 0-5.2 7.3A4.5 4.5 0 1 1 24 4.5z"
+    fill="none"
+    stroke="#f5cf8a"
+    stroke-width="2"
+    stroke-linejoin="round"
+  />
+  <!-- the live/unread dot -->
+  <circle cx="27" cy="8" r="2" fill="#f5cf8a"/>
+</svg>
