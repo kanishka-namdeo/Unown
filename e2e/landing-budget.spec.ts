@@ -73,8 +73,18 @@ import { expect, test } from "@playwright/test";
  * the ceiling carries the rail's structural growth plus the same headroom
  * the measurement argues for.
  */
+/*
+ * The 2026-10-30 second amendment (the model-specs round): 3,800 → 3,820
+ * words carries the rail's 46th release stop — the same structural cost,
+ * the same precedent. Compressed FIRST: the round's own changelog lede and
+ * bullet titles (the gate bullet's 25-word verdict ladder moved into the
+ * body; the Fixed bullets' parentheticals unwound), measured 3,822 → 3,817
+ * — the ceiling carries the stop's generated words (label, counts line,
+ * the one listed title) plus the same 4-word headroom the delegation
+ * amendment argued for. No gated literal, no generated number touched.
+ */
 const MAX_PAGE_VH = 15.5;
-const MAX_WORDS = 3800;
+const MAX_WORDS = 3820;
 const MAX_BAND_VH = 3;
 
 // The contract measures at 1440x900 (landing AGENTS.md + the audit script).

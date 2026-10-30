@@ -144,7 +144,12 @@ afterAll(() => {
 // ---------------------------------------------------------------------------
 
 describe("schema v3 (event columns)", () => {
-        test("a pre-v3 table gains event_kind/event_filter; legacy rows untouched; idempotent", () => {
+        // Drop/recreate + three schema passes over the shared redirected DB:
+        // measured 7.8 s on a windows-latest runner against the 5 s default
+        // (CI receipt 41050461676) while ubuntu finishes in ~300 ms — the same
+        // windows-slowness class the prune lanes carry (checkpoints.test.ts).
+        // The explicit budget keeps the windows legs honest.
+        test("a pre-v3 table gains event_kind/event_filter; legacy rows untouched; idempotent", { timeout: 30_000 }, () => {
                 ensureAutomationsSchema(); // baseline: the suite's table exists at current shape
                 // Back up whatever rows the suite has in the shared redirected DB —
                 // the drop-and-recreate below must be invisible to later files.

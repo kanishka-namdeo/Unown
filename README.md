@@ -108,7 +108,8 @@ Full usage docs live in [`docs/`](docs/):
 | [install](docs/install.md) | the one-line installer, the source vs binary modes, manual and archive installs, requirements, offline/air-gapped installs, uninstalling |
 | [updating](docs/updating.md) | mode-aware `unown update` (checkout and binary), the release manifest, per-OS availability, update notifications and the skip/snooze prefs, pinned installs, rollback, the privacy model of the update check |
 | [update research](docs/update-research.md) | the 2026-10-21 survey and decision record behind the release feed and the update nudges (options, evidence tiers, reproduction commands) |
-| [providers](docs/providers.md) | `unown setup`, models.json / auth.json / settings.json, the bridge vs direct endpoints, custom providers |
+| [model-spec detection](docs/model-spec-detection-research.md) | the 2026-10-30 decision record behind spec verification: the eleven-product survey, the five registries, the cascade design, the gate semantics — receipts in [the session log](docs/model-specs-session.md) |
+| [providers](docs/providers.md) | `unown setup`, models.json / auth.json / settings.json, the bridge vs direct endpoints, custom providers — and model specs: the detection cascade, the verify gate, the provenance sidecar (`unown models verify`) |
 | [usage](docs/usage.md) | every command, slash command, keybinding, session tool, plan mode |
 | [routines](docs/routines.md) | scheduled recurring agent runs — the five schedule kinds (cron / every / after / one-shot / events), completion anchors, misfire policies, failed-run retries, chained routines, timezone/DST edge cases, the TUI/CLI/tools management surfaces |
 | [standing orders](docs/standing-orders.md) | `## Program:` sections — durable authority for unattended runs (two layers, budgets, Execute-Verify-Report loop) and `/promote`, the repeated-job-to-routine flow |

@@ -30,19 +30,98 @@ export interface ChangelogStop {
   groups: ChangelogGroup[];
 }
 
-export const CHANGELOG_TOTAL_ENTRIES = 424;
+export const CHANGELOG_TOTAL_ENTRIES = 436;
 
 export const CHANGELOG_TOTALS: Record<ChangelogBucket, number> = {
-  "Added": 190,
+  "Added": 199,
   "Changed": 28,
   "Deprecated": 0,
   "Removed": 3,
-  "Fixed": 161,
+  "Fixed": 163,
   "Security": 5,
-  "Behavior": 37
+  "Behavior": 38
 };
 
 export const CHANGELOG_STOPS: ChangelogStop[] = [
+  {
+    "label": "0.0.47",
+    "date": "2026-10-30",
+    "total": 12,
+    "counts": {
+      "Added": 9,
+      "Changed": 0,
+      "Deprecated": 0,
+      "Removed": 0,
+      "Fixed": 2,
+      "Security": 0,
+      "Behavior": 1
+    },
+    "groups": [
+      {
+        "bucket": "Added",
+        "items": [
+          {
+            "title": "The detection cascade",
+            "behavior": false
+          },
+          {
+            "title": "The provenance sidecar",
+            "behavior": false
+          },
+          {
+            "title": "The gate",
+            "behavior": false
+          },
+          {
+            "title": "unown models verify [--provider P] [--model M] [--json]",
+            "behavior": false
+          },
+          {
+            "title": "The learning parser grows with the field",
+            "behavior": false
+          },
+          {
+            "title": "The bridge lane",
+            "behavior": false
+          },
+          {
+            "title": "Verified pricing",
+            "behavior": false
+          },
+          {
+            "title": "The engine lane",
+            "behavior": false
+          },
+          {
+            "title": "Specs ride the registrations",
+            "behavior": false
+          }
+        ]
+      },
+      {
+        "bucket": "Fixed",
+        "items": [
+          {
+            "title": "The spec gate's CI red",
+            "behavior": false
+          },
+          {
+            "title": "A windows-only prune-test timeout",
+            "behavior": false
+          }
+        ]
+      },
+      {
+        "bucket": "Behavior",
+        "items": [
+          {
+            "title": "A model whose specs cannot be verified is not usable",
+            "behavior": true
+          }
+        ]
+      }
+    ]
+  },
   {
     "label": "0.0.46",
     "date": "2026-10-30",

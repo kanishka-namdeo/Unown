@@ -9,6 +9,37 @@ otherwise specified; the release tag must always equal package.json's version.
 
 Repo conventions: measured claims cite their receipts (`docs/testing-strategy.md`, `benchmarks/memory-eval/*/RESULTS.md`). Changes to agent behavior — prompts, default models, routing, guard rules, hooks, memory injection — are filed under **Agent Behavior**; the policy lives in [docs/BEHAVIOR.md](docs/BEHAVIOR.md).
 
+## [0.0.47] - 2026-10-30
+
+The model-specs round: a model's context window and max output drive
+auto-compaction and the reply cap — a wrong spec is never cosmetic. Specs
+are now VERIFIED, never guessed: a detection cascade (the endpoint's own
+/models → the curated catalog → models.dev → the LiteLLM database) runs at
+configuration time and self-heals at preflight; provenance is recorded per
+model; a model nobody can verify asks before it runs. Receipts: [the session log](docs/model-specs-session.md) ·
+[the decision record](docs/model-spec-detection-research.md) · [the contract](docs/providers.md).
+
+### Added
+
+- **The detection cascade**: `model-spec-detect.ts` — the endpoint's own `/models` (vLLM `max_model_len`, LM Studio `loaded_context_length`, llama.cpp `meta.n_ctx`, OpenRouter `top_provider.max_completion_tokens`, the bridge's passthrough) → the curated catalog → models.dev (24h disk cache, stale-while-error) → the LiteLLM database — field-wise merge (first source per field wins), the id-normalization ladder (exact → normalized → family, labeled), sanity bounds, per-source timeouts, failure caching, and detection that NEVER throws. The registries are hermetic in tests (dead loopback URLs — a golden run never depends on live models.dev or a registry outage).
+- **The provenance sidecar**: `~/.unown/agent/model-specs.json`, per `provider/model` — the numbers, the source, the match quality, every contributing source per field, `verifiedAt`. models.json keeps only pi-schema fields; provenance never leaks into it. Surfaced by `unown models` (the per-model spec chip), `unown doctor` (the `model specs verified` row), `info`, and the setup summary.
+- **The gate** (`spec-gate.ts` — the shared verdict ladder): sidecar record → hand-edited models.json values (≠ the catalog guess = your own answer) → the cascade → unverified-with-remediation. Interactive `unown setup` asks for the two numbers (validation, clamp feedback, close-match context, blank refused); non-interactive setup requires `--context-window N --max-tokens K` (both or neither) or exits 1 with that remediation; the session preflight self-heals (detect + heal models.json), asks once (TUI) or aborts with the remediation (print mode); `UNOWN_ALLOW_UNVERIFIED_SPECS=1` is the documented escape (CI/air-gapped — proceeds loudly). `unown providers add` registers-and-warns (exit 0): registration is not use, the hard gate fires when the model becomes active.
+- **`unown models verify [--provider P] [--model M] [--json]`**: the explicit detection pass — re-runs the shared gate for the registered models, records provenance, heals models.json, and records a loopback bridge's LEARNED limits with `learned` provenance; exits 1 when any model stays unverified, with the remediation per model.
+- **The learning parser grows with the field**: xAI's `maximum prompt length is X`, Bedrock's `input is too long … max tokens is X`, and the OUTPUT caps (`max_tokens must be at most X`, `maximum output tokens is X`) join the context patterns — a 400 that names both limits teaches both fields (first match per field, sanity-bounded).
+- **The bridge lane**: `/v1/models` passes the upstream catalog's spec fields through per entry (the DeepInfra precedent, in the shapes the agent's parser reads); `/health` reports `modelSpecs` (by id) and `learnedSpecs`; an upstream 400 that names the real context limit (OpenAI / OpenRouter / Mistral / DashScope / Kimi error shapes) is parsed and learned into `model-specs-learned.json` — once per change, pass-through requests only (a routed id's 400 describes the default model, not the asked id), surfaced never auto-applied.
+- **Verified pricing**: cost resolution on both sides (the bridge's usage log + the `unown usage` CLI mirror, parity-pinned) is env override → the model-specs sidecar (vendor-published costs detection recorded) → the built-in estimate table → null (never 0); the usage summary gains `pricing.sidecarPriced`, and the `~` estimate marker is per-row — an estimate-priced model no longer tildes a verified sibling.
+- **The engine lane**: the sandbox agent-dir seeds sidecar-first (a recorded detection beats the catalog stamp) with ONE bounded fire-and-forget detection for uncurated/unrecorded models — best-effort, never gated (unattended work never blocks on registries).
+- **Specs ride the registrations**: `ProviderEntry.modelSpecs` stamps NEW records through the upsert (contextWindow/maxTokens/cost/imageInput — cost written with all four ModelCostSchema fields, image only ever UPGRADES modalities); `applyModelSpecs` is the self-heal write for existing records; `providers refresh` detects each discovered id's specs through the same probe response (never asks — the bulk rule); the probe's `EndpointProbe.modelEntries` carries the catalog entries TRIMMED to the spec fields (capped 256; descriptions, pricing pages and logos never ride the probe).
+
+### Fixed
+
+- **The spec gate's CI red**: the golden lanes hit the gate with unregistrarable model ids — `providers add` now warns instead of refusing (the registration succeeded; its own stderr said so), and the CLI test helpers + the unit `_env.ts` point the spec registries at dead loopback ports (the gpt-4o lane was verifying against live models.dev inside CI).
+- **A windows-only prune-test timeout**: 7.2 s against the 5 s default on a windows-latest runner (receipt 41044489388) — both prune lanes get explicit 30 s budgets.
+
+### Agent Behavior
+
+- A model whose specs cannot be verified is not usable: setup asks (interactive) or refuses with the `--context-window`/`--max-tokens` remediation (non-interactive); the session preflight self-heals then asks once or aborts (print mode); `UNOWN_ALLOW_UNVERIFIED_SPECS=1` escapes loudly. Hand-edited models.json values count as the user's own answer. The engine never gates. The full card: [docs/BEHAVIOR.md](docs/BEHAVIOR.md).
+
 ## [0.0.46] - 2026-10-30
 
 The subagent-orchestration round: make Unown measurably better at
