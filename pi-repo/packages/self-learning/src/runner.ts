@@ -31,6 +31,8 @@ import { currentVersion, type MemoryOverlay, resolveMemoryForAgentDetailed } fro
 import { detectModelSpec, getRecordedSpec, isCompleteSpec, recordSpec } from "./model-spec-detect.ts";
 import { KNOWN_MODEL_SPECS, modelSpec } from "./model-specs.ts";
 import { createNote, noteFromRun } from "./notes.ts";
+import { beginProcess, createCheckpoint, type ProcessHandle, recordToolInvocation } from "./plm/index.ts";
+import { getJobProcessContext } from "./plm/job-context.ts";
 import { beginLiveRun, finishLiveRun, touchLiveRun } from "./run-progress.ts";
 import { createSandbox, seedFiles, snapshotFiles, verifyInSandbox } from "./sandbox.ts";
 import { BRIDGE_URL, DATA_DIR, store } from "./store.ts";
@@ -321,6 +323,19 @@ export async function runAgent(opts: RunOptions): Promise<RunResult> {
 	const runId = randomUUID();
 	const sandbox = createSandbox(opts.label ?? opts.kind);
 	const startedAt = Date.now();
+	// PLM (2026-10-30): this agent run is a first-class tracked process, a
+	// CHILD of the job process when it executes inside a router job (the
+	// harness cycle's baseline/candidate runs, the dream's canary runs) —
+	// otherwise parentless (manual API triggers).
+	const jobCtx = getJobProcessContext();
+	const runProcess: ProcessHandle = beginProcess({
+		owner: "runner",
+		kind: "run",
+		objective: `${opts.kind} run ${opts.label ?? runId}`,
+		taskRef: runId,
+		parentId: jobCtx.jobProcessId,
+	});
+	runProcess.transition("RUNNING", `sandbox ${sandbox.id}`);
 	// §5.5: the injected block is hard-capped (PI_MEMORY_TOTAL_CHARS) with
 	// oldest-rules-first degradation at injection time — the stored memory is
 	// untouched, and every degraded run carries an audit receipt.
@@ -382,6 +397,12 @@ export async function runAgent(opts: RunOptions): Promise<RunResult> {
 
 	const transcript: TranscriptEntry[] = [];
 	const toolsUsed: string[] = [];
+	let toolErrors = 0;
+	// PLM tool lifecycle: pending invocations (tool → start ts + purpose line),
+	// recorded into tool_invocations at tool_execution_end with duration and
+	// outcome. Per-run map; a start without a matching end (aborted run) is
+	// simply never recorded (honest absence, not a zero-duration row).
+	const pendingToolCalls = new Map<string, { startedAt: number; purpose: string | null }>();
 	let tokensIn = 0;
 	let tokensOut = 0;
 	let turns = 0;
@@ -423,6 +444,42 @@ export async function runAgent(opts: RunOptions): Promise<RunResult> {
 			],
 		);
 		const externallyFinalized = info.changes === 0;
+		// PLM: the run process terminal write (usage rollup attached) + the
+		// VALIDATION checkpoint — the reproducibility surface for this run
+		// (objective, prompt, tool invocation shapes, verify outcome).
+		runProcess.setUsage({
+			toolCalls: toolsUsed.length,
+			toolErrors,
+			tokensIn,
+			tokensOut,
+		});
+		if (runProcess.id) {
+			createCheckpoint({
+				processId: runProcess.id,
+				kind: "validation",
+				label: `${opts.kind} ${status}`,
+				state: {
+					objective: `${opts.kind} run ${opts.label ?? runId}`,
+					prompt: opts.prompt,
+					toolInvocations: toolsUsed.map((tool) => ({ tool, success: true })),
+					failures: error ? [error.slice(0, 400)] : [],
+					outputs: verify ? { passed: verify.passed, summary: verify.summary ?? null } : undefined,
+				},
+			});
+		}
+		if (status === "passed")
+			runProcess.succeed(`${verify?.summary ?? "passed"}${externallyFinalized ? " (finalized externally)" : ""}`, {
+				toolCalls: toolsUsed.length,
+				tokensIn,
+				tokensOut,
+			});
+		else if (status === "failed")
+			runProcess.fail(error ?? verify?.summary ?? "verify failed", {
+				toolCalls: toolsUsed.length,
+				tokensIn,
+				tokensOut,
+			});
+		else runProcess.fail(error ?? "run errored", { toolCalls: toolsUsed.length, tokensIn, tokensOut });
 		const result: RunResult = {
 			id: runId,
 			status,
@@ -547,6 +604,10 @@ export async function runAgent(opts: RunOptions): Promise<RunResult> {
 			try {
 				if (e.type === "tool_execution_start") {
 					toolsUsed.push(e.toolName);
+					pendingToolCalls.set(e.toolName, {
+						startedAt: Date.now(),
+						purpose: JSON.stringify(e.args ?? {}).slice(0, 160) || null,
+					});
 					transcript.push({
 						type: "tool_start",
 						ts: Date.now(),
@@ -572,6 +633,22 @@ export async function runAgent(opts: RunOptions): Promise<RunResult> {
 						tool: e.toolName,
 						output: content,
 						isError: Boolean(e.isError),
+					});
+					if (e.isError) toolErrors++;
+					// PLM: the governed tool invocation — duration, outcome, owning
+					// process/run, purpose line. Never throws (telemetry invariant).
+					const pending = pendingToolCalls.get(e.toolName);
+					if (pending) pendingToolCalls.delete(e.toolName);
+					recordToolInvocation({
+						lane: "engine",
+						tool: e.toolName,
+						processId: runProcess.id,
+						runId,
+						purpose: pending?.purpose ?? null,
+						durationMs: pending ? Math.max(0, Date.now() - pending.startedAt) : null,
+						success: !e.isError,
+						error: e.isError ? content.slice(0, 200) : null,
+						outputBytes: content.length,
 					});
 					emit("run:tool", { runId, tool: e.toolName, phase: "end", isError: Boolean(e.isError) });
 					touchLiveRun(runId, (p) => {

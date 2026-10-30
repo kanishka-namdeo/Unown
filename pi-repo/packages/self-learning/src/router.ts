@@ -17,6 +17,8 @@ import { pickNextTask, runCycle, runRegression } from "./harness.ts";
 import { runMintJob } from "./mint.ts";
 import { undreamedNotes } from "./notes.ts";
 import { syncNoteOutbox } from "./outbox.ts";
+import { beginProcess, type ProcessHandle, recordFailure, validateJobRecovery } from "./plm/index.ts";
+import { setJobProcessContext } from "./plm/job-context.ts";
 import { RETENTION_BACKLOG_RESCHEDULE_MS, runRetentionPass } from "./retention.ts";
 import { gcSandboxes } from "./sandbox.ts";
 import { store } from "./store.ts";
@@ -215,7 +217,7 @@ export class Router {
 				const seedEnabled = def.id === "watch-scan" && watchDisabled() ? 0 : 1;
 				store.run(
 					`INSERT INTO jobs (id, name, kind, schedule_ms, event, enabled, next_run, run_count, status, description)
-                                         VALUES (?, ?, ?, ?, ?, ?, ?, 0, 'idle', ?)`,
+					 VALUES (?, ?, ?, ?, ?, ?, ?, 0, 'idle', ?)`,
 					[
 						def.id,
 						def.name,
@@ -348,6 +350,15 @@ export class Router {
 		if (this.busy) throw new Error("router is busy with another job");
 		return this.withBusy(async () => {
 			this.activeJobId = jobId;
+			// PLM (2026-10-30): this job execution is a first-class tracked process.
+			// The handle is null-safe when UNOWN_PLM=0 — the wiring never branches.
+			const jobProcess: ProcessHandle = beginProcess({
+				owner: "router",
+				kind: "job",
+				objective: `job ${jobId}`,
+				taskRef: jobId,
+			});
+			setJobProcessContext(jobProcess.id, jobId);
 			try {
 				// M11: declared before anything in this block can throw, because the
 				// inner finally below writes the outcome and a `const` first assigned
@@ -370,6 +381,9 @@ export class Router {
 						const reason = guard.reason ?? "governor: skipped";
 						emit("job:skipped", { id: jobId, name: job.name, reason });
 						console.log(`[router] ${jobId} skipped: ${reason}`);
+						// PLM: a governor skip is a traceable non-action — CREATED → ABANDONED
+						// with the budget reason (never a silent drop).
+						jobProcess.abandon(`governor skip: ${reason}`);
 						return { skipped: reason };
 					}
 				}
@@ -377,6 +391,7 @@ export class Router {
 					startedAt,
 					jobId,
 				]);
+				jobProcess.transition("RUNNING", `${job.name} started`);
 				if (jobId === "dream-check") this.lastDreamCheckAt = Date.now();
 				emit("job:started", { id: jobId, name: job.name });
 				let result: any = null;
@@ -403,6 +418,15 @@ export class Router {
 				} catch (err: any) {
 					const message = err instanceof Error ? err.message : String(err);
 					failure = message;
+					// PLM recovery engine: the observed failure is classified and planned
+					// immediately (deterministic taxonomy); the job's NEXT outcome validates
+					// the plan (validateJobRecovery in the finally below).
+					const recoveryId = recordFailure({
+						failure: `job ${jobId}: ${message}`,
+						processId: jobProcess.id,
+						jobId,
+					});
+					if (recoveryId) jobProcess.setLessons(`failure classified → recovery event #${recoveryId}`);
 					if (message.startsWith("watchdog:")) {
 						emit("router:watchdog", { id: jobId, timeoutMs });
 						// BUG 7 (audit #7): pass THIS job's start so the recovery
@@ -450,10 +474,17 @@ export class Router {
 						[next, failure ? 0 : 1, failure, Math.max(0, Date.now() - startedAt), jobId],
 					);
 					emit("job:finished", { id: jobId, name: job.name, result });
+					// PLM: the job process terminal write + the recovery
+					// validation hook (an ok finish validates open recovery
+					// rows; another failure ages them honestly).
+					if (failure) jobProcess.fail(`job error: ${failure}`);
+					else jobProcess.succeed("job completed");
+					validateJobRecovery(jobId, !failure, failure);
 				}
 				return result;
 			} finally {
 				this.activeJobId = "";
+				setJobProcessContext(null, null);
 			}
 		});
 	}

@@ -223,6 +223,149 @@ CREATE TABLE IF NOT EXISTS delegations (
   ts INTEGER NOT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_delegations_ts ON delegations(ts);
+-- The PLM round (2026-10-30, docs/plm-round-session.md): the process
+-- lifecycle registry. Every significant engine activity (job execution,
+-- agent run, dream, cycle, delegation, terminal session, recovery) becomes
+-- a first-class process row with an explicit state machine (plm/states.ts)
+-- and an append-only transition history (process_events). Mission contract:
+-- "No action should occur without traceability."
+CREATE TABLE IF NOT EXISTS processes (
+  id TEXT PRIMARY KEY,
+  parent_id TEXT,                    -- a child process names its parent (run → job)
+  kind TEXT NOT NULL,                -- job | run | cycle | dream | mint | automation | terminal-session | delegation | recovery | plm-internal
+  objective TEXT NOT NULL,           -- one line: what this process exists to do
+  owner TEXT,                        -- owner agent/component (router, runner, dream, …)
+  task_ref TEXT,                     -- the domain row this process mirrors (job id, run id, …)
+  status TEXT NOT NULL DEFAULT 'CREATED',
+  status_reason TEXT,                -- why the last transition happened
+  created_at INTEGER NOT NULL,
+  started_at INTEGER,                -- first RUNNING transition
+  ended_at INTEGER,                  -- first terminal transition
+  duration_ms INTEGER,               -- ended_at - started_at
+  attempt INTEGER DEFAULT 1,         -- 1-based; RETRYING increments
+  tool_usage TEXT,                   -- JSON {calls, errors} rollup
+  token_usage TEXT,                  -- JSON {in, out}
+  cost_usd REAL,                     -- filled from the bridge usage lane when known
+  outcome TEXT,                      -- final summary line
+  lessons TEXT,                      -- lessons learned (the post-mortem lane)
+  checkpoint_id TEXT                 -- last checkpoint taken on this process
+);
+CREATE INDEX IF NOT EXISTS idx_processes_status ON processes(status);
+CREATE INDEX IF NOT EXISTS idx_processes_kind ON processes(kind);
+CREATE INDEX IF NOT EXISTS idx_processes_parent ON processes(parent_id);
+CREATE INDEX IF NOT EXISTS idx_processes_created ON processes(created_at);
+-- The transition journal: one row per state-machine edge, never updated in
+-- place (event sourcing — the Temporal/Event-History discipline). This is
+-- what makes a process REPLAYABLE and its history auditable.
+CREATE TABLE IF NOT EXISTS process_events (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  process_id TEXT NOT NULL,
+  from_status TEXT,
+  to_status TEXT NOT NULL,
+  reason TEXT,
+  ts INTEGER NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_process_events_proc ON process_events(process_id);
+CREATE INDEX IF NOT EXISTS idx_process_events_ts ON process_events(ts);
+-- The tool lifecycle ledger (plm/tool-registry.ts): one row per TOOL
+-- INVOCATION across engine runs AND reported terminal sessions — duration,
+-- outcome, retry count, failure class. Feeds reliability rankings and
+-- underperforming-tool detection. OTel GenAI-semconv-aligned fields.
+CREATE TABLE IF NOT EXISTS tool_invocations (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  ts INTEGER NOT NULL,
+  lane TEXT NOT NULL DEFAULT 'engine',   -- engine | terminal (who invoked it)
+  process_id TEXT,                       -- owning process (engine lane)
+  run_id TEXT,                           -- engine run row (engine lane)
+  session_id TEXT,                       -- terminal session id (terminal lane)
+  project_slug TEXT,                     -- terminal lane: reporting project
+  tool TEXT NOT NULL,                    -- gen_ai.tool.name
+  category TEXT,                         -- read | write | exec | search | net | agent | learn | gov | other
+  purpose TEXT,                          -- clipped one-line why (args summary)
+  duration_ms INTEGER,
+  success INTEGER,                       -- 1 | 0
+  retry_count INTEGER DEFAULT 0,
+  failure_type TEXT,                     -- the recovery taxonomy class, when failed
+  error TEXT,                            -- clipped error text
+  args_bytes INTEGER,
+  output_bytes INTEGER
+);
+CREATE INDEX IF NOT EXISTS idx_tool_invocations_tool ON tool_invocations(tool);
+CREATE INDEX IF NOT EXISTS idx_tool_invocations_ts ON tool_invocations(ts);
+CREATE INDEX IF NOT EXISTS idx_tool_invocations_process ON tool_invocations(process_id);
+-- The recovery engine ledger (plm/recovery-engine.ts): every failure the
+-- engine observes becomes a classified recovery event with its root cause,
+-- planned action, execution status and validation outcome — the mission's
+-- Failure → Classification → Root Cause → Planning → Execution → Validation
+-- → Benchmark Update chain, persisted.
+CREATE TABLE IF NOT EXISTS recovery_events (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  ts INTEGER NOT NULL,
+  process_id TEXT,
+  run_id TEXT,
+  job_id TEXT,
+  tool TEXT,
+  category TEXT NOT NULL,            -- tool | planning | context | logic | memory | dependency | model | infrastructure | workflow
+  failure_summary TEXT,              -- the failure's own words, clipped
+  retryable INTEGER,                 -- 1 when a retry could plausibly succeed
+  root_cause TEXT,                   -- diagnosis (heuristic + transcript mining)
+  recovery_action TEXT,              -- retry | backoff-retry | re-plan | re-run | escalate-human | rollback | monitor | ignore
+  status TEXT NOT NULL DEFAULT 'planned',  -- planned | executed | validated | failed | abandoned
+  attempt INTEGER DEFAULT 1,
+  detail TEXT,                       -- JSON {planned steps, validation evidence, benchmark note}
+  executed_at INTEGER,
+  validated_at INTEGER,
+  outcome TEXT                       -- what the recovery achieved, clipped
+);
+CREATE INDEX IF NOT EXISTS idx_recovery_events_category ON recovery_events(category);
+CREATE INDEX IF NOT EXISTS idx_recovery_events_ts ON recovery_events(ts);
+CREATE INDEX IF NOT EXISTS idx_recovery_events_status ON recovery_events(status);
+-- The checkpoint/replay store (plm/checkpoints.ts): durable state snapshots
+-- at process milestones (planning | architecture | implementation | tool |
+-- testing | deployment | validation | session) so long-running work can be
+-- interrupted, resumed and REPLAYED from any checkpoint.
+CREATE TABLE IF NOT EXISTS checkpoints (
+  id TEXT PRIMARY KEY,
+  process_id TEXT NOT NULL,
+  kind TEXT NOT NULL,                -- planning | architecture | implementation | tool | testing | deployment | validation | session
+  label TEXT,
+  ts INTEGER NOT NULL,
+  state TEXT NOT NULL                -- JSON snapshot {objective, prompt, decisions, reasoning, toolInvocations, outputs, failures, recoveryActions}
+);
+CREATE INDEX IF NOT EXISTS idx_checkpoints_process ON checkpoints(process_id);
+CREATE INDEX IF NOT EXISTS idx_checkpoints_ts ON checkpoints(ts);
+-- Replay verification: rerunning from a checkpoint records what it reproduced
+-- and whether the outcome MATCHED the original (the reproducibility metric).
+CREATE TABLE IF NOT EXISTS replay_runs (
+  id TEXT PRIMARY KEY,
+  checkpoint_id TEXT NOT NULL,
+  process_id TEXT,
+  ts INTEGER NOT NULL,
+  reproduces TEXT,                   -- what the replay claims to reproduce
+  status TEXT NOT NULL,              -- running | matched | diverged | error
+  diff TEXT                          -- JSON {original, replay, fieldsCompared}
+);
+CREATE INDEX IF NOT EXISTS idx_replay_runs_checkpoint ON replay_runs(checkpoint_id);
+-- The learning attribution ledger (plm/learning-attribution.ts): every
+-- claimed improvement with its proof chain — Failure → Improvement →
+-- Affected process/tool → Benchmark → Before/After scores → Retention →
+-- Regression check. "Every learning claim must have proof."
+CREATE TABLE IF NOT EXISTS learning_attribution (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  ts INTEGER NOT NULL,
+  failure TEXT,                      -- the failure that motivated it
+  improvement TEXT,                  -- what changed (memory patch, spec fix, …)
+  improvement_id TEXT,               -- the improvements row when it has one
+  process_id TEXT,                   -- affected process
+  tool TEXT,                         -- affected tool (when tool-scoped)
+  benchmark TEXT,                    -- the benchmark/task that measures it
+  score_before TEXT,
+  score_after TEXT,
+  measured_gain TEXT,
+  retained INTEGER,                  -- 1 when it survived a rerun
+  regression_check TEXT              -- pass | fail | pending | n/a
+);
+CREATE INDEX IF NOT EXISTS idx_learning_attribution_ts ON learning_attribution(ts);
 `;
 
 export class Store {

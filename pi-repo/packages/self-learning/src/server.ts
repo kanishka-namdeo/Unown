@@ -64,6 +64,22 @@ import {
 import { runMintJob, suiteStats } from "./mint.ts";
 import { ingestTerminalNote, undreamedNotes } from "./notes.ts";
 import { syncNoteOutbox } from "./outbox.ts";
+import {
+	createCheckpoint,
+	getCheckpoint,
+	ingestToolReport,
+	listAttributions,
+	listCheckpoints,
+	listProcesses,
+	listRecoveryEvents,
+	listToolInvocations,
+	plmSummary,
+	recoverOrphanProcesses,
+	validateJobRecovery,
+	wirePlm,
+} from "./plm/index.ts";
+import { getProcess, getProcessChildren, getProcessEvents } from "./plm/process-registry.ts";
+import { recoveryAnalytics } from "./plm/recovery-engine.ts";
 import { jobTimeoutMs, listJobs, router, setJobEnabled } from "./router.ts";
 import { describeRoutineSchedule } from "./routine-schedule.ts";
 import { getLiveRun, listLiveRuns } from "./run-progress.ts";
@@ -1092,6 +1108,80 @@ export async function handleApi(req: ApiRequest): Promise<Response> {
 		}
 
 		// ------------------------------------------------------------------
+		// PLM — Process Lifecycle Management (the 2026-10-30 round)
+		// ------------------------------------------------------------------
+		if (method === "GET" && path === "/api/plm") {
+			return json(plmSummary());
+		}
+		if (method === "GET" && path === "/api/processes") {
+			const status = query.get("status") ?? undefined;
+			const kind = query.get("kind") ?? undefined;
+			const limit = Number(query.get("limit"));
+			return json({
+				processes: listProcesses({
+					status,
+					kind,
+					limit: Number.isFinite(limit) && limit > 0 ? limit : 100,
+				}),
+			});
+		}
+		if (method === "GET" && /^\/api\/processes\/[^/]+$/.test(path)) {
+			const id = path.split("/")[3];
+			const process = getProcess(id);
+			if (!process) return json({ error: "not found" }, 404);
+			return json({
+				process,
+				events: getProcessEvents(id),
+				children: getProcessChildren(id),
+			});
+		}
+		if (method === "GET" && path === "/api/tools") {
+			// The Tool View: per-tool reliability, latency, failure classes,
+			// rankings + recommendations, and the category census.
+			return json(plmSummary().tools);
+		}
+		if (method === "GET" && path === "/api/tools/invocations") {
+			const limit = Number(query.get("limit"));
+			return json({ invocations: listToolInvocations(Number.isFinite(limit) && limit > 0 ? limit : 100) });
+		}
+		if (method === "POST" && path === "/api/tools/report") {
+			// The terminal lane's batched tool-invocation report (the delegation
+			// pattern: fire-and-forget on the caller, best-effort here — a missed
+			// report is a dashboard gap, never data loss).
+			const items = Array.isArray(body?.items) ? body.items : body;
+			const written = ingestToolReport(
+				items,
+				typeof body?.sessionId === "string" ? body.sessionId : null,
+				typeof body?.projectSlug === "string" ? body.projectSlug : null,
+			);
+			return json({ written });
+		}
+		if (method === "GET" && path === "/api/recovery") {
+			const limit = Number(query.get("limit"));
+			return json({
+				events: listRecoveryEvents(Number.isFinite(limit) && limit > 0 ? limit : 100),
+				analytics: recoveryAnalytics(14),
+			});
+		}
+		if (method === "GET" && path === "/api/checkpoints") {
+			const limit = Number(query.get("limit"));
+			return json({ checkpoints: listCheckpoints(Number.isFinite(limit) && limit > 0 ? limit : 100) });
+		}
+		if (method === "GET" && /^\/api\/checkpoints\/[^/]+$/.test(path)) {
+			const id = path.split("/")[3];
+			const checkpoint = getCheckpoint(id);
+			if (!checkpoint) return json({ error: "not found" }, 404);
+			return json({ checkpoint });
+		}
+		if (method === "GET" && path === "/api/learning/attribution") {
+			const limit = Number(query.get("limit"));
+			return json({
+				attributions: listAttributions(Number.isFinite(limit) && limit > 0 ? limit : 50),
+				analytics: plmSummary().learning,
+			});
+		}
+
+		// ------------------------------------------------------------------
 		// Sandboxes
 		// ------------------------------------------------------------------
 		if (method === "GET" && path === "/api/sandboxes") return json({ sandboxes: listSandboxes(60) });
@@ -1144,6 +1234,10 @@ export async function handleApi(req: ApiRequest): Promise<Response> {
 /** Crash recovery: mark rows left 'running' by a previous process as errored. Exported for tests. */
 export function recoverOrphans() {
 	const now = Date.now();
+	// PLM: processes stuck in non-terminal states by a crashed boot are moved
+	// to FAILED with an honest reason (the sticky-finalize discipline,
+	// generalized to the process registry).
+	recoverOrphanProcesses(now);
 	const orphRuns = store.run(
 		`UPDATE runs SET status = 'error', ended_at = ?, error = 'orphaned by service restart' WHERE status = 'running'`,
 		[now],
@@ -1397,6 +1491,7 @@ export async function startServer(port: number = PORT) {
 	recoverOrphans();
 	const synced = syncNoteOutbox();
 	if (synced > 0) console.log(`[agent-service] ingested ${synced} outbox note(s) from terminal sessions`);
+	wirePlm();
 	router.start().catch((e) => console.error("[router] failed to start:", e));
 	automationsScheduler.start();
 
