@@ -13,9 +13,10 @@
 > is next, so an interrupted session resumes from the last green state.
 
 - [Checkpoint 0 — the mission opens: research, the landscape, the design](#checkpoint-0--the-mission-opens-research-the-landscape-the-design)
-- [Checkpoint 1 — the core detection module (M2)](#checkpoint-1--the-core-detection-module-m2)
-- [Checkpoint 2 — the gate wired (M3–M5)](#checkpoint-2--the-gate-wired-m3m5)
-- [Checkpoint 3 — the CI red fixed, the port, the bridge + engine lanes, `unown models verify`](#checkpoint-3--the-ci-red-fixed-the-port-the-bridge--engine-lanes-unown-models-verify)
+- [Checkpoint 1 — M2 shipped: the detection core](#checkpoint-1--m2-shipped-the-detection-core)
+- [Checkpoint 2 — the gate wired through every surface and v0 0 46](#checkpoint-2--the-gate-wired-through-every-surface-and-v0-0-46)
+- [Checkpoint 3 — the port: cost and modality ride the specs](#checkpoint-3--the-port-cost-and-modality-ride-the-specs)
+- [Checkpoint 4 — the remaining gap: the bridge (M5)](#checkpoint-4--the-remaining-gap-the-bridge-m5)
 
 ## The contract
 
@@ -71,101 +72,134 @@ source (URL, `file:line`, or reproduced command).
 matching/normalization/sanity logic, the registry cache, the sidecar —
 and its unit tests.
 
-## Checkpoint 1 — the core detection module (M2)
 
-**Done.** `model-spec-detect.ts` (829 lines): the pure matching/
-normalization/sanity core — `specIdCandidates` (the id ladder), `familyMatch`,
-the models.dev / LiteLLM / endpoint-catalog parsers, the registry index +
-24h disk cache with stale-while-error and probe-failure caching, the
-field-wise `mergeSpecParts` (first verifiable hit per field, priority =
-cascade order), the `detectModelSpec` orchestrator (endpoint → curated →
-models.dev → LiteLLM; bounded per-source network, never throws), the
-provenance sidecar (`readSpecSidecar`/`recordSpec`/`getRecordedSpec`,
-`userSpec`), and the shared display helpers (`formatSpecLine`,
-`specSourceLabel`). 63 unit tests against the real payload shapes of every
-source (`test/model-spec-detect.test.ts`).
+## Checkpoint 1 — M2 shipped: the detection core
 
-**Verified.** The suite green at the pinned commit; the registries are
-hermetic in tests (dead loopback URLs; live registry shapes were captured
-as fixtures first).
+**Done.** `model-spec-detect.ts` (commit `df7ab5e2`): the cascade
+(endpoint → curated → models.dev → LiteLLM), the id-normalization ladder,
+the sanity bounds (context ∈ [1 024, 100 000 000], output ∈ [1, context],
+clamps recorded), the 24 h registry cache with stale-while-error +
+per-provider failure caching, the provenance sidecar
+(`~/.unown/agent/model-specs.json`), and the field-zoo parsers for every
+source's real payload shape (vLLM `max_model_len`, LM Studio
+`loaded_context_length`, llama.cpp `meta.n_ctx`, DeepInfra `metadata.*`,
+OpenRouter `top_provider.*`, models.dev `limit.*`, LiteLLM
+`max_input_tokens`/`max_output_tokens`).
 
-**Next.** M3–M5: the wiring — providers, setup, the gate, the preflight.
+**Verified.** 63 unit tests against the real payload shapes of every
+source.
 
-## Checkpoint 2 — the gate wired (M3–M5)
+## Checkpoint 2 — the gate wired through every surface and v0 0 46
 
-**Done.** `spec-gate.ts` — the ONE shared verdict every caller uses
-(`resolveSpecGate`: sidecar record → hand-edited models.json values → the
-detection cascade → unverified-with-remediation), `askSpecNumbers` (the
-interactive ask: validation, clamp feedback, bounded retries), and
-`allowUnverifiedSpecs` (the `UNOWN_ALLOW_UNVERIFIED_SPECS=1` escape).
-Wired: `unown setup` (the wizard's ask step + `--context-window`/
-`--max-tokens` flags + per-model `modelSpecs` stamping through the upsert),
-`unown providers add` (the gate on registration), the session preflight
-(self-heal, ask-once interactively, abort with the remediation in print
-mode), `providers refresh` (per-id detection, never asks), the widened
-probe (`EndpointProbe.modelEntries` — the catalog entries the cascade
-reuses instead of re-fetching), and the provenance surfaces (`unown
-models`, doctor, info). 30 new tests (22 unit + 8 subprocess golden).
+**Done.** (commit `60f47338`, on top of the delegation round's release
+`5644791b` = v0.0.46; CI reds fixed by `f16e8fda` + `57d93e09`.)
 
-**Verified.** The full self-learning suite green (5,071 pass at the
-commit). The CI battery then caught what the local run could not: the
-golden lanes hit the gate with unregistrarable model ids (below).
+- `spec-gate.ts`: the shared verdict — sidecar > hand-edit > cascade >
+  ask/remediate, with `UNOWN_ALLOW_UNVERIFIED_SPECS=1` as the documented
+  escape. `askSpecNumbers` (validated numeric prompts, 3 tries, clamps
+  surfaced), `recordUserSpec`, `resolveActiveModelId`.
+- Session preflight (`cli.ts`): runs after the endpoint probe; reuses the
+  probe's `/models` catalog (`endpointCatalog` — no new request) +
+  `stopWhenComplete` (hot path adds nothing when the registries are not
+  needed); self-heals models.json seed stamps (never hand edits) and
+  reports; interactive ask-once (TUI), print mode aborts with the
+  remediation (exit 1).
+- `providers add`: flags → cascade → interactive ask → escape hatch →
+  warn-and-continue (registration is not the wall; the wall is first
+  use). `providers refresh`/`--all-models`: bulk detection, never asks —
+  unverified ids stay unverified until activated.
+- `setup` (both lanes): the wizard asks before writing anything; scripts
+  get `--context-window`/`--max-tokens` or exit 1 with the remediation.
+- Surfaces: doctor (default model, verified → the spec + source, else
+  warn), `unown models` (every model's provenance line), the setup
+  summary's specs row, `info`.
+- Probe keeps the raw `/models` entries (`modelEntries`), tests go
+  hermetic (registries at dead loopback ports).
+- 30 new tests (22 unit + 8 subprocess golden) pin every lane.
 
-**Next.** The CI red, then the bridge lane (M6), the engine lane, and the
-missing `unown models verify` surface.
+**Verified.** Full suite green at each commit (5 079 → 5 121 tests).
 
-## Checkpoint 3 — the CI red fixed, the port, the bridge + engine lanes, `unown models verify`
+## Checkpoint 3 — the port: cost and modality ride the specs
 
-**Done.**
+**Done.** (commit `308e45cd`.) `ProviderEntry.modelSpecs` grows optional
+`cost` (USD/1M, pi's ModelCost vocabulary) and `imageInput`;
+`newModelRecord` writes priced records and UPGRADES input modalities when
+a source positively reported image; `applyModelSpecs` (the self-heal
+write) patches cost + input alongside the two limits and never erases an
+existing cost it was not given. Setup carries cost/imageInput through on
+both lanes; heterogeneous catalogs get priced, modality-correct records.
+The probe's `modelEntries` are trimmed to id + the spec fields the
+parsers read (catalog noise never rides). A partial catalog (context-only
+shape) stamps NOTHING — a partial stamp would write a guessed maxTokens
+beside a verified context.
 
-- *The CI red* (`57d93e09`): `providers add` non-interactive +
-  unverifiable now WARNS (exit 0) instead of refusing — the registration
-  itself succeeded, `providers add` is a registration action (the design
-  record's bulk rule), and the HARD gate already fires at session start.
-  The CLI test helpers and the unit `_env.ts` point the spec registries at
-  dead loopback ports (a golden run must never depend on live models.dev /
-  LiteLLM fetches — an air-gapped CI or a registry outage flipped
-  verdicts); the two setup goldens that pin `--force`/merge semantics ride
-  the documented escape for their unregistrarable ids. A pre-existing
-  windows-only prune-test timeout got an explicit budget (`c3165f93`).
-- *The port* (`308e45cd`): `ProviderEntry.modelSpecs` carries `cost`
-  (USD/1M, written with all four ModelCostSchema fields) and `imageInput`
-  (a positive modality report — only ever upgrades); `applyModelSpecs`
-  patches cost + input alongside the two limits and never erases a cost it
-  was not given; setup carries them on both lanes (`specToModelSpec`,
-  `detectExtraSpecs`); the probe's `modelEntries` are TRIMMED to the
-  spec-relevant fields (catalog noise — descriptions, pricing pages,
-  logos — never rides the probe), still capped at 256.
-- *The bridge lane (M6)* (`1d32ed7b`): `/v1/models` passes the upstream's
-  spec fields through per entry (the DeepInfra precedent, in the shapes the
-  agent's parser reads); `/health` reports `modelSpecs` + `learnedSpecs`;
-  an upstream 400 that names the real context limit (OpenAI/OpenRouter/
-  Mistral/DashScope/Kimi shapes) is learned into
-  `model-specs-learned.json` — once per change, pass-through requests only,
-  surfaced never auto-applied; pricing resolution gains the model-specs
-  sidecar between env overrides and the estimate table (bridge + the
-  `unown usage` CLI mirror, `pricing.sidecarPriced`, the `~` marker drops
-  for sidecar-priced costs).
-- *The engine lane* (`1d32ed7b`): the sandbox agent-dir seeds sidecar-first
-  and runs ONE bounded fire-and-forget detection for uncurated/unrecorded
-  models — best-effort, never gated.
-- *`unown models verify`* (`b93f619a`): the explicit detection pass — the
-  shared gate re-runs for the registered models (`--provider`, `--model`,
-  `--json`), records provenance, heals models.json, and absorbs the
-  bridge's learned limits with `learned` provenance; exits 1 when any
-  model stays unverified. Live-verified against the real stack: both
-  bridge models verify through the curated catalog with models.dev
-  enriching cost/modalities — the sidecar records the field-wise
-  contributors exactly as designed.
-- *The reference docs*: `.env.example`, `docs/configuration.md`,
-  `docs/providers.md` (the new "Model specs — detection, the gate, the
-  sidecar" section), `docs/usage-tracking.md`, `docs/usage.md` — all
-  check_docs green.
+**Verified.** Full suite green (5 186 tests at this HEAD).
 
-**Verified.** self-learning 5,088 pass / 0 fail (224 files); bridge 238
-pass / 0 fail (243 tests incl. the new serving suite `specs.test.ts` — the
-real spawned bridge against mock upstreams); `unown models verify` green
-against the live Agnes stack; the docs gates green.
+## Checkpoint 4 — the remaining gap: the bridge (M5)
 
-**Next.** The release: the CHANGELOG entry, the version bump, the
-cross-platform build matrix.
+**The state.** The self-learning side is done (detection, gate, heal,
+surfaces, tests). The BRIDGE side of the design is untouched
+(`mini-services/llm-bridge/` last changed in the stress round):
+
+1. `parseModelCatalog` (pure.ts) collapses the upstream catalog to bare
+   ids — every spec field the upstream publishes is discarded before it
+   can reach the probe.
+2. `/health` carries no `modelSpecs`; `/v1/models` synthesizes id-only
+   entries (no spec fields per entry — the DeepInfra precedent).
+3. No upstream-400 learning: `model-specs-learned.json` does not exist,
+   `SpecSource: "learned"` has no producer (the vocabulary slot exists).
+4. Pricing resolution (bridge `usage.ts` + the `usage-cli.ts` mirror)
+   knows only env overrides → the estimate table — the sidecar source
+   (between them, by design) is not read, even though the sidecar
+   already carries `cost` records.
+
+**Next.** M5 in the order above, then the polish items (the
+`specRemediation` DRY — three hand-written copies; doctor's
+batch-verify; the print footer's escape-hint), the docs round
+(providers.md, usage-tracking.md, configuration.md, usage.md, README,
+the landing page, the blog, the DOX tree), the live Agnes AI end-to-end
+pass, and the release (v0.0.47).
+
+## Checkpoint 5 — M5 shipped twice, merged once + `unown models verify`
+
+**Done.** (commits `1d32ed7b` + `b93f619a` on main; the parser widened by
+`99707fdf`; a parallel local M5 implementation was reconciled — its
+parser enhancements survive, its duplicate wiring was dropped in favor
+of main's PASS-THROUGH-only learning rule.)
+
+- The bridge passthrough: `/v1/models` entries carry the upstream's
+  spec fields (context/output/vision — the shapes the agent's catalog
+  parser reads); `/health` reports `modelSpecs` by id once the catalog
+  probe lands. Catalog noise never rides.
+- Context-limit learning: an upstream 400 that names the real limit is
+  parsed (OpenAI/OpenRouter/Mistral/DashScope/Kimi/DS4 + xAI/Bedrock +
+  the output caps `max_tokens must be at most X`) and recorded into
+  `model-specs-learned.json` — once per change, never per retry;
+  PASS-THROUGH requests only (a routed id's 400 describes the default
+  model, not the asked id); surfaced in `/health` as `learnedSpecs`,
+  never auto-applied.
+- Pricing gains the sidecar source between env overrides and the
+  estimate table on BOTH mirrors (bridge `usage.ts` + the CLI's
+  `usage-cli.ts`): `sidecarModelPrice` reads the detection sidecar's
+  verified cost records; `pricing.sidecarPriced` lists the models so
+  priced.
+- The engine seed: the runner's first-boot seeding consults the sidecar
+  before the catalog guesses (sidecar-first seeding).
+- `unown models verify [--provider P] [--model M] [--json]`: the
+  explicit detection pass — re-runs the shared gate for the registered
+  models, records provenance, heals models.json, records a loopback
+  bridge's LEARNED specs with learned provenance; never asks; exits 1
+  with per-model remediation when anything stays unverified.
+- The parser widened: xAI's "maximum prompt length is X", Bedrock's
+  "input is too long … max tokens is X", and the output caps join the
+  context patterns; a 400 naming BOTH limits teaches both fields.
+
+**Verified.** 24 new tests on main's lane (12 pure + 5 serving against
+the real spawned bridge + 5 bridge usage + 2 CLI mirror) + the runner
+seeding pin; suites: self-learning 5 088 pass / 0 fail, bridge 238 →
+243 pass / 0 fail after the parser widening.
+
+**Next.** The live Agnes AI end-to-end pass (real endpoint, real
+detection, real gate), then the docs round (providers.md,
+usage-tracking.md, configuration.md, usage.md, README, the landing
+page, the blog, the DOX tree), then the release (v0.0.47).

@@ -24,7 +24,7 @@ Routing is enforced by the llm-bridge; the binding rules live in its [AGENTS.md]
 
 | Model | Role | Notes |
 |---|---|---|
-| `agnes-3.0-flash` | default coder + multimodal | every request naming an unknown model id routes here (`BRIDGE_ROUTE_DEFAULT`, which follows `BRIDGE_MODEL`); text+image input, 512K context / 65K output (the model-spec catalog stamps the published limits) |
+| `agnes-3.0-flash` | default coder + multimodal | every request naming an unknown model id routes here (`BRIDGE_ROUTE_DEFAULT`, which follows `BRIDGE_MODEL`); text+image input, 512K context / 65K output (the spec gate's detection stamps the verified limits — curated catalog here; provenance in the sidecar) |
 | `agnes-2.5-flash` | served alternative | the second allow-listed id on the Agnes upstream |
 | `local-*` (opt-in) | background learning lane | when `BRIDGE_LOCAL_URL` points at a local server, the learning layer's subtasks (mining / dream / skills / mint) can be pinned to a local model via `PI_MINER_MODEL_ID` etc.; task minting can also run as an opt-in local-draft + remote-repair cascade (`PI_MINT_CASCADE`, verified H10 — the local model drafts, only invalid drafts cost one remote repair call); agent sessions stay remote. Unset = the all-remote default, unchanged. Evaluation: [benchmarks/local-llm/](../benchmarks/local-llm/) |
 

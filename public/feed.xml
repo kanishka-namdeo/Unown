@@ -26,6 +26,15 @@
       <category>observability</category>
     </item>
     <item>
+      <title>&quot;The model-specs round: never guess a context window again&quot;</title>
+      <link>https://unown-nine.vercel.app/blog/2026-10-30-the-model-specs-round</link>
+      <guid isPermaLink="true">https://unown-nine.vercel.app/blog/2026-10-30-the-model-specs-round</guid>
+      <pubDate>Fri, 30 Oct 2026 00:00:00 GMT</pubDate>
+      <description>&quot;Unown 0.0.47: specs detected from verifiable sources, asked for when nothing knows, provenance everywhere, and a bridge that learns limits from upstream 400s.&quot;</description>
+      <category>providers</category>
+      <category>verification</category>
+    </item>
+    <item>
       <title>&quot;The observability round: can you read your agent&apos;s state in 60 seconds?&quot;</title>
       <link>https://unown-nine.vercel.app/blog/2026-10-30-the-observability-round</link>
       <guid isPermaLink="true">https://unown-nine.vercel.app/blog/2026-10-30-the-observability-round</guid>

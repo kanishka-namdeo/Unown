@@ -8,12 +8,12 @@ How unown talks to models: the multi-provider registry, the two connection shape
 - [unown providers](#unown-providers)
 - [In the TUI](#in-the-tui)
 - [The config files](#the-config-files)
-- [Model specs — detection, the gate, the sidecar](#model-specs--detection-the-gate-the-sidecar)
+- [Model specs](#model-specs)
 - [Direct provider recipes](#direct-provider-recipes)
 - [The bundled bridge](#the-bundled-bridge)
 - [Switching models](#switching-models)
 
-Related pages: [quickstart](quickstart.md) · [configuration](configuration.md) · [usage](usage.md) · [usage tracking](usage-tracking.md) · [troubleshooting](troubleshooting.md)
+Related pages: [quickstart](quickstart.md) · [configuration](configuration.md) · [troubleshooting](troubleshooting.md)
 
 ## The two shapes
 
@@ -53,18 +53,17 @@ unown setup --provider openai \
   --api-key sk-... --model gpt-4o        # direct, non-interactive (scripts/CI)
 unown setup --provider custom \
   --base-url http://127.0.0.1:11434/v1 --model llama3   # any OpenAI-compatible server
-unown setup --provider custom \
-  --base-url http://127.0.0.1:8000/v1 --model my-finetune \
-  --context-window 131072 --max-tokens 8192   # specs no verifiable source knows
+unown setup --provider custom --base-url ... --model my-model \
+  --context-window 131072 --max-tokens 8192   # spec flags (see Model specs below)
 ```
+
+Every setup passes through the **spec gate** (see [Model specs](#model-specs)): once the model is chosen, its context window and max output tokens are DETECTED from verifiable sources; the wizard asks for anything it cannot verify (validated numeric prompts, with the tried-sources receipt), scripts carry `--context-window`/`--max-tokens` or setup fails with the remediation (exit 1, nothing written) — `UNOWN_ALLOW_UNVERIFIED_SPECS=1` is the documented escape hatch for unattended lanes.
 
 Presets: `bridge` (bundled), `openai`, `openrouter`, `anthropic`, `dashscope`, `deepseek`, `agnes`, `custom`. Every direct setup verifies the endpoint is reachable and the key is accepted before declaring success — a rejected key fails setup with the HTTP status instead of failing your first chat later. A 429 is reported as **rate-limited** (the endpoint is up, the key passed auth, only the throttle is in the way), and the probe speaks the provider's own wire — Anthropic endpoints are authenticated with `x-api-key` against `{root}/v1/models`, so a valid Anthropic key verifies correctly.
 
-The interactive wizard (no flags, TTY) is a guided flow: current-state welcome → provider choice (the bundled bridge is marked `← recommended` when its stack is up and keyed; blank or an invalid answer takes the default — never a silent mid-parse selection) → **masked key entry** (a stored key shows as `key[:8]… ✓` with **Keep / Replace / Clear** — Keep preserves the storage form, Clear removes every local trace; pasted keys are trimmed and keys that still contain whitespace or control characters are rejected with a diagnosis that never echoes the value) → **live model discovery on both wires** (the endpoint is probed with your key and the list is what it actually serves; only an unreachable or throttled endpoint falls back to typing the id) → **theme step** (current first — blank keeps it) → **setup summary** (provider, model +N discovered, key disposition, theme, verify, kept siblings) plus next commands and first-flight suggestions. Blank at any step takes the default; Ctrl+C cancels with `nothing written`. Base URLs get paste hygiene too: surrounding whitespace and trailing slashes are stripped before anything is written.
+The interactive wizard (no flags, TTY) is a guided flow: current-state welcome → provider choice (the bundled bridge is marked `← recommended` when its stack is up and keyed; blank or an invalid answer takes the default — never a silent mid-parse selection) → **masked key entry** (a stored key shows as `key[:8]… ✓` with **Keep / Replace / Clear** — Keep preserves the storage form, Clear removes every local trace; pasted keys are trimmed and keys that still contain whitespace or control characters are rejected with a diagnosis that never echoes the value) → **live model discovery on both wires** (the endpoint is probed with your key and the list is what it actually serves; only an unreachable or throttled endpoint falls back to typing the id) → **spec gate** (the context window + max output tokens are detected from verifiable sources — the endpoint's own catalog first — and the wizard asks, with validation and the tried-sources receipt, only for what nothing could verify) → **theme step** (current first — blank keeps it) → **setup summary** (provider, model +N discovered, key disposition, theme, verify, kept siblings) plus next commands and first-flight suggestions. Blank at any step takes the default; Ctrl+C cancels with `nothing written`. Base URLs get paste hygiene too: surrounding whitespace and trailing slashes are stripped before anything is written.
 
 Setup **merges**: re-running it adds or updates that provider in place and keeps the rest of the registry; it also makes the provider the default (setup is a "make this my setup" action). `--force` resets instead — see [Multiple providers](#multiple-providers).
-
-**The model-specs gate.** Setup verifies the chosen model's specs — context window + max output tokens, the numbers compaction triggers and the reply cap hang off — from verifiable sources before anything is written. When nothing verifiable is found: the wizard asks for the two numbers (validated, blank refused); non-interactive setup **exits 1** with the remediation — re-run with `--context-window <N> --max-tokens <K>` (both or neither; a half pair is a usage error) or export `UNOWN_ALLOW_UNVERIFIED_SPECS=1` to proceed unverified. The flags are your own answer, recorded with user provenance. Full story: [Model specs](#model-specs--detection-the-gate-the-sidecar).
 
 ## unown providers
 
@@ -77,8 +76,6 @@ unown providers add --provider custom --base-url http://127.0.0.1:11434/v1 \
   --id ollama --model llama3             # named custom endpoints
 unown providers add --provider openai --api-key sk-... \
   --model gpt-4o --all-models            # + import every served chat model
-unown providers add --provider custom --base-url http://127.0.0.1:8000/v1 \
-  --model my-finetune --context-window 131072 --max-tokens 8192   # answer the spec gate
 unown providers refresh agnes            # import the endpoint's live catalog
 unown providers remove openai             # drops the provider + its stored key
 unown providers key openai                # rotate a key (masked prompt; verifies live)
@@ -88,9 +85,7 @@ unown providers test agnes               # live endpoint probe with the stored k
 
 `add` does not steal the default unless `--default` (or the registry was empty); `remove` re-points the default at the first survivor; `key` prompts with **masked input** (the same raw-mode reader the setup wizard uses — the typed secret never echoes) and verifies the new credential against the endpoint immediately — a rejected key fails the command instead of failing your next chat later. The interactive `add` wizard also masks its key entry. Probes report the round-trip latency (`· 240 ms`) and classify 429 as **rate-limited** rather than unreachable.
 
-**Model discovery** (`--all-models` / `refresh`) imports the endpoint's live `GET /models` catalog into models.json: new ids register with sane defaults (a vision-capable provider's new models inherit image input), curated per-model metadata is never touched, and ids the endpoint stopped serving are reported but kept (pruning is deliberate). Obviously-not-chat ids (embeddings, rerankers, TTS, image/video generation, moderation) are filtered out of the import — they would only be noise in `/model`. Every discovered id also gets its specs from the verifiable cascade (the probe's own `/models` fetch is reused — no second request); bulk import **never asks** — undetected ids carry no sidecar record and are gated at session start if they ever become active.
-
-**The spec gate on `add`** mirrors setup's — `--context-window`/`--max-tokens` are your own answer (both or neither; a half pair is a usage error, exit 1), the interactive wizard asks in the TTY — with one deliberate difference: a non-interactive `add` whose model cannot be verified still **exits 0**. It registers the provider and prints a loud warning with the remediation, because registration is not use; the hard gate fires at session start, where the preflight asks (interactive) or aborts (print mode). `UNOWN_ALLOW_UNVERIFIED_SPECS=1` proceeds loudly here too. See [Model specs](#model-specs--detection-the-gate-the-sidecar).
+**Model discovery** (`--all-models` / `refresh`) imports the endpoint's live `GET /models` catalog into models.json: new ids register with their DETECTED specs when a verifiable source answers (the endpoint's own enriched `/models`, the curated catalog, models.dev, the LiteLLM database — see [Model specs](#model-specs)), curated per-model metadata is never touched, and ids the endpoint stopped serving are reported but kept (pruning is deliberate). Discovery NEVER asks per id — a bulk import can register dozens of models; unverified ids stay unverified until the moment they are used (the session preflight's gate fires then). Obviously-not-chat ids (embeddings, rerankers, TTS, image/video generation, moderation) are filtered out of the import — they would only be noise in `/model`.
 
 ## In the TUI
 
@@ -146,7 +141,7 @@ All three live in `~/.unown/agent/` (override the whole dir with `UNOWN_HOME`).
 ```
 
 - `api`: `openai-completions` for OpenAI-compatible servers; `anthropic-messages` for Anthropic's native API.
-- When unown itself seeds a model record from an id alone, specs are verified where a configuration action is happening (`unown setup`, the live `/models` refresh, the engine's sandbox dir): the [detection cascade](#model-specs--detection-the-gate-the-sidecar) runs first and a complete result is stamped — and recorded in the sidecar. The known-model catalog (`model-specs.ts`) is the fallback: officially published limits where they exist (e.g. `agnes-3.0-flash` — 524288 context / 65536 output), the conservative 131072/8192 floor for unknown ids. The catalog only stamps what the vendor documents — it never guesses. (The first-run bridge seed stamps catalog values; the session preflight detects-or-asks before first use.)
+- When unown itself seeds a model record from an id alone (`unown setup`, the live `/models` refresh, the engine's sandbox dir, the first-run bridge seed), the record's `contextWindow`/`maxTokens` come from the [spec gate](#model-specs)'s detection cascade — verifiable sources only, never a guess: the curated catalog (`model-specs.ts`, vendor-published limits, e.g. `agnes-3.0-flash` — 524288 context / 65536 output), models.dev, the LiteLLM database, the endpoint's own enriched `/models`, or your own entry. Records registered before this round carry the seeded stamp until the session preflight's self-heal replaces it with a verified one.
 - A literal `apiKey` inside a provider entry counts as configured auth — that's how the bundled-bridge shape works (`"bridge-local"` placeholder, or the shared secret when `BRIDGE_API_KEY` is set).
 - Keys entered through `unown setup` for direct providers go into `auth.json` instead (see below) — the file stays shareable.
 
@@ -166,61 +161,31 @@ All three live in `~/.unown/agent/` (override the whole dir with `UNOWN_HOME`).
 
 `unown setup` merges these keys into an existing settings.json (your other settings survive). The resolution order for the first model of a session: `--provider`/`--model` CLI flags → settings.json defaults → first configured provider. Mid-session, `/model` (or Ctrl+L) opens the picker and Ctrl+S saves the choice back into settings.json.
 
-A fourth file in the same directory — `model-specs.json`, the spec-provenance sidecar — is written by detection and the gate, never by hand. See the next section.
+## Model specs
 
-## Model specs — detection, the gate, the sidecar
+The two numbers that drive compaction (when the session summarizes) and the output cap — the **context window** and the **max output tokens** — are DETECTED from verifiable sources the moment a model is configured, and a model whose specs cannot be verified is not usable until you supply them. A wrong spec is never cosmetic: too small and unown compacts early and caps answers (a silent capability cut); too big and compaction fires too late (an overflow loop). The detection cascade, first verifiable hit per field:
 
-A model's specs — context window, max output tokens, pricing, input modalities — are not decoration: compaction triggers, the reply cap, `unown usage` costs and the turn-meter `~$` chip all hang off them. A wrong spec is either a silent capability cut (premature compaction, capped answers) or an overflow loop (compaction firing too late). So when a model is configured, unown verifies its specs from verifiable sources — and when nothing verifiable can be found, it asks before the model is usable. Never guess.
+1. **The record's own values** — models.json entries you hand-edited win (the accumulate-never-rewrite law).
+2. **The curated catalog** — vendor-published limits for well-known ids (`model-specs.ts`), exact ids only.
+3. **models.dev** — the community registry (disk cache, 24 h TTL; exact → normalized → family match).
+4. **The LiteLLM model database** — same ladder, per-source URLs.
+5. **The endpoint's own catalog** — `GET {base}/models` with your key: vLLM's `max_model_len`, LM Studio's `loaded_context_length`, llama.cpp's `meta.n_ctx`, DeepInfra's `metadata.*`, OpenRouter's `top_provider.max_completion_tokens`. The only authoritative source for local/self-hosted servers.
+6. **You** — the interactive wizard asks (validated numeric prompts, close-match hints, the tried-sources receipt); scripts carry `--context-window N --max-tokens N`; the session preflight asks once (TUI) or aborts with the remediation (print mode).
 
-### The detection cascade
+Sanity bounds guard every source: the context window is an integer in [1 024, 100 000 000], max output tokens an integer in [1, context window]; a source whose numbers fail sanity is a miss, not a spec. Pricing and input modalities ride along when a source positively reports them (absence is unknown, never false).
 
-Sources, in priority order — the **first source per field** wins (the endpoint can supply the context window while models.dev supplies the pricing):
-
-1. **The endpoint's own `GET {base}/models` catalog** — the only authoritative source for local/self-hosted servers: vLLM `max_model_len`, LM Studio `loaded_context_length`, llama.cpp `meta.n_ctx`, OpenRouter `top_provider.max_completion_tokens` + `architecture.input_modalities`, DeepInfra `metadata.*`. Setup's wizard, `providers add` and the refresh probe already fetched this catalog — detection reuses it (one request per configuration, not two).
-2. **The curated catalog** (`model-specs.ts`) — vendor-published limits for exact known ids.
-3. **models.dev** (`https://models.dev/api.json`) — the open registry, disk-cached for 24 h (`UNOWN_SPEC_CACHE_TTL_MIN`; the stale cache serves when the fetch fails).
-4. **The LiteLLM database** (`model_prices_and_context_window.json` from GitHub raw) — same 24 h cache; each entry's own `source` URL rides along as provenance.
-
-Ids match **exact → normalized** (lower-cased, dated/versioned suffix stripped, OpenAI finetune prefix collapsed, last `/` or `:` segment) **→ family prefix** (the longest prefix at a token boundary — labeled `family`, never masquerading as an exact match). Numbers pass sanity bounds: the context window must be 1,024–100,000,000; an output budget above the context window is clamped; a price above the sanity ceiling is rejected as a unit mistake.
-
-### The provenance sidecar
-
-`~/.unown/agent/model-specs.json` records, per `provider/model`: the numbers, the source that provided them, the match quality (`exact`/`normalized`/`family`), every contributing source and `verifiedAt`. It is the provenance source of truth — `models.json` keeps only the fields pi loads, and detection results are healed into it (a verified number overwrites the catalog guess; a hand edit is never touched). Every surface that shows a spec says where it came from:
-
-- `unown models` — a per-model provenance chip: `[524,288 ctx / 65,536 out (curated catalog)]`, or `[specs unverified — checked at first use]`.
-- `unown doctor` — a `model specs verified` row (the default model's verdict; unverified is a warning with the fix, never a hard fail).
-- `unown setup`'s closing summary — the spec line, or the unverified marker when the escape hatch let it through.
-
-### The gate
-
-A model whose specs cannot be verified is **not usable** until the two load-bearing numbers land. (The preflight gate rides the same probe as the reachability check — a dead endpoint is the bigger problem and is already reported.)
-
-| Surface | Unverifiable specs |
-|---|---|
-| `unown setup` (interactive) | asks for the two numbers **before the config is written** — validated (positive whole numbers in the plausible range), an output budget above the context window is clamped with feedback, blank is refused (`nothing written`) |
-| `unown setup` (non-interactive) | **exits 1** with the remediation — re-run with `--context-window <N> --max-tokens <K>` (both or neither), or export `UNOWN_ALLOW_UNVERIFIED_SPECS=1` |
-| `unown providers add` (non-interactive) | registers + **warns** (exit 0) — registration is not use; the hard gate fires at session start |
-| session preflight (TUI) | self-heals first (detection + `models.json` heal, with a note when models.json moved), then asks **once** before the TUI takes the screen; a declined ask exits 1 |
-| session preflight (print mode) | self-heals, then **aborts with the remediation** (exit 1) |
-
-`UNOWN_ALLOW_UNVERIFIED_SPECS=1` (also `true`/`yes`) is the documented escape — CI and air-gapped installs proceed loudly, marked unverified (compaction and the reply cap run on unown's defaults). Hand-edited `models.json` values that differ from the catalog's guess for the id count as your own answer and are recorded with user provenance; values equal to the guess are indistinguishable from a seed stamp and prove nothing — the reason the sidecar exists.
-
-### `unown models verify`
-
-The explicit detection pass — it never asks:
+**Where the answer is recorded.** Every resolution lands in the provenance sidecar `~/.unown/agent/model-specs.json` — `{ "provider/model": { contextWindow, maxTokens, cost?, input?, reasoning?, source, match, verifiedAt } }` — and `source` names where each number came from (`curated`, `models-dev`, `litellm`, `endpoint`, `user`, `learned`). Provenance is surfaced everywhere specs are shown:
 
 ```bash
-unown models verify                     # every registered model
-unown models verify --provider agnes    # one provider's models
-unown models verify --model mystery-7b  # one id (with --provider, or matched anywhere)
-unown models verify --json              # machine-readable verdicts
+unown models            # per-model: "[524,288 ctx / 65,536 out (models.dev)]"
+unown models verify     # re-run detection for every registered model; heal + record;
+                        # exit 1 with per-model remediation when anything stays unverified
+unown doctor            # the default model's spec + its source (warns when unverified)
 ```
 
-For every registered model it runs the shared gate — sidecar record → hand-edited values → the cascade — recording provenance, healing `models.json`, and (for loopback bridge providers) absorbing the bridge's **learned** specs, the context limits its upstream 400s revealed, with `learned` provenance. Exit codes: **0** when every model verified; **1** when any model stays unverified (the remediation prints per model — the session preflight will ask before it is used), on unknown flags, or when a `--provider`/`--model` filter matches nothing.
+The session preflight re-checks the active model at startup (it reuses the probe's own `/models` fetch — no new request), self-heals seeded stamps that detection can now replace (never hand edits), and applies the gate: ask once interactively, or abort with the remediation in print mode. `UNOWN_ALLOW_UNVERIFIED_SPECS=1` skips the gate everywhere (unattended lanes, CI, power users) — the conservative floor is stamped and labeled unverified.
 
-The engine's sandbox agent dir seeds sidecar-first (a recorded detection beats the catalog stamp) and runs one bounded fire-and-forget detection for uncurated, unrecorded models — best-effort, never gated (engine runs are unattended).
-
-Pricing rides the same records: a verified vendor-published cost lands in the sidecar and prices `unown usage` ahead of the built-in estimates — see [usage tracking](usage-tracking.md). The CLI surfaces are in [usage → command reference](usage.md#command-reference).
+**Learned specs.** An upstream 400 that names the real limit ("This model's maximum context length is 131072 tokens…") is free evidence: the bundled bridge parses those errors into `model-specs-learned.json` and surfaces them on `/health` (`learnedSpecs`) — never auto-applied. `unown models verify` records them with `learned` provenance; the ask (or your own entry) stays the decider.
 
 ## Direct provider recipes
 
@@ -248,11 +213,11 @@ The bridge turns one upstream into a clean local endpoint for the whole stack:
 - **Model routing** — requests naming an id outside `BRIDGE_KNOWN_MODELS` are routed to `BRIDGE_ROUTE_DEFAULT` (so a stale model id never hard-fails).
 - **Thinking translation** — qwen-family thinking is disabled by default for snappy agent turns (`BRIDGE_QWEN_THINKING=1` keeps it).
 - **SSE passthrough** — true streaming, tool calls and image content pass through verbatim.
-- **Spec passthrough** — `GET /v1/models` entries carry the upstream's spec fields when it publishes them (`max_model_len`, `max_completion_tokens`, `architecture.input_modalities` — the DeepInfra precedent of extra fields per catalog entry), in the same shapes the agent's endpoint-catalog detection lane reads, so the agent sees the upstream's truth without a second hop.
-- **Context-limit learning** — an upstream 400 that names the real context limit (the OpenAI / OpenRouter / Mistral / DashScope / Kimi error shapes) is parsed and learned into `model-specs-learned.json` in the bridge's state dir: written once per change, pass-through requests only (a routed id's 400 describes the default model's limits, not the one asked for), surfaced through `/health`'s `learnedSpecs` and never auto-applied — [`unown models verify`](#unown-models-verify) records them on the agent side with `learned` provenance.
+- **Spec passthrough** — the upstream catalog's spec fields (`max_model_len`, `max_completion_tokens`, input modalities…) ride each `/v1/models` entry (the DeepInfra precedent) and `/health`'s `modelSpecs`, so the agent's spec detection sees the upstream's published limits instead of bare ids.
+- **Limit learning** — an upstream 400 that names the real context/output limit (OpenAI/OpenRouter/Mistral/DashScope/Kimi/xAI/Bedrock shapes) is parsed into `model-specs-learned.json` and surfaced on `/health` (`learnedSpecs`) — once per change, pass-through requests only, never auto-applied.
 - **Guardrails** — request serialization + spacing (`BRIDGE_MIN_SPACING_MS`), time-to-headers timeout (`BRIDGE_UPSTREAM_TIMEOUT_MS`), 429/5xx backoff retries, optional shared secret (`BRIDGE_API_KEY`).
 
-`GET localhost:3031/health` reports the live state — including whether the upstream key is set and whether the upstream answers, the spec fields the upstream's own catalog carries (`modelSpecs`, by id) and the learned context limits (`learnedSpecs`) — which `unown doctor` and `scripts/start.ts` surface as actionable warnings.
+`GET localhost:3031/health` reports the live state — including whether the upstream key is set and whether the upstream answers, the upstream's published specs per model (`modelSpecs`) and the limits its 400s revealed (`learnedSpecs`) — which `unown doctor`, `unown models verify` and `scripts/start.ts` surface as actionable warnings.
 
 **The local lane (optional second upstream):** point `BRIDGE_LOCAL_URL` at any
 local OpenAI-compatible server — llama.cpp `llama-server`, Ollama, LM Studio —
@@ -293,7 +258,7 @@ local draft never touches the remote API. Unset = remote authoring as before.
 - **Per session**: `/model` or Ctrl+L opens the picker (every configured provider's models); Ctrl+P cycles through enabled models; Shift+Tab cycles thinking levels; `/scoped-models` controls what Ctrl+P cycles through.
 - **One-shot**: `unown --model provider/model "task"` routes that session without touching defaults.
 - **Persistently**: `unown providers default <provider> [model]`, `/providers` → the provider → *Make default…* mid-session, pick with Ctrl+S in the picker, or re-run `unown setup`.
-- **Check what's live**: `unown models` lists your configured models plus what a local bridge actually serves (with an allow-list cross-check, the probe's latency, and a `⚠ recently failed` annotation on models the health store marked — the same marks `unown doctor` surfaces), each model carrying its spec-provenance chip (`524,288 ctx / 65,536 out (curated catalog)` — or `[specs unverified — checked at first use]`); `unown providers test <id>` probes one provider with its stored key; `unown models verify` re-runs spec detection for the registered models on demand (see [Model specs](#model-specs--detection-the-gate-the-sidecar)). `unown doctor` shows the probe latency on the model-endpoint row, rates 429 as a warning (up, throttling), surfaces the model-health marks (`model health marks — <model> failed N min ago (subagents skip it for up to 30 min)`) so a subagent's silent model skip is never mysterious, and carries a `model specs verified` row for the default model.
+- **Check what's live**: `unown models` lists your configured models with each one's spec provenance (`[524,288 ctx / 65,536 out (models.dev)]`, or `specs unverified — checked at first use`) plus what a local bridge actually serves (with an allow-list cross-check, the probe's latency, and a `⚠ recently failed` annotation on models the health store marked — the same marks `unown doctor` surfaces); `unown models verify` re-runs detection for every registered model, records provenance, heals models.json, and exits 1 with per-model remediation when anything stays unverified; `unown providers test <id>` probes one provider with its stored key. `unown doctor` shows the probe latency on the model-endpoint row, the default model's verified spec + source, rates 429 as a warning (up, throttling), and surfaces the model-health marks (`model health marks — <model> failed N min ago (subagents skip it for up to 30 min)`) so a subagent's silent model skip is never mysterious.
 
 ## Web-search providers (the `web_search` tool)
 

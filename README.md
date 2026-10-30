@@ -260,7 +260,7 @@ unown setup --provider openai --api-key sk-... --model gpt-4o
 unown setup                        # or the interactive wizard
 ```
 
-`unown setup` verifies the endpoint and key before declaring success (probes speak each provider's own wire — Anthropic keys authenticate with `x-api-key`, and a 429 reports as *rate-limited* rather than unreachable), and writes `~/.unown/agent/{models.json,auth.json,settings.json}`. The interactive wizard is a guided flow: masked key entry (a stored key is shown as `key[:8]…` with Keep/Replace/Clear, and pasted keys get trim/whitespace hygiene), live model discovery from the endpoint on both the OpenAI and Anthropic wires, a theme step, and a closing setup summary with first-task suggestions. On a fresh install, `unown` itself offers the same wizard once at first run — `Enter` opens it, `n` keeps the bundled bridge — and the first session then opens with the same **First flights** catalog inside the TUI: four starter tasks, one keypress each, retired by your first real message (`/flights` reopens it). See [docs/providers.md](docs/providers.md) and [docs/quickstart.md](docs/quickstart.md).
+`unown setup` verifies the endpoint and key before declaring success (probes speak each provider's own wire — Anthropic keys authenticate with `x-api-key`, and a 429 reports as *rate-limited* rather than unreachable), and writes `~/.unown/agent/{models.json,auth.json,settings.json}`. The model's specs — context window and max output tokens, the two numbers that drive compaction and the output cap — are **detected from verifiable sources** (the endpoint's own catalog, the curated table, models.dev, LiteLLM); when nothing verifiable knows the model, the wizard asks (validated prompts, with the receipt of what was tried), scripts carry `--context-window`/`--max-tokens`, and the session preflight gates first use — unown never guesses a spec silently. The interactive wizard is a guided flow: masked key entry (a stored key is shown as `key[:8]…` with Keep/Replace/Clear, and pasted keys get trim/whitespace hygiene), live model discovery from the endpoint on both the OpenAI and Anthropic wires, the spec step, a theme step, and a closing setup summary with first-task suggestions. On a fresh install, `unown` itself offers the same wizard once at first run — `Enter` opens it, `n` keeps the bundled bridge — and the first session then opens with the same **First flights** catalog inside the TUI: four starter tasks, one keypress each, retired by your first real message (`/flights` reopens it). See [docs/providers.md](docs/providers.md) and [docs/quickstart.md](docs/quickstart.md).
 
 ### 3. Start
 
@@ -291,8 +291,9 @@ unown                      # interactive session (like claude/pi, but learning)
 unown "fix the failing tests"   # …optionally starting with a prompt
 unown -p "explain the build error" | less   # one-shot headless (like claude -p)
 unown --plan "add auth"    # plan mode: read-only exploration → numbered plan
-unown setup                # connect a provider (wizard or flags)
-unown models               # list configured models (+ what the bridge serves)
+unown setup                # connect a provider (wizard or flags; specs detected or asked)
+unown models               # list configured models + spec provenance
+unown models verify        # re-run spec detection; report anything unverified
 unown doctor               # end-to-end diagnostics: endpoint, keys, upstream, memory
 unown memory               # print the effective 4-tier memory stack
 unown note "watch out: flaky test in auth.spec"   # hand AutoDream a note directly
