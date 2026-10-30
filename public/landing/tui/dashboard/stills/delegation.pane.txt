@@ -1,0 +1,36 @@
+◆ unown dashboard · ● engine up · ● bridge                                                            zai-bridge/kimi-k2.5 09:42
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+│▐ delegation
+ LEARNING│● engine up · 3 delegations recorded · 67% ok
+ 1 Overview│
+ 2 Memory│▸ ✗ scout sync · 12m ago
+ 3 Dreams│    why: (not stated)
+ 4 Notes│    not worth it — hit the wall-clock budget
+ 5 Skills│  ✓ counter (general) async · 21m ago
+ 6 Learning Lab│    why: parallelism — keep answering while it counts
+ 7 Hooks│    ok — 2 turns, 9k tok, 4s
+ 8 Router│  ✓ reviewer sync · 49m ago
+│    why: specialization — a second pair of eyes on the diff
+ OPERATIONS│    ok — 6 turns, 48k tok, 42s
+ 9 Recovery│
+▌0 Delegation│by agent:
+ · Gateway│  ✓ reviewer · done · 1× · 48k tok · avg 6 turns
+ · Routines│  ✓ general · done · 1× · 9k tok · avg 2 turns
+ · Web Cache│  · scout · timeout · 1× · 601k tok · avg 104 turns
+│
+ ── loop state│· why recorded on 2/3 (67%) of delegations
+ notes 2 pending│
+ dreams 5│j/k select · R refresh · the fleet journal (.unown/fleet) holds the per-repo detail
+ shipped 2│  data fresh
+│
+│
+│
+│
+│
+│
+│
+│
+│
+│
+│
+j/k select · : palette ? help [ ] screens                                                                                 q quit
