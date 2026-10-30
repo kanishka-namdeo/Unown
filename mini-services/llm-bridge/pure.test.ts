@@ -1416,93 +1416,122 @@ describe("isDegenerateCompletion — the non-stream guard", () => {
 // The model-specs round: catalog spec extraction + context-limit learning
 // ---------------------------------------------------------------------------
 describe("the model-specs round — parseCatalogEntrySpecs / extractCatalogSpecs", () => {
-	test("vLLM shape: max_model_len + max_completion_tokens normalize; noise ignored", () => {
-		const spec = parseCatalogEntrySpecs({
-			id: "qwen-custom-72b",
-			max_model_len: 32768,
-			max_completion_tokens: 4096,
-			description: "noise",
-			pricing: { prompt: "0.001" },
-		});
-		expect(spec).toEqual({ contextWindow: 32768, maxTokens: 4096 });
-	});
+        test("vLLM shape: max_model_len + max_completion_tokens normalize; noise ignored", () => {
+                const spec = parseCatalogEntrySpecs({
+                        id: "qwen-custom-72b",
+                        max_model_len: 32768,
+                        max_completion_tokens: 4096,
+                        description: "noise",
+                        pricing: { prompt: "0.001" },
+                });
+                expect(spec).toEqual({ contextWindow: 32768, maxTokens: 4096 });
+        });
 
-	test("LM Studio shape: loaded_context_length + max_tokens; llama.cpp meta.n_ctx", () => {
-		expect(parseCatalogEntrySpecs({ id: "a", loaded_context_length: 8192, max_tokens: 4096 })).toEqual({
-			contextWindow: 8192,
-			maxTokens: 4096,
-		});
-		expect(parseCatalogEntrySpecs({ id: "b", meta: { n_ctx: 4096, vocabulary_size: 32000 } })).toEqual({ contextWindow: 4096 });
-	});
+        test("LM Studio shape: loaded_context_length + max_tokens; llama.cpp meta.n_ctx", () => {
+                expect(parseCatalogEntrySpecs({ id: "a", loaded_context_length: 8192, max_tokens: 4096 })).toEqual({
+                        contextWindow: 8192,
+                        maxTokens: 4096,
+                });
+                expect(parseCatalogEntrySpecs({ id: "b", meta: { n_ctx: 4096, vocabulary_size: 32000 } })).toEqual({ contextWindow: 4096 });
+        });
 
-	test("OpenRouter shape: top_provider + architecture.input_modalities flag vision", () => {
-		const spec = parseCatalogEntrySpecs({
-			id: "or/model",
-			top_provider: { max_completion_tokens: 8192, is_moderated: true },
-			architecture: { input_modalities: ["text", "image"], output_modalities: ["text"] },
-		});
-		expect(spec).toEqual({ maxTokens: 8192, imageInput: true });
-	});
+        test("OpenRouter shape: top_provider + architecture.input_modalities flag vision", () => {
+                const spec = parseCatalogEntrySpecs({
+                        id: "or/model",
+                        top_provider: { max_completion_tokens: 8192, is_moderated: true },
+                        architecture: { input_modalities: ["text", "image"], output_modalities: ["text"] },
+                });
+                expect(spec).toEqual({ maxTokens: 8192, imageInput: true });
+        });
 
-	test("garbage numbers are rejected, not guessed (0, negatives, floats, NaN)", () => {
-		expect(parseCatalogEntrySpecs({ id: "a", max_model_len: 0, max_tokens: -5 })).toEqual({});
-		expect(parseCatalogEntrySpecs({ id: "a", max_model_len: 1.5 })).toEqual({});
-		expect(parseCatalogEntrySpecs({ id: "a", max_model_len: Number.NaN })).toEqual({});
-		expect(parseCatalogEntrySpecs(null)).toEqual({});
-		expect(parseCatalogEntrySpecs("string")).toEqual({});
-	});
+        test("garbage numbers are rejected, not guessed (0, negatives, floats, NaN)", () => {
+                expect(parseCatalogEntrySpecs({ id: "a", max_model_len: 0, max_tokens: -5 })).toEqual({});
+                expect(parseCatalogEntrySpecs({ id: "a", max_model_len: 1.5 })).toEqual({});
+                expect(parseCatalogEntrySpecs({ id: "a", max_model_len: Number.NaN })).toEqual({});
+                expect(parseCatalogEntrySpecs(null)).toEqual({});
+                expect(parseCatalogEntrySpecs("string")).toEqual({});
+        });
 
-	test("extractCatalogSpecs keys by id and keeps only spec-bearing entries", () => {
-		const specs = extractCatalogSpecs({
-			data: [
-				{ id: "with-specs", max_model_len: 65536 },
-				{ id: "id-only", object: "model" },
-				{ object: "model" },
-				"garbage",
-			],
-		});
-		expect(specs).toEqual({ "with-specs": { contextWindow: 65536 } });
-		expect(extractCatalogSpecs({})).toEqual({});
-		expect(extractCatalogSpecs({ data: "not-an-array" })).toEqual({});
-	});
+        test("extractCatalogSpecs keys by id and keeps only spec-bearing entries", () => {
+                const specs = extractCatalogSpecs({
+                        data: [
+                                { id: "with-specs", max_model_len: 65536 },
+                                { id: "id-only", object: "model" },
+                                { object: "model" },
+                                "garbage",
+                        ],
+                });
+                expect(specs).toEqual({ "with-specs": { contextWindow: 65536 } });
+                expect(extractCatalogSpecs({})).toEqual({});
+                expect(extractCatalogSpecs({ data: "not-an-array" })).toEqual({});
+        });
 });
 
 describe("the model-specs round — parseContextLimitError (upstream 400 truth)", () => {
-	test("OpenAI shape: maximum context length is X tokens", () => {
-		expect(
-			parseContextLimitError("This model's maximum context length is 131072 tokens. However, your messages resulted in 150000 tokens."),
-		).toEqual({ contextWindow: 131072 });
-	});
+        test("OpenAI shape: maximum context length is X tokens", () => {
+                expect(
+                        parseContextLimitError("This model's maximum context length is 131072 tokens. However, your messages resulted in 150000 tokens."),
+                ).toEqual({ contextWindow: 131072 });
+        });
 
-	test("OpenRouter shape: maximum allowed input length of X tokens", () => {
-		expect(parseContextLimitError("Input length 250000 exceeds the maximum allowed input length of 200000 tokens.")).toEqual({
-			contextWindow: 200000,
-		});
-	});
+        test("OpenRouter shape: maximum allowed input length of X tokens", () => {
+                expect(parseContextLimitError("Input length 250000 exceeds the maximum allowed input length of 200000 tokens.")).toEqual({
+                        contextWindow: 200000,
+                });
+        });
 
-	test("Mistral shape: too large for model with X maximum context length", () => {
-		expect(parseContextLimitError("Prompt contains 40000 tokens ... too large for model with 32768 maximum context length")).toEqual({
-			contextWindow: 32768,
-		});
-	});
+        test("Mistral shape: too large for model with X maximum context length", () => {
+                expect(parseContextLimitError("Prompt contains 40000 tokens ... too large for model with 32768 maximum context length")).toEqual({
+                        contextWindow: 32768,
+                });
+        });
 
-	test("DashScope shape: Range of input length should be [1, X]", () => {
-		expect(parseContextLimitError("Range of input length should be [1, 100000], but your input is 120000 tokens")).toEqual({
-			contextWindow: 100000,
-		});
-	});
+        test("DashScope shape: Range of input length should be [1, X]", () => {
+                expect(parseContextLimitError("Range of input length should be [1, 100000], but your input is 120000 tokens")).toEqual({
+                        contextWindow: 100000,
+                });
+        });
 
-	test("Kimi shape: exceeded model token limit: X", () => {
-		expect(parseContextLimitError("exceeded model token limit: 262144 (requested: 300000)")).toEqual({ contextWindow: 262144 });
-	});
+        test("Kimi shape: exceeded model token limit: X", () => {
+                expect(parseContextLimitError("exceeded model token limit: 262144 (requested: 300000)")).toEqual({ contextWindow: 262144 });
+        });
 
-	test("non-overflow 400s teach nothing (schema errors, auth, empty)", () => {
-		expect(parseContextLimitError("Invalid schema for function 'foo': expected object")).toBeUndefined();
-		expect(parseContextLimitError("Invalid model id")).toBeUndefined();
-		expect(parseContextLimitError("")).toBeUndefined();
-	});
+        test("non-overflow 400s teach nothing (schema errors, auth, empty)", () => {
+                expect(parseContextLimitError("Invalid schema for function 'foo': expected object")).toBeUndefined();
+                expect(parseContextLimitError("Invalid model id")).toBeUndefined();
+                expect(parseContextLimitError("")).toBeUndefined();
+        });
 
-	test("a nonsense number is rejected (below the 1024 floor)", () => {
-		expect(parseContextLimitError("maximum context length is 12 tokens")).toBeUndefined();
-	});
+        test("a nonsense number is rejected (below the 1024 floor)", () => {
+                expect(parseContextLimitError("maximum context length is 12 tokens")).toBeUndefined();
+        });
+
+        test("xAI (Grok) shape: maximum prompt length is X", () => {
+                expect(parseContextLimitError("maximum prompt length is 131072")).toEqual({ contextWindow: 131072 });
+        });
+
+        test("Amazon Bedrock shape: input is too long ... max tokens is X", () => {
+                expect(parseContextLimitError("input is too long for requested model. max tokens is 2097152")).toEqual({
+                        contextWindow: 2097152,
+                });
+        });
+
+        test("output caps are learned too: 'max_tokens must be at most X'", () => {
+                expect(parseContextLimitError(`{"error":{"message":"max_tokens must be at most 65536 (was 131072)"}}`)).toEqual({
+                        maxTokens: 65536,
+                });
+                expect(parseContextLimitError("The maximum output tokens is 8192")).toEqual({ maxTokens: 8192 });
+        });
+
+        test("a 400 that names BOTH limits learns both (first-match per field)", () => {
+                expect(
+                        parseContextLimitError(
+                                `This model's maximum context length is 1048576 tokens and max_tokens must be at most 65536. However, you requested more.`,
+                        ),
+                ).toEqual({ contextWindow: 1048576, maxTokens: 65536 });
+        });
+
+        test("comma-grouped numbers parse (the '(128,000 tokens)' shapes)", () => {
+                expect(parseContextLimitError("maximum context length (128000 tokens)")).toEqual({ contextWindow: 128000 });
+        });
 });
