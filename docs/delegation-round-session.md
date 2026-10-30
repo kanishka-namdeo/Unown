@@ -151,11 +151,67 @@ events — then the specialist agents (checkpoint 4).
 
 ## Checkpoint 3 — the surfaces: card, chip, widget, dashboard, CLI
 
-*(opens when every user-facing delegation surface ships with its kill switch and tests)*
+**DONE.** (Shipped together with checkpoint 2's core, closed here as the
+user-facing checkpoint.) Every delegation surface composes the same ledger —
+no forked data, per the placement law:
+
+- **In-session**: the `/delegation` card + the `delegation` footer chip
+  (unseen not-ok first, clears when seen) + the async ack/`task_control
+  status` push-contract lines + `why` riding the tool result, the fleet
+  delivery, `/tasks` and the auto-brief's new `fleet:` line (completed
+  children with their why + receipts-only verdict, the still-running ones;
+  silence when nothing was delegated is correct).
+- **Out-of-session**: `unown delegations` (`--limit/--json/--engine`) + the
+  dashboard's **Delegation** screen (records, by-agent tallies,
+  why-coverage), registered beside Recovery with the `delegation:recorded`
+  SSE invalidation.
+- **Deliberate restraint**: the fleet widget's live rows keep their current
+  shape (elapsed/name/status/tool/tokens — already at width capacity); the
+  why rides `/tasks` and `task_control status` instead of crowding the
+  one-glance box. The kill switches: the surfaces are all pull-based (no
+  ambient noise); the chip only-when-unseen.
+
+**VERIFIED**: the dashboard render anchors (7 pane literals), the brief
+pins (fleet line + honest silence), the full-suite runs in checkpoints 2
+and 4's tables.
 
 ## Checkpoint 4 — the specialist agents
 
-*(opens when the new builtin and project agents ship with role contracts and pins)*
+**DONE.** The mission's missing roles ship as first-class agents —
+`subagent-builtins.ts` + this repo's project lane:
+
+- **Four new builtins** (each a CONTRACT, not a persona): `debug`
+  (read-only hypothesis-driven root-cause diagnosis — reproduce, rank,
+  evidence/alternatives/smallest-fix/confidence; 30-turn cap), `test`
+  (baseline → write → re-run, completion-guarded, discovered bugs REPORTED
+  not fixed), `security-reviewer` (severity tiers with exploit
+  preconditions, VULNERABLE/NO FINDINGS/INSUFFICIENT CONTEXT verdict;
+  24-turn cap), `documenter` (verified file:line references, unverified
+  claims flagged, never invents APIs).
+- **Two project agents** (the round's self-audit lane):
+  `.unown/agents/delegation-auditor.md` (worth/waste/recommendation over
+  the fleet journal + the engine aggregate) and
+  `.unown/agents/benchmark-curator.md` (receipts vs RESULTS.md claims,
+  drift + fabrication risks).
+- **The catalog headroom fix**: 17 advertised agents hit the 16-agent cap
+  and started dropping `general`/`explore` (the core vocabulary) while the
+  rendered block used 6,114 of 12,288 bytes — the count cap rose to 24 with
+  the measurement recorded in the code comment; the byte budget stays the
+  binding guard. Pinned by the updated cap test.
+
+**VERIFIED (this machine, 2026-10-30):**
+
+| Gate | Result |
+|---|---|
+| Full engine suite | 5075 pass · 0 fail (220 files) |
+| New pins | the nine-role contract test (tools/report-shapes/caps per role) · the 24-cap catalog pin |
+| Catalog render | 17 advertised · 6,337 bytes · no omission marker · all six new agents present |
+| instruction-chars | green (59 files, 0 findings — the two new project agents pass) |
+
+**NEXT.** Checkpoint 5: the after-benchmark — the identical workload re-run
+on the round's build, scored with `--compare` against the baseline, plus
+the failure-ledger close-out (each F-entry's fix re-tested where the
+benchmark exercises it).
 
 ## Checkpoint 5 — the after-benchmark + learning validation
 

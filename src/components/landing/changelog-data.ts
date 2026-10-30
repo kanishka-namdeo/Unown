@@ -30,10 +30,10 @@ export interface ChangelogStop {
   groups: ChangelogGroup[];
 }
 
-export const CHANGELOG_TOTAL_ENTRIES = 418;
+export const CHANGELOG_TOTAL_ENTRIES = 422;
 
 export const CHANGELOG_TOTALS: Record<ChangelogBucket, number> = {
-  "Added": 185,
+  "Added": 189,
   "Changed": 28,
   "Deprecated": 0,
   "Removed": 3,
@@ -46,9 +46,9 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
   {
     "label": "Unreleased",
     "date": null,
-    "total": 13,
+    "total": 17,
     "counts": {
-      "Added": 7,
+      "Added": 11,
       "Changed": 0,
       "Deprecated": 0,
       "Removed": 0,
@@ -82,6 +82,22 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
           },
           {
             "title": "Turn caps for the read-only builtins",
+            "behavior": false
+          },
+          {
+            "title": "The auto-brief carries the fleet",
+            "behavior": false
+          },
+          {
+            "title": "Four specialist builtin agents",
+            "behavior": false
+          },
+          {
+            "title": "The round's self-audit project agents",
+            "behavior": false
+          },
+          {
+            "title": "The advertised-catalog count cap rose 16 → 24",
             "behavior": false
           },
           {

@@ -7,9 +7,42 @@ import { ROLE_BUILTIN_AGENTS } from "../src/subagent-builtins.ts";
 import { isBlockedReply, renderAdvertisedCatalog } from "../src/subagent-catalog.ts";
 
 describe("ROLE_BUILTIN_AGENTS", () => {
-	test("the expected five roles ship with unique names", () => {
+	test("the expected nine roles ship with unique names", () => {
 		const names = ROLE_BUILTIN_AGENTS.map((a) => a.name).sort();
-		expect(names).toEqual(["browser", "planner", "reviewer", "scout", "worker"]);
+		// The delegation round (2026-10-30) added the four specialist roles:
+		// debug, test, security-reviewer, documenter.
+		expect(names).toEqual([
+			"browser",
+			"debug",
+			"documenter",
+			"planner",
+			"reviewer",
+			"scout",
+			"security-reviewer",
+			"test",
+			"worker",
+		]);
+	});
+	test("the delegation round's specialists carry their role contracts", () => {
+		const debug = ROLE_BUILTIN_AGENTS.find((a) => a.name === "debug")!;
+		expect(debug.tools).toEqual(["read", "grep", "find", "ls", "bash"]);
+		expect(debug.maxTurns).toBe(30);
+		expect(debug.systemPrompt).toContain("Diagnosis:");
+		expect(debug.systemPrompt).toContain("Alternatives ruled out:");
+		const tester = ROLE_BUILTIN_AGENTS.find((a) => a.name === "test")!; // not `test` — the runner owns that name
+		expect(tester.completionGuard).toBe(true); // a test run that writes nothing is a failure
+		expect(tester.systemPrompt).toContain("Baseline:");
+		expect(tester.systemPrompt).toContain("Collateral:");
+		expect(tester.systemPrompt).toContain("do not fix the code");
+		const sec = ROLE_BUILTIN_AGENTS.find((a) => a.name === "security-reviewer")!;
+		expect(sec.tools).toEqual(["read", "grep", "find", "ls", "bash"]);
+		expect(sec.maxTurns).toBe(24);
+		expect(sec.systemPrompt).toContain("EXPLOIT PRECONDITIONS");
+		expect(sec.systemPrompt).toContain("INSUFFICIENT CONTEXT");
+		const doc = ROLE_BUILTIN_AGENTS.find((a) => a.name === "documenter")!;
+		expect(doc.tools).toEqual(["read", "grep", "find", "ls", "write"]);
+		expect(doc.systemPrompt).toContain("NEVER invent an API, flag, default, or number");
+		expect(doc.systemPrompt).toContain("Unverified / flagged:");
 	});
 	test("every agent carries name + description + systemPrompt + built-in source", () => {
 		for (const agent of ROLE_BUILTIN_AGENTS) {
