@@ -203,3 +203,36 @@ seeding pin; suites: self-learning 5 088 pass / 0 fail, bridge 238 →
 detection, real gate), then the docs round (providers.md,
 usage-tracking.md, configuration.md, usage.md, README, the landing
 page, the blog, the DOX tree), then the release (v0.0.47).
+
+## Checkpoint 4 — the release: v0.0.47
+
+**Done.** (commit `c781e1c3` on main; the tag `v0.0.47` follows it; the
+release workflow builds the six per-OS artifacts + installers + manifest
++ SBOM and publishes the GitHub release.)
+
+- CHANGELOG: the 0.0.47 entry (the round's Added / Fixed / Agent
+  Behavior, incl. the in-round learning-parser extension — the xAI and
+  Bedrock shapes + the output caps — and the CI-red + windows-timeout
+  fixes).
+- `package.json` 0.0.46 → 0.0.47; `bun bin/unown --version` asserts
+  equal.
+- The scroll budget's amendment (3,800 → 3,820w) carries the rail's 46th
+  stop; the round's own changelog titles compressed first; the AGENTS.md
+  ceiling text synced (catching the delegation round's 3,780 straggle).
+- The blog post (`content/blog/2026-10-30-the-model-specs-round.md`),
+  the README's connect-a-model + command-block copy, the quickstart's
+  wizard beats, the troubleshooting gate row — the whole docs round.
+
+**Verified.** Locally: `bun bin/unown --version` = 0.0.47;
+`check:changelog` (45 stops) and `check:blog` (29 posts) green; bridge
+248 pass / 0 fail; self-learning 5,189 pass / 0 fail (at 56fa3a28, the
+release's parent content). The release workflow's own assertion jobs
+(three-OS install + full suites + the six-platform build) are the
+canonical verdict.
+
+**Live end-to-end (the Agnes AI stack, this session):** setup detected
+`agnes-3.0-flash` (curated 524,288 / 65,536 + models.dev cost/modality/
+reasoning), the gate refused an unverifiable id (exit 1 + remediation),
+the flag lane stamped user specs (exit 0), a real chat round-tripped,
+`unown models verify` verified the catalog, doctor showed the
+`model specs verified` row.
