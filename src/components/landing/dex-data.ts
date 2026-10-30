@@ -652,6 +652,29 @@ const RAW: readonly DexEntryInput[] = [
   },
   {
     kind: "behavior",
+    id: "sessions-round",
+    screen: "workflow",
+    name: "The sessions round",
+    summary: "abort and resume, consistent",
+    practice: [
+      "One abort matrix behind every surface — Esc, the new /abort, the extension API, RPC and ACP: the turn, a running bash, compaction or a retry all stop through one path, the partial answer is kept, and an idle session says so.",
+      "Both stores behind every picker: the in-session /resume unions the user store with the project import lane, exactly like the launch picker.",
+      "Resume in both grammars: --resume <id|name|path> and unown sessions resume <query> walk one ladder over both stores; a crash leaves a valid prefix that -c resumes.",
+    ],
+    receipts: [
+      ["docs/session-lifecycle.md", DOC("docs/session-lifecycle.md")],
+      ["tools.ts (/abort)", SRC("tools.ts")],
+      ["resume.ts", SRC("resume.ts")],
+    ],
+    // Captured 2026-10-31 (the sessions round): one reel, three beats — a
+    // live turn streaming from the model, /abort stopping it mid-flight
+    // (the notice names the kept partial + `unown -c`), then the in-session
+    // /resume picker listing BOTH stores (the user-lane session and its
+    // import-lane twin, two rows). Poster = the abort beat.
+    captures: [REEL("sessions-round", "01-abort-command.png")],
+  },
+  {
+    kind: "behavior",
     id: "build-session",
     screen: "workflow",
     name: "The builder round",

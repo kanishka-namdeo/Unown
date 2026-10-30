@@ -200,7 +200,49 @@ Tests (all green):
   sessions-resume) + 49 pi suite tests (abort matrix, extra dirs, queue,
   retry events, bash persistence) — all green.
 
-### M4 — docs + landing + changelog + blog (pending)
+### M4 — docs + landing + changelog + blog (DONE, 2026-10-31)
+
+Shipped:
+
+- `docs/session-lifecycle.md` — the round's usage page: the JSONL format
+  and both stores, the abort matrix by surface (table), every resume
+  spelling (table), crash recovery, exit codes, what abort never does,
+  where fleet `stop` / engine PLM deliberately differ. Conventions held:
+  purpose line, mini-TOC, Related pages, claims pinned to code.
+- `docs/usage.md` — the resume-flags paragraph gained the noun-verb twin +
+  the lifecycle link; the command reference's `sessions <sub>` row and the
+  slash table gained `/abort` (count thirty-three → thirty-four); the
+  keybindings Esc row names the `/abort` parity; the Sessions section
+  states the both-stores picker + links the lifecycle page.
+- `.env.example` — `PI_EXTRA_SESSION_DIRS` documented (automatic; never
+  set by hand) per the every-env-var rule.
+- `README.md` — the Documentation table gains the session-lifecycle row.
+- `CHANGELOG.md` — the 0.0.49 entry (Added ×6, Fixed ×2, Agent Behavior:
+  none). The rail regenerated (47 stops); the round's own titles were
+  compressed FIRST per the sanctioned budget order before any ceiling
+  would move — and the dex prose was compressed enough that no ceiling
+  amendment was needed (page measures 3,748w ≤ 3,840; 15.4vh ≤ 15.5vh).
+- The landing: a new dex behavior entry "The sessions round" (abort and
+  resume, consistent) with a REAL filmed reel — `film_sessions_round.py`
+  drove the live TUI through streaming → `/abort` → the both-stores
+  `/resume` picker, 58 frames assembled to 7.25 s MP4/WebM (faststart
+  verified) in `public/landing/tui/sessions-round/`; poster = the abort
+  beat. The dex count pins moved twenty-three → twenty-four (the
+  deliberate-edit path the tests document); the media contract held
+  (every reel a movie, stills = 0).
+- The blog: `content/blog/2026-10-31-the-sessions-round.md` (type:
+  feature) with the two PTY stills as media; the feed + blog-data
+  regenerated (31 posts).
+- DOX tree: `docs/AGENTS.md` ownership list + the self-learning
+  `AGENTS.md` terminal-agent contract paragraph both carry the round.
+
+Gates (all green): landing unit suite 2,063 pass; `typecheck` clean;
+`lint` 0 errors (4 pre-existing warnings); `check:docs`,
+`check:changelog`, `check:blog`, `check:claims`, `check:benchmarks`,
+`audit:landing` all ok; the built page audited at 3,748 words.
+
+Resume-from-here: M5 (release v0.0.49) — version bump, full gate run,
+tag, push, watch the release workflow.
 
 ### M5 — release v0.0.49 (pending)
 

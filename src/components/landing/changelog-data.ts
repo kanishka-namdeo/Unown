@@ -30,19 +30,86 @@ export interface ChangelogStop {
   groups: ChangelogGroup[];
 }
 
-export const CHANGELOG_TOTAL_ENTRIES = 450;
+export const CHANGELOG_TOTAL_ENTRIES = 459;
 
 export const CHANGELOG_TOTALS: Record<ChangelogBucket, number> = {
-  "Added": 208,
+  "Added": 214,
   "Changed": 28,
   "Deprecated": 0,
   "Removed": 3,
-  "Fixed": 167,
+  "Fixed": 169,
   "Security": 5,
-  "Behavior": 39
+  "Behavior": 40
 };
 
 export const CHANGELOG_STOPS: ChangelogStop[] = [
+  {
+    "label": "0.0.49",
+    "date": "2026-10-31",
+    "total": 9,
+    "counts": {
+      "Added": 6,
+      "Changed": 0,
+      "Deprecated": 0,
+      "Removed": 0,
+      "Fixed": 2,
+      "Security": 0,
+      "Behavior": 1
+    },
+    "groups": [
+      {
+        "bucket": "Added",
+        "items": [
+          {
+            "title": "/abort",
+            "behavior": false
+          },
+          {
+            "title": "The unified abort matrix",
+            "behavior": false
+          },
+          {
+            "title": "PI_EXTRA_SESSION_DIRS",
+            "behavior": false
+          },
+          {
+            "title": "unown sessions resume [query]",
+            "behavior": false
+          },
+          {
+            "title": "The resume hint",
+            "behavior": false
+          },
+          {
+            "title": "docs/session-lifecycle.md",
+            "behavior": false
+          }
+        ]
+      },
+      {
+        "bucket": "Fixed",
+        "items": [
+          {
+            "title": "The in-session picker missed the import lane",
+            "behavior": false
+          },
+          {
+            "title": "Esc covers compaction and retry waits",
+            "behavior": false
+          }
+        ]
+      },
+      {
+        "bucket": "Behavior",
+        "items": [
+          {
+            "title": "None",
+            "behavior": true
+          }
+        ]
+      }
+    ]
+  },
   {
     "label": "0.0.48",
     "date": "2026-10-30",

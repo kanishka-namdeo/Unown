@@ -9,6 +9,37 @@ otherwise specified; the release tag must always equal package.json's version.
 
 Repo conventions: measured claims cite their receipts (`docs/testing-strategy.md`, `benchmarks/memory-eval/*/RESULTS.md`). Changes to agent behavior — prompts, default models, routing, guard rules, hooks, memory injection — are filed under **Agent Behavior**; the policy lives in [docs/BEHAVIOR.md](docs/BEHAVIOR.md).
 
+## [0.0.49] - 2026-10-31
+
+The sessions round — abort and resume made consistent with the product:
+one abort matrix behind every surface (Esc, the new `/abort` command, the
+extension API, RPC, ACP), both session stores behind every picker (the
+in-session `/resume` picker joined the launch picker's union), and resume
+in both grammars the field ships (`--resume` flags AND the
+`unown sessions resume` subcommand). The round was verified like a user
+runs it: the PTY lane booted the real TUI, aborted a live turn through
+`/abort`, asserted the persisted `stopReason: "aborted"`, resumed with
+`-c`, and watched the same session file grow. Receipts: [the session log](docs/sessions-round-session.md) ·
+[the research pass](docs/sessions-competitor-research.md) · [the lifecycle page](docs/session-lifecycle.md).
+
+### Added
+
+- **`/abort`** — the named command for the abort matrix that until now only had a KEY. Every other session lifecycle op ships a slash command (`/new`, `/resume`, `/fork`, `/tree`); abort told you to press Esc and left discoverability at the door. The command aborts whatever is running — the agent turn (queued messages return to the editor), a bash command, compaction, or a retry wait — and reports honestly ("Nothing to abort…") when the session is idle.
+- **The unified abort matrix** (`AgentSession.abortActiveOperation(): boolean`, vendored pi): ONE code path — turn, bash, compaction/branch summary, retry — returning whether anything was aborted. The TUI's Esc, the `abortHandler` binding, the extension shortcut context and `/abort` all ride it; `ctx.abortActiveOperation()` joins the extension API (`ctx.abort()` unchanged); `ExtensionBindings.abortHandler` now returns the boolean.
+- **`PI_EXTRA_SESSION_DIRS`** (pi wrapper seam, `session-manager.ts` + `getExtraSessionDirs()` + `mergeSessionInfos()`, re-exported from `pi-coding-agent`): a path-delimiter-joined list of extra session dirs every pi-driven picker unions into its lists — deduped by path, newest-first. The unown boot sets it automatically when `<cwd>/.unown/sessions` exists; the launch picker's local merge copy is deleted — both pickers derive from the same mechanism and cannot drift again. Documented in `.env.example` (never set by hand).
+- **`unown sessions resume [query]`** — the noun-verb twin of `--resume <query>` (Codex `codex resume` muscle memory; the sessions family's central verb). The rewrite is deliberately trivial: everything after `resume` flows exactly as it would after `--resume` — bare = the picker, `<query>` walks the path → id → name ladder over both stores, `-p "…"` and a starting prompt compose identically. One grammar, two spellings, zero divergence.
+- **The resume hint** — `unown sessions list` and `/sessions list` end with the resume line (`unown -c` · `unown sessions resume <id|name>` · `unown --resume <id|name|path>` · `/resume` in-session): every spelling, right where the ids live.
+- **`docs/session-lifecycle.md`** — the single page for the whole lifecycle: the JSONL format, the abort matrix by surface, every resume spelling, crash recovery (torn-tail repair, interrupted tool calls never rerun), exit codes, and where the fleet's `stop` and the engine's PLM state machine deliberately differ.
+
+### Fixed
+
+- **The in-session picker missed the import lane**: the launch picker, `--continue`, `--resume <query>`, `sessions list` and `/sessions list` all union the user store (`~/.unown/agent/sessions`) with the project import lane (`<cwd>/.unown/sessions`); pi's in-session picker listed only the primary dir, so an imported session was visible at launch and invisible in-session — the exact drift the both-stores rule exists to prevent. Now every picker shows the union.
+- **Esc covers compaction and retry waits**: the temporary escape handlers covered their own concern only; the unified matrix makes the base Esc (and `/abort`) cover all four concerns idempotently.
+
+### Agent Behavior
+
+- **None** — abort is a cooperative cancellation the agent already settled correctly (`stopReason: "aborted"`, partial content kept); no prompt, model, routing, guard, hook or memory surface changed.
+
 ## [0.0.48] - 2026-10-30
 
 The PLM round — process lifecycle management, dogfooded on itself: every

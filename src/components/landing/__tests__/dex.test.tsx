@@ -81,13 +81,13 @@ const bySrc = (root: HTMLElement, part: string) =>
   );
 
 describe("landing DexSection", () => {
-  test("the listbox renders twenty-three options on one spine with roving tabindex", () => {
+  test("the listbox renders twenty-four options on one spine with roving tabindex", () => {
     const { container } = render(<DexSection />);
     const listbox = container.querySelector('[role="listbox"]');
     expect(listbox).toBeTruthy();
     const options = optionsIn(container);
     expect(options.length).toBe(TALLY.total);
-    expect(options.length).toBe(23);
+    expect(options.length).toBe(24);
     // Roving tabindex: exactly the selected option is tabbable — and the
     // cursor opens on the first entry that has footage, so a reader who does
     // nothing still sees a capture rather than an empty stage.
@@ -314,7 +314,7 @@ describe("landing DexSection", () => {
     expect(window.location.hash).toBe("#dex-skills");
   });
 
-  test("the pane contract: twenty-three entries mounted, the inactive ones hidden", () => {
+  test("the pane contract: twenty-four entries mounted, the inactive ones hidden", () => {
     const { container } = render(<DexSection />);
     const panes = articles(container);
     expect(panes.length).toBe(TALLY.total);
@@ -498,7 +498,7 @@ describe("landing DexSection", () => {
       expect(label, `"${label}" must not stutter the article`).not.toMatch(/\bthe\s+the\b/i);
     }
     // Walk to № 012 "The fix loop" and read its stage button both ways.
-    // All twenty-three panes stay mounted (the inactive ones `hidden`), so the
+    // All twenty-four panes stay mounted (the inactive ones `hidden`), so the
     // button must be read from the SHOWN pane — the first match in the DOM
     // belongs to № 001 Websearch.
     const opt = optionsIn(container).find((o) => o.textContent?.includes("012"));
