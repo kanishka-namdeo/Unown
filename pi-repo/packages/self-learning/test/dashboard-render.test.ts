@@ -123,6 +123,14 @@ describe("DashboardApp headless render", () => {
 			gateway: ["requests", "latency"],
 			automations: ["routines", "cron"],
 			webcache: ["entries"],
+			// The PLM round's views (2026-10-30): the registry census + the
+			// transition analytics + the per-process rows; the tool reliability
+			// rows + recommendations; the recovery engine block on the Recovery
+			// screen; the attribution scorecard on the Learning Lab.
+			processes: ["tracked", "transitions:", "job harness-cycle", "baseline run task-e2e-3", "terminal-session"],
+			tools: ["invocation(s)", "webfetch", "success 50%", "recommendations", "retry-heavy"],
+			recovery: ["recovery engine", "recovery score", "backoff-retry", "validated"],
+			lab: ["attribution:", "retained", "proof coverage"],
 		};
 		for (const spec of SCREEN_SPECS) {
 			app.setScreen(spec.id);
@@ -140,10 +148,12 @@ describe("DashboardApp headless render", () => {
 		expect(pane).toContain("2 Memory");
 		expect(pane).toContain("5 Skills");
 		expect(pane).toContain("9 Recovery");
-		// The delegation round inserted Delegation after Recovery — it
-		// takes the 0 accelerator and Gateway/Routines/Web Cache shift
-		// to the unnumbered “·” rail (ACCELERATORS covers the first 10).
-		expect(pane).toContain("0 Delegation");
+		// The PLM round (2026-10-30) inserted Processes + Tools after Recovery
+		// — Processes takes the 0 accelerator; Delegation joins Tools on the
+		// unnumbered “·” rail (ACCELERATORS covers the first 10).
+		expect(pane).toContain("0 Processes");
+		expect(pane).toContain("· Tools");
+		expect(pane).toContain("· Delegation");
 		expect(pane).toContain("· Gateway");
 		expect(pane).toContain("· Routines");
 		expect(pane).toContain("· Web Cache");
@@ -151,6 +161,26 @@ describe("DashboardApp headless render", () => {
 		expect(pane).toContain("LEARNING");
 		expect(pane).toContain("OPERATIONS");
 		expect(pane).toContain("loop state");
+	});
+
+	test("PLM: the Processes screen drills into the transition history", async () => {
+		app.setScreen("processes");
+		// select the SUCCEEDED run row (row 2: index 1) and drill in
+		app.handleInput("j");
+		app.handleInput("\r");
+		await Bun.sleep(150); // the process detail fetch is async
+		const detail = plain(app.render(120));
+		expect(detail).toContain("baseline run task-e2e-3");
+		expect(detail).toContain("transition history");
+		expect(detail).toContain("CREATED →");
+		expect(detail).toContain("RUNNING");
+		expect(detail).toContain("SUCCEEDED");
+		expect(detail).toContain("all tests passed");
+		// esc returns to the registry
+		app.handleInput("\x1b");
+		await Bun.sleep(50);
+		const back = plain(app.render(120));
+		expect(back).toContain("tracked");
 	});
 
 	test("drill-in and back", async () => {

@@ -41,12 +41,15 @@ import type {
 	HookEntry,
 	Improvement,
 	Job,
+	LearningAttributionResponse,
 	LiveRun,
 	MemoryHistoryEntry,
 	MemoryTierInfo,
 	Note,
 	OverviewResponse,
+	ProcessesResponse,
 	ProjectMemoryTier,
+	RecoveryPlmResponse,
 	Run,
 	RunDetail,
 	Sandbox,
@@ -54,6 +57,7 @@ import type {
 	SkillVersion,
 	Task,
 	TaskDetail,
+	ToolsResponse,
 	WebCacheStats,
 } from "../src/dashboard/dashboard-types.ts";
 
@@ -756,6 +760,253 @@ export async function startMockEngine(): Promise<MockEngine> {
 	// The delegation round's audit ledger fixture: one healthy sync spawn,
 	// one async spawn with its why, and the F26 runaway (timeout, 596k tok)
 	// so the screen's receipts-only verdict rows are all exercised.
+	// The PLM round's fixtures (2026-10-30): a process registry with a
+	// live job, a waiting run and a finished terminal session; the tool
+	// ledger with one healthy tool, one degraded tool and a recommendation;
+	// the recovery ledger with a validated and a planned event; and the
+	// learning attribution with one retained + one pending claim.
+	const processes: ProcessesResponse = {
+		processes: [
+			{
+				id: "proc-1",
+				parent_id: null,
+				kind: "job",
+				objective: "job harness-cycle",
+				owner: "router",
+				task_ref: "harness-cycle",
+				status: "RUNNING",
+				status_reason: "Self-improvement cycle started",
+				created_at: T0 - 2 * MIN,
+				started_at: T0 - 2 * MIN,
+				ended_at: null,
+				duration_ms: null,
+				attempt: 1,
+				tool_usage: null,
+				token_usage: null,
+				cost_usd: null,
+				outcome: null,
+				lessons: null,
+				checkpoint_id: null,
+			},
+			{
+				id: "proc-2",
+				parent_id: "proc-1",
+				kind: "run",
+				objective: "baseline run task-e2e-3",
+				owner: "runner",
+				task_ref: "run-2",
+				status: "SUCCEEDED",
+				status_reason: "all tests passed",
+				created_at: T0 - 5 * MIN,
+				started_at: T0 - 5 * MIN,
+				ended_at: T0 - 4 * MIN,
+				duration_ms: 61_000,
+				attempt: 1,
+				tool_usage: JSON.stringify({ calls: 7, errors: 1 }),
+				token_usage: JSON.stringify({ in: 12_000, out: 3_400 }),
+				cost_usd: null,
+				outcome: "all tests passed",
+				lessons: null,
+				checkpoint_id: "cp-1",
+			},
+			{
+				id: "proc-3",
+				parent_id: null,
+				kind: "terminal-session",
+				objective: "terminal session sess-abc in /home/dev/repo",
+				owner: "terminal",
+				task_ref: "sess-abc",
+				status: "SUCCEEDED",
+				status_reason: "session ended",
+				created_at: T0 - 30 * MIN,
+				started_at: T0 - 30 * MIN,
+				ended_at: T0 - 10 * MIN,
+				duration_ms: 1_200_000,
+				attempt: 1,
+				tool_usage: JSON.stringify({ calls: 34, errors: 2 }),
+				token_usage: JSON.stringify({ in: 220_000, out: 18_000 }),
+				cost_usd: null,
+				outcome: "session ended — 12 prompt(s), 34 tool call(s)",
+				lessons: null,
+				checkpoint_id: null,
+			},
+		],
+		analytics: {
+			current: { RUNNING: 1, SUCCEEDED: 2 },
+			entered: { CREATED: 3, RUNNING: 3, SUCCEEDED: 2 },
+			transitionCounts: [
+				{ from: "(birth)", to: "CREATED", count: 3 },
+				{ from: "CREATED", to: "RUNNING", count: 3 },
+				{ from: "RUNNING", to: "SUCCEEDED", count: 2 },
+			],
+			total: 3,
+			avgDurationMs: 630_500,
+			byKind: [
+				{ kind: "job", count: 1, ok: 0, failed: 0 },
+				{ kind: "run", count: 1, ok: 1, failed: 0 },
+				{ kind: "terminal-session", count: 1, ok: 1, failed: 0 },
+			],
+		},
+	};
+	const plmTools: ToolsResponse = {
+		tools: [
+			{
+				tool: "edit",
+				category: "write",
+				invocations: 48,
+				successes: 47,
+				failures: 1,
+				successRate: 47 / 48,
+				avgDurationMs: 420,
+				p95DurationMs: 1_800,
+				retries: 0,
+				failureClasses: [{ type: "tool", count: 1 }],
+				lastSeenTs: T0 - 30_000,
+				lanes: { engine: 40, terminal: 8 },
+			},
+			{
+				tool: "webfetch",
+				category: "net",
+				invocations: 10,
+				successes: 5,
+				failures: 5,
+				successRate: 0.5,
+				avgDurationMs: 2_100,
+				p95DurationMs: 8_000,
+				retries: 12,
+				failureClasses: [{ type: "dependency", count: 5 }],
+				lastSeenTs: T0 - 2 * MIN,
+				lanes: { engine: 10, terminal: 0 },
+			},
+		],
+		recommendations: [
+			{
+				tool: "webfetch",
+				severity: "high",
+				finding: "webfetch: success 50% over 10 calls (5 failures)",
+				recommendation: "check the tool's external dependency health before the next delegation",
+			},
+			{
+				tool: "webfetch",
+				severity: "medium",
+				finding: "webfetch: 12 retries over 10 calls — retry-heavy",
+				recommendation: "retry storms starve the admission lanes; check the failure classes",
+			},
+		],
+		totals: {
+			invocations: 58,
+			successRate: 52 / 58,
+			byCategory: [
+				{ category: "write", count: 48 },
+				{ category: "net", count: 10 },
+			],
+		},
+	};
+	const plmRecovery: RecoveryPlmResponse = {
+		events: [
+			{
+				id: 2,
+				ts: T0 - 40 * MIN,
+				process_id: null,
+				run_id: null,
+				job_id: "harness-cycle",
+				tool: null,
+				category: "model",
+				failure_summary: "job harness-cycle: upstream 429 rate limit",
+				retryable: 1,
+				root_cause: "the model endpoint failed (rate/auth/degenerate) — backoff-retry or rotate provider",
+				recovery_action: "backoff-retry",
+				status: "validated",
+				attempt: 1,
+				detail: null,
+				executed_at: T0 - 39 * MIN,
+				validated_at: T0 - 35 * MIN,
+				outcome: "job harness-cycle finished ok after failure — recovery confirmed",
+			},
+			{
+				id: 1,
+				ts: T0 - 5 * MIN,
+				process_id: null,
+				run_id: null,
+				job_id: "sandbox-gc",
+				tool: null,
+				category: "infrastructure",
+				failure_summary: "job sandbox-gc: watchdog: job exceeded 60s",
+				retryable: 1,
+				root_cause: "the host/sandbox layer failed — monitor and heal (watchdog/repair) before retrying",
+				recovery_action: "monitor",
+				status: "planned",
+				attempt: 1,
+				detail: null,
+				executed_at: null,
+				validated_at: null,
+				outcome: null,
+			},
+		],
+		analytics: {
+			total: 2,
+			byStatus: { validated: 1, planned: 1 },
+			byCategory: [
+				{ name: "model", count: 1 },
+				{ name: "infrastructure", count: 1 },
+			],
+			executionRate: 0.5,
+			validationRate: 1,
+			recoverySuccessRate: 0.5,
+			recurring: [],
+			topActions: [
+				{ name: "backoff-retry", count: 1 },
+				{ name: "monitor", count: 1 },
+			],
+			windowDays: 14,
+		},
+	};
+	const plmLearning: LearningAttributionResponse = {
+		attributions: [
+			{
+				id: 1,
+				ts: T0 - 60 * MIN,
+				failure: "spec detection missed the context limit",
+				improvement: "learned spec from the upstream 400 (learned provenance)",
+				improvement_id: "imp-9",
+				process_id: null,
+				tool: "models verify",
+				benchmark: "task:spec-gate",
+				score_before: "0/1",
+				score_after: "1/1",
+				measured_gain: "+1 task",
+				retained: 1,
+				regression_check: "pass — survived rerun",
+			},
+			{
+				id: 2,
+				ts: T0 - 20 * MIN,
+				failure: "run errored with degenerate completion",
+				improvement: "bridge degenerate-completion guard (retry once, then 502)",
+				improvement_id: null,
+				process_id: null,
+				tool: "bridge",
+				benchmark: "bridge health: degenerate counter",
+				score_before: null,
+				score_after: null,
+				measured_gain: null,
+				retained: null,
+				regression_check: "pending",
+			},
+		],
+		analytics: {
+			total: 2,
+			retained: 1,
+			regressions: 0,
+			pending: 1,
+			retentionRate: 1,
+			withBenchmark: 2,
+			withMeasuredGain: 1,
+			skills: { shipped: 2, retired: 0 },
+			memoryVersions: 7,
+			recent: [],
+		},
+	};
 	const delegations: DelegationsResponse = {
 		delegations: [
 			{
@@ -1185,6 +1436,72 @@ export async function startMockEngine(): Promise<MockEngine> {
 		}
 		if (p === "/api/delegations") {
 			json(res, delegations);
+			return;
+		}
+		if (p === "/api/processes") {
+			json(res, processes);
+			return;
+		}
+		if (p.startsWith("/api/processes/")) {
+			const row = processes.processes.find((r) => r.id === p.split("/")[3]);
+			if (!row) {
+				json(res, { error: "not found" }, 404);
+			} else {
+				json(res, {
+					process: row,
+					events:
+						row.id === "proc-2"
+							? [
+									{
+										id: 1,
+										process_id: row.id,
+										from_status: null,
+										to_status: "CREATED",
+										reason: "baseline run",
+										ts: T0 - 5 * MIN,
+									},
+									{
+										id: 2,
+										process_id: row.id,
+										from_status: "CREATED",
+										to_status: "RUNNING",
+										reason: "sandbox sb-2",
+										ts: T0 - 5 * MIN + 1000,
+									},
+									{
+										id: 3,
+										process_id: row.id,
+										from_status: "RUNNING",
+										to_status: "SUCCEEDED",
+										reason: "all tests passed",
+										ts: T0 - 4 * MIN,
+									},
+								]
+							: [
+									{
+										id: 1,
+										process_id: row.id,
+										from_status: null,
+										to_status: "CREATED",
+										reason: row.objective,
+										ts: row.created_at,
+									},
+								],
+					children: [],
+				});
+			}
+			return;
+		}
+		if (p === "/api/tools") {
+			json(res, plmTools);
+			return;
+		}
+		if (p === "/api/recovery") {
+			json(res, plmRecovery);
+			return;
+		}
+		if (p === "/api/learning/attribution") {
+			json(res, plmLearning);
 			return;
 		}
 		if (p === "/api/automations") {

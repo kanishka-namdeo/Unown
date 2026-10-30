@@ -443,3 +443,66 @@ export function recoverOrphanProcesses(now: number = Date.now()): number {
 export function archiveProcess(id: string): boolean {
 	return transitionProcess(id, ARCHIVED, "archived");
 }
+
+// ---------------------------------------------------------------------------
+// Terminal-session process reports (the POST /api/processes/report lane)
+// ---------------------------------------------------------------------------
+
+export interface TerminalSessionReport {
+	sessionId: string;
+	cwd?: string | null;
+	projectSlug?: string | null;
+	prompts?: number;
+	toolCalls?: number;
+	toolErrors?: number;
+	tokensIn?: number;
+	okensOut?: number;
+	durationMs?: number;
+	outcome?: string;
+	startedAt?: number;
+}
+
+/**
+ * Ingest a terminal session's process report (the human-work lane of the
+ * Process View). Untrusted input parsed defensively; the row is birthed
+ * straight into SUCCEEDED with its full event chain written in order
+ * (CREATED → RUNNING → SUCCEEDED) so the history is complete even though
+ * the process only arrives at its terminal state. Returns the process id
+ * (null when refused).
+ */
+export function ingestTerminalSessionReport(report: unknown): string | null {
+	if (!plmEnabled() || typeof report !== "object" || report === null) return null;
+	const r = report as Record<string, unknown>;
+	const sessionId = typeof r.sessionId === "string" ? r.sessionId.slice(0, 80) : "";
+	if (!sessionId) return null;
+	const num = (v: unknown, max = 10_000_000): number | null => {
+		const n = Number(v);
+		return Number.isFinite(n) && n >= 0 && n <= max ? n : null;
+	};
+	const outcome = typeof r.outcome === "string" ? r.outcome.slice(0, 400) : null;
+	const startedAt = num(r.startedAt);
+	const durationMs = num(r.durationMs);
+	const handle = beginProcess({
+		owner: "terminal",
+		kind: "terminal-session",
+		objective: `terminal session ${sessionId}${typeof r.cwd === "string" ? ` in ${String(r.cwd).slice(0, 120)}` : ""}`,
+		taskRef: sessionId,
+		started: true,
+	});
+	if (!handle.id) return null;
+	handle.setUsage({
+		toolCalls: num(r.toolCalls) ?? 0,
+		toolErrors: num(r.toolErrors) ?? 0,
+		tokensIn: num(r.tokensIn) ?? 0,
+		tokensOut: num(r.tokensOut) ?? 0,
+	});
+	handle.succeed(outcome ?? "session ended");
+	// The reported duration is authoritative (the engine never saw the start).
+	try {
+		store.run(`UPDATE processes SET duration_ms = ? WHERE id = ?`, [durationMs, handle.id]);
+		if (startedAt) store.run(`UPDATE processes SET started_at = ? WHERE id = ?`, [startedAt, handle.id]);
+	} catch {
+		/* telemetry invariant */
+	}
+	return handle.id;
+}

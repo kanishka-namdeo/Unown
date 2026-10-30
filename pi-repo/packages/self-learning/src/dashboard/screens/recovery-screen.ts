@@ -17,7 +17,7 @@
  */
 
 import { matchesKey } from "@earendil-works/pi-tui";
-import type { HookEntry, Job, Run } from "../dashboard-types.ts";
+import type { HookEntry, Job, RecoveryPlmResponse, Run } from "../dashboard-types.ts";
 import type { Screen, ScreenDeps, SelectionWindow } from "../screen.ts";
 import { SelectionWindow as Window } from "../screen.ts";
 import { ageStamp, errorState, heading, loadingState, timeAgo, trunc } from "../widgets/bits.ts";
@@ -40,6 +40,10 @@ export function createRecoveryScreen(deps: ScreenDeps): Screen {
 	const jobs = (): Job[] => store.snapshot<{ jobs: Job[] }>("jobs").data?.jobs ?? [];
 	const runs = (): Run[] => store.snapshot<{ runs: Run[] }>("runs").data?.runs ?? [];
 	const hooks = (): HookEntry[] => store.snapshot<{ hooks: HookEntry[] }>("hooks").data?.hooks ?? [];
+	// The PLM round (2026-10-30): the recovery ENGINE's own ledger — attempts,
+	// validated recoveries, the recurring failure categories. Same screen, one
+	// fetch, ranked under the live attention rows.
+	const plm = (): RecoveryPlmResponse | null => store.snapshot<RecoveryPlmResponse>("plmRecovery").data ?? null;
 
 	/** Failed runs, newest first, capped (the Learning Lab stays the deep surface). */
 	function failedRuns(list: Run[]): Run[] {
@@ -53,7 +57,10 @@ export function createRecoveryScreen(deps: ScreenDeps): Screen {
 	function recentDenials(list: HookEntry[]): HookEntry[] {
 		const day = 24 * 60 * 60 * 1000;
 		const cutoff = Date.now() - day;
-		return list.filter((e) => e.decision === "deny" && e.ts >= cutoff).sort((a, b) => b.ts - a.ts).slice(0, 6);
+		return list
+			.filter((e) => e.decision === "deny" && e.ts >= cutoff)
+			.sort((a, b) => b.ts - a.ts)
+			.slice(0, 6);
 	}
 
 	/** Compose the attention rows, worst-first. The list is recomputed every
@@ -119,14 +126,20 @@ export function createRecoveryScreen(deps: ScreenDeps): Screen {
 		const runFails = failedRuns(runs()).length;
 		lines.push(
 			trunc(
-				theme.fg(runFails === 0 ? "success" : "dim", `${runFails === 0 ? "✓" : "·"} runs — last 100: ${runFails} failed/errored`),
+				theme.fg(
+					runFails === 0 ? "success" : "dim",
+					`${runFails === 0 ? "✓" : "·"} runs — last 100: ${runFails} failed/errored`,
+				),
 				width,
 			),
 		);
 		const denials = recentDenials(hooks()).length;
 		lines.push(
 			trunc(
-				theme.fg(denials === 0 ? "success" : "dim", `${denials === 0 ? "✓" : "·"} hooks — ${denials} deny decision(s) in the last 24h`),
+				theme.fg(
+					denials === 0 ? "success" : "dim",
+					`${denials === 0 ? "✓" : "·"} hooks — ${denials} deny decision(s) in the last 24h`,
+				),
 				width,
 			),
 		);
@@ -144,10 +157,15 @@ export function createRecoveryScreen(deps: ScreenDeps): Screen {
 				conn === "up"
 					? theme.fg("success", "● engine up")
 					: conn === "down"
-						? theme.fg("error", "● engine down — the banner shows the retry; every panel below is a cached snapshot")
+						? theme.fg(
+								"error",
+								"● engine down — the banner shows the retry; every panel below is a cached snapshot",
+							)
 						: theme.fg("warning", `● engine ${conn}`);
 			const lines: string[] = [heading(theme, "recovery")];
-			lines.push(`${connText}${theme.fg("dim", ` · ${rows.length} item${rows.length === 1 ? "" : "s"} needing attention`)}`);
+			lines.push(
+				`${connText}${theme.fg("dim", ` · ${rows.length} item${rows.length === 1 ? "" : "s"} needing attention`)}`,
+			);
 			lines.push("");
 			if (rows.length === 0) {
 				lines.push(theme.fg("success", "✓ nothing needs attention — the clean bill"));
@@ -170,6 +188,41 @@ export function createRecoveryScreen(deps: ScreenDeps): Screen {
 			}
 			lines.push("");
 			lines.push(...greenLines(width));
+			// The recovery engine's own scorecard (the mission's Recovery View):
+			// attempts, validated recoveries, recurring categories — receipts-only.
+			const p = plm();
+			if (p) {
+				const a = p.analytics;
+				lines.push("");
+				lines.push(theme.fg("muted", "recovery engine"));
+				const rate = a.recoverySuccessRate;
+				const rateText = rate === null ? "not measured yet" : `${Math.round(rate * 100)}% over ${a.total} event(s)`;
+				lines.push(
+					trunc(
+						theme.fg(
+							rate === null ? "dim" : rate >= 0.8 ? "success" : "warning",
+							`${rate === null ? "·" : "✓"} recovery score — ${rateText}`,
+						),
+						width,
+					),
+				);
+				const recurring = a.recurring.slice(0, 3).map((c) => `${c.name} ×${c.count}`);
+				if (recurring.length > 0)
+					lines.push(trunc(theme.fg("dim", `  recurring: ${recurring.join(" · ")}`), width));
+				const recent = (p.events ?? []).slice(0, 3);
+				for (const e of recent) {
+					const statusGlyph = e.status === "validated" ? "✓" : e.status === "failed" ? "✗" : "◦";
+					const color = e.status === "validated" ? "success" : e.status === "failed" ? "error" : "dim";
+					lines.push(
+						trunc(
+							`  ${theme.fg(color, `${statusGlyph} ${e.category}`)} ${theme.fg("dim", `· ${e.recovery_action ?? "?"} · ${e.status} · ${timeAgo(e.ts)}`)}`,
+							width,
+						),
+					);
+				}
+				if ((p.events ?? []).length === 0)
+					lines.push(theme.fg("dim", "  · no failures observed in the window — nothing to recover"));
+			}
 			lines.push("");
 			lines.push(theme.fg("dim", "enter drills into the owning screen · R refreshes"));
 			const age = jobsSnap.ageMs;

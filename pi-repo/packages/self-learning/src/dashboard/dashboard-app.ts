@@ -32,9 +32,11 @@ import { createLabScreen } from "./screens/lab-screen.ts";
 import { createMemoryScreen } from "./screens/memory-screen.ts";
 import { createNotesScreen } from "./screens/notes-screen.ts";
 import { createOverviewScreen } from "./screens/overview-screen.ts";
+import { createProcessesScreen } from "./screens/processes-screen.ts";
 import { createRecoveryScreen } from "./screens/recovery-screen.ts";
 import { createRouterScreen } from "./screens/router-screen.ts";
 import { createSkillsScreen } from "./screens/skills-screen.ts";
+import { createToolsScreen } from "./screens/tools-screen.ts";
 import { createWebCacheScreen } from "./screens/webcache-screen.ts";
 import { type Tone, toneToken, trunc } from "./widgets/bits.ts";
 
@@ -60,11 +62,13 @@ export const SCREEN_SPECS: ScreenSpec[] = [
 		id: "lab",
 		title: "Learning Lab",
 		group: "learning",
-		resources: ["cycles", "improvements", "runs", "liveRuns", "tasks"],
+		resources: ["cycles", "improvements", "runs", "liveRuns", "tasks", "plmLearning"],
 	},
 	{ id: "hooks", title: "Hooks", group: "learning", resources: ["hooks"] },
 	{ id: "router", title: "Router", group: "learning", resources: ["jobs", "sandboxes"] },
-	{ id: "recovery", title: "Recovery", group: "operations", resources: ["jobs", "runs", "hooks"] },
+	{ id: "recovery", title: "Recovery", group: "operations", resources: ["jobs", "runs", "hooks", "plmRecovery"] },
+	{ id: "processes", title: "Processes", group: "operations", resources: ["processes", "plmRecovery"] },
+	{ id: "tools", title: "Tools", group: "operations", resources: ["plmTools"] },
 	{ id: "delegation", title: "Delegation", group: "operations", resources: ["delegations"] },
 	{ id: "gateway", title: "Gateway", group: "operations", resources: ["bridge"] },
 	{ id: "automations", title: "Routines", group: "operations", resources: ["automations"] },
@@ -281,6 +285,10 @@ export class DashboardApp {
 				return createHooksScreen;
 			case "recovery":
 				return createRecoveryScreen;
+			case "processes":
+				return createProcessesScreen;
+			case "tools":
+				return createToolsScreen;
 			case "delegation":
 				return createDelegationScreen;
 			case "router":

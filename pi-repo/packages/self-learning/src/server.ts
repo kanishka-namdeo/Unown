@@ -74,11 +74,17 @@ import {
 	listRecoveryEvents,
 	listToolInvocations,
 	plmSummary,
+	processAnalytics,
 	recoverOrphanProcesses,
 	validateJobRecovery,
 	wirePlm,
 } from "./plm/index.ts";
-import { getProcess, getProcessChildren, getProcessEvents } from "./plm/process-registry.ts";
+import {
+	getProcess,
+	getProcessChildren,
+	getProcessEvents,
+	ingestTerminalSessionReport,
+} from "./plm/process-registry.ts";
 import { recoveryAnalytics } from "./plm/recovery-engine.ts";
 import { jobTimeoutMs, listJobs, router, setJobEnabled } from "./router.ts";
 import { describeRoutineSchedule } from "./routine-schedule.ts";
@@ -1123,6 +1129,9 @@ export async function handleApi(req: ApiRequest): Promise<Response> {
 					kind,
 					limit: Number.isFinite(limit) && limit > 0 ? limit : 100,
 				}),
+				// The dashboard's Process View census + transition analytics ride
+				// the same response (one fetch, one render).
+				analytics: processAnalytics(),
 			});
 		}
 		if (method === "GET" && /^\/api\/processes\/[^/]+$/.test(path)) {
@@ -1134,6 +1143,12 @@ export async function handleApi(req: ApiRequest): Promise<Response> {
 				events: getProcessEvents(id),
 				children: getProcessChildren(id),
 			});
+		}
+		if (method === "POST" && path === "/api/processes/report") {
+			// The terminal lane's session-process report (fire-and-forget on the
+			// caller — the same best-effort contract as /api/tools/report).
+			const id = ingestTerminalSessionReport(body?.session ?? body);
+			return json({ ok: id !== null, id });
 		}
 		if (method === "GET" && path === "/api/tools") {
 			// The Tool View: per-tool reliability, latency, failure classes,

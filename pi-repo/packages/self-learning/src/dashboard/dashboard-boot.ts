@@ -43,115 +43,115 @@ See docs/tui-dashboard-plan.md for the full surface tour.`;
 /** Boot the standalone dashboard. Returns a promise that resolves with the
  * process exit code when the user quits. */
 export async function runDashboardCommand(args: string[]): Promise<number> {
-        // --help/-h before the TTY guard (audit M4-a): `unown dashboard --help`
-        // from a script or non-TTY context used to exit 1 with the TTY notice
-        // instead of printing usage — help must always be printable.
-        const helpIdx = args.findIndex((a) => a === "-h" || a === "--help");
-        if (helpIdx !== -1) {
-                process.stdout.write(DASHBOARD_HELP);
-                return 0;
-        }
-        if (!process.stdout.isTTY || !process.stdin.isTTY) {
-                process.stderr.write(
-                        "unown dashboard needs an interactive terminal (TTY).\n" +
-                                "  · run it directly in your terminal: unown dashboard\n" +
-                                "  · from a script, use the engine API instead: curl localhost:3030/api/overview\n",
-                );
-                return 1;
-        }
-        maybeShowUpdateNotice();
-        // "routines" deep-links to the automations screen (the user-facing name;
-        // the id keeps the historical spelling for existing links/muscle memory).
-        const initialScreen = (() => {
-                const arg = args.find((a) => !a.startsWith("-"));
-                return arg === "routines" ? "automations" : arg;
-        })();
+	// --help/-h before the TTY guard (audit M4-a): `unown dashboard --help`
+	// from a script or non-TTY context used to exit 1 with the TTY notice
+	// instead of printing usage — help must always be printable.
+	const helpIdx = args.findIndex((a) => a === "-h" || a === "--help");
+	if (helpIdx !== -1) {
+		process.stdout.write(DASHBOARD_HELP);
+		return 0;
+	}
+	if (!process.stdout.isTTY || !process.stdin.isTTY) {
+		process.stderr.write(
+			"unown dashboard needs an interactive terminal (TTY).\n" +
+				"  · run it directly in your terminal: unown dashboard\n" +
+				"  · from a script, use the engine API instead: curl localhost:3030/api/overview\n",
+		);
+		return 1;
+	}
+	maybeShowUpdateNotice();
+	// "routines" deep-links to the automations screen (the user-facing name;
+	// the id keeps the historical spelling for existing links/muscle memory).
+	const initialScreen = (() => {
+		const arg = args.find((a) => !a.startsWith("-"));
+		return arg === "routines" ? "automations" : arg;
+	})();
 
-        // Agent dir + theme: the same seeding the chat TUI does on first run
-        // (never clobbers user edits), then pi's sanctioned agent-dir override so
-        // theme discovery + settings read from ~/.unown/agent (cli.ts M3 pattern).
-        ensureUnownAgentDirInfo();
-        process.env.PI_CODING_AGENT_DIR = UNOWN_AGENT_DIR;
-        let themeName: string | undefined;
-        try {
-                const settings = JSON.parse(readFileSync(join(UNOWN_AGENT_DIR, "settings.json"), "utf8")) as {
-                        theme?: string;
-                };
-                themeName = typeof settings.theme === "string" && settings.theme ? settings.theme : undefined;
-        } catch {
-                themeName = undefined;
-        }
-        initTheme(themeName);
+	// Agent dir + theme: the same seeding the chat TUI does on first run
+	// (never clobbers user edits), then pi's sanctioned agent-dir override so
+	// theme discovery + settings read from ~/.unown/agent (cli.ts M3 pattern).
+	ensureUnownAgentDirInfo();
+	process.env.PI_CODING_AGENT_DIR = UNOWN_AGENT_DIR;
+	let themeName: string | undefined;
+	try {
+		const settings = JSON.parse(readFileSync(join(UNOWN_AGENT_DIR, "settings.json"), "utf8")) as {
+			theme?: string;
+		};
+		themeName = typeof settings.theme === "string" && settings.theme ? settings.theme : undefined;
+	} catch {
+		themeName = undefined;
+	}
+	initTheme(themeName);
 
-        // Always-on liveness (the P3 gap): the dashboard used to boot straight
-        // into its DEGRADED "engine down" state and wait for the user to run
-        // `unown engine start` elsewhere. Every other touchpoint (notes, the
-        // live-session footer) ping-and-spawns a down engine — the mission
-        // control surface deserves the same self-heal: kick a bounded spawn
-        // (gated by the crash-loop circuit + UNOWN_ENGINE_AUTOSTART=0) before
-        // the store starts polling. Best-effort: a down engine still boots the
-        // dashboard (it renders the degraded state and keeps retrying).
-        try {
-                if (process.env.PI_DISABLE_ENGINE_SPAWN !== "1") {
-                        const { ensureEngineRunning } = await import("../engine-supervisor.ts");
-                        await ensureEngineRunning(10_000);
-                }
-        } catch {
-                /* degraded boot — the store's own retry loop reports the state */
-        }
+	// Always-on liveness (the P3 gap): the dashboard used to boot straight
+	// into its DEGRADED "engine down" state and wait for the user to run
+	// `unown engine start` elsewhere. Every other touchpoint (notes, the
+	// live-session footer) ping-and-spawns a down engine — the mission
+	// control surface deserves the same self-heal: kick a bounded spawn
+	// (gated by the crash-loop circuit + UNOWN_ENGINE_AUTOSTART=0) before
+	// the store starts polling. Best-effort: a down engine still boots the
+	// dashboard (it renders the degraded state and keeps retrying).
+	try {
+		if (process.env.PI_DISABLE_ENGINE_SPAWN !== "1") {
+			const { ensureEngineRunning } = await import("../engine-supervisor.ts");
+			await ensureEngineRunning(10_000);
+		}
+	} catch {
+		/* degraded boot — the store's own retry loop reports the state */
+	}
 
-        const terminal = new ProcessTerminal();
-        // Responsive (round 5, R2): the dashboard shares the chat TUI's
-        // minimum-geometry gate — below 48x16 a centered notice explains the
-        // requirement instead of a crushed layout.
-        const tui = new TuiAltScreen(terminal, undefined, undefined, { minSizeNotice: true });
-        const store = new DashboardStore();
+	const terminal = new ProcessTerminal();
+	// Responsive (round 5, R2): the dashboard shares the chat TUI's
+	// minimum-geometry gate — below 48x16 a centered notice explains the
+	// requirement instead of a crushed layout.
+	const tui = new TuiAltScreen(terminal, undefined, undefined, { minSizeNotice: true });
+	const store = new DashboardStore();
 
-        let finished = false;
-        let resolveExit: (() => void) | null = null;
-        const exited = new Promise<void>((resolve) => {
-                resolveExit = resolve;
-        });
+	let finished = false;
+	let resolveExit: (() => void) | null = null;
+	const exited = new Promise<void>((resolve) => {
+		resolveExit = resolve;
+	});
 
-        const shutdown = (): void => {
-                if (finished) return;
-                finished = true;
-                try {
-                        store.stop();
-                } catch {
-                        /* drain errors never block the exit path */
-                }
-                try {
-                        tui.stop({ preserveScreen: false });
-                } catch {
-                        /* the terminal restore is best-effort; the OS cleans up on exit */
-                }
-                resolveExit?.();
-        };
+	const shutdown = (): void => {
+		if (finished) return;
+		finished = true;
+		try {
+			store.stop();
+		} catch {
+			/* drain errors never block the exit path */
+		}
+		try {
+			tui.stop({ preserveScreen: false });
+		} catch {
+			/* the terminal restore is best-effort; the OS cleans up on exit */
+		}
+		resolveExit?.();
+	};
 
-        const app = new DashboardApp(tui, {
-                theme,
-                store,
-                embedded: false,
-                onExit: shutdown,
-                initialScreen,
-        });
+	const app = new DashboardApp(tui, {
+		theme,
+		store,
+		embedded: false,
+		onExit: shutdown,
+		initialScreen,
+	});
 
-        // Signals: the TUI owns Ctrl-C (the app handles it as quit); SIGTERM (and
-        // any late SIGINT) drains through the same path on every platform.
-        process.once("SIGTERM", () => shutdown());
-        process.once("SIGINT", () => {
-                // If the app already handled Ctrl-C as quit, this never fires; if the
-                // TUI passed it through, exit now.
-                shutdown();
-        });
+	// Signals: the TUI owns Ctrl-C (the app handles it as quit); SIGTERM (and
+	// any late SIGINT) drains through the same path on every platform.
+	process.once("SIGTERM", () => shutdown());
+	process.once("SIGINT", () => {
+		// If the app already handled Ctrl-C as quit, this never fires; if the
+		// TUI passed it through, exit now.
+		shutdown();
+	});
 
-        tui.setLayoutRoot(app);
-        tui.setFocus(app);
-        store.start();
-        app.start();
-        tui.start();
+	tui.setLayoutRoot(app);
+	tui.setFocus(app);
+	store.start();
+	app.start();
+	tui.start();
 
-        await exited;
-        return 0;
+	await exited;
+	return 0;
 }

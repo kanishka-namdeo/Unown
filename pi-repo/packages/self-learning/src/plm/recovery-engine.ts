@@ -334,7 +334,13 @@ export function validateJobRecovery(jobId: string, ok: boolean, error?: string |
 						`UPDATE recovery_events SET attempt = attempt + 1, detail = COALESCE(detail, '{}') WHERE id = ?`,
 						[row.id],
 					);
-					markRecovery(row.id, "executed", `attempt ${row.attempt + 1} pending${reason}`, { repeatFailure: reason || "no error text" }, {});
+					markRecovery(
+						row.id,
+						"executed",
+						`attempt ${row.attempt + 1} pending${reason}`,
+						{ repeatFailure: reason || "no error text" },
+						{},
+					);
 				}
 			}
 		}

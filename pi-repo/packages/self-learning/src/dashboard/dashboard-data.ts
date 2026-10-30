@@ -149,7 +149,11 @@ export type ResourceId =
 	| "bridge"
 	| "automations"
 	| "webcache"
-	| "delegations";
+	| "delegations"
+	| "processes"
+	| "plmTools"
+	| "plmRecovery"
+	| "plmLearning";
 
 /** Typed loader per resource. Detail fetches (run/task/skill/dream notes,
  * automation runs, memory history) are imperative helpers below — they are
@@ -175,6 +179,12 @@ const LOADERS: Record<ResourceId, (c: EngineClient) => Promise<unknown>> = {
 	automations: (c) => c.get<AutomationsResponse>("/api/automations"),
 	webcache: (c) => c.get<import("./dashboard-types.ts").WebCacheStats>("/api/webcache"),
 	delegations: (c) => c.get<import("./dashboard-types.ts").DelegationsResponse>("/api/delegations?limit=50"),
+	// The PLM round's resources (2026-10-30): the Process View, the Tool
+	// View, the recovery engine's analytics, and the learning ledger.
+	processes: (c) => c.get<import("./dashboard-types.ts").ProcessesResponse>("/api/processes?limit=100"),
+	plmTools: (c) => c.get<import("./dashboard-types.ts").ToolsResponse>("/api/tools"),
+	plmRecovery: (c) => c.get<import("./dashboard-types.ts").RecoveryPlmResponse>("/api/recovery"),
+	plmLearning: (c) => c.get<import("./dashboard-types.ts").LearningAttributionResponse>("/api/learning/attribution"),
 };
 
 /** SSE event → resources that must refetch (ported 1:1 from the web dashboard). */
@@ -214,6 +224,20 @@ const INVALIDATIONS: Record<string, ResourceId[]> = {
 	// hop) moves the chain state the routines list renders.
 	"automation:chained": ["automations"],
 	"automation:event-triggered": ["automations"],
+	// The PLM round's invalidations (2026-10-30): every process transition,
+	// tool invocation, recovery update, checkpoint and learning claim repaints
+	// the views that render it.
+	"process:created": ["processes", "overview"],
+	"process:transition": ["processes"],
+	"process:finished": ["processes", "overview"],
+	"tool:invocation": ["plmTools"],
+	"tool:report-ingested": ["plmTools"],
+	"recovery:planned": ["plmRecovery"],
+	"recovery:updated": ["plmRecovery"],
+	"checkpoint:created": ["processes"],
+	"checkpoint:replay-finished": ["processes"],
+	"learning:attributed": ["plmLearning"],
+	"learning:retention-checked": ["plmLearning"],
 	// The terminal transitions previously leaned on the 4s fast-lane poll —
 	// the SSE stream should invalidate the list the moment they land.
 	"automation:run-succeeded": ["automations", "overview"],
@@ -506,6 +530,20 @@ export class DashboardStore {
 	}
 
 	// ---- detail fetches (drill-in; cached with the resource id) ----
+
+	async processDetail(
+		id: string,
+	): Promise<
+		import("./dashboard-types.ts").ProcessRow & { events: import("./dashboard-types.ts").ProcessEventRow[] }
+	> {
+		const r = await this.cachedDetail(`process:${id}`, () =>
+			this.client.get<{
+				process: import("./dashboard-types.ts").ProcessRow;
+				events: import("./dashboard-types.ts").ProcessEventRow[];
+			}>(`/api/processes/${encodeURIComponent(id)}`),
+		);
+		return { ...r.process, events: r.events ?? [] };
+	}
 
 	async runDetail(id: string): Promise<import("./dashboard-types.ts").RunDetail> {
 		const r = await this.cachedDetail(`run:${id}`, () =>

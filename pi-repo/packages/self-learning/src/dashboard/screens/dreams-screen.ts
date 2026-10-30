@@ -10,9 +10,9 @@
  */
 
 import { matchesKey } from "@earendil-works/pi-tui";
+import type { Dream, DreamNote, DreamsResponse, OverviewResponse } from "../dashboard-types.ts";
 import type { Screen, ScreenDeps, SelectionWindow } from "../screen.ts";
 import { SelectionWindow as Window } from "../screen.ts";
-import type { Dream, DreamNote, DreamsResponse, OverviewResponse } from "../dashboard-types.ts";
 import {
 	ageStamp,
 	badge,
@@ -85,11 +85,7 @@ export function createDreamsScreen(deps: ScreenDeps): Screen {
 			lines.push(...loadingState(theme, "dreams"));
 		} else if (list.length === 0) {
 			lines.push(
-				...emptyState(
-					theme,
-					"no dreams yet",
-					"AutoDream consolidates pending notes when the engine idles",
-				),
+				...emptyState(theme, "no dreams yet", "AutoDream consolidates pending notes when the engine idles"),
 			);
 		} else {
 			const view = Math.max(1, viewport - FIXED_ROWS);

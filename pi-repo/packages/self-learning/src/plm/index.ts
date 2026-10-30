@@ -64,6 +64,7 @@ export {
 	getProcess,
 	getProcessChildren,
 	getProcessEvents,
+	ingestTerminalSessionReport,
 	listProcesses,
 	type ProcessHandle,
 	type ProcessQuery,
@@ -72,6 +73,7 @@ export {
 	plmEnabled,
 	processAnalytics,
 	recoverOrphanProcesses,
+	type TerminalSessionReport,
 } from "./process-registry.ts";
 export {
 	listRecoveryEvents,
@@ -87,6 +89,16 @@ export {
 	validateJobRecovery,
 } from "./recovery-engine.ts";
 export * from "./states.ts";
+export {
+	beginTerminalToolCall,
+	endTerminalToolCall,
+	flushToolReports,
+	type PendingToolCall,
+	pendingToolReportCount,
+	reportTerminalSession,
+	resetTerminalReportForTest,
+	type TerminalSessionReportInput,
+} from "./terminal-report.ts";
 export {
 	deriveToolRecommendations,
 	deriveToolStats,

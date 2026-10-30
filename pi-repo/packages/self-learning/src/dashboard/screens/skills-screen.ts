@@ -10,9 +10,9 @@
  */
 
 import { matchesKey } from "@earendil-works/pi-tui";
+import type { Skill, SkillsResponse, SkillVersion } from "../dashboard-types.ts";
 import type { Screen, ScreenDeps, SelectionWindow } from "../screen.ts";
 import { SelectionWindow as Window } from "../screen.ts";
-import type { Skill, SkillVersion, SkillsResponse } from "../dashboard-types.ts";
 import {
 	ageStamp,
 	badge,
@@ -21,9 +21,9 @@ import {
 	heading,
 	loadingState,
 	pill,
+	type Tone,
 	timeAgo,
 	trunc,
-	type Tone,
 	wrap,
 } from "../widgets/bits.ts";
 
@@ -204,11 +204,11 @@ export function createSkillsScreen(deps: ScreenDeps): Screen {
 							["x", "retire"],
 							["tab", "body"],
 							["esc", "back"],
-					]
+						]
 					: [
 							["tab", "versions"],
 							["esc", "back"],
-					];
+						];
 			}
 			return [
 				["enter", "skill"],

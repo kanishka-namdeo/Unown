@@ -657,3 +657,180 @@ export interface DelegationsResponse {
 	tallies: DelegationTally[];
 	totals: DelegationTotals;
 }
+
+// ---- PLM round (2026-10-30) — the process/tool/recovery/learning views ----
+
+/** One process row as served by GET /api/processes (the Process Registry). */
+export interface ProcessRow {
+	id: string;
+	parent_id: string | null;
+	kind: string;
+	objective: string;
+	owner: string | null;
+	task_ref: string | null;
+	status: string;
+	status_reason: string | null;
+	created_at: number;
+	started_at: number | null;
+	ended_at: number | null;
+	duration_ms: number | null;
+	attempt: number;
+	tool_usage: string | null;
+	token_usage: string | null;
+	cost_usd: number | null;
+	outcome: string | null;
+	lessons: string | null;
+	checkpoint_id: string | null;
+}
+
+/** One transition-history row (GET /api/processes/:id). */
+export interface ProcessEventRow {
+	id: number;
+	process_id: string;
+	from_status: string | null;
+	to_status: string;
+	reason: string | null;
+	ts: number;
+}
+
+/** The process census + transition analytics (rides /api/processes). */
+export interface ProcessAnalytics {
+	current: Record<string, number>;
+	entered: Record<string, number>;
+	transitionCounts: Array<{ from: string; to: string; count: number }>;
+	total: number;
+	avgDurationMs: number | null;
+	byKind: Array<{ kind: string; count: number; ok: number; failed: number }>;
+}
+
+export interface ProcessesResponse {
+	processes: ProcessRow[];
+	analytics: ProcessAnalytics;
+}
+
+/** Per-tool lifecycle stats as served by GET /api/tools. */
+export interface ToolStatsRow {
+	tool: string;
+	category: string | null;
+	invocations: number;
+	successes: number;
+	failures: number;
+	successRate: number;
+	avgDurationMs: number | null;
+	p95DurationMs: number | null;
+	retries: number;
+	failureClasses: Array<{ type: string; count: number }>;
+	lastSeenTs: number | null;
+	lanes: { engine: number; terminal: number };
+}
+
+export interface ToolRecommendationRow {
+	tool: string;
+	severity: "high" | "medium" | "low";
+	finding: string;
+	recommendation: string;
+}
+
+export interface ToolsResponse {
+	tools: ToolStatsRow[];
+	recommendations: ToolRecommendationRow[];
+	totals: { invocations: number; successRate: number; byCategory: Array<{ category: string; count: number }> };
+}
+
+/** One tool invocation row (GET /api/tools/invocations). */
+export interface ToolInvocationRow {
+	id: number;
+	ts: number;
+	lane: string;
+	process_id: string | null;
+	run_id: string | null;
+	session_id: string | null;
+	project_slug: string | null;
+	tool: string;
+	category: string | null;
+	purpose: string | null;
+	duration_ms: number | null;
+	success: number;
+	retry_count: number;
+	failure_type: string | null;
+	error: string | null;
+	args_bytes: number | null;
+	output_bytes: number | null;
+}
+
+export interface ToolInvocationsResponse {
+	invocations: ToolInvocationRow[];
+}
+
+/** One recovery-event row (GET /api/recovery). */
+export interface RecoveryEventRow {
+	id: number;
+	ts: number;
+	process_id: string | null;
+	run_id: string | null;
+	job_id: string | null;
+	tool: string | null;
+	category: string;
+	failure_summary: string | null;
+	retryable: number;
+	root_cause: string | null;
+	recovery_action: string | null;
+	status: string;
+	attempt: number;
+	detail: string | null;
+	executed_at: number | null;
+	validated_at: number | null;
+	outcome: string | null;
+}
+
+export interface RecoveryAnalyticsRow {
+	total: number;
+	byStatus: Record<string, number>;
+	byCategory: Array<{ name: string; count: number }>;
+	executionRate: number | null;
+	validationRate: number | null;
+	recoverySuccessRate: number | null;
+	recurring: Array<{ name: string; count: number }>;
+	topActions: Array<{ name: string; count: number }>;
+	windowDays: number;
+}
+
+export interface RecoveryPlmResponse {
+	events: RecoveryEventRow[];
+	analytics: RecoveryAnalyticsRow;
+}
+
+/** The learning attribution ledger (GET /api/learning/attribution). */
+export interface LearningAttributionRow {
+	id: number;
+	ts: number;
+	failure: string | null;
+	improvement: string | null;
+	improvement_id: string | null;
+	process_id: string | null;
+	tool: string | null;
+	benchmark: string | null;
+	score_before: string | null;
+	score_after: string | null;
+	measured_gain: string | null;
+	retained: number | null;
+	regression_check: string | null;
+}
+
+export interface LearningAnalyticsRow {
+	total: number;
+	retained: number;
+	regressions: number;
+	pending: number;
+	retentionRate: number | null;
+	withBenchmark: number;
+	withMeasuredGain: number;
+	skills: { shipped: number; retired: number };
+	memoryVersions: number;
+	recent: LearningAttributionRow[];
+}
+
+export interface LearningAttributionResponse {
+	attributions: LearningAttributionRow[];
+	analytics: LearningAnalyticsRow;
+}

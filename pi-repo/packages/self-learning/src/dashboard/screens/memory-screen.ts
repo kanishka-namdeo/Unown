@@ -16,13 +16,9 @@
 
 import { generateDiffString } from "@earendil-works/pi-coding-agent";
 import { matchesKey } from "@earendil-works/pi-tui";
+import type { MemoryHistoryEntry, MemoryResponse, ProjectMemoryResponse } from "../dashboard-types.ts";
 import type { Screen, ScreenDeps, SelectionWindow } from "../screen.ts";
 import { SelectionWindow as Window } from "../screen.ts";
-import type {
-	MemoryHistoryEntry,
-	MemoryResponse,
-	ProjectMemoryResponse,
-} from "../dashboard-types.ts";
 import {
 	ageStamp,
 	badge,
@@ -33,9 +29,9 @@ import {
 	loadingState,
 	meter,
 	pill,
+	type Tone,
 	timeAgo,
 	trunc,
-	type Tone,
 	wrap,
 } from "../widgets/bits.ts";
 
@@ -236,10 +232,7 @@ export function createMemoryScreen(deps: ScreenDeps): Screen {
 				push(l);
 		} else {
 			projectItems.forEach((it, j) =>
-				push(
-					renderProjectRow(it, win.selected === engineItems.length + j, width),
-					engineItems.length + j,
-				),
+				push(renderProjectRow(it, win.selected === engineItems.length + j, width), engineItems.length + j),
 			);
 		}
 
@@ -272,7 +265,10 @@ export function createMemoryScreen(deps: ScreenDeps): Screen {
 		const diff = memoryVersionDiff(detailHistory, entry.version);
 		const by = badge(theme, entry.changed_by, changedByTone(entry.changed_by));
 		const lines: string[] = [
-			heading(theme, `diff · ${item.label} v${entry.version}${diff?.prevVersion != null ? ` vs v${diff.prevVersion}` : ""}`),
+			heading(
+				theme,
+				`diff · ${item.label} v${entry.version}${diff?.prevVersion != null ? ` vs v${diff.prevVersion}` : ""}`,
+			),
 			theme.fg("dim", `  ${by} · ${timeAgo(entry.created_at)} · ${formatTokens(entry.content.length)} chars`),
 			"",
 		];
@@ -282,10 +278,16 @@ export function createMemoryScreen(deps: ScreenDeps): Screen {
 			return lines.map((l) => trunc(l, width));
 		}
 		if (diff.prevVersion === null) {
-			lines.push(theme.fg("muted", `· v${entry.version} is the first recorded version — there is no earlier state to diff against`));
+			lines.push(
+				theme.fg(
+					"muted",
+					`· v${entry.version} is the first recorded version — there is no earlier state to diff against`,
+				),
+			);
 			lines.push(theme.fg("dim", `  ${formatTokens(entry.content.length)} chars written by ${entry.changed_by}`));
 			lines.push("");
-			for (const l of wrap(entry.content, Math.max(20, width - 2)).slice(0, DIFF_LINE_CAP)) lines.push(theme.fg("text", l));
+			for (const l of wrap(entry.content, Math.max(20, width - 2)).slice(0, DIFF_LINE_CAP))
+				lines.push(theme.fg("text", l));
 			return lines.map((l) => trunc(l, width));
 		}
 		const body = diff.text.split("\n");
@@ -296,7 +298,9 @@ export function createMemoryScreen(deps: ScreenDeps): Screen {
 			else if (l.startsWith("-") && !l.startsWith("---")) removed++;
 		}
 		const tail = body.length > DIFF_LINE_CAP ? theme.fg("dim", ` · truncated at ${DIFF_LINE_CAP} lines`) : "";
-		lines.push(`${theme.fg("success", `+${added}`)}${theme.fg("dim", " / ")}${theme.fg("error", `−${removed}`)}${tail}`);
+		lines.push(
+			`${theme.fg("success", `+${added}`)}${theme.fg("dim", " / ")}${theme.fg("error", `−${removed}`)}${tail}`,
+		);
 		lines.push("");
 		for (const l of body.slice(0, DIFF_LINE_CAP)) {
 			// pi's generateDiffString prefixes every line with its line number
@@ -330,10 +334,7 @@ export function createMemoryScreen(deps: ScreenDeps): Screen {
 		const lines: string[] = [];
 		lines.push(heading(theme, `memory · ${item.label}`));
 		lines.push(
-			theme.fg(
-				"dim",
-				`  v${item.version} · ${formatTokens(item.chars)} chars · updated ${timeAgo(item.updatedAt)}`,
-			),
+			theme.fg("dim", `  v${item.version} · ${formatTokens(item.chars)} chars · updated ${timeAgo(item.updatedAt)}`),
 		);
 		lines.push("");
 		const content = item.content ?? contentFromHistory();
@@ -361,9 +362,7 @@ export function createMemoryScreen(deps: ScreenDeps): Screen {
 		lines.push(
 			theme.fg(
 				"dim",
-				subMode === "history"
-					? "b rollback to the selected version · esc back"
-					: "tab version history · esc back",
+				subMode === "history" ? "b rollback to the selected version · esc back" : "tab version history · esc back",
 			),
 		);
 		// One window over the whole block; in history mode keep the selected
@@ -405,11 +404,11 @@ export function createMemoryScreen(deps: ScreenDeps): Screen {
 							["b", "rollback"],
 							["tab", "content"],
 							["esc", "back"],
-					]
+						]
 					: [
 							["tab", "history"],
 							["esc", "back"],
-					];
+						];
 			}
 			return [
 				["enter", "open"],

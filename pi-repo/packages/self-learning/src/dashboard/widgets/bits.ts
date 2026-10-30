@@ -13,14 +13,12 @@
  */
 
 import type { Theme } from "@earendil-works/pi-coding-agent";
-import { visibleWidth, wrapTextWithAnsi, truncateToWidth } from "@earendil-works/pi-tui";
+import { truncateToWidth, visibleWidth, wrapTextWithAnsi } from "@earendil-works/pi-tui";
 
 export type Tone = "emerald" | "amber" | "rose" | "zinc" | "dim";
 
 /** Map an activity tone onto the theme's accent vocabulary. */
-export function toneToken(
-	tone: Tone,
-): "success" | "warning" | "error" | "text" | "muted" {
+export function toneToken(tone: Tone): "success" | "warning" | "error" | "text" | "muted" {
 	switch (tone) {
 		case "emerald":
 			return "success";
@@ -133,7 +131,8 @@ export function errorState(theme: Theme, message: string, width = 40): string[] 
 export function ageStamp(theme: Theme, ageMs: number | null, extra?: string): string {
 	if (ageMs === null) return theme.fg("dim", extra ?? "");
 	const s = Math.floor(ageMs / 1000);
-	const age = s < 5 ? "fresh" : s < 90 ? `${s}s old` : s < 5400 ? `${Math.round(s / 60)}m old` : `${Math.round(s / 3600)}h old`;
+	const age =
+		s < 5 ? "fresh" : s < 90 ? `${s}s old` : s < 5400 ? `${Math.round(s / 60)}m old` : `${Math.round(s / 3600)}h old`;
 	const tone: Tone = s < 30 ? "dim" : s < 300 ? "zinc" : "amber";
 	const stamp = theme.fg(toneToken(tone), age);
 	return extra ? `${stamp} ${theme.fg("dim", extra)}` : stamp;

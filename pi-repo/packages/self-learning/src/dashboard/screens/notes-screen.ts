@@ -1,30 +1,30 @@
 /**
-* screens/notes-screen.ts — the session-note inbox AutoDream feeds on: the
-* filterable note list (all / terminal / benchmark / pending), full-content
-* drill-in, an inline composer that delivers a note to the engine for the
-* current project, and a one-key outbox sync.
-*
-* Follows the overview-screen pattern: SelectionWindow over the list,
-* list⇄detail modes, per-mode footer hints, and the loading/empty/error
-* states from widgets/bits.ts.
-*/
+ * screens/notes-screen.ts — the session-note inbox AutoDream feeds on: the
+ * filterable note list (all / terminal / benchmark / pending), full-content
+ * drill-in, an inline composer that delivers a note to the engine for the
+ * current project, and a one-key outbox sync.
+ *
+ * Follows the overview-screen pattern: SelectionWindow over the list,
+ * list⇄detail modes, per-mode footer hints, and the loading/empty/error
+ * states from widgets/bits.ts.
+ */
 
 import { matchesKey } from "@earendil-works/pi-tui";
+import type { Note, NotesResponse } from "../dashboard-types.ts";
 import type { Screen, ScreenDeps, SelectionWindow } from "../screen.ts";
 import { SelectionWindow as Window } from "../screen.ts";
-import type { Note, NotesResponse } from "../dashboard-types.ts";
 import {
-	InlineInput,
 	ageStamp,
 	badge,
 	emptyState,
 	errorState,
 	heading,
+	InlineInput,
 	loadingState,
 	pill,
+	type Tone,
 	timeAgo,
 	trunc,
-	type Tone,
 	wrap,
 } from "../widgets/bits.ts";
 
@@ -38,12 +38,7 @@ export function createNotesScreen(deps: ScreenDeps): Screen {
 	let detailLines = 0;
 	const input = new InlineInput(20_000);
 
-	const FILTERS: ("all" | "terminal" | "benchmark" | "pending")[] = [
-		"all",
-		"terminal",
-		"benchmark",
-		"pending",
-	];
+	const FILTERS: ("all" | "terminal" | "benchmark" | "pending")[] = ["all", "terminal", "benchmark", "pending"];
 
 	// Filter header + blank + heading + more-line + age stamp.
 	const FIXED_ROWS = 5;
@@ -155,9 +150,7 @@ export function createNotesScreen(deps: ScreenDeps): Screen {
 		lines.push("");
 		lines.push(input.renderField(theme, "note", width));
 		lines.push("");
-		lines.push(
-			theme.fg("dim", "enter send · esc cancel · delivered to the engine for the current project (cwd)"),
-		);
+		lines.push(theme.fg("dim", "enter send · esc cancel · delivered to the engine for the current project (cwd)"));
 		return lines;
 	}
 
@@ -276,10 +269,7 @@ export function createNotesScreen(deps: ScreenDeps): Screen {
 				void store
 					.syncNotes()
 					.then((r) =>
-						toast(
-							r.ok ? `${r.synced} notes synced from the outbox` : "sync failed",
-							r.ok ? "zinc" : "rose",
-						),
+						toast(r.ok ? `${r.synced} notes synced from the outbox` : "sync failed", r.ok ? "zinc" : "rose"),
 					)
 					.catch((e) => toast((e as Error).message, "rose"));
 				return true;

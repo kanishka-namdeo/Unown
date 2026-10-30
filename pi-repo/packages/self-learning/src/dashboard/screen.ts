@@ -1,19 +1,19 @@
 /**
-* dashboard/screen.ts — the screen contract every dashboard screen implements
-* and the shared selection/scroll math (k9s-style: the app shell owns the
-* viewport; screens render rows and move a cursor).
-*
-* A screen is a plain Component plus:
-*   - footerHints(): the footer's key → label vocabulary for this screen
-*   - onActivate()/onDeactivate(): fast-lane polling + focus side effects
-*   - handleKey(data): consume a key the shell did not (returns true when
-*     consumed) — the shell calls it with raw terminal input data
-*   - onOpen?(): a detail-drill hook the app calls when Enter arrives while
-*     the sidebar is not focused (screens may instead handle Enter themselves)
-*/
+ * dashboard/screen.ts — the screen contract every dashboard screen implements
+ * and the shared selection/scroll math (k9s-style: the app shell owns the
+ * viewport; screens render rows and move a cursor).
+ *
+ * A screen is a plain Component plus:
+ *   - footerHints(): the footer's key → label vocabulary for this screen
+ *   - onActivate()/onDeactivate(): fast-lane polling + focus side effects
+ *   - handleKey(data): consume a key the shell did not (returns true when
+ *     consumed) — the shell calls it with raw terminal input data
+ *   - onOpen?(): a detail-drill hook the app calls when Enter arrives while
+ *     the sidebar is not focused (screens may instead handle Enter themselves)
+ */
 
-import type { Component } from "@earendil-works/pi-tui";
 import type { Theme } from "@earendil-works/pi-coding-agent";
+import type { Component } from "@earendil-works/pi-tui";
 import type { DashboardStore, ResourceId } from "./dashboard-data.ts";
 import type { Tone } from "./widgets/bits.ts";
 
@@ -60,7 +60,7 @@ export interface Screen extends Component {
 }
 
 /** Shared selection/scroll window math: keep `selected` visible inside a
-* `view`-row window, moving the window only when necessary. */
+ * `view`-row window, moving the window only when necessary. */
 export class SelectionWindow {
 	selected = 0;
 	scroll = 0;
