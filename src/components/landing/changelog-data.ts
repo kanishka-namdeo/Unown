@@ -69,7 +69,7 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
             "behavior": false
           },
           {
-            "title": "The /delegation card + the delegation footer chip",
+            "title": "The /delegation card + chip",
             "behavior": false
           },
           {
@@ -81,7 +81,7 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
             "behavior": false
           },
           {
-            "title": "Turn caps for the read-only builtins",
+            "title": "Turn caps for read-only builtins",
             "behavior": false
           },
           {
@@ -93,11 +93,11 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
             "behavior": false
           },
           {
-            "title": "The round's self-audit project agents",
+            "title": "The self-audit project agents",
             "behavior": false
           },
           {
-            "title": "The advertised-catalog count cap rose 16 → 24",
+            "title": "The catalog count cap 16 → 24",
             "behavior": false
           },
           {

@@ -60,8 +60,21 @@ import { expect, test } from "@playwright/test";
  * form of the same gate (it also writes download/landing/audit.json).
  */
 
+/*
+ * The 2026-10-30 amendment (the delegation round): 3,780 → 3,800 words
+ * carries the changelog rail's 45th release stop (~30 generated words per
+ * stop, never deletable per the compression contract — the established
+ * precedent from the commerce round's 3,290 → 3,320 amendment). Compressed
+ * FIRST, as the contract demands: the round's own four fattest changelog
+ * bullet titles (its text, no gated literal or generated number touched),
+ * and the landing's memory-card quote re-picked to a shorter rule the
+ * living dream still carries. Measured at the breach: 3,796w — the page
+ * sits 4 words under the new ceiling only because the compression ran;
+ * the ceiling carries the rail's structural growth plus the same headroom
+ * the measurement argues for.
+ */
 const MAX_PAGE_VH = 15.5;
-const MAX_WORDS = 3780;
+const MAX_WORDS = 3800;
 const MAX_BAND_VH = 3;
 
 // The contract measures at 1440x900 (landing AGENTS.md + the audit script).

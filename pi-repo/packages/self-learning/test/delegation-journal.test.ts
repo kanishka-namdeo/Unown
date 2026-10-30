@@ -124,7 +124,9 @@ describe("the delegation round's journal enrichment", () => {
 
 describe("the delegations store schema (the F34 boot pin)", () => {
 	test("a FRESH database constructs and carries both delegations objects (statement order is a contract)", () => {
-		const { Store } = require("../src/store.ts") as { Store: new (path: string) => { query<T = any>(sql: string): T[] } };
+		const { Store } = require("../src/store.ts") as {
+			Store: new (path: string) => { query<T = any>(sql: string): T[] };
+		};
 		const fresh = mkdtempSync(join(tmpdir(), "f34-boot-"));
 		try {
 			const store = new Store(join(fresh, "fresh.db"));
@@ -136,7 +138,15 @@ describe("the delegations store schema (the F34 boot pin)", () => {
 			expect(table?.type).toBe("table");
 			expect(index?.type).toBe("index");
 		} finally {
-			rmSync(fresh, { recursive: true, force: true });
+			// Best-effort cleanup: on Windows the sqlite handle can still be
+			// open when rmSync runs (EBUSY, caught live on the CI runner) —
+			// the assertions all ran BEFORE this point, so a leftover tempdir
+			// never fails the pin.
+			try {
+				rmSync(fresh, { recursive: true, force: true });
+			} catch {
+				/* the OS temp cleaner owns it now */
+			}
 		}
 	});
 });

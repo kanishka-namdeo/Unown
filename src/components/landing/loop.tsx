@@ -115,7 +115,7 @@ const BEATS: Beat[] = [
       "- Stealth verification suite on bot.sannysoft.com: all 10 checks (webdriver, userAgent, platform, userAgentData, timezone, locale, screen, viewport, plugins, window.chrome) pass; 0 FAIL rows in Intoli tests.",
       "",
       "## Environment",
-      "- The `PI_MODEL_ID` environment variable pins the model ID for pi's `models.json`; `.env.example` defaults it to `agnes-3.0-flash`, with code fallbacks of `agnes-3.0-flash` (term.ts/presets.ts/llm.ts) and legacy `kimi-k2.5` (runner.ts).",
+      "- bin: Cross-platform CLI launcher (Unix shebang, Windows cmd/ps1) [note 1].",
     ].join("\n"),
     caption2:
       "Verbatim lines from this repository's project memory, rendered by the Mem0-backed AutoDream. A dream that breaks the last-passing task logs: rolled back to v5: canary task failed under the new memory.",
