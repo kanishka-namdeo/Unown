@@ -24,14 +24,18 @@ import { firstFlightCatalog } from "./flights-core.ts";
 import { loadModelHealth, MODEL_HEALTH_TTL_MS } from "./model-health.ts";
 import {
 	detectModelSpec,
+	formatSpecLine,
 	formatSpecShort,
 	getRecordedSpec,
 	isCompleteSpec,
 	type ModelSpecDetection,
+	recordSpec,
 	type SpecCost,
 } from "./model-spec-detect.ts";
+import { modelSpec } from "./model-specs.ts";
 import {
 	type EndpointProbe,
+	isLoopbackProvider,
 	probeLatencyNote,
 	probeOpenAiEndpoint,
 	probeProviderEndpoint,
@@ -40,6 +44,7 @@ import {
 	resolveActiveProvider,
 } from "./probe.ts";
 import {
+	applyModelSpecs,
 	clearProviderKey,
 	keyStatusLabel,
 	listProviders,
@@ -1189,4 +1194,251 @@ export async function runSetupCommand(args: string[]): Promise<number> {
 		}
 	}
 	return preset.id === "bridge" ? runBridgeSetup(flags, preset, null) : runDirectSetup(flags, preset, null);
+}
+
+// ---------------------------------------------------------------------------
+// unown models verify — the explicit detection pass (the model-specs round)
+// ---------------------------------------------------------------------------
+
+export interface ModelsVerifyFlags {
+	provider?: string;
+	model?: string;
+	json: boolean;
+}
+
+export const MODELS_VERIFY_USAGE = `unown models verify — re-run spec detection for the registered models
+
+usage: unown models verify [--provider P] [--model M] [--json]
+  --provider P   verify only this provider's models
+  --model M      verify only this model id (with --provider, or matched anywhere)
+  --json         machine-readable verdicts (one JSON object)
+
+For every registered model: the shared spec gate runs (the sidecar record,
+your hand-edited models.json values, then the detection cascade — the
+endpoint's own /models, the curated catalog, models.dev, the LiteLLM
+database), recording provenance and healing models.json where a verifiable
+source answers. A loopback bridge provider's LEARNED specs (context limits
+its upstream 400s revealed) are recorded with learned provenance.
+
+Exits 1 when any model stays unverified — the remediation prints per model.
+`;
+
+/** Parse the verify flags (unknown flags error, clig.dev). */
+export function parseModelsVerifyFlags(args: string[]): { flags: ModelsVerifyFlags; help: boolean; unknown: string[] } {
+	const flags: ModelsVerifyFlags = { json: false };
+	const unknown: string[] = [];
+	let help = false;
+	for (let i = 0; i < args.length; i++) {
+		const a = args[i];
+		const next = args[i + 1];
+		if (a === "--json") flags.json = true;
+		else if (a === "-h" || a === "--help") help = true;
+		else if (a === "--provider" && next) {
+			flags.provider = next;
+			i++;
+		} else if (a === "--model" && next) {
+			flags.model = next;
+			i++;
+		} else unknown.push(a);
+	}
+	return { flags, help, unknown };
+}
+
+/** One verify verdict row (the --json shape and the human line render from it). */
+export interface ModelsVerifyRow {
+	provider: string;
+	model: string;
+	status: "verified" | "unverified";
+	/** The spec that settled it (verified rows). */
+	specLine?: string;
+	/** What changed while verifying: healed/recorded/learned notes. */
+	notes: string[];
+	/** The remediation (unverified rows). */
+	remediation?: string;
+}
+
+/** A learned spec from the bridge's /health, recorded with learned provenance. */
+function learnedDetection(learned: { contextWindow?: number; maxTokens?: number }): ModelSpecDetection {
+	return {
+		...(learned.contextWindow !== undefined ? { contextWindow: learned.contextWindow } : {}),
+		...(learned.maxTokens !== undefined ? { maxTokens: learned.maxTokens } : {}),
+		source: "learned",
+		match: "exact",
+		contributors: [
+			{
+				source: "learned",
+				fields: [
+					...(learned.contextWindow !== undefined ? ["contextWindow"] : []),
+					...(learned.maxTokens !== undefined ? ["maxTokens"] : []),
+				],
+				match: "exact",
+			},
+		],
+	};
+}
+
+/** The bridge's learned specs (loopback providers only, best effort). */
+async function bridgeLearnedSpecs(
+	baseUrl: string,
+): Promise<Record<string, { contextWindow?: number; maxTokens?: number }>> {
+	try {
+		const health = new URL("/health", baseUrl).toString();
+		const res = await fetch(health, { signal: AbortSignal.timeout(3000) });
+		if (!res.ok) return {};
+		const body = (await res.json()) as {
+			learnedSpecs?: Record<string, { contextWindow?: number; maxTokens?: number }>;
+		};
+		return body.learnedSpecs ?? {};
+	} catch {
+		return {};
+	}
+}
+
+/**
+ * Run the shared spec gate for the registered models and report the verdicts.
+ * NEVER asks (the ask lives in setup / the session preflight) — this is the
+ * explicit "go verify" pass: detect, record provenance, heal models.json,
+ * absorb the bridge's learned limits. Returns the rows and whether all
+ * models ended verified.
+ */
+export async function runModelsVerify(
+	flags: ModelsVerifyFlags,
+): Promise<{ rows: ModelsVerifyRow[]; allVerified: boolean }> {
+	const file = readAgentModelsFile(UNOWN_AGENT_DIR);
+	const rawProviders = (() => {
+		try {
+			return JSON.parse(readFileSync(join(UNOWN_AGENT_DIR, "models.json"), "utf8")) as {
+				providers?: Record<string, { models?: Array<Record<string, unknown>> }>;
+			};
+		} catch {
+			return {} as { providers?: Record<string, { models?: Array<Record<string, unknown>> }> };
+		}
+	})();
+	const rows: ModelsVerifyRow[] = [];
+	for (const p of file.providers) {
+		if (flags.provider && p.id !== flags.provider) continue;
+		const models = flags.model ? p.modelIds.filter((m) => m === flags.model) : p.modelIds;
+		if (models.length === 0) continue;
+		const key = resolveProviderKey(UNOWN_AGENT_DIR, p.id).key;
+		const rawModels = rawProviders.providers?.[p.id]?.models ?? [];
+		const learned = p.baseUrl && isLoopbackProvider(p) ? await bridgeLearnedSpecs(p.baseUrl) : {};
+		const probe = p.baseUrl
+			? await probeProviderEndpoint(p.baseUrl, key, { timeoutMs: 5000, api: p.api })
+			: undefined;
+		for (const model of models) {
+			const current = rawModels.find((m) => m?.id === model) as
+				| { contextWindow?: number; maxTokens?: number }
+				| undefined;
+			const gate = await resolveSpecGate(
+				{
+					providerId: p.id,
+					modelId: model,
+					...(p.baseUrl ? { baseUrl: p.baseUrl } : {}),
+					...(key ? { apiKey: key } : {}),
+					...(p.api ? { api: p.api } : {}),
+					...(current?.contextWindow !== undefined && current?.maxTokens !== undefined
+						? { current: { contextWindow: current.contextWindow, maxTokens: current.maxTokens } }
+						: {}),
+				},
+				{
+					agentDir: UNOWN_AGENT_DIR,
+					...(probe?.modelEntries ? { endpointCatalog: { data: probe.modelEntries } } : {}),
+				},
+			);
+			if (gate.status === "verified") {
+				rows.push({
+					provider: p.id,
+					model,
+					status: "verified",
+					specLine: formatSpecLine(gate.spec),
+					notes: [
+						...(gate.healed ? ["healed models.json"] : []),
+						...(gate.recorded ? ["recorded provenance"] : []),
+					],
+				});
+				continue;
+			}
+			// The bridge's learned limits — an upstream 400 already told us the
+			// real context. Recorded with learned provenance; still unverified
+			// when the output cap is missing (the gate stays honest).
+			const note = `tried: ${gate.attempts.map((a) => `${a.source} (${a.outcome})`).join(", ")}`;
+			const learnedRow = learned[model];
+			const learnedNotes: string[] = [];
+			if (learnedRow && (learnedRow.contextWindow !== undefined || learnedRow.maxTokens !== undefined)) {
+				const spec = learnedDetection(learnedRow);
+				recordSpec(UNOWN_AGENT_DIR, p.id, model, spec);
+				const applied = applyModelSpecs(UNOWN_AGENT_DIR, p.id, {
+					[model]: {
+						contextWindow: spec.contextWindow ?? current?.contextWindow ?? modelSpec(model).contextWindow,
+						maxTokens: spec.maxTokens ?? current?.maxTokens ?? modelSpec(model).maxTokens,
+					},
+				});
+				learnedNotes.push(
+					`learned from an upstream 400: ${learnedRow.contextWindow?.toLocaleString("en-US") ?? "?"} ctx`,
+				);
+				if (applied.length > 0) learnedNotes.push("healed models.json");
+				if (isCompleteSpec(spec)) {
+					rows.push({
+						provider: p.id,
+						model,
+						status: "verified",
+						specLine: formatSpecLine(spec),
+						notes: learnedNotes,
+					});
+					continue;
+				}
+			}
+			rows.push({
+				provider: p.id,
+				model,
+				status: "unverified",
+				notes: [...learnedNotes, note].filter(Boolean),
+				remediation: `unown setup --provider ${p.id} --model ${model} --context-window <N> --max-tokens <K> — or export UNOWN_ALLOW_UNVERIFIED_SPECS=1`,
+			});
+		}
+	}
+	return { rows, allVerified: rows.length > 0 && rows.every((r) => r.status === "verified") };
+}
+
+/** Entry point for `unown models verify [flags]`. Returns the process exit code. */
+export async function cmdModelsVerify(args: string[]): Promise<number> {
+	const { flags, help, unknown } = parseModelsVerifyFlags(args);
+	if (help) {
+		console.log(MODELS_VERIFY_USAGE);
+		return 0;
+	}
+	if (unknown.length) {
+		console.error(`unown models verify: unknown argument(s): ${unknown.join(" ")}`);
+		console.error(MODELS_VERIFY_USAGE);
+		return 1;
+	}
+	const { rows, allVerified } = await runModelsVerify(flags);
+	if (rows.length === 0) {
+		console.log(
+			flags.provider || flags.model
+				? "No registered models match the filter."
+				: "No provider configured yet — run: unown setup",
+		);
+		return flags.provider || flags.model ? 1 : 0;
+	}
+	if (flags.json) {
+		console.log(JSON.stringify({ allVerified, rows }, null, 2));
+	} else {
+		for (const r of rows) {
+			const where = `${r.provider}/${r.model}`;
+			if (r.status === "verified") {
+				const notes = r.notes.length > 0 ? ` (${r.notes.join("; ")})` : "";
+				console.log(`  ✓ ${where} — ${r.specLine}${notes}`);
+			} else {
+				console.log(`  ? ${where} — unverified${r.notes.length > 0 ? ` (${r.notes.join("; ")})` : ""}`);
+				if (r.remediation) console.log(`      ${r.remediation}`);
+			}
+		}
+		console.log(
+			allVerified
+				? `\nAll ${rows.length} model spec${rows.length === 1 ? "" : "s"} verified.`
+				: `\n${rows.filter((r) => r.status === "unverified").length} model spec${rows.filter((r) => r.status === "unverified").length === 1 ? "" : "s"} unverified — the session preflight will ask before they are used.`,
+		);
+	}
+	return allVerified ? 0 : 1;
 }
