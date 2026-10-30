@@ -9,7 +9,7 @@ otherwise specified; the release tag must always equal package.json's version.
 
 Repo conventions: measured claims cite their receipts (`docs/testing-strategy.md`, `benchmarks/memory-eval/*/RESULTS.md`). Changes to agent behavior — prompts, default models, routing, guard rules, hooks, memory injection — are filed under **Agent Behavior**; the policy lives in [docs/BEHAVIOR.md](docs/BEHAVIOR.md).
 
-## [Unreleased] — the observability round
+## [0.0.45] - 2026-10-30
 
 The TUI Productization & Dogfooding mission: transform the terminal agent into the most transparent, trustworthy and informative surface it can be. The round's contract, research and audit: [the session log](docs/observability-round-session.md) · [the competitor research + scorecard](docs/observability-competitor-research.md) · [the five user journeys](docs/observability-user-journeys.md) · [the TUI observability audit](docs/tui-observability-audit.md) (22 ambiguity flags, 8 benchmark tasks, the nine-level information architecture).
 

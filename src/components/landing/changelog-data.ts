@@ -30,19 +30,81 @@ export interface ChangelogStop {
   groups: ChangelogGroup[];
 }
 
-export const CHANGELOG_TOTAL_ENTRIES = 396;
+export const CHANGELOG_TOTAL_ENTRIES = 405;
 
 export const CHANGELOG_TOTALS: Record<ChangelogBucket, number> = {
-  "Added": 171,
+  "Added": 178,
   "Changed": 28,
   "Deprecated": 0,
   "Removed": 3,
-  "Fixed": 154,
+  "Fixed": 156,
   "Security": 5,
   "Behavior": 35
 };
 
 export const CHANGELOG_STOPS: ChangelogStop[] = [
+  {
+    "label": "0.0.45",
+    "date": "2026-10-30",
+    "total": 9,
+    "counts": {
+      "Added": 7,
+      "Changed": 0,
+      "Deprecated": 0,
+      "Removed": 0,
+      "Fixed": 2,
+      "Security": 0,
+      "Behavior": 0
+    },
+    "groups": [
+      {
+        "bucket": "Added",
+        "items": [
+          {
+            "title": "The mission panel",
+            "behavior": false
+          },
+          {
+            "title": "The 60-second brief",
+            "behavior": false
+          },
+          {
+            "title": "/recovery",
+            "behavior": false
+          },
+          {
+            "title": "The ambient learning feed",
+            "behavior": false
+          },
+          {
+            "title": "Confidence scoring",
+            "behavior": false
+          },
+          {
+            "title": "The PTY observability capture scenario",
+            "behavior": false
+          },
+          {
+            "title": "The observability round's records",
+            "behavior": false
+          }
+        ]
+      },
+      {
+        "bucket": "Fixed",
+        "items": [
+          {
+            "title": "The persisted-digest \"unknown\" tool names",
+            "behavior": false
+          },
+          {
+            "title": "The missing env-example rows",
+            "behavior": false
+          }
+        ]
+      }
+    ]
+  },
   {
     "label": "0.0.44",
     "date": "2026-10-30",

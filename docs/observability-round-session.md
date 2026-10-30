@@ -167,3 +167,29 @@ gate green.
 
 **NEXT.** The release pass: the blog post + landing/README refresh, the version
 bump to 0.0.45, the release artifacts (six per-OS binaries), the tag.
+
+## Checkpoint 4 — the release: 0.0.45
+
+**DONE.** The blog post (`content/blog/2026-10-30-the-observability-round.md`,
+generated rail + feed green), the README refresh (the observability-round
+feature bullet, the docs-table row, the twelve-screen lists), the DOX pass
+(`docs/AGENTS.md` ownership, `pi-repo/packages/self-learning/AGENTS.md` local
+contracts — the round's surfaces documented for future sessions, the
+`benchmarks/AGENTS.md` suite registered), the version bump to **0.0.45** and
+the CHANGELOG release stop (43 rail stops).
+
+**The mission's eight deliverables, where they live:**
+
+1. TUI UX audit report — `docs/tui-observability-audit.md`
+2. Unown Trust & Transparency Report — `docs/unown-trust-transparency-report.md`
+3. Comparison Against Competitors — `docs/observability-competitor-research.md`
+4. New TUI features implemented — the CHANGELOG 0.0.45 stop + `docs/usage.md` §Mission & observability + the README bullet
+5. Before/After screenshots — `public/landing/tui/observability-round/stills/` (six audited stills + pane dumps; the "before" is the audit's recorded state)
+6. Benchmark results — `benchmarks/observability/RESULTS.md` + `receipts/`
+7. Evidence of learning improvements — the benchmark's dogfood ledger (3 defects found/pinned/fixed live) + the trust receipts showing the engine dreaming during the away window (v4 → v5)
+8. The UX principles document — `docs/unown-ux-principles.md`
+
+**NEXT.** The release gate battery (typecheck, lint, build, the suites), the
+release commit, CI green, the v0.0.45 tag (the release workflow builds the six
+per-OS binaries + installers + SBOM and publishes the GitHub release), and the
+deploy verification.

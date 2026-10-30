@@ -17,6 +17,15 @@
       <category>critique</category>
     </item>
     <item>
+      <title>&quot;The observability round: can you read your agent&apos;s state in 60 seconds?&quot;</title>
+      <link>https://unown-nine.vercel.app/blog/2026-10-30-the-observability-round</link>
+      <guid isPermaLink="true">https://unown-nine.vercel.app/blog/2026-10-30-the-observability-round</guid>
+      <pubDate>Fri, 30 Oct 2026 00:00:00 GMT</pubDate>
+      <description>&quot;A mission panel, a 60-second brief, a recovery card, receipts-only confidence and an ambient learning feed — the round the terminal learned to explain itself.&quot;</description>
+      <category>observability</category>
+      <category>tui</category>
+    </item>
+    <item>
       <title>&quot;The provider round: what nine competitors taught unown about connecting a model&quot;</title>
       <link>https://unown-nine.vercel.app/blog/2026-10-30-the-provider-round</link>
       <guid isPermaLink="true">https://unown-nine.vercel.app/blog/2026-10-30-the-provider-round</guid>
