@@ -1,0 +1,38 @@
+# trust-1-mission — checkpoint 1: mission + progress + the conf chip while a real task settles
+
+  AGENTS.md, memory/how-to-use.md (guide: how to read the memory tiers), memory/tier0-policy.md (enterprise policy — highest
+authority), .unown/memory/project.md (project memory — provenance in the injected header), memory/tier2-user.md (user memory —
+global preferences), .unown/memory/local.md (local overrides — highest precedence)
+
+── Skills ──
+  accessibility-auditor, design-system-generator, fix-nocturne-seed-invariants, frontend-craftsman, landing-page-architect,
+methodical-debugging, motion-designer, pre-commit-engine-check, recover-failed-cycle, repo-exploration, restart-engine,
+test-cadence-domain, unown-self-learning, ux-reviewer, verification-first
+
+── Extensions ──
+  <inline:6>
+
+── Themes ──
+  unown
+
+» Create a file notes/ob-round-trust.md containing one line: 'trust test checkpoint'. Track it with the todo tool, then confirm
+  the file exists.
+
+
+✓  todo + "Create notes/ob-round-trust.md with 'trust test checkpoint'"
+   ○ pending
+
+
+ ⠧ Todo... 0:02
+
+● Todos (0/1)
+└─ ○ Create notes/ob-round-trust.md with 'trust test checkpoint'
+
+ ▕░░░░░░░░▏ 0/1 · conf ✓ · 0m in session
+»───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+~/my-project/unown (main)
+ctx ▕░░░░░░░░░░▏ 4.6%/524k (auto) ↓51 ↑9.3k CH61.2% R15k                                                         agnes-3.0-flash
+conf ✓ memory: up · mem ▕████▏ v4 · 97 rules · dreamed 1m ago turn 1.8s · ttft 1.5s · ctx 5% · in 9.3k out 51 (cached 14.6k)
+escape interrupt · ctrl+o tools · ctrl+t thinking

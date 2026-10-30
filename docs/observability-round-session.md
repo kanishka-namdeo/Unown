@@ -133,3 +133,37 @@ change.
 composing failed jobs/runs/denials/dead letters; then Phase 6 dogfood
 validation (the OB-1..OB-8 benchmark receipts), Phase 7 trust tests, the
 landing/README/blog pass, and the v0.0.45 release with builds.
+
+## Checkpoint 3 — phases 6-7: the dogfood benchmark + the trust test
+
+**DONE.** The OB-1..OB-8 lanes run live (`scripts/tui-capture/pty_benchmark_observability.py`,
+`pty_trust_test.py`); receipts committed under `benchmarks/observability/receipts/`
+(the pane is truth). **6 lanes green with receipts, OB-7 deferred with its reason
+recorded, OB-4 re-scoped honestly** (the supervisor's auto-start heals a killed
+engine — the narration contract, not a permanent down state, is the correct
+expectation). The trust test measured the mission's primary metric: after an
+11-minute real idle window (crossing the engine's own dream + overview cadences),
+the return brief answers all five questions in one screenful — and its `learned:`
+line reports a dream that really happened while away (memory v4 → v5).
+
+**The dogfood ledger (found → root-caused → pinned → fixed, in-round):**
+
+1. persisted digest tools printed `unknown` (entries carry `name`, the digest read
+   `toolName`) — pinned in `test/recap.test.ts`;
+2. an idle session learned in silence (engine-loop pushes had no repaint path) —
+   the push-listener, pinned in `test/learning-feed.test.ts`, verified live in the
+   OB-1 composite receipts;
+3. the overview diff read flat payload keys (the engine nests under `kpis`/`notes`) —
+   fixed against the live payload, pinned with the real shape.
+
+**The deliverables written:** the benchmark record
+(`benchmarks/observability/RESULTS.md`), the trust & transparency report
+(`docs/unown-trust-transparency-report.md`), the UX principles card
+(`docs/unown-ux-principles.md`).
+
+**VERIFIED:** full self-learning suite 4944 pass / 0 fail (re-run after the
+dogfood fixes); every trust-test assertion programmatic on the pane text; docs
+gate green.
+
+**NEXT.** The release pass: the blog post + landing/README refresh, the version
+bump to 0.0.45, the release artifacts (six per-OS binaries), the tag.

@@ -1,0 +1,38 @@
+# ob5-in-repo-feed-card — OB-5: /feed after a real dream
+
+ escape interrupt · ctrl+c/ctrl+d clear/exit · ? help · ctrl+k palette · / commands · ! bash · ctrl+o more
+ Press ctrl+o to show full startup help and loaded resources.
+
+ unown can explain its own features and look up its docs. Ask it how to use or extend unown.
+
+
+── Context ──
+  AGENTS.md, memory/how-to-use.md (guide: how to read the memory tiers), memory/tier0-policy.md (enterprise policy — highest
+authority), .unown/memory/project.md (project memory — provenance in the injected header), memory/tier2-user.md (user memory —
+global preferences), .unown/memory/local.md (local overrides — highest precedence)
+
+── Skills ──
+  accessibility-auditor, design-system-generator, fix-nocturne-seed-invariants, frontend-craftsman, landing-page-architect,
+methodical-debugging, motion-designer, pre-commit-engine-check, recover-failed-cycle, repo-exploration, restart-engine,
+test-cadence-domain, unown-self-learning, ux-reviewer, verification-first
+
+── Extensions ──
+  <inline:6>
+
+── Themes ──
+  unown
+
+
+ learning feed — nothing yet this session
+   events land here as AutoDream consolidates notes, the harness ships
+   improvements, or memory versions advance.
+ deep view: /dashboard (Dreams · Learning Lab · Memory)
+
+ ○ no tracked steps · conf ✓ · 0m in session
+»───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+~/my-project/unown (main)
+ctx ▕░░░░░░░░░░▏ 0.0%/524k (auto)                                                                                agnes-3.0-flash
+memory: up · dream-check 1m · mem ▕████▏ v1 · 87 rules · dreamed 1h ago
+? help · ctrl+k palette · / commands · ! bash · ctrl+o tools · esc-esc tree

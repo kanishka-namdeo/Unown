@@ -1,0 +1,38 @@
+# trust-failed — the trust test aborted — kept as the audit trail
+
+✓  write notes/ob-round-trust.md
+
+   trust test checkpoint
+
+
+
+✓  todo → Create notes/ob-round-trust.md checkpoint file
+   ● completed
+
+
+
+✓  $ ls -la notes/ob-round-trust.md && cat notes/ob-round-trust.md
+
+   -rw-rw-r-- 1 z z 22 Oct 30 00:19 notes/ob-round-trust.md
+   trust test checkpoint
+
+   Took 0.0s
+
+
+ Done. Created notes/ob-round-trust.md with the single line trust test checkpoint, tracked via todo #1 (now completed), and
+ confirmed the file exists with the expected content (22 bytes).
+
+○ Todos (1/1)
+└─ ✓ Create notes/ob-round-trust.md checkpoint file (writing checkpoint file)
+
+ ○ mission — Create and confirm ob-round-trust file (auto · 0m)
+ ▕████████▏ 1/1 · conf ✓ · 2m in session
+ ✦ project memory advanced v2 → v3
+»───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+📂 1  ob-round-trust.md
+~/my-project/unown (main) • Create and confirm ob-round-trust file
+ctx ▕░░░░░░░░░░▏ 4.6%/524k (auto) +1 -0 ↓293 ↑27k CH98.0% R92k                                                   agnes-3.0-flash
+conf ✓ memory: up · mem ▕████▏ v3 · 92 rules · dreamed 1m ago ✦ 1 learning event · /feed turn 1.1s · ttft 1.1s · ctx 5% · in ...
+? help · ctrl+k palette · / commands · ! bash · ctrl+o tools · esc-esc tree

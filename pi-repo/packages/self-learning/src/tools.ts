@@ -97,6 +97,7 @@ import {
         overviewCountsOf,
         renderFeedCard,
         renderFeedChip,
+        setLearningFeedListener,
         type OverviewCounts,
 } from "./learning-feed.ts";
 import { bridgeHealth, chatText } from "./llm.ts";
@@ -5441,6 +5442,11 @@ Execute the steps in order. After completing a step, include a [DONE:n] tag in y
                         confidenceSignals.toolErrors = 0;
                         confidenceSignals.verifyFailures = 0;
                         confidenceSignals.denials = 0;
+                        // The OB-5 live-lane finding: pushes from the engine loop must
+                        // repaint the ambient chips themselves (an idle session that
+                        // learned in silence was the exact defect). One registration per
+                        // session; cleared at shutdown.
+                        setLearningFeedListener(() => refreshObservability(ctx));
                         // --goal flag: start (print or TUI) with a fresh goal
                         const flagGoal = pi.getFlag("goal");
                         if (typeof flagGoal === "string" && flagGoal.trim()) {
@@ -5471,6 +5477,7 @@ Execute the steps in order. After completing a step, include a [DONE:n] tag in y
                         // not outlive the process — `clear` drops every record we own so a
                         // stale "working" never lingers in the terminal.
                         reportClear();
+                        setLearningFeedListener(null);
                         if (overviewTimer) {
                                 clearInterval(overviewTimer);
                                 overviewTimer = null;

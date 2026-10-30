@@ -1,0 +1,38 @@
+# trust-final — the session after the return turn
+
+✓  todo → Create notes/ob-round-trust.md with 'trust test checkpoint'
+   ● completed
+
+
+ Done.
+
+ - Created notes/ob-round-trust.md with the single line trust test checkpoint (22 bytes).
+ - Tracked via todo: task #1 created, marked in_progress, and completed.
+ - Verified the file exists with ls and confirmed contents with cat.
+
+ ── brief · back after 11m ──
+ mission: Create Trust Test Checkpoint File (auto)
+ happened: 1 turn · 5 tool calls · todo×3, write, bash
+ changed:  notes/ob-round-trust.md
+ last:     Done. - Created `notes/ob-round-trust.md` with the single line `trust t
+ why:      /brief mines the decisions when you want them
+ conf:     high — no failures this session
+ learned:  project memory advanced v4 → v5 (8m ago)
+ session:  12m · 17.4k in / 322 out
+ remains:  nothing open — the last turn settled
+
+» reply with the single word BACK
+
+ BACK
+
+ ○ mission — Create Trust Test Checkpoint File (auto · 0m)
+ ▕████████▏ 1/1 · conf ✓ · 12m in session
+ ✦ project memory advanced v4 → v5
+»───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+📂 1  ob-round-trust.md
+~/my-project/unown (main) • Create Trust Test Checkpoint File
+ctx ▕░░░░░░░░░░▏ 4.6%/524k (auto) +1 -0 ↓324 ↑18k CH98.9% R151k                                                  agnes-3.0-flash
+conf ✓ memory: up · mem ▕████▏ v5 · 99 rules · dreamed 8m ago ✦ 1 learning event · /feed turn <1s · ttft <1s · ctx 5% · in 17...
+? help · ctrl+k palette · / commands · ! bash · ctrl+o tools · esc-esc tree

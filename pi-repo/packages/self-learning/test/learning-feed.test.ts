@@ -12,9 +12,29 @@ import {
         renderFeedCard,
         renderFeedChip,
         freshLearnedLine,
+        setLearningFeedListener,
 } from "../src/learning-feed.ts";
 
 const NOW = 1_700_000_000_000;
+
+describe("the push listener — ambient repaint on every event (the OB-5 finding)", () => {
+	test("a push fires the listener; clearing it stops the calls; a throwing listener never breaks the push", () => {
+		setLearningFeedListener(null);
+		const feed = new LearningFeed();
+		let calls = 0;
+		setLearningFeedListener(() => {
+			calls++;
+			if (calls === 2) throw new Error("listener boom");
+		});
+		feed.push({ kind: "dream", text: "e1", ts: NOW });
+		feed.push({ kind: "dream", text: "e2", ts: NOW + 1000 });
+		expect(calls).toBe(2); // the throwing call still counted — the push survived
+		expect(feed.all().length).toBe(2);
+		setLearningFeedListener(null);
+		feed.push({ kind: "dream", text: "e3", ts: NOW + 2000 });
+		expect(calls).toBe(2); // cleared: no further calls
+	});
+});
 
 describe("LearningFeed — the ring", () => {
         test("push/recent/all with window filtering", () => {
@@ -60,9 +80,15 @@ describe("diffOverviewCounts — both sides present or it is unknown, never zero
                 expect(diffOverviewCounts({ dreamsDone: 1 }, null, NOW)).toEqual([]);
                 expect(diffOverviewCounts({ improvementsShipped: 1 }, { dreamsDone: 2 }, NOW)).toEqual([]);
         });
-        test("overviewCountsOf lifts only finite numbers", () => {
+        test("overviewCountsOf lifts the ENGINE's nested shape (kpis + notes.pending)", () => {
+                // The live /api/overview body: kpis.improvementsShipped, kpis.dreams,
+                // notes.pending. A flat body (the first draft's guess) lifts nothing.
+                const body = { ok: true, kpis: { improvementsShipped: 3, dreams: 5 }, notes: { total: 20, pending: 5 } };
+                const counts = overviewCountsOf(body);
+                expect(counts?.improvementsShipped).toBe(3);
+                expect(counts?.dreamsDone).toBe(5);
+                expect(counts?.notesPending).toBe(5);
                 expect(overviewCountsOf({ improvementsShipped: "3" })).toBeNull();
-                expect(overviewCountsOf({ dreamsDone: 2 }).dreamsDone).toBe(2);
                 expect(overviewCountsOf("junk")).toBeNull();
         });
 });

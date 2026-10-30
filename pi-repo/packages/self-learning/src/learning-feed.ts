@@ -60,6 +60,19 @@ export function getLearningFeed(): LearningFeed {
         return shared;
 }
 
+// A push-listener so AMBIENT surfaces repaint the moment an event lands.
+// The OB-5 live lane found the gap: events pushed from the engine-status
+// loop (dream news, memory versions) landed in the ring but the footer
+// chip only painted at the next turn boundary — an idle session learned
+// in silence. tools.ts registers refreshObservability here; the listener
+// is cleared at shutdown and is always optional (no listener = no crash).
+type FeedListener = () => void;
+let listener: FeedListener | null = null;
+
+export function setLearningFeedListener(fn: FeedListener | null): void {
+        listener = fn;
+}
+
 /** A dream older than this is no longer news (engine-status.ts DREAM_NEWS_MAX_AGE_MS). */
 export const FEED_FRESH_MS = 3_600_000;
 
@@ -79,6 +92,11 @@ export class LearningFeed {
                 if (last && last.text === event.text && now - last.ts < 60_000 && last.kind === event.kind) return;
                 this.events.push(event);
                 if (this.events.length > FEED_MAX) this.events = this.events.slice(-FEED_MAX);
+                try {
+                        listener?.();
+                } catch {
+                        /* a listener must never break a push */
+                }
         }
 
         /** All events, oldest first. */
@@ -159,12 +177,18 @@ export function diffOverviewCounts(
 /** Lift the counts out of a raw /api/overview body (defensive — malformed is null). */
 export function overviewCountsOf(body: unknown): OverviewCounts | null {
         if (!body || typeof body !== "object") return null;
+        // The engine nests the counters under `kpis` (`improvementsShipped`,
+        // `dreams`) and `notes.pending` — verified against the live engine in
+        // the round's dogfood pass: a first draft read flat top-level keys and
+        // the 5-minute diff saw nothing (pinned by the shape test).
         const raw = body as Record<string, unknown>;
+        const kpis = raw.kpis as Record<string, unknown> | undefined;
+        const notes = raw.notes as Record<string, unknown> | undefined;
         const num = (v: unknown): number | undefined => (typeof v === "number" && Number.isFinite(v) ? v : undefined);
         const counts: OverviewCounts = {
-                improvementsShipped: num(raw.improvementsShipped),
-                dreamsDone: num(raw.dreamsDone),
-                notesPending: num(raw.notesPending),
+                improvementsShipped: num(kpis?.improvementsShipped),
+                dreamsDone: num(kpis?.dreams),
+                notesPending: num(notes?.pending),
         };
         if (
                 counts.improvementsShipped === undefined &&

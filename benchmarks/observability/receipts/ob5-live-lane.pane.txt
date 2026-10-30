@@ -1,0 +1,38 @@
+# ob5-live-lane — OB-5: the session alive across a real dream; trigger accepted=False; narrated=False
+
+
+ unown v0.0.44
+ escape interrupt · ctrl+c/ctrl+d clear/exit · ? help · ctrl+k palette · / commands · ! bash · ctrl+o more
+ Press ctrl+o to show full startup help and loaded resources.
+
+ unown can explain its own features and look up its docs. Ask it how to use or extend unown.
+
+
+── Context ──
+  AGENTS.md, memory/how-to-use.md (guide: how to read the memory tiers), memory/tier0-policy.md (enterprise policy — highest
+authority), .unown/memory/project.md (project memory — provenance in the injected header), memory/tier2-user.md (user memory —
+global preferences), .unown/memory/local.md (local overrides — highest precedence)
+
+── Skills ──
+  accessibility-auditor, design-system-generator, fix-nocturne-seed-invariants, frontend-craftsman, landing-page-architect,
+methodical-debugging, motion-designer, pre-commit-engine-check, recover-failed-cycle, repo-exploration, restart-engine,
+test-cadence-domain, unown-self-learning, ux-reviewer, verification-first
+
+── Extensions ──
+  <inline:6>
+
+── Themes ──
+  unown
+
+
+
+
+
+ ○ no tracked steps · conf ✓ · 0m in session
+»───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+~/my-project/unown (main)
+ctx ▕░░░░░░░░░░▏ 0.0%/524k (auto)                                                                                agnes-3.0-flash
+memory: up · mem ▕████▏ v2 · 91 rules · dreamed 6m ago
+? help · ctrl+k palette · / commands · ! bash · ctrl+o tools · esc-esc tree
