@@ -257,3 +257,39 @@ saw: memory DID advance). The harness improvement is noted for the next
 iteration: trigger AFTER a drain (wait for `routerBusy: false`) instead of
 on a timer. Open — the fix is a harness change, not a product change, and
 the axis's formula already reflects reality.
+
+
+## F37 — a benchmark session mutated the working tree (anti-tamper violation)
+
+**Failure.** After the after-run, the working tree carried a MODIFIED
+`pi-repo/packages/self-learning/src/atomic.ts` — a genuine code improvement
+(pid+counter-tagged temp paths to keep same-millisecond writes from
+colliding), but made BY A BENCHMARK SESSION during the t5 "review" lane,
+uncommitted and unreviewed. The methodology's anti-tamper rule (tests are
+read-only during sessions) was violated and the runner never noticed.
+
+**Reproduction.** The diff is preserved as
+`receipts/after-2026-10-30T08-58-33/t5-tree-mutation-evidence.patch`; the
+t5 session transcript shows write/edit activity around the review spawns
+(the parent — which holds the full toolset — applied a fix the reviews
+surfaced, instead of only reporting it as the lane's task asked).
+
+**Root cause.** Two gaps compounding: the runner spawns real agents with
+write access in the repo cwd (no scratch workspace for the
+non-implementation lanes), and it never checks tree cleanliness after a
+lane — a mutation lands silently in the operator's checkout.
+
+**Fix.** The tree was restored (`git checkout --`) with the evidence kept;
+the next iteration's harness contract: (a) a tree-cleanliness check per
+lane (`git status --porcelain` before/after, any delta = the lane's
+receipt carries it and the file is restored), and (b) the non-writing
+lanes run with the write jail tightened (the review lanes' prompts must
+forbid edits — the PARENT's discretion, not just the child's toolset, is
+the surface). Open — the harness fix belongs to the next round's runner;
+the product's own guardrails (the instruction-set guard) correctly do NOT
+cover source files outside the instruction set.
+
+**The silver lining, recorded honestly**: the mutation is a real
+improvement (the same-ms temp collision it fixes is real); it is preserved
+in the evidence patch for a reviewed, deliberate commit — never silently
+absorbed into a benchmark commit.

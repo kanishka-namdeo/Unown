@@ -1,0 +1,27 @@
+diff --git a/pi-repo/packages/self-learning/src/atomic.ts b/pi-repo/packages/self-learning/src/atomic.ts
+index 074cf841..09a3416d 100644
+--- a/pi-repo/packages/self-learning/src/atomic.ts
++++ b/pi-repo/packages/self-learning/src/atomic.ts
+@@ -5,15 +5,19 @@
+  * writeFileSync + rename is not enough: a crash between the two leaves no file
+  * (or the old one) while the caller believes the write happened, and without
+  * fsync the rename can be reordered/dropped on power loss. This helper writes
+- * to a pid-tagged temp file, fsyncs the file, renames, and fsyncs the parent
+- * directory (best effort — some filesystems refuse directory fsync).
++ * to a pid- and counter-tagged temp file, fsyncs the file, renames, and
++ * fsyncs the parent directory (best effort — some filesystems refuse
++ * directory fsync). The per-process counter keeps two same-target writes
++ * within the same millisecond from sharing a temp path.
+  */
+ import { closeSync, fsyncSync, mkdirSync, openSync, renameSync, writeFileSync } from "node:fs";
+ import { dirname } from "node:path";
+ 
++let seq = 0;
++
+ export function atomicWriteFileSync(file: string, content: string): void {
+         mkdirSync(dirname(file), { recursive: true });
+-        const tmp = `${file}.tmp-${process.pid}-${Date.now()}`;
++        const tmp = `${file}.tmp-${process.pid}-${Date.now()}-${seq++}`;
+         writeFileSync(tmp, content, "utf8");
+         try {
+                 const fd = openSync(tmp, "r+");
