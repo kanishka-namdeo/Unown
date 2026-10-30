@@ -17,6 +17,8 @@
 - [Checkpoint 2 — the gate wired through every surface and v0 0 46](#checkpoint-2--the-gate-wired-through-every-surface-and-v0-0-46)
 - [Checkpoint 3 — the port: cost and modality ride the specs](#checkpoint-3--the-port-cost-and-modality-ride-the-specs)
 - [Checkpoint 4 — the remaining gap: the bridge (M5)](#checkpoint-4--the-remaining-gap-the-bridge-m5)
+- [Checkpoint 5 — M5 shipped twice, merged once + `unown models verify`](#checkpoint-5--m5-shipped-twice-merged-once--unown-models-verify)
+- [Checkpoint 6 — the release: v0.0.47](#checkpoint-6--the-release-v0047)
 
 ## The contract
 
@@ -204,7 +206,7 @@ detection, real gate), then the docs round (providers.md,
 usage-tracking.md, configuration.md, usage.md, README, the landing
 page, the blog, the DOX tree), then the release (v0.0.47).
 
-## Checkpoint 4 — the release: v0.0.47
+## Checkpoint 6 — the release: v0.0.47
 
 **Done.** (commit `c781e1c3` on main; the tag `v0.0.47` follows it; the
 release workflow builds the six per-OS artifacts + installers + manifest
