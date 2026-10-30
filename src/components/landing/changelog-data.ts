@@ -30,14 +30,14 @@ export interface ChangelogStop {
   groups: ChangelogGroup[];
 }
 
-export const CHANGELOG_TOTAL_ENTRIES = 459;
+export const CHANGELOG_TOTAL_ENTRIES = 460;
 
 export const CHANGELOG_TOTALS: Record<ChangelogBucket, number> = {
   "Added": 214,
   "Changed": 28,
   "Deprecated": 0,
   "Removed": 3,
-  "Fixed": 169,
+  "Fixed": 170,
   "Security": 5,
   "Behavior": 40
 };
@@ -46,13 +46,13 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
   {
     "label": "0.0.49",
     "date": "2026-10-31",
-    "total": 9,
+    "total": 10,
     "counts": {
       "Added": 6,
       "Changed": 0,
       "Deprecated": 0,
       "Removed": 0,
-      "Fixed": 2,
+      "Fixed": 3,
       "Security": 0,
       "Behavior": 1
     },
@@ -95,6 +95,10 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
           },
           {
             "title": "Esc covers compaction and retry waits",
+            "behavior": false
+          },
+          {
+            "title": "The abort matrix actually aborts a branch summary",
             "behavior": false
           }
         ]

@@ -35,6 +35,7 @@ runs it: the PTY lane booted the real TUI, aborted a live turn through
 
 - **The in-session picker missed the import lane**: the launch picker, `--continue`, `--resume <query>`, `sessions list` and `/sessions list` all union the user store (`~/.unown/agent/sessions`) with the project import lane (`<cwd>/.unown/sessions`); pi's in-session picker listed only the primary dir, so an imported session was visible at launch and invisible in-session — the exact drift the both-stores rule exists to prevent. Now every picker shows the union.
 - **Esc covers compaction and retry waits**: the temporary escape handlers covered their own concern only; the unified matrix makes the base Esc (and `/abort`) cover all four concerns idempotently.
+- **The abort matrix actually aborts a branch summary**: `isCompacting` is true while a branch summarization runs, but the matrix's compaction arm aborted only the compaction controllers — a branch-summary-only state returned `true` ("something was aborted") while the summary kept running, so `/abort` claimed success and aborted nothing (raw Esc still worked through the temporary handler). Both matrices (the session's `abortActiveOperation()` and the TUI's) now abort the branch-summary controller in the compaction arm; `navigateTree` settles `{cancelled: true, aborted: true}` exactly as an aborted compaction does. Regression-pinned in `agent-session-abort-matrix.test.ts` (the branch-summary-only state).
 
 ### Agent Behavior
 

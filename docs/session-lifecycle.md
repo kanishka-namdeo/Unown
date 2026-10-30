@@ -34,9 +34,9 @@ Two stores, unioned everywhere a session list is shown:
 ## Abort — one matrix, every surface
 
 Abort means one thing: cancel what is running — the agent turn, a bash
-command, compaction, or a retry wait — cooperatively, through the
-AbortController each concern owns. The partial assistant message is
-persisted with `stopReason: "aborted"`; what finished so far is kept; the
+command, compaction, branch summarization, or a retry wait — cooperatively,
+through the AbortController each concern owns. The partial assistant message
+is persisted with `stopReason: "aborted"`; what finished so far is kept; the
 session stays resumable. `AgentSession.abortActiveOperation(): boolean`
 is the single matrix (`pi-repo/packages/coding-agent/src/core/agent-session.ts`)
 — every surface rides it, so they cannot drift:
@@ -56,9 +56,12 @@ Notes that keep the matrix honest:
 - **Esc vs Ctrl+C vs Ctrl+D**: Esc aborts the running work; Ctrl+C clears
   the editor (a second press exits); Ctrl+D exits. Double-Esc with an
   empty editor opens the tree/fork picker — that is navigation, not abort.
-- **Abort during compaction or a retry wait**: `/abort` and the unified
-  matrix reach them (`Esc` also does, via the status indicator's own
-  handler); aborts are idempotent, so a double abort is harmless.
+- **Abort during compaction, a branch summary or a retry wait**: `/abort`
+  and the unified matrix reach them (`Esc` also does, via the status
+  indicator's own handler); aborts are idempotent, so a double abort is
+  harmless. The compaction arm aborts both controllers it can find running
+  — manual/auto compaction and branch summarization settle the same way
+  (cancelled, nothing rewritten).
 - **`--max-turns N` / `--max-tool-repetitions N`** abort through the same
   cooperative path when a guard trips — the envelope reports the cap, the
   exit code reflects the contract (`capped: true`, exit 4 for the loop

@@ -244,6 +244,62 @@ Gates (all green): landing unit suite 2,063 pass; `typecheck` clean;
 Resume-from-here: M5 (release v0.0.49) — version bump, full gate run,
 tag, push, watch the release workflow.
 
+### M4.5 — engine: the abort matrix actually aborts a branch summary (DONE, 2026-10-31)
+
+The release-verification pass (a fresh audit of every abort surface against
+its code) found the matrix's one dishonest arm: `isCompacting` unions THREE
+controllers (manual compaction, auto-compaction, branch summarization), but
+the compaction arm aborted only the first two. A branch-summary-only state
+(the tree/fork picker with "summarize", no turn/bash/retry running) made
+`abortActiveOperation()` return `true` — "something was aborted" — while the
+summary kept running. The user-visible symptom: `/abort` during a branch
+summary printed "Aborted the running operation…" and lied; only raw Esc
+worked (through the tree-navigation temporary handler). The session-side
+matrix AND the TUI's private matrix had the same hole.
+
+Shipped:
+
+- `agent-session.ts` `abortActiveOperation()`: the compaction arm now calls
+  `abortBranchSummary()` next to `abortCompaction()` — the arm covers
+  everything `isCompacting` can report. `navigateTree` settles
+  `{cancelled: true, aborted: true}` exactly as an aborted compaction does.
+- `interactive-mode.ts` private `abortActiveOperation()`: the same arm fix,
+  so `/abort`, the extension action and the Esc precedence order cannot
+  claim success while aborting nothing.
+- Regression pin: `agent-session-abort-matrix.test.ts` test 5 — a
+  branch-summary-only state (a `session_before_tree` handler that blocks
+  until its signal fires) asserts the matrix aborts it: `true` returned,
+  navigation settles cancelled+aborted, the controller clears, a second
+  probe is honest. Verified it fails on the pre-fix code (navigation hangs —
+  nothing aborts the summary) and passes with the fix.
+- Docs: `CHANGELOG.md` (the Fixed entry), `docs/session-lifecycle.md` (the
+  abort definition and the compaction-arm note now name branch
+  summarization), `self-learning/AGENTS.md` (the sessions-round contract
+  paragraph), this log.
+
+Tests (all green): abort-matrix 5/5; the session suites (bash persistence,
+queue, retry events, compaction, prompt) 78/78; extra-dirs 6/6; the
+interactive-mode compaction + branch-summary + compaction suites 40 tests;
+the full coding-agent suite shows zero new failures (the 17 pre-existing
+environment failures — model catalogs, headless terminal themes —
+reproduce on the pristine tree); self-learning 5,202 pass / 0 fail;
+integration 13/13. `build:offline` green; the rebuilt `dist/` carries the
+fix (the runtime consumes the built package).
+
+Real-user re-verification (live Agnes lane): `verify_abort_resume.py` —
+ALL ABORT/RESUME ASSERTIONS HELD (chunk A: `/abort` mid-turn, notice on
+the pane, `stopReason: "aborted"` + partial text persisted; chunk B:
+`unown -c` resumes the SAME file and answers the follow-up, entries 5→6).
+`verify_resume_picker.py` — PASS, both stores listed. The PTY lane itself
+gained a robustness fix: chunk B's ready anchor now waits on the
+always-rendered status footer (`? help · ctrl+k palette`) instead of the
+startup resource block, which a resumed session's history scrolls off the
+36-row pane (caught live: the first re-run timed out because the aborted
+turn had streamed more partial content than the previous session's).
+
+Resume-from-here: M5 (release v0.0.49) — the version bump is already in
+the working tree; full gate run, tag, push, watch the release workflow.
+
 ### M5 — release v0.0.49 (pending)
 
 ## Related pages

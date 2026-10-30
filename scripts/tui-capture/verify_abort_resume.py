@@ -181,7 +181,11 @@ def main() -> None:
     # ------------------------------------------------------------------
     say("chunk B: unown -c resume")
     s2 = UnownPty(log, cwd=WORK_DIR, extra_args=["-c"])
-    s2.wait_ready(timeout=90)
+    # A resumed session's chat history fills the 36-row pane and scrolls the
+    # startup resource block (the default ready anchor) off-screen, so wait
+    # on the always-rendered status footer instead — same readiness, robust
+    # to how much partial content the aborted turn streamed.
+    s2.wait_ready(timeout=90, anchors=["? help · ctrl+k palette", "esc-esc tree"])
     pane = s2.pane()
     pane_text = "\n".join(pane)
     say("resume pane shows session continuation" if "continuing" in pane_text.lower() or "resumed" in pane_text.lower() else "resume boot pane (no explicit notice)")

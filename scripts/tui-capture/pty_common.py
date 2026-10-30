@@ -469,8 +469,21 @@ class UnownPty:
         what = desc or ("any of " + " | ".join(anchors) if mode == "any" else " | ".join(anchors))
         raise PaneTimeout(f"timeout ({timeout:.0f}s) waiting for {what!r}")
 
-    def wait_ready(self, timeout: float = 90.0):
-        return self.wait_for([READY_ANCHOR], timeout=timeout, desc="TUI header")
+    def wait_ready(self, timeout: float = 90.0, anchors=None):
+        """Wait until the TUI is interactive.
+
+        Default anchor: the startup resource block's last section (fresh
+        sessions). Pass ``anchors`` for boots where that block is not on the
+        pane — a RESUMED session's chat history pushes the block off the
+        36-row pane, so the resume lane waits on the always-rendered status
+        footer instead (same readiness: the footer only draws once the
+        interactive loop is live).
+        """
+        if anchors is None:
+            return self.wait_for([READY_ANCHOR], timeout=timeout, desc="TUI header")
+        if isinstance(anchors, str):
+            anchors = [anchors]
+        return self.wait_for(list(anchors), timeout=timeout, desc="TUI ready")
 
     def wait_idle(self, timeout: float = 60.0, stable_for: float = 1.2):
         """Wait until the pane stops changing (spinner churn settles)."""

@@ -4584,20 +4584,25 @@ export class InteractiveMode {
         }
 
         /** The unified abort surface: the running agent turn (queued messages
-         *  return to the editor first), a bash command, compaction, or a
-         *  retry wait — in the Esc precedence order. Returns whether
-         *  anything was aborted (false when idle). Esc, ctx.abort(),
-         *  ctx.abortActiveOperation() and /abort all ride this one matrix
-         *  so the surfaces cannot drift; compaction/retry keep their
-         *  dedicated temporary Esc handlers (idempotent double-abort is
-         *  harmless). */
+         *  return to the editor first), a bash command, compaction, branch
+         *  summarization, or a retry wait — in the Esc precedence order.
+         *  Returns whether anything was aborted (false when idle). Esc,
+         *  ctx.abort(), ctx.abortActiveOperation() and /abort all ride this
+         *  one matrix so the surfaces cannot drift; compaction/retry/branch
+         *  summary keep their dedicated temporary Esc handlers (idempotent
+         *  double-abort is harmless). */
         private abortActiveOperation(): boolean {
                 if (this.session.isStreaming) {
                         this.restoreQueuedMessagesToEditor({ abort: true });
                 } else if (this.session.isBashRunning) {
                         this.session.abortBash();
                 } else if (this.session.isCompacting) {
+                        // Covers branch summarization too (isCompacting
+                        // unions both controllers) — /abort during a branch
+                        // summary must not claim success while aborting
+                        // nothing.
                         this.session.abortCompaction();
+                        this.session.abortBranchSummary();
                 } else if (this.session.isRetrying) {
                         this.session.abortRetry();
                 } else {

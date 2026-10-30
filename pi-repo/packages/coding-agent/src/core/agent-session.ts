@@ -1657,7 +1657,12 @@ export class AgentSession {
                         aborted = true;
                 }
                 if (this.isCompacting) {
+                        // isCompacting unions compaction AND branch
+                        // summarization controllers; the arm must abort both
+                        // or a branch-summary-only state reports true while
+                        // aborting nothing (the matrix's one honest contract).
                         this.abortCompaction();
+                        this.abortBranchSummary();
                         aborted = true;
                 }
                 if (this.isRetrying) {
