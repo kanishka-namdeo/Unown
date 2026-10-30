@@ -620,7 +620,11 @@ describe("CheckpointStore hardening (H1)", () => {
         }
     });
 
-    test("prune per-owner floor: one session's prune never evicts another owner's checkpoints (R-b C3)", () => {
+    // 46 atomic manifest writes + two prune scans: measured 7.2 s on a
+    // windows-latest runner (the 5 s default timed out — CI receipt
+    // 41044489388) while ubuntu/macOS finish in ~300 ms; the explicit budget
+    // keeps the windows legs honest without slowing anyone else down.
+    test("prune per-owner floor: one session's prune never evicts another owner's checkpoints (R-b C3)", { timeout: 30_000 }, () => {
         const dir = join(tmpRoot, "h1-floor");
         const store = new CheckpointStore(dir);
         for (let i = 1; i <= 45; i++) store.writeManifest({ id: `a${i}`, seq: i, kind: "turn", ts: Date.now(), files: [], owner: "boot-a" });
@@ -635,7 +639,7 @@ describe("CheckpointStore hardening (H1)", () => {
         expect(remaining.some((m) => m.id === "b1")).toBe(true);
     });
 
-    test("prune global cap evicts the oldest across owners past 200 manifests", () => {
+    test("prune global cap evicts the oldest across owners past 200 manifests", { timeout: 30_000 }, () => {
         const dir = join(tmpRoot, "h1-cap");
         const store = new CheckpointStore(dir);
         for (let i = 1; i <= 196; i++) store.writeManifest({ id: `a${i}`, seq: i, kind: "turn", ts: Date.now(), files: [], owner: "boot-a" });
