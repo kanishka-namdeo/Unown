@@ -32,7 +32,7 @@ export const FAQ: readonly { q: string; a: string }[] = [
   },
   {
     q: "What can it actually do?",
-    a: "Beyond the five mechanisms: multi-type hooks (command, HTTP, MCP-tool, prompt, agent) with semantic output; opt-in Adversary Mode plus a 106-pattern prompt-injection scanner; per-subagent model + effort + mcpServers routing; declarative Recipes; a Repo Wiki with file:line cross-links; a Mem0-backed learning core — semantic recall, repo-stable scopes, a preserved ## Manual lane, cross-project recall; /init-agents, /blame, sessions export|import; proportional auto-compact. Reverse-engineered from the 2026 coding agents (receipts in docs/sdlc-feature-parity.md Round 5). Built on the open-source pi coding agent, MIT licensed — the only cost is your model endpoint.",
+    a: "Beyond the five mechanisms: multi-type hooks (command, HTTP, MCP-tool, prompt, agent) with semantic output; opt-in Adversary Mode plus a 106-pattern prompt-injection scanner; per-subagent model + effort + mcpServers routing; declarative Recipes; a Repo Wiki with file:line links; a Mem0-backed learning core — semantic recall, repo-stable scopes, a preserved ## Manual lane, cross-project recall; /init-agents, /doctor-instructions, /blame, sessions export|import; proportional auto-compact. Reverse-engineered from the 2026 coding agents (receipts in docs/sdlc-feature-parity.md Round 5). Built on the open-source pi coding agent, MIT licensed — the only cost is your model endpoint.",
   },
   {
     q: "Will it rewrite my tests to make them pass?",

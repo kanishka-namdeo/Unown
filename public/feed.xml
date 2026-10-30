@@ -44,6 +44,15 @@
       <category>tui</category>
     </item>
     <item>
+      <title>&quot;The PLM round: unown now tracks itself as processes&quot;</title>
+      <link>https://unown-nine.vercel.app/blog/2026-10-30-the-plm-round</link>
+      <guid isPermaLink="true">https://unown-nine.vercel.app/blog/2026-10-30-the-plm-round</guid>
+      <pubDate>Fri, 30 Oct 2026 00:00:00 GMT</pubDate>
+      <description>&quot;A 12-state machine for every engine activity, governed tool invocations, a recovery ledger — and the machine caught its own wiring bugs live.&quot;</description>
+      <category>plm</category>
+      <category>observability</category>
+    </item>
+    <item>
       <title>&quot;The provider round: what nine competitors taught unown about connecting a model&quot;</title>
       <link>https://unown-nine.vercel.app/blog/2026-10-30-the-provider-round</link>
       <guid isPermaLink="true">https://unown-nine.vercel.app/blog/2026-10-30-the-provider-round</guid>

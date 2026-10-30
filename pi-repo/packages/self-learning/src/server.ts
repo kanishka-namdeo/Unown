@@ -73,8 +73,11 @@ import {
 	listProcesses,
 	listRecoveryEvents,
 	listToolInvocations,
+	markExecuted,
+	markValidated,
 	plmSummary,
 	processAnalytics,
+	recordFailure,
 	recoverOrphanProcesses,
 	validateJobRecovery,
 	wirePlm,
@@ -1251,8 +1254,20 @@ export function recoverOrphans() {
 	const now = Date.now();
 	// PLM: processes stuck in non-terminal states by a crashed boot are moved
 	// to FAILED with an honest reason (the sticky-finalize discipline,
-	// generalized to the process registry).
-	recoverOrphanProcesses(now);
+	// generalized to the process registry) — and the heal itself lands in the
+	// recovery ledger as an executed+validated infrastructure recovery (the
+	// boot proceeding IS the validation evidence).
+	const healedProcesses = recoverOrphanProcesses(now);
+	if (healedProcesses > 0) {
+		const recoveryId = recordFailure({
+			failure: `engine boot healed ${healedProcesses} orphaned process(es) left by an interrupted engine`,
+			category: "infrastructure",
+		});
+		if (recoveryId) {
+			markExecuted(recoveryId, { outcome: `state-aware heal: RUNNING/RETRYING/VALIDATING → FAILED, parked/created → ABANDONED (${healedProcesses} rows)` });
+			markValidated(recoveryId, "the engine booted and the registry shows no phantom live work");
+		}
+	}
 	const orphRuns = store.run(
 		`UPDATE runs SET status = 'error', ended_at = ?, error = 'orphaned by service restart' WHERE status = 'running'`,
 		[now],

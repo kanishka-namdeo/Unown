@@ -84,15 +84,20 @@ import { expect, test } from "@playwright/test";
  * amendment argued for. No gated literal, no generated number touched.
  */
 const MAX_PAGE_VH = 15.5;
-const MAX_WORDS = 3820;
+const MAX_WORDS = 3840;
 
 /*
  * The 2026-10-30 PLM-round note: the showcase band gained the Processes
  * tile + two index entries (the Process View's real PTY still, 13-processes.png)
  * — measured +21 visible words. Paid in the same band and the FAQ's authored
  * prose (showcase captions/index compressed -17w; three FAQ answers tightened
- * in faq-data.ts, JSON-LD kept word-identical): the page measures 3,817w at
- * replay-finished, the pre-round number EXACTLY, ceiling untouched.
+ * in faq-data.ts, JSON-LD kept word-identical).
+ *
+ * The 0.0.48 release amendment: 3820 -> 3840 carries the rail's 46th stop
+ * (the round's own changelog titles compressed FIRST — the sanctioned
+ * order, f16e8fda precedent: "-10 title words before any ceiling moved"),
+ * the rail's structural ~+30 generated words per stop being undeletable
+ * receipts. Page measures 3,838w at replay-finished.
  */
 const MAX_BAND_VH = 3;
 

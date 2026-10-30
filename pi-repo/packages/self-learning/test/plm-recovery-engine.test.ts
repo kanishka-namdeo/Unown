@@ -108,6 +108,18 @@ describe("the recovery ledger", () => {
 		expect(row?.retryable).toBe(1);
 		expect(row?.root_cause).toContain("host/sandbox");
 	});
+	test("an explicit producer category keeps the WHOLE plan coherent (2026-10-30 dogfooding catch)", () => {
+		// The first live boot recorded category=infrastructure with action=retry
+		// (the text-derived plan overrode the explicit category's action). The
+		// plan must derive from the FINAL category — one taxonomy per row.
+		const id = recordFailure({ failure: "engine boot healed 1 orphaned process(es)", category: "infrastructure" });
+		const row = listRecoveryEvents(50).find((r) => r.id === id);
+		expect(row?.category).toBe("infrastructure");
+		expect(row?.recovery_action).toBe("monitor"); // recoveryActionFor(infrastructure)
+		expect(row?.retryable).toBe(1); // isRetryable(infrastructure)
+		expect(row?.root_cause).toContain("host/sandbox"); // rootCauseHint(infrastructure)
+	});
+
 	test("the lifecycle planned → executed → validated", () => {
 		const id = recordFailure({ failure: "upstream 502 bad gateway" });
 		expect(markExecuted(id, { outcome: "backoff scheduled, retried" })).toBe(true);

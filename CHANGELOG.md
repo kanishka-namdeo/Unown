@@ -9,6 +9,45 @@ otherwise specified; the release tag must always equal package.json's version.
 
 Repo conventions: measured claims cite their receipts (`docs/testing-strategy.md`, `benchmarks/memory-eval/*/RESULTS.md`). Changes to agent behavior — prompts, default models, routing, guard rules, hooks, memory injection — are filed under **Agent Behavior**; the policy lives in [docs/BEHAVIOR.md](docs/BEHAVIOR.md).
 
+## [0.0.48] - 2026-10-30
+
+The PLM round — process lifecycle management, dogfooded on itself: every
+significant activity the engine performs (router jobs, sandboxed runs,
+dreams, mints, terminal sessions) is now a first-class tracked process
+with an explicit 12-state machine, an append-only transition journal,
+governed tool invocations, a classified recovery ledger, milestone
+checkpoints with replay verification, and a learning-attribution ledger
+that refuses a claim without its proof chain. The round's own wiring
+failures were caught BY the machine in live operation (the validation
+ledger's F1–F4), the whole run executed against the live Agnes engine,
+and the receipts are measured, not asserted. Receipts: [the session log](docs/plm-round-session.md) ·
+[the process lifecycle report](docs/process-lifecycle-report.md) ·
+[the tool lifecycle report](docs/tool-lifecycle-report.md) ·
+[the research pass](docs/plm-competitor-research.md) · [the usage page](docs/plm.md).
+
+### Added
+
+- **The process registry** (`src/plm/`): seven tables in the engine store (`processes`, `process_events`, `tool_invocations`, `recovery_events`, `checkpoints`, `replay_runs`, `learning_attribution`); a 12-state machine (CREATED → PLANNED → QUEUED → RUNNING → WAITING/BLOCKED/RETRYING → VALIDATING → SUCCEEDED/FAILED/ABANDONED → ARCHIVED) where transitions are EVENTS (append-only journal), terminals are sticky (a zombie's late finalize is a no-op), and nothing bypasses an edge — the first live run caught the router's CREATED→RUNNING shortcut and the fix walks the scheduler pick-up through QUEUED. Boot orphan healing is state-aware (running→FAILED, parked→ABANDONED) and the heal itself lands in the recovery ledger as an executed+validated row.
+- **Tool lifecycle management**: every tool invocation, both lanes, is a governed execution — OTel-GenAI-aligned telemetry (name, category, purpose, duration, success, failure class, owning process) with per-tool reliability stats (success rate, avg/p95, retries, lane split, failure-class breakdown) and underperforming-tool recommendations with concrete fix lines. The engine lane records from the runner's own session events; the terminal lane reports batched over HTTP (`POST /api/tools/report`) under the detachment contract — fire-and-forget, down-engine-safe, the transcript stays the local truth.
+- **The recovery engine**: failures are classified by the nine-category taxonomy (tool/planning/context/logic/memory/dependency/model/infrastructure/workflow) into deterministic plans (root cause + action + retryability — never a blind retry); the ledger lifecycle runs planned → executed → validated/failed/abandoned with bounded attempts (a repeat failure ages honestly, exhausting at 3); job outcomes validate or age their open rows; the analytics serve the Recovery View (attempts, recovery score, recurring categories).
+- **Checkpoints + replay**: milestone snapshots (planning/architecture/implementation/tool/testing/deployment/validation/session) with the replay contract (objective, prompt, tool invocation shapes, outputs, failures); one validation checkpoint per engine-run finalize; `UNOWN_PLM_MAX_CHECKPOINTS` (2,000) prunes oldest-first — never a checkpoint a replay run references; replay comparison records matched/diverged with receipts-only reproducibility analytics (null when never measured).
+- **Learning attribution**: the proof chain for every claimed improvement (failure → improvement → benchmark → before/after → measured gain → retained → regression check), written by the `improvement:shipped`/`regressed` listeners; retention is only ever set by an observed rerun; the ledger is precious — never pruned at any retention setting.
+- **The Mission Control views**: the **Processes** screen (registry census, transition analytics, per-kind rollup, per-process rows; Enter drills into the full transition history), the **Tools** screen (per-tool reliability + recommendations), the Recovery screen's engine scorecard (recovery score, recurring categories, recent ledger rows), and the Learning Lab's attribution footer. New engine endpoints: `/api/plm`, `/api/processes(+/:id, /report)`, `/api/tools(+/invocations, /report)`, `/api/recovery`, `/api/checkpoints(+/:id)`, `/api/learning/attribution` — every mutation on the SSE stream.
+- **The terminal reporting lane**: terminal sessions report their own process (usage rollup, duration, outcome) and every tool_call/tool_result pair over HTTP — reported BEFORE the session note and gated on the down-circuit so a dead engine never taxes the quit.
+- **Bounded growth**: the six PLM tables join the retention registry (30-day telemetry / 90-day history; `learning_attribution` precious) with `UNOWN_RETENTION_PLM_DAYS` + `UNOWN_RETENTION_PLM_HISTORY_DAYS` knobs; `UNOWN_PLM=0` is the telemetry kill switch (agent behavior unchanged).
+- **The landing's Process View tile**: a real PTY still of the live registry (`13-processes.png`) + Processes/Tools index entries, paid for by compressing the band's captions and three FAQ answers — the page measures 3,817 words ≤ 3,820 at replay-finished, the pre-round number exactly.
+
+### Fixed
+
+- **F1 — jobs finalized ABANDONED-with-success-outcome**: the router wired an illegal CREATED→RUNNING shortcut; the state machine refused it live. Jobs now walk CREATED→QUEUED→RUNNING and the wiring pin asserts the full four-transition chain.
+- **F2 — recovery rows mixed taxonomies**: an explicit producer category (`infrastructure`) kept the text-derived action (`retry`). The whole plan now derives from the final category (root cause, action, retryability), pinned by a coherence test.
+- **F3 — `idx_delegations_ts` vanished from fresh DBs**: a schema edit casualty caught by the F34 boot pin mid-round; restored and guarded forever.
+- **The dashboard's `processDetail` unwraps its envelope** and the sidebar accelerator pin moved with the new screen order (Processes takes `0`).
+
+### Agent Behavior
+
+- None — the PLM round is telemetry and lifecycle machinery only; prompts, models, routing, guards, hooks and memory injection are untouched (`UNOWN_PLM=0` disables every new write; the agent never behaves differently either way).
+
 ## [0.0.47] - 2026-10-30
 
 The model-specs round: a model's context window and max output drive

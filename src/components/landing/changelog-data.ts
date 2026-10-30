@@ -30,19 +30,106 @@ export interface ChangelogStop {
   groups: ChangelogGroup[];
 }
 
-export const CHANGELOG_TOTAL_ENTRIES = 436;
+export const CHANGELOG_TOTAL_ENTRIES = 450;
 
 export const CHANGELOG_TOTALS: Record<ChangelogBucket, number> = {
-  "Added": 199,
+  "Added": 208,
   "Changed": 28,
   "Deprecated": 0,
   "Removed": 3,
-  "Fixed": 163,
+  "Fixed": 167,
   "Security": 5,
-  "Behavior": 38
+  "Behavior": 39
 };
 
 export const CHANGELOG_STOPS: ChangelogStop[] = [
+  {
+    "label": "0.0.48",
+    "date": "2026-10-30",
+    "total": 14,
+    "counts": {
+      "Added": 9,
+      "Changed": 0,
+      "Deprecated": 0,
+      "Removed": 0,
+      "Fixed": 4,
+      "Security": 0,
+      "Behavior": 1
+    },
+    "groups": [
+      {
+        "bucket": "Added",
+        "items": [
+          {
+            "title": "The process registry",
+            "behavior": false
+          },
+          {
+            "title": "Tool lifecycle management",
+            "behavior": false
+          },
+          {
+            "title": "The recovery engine",
+            "behavior": false
+          },
+          {
+            "title": "Checkpoints + replay",
+            "behavior": false
+          },
+          {
+            "title": "Learning attribution",
+            "behavior": false
+          },
+          {
+            "title": "The Mission Control views",
+            "behavior": false
+          },
+          {
+            "title": "The terminal reporting lane",
+            "behavior": false
+          },
+          {
+            "title": "Bounded growth",
+            "behavior": false
+          },
+          {
+            "title": "The landing's Process View tile",
+            "behavior": false
+          }
+        ]
+      },
+      {
+        "bucket": "Fixed",
+        "items": [
+          {
+            "title": "F1 — jobs finalized ABANDONED-with-success-outcome",
+            "behavior": false
+          },
+          {
+            "title": "F2 — recovery rows mixed taxonomies",
+            "behavior": false
+          },
+          {
+            "title": "F3 — idx_delegations_ts vanished from fresh DBs",
+            "behavior": false
+          },
+          {
+            "title": "The dashboard's processDetail unwraps its envelope",
+            "behavior": false
+          }
+        ]
+      },
+      {
+        "bucket": "Behavior",
+        "items": [
+          {
+            "title": "None: the PLM round is telemetry and lifecycle machinery only",
+            "behavior": true
+          }
+        ]
+      }
+    ]
+  },
   {
     "label": "0.0.47",
     "date": "2026-10-30",

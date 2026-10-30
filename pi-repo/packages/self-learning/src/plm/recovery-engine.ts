@@ -73,6 +73,19 @@ export function planRecovery(failureText: string, tool?: string): RecoveryPlan {
 	return { category, retryable, rootCause, action, nextStep };
 }
 
+/** Plan from a KNOWN category (the producer already classified it). */
+function planRecoveryFor(category: FailureCategory): RecoveryPlan {
+	const action = recoveryActionFor(category);
+	const retryable = isRetryable(category);
+	return {
+		category,
+		retryable,
+		rootCause: rootCauseHint(category),
+		action,
+		nextStep: nextStepFor(action, retryable),
+	};
+}
+
 function nextStepFor(action: RecoveryAction, retryable: boolean): string {
 	switch (action) {
 		case "retry":
@@ -146,7 +159,11 @@ export function recordFailure(input: RecordFailureInput): number {
 	if (!plmEnabled()) return 0;
 	const failureText = clip(input.failure) ?? "(unspecified failure)";
 	const plan = planRecovery(failureText, input.tool ?? undefined);
+	// An explicit producer-known category WINS over the text-derived one — and
+	// the whole plan (root cause, action, retryability) is derived from the
+	// FINAL category so the ledger row never mixes two taxonomies.
 	const category = input.category && isFailureCategory(input.category) ? input.category : plan.category;
+	const plan2 = category === plan.category ? plan : planRecoveryFor(category);
 	try {
 		const info = store.run(
 			`INSERT INTO recovery_events
@@ -160,16 +177,16 @@ export function recordFailure(input: RecordFailureInput): number {
 				clip(input.tool ?? null),
 				category,
 				failureText,
-				plan.retryable ? 1 : 0,
-				plan.rootCause,
-				plan.action,
-				JSON.stringify({ plannedNextStep: plan.nextStep }),
+				plan2.retryable ? 1 : 0,
+				plan2.rootCause,
+				plan2.action,
+				JSON.stringify({ plannedNextStep: plan2.nextStep }),
 			],
 		);
 		emit("recovery:planned", {
 			id: Number(info.lastInsertRowid ?? 0),
 			category,
-			action: plan.action,
+			action: plan2.action,
 			tool: input.tool ?? null,
 		});
 		return Number(info.lastInsertRowid ?? 0);
