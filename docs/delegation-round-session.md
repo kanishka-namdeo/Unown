@@ -261,4 +261,38 @@ release verification.
 
 ## Checkpoint 6 — the release: 0.0.46
 
-*(opens when the tag is pushed and the release is verified)*
+**DONE.** The round ships as v0.0.46:
+
+- The version bump (`package.json` 0.0.46, `bun bin/unown --version` ===
+  0.0.46), the CHANGELOG stop dated with the full receipt links, the
+  landing rail regenerated, the release blog post published
+  (`content/blog/2026-10-30-the-delegation-round.md`, media: the captured
+  dashboard Delegation still), the docs DOX registrations
+  (docs/AGENTS.md, benchmarks/AGENTS.md, the package AGENTS.md).
+- The capture lane's F38 fix along the way: the dashboard capture's `]`
+  navigation was wrong for every unnumbered screen (it opens the overlay,
+  not the next screen) — unnumbered screens now capture via the boot's own
+  deep-link; all 12 screens pass pane truth, and the delegation still is
+  committed under `public/landing/tui/dashboard/stills/`.
+- The full gate battery on this machine: engine suite 5142/0 · landing
+  unit 2063/0 · typecheck clean · eslint 0 errors · coverage 100% on
+  changed lines · docs/theme/palette/changelog/blog/benchmarks/claims all
+  green (claims needed the landing's memory card re-quoted to the current
+  dream-rendered rules — the living memory had pruned the old two) ·
+  production build green · **xplat local release-verify green** · the
+  6-platform artifact plan verified.
+
+**VERIFIED:**
+
+| Gate | Result |
+|---|---|
+| Engine suite | 5142 pass · 0 fail (221 files, post-rebase with the model-specs round) |
+| Landing suite + coverage | 2063/0 · 100% changed-line coverage |
+| xplat release-verify | 6/6 steps green (engine suite, bridge, version, plan, builder suite, manifest suite) |
+| The four generated gates | changelog (44 stops) · blog (28 posts) · benchmarks (6 tracks) · claims (62 literals) all green |
+| The release | tag `v0.0.46` ← this commit; the workflow builds the six per-OS archives + installers + manifest from it |
+
+The round's deliverable is the delta it measured: a demonstrably improved
+Unown — every delegation explained, audited, bounded, and policed — with
+the receipts to prove it and the ledger (F26–F38) showing exactly how each
+defect was caught and closed.

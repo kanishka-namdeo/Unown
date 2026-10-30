@@ -45,13 +45,21 @@ SCREENS: dict[str, list[str]] = {
     "hooks": ["HOOKS", "events", "filter"],
     "router": ["router jobs", "auto-dream", "sandboxes"],
     "gateway": ["requests", "latency"],
-    "automations": ["AUTOMATIONS", "cron"],
+    "automations": ["routines", "cron", "active"],
     "webcache": ["entries", "saved"],
+    # The delegation round (2026-10-30): the audit screen — why, cost,
+    # outcome per spawn, by-agent tallies, why-coverage. The fixture's
+    # delegations payload carries the F26 runaway row, the counter row with
+    # its why, and the reviewer row (test/dashboard-mock-engine.ts).
+    "delegation": ["delegation", "why recorded", "hit the wall-clock budget", "by agent"],
 }
 
+# The sidebar's digit accelerators cover the first ten screens (1-9, then 0).
+# The delegation round inserted Delegation after Recovery: recovery took 9
+# and delegation takes 0; gateway/routines/web-cache ride the unnumbered rail.
 ACCEL = {
     "overview": "1", "memory": "2", "dreams": "3", "notes": "4", "skills": "5",
-    "lab": "6", "hooks": "7", "router": "8", "gateway": "9", "automations": "0",
+    "lab": "6", "hooks": "7", "router": "8", "recovery": "9", "delegation": "0",
 }
 
 
@@ -62,29 +70,34 @@ def main(only: list[str] | None) -> int:
     log = C.make_logger("pty_capture_dashboard")
     pane_log = open(os.path.join(OUT, "dashboard.pane.log"), "w", encoding="utf-8")
 
-    dash_args = ["dashboard", os.environ.get("UNOWN_DASH_ARGS", "overview")]
-    pty = C.UnownPty(log, cwd=C.UNOWN_ROOT, extra_args=dash_args)
+    # The delegation round's navigation fix: accelerated screens keep the
+    # original one-process flow (digit key), while every screen past the
+    # tenth — unnumbered in the sidebar — is captured by RESTARTING the
+    # dashboard deep-linked to it (`unown dashboard <screen>`, the boot's
+    # own route). The historical `]`-stepping was wrong from the start —
+    # `[`/`]` open the screens OVERLAY, they do not advance the active
+    # screen (measured live 2026-10-30: the steps parked on Recovery while
+    # the checker looked for Gateway's vocabulary).
+    accel_targets = [n for n in targets if n in ACCEL and n in SCREENS]
+    restart_targets = [n for n in targets if n not in ACCEL and n in SCREENS]
+    pty = None
     try:
-        pty.wait_for("dashboard", timeout=30)
-        time.sleep(SCREEN_WAIT)
-
-        for name in targets:
-            if name not in SCREENS:
-                print(f"! unknown screen {name}", file=sys.stderr)
-                continue
+        for name in accel_targets + restart_targets:
+            deep_link = name not in ACCEL
+            if pty is None or deep_link:
+                if pty is not None:
+                    try:
+                        pty.child.terminate(force=True)
+                    except Exception:
+                        pass
+                    time.sleep(0.8)
+                pty = C.UnownPty(log, cwd=C.UNOWN_ROOT, extra_args=["dashboard", name])
+                pty.wait_for("dashboard", timeout=30)
+                time.sleep(SCREEN_WAIT + (1.0 if deep_link else 0.0))
             vocab = SCREENS[name]
-            key = ACCEL.get(name)
-            if key:
-                pty.send(key)
-            else:
-                # The last two screens have no digit accelerator: step `]`
-                # until the sidebar marks the target active.
-                for _ in range(12):
-                    pty.send("]")
-                    time.sleep(0.35)
-                    if "web cache" in pty.pane_text().lower():
-                        break
-            time.sleep(SCREEN_WAIT)
+            if not deep_link:
+                pty.send(ACCEL[name])
+                time.sleep(SCREEN_WAIT)
             pty.pump(0.6)
             pane = pty.pane_text()
             pane_log.write(f"===== {name} =====\n{pane}\n\n")
@@ -121,7 +134,8 @@ def main(only: list[str] | None) -> int:
     finally:
         pane_log.close()
         try:
-            pty.child.terminate(force=True)
+            if pty is not None:
+                pty.child.terminate(force=True)
         except Exception:
             pass
 

@@ -9,15 +9,18 @@ otherwise specified; the release tag must always equal package.json's version.
 
 Repo conventions: measured claims cite their receipts (`docs/testing-strategy.md`, `benchmarks/memory-eval/*/RESULTS.md`). Changes to agent behavior — prompts, default models, routing, guard rules, hooks, memory injection — are filed under **Agent Behavior**; the policy lives in [docs/BEHAVIOR.md](docs/BEHAVIOR.md).
 
-## [Unreleased]
+## [0.0.46] - 2026-10-30
 
-The subagent-orchestration round (in progress): make Unown measurably better
-at delegation — every spawn carries its reason, every delegation is audited,
-and the gains are proven by a before/after benchmark on the live agent. The
-round's contract and research: [the session log](docs/delegation-round-session.md) ·
+The subagent-orchestration round: make Unown measurably better at
+delegation — every spawn carries its reason, every delegation is audited
+(cost, outcome, duplicates), Mission Control shows the fleet's decisions,
+the missing specialist roles ship, and the gains are proven by a
+before/after benchmark on the live agent: **79 vs 76 overall, explainability
+56 → 92, the runaway-scout shape dead (child spend −62%)**. The round's
+contract and receipts: [the session log](docs/delegation-round-session.md) ·
 [the competitor research](docs/delegation-competitor-research.md) · [the
-baseline receipts](benchmarks/delegation-round/RESULTS.md) (v0.0.45 scores
-76/100 on the round's ten axes; seven failures caught live, F26–F33).
+benchmark + full delta table](benchmarks/delegation-round/RESULTS.md) · [the
+failure ledger F26–F37](benchmarks/delegation-round/validation-log.md).
 
 ### Added
 

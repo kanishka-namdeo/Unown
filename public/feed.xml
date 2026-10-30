@@ -17,6 +17,15 @@
       <category>critique</category>
     </item>
     <item>
+      <title>&quot;The delegation round: every spawn now says why&quot;</title>
+      <link>https://unown-nine.vercel.app/blog/2026-10-30-the-delegation-round</link>
+      <guid isPermaLink="true">https://unown-nine.vercel.app/blog/2026-10-30-the-delegation-round</guid>
+      <pubDate>Fri, 30 Oct 2026 00:00:00 GMT</pubDate>
+      <description>&quot;Unown 0.0.46: the why field, the delegation audit ledger, four specialist agents, and a measured 76→79 with the runaway-scout shape dead — receipts inside.&quot;</description>
+      <category>subagents</category>
+      <category>observability</category>
+    </item>
+    <item>
       <title>&quot;The observability round: can you read your agent&apos;s state in 60 seconds?&quot;</title>
       <link>https://unown-nine.vercel.app/blog/2026-10-30-the-observability-round</link>
       <guid isPermaLink="true">https://unown-nine.vercel.app/blog/2026-10-30-the-observability-round</guid>

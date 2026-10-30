@@ -293,3 +293,29 @@ cover source files outside the instruction set.
 improvement (the same-ms temp collision it fixes is real); it is preserved
 in the evidence patch for a reviewed, deliberate commit — never silently
 absorbed into a benchmark commit.
+
+## F38 — the dashboard capture lane's navigation was wrong for every unnumbered screen
+
+**Failure.** `pty_capture_dashboard.py` navigated screens past the tenth
+(the unnumbered rail: gateway, routines, web cache) by pressing `]`
+repeatedly — but `[`/`]` open the screens OVERLAY; they never advance the
+active screen. Every unnumbered-screen capture parked wherever the overlay
+left the pane while the checker looked for the target's vocabulary (live:
+three screens failing, the pane showing Recovery). The automations anchor
+was ALSO stale (`AUTOMATIONS` — the screen has been titled "Routines" for
+weeks).
+
+**Reproduction.** Any run of the lane before the fix: `gateway: missing
+['requests', 'latency']` while `dashboard.pane.log` shows the Recovery
+screen under the `===== gateway =====` header.
+
+**Root cause.** The fallback was written for a 12-screen sidebar and never
+re-examined when the observability round added the thirteenth; the `]`
+semantics were assumed, never verified against the pane.
+
+**Fix.** Accelerated screens keep the digit-key flow; every unnumbered
+screen is captured by RESTARTING the dashboard deep-linked to it
+(`unown dashboard <screen>` — the boot's own route). All 12 screens now
+pass with pane truth intact, and the delegation screen's still is captured
+against the fixture engine's deterministic payload
+(`public/landing/tui/dashboard/stills/delegation.png`). **Resolved.**
