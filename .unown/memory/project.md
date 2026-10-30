@@ -1,6 +1,7 @@
 # Project Memory
 
 ## Workflow
+- Verify file existence and content after creation to confirm task completion
 - Verify engine health: GET /api/overview returns ok:true; check this after any engine restart or config change.
 - Run: bunx biome check --write on changed files in pi-repo/.
 - Use `boot()` in `pi-repo/packages/self-learning/src/boot.ts` as the single entry point for both the interactive TUI and compiled release binaries.
@@ -24,6 +25,8 @@
 - Unown encore library test suite (`bun test src/lib/encore`) passes 70 tests with 0 failures across 4 files, exercising the drift gate that asserts all five receipts (baseline plus ITER0-ITER3) field-by-field, pins the iter3 objective-gate behavior, and verifies append-clean invariants.
 
 ## Environment
+- In OB-5 live-lane, when the learning feed records a memory version advance, the footer chip counts it as an unseen learning event until /feed marks it seen; the chip contract is count, not text
+- OB-5 live-lane: when the learning feed records a memory version advance, the footer chip counts it as an unseen learning event until /feed marks it seen.
 - The `/cadence` habit tracker uses an `embed=1` reset contract called `cadence-reset` and persists state to localStorage with a `SEED_VERSION` marker.
 - The `src/` directory contains a Next.js marketing web app; the landing page is at `/` with UI sections in `src/components/landing/`. Auto-deploy to Vercel via GitHub integration; 'deploy.completed' events carry an 'environment' field. Development server runs on port 3000 (src/app/page.tsx). All 7 sibling routes (/demo, /bazaar, /cadence, /parley, /fugue, /aria, /nocturne) have frame-hardening headers (CSP frame-ancestors 'self' + X-Frame-Options SAMEORIGIN) in `next.config.ts` lines 28-88, superseding prior notes that /cadence was omitted from hardening. Hand-drawn Unown script SVG, generated changelog/benchmark/engine-data files, and GBA 5-bit palette are part of the landing UI structure.
 - Identify API-less sibling patterns (such as cadence's localStorage shape) when determining if a new subproject requires an `api/` directory.
@@ -32,6 +35,15 @@
 - Nocturne escalation engine is strictly single-step: each `tickEscalation` advances at most one tier; the wait window for the next advance is measured from `lastEscalatedAt` (or `triggeredAt` if null), and an N-tier policy requires N-1 fired ticks to reach the final tier, with each tick waiting the current tier's `waitMinutes`; test scenarios must use tier counts and waits consistent with this (a 2-tier policy reaches its last tier in one tick, not two)
 
 ## Facts
+- Track and complete file creation tasks using the todo tool to ensure workflow accountability
+- Trust test checkpoint at `notes/ob-round-trust.md` in `/home/z/my-project/unown` contains the single line `trust test checkpoint` (22 bytes)
+- In the unown project, the OB-5 observability round verified that the in-session learning feed records dreams live
+- The OB-5 PTY capture lane runs the pane-is-truth contract at terminal dimensions 128x36
+- In the OB-5 repaint lane, the feed chip must paint itself when a dream advances memory during an idle session; the listener contract repaints on push and is cleared at shutdown
+- OB-5 repaint lane: the feed chip must repaint itself when a dream advances memory during an idle session. The listener contract repaints on push events and is cleared at shutdown.
+- OB-5 lane: the observability round verified that the in-session learning feed records dreams live.
+- OB-5 lane: the PTY capture lane enforces the pane-is-truth contract at a 128x36 terminal size.
+- OB-5 lane: the footer chip contract reports a count of unseen learning events, not a text label.
 - The `src/lib/nocturne/types.ts` file in the worktree contains the full data model from `benchmarks/nocturne-round/plan.md` §1, defining 17 entity interfaces including NocturneTenant, NocturneUser, NocturneService, NocturneAlert, NocturneIncident, NocturneTimelineEvent, NocturneRunbook, and NocturneNote.
 - Nocturne domain layer types use type-level refinements as single source of truth: `NocturneChecklistState.stepStates` is `Record<string, ChecklistStepState>` and `NocturneComponent.status` is `NocturneComponentStatus`, replacing inline union literals.
 - The complete Nocturne build contract is written to `benchmarks/nocturne-round/plan.md` (~52 KB, matching the aria contract's completeness) and is grounded in the explored sibling lanes.
@@ -98,4 +110,4 @@
 
 - Parley password hashing: scrypt N=16384 r=8 p=1 (src/lib/parley/password.ts). Restored by hand 2026-10-29 after AutoDream reconciles twice erased the fact (upstream 79->66 render, then the F1/F2 bcrypt poison round). Never let a memory answer overwrite this without reading the source.
 
-<!-- unown: rendered 86/86 memories via Mem0 (backend: lexical) at 2026-10-29T22:36:45.071Z -->
+<!-- unown: rendered 98/98 memories via Mem0 (backend: lexical) at 2026-10-30T00:59:58.002Z -->
