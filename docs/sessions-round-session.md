@@ -348,6 +348,44 @@ production build green, the six per-OS archives built + sha256-verified,
 the linux-x64 binary executed (`--version` prints 0.0.49). Remaining:
 the F7 fix commit, CI green, the `v0.0.49` tag, the release workflow.
 
+**F8 — the inherited red (caught waiting on CI, 2026-10-31).** While the
+release commit's CI ran, a settings-round commit (`4740224f`, the /settings
+control centre) landed on main and its OWN CI was red twice over: the E2E
+budget lane (the same 3,859 — their commit touched no landing files, so
+F7's fix covers it) and a macOS-only "test isolation failed: UNOWN_HOME
+resolved outside the test tree" — the settings-hub suite re-pointed the
+process env's UNOWN_HOME at its own `tmpdir()` tree and never restored
+it, and bun's file order on darwin loaded models-catalog.test.ts's module
+scope inside that window. Fixed (`f02e4e26`): the suite's tree moved
+under the shared realpath-resolved TEST_TMP like every other suite here,
+and afterAll restores the prior UNOWN_HOME — verified in both file
+orders, full engine suite 5,336 pass / 0 fail. The F7 commit was rebased
+onto the settings commit (no file overlap) and both pushed together:
+**CI green on `f02e4e26`** — every check, both formerly-red lanes fixed.
+
+### M5 — release v0.0.49 (DONE, 2026-10-31)
+
+**Done.** (release commits: `2c1c4716` the bump, `5713aa65` F7, `f02e4e26`
+F8; the tag `v0.0.49` cut at `f02e4e26` — CI green on the tagged SHA.)
+
+- The tag pushed at 22:24Z; the Release workflow (run 41137924149,
+  created 22:24:32Z) completed **success** at 22:42Z — all fifteen jobs:
+  the ci-green gate, the 3-OS
+  release assertion (real installer + engine/integration/bridge suites +
+  version consistency + CLI smokes + the artifact plan gate), the
+  production build + the six per-OS binaries + SBOM + attestations, the
+  per-OS artifact smokes, the draft→published GitHub Release, the
+  published-feed verification (every archive's size + SHA-256 against the
+  manifest), and the 3-OS smoke-install matrix (--version, update --check,
+  uninstall --dry-run).
+- The published release: **v0.0.49, Latest, 13 assets** — the six
+  per-OS CLI archives (darwin/linux/windows × arm64/x64), install.sh +
+  install.ps1, release.json (the update manifest), version.txt,
+  sha256sums.txt, sbom-spdx.json, release-checklist.md. Published
+  2026-10-30T22:40:46Z.
+- The round's local receipts stand as recorded above; the release's own
+  receipts are the workflow's logs and the release's asset list.
+
 ## Related pages
 
 - `docs/session-lifecycle.md` (the round's usage page)
