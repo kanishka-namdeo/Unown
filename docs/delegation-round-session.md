@@ -91,7 +91,63 @@ aggregate — each with pinning tests.
 
 ## Checkpoint 2 — the delegation ledger core
 
-*(opens when the ledger — `why`, journal enrichment, the engine endpoint — is implemented and pinned)*
+**DONE.** The audit spine is implemented, live-verified, and pinned —
+`pi-repo/packages/self-learning/`:
+
+- **The `why` field** (premises before delegating): accepted on every `task`
+  call (single + batch items), journaled with the spawn, displayed in the
+  result section, the async ack, the fleet delivery, `task_control status`
+  and `/tasks`. Live-verified: a real delegation session stated its reason
+  ("Focused read-only search (context hygiene): … delegating keeps this
+  session clean") and the reason rode the journal AND the engine aggregate.
+- **The journal enrichment**: `spawned` entries carry `why` + `taskPreview`
+  (the ORIGINAL ask, pre-repo-map composition — a live defect caught the
+  first cut journaling the composed preamble); `finished` entries carry the
+  audit payload (turns/tokens/tools/elapsed/blocked). Both lanes, additive,
+  pre-0.0.46 entries stay readable.
+- **The engine aggregate**: the `delegations` table + `POST/GET
+  /api/delegations` (records, by-agent×status tallies, totals incl.
+  `with_why` coverage) + the `delegation:recorded` SSE invalidation.
+  Live-verified POST `{"ok":true,"inserted":1}` → GET with tallies.
+- **The F26 fix (the runaway)**: read-only builtins ship turn caps —
+  scout/background-explore 24, explore 40 (≈3× their healthy envelopes); the
+  runaway shape now ends in a typed max-turns partial instead of a 596k-token
+  clock kill.
+- **The F27 fix (the vanishing delivery)**: fleet deliveries persist
+  (`unown-subagent-delivery` session entries) — a replayed transcript keeps
+  the child's report.
+- **The F32 fix (push-channel polling)**: the async ack and a running
+  child's `task_control status` both state the push contract ("the result
+  arrives as its own message and WAKES YOU — do not poll").
+- **Surfaces**: `/delegation` (the audit card, receipts-only worth lines) +
+  the `delegation` footer chip (unseen not-ok first) + `unown delegations`
+  (`--limit/--json/--engine`, pairs the journal by id) + the dashboard's
+  **Delegation** screen (records, tallies, why-coverage line).
+- **Docs + DOX**: `docs/subagents.md` (the why field section, the caps
+  note), `docs/usage.md` (both command rows), the package AGENTS.md's
+  delegation-round contract block.
+
+**VERIFIED (this machine, 2026-10-30):**
+
+| Gate | Result |
+|---|---|
+| Engine unit suite | **4970 pass · 0 fail** (220 files) — includes the 25 new delegation pins |
+| New pins | `delegation.test.ts` (20) · `delegation-journal.test.ts` (5, incl. the F34 fresh-DB schema boot pin) · dashboard render anchors |
+| Typecheck | zero NEW errors (101 pre-existing vendored ones unchanged — diff-verified against clean HEAD) |
+| Live boot | engine `phase: ready`; POST/GET `/api/delegations` green |
+| Live E2E delegation | the model stated its `why`; journal delta + engine row both carry it |
+| CLI smoke | `unown delegations` renders the real journal (11 records, honest "why on 0/11" for pre-round entries); `--json` parses |
+| Biome | clean on all changed files |
+| Docs gates | `check_docs` green on every touched doc |
+
+**F34 caught in-round**: the delegations index ran before its table in the
+schema string — the engine crash-looped at boot until the order was fixed;
+now pinned by a fresh-DB construction test (the honest ledger entry records
+that the LIVE boot caught it, not the suite).
+
+**NEXT.** Checkpoint 3: the remaining surfaces — the auto-brief's
+delegation line, the fleet widget's why column, print-mode delegation
+events — then the specialist agents (checkpoint 4).
 
 ## Checkpoint 3 — the surfaces: card, chip, widget, dashboard, CLI
 

@@ -530,4 +530,8 @@ Do not propose changes; do not edit anything. If the answer is not in the repo, 
 	effort: "low",
 	mcpServers: [],
 	injectAgentsMd: false,
+	// F26 (the delegation round): the lean read-only lane gets the same turn
+	// bound as scout — a background sweep must come back small, never loop
+	// until the wall clock kills it (measured live: 104 turns / 596k tokens).
+	maxTurns: 24,
 };

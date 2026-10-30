@@ -30,19 +30,102 @@ export interface ChangelogStop {
   groups: ChangelogGroup[];
 }
 
-export const CHANGELOG_TOTAL_ENTRIES = 405;
+export const CHANGELOG_TOTAL_ENTRIES = 418;
 
 export const CHANGELOG_TOTALS: Record<ChangelogBucket, number> = {
-  "Added": 178,
+  "Added": 185,
   "Changed": 28,
   "Deprecated": 0,
   "Removed": 3,
-  "Fixed": 156,
+  "Fixed": 160,
   "Security": 5,
-  "Behavior": 35
+  "Behavior": 37
 };
 
 export const CHANGELOG_STOPS: ChangelogStop[] = [
+  {
+    "label": "Unreleased",
+    "date": null,
+    "total": 13,
+    "counts": {
+      "Added": 7,
+      "Changed": 0,
+      "Deprecated": 0,
+      "Removed": 0,
+      "Fixed": 4,
+      "Security": 0,
+      "Behavior": 2
+    },
+    "groups": [
+      {
+        "bucket": "Added",
+        "items": [
+          {
+            "title": "The why field on every delegation",
+            "behavior": false
+          },
+          {
+            "title": "The delegation audit ledger",
+            "behavior": false
+          },
+          {
+            "title": "The /delegation card + the delegation footer chip",
+            "behavior": false
+          },
+          {
+            "title": "unown delegations",
+            "behavior": false
+          },
+          {
+            "title": "The dashboard's Delegation screen",
+            "behavior": false
+          },
+          {
+            "title": "Turn caps for the read-only builtins",
+            "behavior": false
+          },
+          {
+            "title": "The delegation round's benchmark suite",
+            "behavior": false
+          }
+        ]
+      },
+      {
+        "bucket": "Fixed",
+        "items": [
+          {
+            "title": "The vanishing async delivery (F27)",
+            "behavior": false
+          },
+          {
+            "title": "The push-channel polling loop (F32)",
+            "behavior": false
+          },
+          {
+            "title": "The taskPreview composition defect (in-round)",
+            "behavior": false
+          },
+          {
+            "title": "The delegations schema order (F34)",
+            "behavior": false
+          }
+        ]
+      },
+      {
+        "bucket": "Behavior",
+        "items": [
+          {
+            "title": "The task tool's description now teaches the four-element handoff",
+            "behavior": true
+          },
+          {
+            "title": "The read-only subagents",
+            "behavior": true
+          }
+        ]
+      }
+    ]
+  },
   {
     "label": "0.0.45",
     "date": "2026-10-30",

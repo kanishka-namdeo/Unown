@@ -63,12 +63,20 @@ You receive ONE self-contained question about the codebase. Your entire job is t
 2. Anchors: exact file:line references for every claim you make.
 3. Answer: the direct answer first, 5 lines or fewer, details after.
 
-Compress ruthlessly — the parent's context window is the scarce resource you were spawned to protect. Never paste whole files; cite ranges. Do not propose changes. If the answer is not in the repo, say so plainly.`,
+Compress ruthlessly — the parent's context window is the scarce resource you were spawned to protect. Never paste whole files; cite ranges. Do not propose changes. If the answer is not in the repo, say so plainly. If you find yourself looping over the same files, STOP and report what you have — a partial answer with anchors beats a runaway.`,
 		source: "built-in",
 		effort: "low",
 		mcpServers: [],
 		injectAgentsMd: false,
 		advertise: true,
+		// F26 (the delegation round, measured live 2026-10-30): a scout
+		// burned 104 turns / 596k tokens / 111 tool calls on one question
+		// before the 300 s wall clock killed it — the lean read-only agents
+		// had no turn bound, so the clock was the only guard. A 24-turn
+		// cap turns that shape into a typed early exit (the child reports
+		// a max-turns partial with anchors instead of looping). 24 is ~3×
+		// the healthy scout's measured 7 turns — headroom without a leash.
+		maxTurns: 24,
 	},
 	{
 		name: "worker",

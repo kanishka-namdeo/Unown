@@ -111,6 +111,15 @@ describe("DashboardApp headless render", () => {
 			hooks: ["events", "filter", "f filter"],
 			router: ["router jobs", "auto-dream", "sandboxes", "1 job(s) failed their last run", "✗ 47 runs"],
 			recovery: ["recovery", "needing attention", "job:", "run:", "denied:"],
+			delegation: [
+				"delegation",
+				"3 delegations recorded",
+				"why: parallelism — keep answering while it counts",
+				"why: (not stated)",
+				// the timeout verdict wins over the expensive line (status first)
+				"not worth it — hit the wall-clock budget",
+				"why recorded on 2/3",
+			],
 			gateway: ["requests", "latency"],
 			automations: ["routines", "cron"],
 			webcache: ["entries"],
@@ -131,7 +140,11 @@ describe("DashboardApp headless render", () => {
 		expect(pane).toContain("2 Memory");
 		expect(pane).toContain("5 Skills");
 		expect(pane).toContain("9 Recovery");
-		expect(pane).toContain("0 Gateway");
+		// The delegation round inserted Delegation after Recovery — it
+		// takes the 0 accelerator and Gateway/Routines/Web Cache shift
+		// to the unnumbered “·” rail (ACCELERATORS covers the first 10).
+		expect(pane).toContain("0 Delegation");
+		expect(pane).toContain("· Gateway");
 		expect(pane).toContain("· Routines");
 		expect(pane).toContain("· Web Cache");
 		// Group headers and the loop-state foot.

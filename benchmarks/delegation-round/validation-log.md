@@ -171,3 +171,33 @@ the environment (and the README documents it); the re-run captured the widget
 live (`fleet-widget.pane.txt`, `visible: True`, still rendered). **Resolved**
 — the false-negative receipt is superseded by the live one, kept for the
 trail.
+
+## F34 — the delegations table's index ran before its table (engine boot crash)
+
+**Failure.** The first restart of the stack with the delegation round's code
+crashed the engine at Store construction: `SQLiteError: no such table:
+main.delegations` — the engine could not boot at all (`.run/engine.log`,
+2026-10-30 08:5x).
+
+**Reproduction.** Any boot with the round's first store.ts cut:
+`bun run agent:start` → engine exits non-zero, crash-loop until reverted.
+
+**Root cause.** The schema string executes statements in order, and the
+`CREATE INDEX idx_delegations_ts ON delegations` line was placed in the index
+block (line ~168) while the `CREATE TABLE delegations` definition sat at the
+end of the schema (line ~208) — the index ran ~40 lines BEFORE its table.
+
+**Fix.** The index now sits directly under the table definition
+(`store.ts`), and the fix is live-verified: the engine boots (v0.0.45+
+round code, `phase: ready`), `POST /api/delegations` answers
+`{"ok":true,"inserted":1}` and `GET` returns the aggregate with tallies and
+totals. **Resolved.**
+
+**The pin.** The catch came from the LIVE boot, not the suite — the full
+engine suite had not yet run against the broken cut (it ran green after the
+fix). To make the schema order a tested contract instead of a boot-time
+surprise, `test/delegation-journal.test.ts` now constructs the real Store on
+a FRESH database and asserts both `delegations` objects exist in
+`sqlite_master` — a fresh-DB schema-exec boot pin (the suite's persistent
+scratch DB, reused across runs by `_env.ts`, cannot catch statement-ORDER
+defects inside SCHEMA the way a fresh file can).

@@ -101,17 +101,25 @@ export const SYNC_HEARTBEAT_INTERVAL_MS = 1_000;
 // ---------------------------------------------------------------------------
 
 export interface FleetSpawnJournalEntry {
-        id: string;
-        name: string;
-        agent: string;
-        /** The child's pid (null when the spawn harness cannot report one). */
-        pid: number | null;
-        /** The parent that owns this child — the sweep's ownership check. */
-        parentPid: number;
-        sessionFile: string;
-        controlFile: string;
-        askFile: string;
-        ts: number;
+	id: string;
+	name: string;
+	agent: string;
+	/** The child's pid (null when the spawn harness cannot report one). */
+	pid: number | null;
+	/** The parent that owns this child — the sweep's ownership check. */
+	parentPid: number;
+	sessionFile: string;
+	controlFile: string;
+	askFile: string;
+	ts: number;
+	/** The delegation round (2026-10-30): the audit fields. The reason
+	 *  the parent stated at spawn time and a task preview — the journal
+	 *  previously recorded identity + lifecycle but never WHAT or WHY,
+	 *  so a post-hoc audit could not answer “was this delegation
+	 *  justified”. Optional: pre-0.0.46 entries and calls that omitted
+	 *  `why` read as absent, never invented. */
+	why?: string;
+	taskPreview?: string;
 }
 
 /** R4: the sync lane's spawn record — same journal, same sweep, one lane
@@ -120,54 +128,72 @@ export interface FleetSpawnJournalEntry {
  *  unique string in its argv, and what the sweep's `ps -o command=` probe
  *  matches on (POSIX). */
 export interface SyncSpawnJournalEntry {
-        id: string;
-        name: string;
-        agent: string;
-        pid: number | null;
-        parentPid: number;
-        /** The child's --append-system-prompt temp file — unique per attempt
-         *  (mkdtemp), present in the child's own argv for its whole life. */
-        promptFile: string;
-        /** The isolated worktree the child runs in, when any (informational —
-         *  the worktree correlation rides the op:"worktree" amendment). */
-        worktreePath?: string;
-        ts: number;
+	id: string;
+	name: string;
+	agent: string;
+	pid: number | null;
+	parentPid: number;
+	/** The child's --append-system-prompt temp file — unique per attempt
+	 *  (mkdtemp), present in the child's own argv for its whole life. */
+	promptFile: string;
+	/** The isolated worktree the child runs in, when any (informational —
+	 *  the worktree correlation rides the op:"worktree" amendment). */
+	worktreePath?: string;
+	ts: number;
+	/** The delegation round's audit fields (see FleetSpawnJournalEntry). */
+	why?: string;
+	taskPreview?: string;
+}
+
+/** The finish entry's usage/outcome payload — the delegation round's audit
+ *  enrichment. The spawn entry carries identity + intent; this carries cost
+ *  + result, so a journal reader can answer “what did it cost and how did it
+ *  end” without the session transcript. */
+export interface FleetFinishExtras {
+	turns?: number;
+	tokensIn?: number;
+	tokensOut?: number;
+	toolCalls?: number;
+	elapsedMs?: number;
+	blocked?: boolean;
+	why?: string;
+	taskPreview?: string;
 }
 
 export type FleetJournalEntry =
-        | ({ op: "spawned"; lane?: "fleet" } & FleetSpawnJournalEntry)
-        | ({ op: "spawned"; lane: "sync" } & SyncSpawnJournalEntry)
-        | { op: "worktree"; id: string; path: string; ts: number }
-        | { op: "finished"; id: string; status: string; ts: number }
-        | { op: "reaped" | "abandoned"; id: string; ts: number; reason: string };
+	| ({ op: "spawned"; lane?: "fleet" } & FleetSpawnJournalEntry)
+	| ({ op: "spawned"; lane: "sync" } & SyncSpawnJournalEntry)
+	| { op: "worktree"; id: string; path: string; ts: number }
+	| ({ op: "finished"; id: string; status: string; ts: number } & FleetFinishExtras)
+	| { op: "reaped" | "abandoned"; id: string; ts: number; reason: string };
 
 export function fleetJournalPath(fleetDir: string): string {
-        return join(fleetDir, "journal.jsonl");
+	return join(fleetDir, "journal.jsonl");
 }
 
 function appendFleetJournal(fleetDir: string, entry: FleetJournalEntry): void {
-        try {
-                mkdirSync(fleetDir, { recursive: true });
-                writeFileSync(fleetJournalPath(fleetDir), `${JSON.stringify(entry)}\n`, { flag: "a" });
-        } catch {
-                /* best effort — a trace must never break the spawn/finalize path */
-        }
+	try {
+		mkdirSync(fleetDir, { recursive: true });
+		writeFileSync(fleetJournalPath(fleetDir), `${JSON.stringify(entry)}\n`, { flag: "a" });
+	} catch {
+		/* best effort — a trace must never break the spawn/finalize path */
+	}
 }
 
 export function readFleetJournal(fleetDir: string): FleetJournalEntry[] {
-        try {
-                return readFileSync(fleetJournalPath(fleetDir), "utf8")
-                        .split("\n")
-                        .filter((l) => l.trim().length > 0)
-                        .map((l) => JSON.parse(l) as FleetJournalEntry)
-                        .filter((e) => e && typeof e.op === "string" && typeof e.id === "string");
-        } catch {
-                return [];
-        }
+	try {
+		return readFileSync(fleetJournalPath(fleetDir), "utf8")
+			.split("\n")
+			.filter((l) => l.trim().length > 0)
+			.map((l) => JSON.parse(l) as FleetJournalEntry)
+			.filter((e) => e && typeof e.op === "string" && typeof e.id === "string");
+	} catch {
+		return [];
+	}
 }
 
 export function recordFleetChildSpawn(fleetDir: string, entry: FleetSpawnJournalEntry): void {
-        appendFleetJournal(fleetDir, { op: "spawned", ...entry });
+	appendFleetJournal(fleetDir, { op: "spawned", ...entry });
 }
 
 /** R4: the sync lane's spawn record — written by runSubagentOnce right after
@@ -176,15 +202,15 @@ export function recordFleetChildSpawn(fleetDir: string, entry: FleetSpawnJournal
  *  fallback-model rotation spawn fresh children, and each child deserves
  *  its own terminal record. */
 export function recordSyncSubagentSpawn(fleetDir: string, entry: SyncSpawnJournalEntry): void {
-        appendFleetJournal(fleetDir, { op: "spawned", lane: "sync", ...entry });
+	appendFleetJournal(fleetDir, { op: "spawned", lane: "sync", ...entry });
 }
 
 export function recordFleetChildWorktree(fleetDir: string, id: string, path: string): void {
-        appendFleetJournal(fleetDir, { op: "worktree", id, path, ts: Date.now() });
+	appendFleetJournal(fleetDir, { op: "worktree", id, path, ts: Date.now() });
 }
 
-export function recordFleetChildFinish(fleetDir: string, id: string, status: string): void {
-        appendFleetJournal(fleetDir, { op: "finished", id, status, ts: Date.now() });
+export function recordFleetChildFinish(fleetDir: string, id: string, status: string, extras?: FleetFinishExtras): void {
+	appendFleetJournal(fleetDir, { op: "finished", id, status, ts: Date.now(), ...(extras ?? {}) });
 }
 
 // ---------------------------------------------------------------------------
@@ -203,37 +229,37 @@ export function recordFleetChildFinish(fleetDir: string, id: string, status: str
  *  SIGKILLed child rots into staleness — that is what the 5 s window is
  *  for). Returns a stop() for tests and early shutdown paths. */
 export function startSyncSubagentHeartbeat(
-        env: NodeJS.ProcessEnv = process.env,
-        intervalMs: number = SYNC_HEARTBEAT_INTERVAL_MS,
+	env: NodeJS.ProcessEnv = process.env,
+	intervalMs: number = SYNC_HEARTBEAT_INTERVAL_MS,
 ): (() => void) | null {
-        const hbFile = env[SYNC_HEARTBEAT_ENV];
-        if (!hbFile) return null;
-        const beat = () => {
-                try {
-                        writeFileSync(hbFile, JSON.stringify({ pid: process.pid, ts: Date.now() }), {
-                                encoding: "utf8",
-                                mode: 0o600,
-                        });
-                } catch {
-                        /* best effort — the trace must never break the child */
-                }
-        };
-        beat();
-        const timer = setInterval(beat, intervalMs);
-        if (typeof timer.unref === "function") timer.unref();
-        let stopped = false;
-        const stop = () => {
-                if (stopped) return;
-                stopped = true;
-                clearInterval(timer);
-                try {
-                        rmSync(hbFile, { force: true });
-                } catch {
-                        /* best effort */
-                }
-        };
-        process.once("exit", stop);
-        return stop;
+	const hbFile = env[SYNC_HEARTBEAT_ENV];
+	if (!hbFile) return null;
+	const beat = () => {
+		try {
+			writeFileSync(hbFile, JSON.stringify({ pid: process.pid, ts: Date.now() }), {
+				encoding: "utf8",
+				mode: 0o600,
+			});
+		} catch {
+			/* best effort — the trace must never break the child */
+		}
+	};
+	beat();
+	const timer = setInterval(beat, intervalMs);
+	if (typeof timer.unref === "function") timer.unref();
+	let stopped = false;
+	const stop = () => {
+		if (stopped) return;
+		stopped = true;
+		clearInterval(timer);
+		try {
+			rmSync(hbFile, { force: true });
+		} catch {
+			/* best effort */
+		}
+	};
+	process.once("exit", stop);
+	return stop;
 }
 
 // ---------------------------------------------------------------------------
@@ -257,25 +283,26 @@ export function startSyncSubagentHeartbeat(
  *  session (the agent itself runs `git init`), and callers are heavyweight
  *  (one boot, one spawn) — a ~15 ms spawnSync is not worth a stale answer. */
 export function subagentJournalDir(cwd: string): string {
-        try {
-                const env: Record<string, string> = {};
-                for (const [k, v] of Object.entries(process.env)) {
-                        if (v === undefined) continue;
-                        if (/^GIT_(DIR|WORK_TREE|INDEX_FILE|OBJECT_DIRECTORY|ALTERNATE_OBJECT_DIRECTORIES|CONFIG|NAMESPACE)$/.test(k)) continue;
-                        env[k] = v;
-                }
-                const res = spawnSync("git", [...readOnlyGitArgs(), "rev-parse", "--show-toplevel"], {
-                        cwd,
-                        env,
-                        encoding: "utf8",
-                        timeout: 10_000,
-                });
-                const top = res.status === 0 ? String(res.stdout ?? "").trim() : "";
-                if (top.length > 0) return join(top, ".unown", "fleet");
-        } catch {
-                /* git missing or unusable — fall through to the literal cwd */
-        }
-        return join(cwd, ".unown", "fleet");
+	try {
+		const env: Record<string, string> = {};
+		for (const [k, v] of Object.entries(process.env)) {
+			if (v === undefined) continue;
+			if (/^GIT_(DIR|WORK_TREE|INDEX_FILE|OBJECT_DIRECTORY|ALTERNATE_OBJECT_DIRECTORIES|CONFIG|NAMESPACE)$/.test(k))
+				continue;
+			env[k] = v;
+		}
+		const res = spawnSync("git", [...readOnlyGitArgs(), "rev-parse", "--show-toplevel"], {
+			cwd,
+			env,
+			encoding: "utf8",
+			timeout: 10_000,
+		});
+		const top = res.status === 0 ? String(res.stdout ?? "").trim() : "";
+		if (top.length > 0) return join(top, ".unown", "fleet");
+	} catch {
+		/* git missing or unusable — fall through to the literal cwd */
+	}
+	return join(cwd, ".unown", "fleet");
 }
 
 // ---------------------------------------------------------------------------
@@ -284,25 +311,25 @@ export function subagentJournalDir(cwd: string): string {
 
 /** Is a pid alive? EPERM (POSIX) counts as alive — owned by another user. */
 export function isPidAlive(pid: number | null | undefined): boolean {
-        if (!pid || pid <= 0) return false;
-        if (process.platform === "win32") {
-                try {
-                        const res = spawnSync(
-                                join(process.env.SystemRoot ?? "C:\\Windows", "System32", "tasklist.exe"),
-                                ["/FI", `PID eq ${pid}`, "/FO", "CSV", "/NH"],
-                                { encoding: "utf8", timeout: 5_000 },
-                        );
-                        return res.status === 0 && String(res.stdout).includes(`"${pid}"`);
-                } catch {
-                        return false;
-                }
-        }
-        try {
-                process.kill(pid, 0);
-                return true;
-        } catch (err: any) {
-                return err?.code === "EPERM";
-        }
+	if (!pid || pid <= 0) return false;
+	if (process.platform === "win32") {
+		try {
+			const res = spawnSync(
+				join(process.env.SystemRoot ?? "C:\\Windows", "System32", "tasklist.exe"),
+				["/FI", `PID eq ${pid}`, "/FO", "CSV", "/NH"],
+				{ encoding: "utf8", timeout: 5_000 },
+			);
+			return res.status === 0 && String(res.stdout).includes(`"${pid}"`);
+		} catch {
+			return false;
+		}
+	}
+	try {
+		process.kill(pid, 0);
+		return true;
+	} catch (err: any) {
+		return err?.code === "EPERM";
+	}
 }
 
 /** Identity: the process's own command line must name our identity token —
@@ -315,60 +342,60 @@ export function isPidAlive(pid: number | null | undefined): boolean {
  *  heartbeat-only. An EMPTY token matches everything and must never reach
  *  this probe — callers treat a missing token as "not identifiable". */
 function childIdentityMatches(pid: number, identityToken: string): boolean {
-        if (!identityToken) return false;
-        try {
-                const res = spawnSync("ps", ["-p", String(pid), "-o", "command="], {
-                        encoding: "utf8",
-                        timeout: 5_000,
-                });
-                return res.status === 0 && String(res.stdout).includes(identityToken);
-        } catch {
-                return false;
-        }
+	if (!identityToken) return false;
+	try {
+		const res = spawnSync("ps", ["-p", String(pid), "-o", "command="], {
+			encoding: "utf8",
+			timeout: 5_000,
+		});
+		return res.status === 0 && String(res.stdout).includes(identityToken);
+	} catch {
+		return false;
+	}
 }
 
 function readHeartbeat(fleetDir: string, id: string): { pid: number; ts: number } | null {
-        try {
-                const parsed = JSON.parse(readFileSync(join(fleetDir, `${id}.hb.json`), "utf8")) as {
-                        pid?: number;
-                        ts?: number;
-                };
-                if (typeof parsed.pid === "number" && typeof parsed.ts === "number") return parsed;
-        } catch {
-                /* absent or corrupt */
-        }
-        return null;
+	try {
+		const parsed = JSON.parse(readFileSync(join(fleetDir, `${id}.hb.json`), "utf8")) as {
+			pid?: number;
+			ts?: number;
+		};
+		if (typeof parsed.pid === "number" && typeof parsed.ts === "number") return parsed;
+	} catch {
+		/* absent or corrupt */
+	}
+	return null;
 }
 
 /** Tree-kill one pid: taskkill /F /T on win32; SIGTERM then SIGKILL on POSIX
  *  (fire-and-forget — the sweep must never block a boot). */
 function defaultKillChildPid(pid: number): void {
-        if (process.platform === "win32") {
-                try {
-                        const killer = spawn(
-                                join(process.env.SystemRoot ?? "C:\\Windows", "System32", "taskkill.exe"),
-                                ["/F", "/T", "/PID", String(pid)],
-                                { stdio: "ignore", detached: true, windowsHide: true },
-                        );
-                        killer.once("error", () => {});
-                } catch {
-                        /* already gone */
-                }
-                return;
-        }
-        try {
-                process.kill(pid, "SIGTERM");
-        } catch {
-                /* already gone */
-        }
-        const escalation = setTimeout(() => {
-                try {
-                        process.kill(pid, "SIGKILL");
-                } catch {
-                        /* already gone */
-                }
-        }, 5_000);
-        escalation.unref?.();
+	if (process.platform === "win32") {
+		try {
+			const killer = spawn(
+				join(process.env.SystemRoot ?? "C:\\Windows", "System32", "taskkill.exe"),
+				["/F", "/T", "/PID", String(pid)],
+				{ stdio: "ignore", detached: true, windowsHide: true },
+			);
+			killer.once("error", () => {});
+		} catch {
+			/* already gone */
+		}
+		return;
+	}
+	try {
+		process.kill(pid, "SIGTERM");
+	} catch {
+		/* already gone */
+	}
+	const escalation = setTimeout(() => {
+		try {
+			process.kill(pid, "SIGKILL");
+		} catch {
+			/* already gone */
+		}
+	}, 5_000);
+	escalation.unref?.();
 }
 
 // ---------------------------------------------------------------------------
@@ -376,151 +403,151 @@ function defaultKillChildPid(pid: number): void {
 // ---------------------------------------------------------------------------
 
 export interface SubagentSweepOptions {
-        log?: (message: string) => void;
-        now?: () => number;
-        /** Injectable kill (tests). */
-        killPid?: (pid: number) => void;
-        /** Injectable env (tests default to process.env). */
-        env?: NodeJS.ProcessEnv;
-        /** R4: skip the git-toplevel resolution (tests that hand-place the
-         *  journal at the literal cwd without a real repo). Defaults to a
-         *  real probe — production callers never set this. */
-        noGitResolution?: boolean;
+	log?: (message: string) => void;
+	now?: () => number;
+	/** Injectable kill (tests). */
+	killPid?: (pid: number) => void;
+	/** Injectable env (tests default to process.env). */
+	env?: NodeJS.ProcessEnv;
+	/** R4: skip the git-toplevel resolution (tests that hand-place the
+	 *  journal at the literal cwd without a real repo). Defaults to a
+	 *  real probe — production callers never set this. */
+	noGitResolution?: boolean;
 }
 
 export interface SubagentSweepReport {
-        /** True when a journal existed and the sweep actually scanned it. */
-        ran: boolean;
-        /** Open entries seen (spawned without a terminal op). */
-        open: number;
-        reaped: string[];
-        abandoned: string[];
-        /** Open entries left alone because their parent is alive. */
-        skippedLiveParent: string[];
-        cleanedFiles: number;
-        orphanedWorktrees: string[];
-        /** R4: lane breakdown of the terminal dispositions (fleet vs sync
-         *  journal entries) — the boot line reports both honestly. */
-        reapedByLane: { fleet: number; sync: number };
-        abandonedByLane: { fleet: number; sync: number };
+	/** True when a journal existed and the sweep actually scanned it. */
+	ran: boolean;
+	/** Open entries seen (spawned without a terminal op). */
+	open: number;
+	reaped: string[];
+	abandoned: string[];
+	/** Open entries left alone because their parent is alive. */
+	skippedLiveParent: string[];
+	cleanedFiles: number;
+	orphanedWorktrees: string[];
+	/** R4: lane breakdown of the terminal dispositions (fleet vs sync
+	 *  journal entries) — the boot line reports both honestly. */
+	reapedByLane: { fleet: number; sync: number };
+	abandonedByLane: { fleet: number; sync: number };
 }
 
 /** The per-journal sweep pass (both lanes — see the module header). */
 function sweepOneJournal(
-        fleetDir: string,
-        opts: SubagentSweepOptions,
-        report: SubagentSweepReport,
-        markedTrees: Set<string>,
+	fleetDir: string,
+	opts: SubagentSweepOptions,
+	report: SubagentSweepReport,
+	markedTrees: Set<string>,
 ): void {
-        const entries = readFleetJournal(fleetDir);
-        const now = (opts.now ?? Date.now)();
-        const killPid = opts.killPid ?? defaultKillChildPid;
+	const entries = readFleetJournal(fleetDir);
+	const now = (opts.now ?? Date.now)();
+	const killPid = opts.killPid ?? defaultKillChildPid;
 
-        const spawned = new Map<string, Extract<FleetJournalEntry, { op: "spawned" }>>();
-        const worktrees = new Map<string, string[]>();
-        const terminal = new Set<string>();
-        for (const e of entries) {
-                if (e.op === "spawned") spawned.set(e.id, e);
-                else if (e.op === "worktree") {
-                        const list = worktrees.get(e.id) ?? [];
-                        list.push(e.path);
-                        worktrees.set(e.id, list);
-                } else {
-                        terminal.add(e.id); // finished | reaped | abandoned
-                }
-        }
+	const spawned = new Map<string, Extract<FleetJournalEntry, { op: "spawned" }>>();
+	const worktrees = new Map<string, string[]>();
+	const terminal = new Set<string>();
+	for (const e of entries) {
+		if (e.op === "spawned") spawned.set(e.id, e);
+		else if (e.op === "worktree") {
+			const list = worktrees.get(e.id) ?? [];
+			list.push(e.path);
+			worktrees.set(e.id, list);
+		} else {
+			terminal.add(e.id); // finished | reaped | abandoned
+		}
+	}
 
-        for (const [id, spawn] of spawned) {
-                if (terminal.has(id)) continue;
-                report.open += 1;
-                // A live parent always wins. Pid reuse can only ever make this
-                // check read "alive" for a dead parent (safe: skip); the reverse
-                // (a reused pid making a live parent look dead) is impossible —
-                // the pid IS alive either way.
-                if (isPidAlive(spawn.parentPid)) {
-                        report.skippedLiveParent.push(id);
-                        continue;
-                }
+	for (const [id, spawn] of spawned) {
+		if (terminal.has(id)) continue;
+		report.open += 1;
+		// A live parent always wins. Pid reuse can only ever make this
+		// check read "alive" for a dead parent (safe: skip); the reverse
+		// (a reused pid making a live parent look dead) is impossible —
+		// the pid IS alive either way.
+		if (isPidAlive(spawn.parentPid)) {
+			report.skippedLiveParent.push(id);
+			continue;
+		}
 
-                const lane = spawn.lane === "sync" ? "sync" : "fleet";
-                // The identity token: the fleet child's session file path, the
-                // sync child's --append-system-prompt temp file path — either
-                // way a unique-per-child string that lives in the child's own
-                // argv for its whole life. An empty token is "not identifiable"
-                // (never a wildcard match).
-                const token = spawn.lane === "sync" ? spawn.promptFile : spawn.sessionFile;
+		const lane = spawn.lane === "sync" ? "sync" : "fleet";
+		// The identity token: the fleet child's session file path, the
+		// sync child's --append-system-prompt temp file path — either
+		// way a unique-per-child string that lives in the child's own
+		// argv for its whole life. An empty token is "not identifiable"
+		// (never a wildcard match).
+		const token = spawn.lane === "sync" ? spawn.promptFile : spawn.sessionFile;
 
-                // ---- orphaned: decide reaped vs abandoned, never guessing.
-                const hb = readHeartbeat(fleetDir, id);
-                const fresh = hb !== null && now - hb.ts <= HEARTBEAT_STALE_MS;
-                let disposition: "reaped" | "abandoned";
-                let reason: string;
-                if (fresh && hb!.pid > 0 && (process.platform === "win32" || childIdentityMatches(hb!.pid, token))) {
-                        // Fresh heartbeat = our child, alive, self-identified. The
-                        // strongest identity signal there is without a daemon.
-                        killPid(hb!.pid);
-                        disposition = "reaped";
-                        reason = `parent dead; live ${lane}-lane orphan killed (heartbeat-verified)`;
-                } else if (fresh && hb!.pid > 0) {
-                        // Heartbeat was fresh but the pid already mismatches — the
-                        // child died inside the freshness window; never kill the
-                        // (possibly reused) pid.
-                        disposition = "abandoned";
-                        reason = "parent dead; heartbeat pid no longer matches — treated as gone";
-                } else if (
-                        spawn.pid &&
-                        isPidAlive(spawn.pid) &&
-                        process.platform !== "win32" &&
-                        token &&
-                        childIdentityMatches(spawn.pid, token)
-                ) {
-                        // Pre-heartbeat child (a 0.0.25 fleet child, or a sync child
-                        // orphaned before its first beat): alive and cmdline-verified
-                        // on POSIX.
-                        killPid(spawn.pid);
-                        disposition = "reaped";
-                        reason = `parent dead; live ${lane}-lane orphan killed (cmdline-verified pre-heartbeat child)`;
-                } else if (spawn.pid && isPidAlive(spawn.pid)) {
-                        // Alive but NOT verifiable — Windows without a heartbeat (no
-                        // cheap cmdline probe), or a sync entry whose prompt-file
-                        // token is gone from the argv: trace honestly, kill nothing.
-                        disposition = "abandoned";
-                        reason = `parent dead; ${lane}-lane child alive but not heartbeat-identifiable — traced, not killed`;
-                } else {
-                        disposition = "abandoned";
-                        reason = `parent dead; ${lane}-lane child already gone`;
-                }
-                appendFleetJournal(fleetDir, { op: disposition, id, ts: now, reason });
-                report[disposition].push(id);
-                report[`${disposition}ByLane`][lane] += 1;
+		// ---- orphaned: decide reaped vs abandoned, never guessing.
+		const hb = readHeartbeat(fleetDir, id);
+		const fresh = hb !== null && now - hb.ts <= HEARTBEAT_STALE_MS;
+		let disposition: "reaped" | "abandoned";
+		let reason: string;
+		if (fresh && hb!.pid > 0 && (process.platform === "win32" || childIdentityMatches(hb!.pid, token))) {
+			// Fresh heartbeat = our child, alive, self-identified. The
+			// strongest identity signal there is without a daemon.
+			killPid(hb!.pid);
+			disposition = "reaped";
+			reason = `parent dead; live ${lane}-lane orphan killed (heartbeat-verified)`;
+		} else if (fresh && hb!.pid > 0) {
+			// Heartbeat was fresh but the pid already mismatches — the
+			// child died inside the freshness window; never kill the
+			// (possibly reused) pid.
+			disposition = "abandoned";
+			reason = "parent dead; heartbeat pid no longer matches — treated as gone";
+		} else if (
+			spawn.pid &&
+			isPidAlive(spawn.pid) &&
+			process.platform !== "win32" &&
+			token &&
+			childIdentityMatches(spawn.pid, token)
+		) {
+			// Pre-heartbeat child (a 0.0.25 fleet child, or a sync child
+			// orphaned before its first beat): alive and cmdline-verified
+			// on POSIX.
+			killPid(spawn.pid);
+			disposition = "reaped";
+			reason = `parent dead; live ${lane}-lane orphan killed (cmdline-verified pre-heartbeat child)`;
+		} else if (spawn.pid && isPidAlive(spawn.pid)) {
+			// Alive but NOT verifiable — Windows without a heartbeat (no
+			// cheap cmdline probe), or a sync entry whose prompt-file
+			// token is gone from the argv: trace honestly, kill nothing.
+			disposition = "abandoned";
+			reason = `parent dead; ${lane}-lane child alive but not heartbeat-identifiable — traced, not killed`;
+		} else {
+			disposition = "abandoned";
+			reason = `parent dead; ${lane}-lane child already gone`;
+		}
+		appendFleetJournal(fleetDir, { op: disposition, id, ts: now, reason });
+		report[disposition].push(id);
+		report[`${disposition}ByLane`][lane] += 1;
 
-                // ---- channel cleanup: the crash's rotting ask/control files
-                //    (fleet) and the orphan's heartbeat file (both lanes).
-                for (const suffix of [".ask.json", ".control.json", ".hb.json"]) {
-                        const file = join(fleetDir, `${id}${suffix}`);
-                        try {
-                                if (existsSync(file)) {
-                                        rmSync(file, { force: true });
-                                        report.cleanedFiles += 1;
-                                }
-                        } catch {
-                                /* best effort */
-                        }
-                }
+		// ---- channel cleanup: the crash's rotting ask/control files
+		//    (fleet) and the orphan's heartbeat file (both lanes).
+		for (const suffix of [".ask.json", ".control.json", ".hb.json"]) {
+			const file = join(fleetDir, `${id}${suffix}`);
+			try {
+				if (existsSync(file)) {
+					rmSync(file, { force: true });
+					report.cleanedFiles += 1;
+				}
+			} catch {
+				/* best effort */
+			}
+		}
 
-                // ---- worktrees: mark orphaned, NEVER auto-remove (the kept-tree
-                // rule: possible child work is human territory — `unown worktrees
-                // remove` is the ending, after review). R4: sync-lane amendments
-                // ride the same correlation, and one tree can carry amendments
-                // from several attempts (retries) — dedupe the marking.
-                for (const path of worktrees.get(id) ?? []) {
-                        if (existsSync(path) && !markedTrees.has(path)) {
-                                markedTrees.add(path);
-                                appendWorktreeOrphanRecord(path);
-                                report.orphanedWorktrees.push(path);
-                        }
-                }
-        }
+		// ---- worktrees: mark orphaned, NEVER auto-remove (the kept-tree
+		// rule: possible child work is human territory — `unown worktrees
+		// remove` is the ending, after review). R4: sync-lane amendments
+		// ride the same correlation, and one tree can carry amendments
+		// from several attempts (retries) — dedupe the marking.
+		for (const path of worktrees.get(id) ?? []) {
+			if (existsSync(path) && !markedTrees.has(path)) {
+				markedTrees.add(path);
+				appendWorktreeOrphanRecord(path);
+				report.orphanedWorktrees.push(path);
+			}
+		}
+	}
 }
 
 /**
@@ -536,47 +563,47 @@ function sweepOneJournal(
  * journals on real disks must keep being found).
  */
 export function sweepStaleSubagentChildren(cwd: string, opts: SubagentSweepOptions = {}): SubagentSweepReport {
-        const env = opts.env ?? process.env;
-        const report: SubagentSweepReport = {
-                ran: false,
-                open: 0,
-                reaped: [],
-                abandoned: [],
-                skippedLiveParent: [],
-                cleanedFiles: 0,
-                orphanedWorktrees: [],
-                reapedByLane: { fleet: 0, sync: 0 },
-                abandonedByLane: { fleet: 0, sync: 0 },
-        };
-        // Never sweep from inside a subagent — a child reaping siblings (or
-        // worse, racing its own parent's manager) is exactly the inverted
-        // ownership the round-2 control-inbox theft taught us to refuse.
-        if (env.UNOWN_SUBAGENT === "1" || env[FLEET_CONTROL_ENV]) return report;
-        if (/^(0|false|no)$/i.test(env.UNOWN_FLEET_REAPER ?? "")) return report;
+	const env = opts.env ?? process.env;
+	const report: SubagentSweepReport = {
+		ran: false,
+		open: 0,
+		reaped: [],
+		abandoned: [],
+		skippedLiveParent: [],
+		cleanedFiles: 0,
+		orphanedWorktrees: [],
+		reapedByLane: { fleet: 0, sync: 0 },
+		abandonedByLane: { fleet: 0, sync: 0 },
+	};
+	// Never sweep from inside a subagent — a child reaping siblings (or
+	// worse, racing its own parent's manager) is exactly the inverted
+	// ownership the round-2 control-inbox theft taught us to refuse.
+	if (env.UNOWN_SUBAGENT === "1" || env[FLEET_CONTROL_ENV]) return report;
+	if (/^(0|false|no)$/i.test(env.UNOWN_FLEET_REAPER ?? "")) return report;
 
-        const markedTrees = new Set<string>();
-        const literal = join(cwd, ".unown", "fleet");
-        const candidates = [literal];
-        if (!opts.noGitResolution) {
-                const resolved = subagentJournalDir(cwd);
-                if (resolved !== literal) candidates.push(resolved);
-        }
-        for (const fleetDir of candidates) {
-                if (!existsSync(fleetJournalPath(fleetDir))) continue;
-                report.ran = true;
-                try {
-                        sweepOneJournal(fleetDir, opts, report, markedTrees);
-                } catch {
-                        /* a corrupt journal must not cost the boot the rest of the sweep */
-                }
-        }
+	const markedTrees = new Set<string>();
+	const literal = join(cwd, ".unown", "fleet");
+	const candidates = [literal];
+	if (!opts.noGitResolution) {
+		const resolved = subagentJournalDir(cwd);
+		if (resolved !== literal) candidates.push(resolved);
+	}
+	for (const fleetDir of candidates) {
+		if (!existsSync(fleetJournalPath(fleetDir))) continue;
+		report.ran = true;
+		try {
+			sweepOneJournal(fleetDir, opts, report, markedTrees);
+		} catch {
+			/* a corrupt journal must not cost the boot the rest of the sweep */
+		}
+	}
 
-        if (report.reaped.length + report.abandoned.length + report.orphanedWorktrees.length > 0) {
-                const summary =
-                        `subagent crash sweep: ${report.reaped.length} live orphan(s) reaped (${report.reapedByLane.fleet} fleet, ${report.reapedByLane.sync} sync), ` +
-                        `${report.abandoned.length} already dead (traced) (${report.abandonedByLane.fleet} fleet, ${report.abandonedByLane.sync} sync), ` +
-                        `${report.orphanedWorktrees.length} worktree(s) marked orphaned (kept on disk — unown worktrees list)`;
-                (opts.log ?? (() => {}))(summary);
-        }
-        return report;
+	if (report.reaped.length + report.abandoned.length + report.orphanedWorktrees.length > 0) {
+		const summary =
+			`subagent crash sweep: ${report.reaped.length} live orphan(s) reaped (${report.reapedByLane.fleet} fleet, ${report.reapedByLane.sync} sync), ` +
+			`${report.abandoned.length} already dead (traced) (${report.abandonedByLane.fleet} fleet, ${report.abandonedByLane.sync} sync), ` +
+			`${report.orphanedWorktrees.length} worktree(s) marked orphaned (kept on disk — unown worktrees list)`;
+		(opts.log ?? (() => {}))(summary);
+	}
+	return report;
 }

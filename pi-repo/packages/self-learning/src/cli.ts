@@ -47,6 +47,7 @@ import { CheckpointStore, checkpointsDir, createCheckpointsExtension, receiptsDi
 import { installChildReaper } from "./child-reaper.ts";
 import { COMPLETIONS_HELP, cmdCompletions } from "./completions.ts";
 import { DASHBOARD_HELP, runDashboardCommand } from "./dashboard/dashboard-boot.ts";
+import { DELEGATIONS_USAGE, runDelegationsCommand } from "./delegations-cli.ts";
 import { auditInstructionSet, renderInstructionAudit, summarizeInstructionAudit } from "./doctor-instructions.ts";
 import { engineFetch } from "./engine-auth.ts";
 import { runEngineCommand } from "./engine-cli.ts";
@@ -259,6 +260,12 @@ Usage:
                            cross-links (Milestone 4.2, the zcode Repo Wiki
                            port): generate [--force] | search <q> | list |
                            show <page>; written to .unown/wiki/*.md
+  unown delegations     the delegation audit: every subagent spawn recorded
+                           in this repo's fleet journal — why it ran, what it
+                           cost, how it ended (--limit N, --json, --engine for
+                           the cross-session aggregate; the CLI twin of the
+                           /delegation session command and the dashboard's
+                           Delegation screen)
   unown acp               run the ACP editor server on stdio (JSON-RPC 2.0,
                            newline-delimited) — point Zed or any ACP client at
                            it: agent program 'unown', args 'acp' (see
@@ -3680,6 +3687,13 @@ export async function runCli(argv: string[]) {
 		// zcode Repo Wiki port). Dispatch before the generic parser would
 		// eat subcommand tokens as prompt text.
 		const code = await runWikiCommand(argv.slice(1));
+		process.exit(code);
+	}
+	if (first === "delegations") {
+		// The delegation round — `unown delegations`: the audit view over
+		// the fleet journal (both lanes) + the engine's aggregate. Dispatch
+		// before the generic parser (own flag grammar, never prompt text).
+		const code = await runDelegationsCommand(argv.slice(1));
 		process.exit(code);
 	}
 	if (first === "completions") process.exit(cmdCompletions(argv.slice(1)));

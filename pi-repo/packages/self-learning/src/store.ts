@@ -200,111 +200,138 @@ CREATE TABLE IF NOT EXISTS hoist_candidates (
   first_seen_at INTEGER NOT NULL,
   last_seen_at INTEGER NOT NULL
 );
+-- The delegation round (2026-10-30): the cross-session delegation audit
+-- ledger. Every terminal subagent spawn — both lanes — reported by the
+-- terminal agent (delegation.ts reportDelegations → POST /api/delegations).
+-- The fleet journal is the per-repo local truth; this table is the
+-- aggregate the dashboard reads (why / cost / outcome per spawn).
+CREATE TABLE IF NOT EXISTS delegations (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  lane TEXT NOT NULL,                 -- sync | fleet
+  agent TEXT NOT NULL,
+  name TEXT,
+  task TEXT NOT NULL,
+  why TEXT,
+  status TEXT NOT NULL,               -- done | failed | blocked | stopped | timeout | aborted | spawn_error | guard-failed
+  turns INTEGER DEFAULT 0,
+  tokens_in INTEGER DEFAULT 0,
+  tokens_out INTEGER DEFAULT 0,
+  tool_calls INTEGER DEFAULT 0,
+  elapsed_ms INTEGER DEFAULT 0,
+  blocked INTEGER DEFAULT 0,
+  project_path TEXT,
+  ts INTEGER NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_delegations_ts ON delegations(ts);
 `;
 
 export class Store {
-        private db: Database;
-        constructor(path: string = DB_PATH) {
-                mkdirSync(dirname(path), { recursive: true });
-                this.db = new Database(path, { create: true });
-                this.db.exec("PRAGMA journal_mode = WAL;");
-                this.db.exec("PRAGMA busy_timeout = 5000;");
-                this.db.exec(SCHEMA);
-                this.migrate();
-        }
-        /** Idempotent column additions for schema evolution on existing installs. */
-        private migrate() {
-                const columns: Array<[string, string, string]> = [
-                        // notes: distinguish benchmark run notes from terminal-session notes
-                        ["notes", "kind", "ALTER TABLE notes ADD COLUMN kind TEXT DEFAULT 'benchmark'"],
-                        ["notes", "project_path", "ALTER TABLE notes ADD COLUMN project_path TEXT"],
-                        ["notes", "project_slug", "ALTER TABLE notes ADD COLUMN project_slug TEXT"],
-                        // improvements: remember the memory version a shipped patch produced
-                        // (enables auto-unship via rollback when the task later regresses)
-                        ["improvements", "memory_version", "ALTER TABLE improvements ADD COLUMN memory_version INTEGER"],
-                        // tasks: minted-task provenance (mint.ts) — origin/status/source_run_id;
-                        // 'status' defaults to 'regression' so seeded tasks behave as before
-                        ["tasks", "origin", "ALTER TABLE tasks ADD COLUMN origin TEXT DEFAULT 'seed'"],
-                        ["tasks", "status", "ALTER TABLE tasks ADD COLUMN status TEXT DEFAULT 'regression'"],
-                        ["tasks", "source_run_id", "ALTER TABLE tasks ADD COLUMN source_run_id TEXT"],
-                        // runs: the OS isolation the agent bash tool actually ran under
-                        // (M6-3, audit M4-c D2) — 'bwrap' | 'seatbelt' | 'process'; NULL =
-                        // pre-M6 rows, when the level was not recorded.
-                        ["runs", "sandbox_isolation", "ALTER TABLE runs ADD COLUMN sandbox_isolation TEXT"],
-                        ["jobs", "last_ok", "ALTER TABLE jobs ADD COLUMN last_ok INTEGER"],
-                        ["jobs", "last_error", "ALTER TABLE jobs ADD COLUMN last_error TEXT"],
-                        ["jobs", "last_duration_ms", "ALTER TABLE jobs ADD COLUMN last_duration_ms INTEGER"],
-                        // improvements: the mem0 memory ids a shipped patch produced (the
-                        // mem0-backed learning core) — retention's auto-unship deletes them
-                        // from the platform and re-renders the tier. NULL = legacy ships.
-                        ["improvements", "memory_ids", "ALTER TABLE improvements ADD COLUMN memory_ids TEXT"],
-                ];
-                for (const [table, col, ddl] of columns) {
-                        const existing = this.query<any>(`PRAGMA table_info(${table})`).some((c: any) => c.name === col);
-                        if (!existing) {
-                                try {
-                                        this.db.exec(ddl);
-                                } catch (err: any) {
-                                        // Only SQLite's concurrent-migration marker is ignorable (LOW-1);
-                                        // anything else (read-only DB, corruption, permissions) must surface
-                                        // here — swallowing it deferred the failure to every later query as a
-                                        // confusing "no such column" far from the cause.
-                                        if (!/duplicate column name/i.test(err instanceof Error ? err.message : String(err))) throw err;
-                                }
-                        }
-                }
-                // MEDIUM-3: memory_versions(tier, version) had no UNIQUE constraint and
-                // runProjectDream allocated versions outside a transaction — concurrent
-                // dreams could insert the same (tier, version) with different content,
-                // making history/rollback ambiguous. Dedupe legacy duplicates (keeping
-                // the newest row of each pair), then enforce the index. Best-effort on
-                // read-only legacy DBs: allocation is ALSO serialized by the BEGIN
-                // IMMEDIATE transactions in writeTier and runProjectDream.
-                try {
-                        this.db.exec(`DELETE FROM memory_versions WHERE id NOT IN (SELECT MAX(id) FROM memory_versions GROUP BY tier, version)`);
-                        this.db.exec(`CREATE UNIQUE INDEX IF NOT EXISTS idx_memory_versions_tier_version ON memory_versions(tier, version)`);
-                } catch (err: any) {
-                        console.warn(`[store] memory_versions unique index: ${err instanceof Error ? err.message : String(err)}`);
-                }
+	private db: Database;
+	constructor(path: string = DB_PATH) {
+		mkdirSync(dirname(path), { recursive: true });
+		this.db = new Database(path, { create: true });
+		this.db.exec("PRAGMA journal_mode = WAL;");
+		this.db.exec("PRAGMA busy_timeout = 5000;");
+		this.db.exec(SCHEMA);
+		this.migrate();
+	}
+	/** Idempotent column additions for schema evolution on existing installs. */
+	private migrate() {
+		const columns: Array<[string, string, string]> = [
+			// notes: distinguish benchmark run notes from terminal-session notes
+			["notes", "kind", "ALTER TABLE notes ADD COLUMN kind TEXT DEFAULT 'benchmark'"],
+			["notes", "project_path", "ALTER TABLE notes ADD COLUMN project_path TEXT"],
+			["notes", "project_slug", "ALTER TABLE notes ADD COLUMN project_slug TEXT"],
+			// improvements: remember the memory version a shipped patch produced
+			// (enables auto-unship via rollback when the task later regresses)
+			["improvements", "memory_version", "ALTER TABLE improvements ADD COLUMN memory_version INTEGER"],
+			// tasks: minted-task provenance (mint.ts) — origin/status/source_run_id;
+			// 'status' defaults to 'regression' so seeded tasks behave as before
+			["tasks", "origin", "ALTER TABLE tasks ADD COLUMN origin TEXT DEFAULT 'seed'"],
+			["tasks", "status", "ALTER TABLE tasks ADD COLUMN status TEXT DEFAULT 'regression'"],
+			["tasks", "source_run_id", "ALTER TABLE tasks ADD COLUMN source_run_id TEXT"],
+			// runs: the OS isolation the agent bash tool actually ran under
+			// (M6-3, audit M4-c D2) — 'bwrap' | 'seatbelt' | 'process'; NULL =
+			// pre-M6 rows, when the level was not recorded.
+			["runs", "sandbox_isolation", "ALTER TABLE runs ADD COLUMN sandbox_isolation TEXT"],
+			["jobs", "last_ok", "ALTER TABLE jobs ADD COLUMN last_ok INTEGER"],
+			["jobs", "last_error", "ALTER TABLE jobs ADD COLUMN last_error TEXT"],
+			["jobs", "last_duration_ms", "ALTER TABLE jobs ADD COLUMN last_duration_ms INTEGER"],
+			// improvements: the mem0 memory ids a shipped patch produced (the
+			// mem0-backed learning core) — retention's auto-unship deletes them
+			// from the platform and re-renders the tier. NULL = legacy ships.
+			["improvements", "memory_ids", "ALTER TABLE improvements ADD COLUMN memory_ids TEXT"],
+		];
+		for (const [table, col, ddl] of columns) {
+			const existing = this.query<any>(`PRAGMA table_info(${table})`).some((c: any) => c.name === col);
+			if (!existing) {
+				try {
+					this.db.exec(ddl);
+				} catch (err: any) {
+					// Only SQLite's concurrent-migration marker is ignorable (LOW-1);
+					// anything else (read-only DB, corruption, permissions) must surface
+					// here — swallowing it deferred the failure to every later query as a
+					// confusing "no such column" far from the cause.
+					if (!/duplicate column name/i.test(err instanceof Error ? err.message : String(err))) throw err;
+				}
+			}
+		}
+		// MEDIUM-3: memory_versions(tier, version) had no UNIQUE constraint and
+		// runProjectDream allocated versions outside a transaction — concurrent
+		// dreams could insert the same (tier, version) with different content,
+		// making history/rollback ambiguous. Dedupe legacy duplicates (keeping
+		// the newest row of each pair), then enforce the index. Best-effort on
+		// read-only legacy DBs: allocation is ALSO serialized by the BEGIN
+		// IMMEDIATE transactions in writeTier and runProjectDream.
+		try {
+			this.db.exec(
+				`DELETE FROM memory_versions WHERE id NOT IN (SELECT MAX(id) FROM memory_versions GROUP BY tier, version)`,
+			);
+			this.db.exec(
+				`CREATE UNIQUE INDEX IF NOT EXISTS idx_memory_versions_tier_version ON memory_versions(tier, version)`,
+			);
+		} catch (err: any) {
+			console.warn(`[store] memory_versions unique index: ${err instanceof Error ? err.message : String(err)}`);
+		}
 
-                // M9: the governor's budgetStatus() sums run tokens by ended_at
-                // and the retention pass (retention.ts) prunes old runs by
-                // ended_at — the column had no index, so both were full table
-                // scans that get slower as history grows. (The automation_runs
-                // started_at index lives in AUTOMATIONS_SCHEMA instead: a fresh
-                // install constructs this Store before that schema installs the
-                // table — server.ts's quickCheck precedes ensureAutomationsSchema.)
-                this.db.exec(`CREATE INDEX IF NOT EXISTS idx_runs_ended_at ON runs(ended_at)`);
-        }
-        query<T = any>(sql: string, params: any[] = []): T[] {
-                const stmt = this.db.prepare(sql);
-                return stmt.all(...params) as T[];
-        }
-        /**
-         * PRAGMA quick_check (M6): the fast O(N) integrity pass (skips the
-         * index↔table cross-checks of full integrity_check — sqlite.org/pragma
-         * recommends it for routine boot-time validation). Returns "ok" or the
-         * first failure line. The engine runs it at boot (server.ts startServer)
-         * so a damaged DB fails FAST with the repair hint instead of corrupting
-         * writes mid-dream.
-         */
-        quickCheck(): string {
-                try {
-                        const rows = this.query<{ quick_check?: string }>("PRAGMA quick_check");
-                        return String(rows[0]?.quick_check ?? "unknown");
-                } catch (err: any) {
-                        return `error: ${err instanceof Error ? err.message : String(err)}`;
-                }
-        }
-        get<T = any>(sql: string, params: any[] = []): T | undefined {
-                return this.db.prepare(sql).get(...params) as T | undefined;
-        }
-        run(sql: string, params: any[] = []) {
-                return this.db.prepare(sql).run(...params);
-        }
-        close() {
-                this.db.close();
-        }
+		// M9: the governor's budgetStatus() sums run tokens by ended_at
+		// and the retention pass (retention.ts) prunes old runs by
+		// ended_at — the column had no index, so both were full table
+		// scans that get slower as history grows. (The automation_runs
+		// started_at index lives in AUTOMATIONS_SCHEMA instead: a fresh
+		// install constructs this Store before that schema installs the
+		// table — server.ts's quickCheck precedes ensureAutomationsSchema.)
+		this.db.exec(`CREATE INDEX IF NOT EXISTS idx_runs_ended_at ON runs(ended_at)`);
+	}
+	query<T = any>(sql: string, params: any[] = []): T[] {
+		const stmt = this.db.prepare(sql);
+		return stmt.all(...params) as T[];
+	}
+	/**
+	 * PRAGMA quick_check (M6): the fast O(N) integrity pass (skips the
+	 * index↔table cross-checks of full integrity_check — sqlite.org/pragma
+	 * recommends it for routine boot-time validation). Returns "ok" or the
+	 * first failure line. The engine runs it at boot (server.ts startServer)
+	 * so a damaged DB fails FAST with the repair hint instead of corrupting
+	 * writes mid-dream.
+	 */
+	quickCheck(): string {
+		try {
+			const rows = this.query<{ quick_check?: string }>("PRAGMA quick_check");
+			return String(rows[0]?.quick_check ?? "unknown");
+		} catch (err: any) {
+			return `error: ${err instanceof Error ? err.message : String(err)}`;
+		}
+	}
+	get<T = any>(sql: string, params: any[] = []): T | undefined {
+		return this.db.prepare(sql).get(...params) as T | undefined;
+	}
+	run(sql: string, params: any[] = []) {
+		return this.db.prepare(sql).run(...params);
+	}
+	close() {
+		this.db.close();
+	}
 }
 
 /**
@@ -326,25 +353,25 @@ export class Store {
 let _store: Store | null = null;
 
 export function getStore(): Store {
-        if (_store === null) {
-                _store = new Store();
-                // Keep a strong global reference: bun:sqlite Databases can be
-                // GC-closed mid-transaction when no JS reference remains (verified
-                // against Bun 1.3 — see docs/detached-engine-research.md §1).
-                (globalThis as any).__unown_engine_store = _store;
-        }
-        return _store;
+	if (_store === null) {
+		_store = new Store();
+		// Keep a strong global reference: bun:sqlite Databases can be
+		// GC-closed mid-transaction when no JS reference remains (verified
+		// against Bun 1.3 — see docs/detached-engine-research.md §1).
+		(globalThis as any).__unown_engine_store = _store;
+	}
+	return _store;
 }
 
 /** Test/doctor probe: has the DB been opened in this process? */
 export function storeOpened(): boolean {
-        return _store !== null;
+	return _store !== null;
 }
 
 export const store: Store = new Proxy({} as Store, {
-        get(_target, prop, receiver) {
-                const s = getStore() as any;
-                const value = s[prop];
-                return typeof value === "function" ? value.bind(s) : value;
-        },
+	get(_target, prop, receiver) {
+		const s = getStore() as any;
+		const value = s[prop];
+		return typeof value === "function" ? value.bind(s) : value;
+	},
 });

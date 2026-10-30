@@ -9,6 +9,38 @@ otherwise specified; the release tag must always equal package.json's version.
 
 Repo conventions: measured claims cite their receipts (`docs/testing-strategy.md`, `benchmarks/memory-eval/*/RESULTS.md`). Changes to agent behavior — prompts, default models, routing, guard rules, hooks, memory injection — are filed under **Agent Behavior**; the policy lives in [docs/BEHAVIOR.md](docs/BEHAVIOR.md).
 
+## [Unreleased]
+
+The subagent-orchestration round (in progress): make Unown measurably better
+at delegation — every spawn carries its reason, every delegation is audited,
+and the gains are proven by a before/after benchmark on the live agent. The
+round's contract and research: [the session log](docs/delegation-round-session.md) ·
+[the competitor research](docs/delegation-competitor-research.md) · [the
+baseline receipts](benchmarks/delegation-round/RESULTS.md) (v0.0.45 scores
+76/100 on the round's ten axes; seven failures caught live, F26–F33).
+
+### Added
+
+- **The `why` field on every delegation** — premises before delegating: the `task` tool accepts `why` (single + batch items), journaled with the spawn, shown in the result section, the async ack, the fleet delivery, `task_control status` and `/tasks` — the audit trail for WHY a spawn existed, exactly what Claude Code issue #95730 asks for and GitHub's "smarter delegation" change measured the value of.
+- **The delegation audit ledger** (`delegation.ts`, both lanes): every terminal spawn becomes a `DelegationRecord` (why/cost/outcome) in the session ledger + the engine's new `POST/GET /api/delegations` aggregate (the `delegations` table with by-agent tallies, totals, and why-coverage); the fleet journal's `spawned`/`finished` entries carry the audit fields (`why`, `taskPreview` — the ORIGINAL ask, not the repo-map preamble; turns/tokens/tools/elapsed/blocked on finish), pre-0.0.46 entries stay readable.
+- **The `/delegation` card + the `delegation` footer chip** (in-session): the audit card with receipts-only worth lines — a blocked/timeout run is *not worth it* by its own status, a done run reports facts (turns/tokens/seconds), an expensive one (≥100k tok) is flagged for audit, nothing is judged; the chip counts unseen delegations (not-ok first) and clears when the card opens. The clean bill states absence.
+- **`unown delegations`** — the CLI audit view: pairs the fleet journal's spawned/finished records by id (both lanes, open spawns stated honestly), `--limit N`, `--json`, `--engine` (the cross-session aggregate). `unown help` and completions updated.
+- **The dashboard's Delegation screen** (`dashboard/screens/delegation-screen.ts`): recent records with why + receipts-only verdicts, by-agent tallies, the why-coverage line (the round's headline metric), registered beside Recovery with the `delegation:recorded` SSE invalidation.
+- **Turn caps for the read-only builtins** — the F26 fix: `scout`/`background-explore` ship `maxTurns: 24`, `explore` 40 (≈3× their healthy envelopes). The measured runaway (104 turns / 596k input tokens / 111 tool calls on ONE question, killed only by the 300 s wall clock — the Claude Code #106025 shape) now ends in a typed max-turns partial with anchors instead of a loop.
+- **The delegation round's benchmark suite** (`benchmarks/delegation-round/`): the ten-axis methodology contract, the pinned nine-lane live workload runner + PTY pane-truth lane, the read-only scorer, the F26–F34 validation ledger, and the committed baseline receipts — **v0.0.45 scores 76/100** (delegation quality 86 · reuse 0 · explainability 56 · progress visibility 55 · failure recovery 100 …).
+
+### Fixed
+
+- **The vanishing async delivery (F27)**: fleet results steered the parent's turn but were never persisted — a replayed session jumped from the status poll to the answer with the child's report missing. Deliveries now persist as `unown-subagent-delivery` session entries.
+- **The push-channel polling loop (F32)**: the parent polled `task_control status` 7× in 15 s while a 4-second child ran (each poll a model turn). The async ack and a running child's status reply now state the push contract: the result arrives as its own message and wakes you — do not poll.
+- **The taskPreview composition defect (in-round)**: the journaled task preview captured the repo-map preamble instead of the ask; both lanes now journal the ORIGINAL task text.
+- **The delegations schema order (F34)**: the table's index ran before its table in the schema string — the engine crash-looped at boot; order fixed and pinned by a fresh-DB construction test.
+
+### Agent Behavior
+
+- The `task` tool's description now teaches the four-element handoff (objective, context, boundary, done-definition — GitHub's and Anthropic's brief elements) and asks for `why` on every spawn; the async ack states the wake-on-delivery contract. Live-verified: the model states its delegation reason unprompted.
+- The read-only subagents (`scout`, `background-explore`, `explore`) are capped at 24/24/40 turns — a bounded child reports a partial with anchors instead of looping to the wall clock; their prompts add the "if you find yourself looping, STOP and report" line.
+
 ## [0.0.45] - 2026-10-30
 
 The TUI Productization & Dogfooding mission: transform the terminal agent into the most transparent, trustworthy and informative surface it can be. The round's contract, research and audit: [the session log](docs/observability-round-session.md) · [the competitor research + scorecard](docs/observability-competitor-research.md) · [the five user journeys](docs/observability-user-journeys.md) · [the TUI observability audit](docs/tui-observability-audit.md) (22 ambiguity flags, 8 benchmark tasks, the nine-level information architecture).

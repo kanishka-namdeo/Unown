@@ -37,6 +37,15 @@ Because it is a real unown process, a subagent gets everything a terminal sessio
 
 The subagent does not see the parent conversation. The parent gets back a report: exit status, turns, tokens in/out, tool-call count, and the subagent's final message.
 
+## The why field — premises before delegating
+
+Every `task` call accepts **`why`**: one line stating WHY you are delegating this instead of doing it inline (context pressure / parallelism / isolation / specialization, and what you expect back). The reason is not decoration — it is the delegation audit's spine:
+
+- it rides the tool result (`_why: …_` under the run header), the async ack, the fleet delivery, `task_control status` and `/tasks`, so the human reading the transcript sees the reasoning at the moment it mattered;
+- it is journaled with the spawn (`.unown/fleet/journal.jsonl`) and reported to the engine's `/api/delegations` aggregate, so `unown delegations`, the `/delegation` card and the dashboard's **Delegation** screen can answer *why did this delegation exist* long after the session closed.
+
+The model is told to state it on every spawn (omit only when the reason is obvious from the conversation); the async ack also states the push contract — the result arrives as its own message and wakes the parent, so polling `task_control status` wastes turns (a live baseline measured 7 polls in 15 s against a 4-second child).
+
 ## Structured outputs
 
 Any task call (single or batch item) can demand a **typed reply** with `output_schema` — a JSON Schema the subagent's *final message* must satisfy. A schema passed as a **stringified JSON string parses leniently** (models and providers routinely emit object parameters as strings — observed three times consecutively in a live session before this existed; the coerced schema is used and the coercion is reported back as a visible note so the model learns the object form); a string that does not parse as JSON fails fast, before any subagent is spawned, with a fix-naming error. The reply is parsed as JSON (bare JSON, a fenced `json` code block, or one JSON object surrounded by prose all work) and validated locally; an invalid reply is retried up to two times with the **exact, path-annotated defects** quoted back to the child (`$.findings[0].severity: expected low | medium | high, got "critical"`), after which:
@@ -119,7 +128,7 @@ This repo ships four project agents in `.unown/agents/` (the Website Excellence 
 | `context` | no | `fresh` (default) or `summary` — `summary` prepends a distilled brief of the parent session to the task (see [Context briefs](#context-briefs)) |
 | `contextBrief` | no | Role-directed instruction shaping the summary brief (what it keeps) — only used with `context: summary` |
 | `timeoutMs` | no | Per-agent wall-clock budget for one spawn — `600000`, `"10m"` and `"90s"` all parse; clamped to 30s–30min. Default 300000 (5 min); the `browser` builtin ships 600000. Also `timeout_ms` / `timeout`. Session-wide override: `UNOWN_SUBAGENT_TIMEOUT_MS` (a per-agent value always wins). Applies in BOTH lanes — in the async fleet it replaces the 900 s fleet default for that child (2026-10-26 stress round: the docs promised the composition, the watchdog had ignored it) |
-| `maxTurns` | no | Cap on completed model turns for one spawn — routed to the child as `--max-turns`; a turn is ONE model call. Default none (timeout is the only bound). Also `max_turns`. Session-wide override: `UNOWN_SUBAGENT_MAX_TURNS` (a per-agent value always wins) |
+| `maxTurns` | no | Cap on completed model turns for one spawn — routed to the child as `--max-turns`; a turn is ONE model call. Also `max_turns`. Session-wide override: `UNOWN_SUBAGENT_MAX_TURNS` (a per-agent value always wins). **The read-only builtins ship caps** (`scout`/`background-explore` 24, `explore` 40) — the delegation round's answer to the measured runaway (104 turns / 596k tokens on one question, killed only by the 300 s clock): a capped child reports a max-turns partial instead of looping. Default for other agents: none (timeout is the only bound) |
 
 The Markdown **body (everything after the closing `---`) becomes the subagent's system prompt**. Files without valid `name` and `description` frontmatter are skipped silently. Invalid values for the routing fields are dropped, never thrown. Other frontmatter fields are ignored. Run `/agents` in a session to list everything discovered, with source and toolset.
 

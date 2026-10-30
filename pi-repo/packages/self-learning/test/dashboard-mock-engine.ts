@@ -36,6 +36,7 @@ import type {
 	BridgeResponse,
 	ChangedBy,
 	Cycle,
+	DelegationsResponse,
 	Dream,
 	HookEntry,
 	Improvement,
@@ -752,6 +753,81 @@ export async function startMockEngine(): Promise<MockEngine> {
 		url: "http://127.0.0.1:3031/v1",
 	};
 
+	// The delegation round's audit ledger fixture: one healthy sync spawn,
+	// one async spawn with its why, and the F26 runaway (timeout, 596k tok)
+	// so the screen's receipts-only verdict rows are all exercised.
+	const delegations: DelegationsResponse = {
+		delegations: [
+			{
+				id: 3,
+				lane: "sync",
+				agent: "scout",
+				name: null,
+				task: "Find every caller of parseConfig()",
+				why: null,
+				status: "timeout",
+				turns: 104,
+				tokens_in: 596_000,
+				tokens_out: 5_000,
+				tool_calls: 111,
+				elapsed_ms: 300_000,
+				blocked: 0,
+				project_path: "/home/dev/repo",
+				ts: T0 - 3 * MIN,
+			},
+			{
+				id: 2,
+				lane: "fleet",
+				agent: "general",
+				name: "counter",
+				task: "Count the TypeScript lines under test/",
+				why: "parallelism — keep answering while it counts",
+				status: "done",
+				turns: 2,
+				tokens_in: 8_915,
+				tokens_out: 74,
+				tool_calls: 1,
+				elapsed_ms: 4_200,
+				blocked: 0,
+				project_path: "/home/dev/repo",
+				ts: T0 - 12 * MIN,
+			},
+			{
+				id: 1,
+				lane: "sync",
+				agent: "reviewer",
+				name: null,
+				task: "Review atomic.ts for correctness issues",
+				why: "specialization — a second pair of eyes on the diff",
+				status: "done",
+				turns: 6,
+				tokens_in: 45_000,
+				tokens_out: 3_000,
+				tool_calls: 14,
+				elapsed_ms: 42_000,
+				blocked: 0,
+				project_path: "/home/dev/repo",
+				ts: T0 - 40 * MIN,
+			},
+		],
+		tallies: [
+			{ agent: "reviewer", status: "done", count: 1, tokens: 48_000, avg_turns: 6 },
+			{ agent: "general", status: "done", count: 1, tokens: 8_989, avg_turns: 2 },
+			{ agent: "scout", status: "timeout", count: 1, tokens: 601_000, avg_turns: 104 },
+		],
+		totals: {
+			total: 3,
+			ok: 2,
+			blocked: 0,
+			failed: 0,
+			tokens_in: 649_915,
+			tokens_out: 8_074,
+			turns: 112,
+			tool_calls: 126,
+			with_why: 2,
+		},
+	};
+
 	const webcache: WebCacheStats = {
 		enabled: true,
 		root: "/home/dev/.unown/cache/web",
@@ -1105,6 +1181,10 @@ export async function startMockEngine(): Promise<MockEngine> {
 		}
 		if (p === "/api/webcache") {
 			json(res, webcache);
+			return;
+		}
+		if (p === "/api/delegations") {
+			json(res, delegations);
 			return;
 		}
 		if (p === "/api/automations") {
