@@ -66,6 +66,7 @@ import { DashboardApp } from "./dashboard/dashboard-app.ts";
 import { DashboardStore } from "./dashboard/dashboard-data.ts";
 import {
 	type DelegationRecord,
+	deriveWorthLine,
 	getDelegationLedger,
 	renderDelegationCard,
 	renderDelegationChip,
@@ -2054,6 +2055,23 @@ export function createUnownToolsExtension(opts: UnownToolsOptions) {
 				outboxDead: engine.deadNotes,
 			});
 			const telemetry = missionTelemetry(ctx);
+			// The delegation round: the fleet facts for the brief's window —
+			// completed children (with their stated why + the receipts-only
+			// verdict) and the still-running ones, from the session ledger +
+			// the fleet manager's live children.
+			const since = sinceTs > 0 ? sinceTs : Date.now() - (awayMs > 0 ? awayMs : 24 * 60 * 60_000);
+			const delegated = {
+				completed: delegationLedger
+					.all()
+					.filter((r) => r.ts >= since)
+					.slice(-3)
+					.map((r) => ({
+						label: r.name ? `${r.name} (${r.agent})` : r.agent,
+						why: r.why,
+						verdict: deriveWorthLine(r),
+					})),
+				running: fleetManager.childrenLive()?.map((c) => `${c.name ?? c.agent} (${c.agent})`) ?? [],
+			};
 			const sessionName =
 				typeof ctx?.sessionManager?.getSessionName === "function" ? ctx.sessionManager.getSessionName() : undefined;
 			const openTodos = todos.todos
@@ -2079,6 +2097,7 @@ export function createUnownToolsExtension(opts: UnownToolsOptions) {
 					goal: goal ? { text: goal.text, status: goal.status } : null,
 				},
 				learned: briefLearnedLines(getLearningFeed().all(), awayMs > 0 ? awayMs : 24 * 60 * 60_000),
+				delegated,
 				telemetry: {
 					sessionMs: telemetry.sessionMs,
 					costUsd: telemetry.costUsd,

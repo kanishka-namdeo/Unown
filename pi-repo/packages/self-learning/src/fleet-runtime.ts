@@ -216,6 +216,13 @@ export class FleetManager {
 		this.onDelegation = fn;
 	}
 
+	/** The delegation round: the LIVE (non-terminal) children — the
+	 *  auto-brief's "still running" line and any aggregate surface that
+	 *  wants the fleet's current shape without touching internals. */
+	childrenLive(): FleetChildState[] {
+		return [...this.children.values()].filter((c) => !isTerminalFleetStatus(c.status));
+	}
+
 	fleetDirPath(): string {
 		return this.fleetDir;
 	}
