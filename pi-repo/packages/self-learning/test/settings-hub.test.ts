@@ -14,11 +14,22 @@ import "./_env.ts"; // MUST be first: any store-binding import must land in the 
 import { afterAll, beforeEach, describe, expect, test } from "bun:test";
 import { mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { tmpdir } from "node:os";
+import { TEST_TMP } from "./_env.ts";
 
-const TEST_ROOT = join(tmpdir(), `settings-hub-tests-${process.pid}`);
+// Under the shared TEST_TMP (realpath-resolved) like every other suite in
+// this directory — NOT a bare tmpdir() sibling. Two reasons, both caught
+// by macOS CI (bun's file execution order varies by platform/runner):
+// this suite re-points the PROCESS env's UNOWN_HOME at its own tree for the
+// duration of its tests, and a later file in the SAME bun process
+// (models-catalog.test.ts) loads its module scope inside that window — its
+// isolation tripwire compares UNOWN_HOME against TEST_TMP and rightfully
+// refuses a foreign tree ("UNOWN_HOME resolved outside the test tree").
+// Living under TEST_TMP keeps even the polluted window inside the test
+// tree; the afterAll restore below closes the window for every order.
+const TEST_ROOT = join(TEST_TMP, `settings-hub-tests-${process.pid}`);
 const TEST_HOME = join(TEST_ROOT, "home");
 const TEST_PROJECT = join(TEST_ROOT, "project");
+const PRIOR_UNOWN_HOME = process.env.UNOWN_HOME;
 
 function freshEnv(): void {
         process.env.UNOWN_HOME = TEST_HOME;
@@ -33,6 +44,13 @@ beforeEach(() => {
 
 afterAll(() => {
         rmSync(TEST_ROOT, { recursive: true, force: true });
+        // Close the env-pollution window: bun runs test files in ONE
+        // process, so every file loaded after this suite must see the
+        // _env.ts redirect (engine-tests-b), not our tree — restore what
+        // this file's import of _env.ts established. Same class as the
+        // withKnownModels save/restore pattern in models-catalog.test.ts.
+        if (PRIOR_UNOWN_HOME === undefined) delete process.env.UNOWN_HOME;
+        else process.env.UNOWN_HOME = PRIOR_UNOWN_HOME;
 });
 
 // ---------------------------------------------------------------------------
