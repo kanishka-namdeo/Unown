@@ -1,0 +1,54 @@
+{
+	"schema": "delegation-round/lane/1",
+	"id": "t1-map",
+	"name": "map the fleet journal",
+	"injected": false,
+	"prompt": "Map where the fleet journal is implemented: which file owns the journal entry types, and which operations get journaled? Also name the two lanes that write 'spawned' entries. Keep the final answer under 120 words.",
+	"exit": 0,
+	"signal": null,
+	"timedOut": false,
+	"durationMs": 12849,
+	"envelope": {
+		"type": "result",
+		"subtype": "success",
+		"result": "The fleet journal lives in `pi-repo/packages/self-learning/src/fleet-reaper.ts`:\n\n- **Entry type**: `FleetJournalEntry` (line 163) — a discriminated union of 5 ops: `spawned` (optional `lane: \"fleet\"`), `spawned` (`lane: \"sync\"`), `worktree`, `finished`, and `reaped`/`abandoned`.\n- **Journalled operations**: `recordFleetChildSpawn` (spawned/fleet lane, line 196), `recordSyncSubagentSpawn` (spawned/sync lane, line 205), `recordFleetChildWorktree` (line 209), `recordFleetChildFinish` (line 212), and the boot sweep's disposition writes (line 520).\n- **Two `spawned` lanes**: **fleet** (async fire-and-forget children, via `recordFleetChildSpawn`) and **sync** (inline one-shot subagents, via `recordSyncSubagentSpawn` — one entry per attempt, including retries and model-fallback spawns).\n\nEntries append to `.unown/fleet/journal.jsonl`; the crash sweeper reads it at boot and journals `reaped`/`abandoned` dispositions.",
+		"session_id": "01a18c08-44b2-7995-9e69-ec6ba54a3e76",
+		"model": "agnes-3.0-flash",
+		"usage": {
+			"input_tokens": 60153,
+			"output_tokens": 427,
+			"cache_read_input_tokens": 16384,
+			"cache_creation_input_tokens": 0
+		},
+		"cost_usd": 0,
+		"duration_ms": 12268,
+		"num_turns": 3,
+		"unown_version": "0.0.45"
+	},
+	"markers": {
+		"/fleet-reaper\\.ts/i": true,
+		"/spawned/i": true,
+		"/finished/i": true,
+		"/sync/i": true
+	},
+	"allMarkersPass": true,
+	"artifact": null,
+	"journalDelta": [],
+	"overviewBefore": {
+		"ok": true,
+		"notes": 43,
+		"notesPending": 5,
+		"dreams": 8,
+		"memoryProjectVersion": 5,
+		"raw": 3187
+	},
+	"overviewAfter": {
+		"ok": true,
+		"notes": 44,
+		"notesPending": 6,
+		"dreams": 8,
+		"memoryProjectVersion": 5,
+		"raw": 3127
+	},
+	"stderrTail": ""
+}

@@ -1,0 +1,387 @@
+{
+	"schema": "delegation-round/scores/1",
+	"run": "after-2026-10-30T08-58-33",
+	"label": "after",
+	"scoredAt": "2026-10-30T09:21:04.699Z",
+	"unownVersion": "0.0.45",
+	"gitSha": "91123d4756f41e719c4d27a79a0cd176024d9a4d",
+	"overall": 79,
+	"axes": {
+		"delegationQuality": {
+			"score": 84,
+			"raw": {
+				"spawns": 13,
+				"okSpawns": 11,
+				"handoffPct": 83,
+				"perSpawn": [
+					{
+						"lane": "t3-triptych",
+						"agent": "general",
+						"score": 0,
+						"hits": [],
+						"misses": [
+							"objective",
+							"context",
+							"boundary",
+							"done"
+						]
+					},
+					{
+						"lane": "t3-triptych",
+						"agent": "explore",
+						"score": 1,
+						"hits": [
+							"objective",
+							"context",
+							"boundary",
+							"done"
+						],
+						"misses": []
+					},
+					{
+						"lane": "t3-triptych",
+						"agent": "explore",
+						"score": 1,
+						"hits": [
+							"objective",
+							"context",
+							"boundary",
+							"done"
+						],
+						"misses": []
+					},
+					{
+						"lane": "t3-triptych",
+						"agent": "explore",
+						"score": 1,
+						"hits": [
+							"objective",
+							"context",
+							"boundary",
+							"done"
+						],
+						"misses": []
+					},
+					{
+						"lane": "t5-review",
+						"agent": "reviewer",
+						"score": 0.75,
+						"hits": [
+							"objective",
+							"context",
+							"done"
+						],
+						"misses": [
+							"boundary"
+						]
+					},
+					{
+						"lane": "t5-review",
+						"agent": "reviewer",
+						"score": 1,
+						"hits": [
+							"objective",
+							"context",
+							"boundary",
+							"done"
+						],
+						"misses": []
+					},
+					{
+						"lane": "t5-review",
+						"agent": "reviewer",
+						"score": 1,
+						"hits": [
+							"objective",
+							"context",
+							"boundary",
+							"done"
+						],
+						"misses": []
+					},
+					{
+						"lane": "t5-review",
+						"agent": "reviewer",
+						"score": 1,
+						"hits": [
+							"objective",
+							"context",
+							"boundary",
+							"done"
+						],
+						"misses": []
+					},
+					{
+						"lane": "t5-review",
+						"agent": "reviewer",
+						"score": 1,
+						"hits": [
+							"objective",
+							"context",
+							"boundary",
+							"done"
+						],
+						"misses": []
+					},
+					{
+						"lane": "t6a-unknown-agent",
+						"agent": "general",
+						"score": 0.75,
+						"hits": [
+							"objective",
+							"context",
+							"done"
+						],
+						"misses": [
+							"boundary"
+						]
+					},
+					{
+						"lane": "t6b-blocked-task",
+						"agent": "general",
+						"score": 0.75,
+						"hits": [
+							"objective",
+							"boundary",
+							"done"
+						],
+						"misses": [
+							"context"
+						]
+					},
+					{
+						"lane": "t7-duplicate",
+						"agent": "general",
+						"score": 0.75,
+						"hits": [
+							"objective",
+							"context",
+							"done"
+						],
+						"misses": [
+							"boundary"
+						]
+					},
+					{
+						"lane": "t8-async",
+						"agent": "general",
+						"score": 0.75,
+						"hits": [
+							"objective",
+							"context",
+							"done"
+						],
+						"misses": [
+							"boundary"
+						]
+					}
+				],
+				"notOkSpawns": [
+					{
+						"lane": "t3-triptych",
+						"agent": "explore",
+						"status": "no-result"
+					},
+					{
+						"lane": "t5-review",
+						"agent": "reviewer",
+						"status": "BLOCKED"
+					}
+				]
+			},
+			"evidence": []
+		},
+		"subagentReuse": {
+			"score": 0,
+			"raw": {
+				"duplicateSpawns": [
+					{
+						"first": {
+							"lane": "t5-review",
+							"task": "Careful diff review of a small change in pi-repo/packages/self-learning/src/atomic.ts at /"
+						},
+						"second": {
+							"lane": "t5-review",
+							"task": "Careful diff review of a small change in /home/z/my-project/unown: pi-repo/packages/self-l"
+						},
+						"jaccard": 0.75
+					},
+					{
+						"first": {
+							"lane": "t5-review",
+							"task": "Careful diff review of a small change in pi-repo/packages/self-learning/src/atomic.ts at /"
+						},
+						"second": {
+							"lane": "t5-review",
+							"task": "Diff review of one small change in /home/z/my-project/unown: pi-repo/packages/self-learnin"
+						},
+						"jaccard": 0.66
+					},
+					{
+						"first": {
+							"lane": "t5-review",
+							"task": "Careful diff review of a small change in /home/z/my-project/unown: pi-repo/packages/self-l"
+						},
+						"second": {
+							"lane": "t5-review",
+							"task": "Diff review of one small change in /home/z/my-project/unown: pi-repo/packages/self-learnin"
+						},
+						"jaccard": 0.7
+					},
+					{
+						"first": {
+							"lane": "t5-review",
+							"task": "Diff review of one small change in /home/z/my-project/unown: pi-repo/packages/self-learnin"
+						},
+						"second": {
+							"lane": "t5-review",
+							"task": "Review a small change to /home/z/my-project/unown/pi-repo/packages/self-learning/src/atomi"
+						},
+						"jaccard": 0.62
+					}
+				],
+				"steerOrResumeEvents": 0,
+				"followUpSpawns": 7,
+				"opportunities": 11
+			},
+			"evidence": [
+				"4 duplicate spawn pair(s): same agent + task Jaccard > 0.6"
+			]
+		},
+		"contextEfficiency": {
+			"score": 75,
+			"raw": {
+				"childTokens": 339408,
+				"parentTokens": 110446,
+				"offloadSharePct": 75,
+				"parentPeakWindow": 33008
+			},
+			"evidence": []
+		},
+		"userExplainability": {
+			"score": 92,
+			"raw": {
+				"spawns": 13,
+				"withWhy": 12,
+				"reasonPct": 92,
+				"postHocPct": 85,
+				"asyncAckVisible": true,
+				"paneWidgetVisible": true
+			},
+			"evidence": [
+				"why recorded on 12/13 spawns (baseline has no why field)"
+			]
+		},
+		"progressVisibility": {
+			"score": 100,
+			"raw": {
+				"paneBox": true,
+				"paneRow": true,
+				"asyncAck": true,
+				"persistedDeliveries": 1,
+				"streamEvents": true
+			},
+			"evidence": [
+				"persisted async deliveries in transcripts: 1 (the F27 lane)"
+			]
+		},
+		"memoryUtilisation": {
+			"score": 100,
+			"raw": {
+				"notesBefore": 43,
+				"notesAfter": 74,
+				"notesDelta": 31,
+				"parentRuns": 9,
+				"childNotesApprox": 22,
+				"spawns": 13
+			},
+			"evidence": []
+		},
+		"learningRetention": {
+			"score": 40,
+			"raw": {
+				"memoryProjectVersionBefore": 7,
+				"memoryProjectVersionAfter": 8,
+				"dreamsDelta": 0,
+				"pendingDrained": -1,
+				"triggerStatus": 409
+			},
+			"evidence": []
+		},
+		"failureRecovery": {
+			"score": 100,
+			"raw": {
+				"injected": 2,
+				"recovered": 2,
+				"results": [
+					{
+						"lane": "t6a-unknown-agent",
+						"markerOk": true,
+						"typedErrorSurfaced": true,
+						"recovered": true
+					},
+					{
+						"lane": "t6b-blocked-task",
+						"markerOk": true,
+						"typedErrorSurfaced": true,
+						"recovered": true
+					}
+				]
+			},
+			"evidence": []
+		},
+		"autonomousDecisionQuality": {
+			"score": 100,
+			"raw": {
+				"decisions": [
+					{
+						"lane": "t1-map",
+						"choice": "inline",
+						"ok": true
+					},
+					{
+						"lane": "t2-callers",
+						"choice": "inline",
+						"ok": true
+					},
+					{
+						"lane": "t3-triptych",
+						"choice": "2 call(s) (batch)",
+						"ok": true
+					},
+					{
+						"lane": "t4-script",
+						"choice": "inline",
+						"ok": true
+					},
+					{
+						"lane": "t5-review",
+						"choice": "reviewer,reviewer,reviewer,reviewer,reviewer",
+						"ok": true
+					},
+					{
+						"lane": "t7-duplicate",
+						"choice": "general",
+						"ok": true
+					},
+					{
+						"lane": "t8-async",
+						"choice": "async",
+						"ok": true
+					}
+				],
+				"okDecisions": 7
+			},
+			"evidence": []
+		},
+		"humanInterventionRate": {
+			"score": 100,
+			"raw": {
+				"lanes": 9,
+				"completedWithoutIntervention": 9,
+				"interventions": []
+			},
+			"evidence": []
+		}
+	}
+}

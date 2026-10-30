@@ -1,0 +1,54 @@
+{
+	"schema": "delegation-round/lane/1",
+	"id": "t6a-unknown-agent",
+	"name": "injected failure: unknown agent",
+	"injected": true,
+	"prompt": "Delegate this to a subagent named 'repo-cartographer' (exact name): 'Count the .ts files under src/ in this repo.' Then report what happened, and get the count anyway.",
+	"exit": 0,
+	"signal": null,
+	"timedOut": false,
+	"durationMs": 30329,
+	"envelope": {
+		"type": "result",
+		"subtype": "success",
+		"result": "## What happened\n\n**Delegation:** I launched a `general` subagent with the label `repo-cartographer` — but that's just a display label in the fleet, not the agent type. The `task` tool's `agent` parameter accepts one of the predefined agent names (`general`, `explore`, `scout`, `worker`, `reviewer`, etc.), and \"repo-cartographer\" isn't a registered agent. The system silently fell back to `general` (you can see it in the report header: `## general (ok; 4 turns, 43k in / 716 out, 3 tool calls)`).\n\n**Result:** The subagent ran `find src/ -name '*.ts' -type f | wc -l` and reported **367** files, with a breakdown by directory.\n\n**Verification:** I re-ran the count myself — confirmed **367**.\n\nSo: the name `repo-cartographer` was not honored as an agent identity (no such agent exists), but the work was done and the count is correct: **367 `.ts` files under `src/`**.",
+		"session_id": "01a18c0c-567b-742d-a978-978894d9a0a8",
+		"model": "agnes-3.0-flash",
+		"usage": {
+			"input_tokens": 1112,
+			"output_tokens": 422,
+			"cache_read_input_tokens": 74240,
+			"cache_creation_input_tokens": 0
+		},
+		"cost_usd": 0,
+		"duration_ms": 29776,
+		"num_turns": 3,
+		"unown_version": "0.0.45"
+	},
+	"markers": {
+		"/367/": true
+	},
+	"allMarkersPass": true,
+	"artifact": null,
+	"journalDelta": [
+		"{\"op\":\"spawned\",\"lane\":\"sync\",\"id\":\"sync-mvuqvkkn-69rso5\",\"name\":\"general\",\"agent\":\"general\",\"pid\":29984,\"parentPid\":29964,\"promptFile\":\"/tmp/unown-subagent-M6ae2g/system-prompt.md\",\"why\":\"User explicitly wants this delegated to a subagent named 'repo-cartographer'\",\"taskPreview\":\"Count the .ts files under src/ in this repo. Use `find src/ -name '*.ts' | wc -l` or equivalent. Report: (1) the exact command you ran, (2) the count, (3) any n\",\"ts\":1793350990830}",
+		"{\"op\":\"finished\",\"id\":\"sync-mvuqvkkn-69rso5\",\"status\":\"done\",\"ts\":1793351006200,\"turns\":4,\"tokensIn\":43016,\"tokensOut\":716,\"toolCalls\":3,\"elapsedMs\":15377,\"why\":\"User explicitly wants this delegated to a subagent named 'repo-cartographer'\",\"taskPreview\":\"Count the .ts files under src/ in this repo. Use `find src/ -name '*.ts' | wc -l` or equivalent. Report: (1) the exact command you ran, (2) the count, (3) any n\"}"
+	],
+	"overviewBefore": {
+		"ok": true,
+		"notes": 57,
+		"notesPending": 19,
+		"dreams": 8,
+		"memoryProjectVersion": 5,
+		"raw": 3247
+	},
+	"overviewAfter": {
+		"ok": true,
+		"notes": 59,
+		"notesPending": 21,
+		"dreams": 8,
+		"memoryProjectVersion": 5,
+		"raw": 3247
+	},
+	"stderrTail": ""
+}

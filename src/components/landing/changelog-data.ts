@@ -30,14 +30,14 @@ export interface ChangelogStop {
   groups: ChangelogGroup[];
 }
 
-export const CHANGELOG_TOTAL_ENTRIES = 422;
+export const CHANGELOG_TOTAL_ENTRIES = 424;
 
 export const CHANGELOG_TOTALS: Record<ChangelogBucket, number> = {
-  "Added": 189,
+  "Added": 190,
   "Changed": 28,
   "Deprecated": 0,
   "Removed": 3,
-  "Fixed": 160,
+  "Fixed": 161,
   "Security": 5,
   "Behavior": 37
 };
@@ -46,13 +46,13 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
   {
     "label": "Unreleased",
     "date": null,
-    "total": 17,
+    "total": 19,
     "counts": {
-      "Added": 11,
+      "Added": 12,
       "Changed": 0,
       "Deprecated": 0,
       "Removed": 0,
-      "Fixed": 4,
+      "Fixed": 5,
       "Security": 0,
       "Behavior": 2
     },
@@ -101,6 +101,10 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
             "behavior": false
           },
           {
+            "title": "The after-benchmark verdict",
+            "behavior": false
+          },
+          {
             "title": "The delegation round's benchmark suite",
             "behavior": false
           }
@@ -119,6 +123,10 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
           },
           {
             "title": "The taskPreview composition defect (in-round)",
+            "behavior": false
+          },
+          {
+            "title": "The stale print envelope on async deliveries (F35)",
             "behavior": false
           },
           {

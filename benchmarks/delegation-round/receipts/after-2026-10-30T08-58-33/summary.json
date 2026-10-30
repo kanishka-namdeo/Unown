@@ -1,0 +1,108 @@
+{
+ "schema": "delegation-round/run/1",
+ "label": "after",
+ "startedAt": "2026-10-30T09:11:34.843Z",
+ "repo": "/home/z/my-project/unown",
+ "gitSha": "91123d4756f41e719c4d27a79a0cd176024d9a4d",
+ "unownVersion": "0.0.45",
+ "delegationLevel": "standard",
+ "truths": {
+  "srcTsCount": 367,
+  "testTsLines": 82774
+ },
+ "scratchRoot": "/tmp/delegation-bench/after-1793351494814",
+ "lanes": [
+  {
+   "id": "t1-map",
+   "resumed": true,
+   "exit": 0,
+   "allMarkersPass": true,
+   "spawns": 0
+  },
+  {
+   "id": "t2-callers",
+   "resumed": true,
+   "exit": 0,
+   "allMarkersPass": true,
+   "spawns": 0
+  },
+  {
+   "id": "t3-triptych",
+   "resumed": true,
+   "exit": 0,
+   "allMarkersPass": true,
+   "spawns": 3
+  },
+  {
+   "id": "t4-script",
+   "resumed": true,
+   "exit": 0,
+   "allMarkersPass": true,
+   "spawns": 0
+  },
+  {
+   "id": "t5-review",
+   "resumed": true,
+   "exit": 0,
+   "allMarkersPass": true,
+   "spawns": 5
+  },
+  {
+   "id": "t6a-unknown-agent",
+   "resumed": true,
+   "exit": 0,
+   "allMarkersPass": true,
+   "spawns": 1
+  },
+  {
+   "id": "t6b-blocked-task",
+   "resumed": true,
+   "exit": 0,
+   "allMarkersPass": true,
+   "spawns": 1
+  },
+  {
+   "id": "t7-duplicate",
+   "resumed": true,
+   "exit": 0,
+   "allMarkersPass": true,
+   "spawns": 1
+  },
+  {
+   "id": "t8-async",
+   "exit": 0,
+   "durationMs": 20476,
+   "allMarkersPass": true,
+   "spawns": 1
+  }
+ ],
+ "dream": {
+  "before": {
+   "ok": true,
+   "notes": 74,
+   "notesPending": 5,
+   "dreams": 12,
+   "memoryProjectVersion": 7,
+   "raw": 3421
+  },
+  "trigger": {
+   "status": 409,
+   "body": "{\"error\":\"engine is busy with another job \u2014 try again in a moment\",\"reason\":\"engine-busy\"}",
+   "attempt": 5
+  },
+  "after": {
+   "ok": true,
+   "notes": 75,
+   "notesPending": 6,
+   "dreams": 12,
+   "memoryProjectVersion": 8,
+   "raw": 3433
+  }
+ },
+ "finishedAt": "2026-10-30T09:19:02.288Z",
+ "tally": {
+  "lanes": 9,
+  "greenLanes": 9,
+  "totalSpawns": 12
+ }
+}

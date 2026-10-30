@@ -1,0 +1,61 @@
+{
+	"schema": "delegation-round/lane/1",
+	"id": "t3-triptych",
+	"name": "three parallel questions",
+	"injected": false,
+	"prompt": "Answer three independent questions, in parallel: (1) Which dashboard screen is the smallest by line count? (2) Which engine endpoint serves the automation routines? (3) Which six benchmark suites feed the landing figures? Reply with three short numbered sections, one line each.",
+	"exit": 0,
+	"signal": null,
+	"timedOut": false,
+	"durationMs": 43063,
+	"envelope": {
+		"type": "result",
+		"subtype": "success",
+		"result": "1. **Smallest dashboard screen** — `recovery-screen.ts` (212 lines) in `pi-repo/packages/self-learning/src/dashboard/screens/`; next is `webcache-screen.ts` (235).\n\n2. **Routines endpoint** — served under `GET/POST /api/automations` (+ `/api/automations/<id>/{run,runs,skip,snooze}` and `/api/automations/event-dispatch`) in `server.ts`; there is no `/api/routines` route — the CLI `unown routines` command maps to the automations endpoints.\n\n3. **Six landing benchmark suites** — `edit-bench`, `evalplus`, `livecodebench`, `longhorizon`, `polyglot`, `selfimprove`, defined in the `TRACKS` array at `scripts/landing_benchmarks.mjs:79` and cross-checked in `benchmarks/AGENTS.md` §\"The landing-page feed\".",
+		"session_id": "01a18c08-b0ef-7db1-8009-aed4722384d6",
+		"model": "agnes-3.0-flash",
+		"usage": {
+			"input_tokens": 1167,
+			"output_tokens": 611,
+			"cache_read_input_tokens": 73728,
+			"cache_creation_input_tokens": 0
+		},
+		"cost_usd": 0,
+		"duration_ms": 42435,
+		"num_turns": 3,
+		"unown_version": "0.0.45"
+	},
+	"markers": {
+		"/recovery/i": true,
+		"/\\/api\\/automations/i": true,
+		"/edit-bench/i": true,
+		"/selfimprove/i": true
+	},
+	"allMarkersPass": true,
+	"artifact": null,
+	"journalDelta": [
+		"{\"op\":\"spawned\",\"lane\":\"sync\",\"id\":\"sync-mvuqqgf0-v42kj9\",\"name\":\"explore\",\"agent\":\"explore\",\"pid\":29417,\"parentPid\":29399,\"promptFile\":\"/tmp/unown-subagent-EpiyH2/system-prompt.md\",\"why\":\"Parallel fact-check: verify the smallest dashboard screen claim from memory against source\",\"taskPreview\":\"Find the smallest dashboard screen file by line count under pi-repo/packages/self-learning/src/dashboard/screens/. Use bash: wc -l on each .ts file in that dire\",\"ts\":1793350752163}",
+		"{\"op\":\"spawned\",\"lane\":\"sync\",\"id\":\"sync-mvuqqgf7-px6kcn\",\"name\":\"explore\",\"agent\":\"explore\",\"pid\":29418,\"parentPid\":29399,\"promptFile\":\"/tmp/unown-subagent-rCjZgA/system-prompt.md\",\"why\":\"Parallel fact-check: verify which endpoint serves routines against server.ts\",\"taskPreview\":\"Find which REST endpoint in the self-learning engine serves the automation routines. Search pi-repo/packages/self-learning/src/server.ts for 'automations' and '\",\"ts\":1793350752170}",
+		"{\"op\":\"spawned\",\"lane\":\"sync\",\"id\":\"sync-mvuqqgfe-bnmt3e\",\"name\":\"explore\",\"agent\":\"explore\",\"pid\":29422,\"parentPid\":29399,\"promptFile\":\"/tmp/unown-subagent-uQsS6U/system-prompt.md\",\"why\":\"Parallel fact-check: verify the six landing benchmark suites against source\",\"taskPreview\":\"Find the six benchmark suites that feed the landing page figures. Look at scripts/landing_benchmarks.mjs for the TRACKS array (the authoritative source), and cr\",\"ts\":1793350752183}",
+		"{\"op\":\"finished\",\"id\":\"sync-mvuqqgf7-px6kcn\",\"status\":\"done\",\"ts\":1793350759384,\"turns\":3,\"tokensIn\":23986,\"tokensOut\":198,\"toolCalls\":2,\"elapsedMs\":7221,\"why\":\"Parallel fact-check: verify which endpoint serves routines against server.ts\",\"taskPreview\":\"Find which REST endpoint in the self-learning engine serves the automation routines. Search pi-repo/packages/self-learning/src/server.ts for 'automations' and '\"}",
+		"{\"op\":\"finished\",\"id\":\"sync-mvuqqgfe-bnmt3e\",\"status\":\"done\",\"ts\":1793350760100,\"turns\":3,\"tokensIn\":20256,\"tokensOut\":230,\"toolCalls\":3,\"elapsedMs\":7930,\"why\":\"Parallel fact-check: verify the six landing benchmark suites against source\",\"taskPreview\":\"Find the six benchmark suites that feed the landing page figures. Look at scripts/landing_benchmarks.mjs for the TRACKS array (the authoritative source), and cr\"}",
+		"{\"op\":\"finished\",\"id\":\"sync-mvuqqgf0-v42kj9\",\"status\":\"done\",\"ts\":1793350781877,\"turns\":6,\"tokensIn\":138838,\"tokensOut\":715,\"toolCalls\":16,\"elapsedMs\":29722,\"why\":\"Parallel fact-check: verify the smallest dashboard screen claim from memory against source\",\"taskPreview\":\"Find the smallest dashboard screen file by line count under pi-repo/packages/self-learning/src/dashboard/screens/. Use bash: wc -l on each .ts file in that dire\"}"
+	],
+	"overviewBefore": {
+		"ok": true,
+		"notes": 45,
+		"notesPending": 7,
+		"dreams": 8,
+		"memoryProjectVersion": 5,
+		"raw": 3185
+	},
+	"overviewAfter": {
+		"ok": true,
+		"notes": 49,
+		"notesPending": 11,
+		"dreams": 8,
+		"memoryProjectVersion": 5,
+		"raw": 3308
+	},
+	"stderrTail": ""
+}

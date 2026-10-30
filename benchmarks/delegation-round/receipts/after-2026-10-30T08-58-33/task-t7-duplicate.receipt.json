@@ -1,0 +1,54 @@
+{
+	"schema": "delegation-round/lane/1",
+	"id": "t7-duplicate",
+	"name": "duplicate-work probe",
+	"injected": false,
+	"prompt": "First, find out which env var pins the engine's model id (the one registered with pi's models.json). Then have a FRESH subagent independently double-check that same fact. Report both answers and whether they agree.",
+	"exit": 0,
+	"signal": null,
+	"timedOut": false,
+	"durationMs": 25637,
+	"envelope": {
+		"type": "result",
+		"subtype": "success",
+		"result": "## Report\n\n| | Answer |\n|---|---|\n| **My finding (inline grep)** | `PI_MODEL_ID` — documented at `docs/configuration.md:43` (\"Model id registered with pi's `models.json`\"), `.env.example:45` ships `PI_MODEL_ID=agnes-3.0-flash`, consumed in `term.ts:151` (`writeModelsJson`), `llm.ts:11`, `presets.ts:31` |\n| **Subagent's independent finding (fresh context)** | Same: `PI_MODEL_ID`, personally verified at `term.ts:151` and `.env.example:44-45`, plus corroborating consumers (`llm.ts:11`, `presets.ts:31`, `termhooks.ts:517`, `runner.ts:41`, `docs/configuration.md:43`) |\n\n**They agree** — both answers are `PI_MODEL_ID`, with matching evidence.\n\nOne nuance the subagent surfaced that I hadn't noted: `term.ts:145-151` resolves the model id as `bridgeHealthLite?.defaultModel || process.env.PI_MODEL_ID || \"agnes-3.0-flash\"` — so when the llm-bridge is reachable, its `/health` `defaultModel` actually outranks `PI_MODEL_ID`, and the env var is the next-priority fallback. But the env var that *pins* the model id registered with models.json is still `PI_MODEL_ID`.\n\nThis fact also matches the project memory entry (the \"PI_MODEL_ID pins pi's models.json, default agnes-3.0-flash\" note) — no divergence, so no repair needed.",
+		"session_id": "01a18c0d-047d-7b42-9b9e-b5eb156a236f",
+		"model": "agnes-3.0-flash",
+		"usage": {
+			"input_tokens": 7726,
+			"output_tokens": 790,
+			"cache_read_input_tokens": 80128,
+			"cache_creation_input_tokens": 0
+		},
+		"cost_usd": 0,
+		"duration_ms": 25039,
+		"num_turns": 3,
+		"unown_version": "0.0.45"
+	},
+	"markers": {
+		"/PI_MODEL_ID/": true
+	},
+	"allMarkersPass": true,
+	"artifact": null,
+	"journalDelta": [
+		"{\"op\":\"spawned\",\"lane\":\"sync\",\"id\":\"sync-mvuqwhgj-5nvfny\",\"name\":\"general\",\"agent\":\"general\",\"pid\":30092,\"parentPid\":30060,\"promptFile\":\"/tmp/unown-subagent-889yyg/system-prompt.md\",\"why\":\"Context-isolation double-check of a factual claim; expect a short verified answer back\",\"taskPreview\":\"Independent fact-check in the repo at /home/z/my-project/unown. Question: which environment variable pins the model id that the self-learning engine registers w\",\"ts\":1793351033452}",
+		"{\"op\":\"finished\",\"id\":\"sync-mvuqwhgj-5nvfny\",\"status\":\"done\",\"ts\":1793351046078,\"turns\":3,\"tokensIn\":24005,\"tokensOut\":597,\"toolCalls\":4,\"elapsedMs\":12635,\"why\":\"Context-isolation double-check of a factual claim; expect a short verified answer back\",\"taskPreview\":\"Independent fact-check in the repo at /home/z/my-project/unown. Question: which environment variable pins the model id that the self-learning engine registers w\"}"
+	],
+	"overviewBefore": {
+		"ok": true,
+		"notes": 61,
+		"notesPending": 23,
+		"dreams": 8,
+		"memoryProjectVersion": 5,
+		"raw": 3250
+	},
+	"overviewAfter": {
+		"ok": true,
+		"notes": 63,
+		"notesPending": 25,
+		"dreams": 8,
+		"memoryProjectVersion": 5,
+		"raw": 3250
+	},
+	"stderrTail": ""
+}

@@ -75,6 +75,7 @@ import {
 	captureStdout,
 	createOutputCapture,
 	createOutputCaptureExtension,
+	preferFinalAssistantText,
 } from "./output-format.ts";
 import { loadOutputSchema, renderSchemaFailure, validateAnswerAgainstSchema } from "./output-schema.ts";
 import { unownVersion } from "./packaging.ts";
@@ -3108,6 +3109,13 @@ async function cmdPrint(prompt: string | undefined, args: CliArgs, verbose: bool
 			code = await runPrintRounds([message]);
 		} finally {
 			let text = wrap.unwrap().trim();
+			// F35 (the delegation round, live 2026-10-30): an async fleet
+			// child delivered after the main loop settled runs its answering
+			// turn inside the session, but pi's text channel never prints the
+			// synthesis — the captured stdout held the interim answer. The
+			// envelope's contract is the FINAL assistant text: the answer
+			// watch's last completed message wins (pure helper, pinned).
+			text = preferFinalAssistantText(text, answerWatch.lastCompleted?.text, code);
 			// LR-1b (2026-10-27 long-run round): pi's print mode prints
 			// NOTHING when the run's last message is the aborted one — so
 			// a --max-turns cap landing mid-work always left `text` empty

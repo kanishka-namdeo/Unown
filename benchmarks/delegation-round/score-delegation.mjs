@@ -53,10 +53,15 @@ function parseSession(file) {
                 taskControls: [], // task_control invocations
                 parentUsage: { input: 0, output: 0, cacheRead: 0, calls: 0 },
                 parentPeakWindow: 0,
+                deliveryEntries: 0, // persisted unown-subagent-delivery entries (F27)
         };
         if (!fs.existsSync(file)) return out;
         const lines = fs.readFileSync(file, "utf8").split("\n").filter((l) => l.trim());
         for (const line of lines) {
+                // F27 lane: the persisted async delivery entries (the delegation
+                // round) — counted FIRST: they are custom-typed lines without a
+                // .message field, so the message guard below would skip them.
+                if (line.includes("unown-subagent-delivery")) out.deliveryEntries++;
                 let e;
                 try {
                         e = JSON.parse(line);
@@ -287,13 +292,18 @@ const push = (axis, lines) => (axes[axis].evidence.push(...lines));
         const paneBox = ptyPane && /╭─ Subagents/.test(ptyPane);
         const paneRow = ptyPane && /(⟳|◉|○)/.test(ptyPane);
         const asyncAck = !!lanes["t8-async"]?.session.taskCalls.some((c) => c.async);
-        const streamEvents = false; // delegation events in the print-mode stream: not implemented in 0.0.45
+        // Headless visibility: the async delivery PERSISTED into the transcript
+        // (the F27 fix — before it, the steer was consumed but never recorded, so
+        // a replayed session showed nothing between the poll and the answer).
+        const deliveryEntries = Object.values(lanes).reduce((a, { session }) => a + (session.deliveryEntries ?? 0), 0);
+        const streamEvents = deliveryEntries > 0;
         axes.progressVisibility = {
                 score: (paneBox ? 25 : 0) + (paneRow ? 15 : 0) + (asyncAck ? 15 : 0) + (streamEvents ? 45 : 0),
-                raw: { paneBox: !!paneBox, paneRow: !!paneRow, asyncAck: !!asyncAck, streamEvents },
+                raw: { paneBox: !!paneBox, paneRow: !!paneRow, asyncAck: !!asyncAck, persistedDeliveries: deliveryEntries, streamEvents },
                 evidence: [],
         };
         if (!ptyPane) axes.progressVisibility.evidence.push("no PTY pane receipt — TUI components scored 0 (run pty_fleet_lane.py to measure)");
+        axes.progressVisibility.evidence.push(`persisted async deliveries in transcripts: ${deliveryEntries} (the F27 lane)`);
 }
 
 // --- 6. memory utilisation

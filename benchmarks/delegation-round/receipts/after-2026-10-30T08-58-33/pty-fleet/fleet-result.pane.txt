@@ -1,0 +1,40 @@
+# fleet-result — the delegation round's pane truth: the async child's
+# delivered result with its vitals header (turns, tools, tokens).
+# result observed: True
+
+methodical-debugging, motion-designer, pre-commit-engine-check, recover-failed-cycle, repo-exploration, restart-engine,
+test-cadence-domain, unown-self-learning, ux-reviewer, verification-first
+
+── Extensions ──
+  <inline:6>
+
+── Themes ──
+  unown
+
+
+ Tip — ctrl+k opens the command palette; every command is one search away.
+
+» Spawn a background subagent named 'counter' that counts the total lines of TypeScript under
+  pi-repo/packages/self-learning/test/ and reports just the number. While it runs, tell me in one sentence what the fleet is
+  doing. Then report the final count.
+
+
+✓  task → counter [async] "Count the total lines of TypeScript under pi-repo/"
+   general: ✓ 0 turns, 0 tools
+
+
+ One counter subagent is running in the background, counting the total TypeScript lines under
+ pi-repo/packages/self-learning/test/; I'll report the number as soon as its result lands.
+
+✓ Subagent counter-2 (general) finished in 00:09 — 2 turns · 1 tool calls · 342 in / 67 out
+
+ ⠦ Working... 0:00
+
+ ○ no tracked steps · conf ✓ · 0m in session
+»───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+~/my-project/unown (main)
+ctx ▕░░░░░░░░░░▏ 4.9%/524k (auto) ↓207 ↑22k CH98.4% R29k                                                         agnes-3.0-flash
+conf ✓ memory: up · old build turn 1.2s · ttft <1s · ctx 5% · in 21.5k out 207 (cached 29.2k)
+escape interrupt · ctrl+o tools · ctrl+t thinking

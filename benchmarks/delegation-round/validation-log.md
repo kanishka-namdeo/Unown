@@ -201,3 +201,59 @@ a FRESH database and asserts both `delegations` objects exist in
 `sqlite_master` — a fresh-DB schema-exec boot pin (the suite's persistent
 scratch DB, reused across runs by `_env.ts`, cannot catch statement-ORDER
 defects inside SCHEMA the way a fresh file can).
+
+
+## F35 — the print envelope shipped the interim answer, not the synthesis
+
+**Failure.** The after-benchmark's t8 lane (first run): the session file
+records the full async story — spawn with `why`, ack, the persisted
+delivery entry (F27, working), and the model's final answer "Final count:
+**82,746 lines**…" at :24 — but the `--output-format json` envelope's
+`result` held the INTERIM text ("I'll report the final number the moment
+its result lands") and the lane scored red on its marker
+(`receipts/after-2026-10-30T08-58-33/task-t8-async.receipt.run1.json`).
+
+**Reproduction.** The receipt pair: `envelope.num_turns: 3` (the capture
+saw every turn, including the post-drain synthesis) while
+`envelope.result` is the turn-2 text. Any `unown -p --output-format json`
+run whose final answer comes from a fleet-delivery turn.
+
+**Root cause.** The envelope's text channel is pi's own print loop, which
+extracts the final assistant text ONCE at the main loop's end. When the
+fleet drain delivers a child's result after that point, the answering turn
+runs inside the session (the process is alive — the R3 drain contract) but
+its text never prints: the captured stdout keeps the interim answer. The
+turn COUNTER (message_end events) saw the synthesis; the text CHANNEL did
+not.
+
+**Fix.** `preferFinalAssistantText` (output-format.ts, pure, pinned by four
+tests): on a successful run, the answer watch's last completed assistant
+message — the envelope contract's own definition of "final assistant
+text" — replaces the captured text when it differs; error paths keep the
+captured text (pi's error/abort handling prints there). **Resolved** — the
+t8 re-run's envelope carries the count, 9/9 lanes green, and the axis that
+caught it (progress visibility) went 55 → 100.
+
+## F36 — the benchmark's own load saturated the dream trigger
+
+**Failure.** The after-run's post-workload `auto-dream` trigger answered
+409 `engine-busy` on ALL FIVE retries (30 s apart) — the learning axis
+scored 40 with dreams Δ0 even though memory advanced v7 → 8 through the
+engine's own scheduled dream inside the window.
+
+**Reproduction.** `summary.json → dream.trigger`: five attempts, all 409;
+`dream.after.memoryProjectVersion: 8` (the engine's own dream landed
+anyway).
+
+**Root cause.** The benchmark hammering the engine (9 lanes × notes +
+the harness's overview polls) keeps the single-job scheduler busy
+continuously; the trigger's retry window (5 × 30 s) never finds it idle.
+Not a product defect — the busy mutex is by design — but the HARNESS
+measures "can the trigger grab the scheduler", which a self-saturated
+engine denies.
+
+**Disposition.** Recorded as measured (the axis is honest about what it
+saw: memory DID advance). The harness improvement is noted for the next
+iteration: trigger AFTER a drain (wait for `routerBusy: false`) instead of
+on a timer. Open — the fix is a harness change, not a product change, and
+the axis's formula already reflects reality.

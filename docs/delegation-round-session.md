@@ -215,7 +215,49 @@ benchmark exercises it).
 
 ## Checkpoint 5 — the after-benchmark + learning validation
 
-*(opens when the 0.0.46 re-run is scored against the baseline and the failure ledger closes)*
+**DONE.** The identical workload re-ran on the round's build
+(`91123d47`), scored with the same read-only scorer against the baseline
+(`receipts/after-2026-10-30T08-58-33/`):
+
+- **Overall 76 → 79.** The mission's target axes moved hardest: user
+  explainability **56 → 92** (`why` stated on 12/13 spawns, unprompted),
+  progress visibility **55 → 100** (persisted deliveries — the F27/F35
+  lanes). Failure recovery, autonomous decisions, human-intervention-free
+  completion: all held at 100.
+- **The runaway is dead**: child token spend fell to **38% of baseline**
+  (901k → 339k), total workload spend fell **54%** (968k → 450k), and the
+  triptych lane ran 323 s → 43 s with all three scouts clean. The
+  offload-SHARE axis reads -18 — an artifact of the baseline's share being
+  inflated by the 596k runaway it no longer has; RESULTS.md carries both
+  the share and the raw totals.
+- **The run caught two more failures** (the loop working as designed):
+  **F35** — the print envelope shipped the interim answer instead of the
+  post-drain synthesis (fixed with `preferFinalAssistantText`, pure +
+  pinned, verified by the green re-run whose envelope carries the count);
+  **F36** — the benchmark's own load saturated the dream trigger (all five
+  retries 409 `engine-busy`; memory still advanced v7→8 through the
+  engine's own dream; recorded as measured, harness fix noted for the next
+  iteration).
+- **One new behavior caught, not hidden**: the t5 lane spawned FIVE
+  reviewers for one review ask (one BLOCKED mid-chain) — over-retry, the
+  exact shape the `delegation-auditor` polices; the top candidate for the
+  next iteration (n=1 caveat recorded).
+- 9/9 lanes green both runs; the t8 run-1 receipt is kept as the F35
+  audit trail.
+
+**VERIFIED (receipts in `benchmarks/delegation-round/receipts/`):**
+
+| Gate | Result |
+|---|---|
+| After-run | 9/9 lanes green · 12 spawns · `scores-after.json` with `--compare` delta table |
+| F35 fix | the re-run envelope carries the final count; `preferFinalAssistantText` pinned ×4 |
+| Baseline stability | re-scored with the fixed scorer: unchanged 76 (no drift) |
+| PTY pane truth | widget + result panes captured (`pty-fleet/` in the after receipts) |
+
+**NEXT.** Checkpoint 6 — the release: version 0.0.46, the CHANGELOG stop
+dated, the landing rail + blog regenerated, the full gate battery
+(typecheck/lint/unit/build/docs/checks), the xplat lanes, the tag and the
+release verification.
 
 ## Checkpoint 6 — the release: 0.0.46
 

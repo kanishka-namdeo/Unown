@@ -2,7 +2,7 @@
 	"schema": "delegation-round/scores/1",
 	"run": "baseline-2026-10-30T07-43-53",
 	"label": "baseline",
-	"scoredAt": "2026-10-30T08:16:26.644Z",
+	"scoredAt": "2026-10-30T09:21:14.990Z",
 	"unownVersion": "0.0.45",
 	"gitSha": "bd4b2d920cd2eb772601143682677119eaab32f8",
 	"overall": 76,
@@ -166,9 +166,12 @@
 				"paneBox": true,
 				"paneRow": true,
 				"asyncAck": true,
+				"persistedDeliveries": 0,
 				"streamEvents": false
 			},
-			"evidence": []
+			"evidence": [
+				"persisted async deliveries in transcripts: 0 (the F27 lane)"
+			]
 		},
 		"memoryUtilisation": {
 			"score": 100,

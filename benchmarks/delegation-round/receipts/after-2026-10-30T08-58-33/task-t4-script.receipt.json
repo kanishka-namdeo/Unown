@@ -1,0 +1,57 @@
+{
+	"schema": "delegation-round/lane/1",
+	"id": "t4-script",
+	"name": "self-hashing script (implementation)",
+	"injected": false,
+	"prompt": "Create a Node.js script at /tmp/delegation-bench/after-1793350713113/t4.js that prints the SHA-256 hex digest of its own source file contents (the script reading itself), then run it with node and report the printed digest verbatim.",
+	"exit": 0,
+	"signal": null,
+	"timedOut": false,
+	"durationMs": 11904,
+	"envelope": {
+		"type": "result",
+		"subtype": "success",
+		"result": "Created `/tmp/delegation-bench/after-1793350713113/t4.js` — a Node.js script that reads its own source and prints the SHA-256 hex digest.\n\nRan it with node; the printed digest, verbatim:\n\n```\n0eb27c03211622e226cb2450c09d2fcf3851d1e22c1302b8093eef8a36e394bc\n```",
+		"session_id": "01a18c09-597b-7816-b1b7-66682687c4b9",
+		"model": "agnes-3.0-flash",
+		"usage": {
+			"input_tokens": 1313,
+			"output_tokens": 388,
+			"cache_read_input_tokens": 98304,
+			"cache_creation_input_tokens": 0
+		},
+		"cost_usd": 0,
+		"duration_ms": 11330,
+		"num_turns": 4,
+		"unown_version": "0.0.45"
+	},
+	"markers": {
+		"/^[a-f0-9]{64}$/im": true
+	},
+	"allMarkersPass": true,
+	"artifact": {
+		"exists": true,
+		"scriptBytes": 272,
+		"expectedDigest": "0eb27c03211622e226cb2450c09d2fcf3851d1e22c1302b8093eef8a36e394bc",
+		"answerDigest": "0eb27c03211622e226cb2450c09d2fcf3851d1e22c1302b8093eef8a36e394bc",
+		"digestMatches": true
+	},
+	"journalDelta": [],
+	"overviewBefore": {
+		"ok": true,
+		"notes": 49,
+		"notesPending": 11,
+		"dreams": 8,
+		"memoryProjectVersion": 5,
+		"raw": 3308
+	},
+	"overviewAfter": {
+		"ok": true,
+		"notes": 50,
+		"notesPending": 12,
+		"dreams": 8,
+		"memoryProjectVersion": 5,
+		"raw": 3308
+	},
+	"stderrTail": ""
+}

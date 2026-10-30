@@ -1,0 +1,40 @@
+# fleet-widget — the delegation round's pane truth: the fleet widget while
+# a real async child runs (live rows, current tool, token count).
+# widget visible: True
+
+── Skills ──
+  accessibility-auditor, design-system-generator, fix-nocturne-seed-invariants, frontend-craftsman, landing-page-architect,
+methodical-debugging, motion-designer, pre-commit-engine-check, recover-failed-cycle, repo-exploration, restart-engine,
+test-cadence-domain, unown-self-learning, ux-reviewer, verification-first
+
+── Extensions ──
+  <inline:6>
+
+── Themes ──
+  unown
+
+
+ Tip — ctrl+k opens the command palette; every command is one search away.
+
+» Spawn a background subagent named 'counter' that counts the total lines of TypeScript under
+  pi-repo/packages/self-learning/test/ and reports just the number. While it runs, tell me in one sentence what the fleet is
+  doing. Then report the final count.
+
+
+✓  task → counter [async] "Count the total lines of TypeScript under pi-repo/"
+   general: ✓ 0 turns, 0 tools
+
+
+ ⠋ Task... 0:06
+
+ ╭─ Subagents ── 1 running
+ ▌ ○ 00:00 counter-2 — starting
+ ╰────────────────────────────────────────────
+ ○ no tracked steps · conf ✓ · 0m in session
+»───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+~/my-project/unown (main)
+ctx ▕░░░░░░░░░░▏ 4.9%/524k (auto) ↓166 ↑21k CH16.3% R4.1k                                                        agnes-3.0-flash
+conf ✓ memory: up · old build fleet: 1 subagent running turn 5.9s · ttft 4.5s · ctx 5% · in 21.1k out 166 (cached 4.1k)
+escape interrupt · ctrl+o tools · ctrl+t thinking
