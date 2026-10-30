@@ -16,6 +16,7 @@
 - [Checkpoint 3 — terminal lane + Mission Control views](#checkpoint-3--terminal-lane--mission-control-views)
 - [Checkpoint 4 — bounded growth + the second catch + the landing](#checkpoint-4--bounded-growth--the-second-catch--the-landing)
 - [Checkpoint 5 — live receipts + reports](#checkpoint-5--live-receipts--reports)
+- [Checkpoint 6 — the release: v0.0.48 (F6, the third catch)](#checkpoint-6--the-release-v0048-f6-the-third-catch)
 - [The validation log](#the-validation-log)
 - [What was NOT validated](#what-was-not-validated)
 
@@ -137,6 +138,53 @@ API (`GET /api/plm`, `GET /api/processes`, `GET /api/tools`,
 - The reports: [process lifecycle](process-lifecycle-report.md) ·
   [tool lifecycle](tool-lifecycle-report.md) · this log ·
   [the research pass](plm-competitor-research.md).
+
+## Checkpoint 6 — the release: v0.0.48 (F6, the third catch)
+
+**Done.** (release commit `354f9bb6`; the tag `v0.0.48` was re-cut at
+`7431f43e` — the F6 fix — after the first release run died to a transient
+GitHub API 504; the tag had minted nothing, so moving it cost nothing.)
+
+- CHANGELOG: the 0.0.48 entry (landed with the round's paper trail in
+  `6fcfe104`); the landing rail regenerated ahead of the release (46
+  stops, 450 entries, `check:changelog` green — the release commit
+  carried only the version bump).
+- `package.json` 0.0.47 → 0.0.48; `bun bin/unown --version` asserts
+  equal.
+- Local release receipts at the bump: landing unit suite 2063/2063,
+  engine suite 5,187 pass / 0 fail, typecheck clean, production build
+  green, `check:docs` / `check:changelog` / `check:blog` green; the six
+  per-OS archives built locally and sha256-verified, the linux-x64
+  binary extracted and executed (`--version` prints 0.0.48).
+- **F6, caught live while cutting the release**: the first release run
+  (`41098657680`) died at ci-green poll attempt 17 — GitHub's API
+  answered HTTP 504 to the status probe and `set -euo pipefail`
+  errexited the waiter while CI itself was still green-in-flight. The
+  fix (commit `7431f43e`): the probe is wrapped errexit-safe, a failed
+  probe counts consecutive and waits out the minute, ten consecutive
+  still fail loudly (the gate never passes blind), the 40-attempt bound
+  unchanged — behaviorally pinned against a mocked `gh` with the
+  incident's exact 504 line (the four scenarios: 504-then-green passes ·
+  ten-consecutive fails · red CI fails · no-run-yet waits then passes).
+  The re-run's ci-green job then passed in production.
+
+**The published release (run `41103092632`, all jobs green):** the
+workflow's own receipts — 3-OS real-installer assertion matrix, the
+production landing build + standalone-server smoke, six per-OS binaries
+built by one ubuntu runner, five of six EXECUTED on their own OS
+(windows-arm64 ships without a runtime smoke, per the checklist), SBOM +
+attestations, the draft's asset list asserted before promotion, the
+post-publish feed gate, and the smoke-install matrix (installer →
+`--version` / `update --check` / `uninstall --dry-run`) on all three
+OSes. **13 assets** published; `v0.0.48` holds the Latest slot
+(published 2026-10-30T18:27:26Z).
+
+**Verified independently, as a user (this session):** downloaded
+`sha256sums.txt` + `release.json` + `unown-linux-x64.tar.gz` straight
+from the release page — the archive's hash matches the sums file, the
+manifest's per-asset sizes/hashes match the sums, the extracted binary
+executes and prints `0.0.48`, `version.txt` says `0.0.48`, severity
+`normal`.
 
 ## The validation log
 
