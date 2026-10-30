@@ -143,7 +143,7 @@ import {
 	waitTerminalAutoCompactSettled,
 } from "./terminal-auto-compact.ts";
 import { createToolRepetitionGuard, parseMaxToolRepetitions } from "./tool-repetition.ts";
-import { createUnownToolsExtension } from "./tools.ts";
+import { createUnownToolsExtension, takePlanPrintReport } from "./tools.ts";
 import { cmdUninstall, findShims, parseUninstallFlags, UNINSTALL_HELP } from "./uninstall.ts";
 import {
 	cmdChangelog,
@@ -189,8 +189,13 @@ Usage:
   unown sessions resume    the same resume as a subcommand (Codex muscle
                            memory): bare = the picker, or pass <id|name|path>;
                            composes with -p "..." like the flag lane
-  unown --plan [...]       start (print or TUI) in plan mode: read-only exploration,
-                           numbered plan, then execution after approval (also /plan, Ctrl+Alt+P)
+  unown --plan [...]       start (print or TUI) in plan mode (V2): read-only exploration,
+                           the plan file + scored plan doc (0-100 rubric), then the approval
+                           gate — execute auto-accept/manual, edit in $EDITOR, or send
+                           feedback (also /plan [description|open|show|off], Ctrl+Alt+P,
+                           Shift+Tab cycles default -> acceptEdits -> plan)
+  unown --plan-model <id>  the opusplan lane: use <id> while planning; the session model
+                           returns on approval/exit
   unown --goal "objective"  start with a durable goal: evidence-verified completion,
                            unfinished todos block it (also /goal <objective>)
   unown setup              connect a model provider — interactive wizard
@@ -476,6 +481,9 @@ interface CliArgs {
 	tools?: string[];
 	appendSystemPromptPath?: string;
 	plan: boolean;
+	/** --plan-model <id>: the opusplan-style split (the 2026-10-31 planning
+	 *  round) — this model plans, the session model executes. */
+	planModel?: string;
 	goal?: string;
 	outputFormat?: "text" | "json";
 	/** Fleet lane (pi-interactive-subagents port): resume/continue a
@@ -546,6 +554,7 @@ export function parseArgs(argv: string[]): CliArgs {
 	let tools: string[] | undefined;
 	let appendSystemPromptPath: string | undefined;
 	let plan = false;
+	let planModel: string | undefined;
 	let noSplit = false;
 	let goal: string | undefined;
 	let outputFormat: "text" | "json" | undefined;
@@ -565,7 +574,7 @@ export function parseArgs(argv: string[]): CliArgs {
 	for (let i = 0; i < argvRest.length; i++) {
 		const a = argvRest[i];
 		if (a === "--help" || a === "-h")
-			return { command: "help", verbose, jsonMode, noSession, plan, noSplit, goal, outputFormat };
+			return { command: "help", verbose, jsonMode, noSession, plan, planModel, noSplit, goal, outputFormat };
 		if (a === "--print" || a === "-p") {
 			print = true;
 			continue;
@@ -617,6 +626,17 @@ export function parseArgs(argv: string[]): CliArgs {
 		}
 		if (a === "--plan") {
 			plan = true;
+			continue;
+		}
+		if (a === "--plan-model") {
+			const next = argvRest[i + 1];
+			if (next !== undefined && !next.startsWith("-")) {
+				planModel = next;
+				i++;
+			} else {
+				console.error("unown: --plan-model expects a model id (e.g. agnes-3.0-flash)");
+				process.exit(2);
+			}
 			continue;
 		}
 		if (a === "--no-split") {
@@ -783,7 +803,7 @@ export function parseArgs(argv: string[]): CliArgs {
 	const first = rest[0];
 	if (first === "init" || first === "memory" || first === "doctor" || first === "note") {
 		const prompt = rest.slice(1).join(" ");
-		return { command: first, prompt, verbose, jsonMode, noSession, plan, noSplit, outputFormat };
+		return { command: first, prompt, verbose, jsonMode, noSession, plan, planModel, noSplit, outputFormat };
 	}
 	const prompt = rest.join(" ");
 	// The flow-round launch lane (2026-10-24): -c/--continue and
@@ -827,6 +847,7 @@ export function parseArgs(argv: string[]): CliArgs {
 			tools,
 			appendSystemPromptPath,
 			plan,
+			planModel,
 			noSplit,
 			goal,
 			outputFormat,
@@ -852,6 +873,7 @@ export function parseArgs(argv: string[]): CliArgs {
 		tools,
 		appendSystemPromptPath,
 		plan,
+		planModel,
 		noSplit,
 		goal,
 		outputFormat,
@@ -878,6 +900,13 @@ interface BootOptions {
 	tools?: string[];
 	appendSystemPromptPath?: string;
 	plan?: boolean;
+	/** --plan-model <id>: the model used while planning (the session model
+	 *  returns on approval/exit) — the opusplan lane. */
+	planModel?: string;
+	/** --max-turns <N>: the run cap — also feeds the plan-turn budget (gap
+	 *  P-17: planning gets at most 60% of the cap before the mechanical
+	 *  convergence pressure kicks in). */
+	maxTurns?: number;
 	goal?: string;
 	/** --no-split: seed the split-view extension's flag so the session starts bare. */
 	noSplit?: boolean;
@@ -1193,6 +1222,11 @@ async function bootRuntime(cwd: string, verbose: boolean, bootOpts: BootOptions 
 		// shared permission gate's status + the live --add-dir / /add-dir count.
 		permissionsStatus: () => (typeof permissionsGate.status === "function" ? permissionsGate.status() : undefined),
 		addDirs: () => sessionWriteRoots().length,
+		// Plan Mode V2 (the 2026-10-31 planning round): the approval dialog's
+		// options map 1:1 onto permission-mode transitions, exactly like
+		// Claude Code's "Ready to code?" — execute-auto-accept → acceptEdits,
+		// execute-manual → default.
+		setPermissionMode: (mode) => permissionsGate.setSessionMode(mode),
 		verbose,
 	});
 	// The TUI addons (ask_user_question, todo, advisor + /addons): bundled
@@ -1260,11 +1294,23 @@ async function bootRuntime(cwd: string, verbose: boolean, bootOpts: BootOptions 
 			agentDir,
 			settingsManager,
 			extensionFlagValues:
-				bootOpts.plan || bootOpts.goal || bootOpts.noSplit
+				bootOpts.plan ||
+				bootOpts.planModel ||
+				bootOpts.goal ||
+				bootOpts.noSplit ||
+				(typeof bootOpts.maxTurns === "number" && bootOpts.maxTurns > 0)
 					? new Map<string, boolean | string>([
 							...(bootOpts.plan ? ([["plan", true]] as Array<[string, boolean | string]>) : []),
+							...(bootOpts.planModel
+								? ([["plan-model", bootOpts.planModel]] as Array<[string, boolean | string]>)
+								: []),
 							...(bootOpts.goal ? ([["goal", bootOpts.goal]] as Array<[string, boolean | string]>) : []),
 							...(bootOpts.noSplit ? ([["no-split", true]] as Array<[string, boolean | string]>) : []),
+							// The plan-turn budget (gap P-17) reads the run cap so
+							// planning never eats the whole --max-turns allowance.
+							...(typeof bootOpts.maxTurns === "number" && bootOpts.maxTurns > 0
+								? ([["max-turns", String(bootOpts.maxTurns)]] as Array<[string, boolean | string]>)
+								: []),
 						])
 					: undefined,
 			resourceLoaderOptions: {
@@ -3116,6 +3162,8 @@ async function cmdPrint(prompt: string | undefined, args: CliArgs, verbose: bool
 		tools: args.tools,
 		appendSystemPromptPath: args.appendSystemPromptPath,
 		plan: args.plan,
+		planModel: args.planModel,
+		maxTurns: args.maxTurns,
 		noSplit: args.noSplit,
 		goal: args.goal,
 		// M3 answer ping (notify.ts): the wall clock starts at cmdPrint entry
@@ -3251,6 +3299,15 @@ async function cmdPrint(prompt: string | undefined, args: CliArgs, verbose: bool
 					limit: repetitionGuard.state.limit,
 				};
 			}
+			// Plan Mode V2 (the 2026-10-31 planning round): the structured
+			// plan report rides the envelope when the run produced a plan —
+			// score, steps, files-touched ratio and the artifact path. The
+			// plan is the deliverable of a --plan print run; automation
+			// scores it without parsing prose.
+			const planReportEntry = takePlanPrintReport();
+			if (planReportEntry) {
+				(result as Record<string, unknown>).plan = planReportEntry;
+			}
 			console.error(
 				"unown: post-answer teardown exceeded the exit grace — envelope written, forcing exit (tune with PI_PRINT_EXIT_GRACE_MS)",
 			);
@@ -3329,6 +3386,15 @@ async function cmdPrint(prompt: string | undefined, args: CliArgs, verbose: bool
 					count: repetitionGuard.state.count,
 					limit: repetitionGuard.state.limit,
 				};
+			}
+			// Plan Mode V2 (the 2026-10-31 planning round): the structured plan
+			// report rides the envelope when the run produced a plan — score,
+			// steps, files-touched ratio and the artifact path. The plan is the
+			// deliverable of a --plan print run; automation scores it without
+			// parsing prose.
+			const planReportEntry = takePlanPrintReport();
+			if (planReportEntry) {
+				(result as Record<string, unknown>).plan = planReportEntry;
 			}
 			envelopeWritten = true; // F3: the real envelope landed — the last resort stands down
 			process.stdout.write(JSON.stringify(result) + "\n");
@@ -4082,6 +4148,8 @@ export async function runCli(argv: string[]) {
 						tools: args.tools,
 						appendSystemPromptPath: args.appendSystemPromptPath,
 						plan: args.plan,
+						planModel: args.planModel,
+						maxTurns: args.maxTurns,
 						noSplit: args.noSplit,
 						goal: args.goal,
 						sessionFile: args.sessionFile,

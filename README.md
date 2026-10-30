@@ -110,7 +110,7 @@ Full usage docs live in [`docs/`](docs/):
 | [update research](docs/update-research.md) | the 2026-10-21 survey and decision record behind the release feed and the update nudges (options, evidence tiers, reproduction commands) |
 | [model-spec detection](docs/model-spec-detection-research.md) | the 2026-10-30 decision record behind spec verification: the eleven-product survey, the five registries, the cascade design, the gate semantics — receipts in [the session log](docs/model-specs-session.md) |
 | [providers](docs/providers.md) | `unown setup`, models.json / auth.json / settings.json, the bridge vs direct endpoints, custom providers — and model specs: the detection cascade, the verify gate, the provenance sidecar (`unown models verify`) |
-| [usage](docs/usage.md) | every command, slash command, keybinding, session tool, plan mode |
+| [usage](docs/usage.md) | every command, slash command, keybinding, session tool, plan mode (V2: scored plan file + approval gate) |
 | [session lifecycle](docs/session-lifecycle.md) | abort and resume, consistent: the JSONL session format, the unified abort matrix behind Esc / `/abort` / every protocol, every resume spelling (`-c`, `--resume`, `unown sessions resume`, the both-stores pickers), crash recovery, exit codes |
 | [PLM](docs/plm.md) | process lifecycle management — the 12-state machine, the process registry, governed tool invocations, the recovery engine, checkpoints + replay, learning attribution; the round's receipts in [the session log](docs/plm-round-session.md), [the process lifecycle report](docs/process-lifecycle-report.md) and [the tool lifecycle report](docs/tool-lifecycle-report.md) |
 | [routines](docs/routines.md) | scheduled recurring agent runs — the five schedule kinds (cron / every / after / one-shot / events), completion anchors, misfire policies, failed-run retries, chained routines, timezone/DST edge cases, the TUI/CLI/tools management surfaces |
@@ -293,7 +293,7 @@ cd ~/code/my-project
 unown                      # interactive session (like claude/pi, but learning)
 unown "fix the failing tests"   # …optionally starting with a prompt
 unown -p "explain the build error" | less   # one-shot headless (like claude -p)
-unown --plan "add auth"    # plan mode: read-only exploration → numbered plan
+unown --plan "add auth"    # plan mode: read-only exploration → scored plan file → approval gate
 unown setup                # connect a provider (wizard or flags; specs detected or asked)
 unown models               # list configured models + spec provenance
 unown models verify        # re-run spec detection; report anything unverified

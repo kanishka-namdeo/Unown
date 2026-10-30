@@ -30,58 +30,74 @@ export interface ChangelogStop {
   groups: ChangelogGroup[];
 }
 
-export const CHANGELOG_TOTAL_ENTRIES = 460;
+export const CHANGELOG_TOTAL_ENTRIES = 475;
 
 export const CHANGELOG_TOTALS: Record<ChangelogBucket, number> = {
-  "Added": 214,
+  "Added": 218,
   "Changed": 28,
   "Deprecated": 0,
   "Removed": 3,
-  "Fixed": 170,
+  "Fixed": 173,
   "Security": 5,
-  "Behavior": 40
+  "Behavior": 48
 };
 
 export const CHANGELOG_STOPS: ChangelogStop[] = [
   {
     "label": "0.0.49",
     "date": "2026-10-31",
-    "total": 10,
+    "total": 25,
     "counts": {
-      "Added": 6,
+      "Added": 10,
       "Changed": 0,
       "Deprecated": 0,
       "Removed": 0,
-      "Fixed": 3,
+      "Fixed": 6,
       "Security": 0,
-      "Behavior": 1
+      "Behavior": 9
     },
     "groups": [
       {
         "bucket": "Added",
         "items": [
           {
-            "title": "/abort",
+            "title": "The plan file",
             "behavior": false
           },
           {
-            "title": "The unified abort matrix",
+            "title": "exit_plan_mode",
             "behavior": false
           },
           {
-            "title": "PI_EXTRA_SESSION_DIRS",
+            "title": "--plan-model <id>",
             "behavior": false
           },
           {
-            "title": "unown sessions resume [query]",
+            "title": "Shift+Tab",
             "behavior": false
           },
           {
-            "title": "The resume hint",
+            "title": "/plan <description>",
             "behavior": false
           },
           {
-            "title": "docs/session-lifecycle.md",
+            "title": "The plan-turn budget",
+            "behavior": false
+          },
+          {
+            "title": "The continuation nudge",
+            "behavior": false
+          },
+          {
+            "title": "The plan benchmark",
+            "behavior": false
+          },
+          {
+            "title": "ACP session/setMode",
+            "behavior": false
+          },
+          {
+            "title": "Plan lifecycle notes",
             "behavior": false
           }
         ]
@@ -89,6 +105,18 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
       {
         "bucket": "Fixed",
         "items": [
+          {
+            "title": "Resume under-reports step completions after a crash",
+            "behavior": false
+          },
+          {
+            "title": "\"Refine the plan\" was a blank editor",
+            "behavior": false
+          },
+          {
+            "title": "\"Stay in plan mode\" did nothing at all",
+            "behavior": false
+          },
           {
             "title": "The in-session picker missed the import lane",
             "behavior": false
@@ -106,6 +134,38 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
       {
         "bucket": "Behavior",
         "items": [
+          {
+            "title": "The plan-mode system prompt is new",
+            "behavior": true
+          },
+          {
+            "title": "Plan-mode toolset",
+            "behavior": true
+          },
+          {
+            "title": "/abort",
+            "behavior": true
+          },
+          {
+            "title": "The unified abort matrix",
+            "behavior": true
+          },
+          {
+            "title": "PI_EXTRA_SESSION_DIRS",
+            "behavior": true
+          },
+          {
+            "title": "unown sessions resume [query]",
+            "behavior": true
+          },
+          {
+            "title": "The resume hint",
+            "behavior": true
+          },
+          {
+            "title": "docs/session-lifecycle.md",
+            "behavior": true
+          },
           {
             "title": "None",
             "behavior": true

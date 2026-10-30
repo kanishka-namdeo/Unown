@@ -32,6 +32,11 @@ export interface Task {
 export interface TaskState {
 	tasks: Task[];
 	nextId: number;
+	/** Rejection reason set by errorResult (undefined on accepted states) —
+	 * carried on the state clone so the tool layer renders the reducer's own
+	 * message (declared here so readers stay type-safe; the 2026-10-31
+	 * planning round's seed hook pinned it). */
+	error?: string;
 }
 
 export const EMPTY_STATE: TaskState = { tasks: [], nextId: 1 };

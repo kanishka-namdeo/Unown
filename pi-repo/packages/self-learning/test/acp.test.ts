@@ -495,4 +495,71 @@ describe("acp — integration (real CLI, mock bridge)", () => {
                 },
                 LONG,
         );
+
+        // Plan Mode V2 (the 2026-10-31 planning round, gap P-14): the advertised
+        // mode surface — initialize carries sessionModes; setMode toggles plan
+        // mode on the live session (the request toolset loses edit/write/task);
+        // an unknown mode errors with -32602.
+        test(
+                "session/setMode: advertised modes, plan toggles the toolset, unknown mode errors",
+                async () => {
+                        const bridge: MockBridge = startMockBridge();
+                        const root = mkdtempSync(join(tmpdir(), "unown-acp-setmode-"));
+                        const wire = startAcp(bridge, root);
+                        try {
+                                const init = await wire.request("initialize", { protocolVersion: 1, clientCapabilities: {} });
+                                expect(init.error).toBeUndefined();
+                                const modes = init.result.agentCapabilities.sessionModes as Array<{ id: string }>;
+                                expect(modes.map((m) => m.id).sort()).toEqual(["default", "plan"]);
+
+                                const ns = await wire.request("session/new", { cwd: join(root, "proj"), mcpServers: [] });
+                                expect(ns.error).toBeUndefined();
+
+                                // plan mode ON: the next request the bridge sees must be
+                                // read-only (no edit/write/task) and carry the plan tools.
+                                const on = await wire.request("session/setMode", { sessionId: ns.result.sessionId, modeId: "plan" });
+                                expect(on.error).toBeUndefined();
+                                expect(on.result.currentMode).toBe("plan");
+                                await wire.request(
+                                        "session/prompt",
+                                        { sessionId: ns.result.sessionId, prompt: [{ type: "text", text: "plan something" }] },
+                                        120_000,
+                                );
+                                const planReq = bridge.requests[bridge.requests.length - 1];
+                                expect(planReq).toBeDefined();
+                                expect(planReq.tools).not.toContain("edit");
+                                expect(planReq.tools).not.toContain("write");
+                                expect(planReq.tools).not.toContain("task");
+                                expect(planReq.tools).toContain("plan_write");
+                                expect(planReq.tools).toContain("exit_plan_mode");
+
+                                // plan mode OFF: the write tools return.
+                                const off = await wire.request("session/setMode", { sessionId: ns.result.sessionId, modeId: "default" });
+                                expect(off.error).toBeUndefined();
+                                expect(off.result.currentMode).toBe("default");
+                                await wire.request(
+                                        "session/prompt",
+                                        { sessionId: ns.result.sessionId, prompt: [{ type: "text", text: "now edit" }] },
+                                        120_000,
+                                );
+                                const defaultReq = bridge.requests[bridge.requests.length - 1];
+                                expect(defaultReq.tools).toContain("edit");
+                                expect(defaultReq.tools).toContain("write");
+
+                                // unknown mode: -32602 with the available list.
+                                const bad = await wire.request("session/setMode", { sessionId: ns.result.sessionId, modeId: "yolo" });
+                                expect(bad.error).toBeDefined();
+                                expect(bad.error.code).toBe(-32602);
+                                expect(String(bad.error.message)).toContain("default, plan");
+
+                                const code = await wire.exit();
+                                expect(code).toBe(0);
+                        } finally {
+                                wire.kill();
+                                bridge.close();
+                                rmSync(root, { recursive: true, force: true });
+                        }
+                },
+                LONG,
+        );
 });

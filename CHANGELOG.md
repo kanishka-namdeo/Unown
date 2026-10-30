@@ -11,6 +11,8 @@ Repo conventions: measured claims cite their receipts (`docs/testing-strategy.md
 
 ## [0.0.49] - 2026-10-31
 
+Two rounds ship in this release.
+
 The sessions round — abort and resume made consistent with the product:
 one abort matrix behind every surface (Esc, the new `/abort` command, the
 extension API, RPC, ACP), both session stores behind every picker (the
@@ -22,7 +24,56 @@ runs it: the PTY lane booted the real TUI, aborted a live turn through
 `-c`, and watched the same session file grow. Receipts: [the session log](docs/sessions-round-session.md) ·
 [the research pass](docs/sessions-competitor-research.md) · [the lifecycle page](docs/session-lifecycle.md).
 
+The planning round — **Plan Mode V2**, rebuilt around a scored plan file and
+mechanical convergence. The v0.0.48 baseline could not produce a plan at all
+on the free-tier model (two live repros: a 25-turn and a 45-turn run, both
+burned entirely on exploration; the 45-turn retry's "answer" was a mid-thought
+sentence). V2 ships the plan file as the artifact (`.unown/plans/<slug>.md`,
+written by the new `plan_write` tool — the only writable path while
+planning), a deterministic 7-dimension 0-100 quality rubric that coaches the
+model until the plan clears the threshold, the `exit_plan_mode` approval gate
+(execute auto-accept / execute manual / edit in $EDITOR / keep-planning with
+feedback — each mapping to a permission-mode transition), plan steps that
+become todo tasks on approval, the `--plan-model` plan/execute split (the
+opusplan lane), Shift+Tab mode cycling, `/plan <description>|open|show|off`,
+ACP `session/setMode` with advertised modes, resume re-scanning of completed
+steps, plan lifecycle notes feeding AutoDream, and two mechanical convergence
+lanes discovered live on the weak model: the escalating plan-turn budget and
+the continuation nudge for narration-stops. Measured: **0/2 plans produced →
+3/3 produced at a mean rubric score of 100/100** (same task set, model,
+endpoint and cap). Receipts: [the gap register](benchmarks/plan-mode/GAP-REGISTER.md) ·
+[the benchmark](benchmarks/plan-mode/RESULTS.md) · [the research pass](docs/plan-mode-competitor-research.md) ·
+[the session log](docs/plan-mode-session.md).
+
 ### Added
+
+#### The planning round (Plan Mode V2)
+
+- **The plan file** (`.unown/plans/<slug>.md`) — the reviewable artifact: diffable, versionable, `$EDITOR`-editable, compaction-proof, and the single source of truth for the approval gate. Written only by the new **`plan_write`** tool (the ONLY writable path in plan mode — `edit`/`write`/`task` stay disabled), which scores the plan 0-100 and coaches the model on exactly which dimensions to fix (`UNOWN_PLAN_SCORE_THRESHOLD`, default 70).
+- **`exit_plan_mode`** — the structured approval gate (Claude Code's ExitPlanMode contract): reads the plan file, scores it, and offers Execute — auto-accept edits (permission mode `acceptEdits`), Execute — approve each edit (`default`), Edit the plan in $EDITOR (re-scores, re-asks), or Keep planning with feedback (the rejection + feedback return to the model, which revises and re-exits). Approval converts the steps into todo tasks, titles the session `plan: <objective>` when unnamed, re-injects the approved plan, and restores the session model.
+- **`--plan-model <id>`** (+ `PI_PLAN_MODEL_ID`) — the opusplan lane: the given model runs while planning, the session model returns on approval/exit.
+- **Shift+Tab** — cycles default → acceptEdits → plan (the Claude Code / Gemini lane; `bypassPermissions` never enters the cycle).
+- **`/plan <description>`** (enter + seed the objective), **`/plan open`** (edit the plan file in $EDITOR), **`/plan show`** (score + steps + state), **`/plan off`** — bare `/plan` still toggles.
+- **The plan-turn budget** (`UNOWN_PLAN_TURN_BUDGET`, default 15, at most 60% of a `--max-turns` cap): at 50%/75%/100% of the budget the plan-mode context escalates from "wrap up exploration" to "write the plan NOW" — the mechanical answer to a weak model ignoring the prompt-level convergence contract (the live repro burned a whole 25-turn cap on grep/read with zero plan calls).
+- **The continuation nudge** — a plan-mode turn that ends without a plan file, without `exit_plan_mode` and without a user-facing question is a narration-stop ("Now let me look at…" as the final answer); the extension re-triggers the turn with a mechanical nudge (max 3 per episode).
+- **The plan benchmark** (`benchmarks/plan-mode/`): fixed task set, pinned runner, the product's own scorer riding the `--output-format json` envelope's new `plan` block (`{objective, steps, stepsWithFiles, risks, hasVerification, score, threshold, passes, file}`), JSONL receipts and the before/after RESULTS. The Planning Gap Register (P-01…P-17b, each with reproduction → root cause → regression test → fix → validation) ships beside it.
+- **ACP `session/setMode`** — plan mode is now a mid-session switch: `initialize` advertises `sessionModes` (default + plan), setMode toggles the live session's toolset, unknown modes error with the available list.
+- **Plan lifecycle notes** — `plan approved` / `plan feedback` (what the user rejected and why — the highest-signal learning input) / `plan completed` notes feed AutoDream, so planning sessions leave learning artefacts.
+
+### Fixed
+
+#### The planning round (Plan Mode V2)
+
+- **Resume under-reports step completions after a crash**: the restore trusted only the last persisted `unown-plan-mode` entry; a crash between a `[DONE:n]` and its persist lost the completion. Resume now re-scans the transcript after the last plan-execute marker (the pi example's lane the original port dropped).
+- **"Refine the plan" was a blank editor**: the approval dialog's refine option opened an empty editor with no plan prefill — the plan was echoed above but not editable. The $EDITOR lane now opens the actual plan pre-filled, re-scores the edit, and re-asks.
+- **"Stay in plan mode" did nothing at all** — the old dialog's middle option silently dropped the turn's work; it now feeds back (optionally) and keeps the planning loop alive.
+
+### Agent Behavior
+
+#### The planning round (Plan Mode V2)
+
+- **The plan-mode system prompt is new**: a five-phase workflow (EXPLORE → CLARIFY → DRAFT → CRITIQUE → EXIT), the required plan structure (`# Plan:` / `## Context` / `## Approach` / `## Steps` with `(files: …)` annotations / `## Risks` / `## Verification`), the turn-ending contract ("end every turn with either a clarifying question or exit_plan_mode"), reuse-first step guidance, and a ≤ ~60-line scannability bound. The rubric threshold and the budget escalation line ride the per-turn injection.
+- **Plan-mode toolset**: `plan_write` + `exit_plan_mode` join the active set while planning (TUI, print and ACP lanes); a stray call outside plan mode gets the guard message instead of a silent no-op.
 
 - **`/abort`** — the named command for the abort matrix that until now only had a KEY. Every other session lifecycle op ships a slash command (`/new`, `/resume`, `/fork`, `/tree`); abort told you to press Esc and left discoverability at the door. The command aborts whatever is running — the agent turn (queued messages return to the editor), a bash command, compaction, or a retry wait — and reports honestly ("Nothing to abort…") when the session is idle.
 - **The unified abort matrix** (`AgentSession.abortActiveOperation(): boolean`, vendored pi): ONE code path — turn, bash, compaction/branch summary, retry — returning whether anything was aborted. The TUI's Esc, the `abortHandler` binding, the extension shortcut context and `/abort` all ride it; `ctx.abortActiveOperation()` joins the extension API (`ctx.abort()` unchanged); `ExtensionBindings.abortHandler` now returns the boolean.

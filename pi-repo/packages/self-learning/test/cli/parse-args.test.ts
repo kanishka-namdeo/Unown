@@ -126,6 +126,33 @@ describe("parseArgs --output-format pairing", () => {
                 expect(args.outputFormat).toBe("json");
                 expect(args.prompt).toBe("do it");
         });
+
+        // Plan Mode V2 (the 2026-10-31 planning round, gap P-07): the opusplan
+        // lane — a model id consumed with a value, missing value exits 2.
+        test("--plan-model consumes the model id (the opusplan lane)", () => {
+                const args = parseArgs(["--plan", "--plan-model", "agnes-3.0-flash", "-p", "plan it"]);
+                expect(args.plan).toBe(true);
+                expect(args.planModel).toBe("agnes-3.0-flash");
+                expect(args.prompt).toBe("plan it");
+                const bare = parseArgs(["-p", "hi"]);
+                expect(bare.planModel).toBeUndefined();
+        });
+        test("--plan-model without a value is a usage error (exit 2)", () => {
+                const origExit = (process as any).exit;
+                let exitCode = 0;
+                (process as any).exit = (code?: number) => {
+                        exitCode = code ?? 0;
+                        throw new Error("exit");
+                };
+                try {
+                        parseArgs(["--plan", "--plan-model", "-p", "hi"]);
+                } catch {
+                        /* the argv-scan exit throws through */
+                } finally {
+                        (process as any).exit = origExit;
+                }
+                expect(exitCode).toBe(2);
+        });
 });
 
 // ---------------------------------------------------------------------------

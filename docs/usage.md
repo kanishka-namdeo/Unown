@@ -127,21 +127,27 @@ Three always-on presence surfaces ship with the convergence round:
 
 ## Plan mode
 
-Plan mode is a read-only exploration phase with an explicit approval gate before anything changes. Start it three ways: `unown --plan` (print or TUI), `/plan` in the TUI, or Ctrl+Alt+P.
+Plan mode (V2, the 2026-10-31 planning round) is a read-only exploration phase with a **scored plan file** as the artifact, an explicit approval gate, and mechanical convergence — the agent cannot wander forever, and cannot leave without a reviewable plan. Start it: `unown --plan` (print or TUI), `/plan` in the TUI, `/plan <description>` (enter + seed the objective), Shift+Tab (cycle default → acceptEdits → plan), or Ctrl+Alt+P (toggle).
 
 While planning:
 
-- `edit`, `write`, and the `task` tool are disabled; `read`, `bash`, `grep`, `find`, `ls`, `todo`, `note`, `fetch_url`, `web_search`, `webfetch`, `lsp` (code intelligence is read-only; web tools are read-only), and `ask_user_question` (clarifying questions are read-only) stay available.
+- `edit`, `write`, and the `task` tool are disabled; `read`, `bash`, `grep`, `find`, `ls`, `todo`, `note`, `fetch_url`, `web_search`, `webfetch`, `lsp`, `ask_user_question` stay available — plus the two plan-mode tools: **`plan_write`** (the ONLY writable path — it writes the plan file) and **`exit_plan_mode`** (the approval gate).
 - `bash` is restricted to an allowlist of read-only commands — `cat`, `head`, `tail`, `grep`, `find`, `ls`, `diff`, `stat`, `git status/log/diff/show`, `npm list/view`, `curl`, `jq`, `awk`, and similar. Anything that writes, installs, kills, or mutates git state is blocked with a reason. (The full allow/deny pattern lists live in `tools.ts`.)
 
 The flow:
 
-1. The agent explores the codebase and asks clarifying questions in plain text where requirements are ambiguous.
-2. It produces a numbered plan under a `Plan:` header.
-3. You choose: **Execute the plan (track progress)**, **Stay in plan mode**, or **Refine the plan** (opens an editor; your refinement is fed back).
-4. On execution, full tool access is restored. The agent marks each completed step with a `[DONE:n]` tag, and the status line shows `plan 3/7` style progress plus a checklist widget.
+1. The agent explores the codebase (budget-aware: at 50%/75%/100% of the planning turn budget the context escalates from "wrap up" to "write the plan NOW" — `UNOWN_PLAN_TURN_BUDGET`, default 15, and at most 60% of a `--max-turns` cap), asks clarifying questions where requirements are genuinely ambiguous, and — if it stops early without a plan — a **continuation nudge** re-triggers the turn (max 3).
+2. It writes the plan to `.unown/plans/<slug>.md` with `plan_write`, using the required structure: `# Plan: <objective>`, `## Context`, `## Approach`, `## Steps` (numbered, each annotated `(files: src/a.ts)`), `## Risks`, `## Verification`. The tool **scores the plan 0-100** on seven dimensions (objective, context, approach, steps, risks, verification, clarity) and coaches the model on exactly what is missing until the score clears the threshold (`UNOWN_PLAN_SCORE_THRESHOLD`, default 70).
+3. It calls `exit_plan_mode`. You choose: **Execute — auto-accept edits** (permission mode `acceptEdits`), **Execute — approve each edit** (mode `default`), **Edit the plan in $EDITOR** (re-scores, re-asks), or **Keep planning (send feedback)** — the rejection and your feedback go back to the model, which revises the plan file and re-exits.
+4. On approval: the steps become **todo tasks** automatically, the session is titled `plan: <objective>` (when unnamed), a learning note (`plan approved: …`) feeds AutoDream, and execution starts — `[DONE:n]` tags mark progress, the status line shows `plan 3/7`, and completing every step delivers a `plan completed` note.
 
-Plan state is persisted as session entries, so a plan survives `/resume`. In print mode (`unown -p --plan ...`) there is no approval dialog — the run stays read-only and the numbered plan is the output.
+The plan file is the single source of truth: it survives compaction (re-injected per turn) and `/resume` (state, score and file path ride session entries; step completions are re-scanned from the transcript after a crash). `/plan show` prints the current score + steps; `/plan open` edits the file in $EDITOR; `/plan off` leaves plan mode.
+
+**The plan/execute model split** (the `opusplan` lane): `unown --plan --plan-model <id>` (or `PI_PLAN_MODEL_ID`) uses the given model while planning; the session model returns on approval or exit — pair a reasoner for the plan with a fast model for execution.
+
+Print mode (`unown -p --plan …`) has no approval dialog — the run stays read-only, the plan file is written, and the `--output-format json` envelope carries the structured report: `plan: {objective, steps, stepsWithFiles, risks, hasVerification, score, threshold, passes, file}` — automation scores plans without parsing prose.
+
+The round's receipts (0/2 plans produced at v0.0.48 → 3/3 at 100/100 after) live in `benchmarks/plan-mode/`; the design lineage and every closed gap are in `benchmarks/plan-mode/GAP-REGISTER.md`.
 
 ## Command reference
 
@@ -150,7 +156,7 @@ Plan state is persisted as session entries, so a plan survives `/resume`. In pri
 | `unown` | Interactive session in the current directory |
 | `unown "do something"` | Interactive session starting with a prompt |
 | `unown -p "prompt"` | One-shot headless run (print mode) |
-| `unown --plan [...]` | Start (print or TUI) in plan mode; also `/plan`, Ctrl+Alt+P |
+| `unown --plan [...]` | Start (print or TUI) in plan mode (V2: scored plan file + approval gate); `--plan-model <id>` adds the plan/execute model split. Also `/plan [description\|open\|show\|off]`, Shift+Tab, Ctrl+Alt+P |
 | `unown setup` | Connect a model provider — interactive wizard. Presets: `bridge` (bundled), `openai`, `openrouter`, `anthropic`, `dashscope`, `deepseek`, `agnes`, `custom` (any OpenAI-compatible endpoint). Adding KEEPS existing providers; `--force` resets to one |
 | `unown setup --provider openai --api-key sk-... --model gpt-4o` | Non-interactive (scripts/CI). `--key-env VAR` stores a `$VAR` reference instead of the secret; `--context-window N --max-tokens N` carry the spec gate's numbers for models no verifiable source knows (else exit 1 with the remediation; `UNOWN_ALLOW_UNVERIFIED_SPECS=1` stamps the conservative floor); `--force` resets; `--list` prints the presets |
 | `unown models` | List configured models with each one's spec provenance (`524,288 ctx / 65,536 out (models.dev)`), plus what a local bridge serves |
@@ -563,6 +569,7 @@ The most useful defaults (Windows/WSL variants in parentheses):
 | Key | Action |
 |---|---|
 | Ctrl+Alt+P | Toggle plan mode |
+| Shift+Tab | Cycle permission mode: default → acceptEdits → plan (the Claude Code / Gemini lane) |
 
 **Addons** (defaults — both rebindable in [addons](addons.md))
 

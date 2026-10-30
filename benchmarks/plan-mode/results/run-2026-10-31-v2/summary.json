@@ -1,0 +1,29 @@
+{
+	"ranAt": "2026-10-30T23:13:23.385Z",
+	"tasks": 3,
+	"cap": 25,
+	"plansProduced": 3,
+	"plansPassing": 3,
+	"meanScore": 100,
+	"meanTurns": 25,
+	"receipts": [
+		{
+			"task": "pt-1",
+			"score": 100,
+			"turns": 25,
+			"produced": true
+		},
+		{
+			"task": "pt-2",
+			"score": 100,
+			"turns": 25,
+			"produced": true
+		},
+		{
+			"task": "pt-3",
+			"score": 100,
+			"turns": 25,
+			"produced": true
+		}
+	]
+}
