@@ -52,6 +52,7 @@ import {
     trustStatePath,
 } from "./config-trust.ts";
 import { UNOWN_AGENT_DIR } from "./term.ts";
+import { loadHubPrefs } from "./settings/prefs.ts";
 
 // ---------------------------------------------------------------------------
 // Public types
@@ -302,6 +303,25 @@ export function interpolateTemplate(template: string, event: HookEvent): string 
 // Handler runners — one per type
 // ---------------------------------------------------------------------------
 
+/** Inherited hook depth (the loop breaker's counter). */
+function hookDepth(): number {
+    const raw = process.env.UNOWN_HOOK_DEPTH;
+    const n = Number(raw);
+    return raw !== undefined && Number.isFinite(n) && n >= 0 ? Math.trunc(n) : 0;
+}
+
+/** The loop breaker's max depth — a hub setting, read live (never cached:
+ *  the user must be able to raise/lower it without an engine restart). */
+function hookMaxDepthSetting(): number {
+    try {
+        const prefs = loadHubPrefs();
+        if (Number.isFinite(prefs.hookMaxDepth) && prefs.hookMaxDepth >= 1) return Math.trunc(prefs.hookMaxDepth);
+    } catch {
+        /* fall through to default */
+    }
+    return 3;
+}
+
 /** Run a shell command, capture stdout+stderr, return {exit, stdout, stderr}. */
 function runCommand(
     command: string,
@@ -521,6 +541,11 @@ async function runHookHandlerSync(
                 UNOWN_HOOK_EVENT: event.name,
                 UNOWN_HOOK_TOOL: event.tool ?? "",
                 UNOWN_RUN_ID: ctx.runId,
+                // The loop breaker's depth tag: a hook command that spawns
+                // unown (same project) re-runs these hooks in the child;
+                // the child increments the counter and the breaker below
+                // stops the recursion before it runs away.
+                UNOWN_HOOK_DEPTH: String(hookDepth() + 1),
             };
             const { exit, stdout, stderr, timedOut } = await runCommand(cmd, env, timeoutMs);
             if (timedOut) {
@@ -695,6 +720,26 @@ export async function runHooksForEvent(
     ctx: HookRunContext,
 ): Promise<HookRunResult> {
     if (handlers.length === 0) return { decision: "allow", outputs: [] };
+
+    // The loop breaker (the edge-case catalogue's #3 gap — hook→agent→hook
+    // recursion previously had NO bound): a hook-spawned agent inherits
+    // UNOWN_HOOK_DEPTH in its env; at max depth every handler for every
+    // event is skipped with a visible warning instead of recursing. The
+    // max is a hub setting (~/.unown/agent/settings-hub.json → hookMaxDepth,
+    // default 3) so the user owns the bound.
+    const depth = hookDepth();
+    if (depth >= hookMaxDepthSetting()) {
+        return {
+            decision: "allow",
+            reason: `hook loop breaker: depth ${depth} reached the max (${hookMaxDepthSetting()}) — handlers skipped`,
+            outputs: [
+                {
+                    kind: "error",
+                    message: `hook loop breaker: this agent is ${depth} hook-spawns deep (max ${hookMaxDepthSetting()}, /settings → Tools → Hook loop breaker) — hook handlers were skipped to break the recursion`,
+                },
+            ],
+        };
+    }
 
     // Filter by matcher (PreToolUse/PostToolUse only).
     const matching = handlers.filter((h) => {

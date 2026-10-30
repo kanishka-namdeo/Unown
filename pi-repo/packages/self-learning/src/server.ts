@@ -5,35 +5,44 @@
 import { closeSync, existsSync, mkdirSync, openSync, readFileSync, rmSync, statSync, writeSync } from "node:fs";
 import { join } from "node:path";
 import {
-	AutomationsScheduler,
-	createAutomation,
-	deleteAutomation,
-	EVENT_NAME_RE,
-	type EventDispatchResult,
-	getAutomation,
-	listRuns as listAutomationRuns,
-	listAutomations,
-	ROUTINE_EVENT_PREFIX,
-	skipNextOccurrence,
-	snoozeNextOccurrence,
-	updateAutomation,
+        AutomationsScheduler,
+        createAutomation,
+        deleteAutomation,
+        EVENT_NAME_RE,
+        type EventDispatchResult,
+        getAutomation,
+        listRuns as listAutomationRuns,
+        listAutomations,
+        ROUTINE_EVENT_PREFIX,
+        skipNextOccurrence,
+        snoozeNextOccurrence,
+        stopAutomationRuns,
+        updateAutomation,
 } from "./automations.ts";
 import { emit, subscribe } from "./bus.ts";
-import { dreamNotes, latestDreamNews, listDreams, runDream, runProjectDream } from "./dream.ts";
 import {
-	engineTokenPath,
-	ensureHooksToken,
-	generateEngineToken,
-	healEngineTokenFile,
-	hostHeaderAllowed,
-	originAllowed,
-	removeEngineTokenFile,
-	requestToken,
-	resolveAuthPolicy,
-	sharedEngineTokenPath,
-	tokenExempt,
-	tokenMatches,
-	writeEngineTokenFile,
+        approvePendingDream,
+        discardPendingDream,
+        dreamNotes,
+        latestDreamNews,
+        listDreams,
+        runDream,
+        runProjectDream,
+} from "./dream.ts";
+import {
+        engineTokenPath,
+        ensureHooksToken,
+        generateEngineToken,
+        healEngineTokenFile,
+        hostHeaderAllowed,
+        originAllowed,
+        removeEngineTokenFile,
+        requestToken,
+        resolveAuthPolicy,
+        sharedEngineTokenPath,
+        tokenExempt,
+        tokenMatches,
+        writeEngineTokenFile,
 } from "./engine-auth.ts";
 // M8: the version-skew handshake — /api/version + overview.version expose the
 // engine's build (version, boot sha, bootedAt); agentVersion() replaces the
@@ -43,50 +52,50 @@ import { breakerStatus, budgetStatus, markEngineProcess, pruneLedger } from "./g
 import { cycleTriggerGuard, getImprovement, listCycles, listImprovements, runCycle } from "./harness.ts";
 import { bridgeHealth, bridgeLog } from "./llm.ts";
 import {
-	history,
-	knownProjectScopes,
-	projectTiers,
-	resolveMemory,
-	rollback,
-	seedMemoryIfEmpty,
-	snapshot,
-	type Tier,
+        history,
+        knownProjectScopes,
+        projectTiers,
+        resolveMemory,
+        rollback,
+        seedMemoryIfEmpty,
+        snapshot,
+        type Tier,
 } from "./memory.ts";
 import {
-	ENGINE_SCOPE,
-	type MemoryScope,
-	memoryPlatformStatus,
-	projectMemories,
-	projectScope,
-	searchAcrossScopes,
-	searchMemories,
+        ENGINE_SCOPE,
+        type MemoryScope,
+        memoryPlatformStatus,
+        projectMemories,
+        projectScope,
+        searchAcrossScopes,
+        searchMemories,
 } from "./memzero.ts";
 import { runMintJob, suiteStats } from "./mint.ts";
 import { ingestTerminalNote, undreamedNotes } from "./notes.ts";
 import { syncNoteOutbox } from "./outbox.ts";
 import {
-	createCheckpoint,
-	getCheckpoint,
-	ingestToolReport,
-	listAttributions,
-	listCheckpoints,
-	listProcesses,
-	listRecoveryEvents,
-	listToolInvocations,
-	markExecuted,
-	markValidated,
-	plmSummary,
-	processAnalytics,
-	recordFailure,
-	recoverOrphanProcesses,
-	validateJobRecovery,
-	wirePlm,
+        createCheckpoint,
+        getCheckpoint,
+        ingestToolReport,
+        listAttributions,
+        listCheckpoints,
+        listProcesses,
+        listRecoveryEvents,
+        listToolInvocations,
+        markExecuted,
+        markValidated,
+        plmSummary,
+        processAnalytics,
+        recordFailure,
+        recoverOrphanProcesses,
+        validateJobRecovery,
+        wirePlm,
 } from "./plm/index.ts";
 import {
-	getProcess,
-	getProcessChildren,
-	getProcessEvents,
-	ingestTerminalSessionReport,
+        getProcess,
+        getProcessChildren,
+        getProcessEvents,
+        ingestTerminalSessionReport,
 } from "./plm/process-registry.ts";
 import { recoveryAnalytics } from "./plm/recovery-engine.ts";
 import { jobTimeoutMs, listJobs, router, setJobEnabled } from "./router.ts";
@@ -102,10 +111,10 @@ import { webCacheClear, webCacheStats, webCacheSweep } from "./webcache.ts";
 const PORT = Number(process.env.PI_AGENT_PORT || 3030); // `||`: Number("") is 0, not the default
 
 export interface ApiRequest {
-	method: string;
-	path: string;
-	query: URLSearchParams;
-	body: any;
+        method: string;
+        path: string;
+        query: URLSearchParams;
+        body: any;
 }
 
 /**
@@ -122,19 +131,19 @@ export interface ApiRequest {
  * null rather than throwing into the 500 handler.
  */
 export async function apiRequestBody(req: Request): Promise<any> {
-	if (["GET", "HEAD", "OPTIONS", "DELETE"].includes(req.method)) return null;
-	try {
-		return await req.json();
-	} catch {
-		return null;
-	}
+        if (["GET", "HEAD", "OPTIONS", "DELETE"].includes(req.method)) return null;
+        try {
+                return await req.json();
+        } catch {
+                return null;
+        }
 }
 
 function json(data: unknown, status = 200) {
-	return new Response(JSON.stringify(data), {
-		status,
-		headers: { "Content-Type": "application/json", "Cache-Control": "no-store" },
-	});
+        return new Response(JSON.stringify(data), {
+                status,
+                headers: { "Content-Type": "application/json", "Cache-Control": "no-store" },
+        });
 }
 
 /**
@@ -146,9 +155,9 @@ function json(data: unknown, status = 200) {
  * the stack.
  */
 export function apiErrorMessage(err: unknown): string {
-	if (err instanceof Error) return err.message;
-	if (typeof err === "string") return err.toString();
-	return "internal error";
+        if (err instanceof Error) return err.message;
+        if (typeof err === "string") return err.toString();
+        return "internal error";
 }
 
 // ---------------------------------------------------------------------------
@@ -166,32 +175,32 @@ export function apiErrorMessage(err: unknown): string {
 // ---------------------------------------------------------------------------
 /** Does this error mean the router mutex is held by another job? (withBusy: "engine is busy…"; execute: "router is busy…" — one class, one contract.) The H4 draining conflict ("router is draining for shutdown") joins the class: it is the same not-now answer, and the 409 shape tells the client why. */
 export function isEngineBusyError(err: unknown): boolean {
-	const message = err instanceof Error ? err.message : String(err ?? "");
-	return (
-		message === "engine is busy with another job" ||
-		message === "router is busy with another job" ||
-		message === "router is draining for shutdown"
-	);
+        const message = err instanceof Error ? err.message : String(err ?? "");
+        return (
+                message === "engine is busy with another job" ||
+                message === "router is busy with another job" ||
+                message === "router is draining for shutdown"
+        );
 }
 
 /** The 409 response every engine-busy surface answers with — same shape as the cycleTriggerGuard conflicts. */
 export function engineBusyResponse(): Response {
-	return json({ error: "engine is busy with another job — try again in a moment", reason: "engine-busy" }, 409);
+        return json({ error: "engine is busy with another job — try again in a moment", reason: "engine-busy" }, 409);
 }
 
 /** On-disk size of the engine DB + its WAL sidecar, bytes (0 per missing
  *  file) — the retention observability number (M9) surfaced in
  *  /api/overview and `unown engine status`. */
 function engineDbBytes(): number {
-	let bytes = 0;
-	for (const p of [DB_PATH, `${DB_PATH}-wal`]) {
-		try {
-			bytes += statSync(p).size;
-		} catch {
-			/* missing file — contributes 0 */
-		}
-	}
-	return bytes;
+        let bytes = 0;
+        for (const p of [DB_PATH, `${DB_PATH}-wal`]) {
+                try {
+                        bytes += statSync(p).size;
+                } catch {
+                        /* missing file — contributes 0 */
+                }
+        }
+        return bytes;
 }
 
 // ---------------------------------------------------------------------------
@@ -217,51 +226,51 @@ function engineDbBytes(): number {
  * unaffected. Exported for tests.
  */
 export function allowedCorsOrigin(req: Request): string | null {
-	const mode = (process.env.UNOWN_ENGINE_CORS ?? "").trim();
-	if (mode === "off") return null;
-	const origin = req.headers.get("origin");
-	if (!origin) return null; // same-origin / non-browser — no CORS headers needed
-	if (mode === "*") return "*";
-	const explicit = mode
-		.split(",")
-		.map((s) => s.trim().replace(/\/+$/, ""))
-		.filter(Boolean);
-	if (explicit.length > 0) {
-		const o = origin.replace(/\/+$/, "");
-		return explicit.includes(o) ? origin : null;
-	}
-	// default allow-list: loopback origins, any port, http(s) only
-	try {
-		const u = new URL(origin);
-		const host = u.hostname.replace(/^\[|\]$/g, ""); // bare ::1
-		const isLoopback =
-			host === "localhost" || host === "::1" || /^127(\.\d{1,3}){3}$/.test(host) || /^0\.0\.0\.0$/.test(host);
-		const isHttp = u.protocol === "http:" || u.protocol === "https:";
-		return isLoopback && isHttp ? origin : null;
-	} catch {
-		return null;
-	}
+        const mode = (process.env.UNOWN_ENGINE_CORS ?? "").trim();
+        if (mode === "off") return null;
+        const origin = req.headers.get("origin");
+        if (!origin) return null; // same-origin / non-browser — no CORS headers needed
+        if (mode === "*") return "*";
+        const explicit = mode
+                .split(",")
+                .map((s) => s.trim().replace(/\/+$/, ""))
+                .filter(Boolean);
+        if (explicit.length > 0) {
+                const o = origin.replace(/\/+$/, "");
+                return explicit.includes(o) ? origin : null;
+        }
+        // default allow-list: loopback origins, any port, http(s) only
+        try {
+                const u = new URL(origin);
+                const host = u.hostname.replace(/^\[|\]$/g, ""); // bare ::1
+                const isLoopback =
+                        host === "localhost" || host === "::1" || /^127(\.\d{1,3}){3}$/.test(host) || /^0\.0\.0\.0$/.test(host);
+                const isHttp = u.protocol === "http:" || u.protocol === "https:";
+                return isLoopback && isHttp ? origin : null;
+        } catch {
+                return null;
+        }
 }
 
 /** The CORS headers for an allowed origin (empty object = no CORS). */
 export function corsHeadersFor(origin: string | null): Record<string, string> {
-	if (!origin) return {};
-	return {
-		"Access-Control-Allow-Origin": origin,
-		"Access-Control-Allow-Methods": "GET, POST, PATCH, DELETE, OPTIONS",
-		"Access-Control-Allow-Headers": "Content-Type, Authorization",
-		"Access-Control-Max-Age": "86400",
-		Vary: "Origin",
-	};
+        if (!origin) return {};
+        return {
+                "Access-Control-Allow-Origin": origin,
+                "Access-Control-Allow-Methods": "GET, POST, PATCH, DELETE, OPTIONS",
+                "Access-Control-Allow-Headers": "Content-Type, Authorization",
+                "Access-Control-Max-Age": "86400",
+                Vary: "Origin",
+        };
 }
 
 /** Re-wrap a Response with CORS headers (streaming bodies pass through). */
 export function withCors(res: Response, origin: string | null): Response {
-	const headers = corsHeadersFor(origin);
-	if (Object.keys(headers).length === 0) return res;
-	const h = new Headers(res.headers);
-	for (const [k, v] of Object.entries(headers)) h.set(k, v);
-	return new Response(res.body, { status: res.status, statusText: res.statusText, headers: h });
+        const headers = corsHeadersFor(origin);
+        if (Object.keys(headers).length === 0) return res;
+        const h = new Headers(res.headers);
+        for (const [k, v] of Object.entries(headers)) h.set(k, v);
+        return new Response(res.body, { status: res.status, statusText: res.statusText, headers: h });
 }
 
 /** The posture the RUNNING server was booted with (null until startServer;
@@ -271,803 +280,830 @@ export function withCors(res: Response, origin: string | null): Response {
 let activeAuthPosture: { mode: "token" | "off"; bind: "loopback" | "network" } | null = null;
 
 function currentAuthPosture(): { mode: "token" | "off"; bind: "loopback" | "network" } {
-	if (activeAuthPosture) return activeAuthPosture;
-	const p = resolveAuthPolicy(process.env);
-	return { mode: p.mode, bind: p.widenedBind ? "network" : "loopback" };
+        if (activeAuthPosture) return activeAuthPosture;
+        const p = resolveAuthPolicy(process.env);
+        return { mode: p.mode, bind: p.widenedBind ? "network" : "loopback" };
 }
 
 export async function handleApi(req: ApiRequest): Promise<Response> {
-	const { method, path, query, body } = req;
+        const { method, path, query, body } = req;
 
-	try {
-		// ------------------------------------------------------------------
-		// Automations (the zcode port — scheduled recurring agent runs)
-		// ------------------------------------------------------------------
-		if (path === "/api/automations") {
-			if (method === "GET") {
-				const rows = listAutomations().map((a) => ({
-					...a,
-					schedule: describeRoutineSchedule(a),
-					lastRun: listAutomationRuns(a.id, 1)[0] ?? null,
-				}));
-				return json({ automations: rows });
-			}
-			if (method === "POST") {
-				// `until` accepts epoch ms or an ISO string (the
-				// CLI/tools normalize; both are unambiguous).
-				const untilRaw = body?.until ?? body?.untilMs;
-				const untilMs =
-					untilRaw === undefined || untilRaw === null
-						? null
-						: Number.isFinite(Number(untilRaw))
-							? Number(untilRaw)
-							: Date.parse(String(untilRaw));
-				const created = createAutomation({
-					title: String(body?.title ?? ""),
-					prompt: String(body?.prompt ?? ""),
-					workspace: String(body?.workspace ?? process.cwd()),
-					schedule: {
-						cron: body?.cron !== undefined ? String(body.cron) : undefined,
-						every: body?.every !== undefined ? String(body.every) : undefined,
-						after: body?.after !== undefined ? String(body.after) : undefined,
-						delayMinutes: body?.delayMinutes !== undefined ? Number(body.delayMinutes) : undefined,
-					},
-					timezone: body?.timezone !== undefined && body?.timezone !== null ? String(body.timezone) : null,
-					untilMs,
-					misfire:
-						body?.misfire !== undefined && body?.misfire !== null
-							? String(body.misfire) === "catch-up"
-								? "catch-up"
-								: String(body.misfire) === "skip"
-									? "skip"
-									: undefined
-							: null,
-					mode: body?.mode === "standard" ? "standard" : "read-only",
-					model: body?.model ? String(body.model) : null,
-					maxRuns: body?.maxRuns !== undefined && body?.maxRuns !== null ? Number(body.maxRuns) : null,
-					// M5 policies: activeHours/idleOnly/deliverUrl/jitterSecs (camelCase;
-					// active_hours/idle_only/deliver_url/jitter_secs row aliases accepted).
-					activeHours:
-						body?.activeHours !== undefined
-							? body.activeHours === null || body.activeHours === ""
-								? null
-								: String(body.activeHours)
-							: body?.active_hours !== undefined
-								? String(body.active_hours)
-								: undefined,
-					idleOnly: body?.idleOnly === true || body?.idle_only === 1 || body?.idle_only === true,
-					deliverUrl:
-						body?.deliverUrl !== undefined
-							? body.deliverUrl === null || body.deliverUrl === ""
-								? null
-								: String(body.deliverUrl)
-							: body?.deliver_url !== undefined
-								? String(body.deliver_url)
-								: undefined,
-					jitterSecs:
-						body?.jitterSecs !== undefined && body?.jitterSecs !== null
-							? Number(body.jitterSecs)
-							: body?.jitter_secs !== undefined && body?.jitter_secs !== null
-								? Number(body.jitter_secs)
-								: undefined,
-					// M6: the failed-run retry policy (same camelCase + snake_case
-					// alias convention as the M5 fields).
-					retryMax:
-						body?.retryMax !== undefined && body?.retryMax !== null
-							? Number(body.retryMax)
-							: body?.retry_max !== undefined && body?.retry_max !== null
-								? Number(body.retry_max)
-								: undefined,
-					retryBackoffSecs:
-						body?.retryBackoffSecs !== undefined && body?.retryBackoffSecs !== null
-							? Number(body.retryBackoffSecs)
-							: body?.retry_backoff_secs !== undefined && body?.retry_backoff_secs !== null
-								? Number(body.retry_backoff_secs)
-								: undefined,
-					// M2 event routines: `event` + `filter` (the CLI's spelling;
-					// eventKind/eventFilter aliases accepted for REST symmetry).
-					eventKind:
-						body?.event !== undefined
-							? String(body.event)
-							: body?.eventKind !== undefined
-								? String(body.eventKind)
-								: null,
-					eventFilter:
-						body?.filter !== undefined
-							? String(body.filter)
-							: body?.eventFilter !== undefined
-								? String(body.eventFilter)
-								: null,
-				});
-				if (!created.ok) return json({ error: created.error }, created.status ?? 400);
-				return json({
-					automation: { ...created.automation, schedule: describeRoutineSchedule(created.automation) },
-				});
-			}
-		}
+        try {
+                // ------------------------------------------------------------------
+                // Automations (the zcode port — scheduled recurring agent runs)
+                // ------------------------------------------------------------------
+                if (path === "/api/automations") {
+                        if (method === "GET") {
+                                const rows = listAutomations().map((a) => ({
+                                        ...a,
+                                        schedule: describeRoutineSchedule(a),
+                                        lastRun: listAutomationRuns(a.id, 1)[0] ?? null,
+                                }));
+                                return json({ automations: rows });
+                        }
+                        if (method === "POST") {
+                                // `until` accepts epoch ms or an ISO string (the
+                                // CLI/tools normalize; both are unambiguous).
+                                const untilRaw = body?.until ?? body?.untilMs;
+                                const untilMs =
+                                        untilRaw === undefined || untilRaw === null
+                                                ? null
+                                                : Number.isFinite(Number(untilRaw))
+                                                        ? Number(untilRaw)
+                                                        : Date.parse(String(untilRaw));
+                                const created = createAutomation({
+                                        title: String(body?.title ?? ""),
+                                        prompt: String(body?.prompt ?? ""),
+                                        workspace: String(body?.workspace ?? process.cwd()),
+                                        schedule: {
+                                                cron: body?.cron !== undefined ? String(body.cron) : undefined,
+                                                every: body?.every !== undefined ? String(body.every) : undefined,
+                                                after: body?.after !== undefined ? String(body.after) : undefined,
+                                                delayMinutes: body?.delayMinutes !== undefined ? Number(body.delayMinutes) : undefined,
+                                        },
+                                        timezone: body?.timezone !== undefined && body?.timezone !== null ? String(body.timezone) : null,
+                                        untilMs,
+                                        misfire:
+                                                body?.misfire !== undefined && body?.misfire !== null
+                                                        ? String(body.misfire) === "catch-up"
+                                                                ? "catch-up"
+                                                                : String(body.misfire) === "skip"
+                                                                        ? "skip"
+                                                                        : undefined
+                                                        : null,
+                                        mode: body?.mode === "standard" ? "standard" : "read-only",
+                                        model: body?.model ? String(body.model) : null,
+                                        maxRuns: body?.maxRuns !== undefined && body?.maxRuns !== null ? Number(body.maxRuns) : null,
+                                        // M5 policies: activeHours/idleOnly/deliverUrl/jitterSecs (camelCase;
+                                        // active_hours/idle_only/deliver_url/jitter_secs row aliases accepted).
+                                        activeHours:
+                                                body?.activeHours !== undefined
+                                                        ? body.activeHours === null || body.activeHours === ""
+                                                                ? null
+                                                                : String(body.activeHours)
+                                                        : body?.active_hours !== undefined
+                                                                ? String(body.active_hours)
+                                                                : undefined,
+                                        idleOnly: body?.idleOnly === true || body?.idle_only === 1 || body?.idle_only === true,
+                                        deliverUrl:
+                                                body?.deliverUrl !== undefined
+                                                        ? body.deliverUrl === null || body.deliverUrl === ""
+                                                                ? null
+                                                                : String(body.deliverUrl)
+                                                        : body?.deliver_url !== undefined
+                                                                ? String(body.deliver_url)
+                                                                : undefined,
+                                        jitterSecs:
+                                                body?.jitterSecs !== undefined && body?.jitterSecs !== null
+                                                        ? Number(body.jitterSecs)
+                                                        : body?.jitter_secs !== undefined && body?.jitter_secs !== null
+                                                                ? Number(body.jitter_secs)
+                                                                : undefined,
+                                        // M6: the failed-run retry policy (same camelCase + snake_case
+                                        // alias convention as the M5 fields).
+                                        retryMax:
+                                                body?.retryMax !== undefined && body?.retryMax !== null
+                                                        ? Number(body.retryMax)
+                                                        : body?.retry_max !== undefined && body?.retry_max !== null
+                                                                ? Number(body.retry_max)
+                                                                : undefined,
+                                        retryBackoffSecs:
+                                                body?.retryBackoffSecs !== undefined && body?.retryBackoffSecs !== null
+                                                        ? Number(body.retryBackoffSecs)
+                                                        : body?.retry_backoff_secs !== undefined && body?.retry_backoff_secs !== null
+                                                                ? Number(body.retry_backoff_secs)
+                                                                : undefined,
+                                        // M2 event routines: `event` + `filter` (the CLI's spelling;
+                                        // eventKind/eventFilter aliases accepted for REST symmetry).
+                                        eventKind:
+                                                body?.event !== undefined
+                                                        ? String(body.event)
+                                                        : body?.eventKind !== undefined
+                                                                ? String(body.eventKind)
+                                                                : null,
+                                        eventFilter:
+                                                body?.filter !== undefined
+                                                        ? String(body.filter)
+                                                        : body?.eventFilter !== undefined
+                                                                ? String(body.eventFilter)
+                                                                : null,
+                                });
+                                if (!created.ok) return json({ error: created.error }, created.status ?? 400);
+                                return json({
+                                        automation: { ...created.automation, schedule: describeRoutineSchedule(created.automation) },
+                                });
+                        }
+                }
 
-		// ------------------------------------------------------------------
-		// Event dispatch (M2) — the LOCAL trigger lane: the same handler
-		// as the webhook endpoint minus the hook-id check, behind the
-		// regular bearer gate. `unown routines trigger` and the tests use
-		// this; external senders use POST /api/hooks/<hookId> (below).
-		// ------------------------------------------------------------------
-		if (method === "POST" && path === "/api/automations/event-dispatch") {
-			const event = typeof body?.event === "string" ? body.event.trim() : "";
-			if (!EVENT_NAME_RE.test(event)) return json({ error: "event must match [a-z0-9._-]{1,64}" }, 400);
-			const payload = body?.payload ?? {};
-			if (typeof payload !== "object" || payload === null || Array.isArray(payload)) {
-				return json({ error: "payload must be a JSON object" }, 400);
-			}
-			const result = await automationsScheduler.dispatchEvent(event, payload);
-			recordHookEvent(event, result);
-			return json({ ok: true, ...result });
-		}
-		const automationMatch = path.match(/^\/api\/automations\/([^/]+)(?:\/(run|runs|skip|snooze))?$/);
-		if (automationMatch) {
-			const id = decodeURIComponent(automationMatch[1]);
-			const sub = automationMatch[2];
-			if (sub === "run" && method === "POST") {
-				const triggered = await automationsScheduler.runNow(id);
-				if (!triggered.ok) return json({ error: triggered.error }, triggered.status ?? 400);
-				return json({ ok: true });
-			}
-			if (sub === "skip" && method === "POST") {
-				const skipped = skipNextOccurrence(id);
-				if (!skipped.ok) return json({ error: skipped.error }, skipped.status ?? 400);
-				return json({
-					automation: { ...skipped.automation, schedule: describeRoutineSchedule(skipped.automation) },
-				});
-			}
-			if (sub === "snooze" && method === "POST") {
-				const minutes = Number(body?.minutes);
-				if (!Number.isFinite(minutes)) return json({ error: "snooze needs a { minutes } body (1..525600)" }, 400);
-				const snoozed = snoozeNextOccurrence(id, minutes);
-				if (!snoozed.ok) return json({ error: snoozed.error }, snoozed.status ?? 400);
-				return json({
-					automation: { ...snoozed.automation, schedule: describeRoutineSchedule(snoozed.automation) },
-				});
-			}
-			if (sub === "runs" && method === "GET") {
-				const limit = Number(query?.get("limit") ?? 20);
-				return json({ runs: listAutomationRuns(id, Number.isFinite(limit) ? limit : 20) });
-			}
-			if (method === "GET") {
-				const automation = getAutomation(id);
-				if (!automation) return json({ error: "unknown automation" }, 404);
-				return json({ automation: { ...automation, schedule: describeRoutineSchedule(automation) } });
-			}
-			if (method === "PATCH") {
-				const patch: any = {};
-				for (const key of [
-					"title",
-					"prompt",
-					"mode",
-					"model",
-					"lifecycle",
-					"cron",
-					"every",
-					"after",
-					"timezone",
-					"misfire",
-				]) {
-					if (body?.[key] !== undefined) patch[key] = body[key];
-				}
-				if (body?.maxRuns !== undefined) patch.max_runs = body.maxRuns; // REST camelCase → the row's snake_case
-				// M5 policies (camelCase + row aliases; null clears).
-				if (body?.activeHours !== undefined || body?.active_hours !== undefined) {
-					patch.activeHours = body.activeHours ?? body.active_hours ?? null;
-				}
-				if (body?.idleOnly !== undefined || body?.idle_only !== undefined) {
-					patch.idleOnly = body.idleOnly ?? body.idle_only ?? false;
-				}
-				if (body?.deliverUrl !== undefined || body?.deliver_url !== undefined) {
-					patch.deliverUrl = body.deliverUrl ?? body.deliver_url ?? null;
-				}
-				if (body?.jitterSecs !== undefined || body?.jitter_secs !== undefined) {
-					patch.jitterSecs = body.jitterSecs ?? body.jitter_secs ?? null;
-				}
-				// M6: the failed-run retry policy (null clears; 0 also disarms
-				// a pending retry chain).
-				if (body?.retryMax !== undefined || body?.retry_max !== undefined) {
-					patch.retryMax = body.retryMax ?? body.retry_max ?? null;
-				}
-				if (body?.retryBackoffSecs !== undefined || body?.retry_backoff_secs !== undefined) {
-					patch.retryBackoffSecs = body.retryBackoffSecs ?? body.retry_backoff_secs ?? null;
-				}
-				const untilRaw = body?.until ?? body?.untilMs;
-				if (untilRaw !== undefined) {
-					patch.until_ms =
-						untilRaw === null || untilRaw === ""
-							? null
-							: Number.isFinite(Number(untilRaw))
-								? Number(untilRaw)
-								: Date.parse(String(untilRaw));
-				}
-				if (patch.misfire === "default" || patch.misfire === "") patch.misfire = null;
-				const updated = updateAutomation(id, patch);
-				if (!updated.ok) return json({ error: updated.error }, updated.status ?? 400);
-				return json({ automation: updated.automation });
-			}
-			if (method === "DELETE") {
-				const deleted = deleteAutomation(id);
-				return deleted ? json({ ok: true }) : json({ error: "unknown automation" }, 404);
-			}
-		}
+                // ------------------------------------------------------------------
+                // Event dispatch (M2) — the LOCAL trigger lane: the same handler
+                // as the webhook endpoint minus the hook-id check, behind the
+                // regular bearer gate. `unown routines trigger` and the tests use
+                // this; external senders use POST /api/hooks/<hookId> (below).
+                // ------------------------------------------------------------------
+                if (method === "POST" && path === "/api/automations/event-dispatch") {
+                        const event = typeof body?.event === "string" ? body.event.trim() : "";
+                        if (!EVENT_NAME_RE.test(event)) return json({ error: "event must match [a-z0-9._-]{1,64}" }, 400);
+                        const payload = body?.payload ?? {};
+                        if (typeof payload !== "object" || payload === null || Array.isArray(payload)) {
+                                return json({ error: "payload must be a JSON object" }, 400);
+                        }
+                        const result = await automationsScheduler.dispatchEvent(event, payload);
+                        recordHookEvent(event, result);
+                        return json({ ok: true, ...result });
+                }
+                const automationMatch = path.match(/^\/api\/automations\/([^/]+)(?:\/(run|runs|skip|snooze))?$/);
+                if (automationMatch) {
+                        const id = decodeURIComponent(automationMatch[1]);
+                        const sub = automationMatch[2];
+                        if (sub === "run" && method === "POST") {
+                                const triggered = await automationsScheduler.runNow(id);
+                                if (!triggered.ok) return json({ error: triggered.error }, triggered.status ?? 400);
+                                return json({ ok: true });
+                        }
+                        // The stop lane (the Settings hub's kill switch): SIGKILL live
+                        // children for this routine, close zombie rows, release claims. A
+                        // stopped run records 'stopped' — never 'failed' — and disarms any
+                        // pending retry chain.
+                        if (sub === "stop" && method === "POST") {
+                                if (!getAutomation(id)) return json({ error: "unknown automation" }, 404);
+                                const result = stopAutomationRuns(id);
+                                return json({ ok: result.ok, stopped: result.stopped, closed: result.closed, detail: result.detail });
+                        }
+                        if (sub === "skip" && method === "POST") {
+                                const skipped = skipNextOccurrence(id);
+                                if (!skipped.ok) return json({ error: skipped.error }, skipped.status ?? 400);
+                                return json({
+                                        automation: { ...skipped.automation, schedule: describeRoutineSchedule(skipped.automation) },
+                                });
+                        }
+                        if (sub === "snooze" && method === "POST") {
+                                const minutes = Number(body?.minutes);
+                                if (!Number.isFinite(minutes)) return json({ error: "snooze needs a { minutes } body (1..525600)" }, 400);
+                                const snoozed = snoozeNextOccurrence(id, minutes);
+                                if (!snoozed.ok) return json({ error: snoozed.error }, snoozed.status ?? 400);
+                                return json({
+                                        automation: { ...snoozed.automation, schedule: describeRoutineSchedule(snoozed.automation) },
+                                });
+                        }
+                        if (sub === "runs" && method === "GET") {
+                                const limit = Number(query?.get("limit") ?? 20);
+                                return json({ runs: listAutomationRuns(id, Number.isFinite(limit) ? limit : 20) });
+                        }
+                        if (method === "GET") {
+                                const automation = getAutomation(id);
+                                if (!automation) return json({ error: "unknown automation" }, 404);
+                                return json({ automation: { ...automation, schedule: describeRoutineSchedule(automation) } });
+                        }
+                        if (method === "PATCH") {
+                                const patch: any = {};
+                                for (const key of [
+                                        "title",
+                                        "prompt",
+                                        "mode",
+                                        "model",
+                                        "lifecycle",
+                                        "cron",
+                                        "every",
+                                        "after",
+                                        "timezone",
+                                        "misfire",
+                                ]) {
+                                        if (body?.[key] !== undefined) patch[key] = body[key];
+                                }
+                                if (body?.maxRuns !== undefined) patch.max_runs = body.maxRuns; // REST camelCase → the row's snake_case
+                                // M5 policies (camelCase + row aliases; null clears).
+                                if (body?.activeHours !== undefined || body?.active_hours !== undefined) {
+                                        patch.activeHours = body.activeHours ?? body.active_hours ?? null;
+                                }
+                                if (body?.idleOnly !== undefined || body?.idle_only !== undefined) {
+                                        patch.idleOnly = body.idleOnly ?? body.idle_only ?? false;
+                                }
+                                if (body?.deliverUrl !== undefined || body?.deliver_url !== undefined) {
+                                        patch.deliverUrl = body.deliverUrl ?? body.deliver_url ?? null;
+                                }
+                                if (body?.jitterSecs !== undefined || body?.jitter_secs !== undefined) {
+                                        patch.jitterSecs = body.jitterSecs ?? body.jitter_secs ?? null;
+                                }
+                                // M6: the failed-run retry policy (null clears; 0 also disarms
+                                // a pending retry chain).
+                                if (body?.retryMax !== undefined || body?.retry_max !== undefined) {
+                                        patch.retryMax = body.retryMax ?? body.retry_max ?? null;
+                                }
+                                if (body?.retryBackoffSecs !== undefined || body?.retry_backoff_secs !== undefined) {
+                                        patch.retryBackoffSecs = body.retryBackoffSecs ?? body.retry_backoff_secs ?? null;
+                                }
+                                const untilRaw = body?.until ?? body?.untilMs;
+                                if (untilRaw !== undefined) {
+                                        patch.until_ms =
+                                                untilRaw === null || untilRaw === ""
+                                                        ? null
+                                                        : Number.isFinite(Number(untilRaw))
+                                                                ? Number(untilRaw)
+                                                                : Date.parse(String(untilRaw));
+                                }
+                                if (patch.misfire === "default" || patch.misfire === "") patch.misfire = null;
+                                const updated = updateAutomation(id, patch);
+                                if (!updated.ok) return json({ error: updated.error }, updated.status ?? 400);
+                                return json({ automation: updated.automation });
+                        }
+                        if (method === "DELETE") {
+                                const deleted = deleteAutomation(id);
+                                return deleted ? json({ ok: true }) : json({ error: "unknown automation" }, 404);
+                        }
+                }
 
-		// ------------------------------------------------------------------
-		// Health (H3, 2026-10-26 hardening round) — the cheap lifecycle probe.
-		// /api/overview costs a 500-run scan + a bridge health fetch; a
-		// supervisor (scripts/stop.ts, engine-cli, a future systemd
-		// WatchdogSec lane) needs a probe that answers in one read with the
-		// one fact it acts on: which lifecycle PHASE the engine is in. The
-		// OpenAI codex-app-server-daemon precedent: a liveness endpoint that
-		// reports warming/ready/draining so a stopper can wait out the drain
-		// instead of racing it. Token-gated like every /api route (it is on
-		// the far side of the auth middleware); HEAD answers too — a bare
-		// liveness poll should not need a body (/api/version's contract).
-		// ------------------------------------------------------------------
-		if ((method === "GET" || method === "HEAD") && path === "/api/health") {
-			const bootedAt = (globalThis as any).__unown_engine_booted_at ?? Date.now();
-			(globalThis as any).__unown_engine_booted_at = bootedAt;
-			return json({
-				ok: true,
-				phase: engineLifecyclePhaseNow(),
-				pid: process.pid,
-				uptimeMs: Date.now() - bootedAt,
-				drainBudgetMs: ENGINE_DRAIN_BUDGET_MS,
-				version: engineVersionInfo(),
-			});
-		}
+                // ------------------------------------------------------------------
+                // Health (H3, 2026-10-26 hardening round) — the cheap lifecycle probe.
+                // /api/overview costs a 500-run scan + a bridge health fetch; a
+                // supervisor (scripts/stop.ts, engine-cli, a future systemd
+                // WatchdogSec lane) needs a probe that answers in one read with the
+                // one fact it acts on: which lifecycle PHASE the engine is in. The
+                // OpenAI codex-app-server-daemon precedent: a liveness endpoint that
+                // reports warming/ready/draining so a stopper can wait out the drain
+                // instead of racing it. Token-gated like every /api route (it is on
+                // the far side of the auth middleware); HEAD answers too — a bare
+                // liveness poll should not need a body (/api/version's contract).
+                // ------------------------------------------------------------------
+                if ((method === "GET" || method === "HEAD") && path === "/api/health") {
+                        const bootedAt = (globalThis as any).__unown_engine_booted_at ?? Date.now();
+                        (globalThis as any).__unown_engine_booted_at = bootedAt;
+                        return json({
+                                ok: true,
+                                phase: engineLifecyclePhaseNow(),
+                                pid: process.pid,
+                                uptimeMs: Date.now() - bootedAt,
+                                drainBudgetMs: ENGINE_DRAIN_BUDGET_MS,
+                                version: engineVersionInfo(),
+                        });
+                }
 
-		// ------------------------------------------------------------------
-		// Version (M8) — the version-skew handshake block. GET and HEAD both
-		// answer (ollama's /api/version accepts both; a bare liveness poll
-		// should not need a body). Cheaper than /api/overview for version
-		// probes: no run scan, no bridge fetch.
-		// ------------------------------------------------------------------
-		if ((method === "GET" || method === "HEAD") && path === "/api/version") {
-			return json({ ok: true, ...engineVersionInfo() });
-		}
+                // ------------------------------------------------------------------
+                // Version (M8) — the version-skew handshake block. GET and HEAD both
+                // answer (ollama's /api/version accepts both; a bare liveness poll
+                // should not need a body). Cheaper than /api/overview for version
+                // probes: no run scan, no bridge fetch.
+                // ------------------------------------------------------------------
+                if ((method === "GET" || method === "HEAD") && path === "/api/version") {
+                        return json({ ok: true, ...engineVersionInfo() });
+                }
 
-		// ------------------------------------------------------------------
-		// Overview
-		// ------------------------------------------------------------------
-		if (method === "GET" && path === "/api/overview") {
-			// pid + uptime: the supervisor (engine-supervisor.ts) and
-			// `unown engine status` report these; the pid doubles as
-			// the graceful-stop handle for `unown engine stop`.
-			const bootedAt = (globalThis as any).__unown_engine_booted_at ?? Date.now();
-			(globalThis as any).__unown_engine_booted_at = bootedAt;
-			const runs = store.query<any>(
-				`SELECT status, kind, tokens_in, tokens_out, tool_calls, started_at FROM runs ORDER BY started_at DESC LIMIT 500`,
-			);
-			const total = runs.length;
-			const passed = runs.filter((r) => r.status === "passed").length;
-			const failed = runs.filter((r) => r.status === "failed").length;
-			const errors = runs.filter((r) => r.status === "error").length;
-			const tasks = store.get<any>(`SELECT COUNT(*) AS c FROM tasks WHERE active = 1`);
-			const shipped = store.get<any>(`SELECT COUNT(*) AS c FROM improvements WHERE status = 'shipped'`);
-			const dreamsDone = store.get<any>(`SELECT COUNT(*) AS c FROM dreams WHERE status = 'done'`);
-			const notesTotal = store.get<any>(`SELECT COUNT(*) AS c FROM notes`);
-			const notesPending = store.get<any>(`SELECT COUNT(*) AS c FROM notes WHERE dream_id IS NULL`);
-			const hookDenies = store.get<any>(`SELECT COUNT(*) AS c FROM hook_log WHERE decision = 'deny'`);
-			const hookTotal = store.get<any>(`SELECT COUNT(*) AS c FROM hook_log`);
-			const tokensIn = runs.reduce((a: number, r: any) => a + (r.tokens_in ?? 0), 0);
-			const tokensOut = runs.reduce((a: number, r: any) => a + (r.tokens_out ?? 0), 0);
-			const mem = snapshot();
-			const bridge = await bridgeHealth();
-			// M3: resolved BEFORE the response assembles — see the dreamNews
-			// spread in the response body (a null means "no news" and the
-			// key is omitted entirely, keeping the payload stable for
-			// pre-M3 consumers that never learned the field).
-			const dreamNews = latestDreamNews();
-			// pass-rate trend (last 20 task runs chronologically)
-			const trendRuns = store
-				.query<any>(
-					`SELECT status, started_at FROM runs WHERE kind IN ('baseline','candidate','regression') ORDER BY started_at DESC LIMIT 20`,
-				)
-				.reverse();
-			let acc = 0;
-			const trend = trendRuns.map((r: any) => {
-				acc += r.status === "passed" ? 1 : 0;
-				return { ts: r.started_at, cumulativePass: acc };
-			});
-			return json({
-				ok: true,
-				pid: process.pid,
-				bootedAt,
-				uptimeMs: Date.now() - bootedAt,
-				// H3 lifecycle phase + drain budget (additive fields —
-				// /api/health is the cheap dedicated probe).
-				phase: engineLifecyclePhaseNow(),
-				drainBudgetMs: ENGINE_DRAIN_BUDGET_MS,
-				agent: {
-					name: "pi (badlogic/pi-mono)",
-					// NEVER a literal: the MCP handshake once claimed 0.1.0 while the
-					// shipped package was 2.1.x (packaging.ts's founding anti-pattern).
-					// agentVersion() is the same chain `unown --version` asserts in CI.
-					layer: `self-learning v${agentVersion()}`,
-					provider: `${PROVIDER}/${MODEL_ID}`,
-					bridge,
-				},
-				// Version-skew handshake (M8): the same block /api/version serves,
-				// inline so existing probes need zero extra round trips.
-				version: engineVersionInfo(),
-				// M3 dream-news lane: the newest additive project dream
-				// (≤1h) for the terminal status probe — the loop never
-				// blocks on its 30s cadence and fires the one-time
-				// "AutoDream learned N new rules" toast in sessions on
-				// that project (engine-status.ts shouldToastDreamNews
-				// holds the zero-spam rules). Absent (key omitted) when
-				// there is no news.
-				...(dreamNews ? { dreamNews } : {}),
-				// Retention observability (M9): on-disk size of the engine DB + WAL —
-				// the number the retention job's high-water mark plateaus at.
-				retention: { dbBytes: engineDbBytes() },
-				kpis: {
-					totalRuns: total,
-					passed,
-					failed,
-					errors,
-					passRate: total ? Math.round((passed / total) * 100) : 0,
-					tasks: tasks?.c ?? 0,
-					improvementsShipped: shipped?.c ?? 0,
-					dreams: dreamsDone?.c ?? 0,
-					notes: { total: notesTotal?.c ?? 0, pending: notesPending?.c ?? 0 },
-					hooks: { total: hookTotal?.c ?? 0, denies: hookDenies?.c ?? 0 },
-					suite: suiteStats(),
-					tokens: { in: tokensIn, out: tokensOut },
-				},
-				memoryVersions: Object.fromEntries(mem.map((m) => [m.tier, m.version])),
-				trend,
-				routerBusy: router.isBusy(),
-				// Auth posture (M7): what the API requires — "none" (token
-				// off) or "token" (bearer, validated by the fetch wrapper) —
-				// plus the bind scope. The footer, doctor and
-				// `unown engine status` surface this so a user can always
-				// tell which posture their engine is in.
-				auth: currentAuthPosture(),
-				// Detachment observability (docs/detached-engine-architecture.md F4/F5/F7):
-				// how long the mutex has been held, by which job, and the
-				// governor's budget/breaker state — `unown doctor` warns when
-				// busyMs exceeds 2x the job timeout (wedged-but-alive engine).
-				router: {
-					busy: router.isBusy(),
-					busyMs: router.busyMs(),
-					activeJob: router.activeJob(),
-					jobTimeoutMs: jobTimeoutMs(),
-				},
-				governor: {
-					budget: budgetStatus(),
-					breaker: breakerStatus(),
-				},
-				// The memory platform behind the learning loop (the swap):
-				// backend (onnx | lexical), model, dir — the honest degraded-mode
-				// signal for `unown doctor`, the dashboard and the landing claims.
-				memoryPlatform: memoryPlatformStatus(),
-			});
-		}
+                // ------------------------------------------------------------------
+                // Overview
+                // ------------------------------------------------------------------
+                if (method === "GET" && path === "/api/overview") {
+                        // pid + uptime: the supervisor (engine-supervisor.ts) and
+                        // `unown engine status` report these; the pid doubles as
+                        // the graceful-stop handle for `unown engine stop`.
+                        const bootedAt = (globalThis as any).__unown_engine_booted_at ?? Date.now();
+                        (globalThis as any).__unown_engine_booted_at = bootedAt;
+                        const runs = store.query<any>(
+                                `SELECT status, kind, tokens_in, tokens_out, tool_calls, started_at FROM runs ORDER BY started_at DESC LIMIT 500`,
+                        );
+                        const total = runs.length;
+                        const passed = runs.filter((r) => r.status === "passed").length;
+                        const failed = runs.filter((r) => r.status === "failed").length;
+                        const errors = runs.filter((r) => r.status === "error").length;
+                        const tasks = store.get<any>(`SELECT COUNT(*) AS c FROM tasks WHERE active = 1`);
+                        const shipped = store.get<any>(`SELECT COUNT(*) AS c FROM improvements WHERE status = 'shipped'`);
+                        const dreamsDone = store.get<any>(`SELECT COUNT(*) AS c FROM dreams WHERE status = 'done'`);
+                        const notesTotal = store.get<any>(`SELECT COUNT(*) AS c FROM notes`);
+                        const notesPending = store.get<any>(`SELECT COUNT(*) AS c FROM notes WHERE dream_id IS NULL`);
+                        const hookDenies = store.get<any>(`SELECT COUNT(*) AS c FROM hook_log WHERE decision = 'deny'`);
+                        const hookTotal = store.get<any>(`SELECT COUNT(*) AS c FROM hook_log`);
+                        const tokensIn = runs.reduce((a: number, r: any) => a + (r.tokens_in ?? 0), 0);
+                        const tokensOut = runs.reduce((a: number, r: any) => a + (r.tokens_out ?? 0), 0);
+                        const mem = snapshot();
+                        const bridge = await bridgeHealth();
+                        // M3: resolved BEFORE the response assembles — see the dreamNews
+                        // spread in the response body (a null means "no news" and the
+                        // key is omitted entirely, keeping the payload stable for
+                        // pre-M3 consumers that never learned the field).
+                        const dreamNews = latestDreamNews();
+                        // pass-rate trend (last 20 task runs chronologically)
+                        const trendRuns = store
+                                .query<any>(
+                                        `SELECT status, started_at FROM runs WHERE kind IN ('baseline','candidate','regression') ORDER BY started_at DESC LIMIT 20`,
+                                )
+                                .reverse();
+                        let acc = 0;
+                        const trend = trendRuns.map((r: any) => {
+                                acc += r.status === "passed" ? 1 : 0;
+                                return { ts: r.started_at, cumulativePass: acc };
+                        });
+                        return json({
+                                ok: true,
+                                pid: process.pid,
+                                bootedAt,
+                                uptimeMs: Date.now() - bootedAt,
+                                // H3 lifecycle phase + drain budget (additive fields —
+                                // /api/health is the cheap dedicated probe).
+                                phase: engineLifecyclePhaseNow(),
+                                drainBudgetMs: ENGINE_DRAIN_BUDGET_MS,
+                                agent: {
+                                        name: "pi (badlogic/pi-mono)",
+                                        // NEVER a literal: the MCP handshake once claimed 0.1.0 while the
+                                        // shipped package was 2.1.x (packaging.ts's founding anti-pattern).
+                                        // agentVersion() is the same chain `unown --version` asserts in CI.
+                                        layer: `self-learning v${agentVersion()}`,
+                                        provider: `${PROVIDER}/${MODEL_ID}`,
+                                        bridge,
+                                },
+                                // Version-skew handshake (M8): the same block /api/version serves,
+                                // inline so existing probes need zero extra round trips.
+                                version: engineVersionInfo(),
+                                // M3 dream-news lane: the newest additive project dream
+                                // (≤1h) for the terminal status probe — the loop never
+                                // blocks on its 30s cadence and fires the one-time
+                                // "AutoDream learned N new rules" toast in sessions on
+                                // that project (engine-status.ts shouldToastDreamNews
+                                // holds the zero-spam rules). Absent (key omitted) when
+                                // there is no news.
+                                ...(dreamNews ? { dreamNews } : {}),
+                                // Retention observability (M9): on-disk size of the engine DB + WAL —
+                                // the number the retention job's high-water mark plateaus at.
+                                retention: { dbBytes: engineDbBytes() },
+                                kpis: {
+                                        totalRuns: total,
+                                        passed,
+                                        failed,
+                                        errors,
+                                        passRate: total ? Math.round((passed / total) * 100) : 0,
+                                        tasks: tasks?.c ?? 0,
+                                        improvementsShipped: shipped?.c ?? 0,
+                                        dreams: dreamsDone?.c ?? 0,
+                                        notes: { total: notesTotal?.c ?? 0, pending: notesPending?.c ?? 0 },
+                                        hooks: { total: hookTotal?.c ?? 0, denies: hookDenies?.c ?? 0 },
+                                        suite: suiteStats(),
+                                        tokens: { in: tokensIn, out: tokensOut },
+                                },
+                                memoryVersions: Object.fromEntries(mem.map((m) => [m.tier, m.version])),
+                                trend,
+                                routerBusy: router.isBusy(),
+                                // Auth posture (M7): what the API requires — "none" (token
+                                // off) or "token" (bearer, validated by the fetch wrapper) —
+                                // plus the bind scope. The footer, doctor and
+                                // `unown engine status` surface this so a user can always
+                                // tell which posture their engine is in.
+                                auth: currentAuthPosture(),
+                                // Detachment observability (docs/detached-engine-architecture.md F4/F5/F7):
+                                // how long the mutex has been held, by which job, and the
+                                // governor's budget/breaker state — `unown doctor` warns when
+                                // busyMs exceeds 2x the job timeout (wedged-but-alive engine).
+                                router: {
+                                        busy: router.isBusy(),
+                                        busyMs: router.busyMs(),
+                                        activeJob: router.activeJob(),
+                                        jobTimeoutMs: jobTimeoutMs(),
+                                },
+                                governor: {
+                                        budget: budgetStatus(),
+                                        breaker: breakerStatus(),
+                                },
+                                // The memory platform behind the learning loop (the swap):
+                                // backend (onnx | lexical), model, dir — the honest degraded-mode
+                                // signal for `unown doctor`, the dashboard and the landing claims.
+                                memoryPlatform: memoryPlatformStatus(),
+                        });
+                }
 
-		// ------------------------------------------------------------------
-		// Tasks
-		// ------------------------------------------------------------------
-		if (method === "GET" && path === "/api/tasks") {
-			// ?all=1 — the operator lane: include INACTIVE rows (quarantined /
-			// discarded minted tasks) so the circuit breaker's catches stay
-			// visible and reversible. Default stays active-only (the dashboard
-			// and pickNextTask shape).
-			if (query.get("all") === "1")
-				return json({
-					tasks: store.query(
-						`SELECT id, name, description, category, difficulty, created_at, pass_count, fail_count, origin, status, source_run_id, active FROM tasks ORDER BY active DESC, id`,
-					),
-				});
-			return json({ tasks: listTasks() });
-		}
-		// Operator lifecycle lanes for the capability quarantine (the
-		// unsolvable-task circuit breaker). POST because both mutate task
-		// state; both emit on the bus so a live dashboard updates.
-		if (method === "POST" && /^\/api\/tasks\/[^/]+\/quarantine$/.test(path)) {
-			const id = decodeURIComponent(path.split("/")[3] ?? "");
-			const row = store.get<{ active: number }>(`SELECT active FROM tasks WHERE id = ?`, [id]);
-			if (!row) return json({ error: "not found" }, 404);
-			store.run(`UPDATE tasks SET active = 0, status = 'quarantined' WHERE id = ?`, [id]);
-			emit("task:quarantined", { id, by: "operator" });
-			return json({ ok: true, id, active: 0, status: "quarantined" });
-		}
-		if (method === "POST" && /^\/api\/tasks\/[^/]+\/activate$/.test(path)) {
-			const id = decodeURIComponent(path.split("/")[3] ?? "");
-			const row = store.get<{ origin: string | null; status: string | null }>(
-				`SELECT origin, status FROM tasks WHERE id = ?`,
-				[id],
-			);
-			if (!row) return json({ error: "not found" }, 404);
-			// Restoring a quarantined task puts it back where it came from:
-			// minted capability evals return to 'capability' (the learning
-			// lane that can still graduate), everything else to 'regression'.
-			const restored =
-				(row.status ?? "") === "quarantined" && (row.origin ?? "seed") === "minted" ? "capability" : "regression";
-			store.run(`UPDATE tasks SET active = 1, status = ? WHERE id = ?`, [restored, id]);
-			emit("task:activated", { id, status: restored });
-			return json({ ok: true, id, active: 1, status: restored });
-		}
-		if (method === "GET" && path === "/api/skills") {
-			// ApiRequest carries the parsed query — req.url was a latent bug here
-			// (undefined on ApiRequest, so the project filter never applied).
-			const project = req.query.get("project");
-			return json({ skills: listSkills(project ?? undefined) });
-		}
-		if (method === "GET" && /^\/api\/skills\/[^/]+$/.test(path)) {
-			const skill = getSkill(decodeURIComponent(path.split("/")[3] ?? ""));
-			if (!skill) return json({ error: "unknown skill" }, 404);
-			return json({ skill, versions: skillVersions(skill.id) });
-		}
-		if (method === "POST" && /^\/api\/skills\/[^/]+\/rollback$/.test(path)) {
-			const id = decodeURIComponent(path.split("/")[3] ?? "");
-			const target = Number(body?.version);
-			if (!Number.isInteger(target)) return json({ error: "version (integer) required" }, 400);
-			const result = rollbackSkill(id, target);
-			return result.ok ? json({ ok: true }) : json({ error: result.error }, 400);
-		}
-		if (method === "POST" && /^\/api\/skills\/[^/]+\/retire$/.test(path)) {
-			const result = retireSkill(decodeURIComponent(path.split("/")[3] ?? ""));
-			return result.ok ? json({ ok: true }) : json({ error: result.error }, 400);
-		}
-		if (method === "POST" && path === "/api/tasks/mint") {
-			// No isBusy() probe: the withBusy() race itself is the busy gate,
-			// and its conflict maps to the SAME 409 contract below (BUG 13) —
-			// the old probe-plus-500-catch answered the race with a raw 500.
-			try {
-				const outcome = await router.withBusy(() => runMintJob());
-				return json({ ok: true, outcome });
-			} catch (err: any) {
-				if (isEngineBusyError(err)) return engineBusyResponse();
-				console.error("[agent-service] mint job failed:", err);
-				return json({ error: apiErrorMessage(err) }, 500);
-			}
-		}
-		if (method === "GET" && /^\/api\/tasks\/[^/]+$/.test(path)) {
-			const id = decodeURIComponent(path.split("/")[3]);
-			const task = getTask(id);
-			if (!task) return json({ error: "not found" }, 404);
-			return json({ task });
-		}
-		if (method === "POST" && /^\/api\/tasks\/[^/]+\/run$/.test(path)) {
-			const id = decodeURIComponent(path.split("/")[3]);
-			if (!getTask(id)) return json({ error: "not found" }, 404);
-			// M6-1 dedup: block re-triggers of a task with a live cycle or a
-			// just-succeeded one (accidental double-spend guard; M4-c D5).
-			// force=true (body) or ?force=1 overrides the cooldown — never the
-			// active-cycle rule.
-			const force = body?.force === true || query.get("force") === "1";
-			const guard = cycleTriggerGuard(id, { force });
-			if (!guard.ok) {
-				if (guard.reason === "cycle-active")
-					return json(
-						{
-							error: `a cycle for this task is already running`,
-							reason: guard.reason,
-							activeCycleId: guard.activeCycleId,
-						},
-						409,
-					);
-				return json(
-					{
-						error: `task just ${guard.lastStatus} — re-run blocked for ${Math.ceil((guard.retryInMs ?? 0) / 1000)}s to avoid accidental double-spend (force:true to override)`,
-						reason: guard.reason,
-						lastStatus: guard.lastStatus,
-						retryInMs: guard.retryInMs,
-					},
-					409,
-				);
-			}
-			// BUG 13 (audit #13): the guard's isBusy() probe and the withBusy()
-			// start were two steps — a trigger that grabbed the mutex between
-			// them turned the fire-and-forget below into a silent no-op (the
-			// client held {started:true}; the busy rejection only surfaced as a
-			// router:error SSE event). startFireAndForget checks-and-acquires in
-			// one synchronous step and THROWS synchronously on conflict, so the
-			// busy race answers the same 409 shape the guard uses — never a raw
-			// 500, never a false started.
-			try {
-				// fire and forget under the busy mutex — poll cycles/runs for progress
-				router
-					.startFireAndForget(() => runCycle(id))
-					.catch((e) => emit("router:error", { error: e instanceof Error ? e.message : String(e) }));
-			} catch (err) {
-				if (isEngineBusyError(err)) return engineBusyResponse();
-				throw err;
-			}
-			return json({ started: true, taskId: id });
-		}
+                // ------------------------------------------------------------------
+                // Tasks
+                // ------------------------------------------------------------------
+                if (method === "GET" && path === "/api/tasks") {
+                        // ?all=1 — the operator lane: include INACTIVE rows (quarantined /
+                        // discarded minted tasks) so the circuit breaker's catches stay
+                        // visible and reversible. Default stays active-only (the dashboard
+                        // and pickNextTask shape).
+                        if (query.get("all") === "1")
+                                return json({
+                                        tasks: store.query(
+                                                `SELECT id, name, description, category, difficulty, created_at, pass_count, fail_count, origin, status, source_run_id, active FROM tasks ORDER BY active DESC, id`,
+                                        ),
+                                });
+                        return json({ tasks: listTasks() });
+                }
+                // Operator lifecycle lanes for the capability quarantine (the
+                // unsolvable-task circuit breaker). POST because both mutate task
+                // state; both emit on the bus so a live dashboard updates.
+                if (method === "POST" && /^\/api\/tasks\/[^/]+\/quarantine$/.test(path)) {
+                        const id = decodeURIComponent(path.split("/")[3] ?? "");
+                        const row = store.get<{ active: number }>(`SELECT active FROM tasks WHERE id = ?`, [id]);
+                        if (!row) return json({ error: "not found" }, 404);
+                        store.run(`UPDATE tasks SET active = 0, status = 'quarantined' WHERE id = ?`, [id]);
+                        emit("task:quarantined", { id, by: "operator" });
+                        return json({ ok: true, id, active: 0, status: "quarantined" });
+                }
+                if (method === "POST" && /^\/api\/tasks\/[^/]+\/activate$/.test(path)) {
+                        const id = decodeURIComponent(path.split("/")[3] ?? "");
+                        const row = store.get<{ origin: string | null; status: string | null }>(
+                                `SELECT origin, status FROM tasks WHERE id = ?`,
+                                [id],
+                        );
+                        if (!row) return json({ error: "not found" }, 404);
+                        // Restoring a quarantined task puts it back where it came from:
+                        // minted capability evals return to 'capability' (the learning
+                        // lane that can still graduate), everything else to 'regression'.
+                        const restored =
+                                (row.status ?? "") === "quarantined" && (row.origin ?? "seed") === "minted" ? "capability" : "regression";
+                        store.run(`UPDATE tasks SET active = 1, status = ? WHERE id = ?`, [restored, id]);
+                        emit("task:activated", { id, status: restored });
+                        return json({ ok: true, id, active: 1, status: restored });
+                }
+                if (method === "GET" && path === "/api/skills") {
+                        // ApiRequest carries the parsed query — req.url was a latent bug here
+                        // (undefined on ApiRequest, so the project filter never applied).
+                        const project = req.query.get("project");
+                        return json({ skills: listSkills(project ?? undefined) });
+                }
+                if (method === "GET" && /^\/api\/skills\/[^/]+$/.test(path)) {
+                        const skill = getSkill(decodeURIComponent(path.split("/")[3] ?? ""));
+                        if (!skill) return json({ error: "unknown skill" }, 404);
+                        return json({ skill, versions: skillVersions(skill.id) });
+                }
+                if (method === "POST" && /^\/api\/skills\/[^/]+\/rollback$/.test(path)) {
+                        const id = decodeURIComponent(path.split("/")[3] ?? "");
+                        const target = Number(body?.version);
+                        if (!Number.isInteger(target)) return json({ error: "version (integer) required" }, 400);
+                        const result = rollbackSkill(id, target);
+                        return result.ok ? json({ ok: true }) : json({ error: result.error }, 400);
+                }
+                if (method === "POST" && /^\/api\/skills\/[^/]+\/retire$/.test(path)) {
+                        const result = retireSkill(decodeURIComponent(path.split("/")[3] ?? ""));
+                        return result.ok ? json({ ok: true }) : json({ error: result.error }, 400);
+                }
+                if (method === "POST" && path === "/api/tasks/mint") {
+                        // No isBusy() probe: the withBusy() race itself is the busy gate,
+                        // and its conflict maps to the SAME 409 contract below (BUG 13) —
+                        // the old probe-plus-500-catch answered the race with a raw 500.
+                        try {
+                                const outcome = await router.withBusy(() => runMintJob());
+                                return json({ ok: true, outcome });
+                        } catch (err: any) {
+                                if (isEngineBusyError(err)) return engineBusyResponse();
+                                console.error("[agent-service] mint job failed:", err);
+                                return json({ error: apiErrorMessage(err) }, 500);
+                        }
+                }
+                if (method === "GET" && /^\/api\/tasks\/[^/]+$/.test(path)) {
+                        const id = decodeURIComponent(path.split("/")[3]);
+                        const task = getTask(id);
+                        if (!task) return json({ error: "not found" }, 404);
+                        return json({ task });
+                }
+                if (method === "POST" && /^\/api\/tasks\/[^/]+\/run$/.test(path)) {
+                        const id = decodeURIComponent(path.split("/")[3]);
+                        if (!getTask(id)) return json({ error: "not found" }, 404);
+                        // M6-1 dedup: block re-triggers of a task with a live cycle or a
+                        // just-succeeded one (accidental double-spend guard; M4-c D5).
+                        // force=true (body) or ?force=1 overrides the cooldown — never the
+                        // active-cycle rule.
+                        const force = body?.force === true || query.get("force") === "1";
+                        const guard = cycleTriggerGuard(id, { force });
+                        if (!guard.ok) {
+                                if (guard.reason === "cycle-active")
+                                        return json(
+                                                {
+                                                        error: `a cycle for this task is already running`,
+                                                        reason: guard.reason,
+                                                        activeCycleId: guard.activeCycleId,
+                                                },
+                                                409,
+                                        );
+                                return json(
+                                        {
+                                                error: `task just ${guard.lastStatus} — re-run blocked for ${Math.ceil((guard.retryInMs ?? 0) / 1000)}s to avoid accidental double-spend (force:true to override)`,
+                                                reason: guard.reason,
+                                                lastStatus: guard.lastStatus,
+                                                retryInMs: guard.retryInMs,
+                                        },
+                                        409,
+                                );
+                        }
+                        // BUG 13 (audit #13): the guard's isBusy() probe and the withBusy()
+                        // start were two steps — a trigger that grabbed the mutex between
+                        // them turned the fire-and-forget below into a silent no-op (the
+                        // client held {started:true}; the busy rejection only surfaced as a
+                        // router:error SSE event). startFireAndForget checks-and-acquires in
+                        // one synchronous step and THROWS synchronously on conflict, so the
+                        // busy race answers the same 409 shape the guard uses — never a raw
+                        // 500, never a false started.
+                        try {
+                                // fire and forget under the busy mutex — poll cycles/runs for progress
+                                router
+                                        .startFireAndForget(() => runCycle(id))
+                                        .catch((e) => emit("router:error", { error: e instanceof Error ? e.message : String(e) }));
+                        } catch (err) {
+                                if (isEngineBusyError(err)) return engineBusyResponse();
+                                throw err;
+                        }
+                        return json({ started: true, taskId: id });
+                }
 
-		// ------------------------------------------------------------------
-		// Runs
-		// ------------------------------------------------------------------
-		if (method === "GET" && path === "/api/runs") {
-			const limit = Math.min(Number(query.get("limit") ?? 50), 200);
-			const taskId = query.get("task") ?? undefined;
-			const kind = query.get("kind") ?? undefined;
-			return json({ runs: listRuns(limit, taskId, kind) });
-		}
-		if (method === "GET" && path === "/api/runs/live") {
-			// M6-2 (audit M4-c D4): pollable in-flight progress — the same
-			// counters the SSE events carry and finalize persists, observed
-			// mid-run. Empty array = engine idle; finished runs live in the
-			// DB rows below, not here.
-			return json({ runs: listLiveRuns() });
-		}
-		if (method === "GET" && /^\/api\/runs\/[^/]+$/.test(path)) {
-			const id = path.split("/")[3];
-			const run = getRun(id);
-			if (!run) return json({ error: "not found" }, 404);
-			// In-flight runs also carry their live progress (null when
-			// finished — the DB fields are authoritative then).
-			return json({ run, live: getLiveRun(id) });
-		}
+                // ------------------------------------------------------------------
+                // Runs
+                // ------------------------------------------------------------------
+                if (method === "GET" && path === "/api/runs") {
+                        const limit = Math.min(Number(query.get("limit") ?? 50), 200);
+                        const taskId = query.get("task") ?? undefined;
+                        const kind = query.get("kind") ?? undefined;
+                        return json({ runs: listRuns(limit, taskId, kind) });
+                }
+                if (method === "GET" && path === "/api/runs/live") {
+                        // M6-2 (audit M4-c D4): pollable in-flight progress — the same
+                        // counters the SSE events carry and finalize persists, observed
+                        // mid-run. Empty array = engine idle; finished runs live in the
+                        // DB rows below, not here.
+                        return json({ runs: listLiveRuns() });
+                }
+                if (method === "GET" && /^\/api\/runs\/[^/]+$/.test(path)) {
+                        const id = path.split("/")[3];
+                        const run = getRun(id);
+                        if (!run) return json({ error: "not found" }, 404);
+                        // In-flight runs also carry their live progress (null when
+                        // finished — the DB fields are authoritative then).
+                        return json({ run, live: getLiveRun(id) });
+                }
 
-		// ------------------------------------------------------------------
-		// Interactive console
-		// ------------------------------------------------------------------
-		if (method === "POST" && path === "/api/agent/prompt") {
-			const prompt = String(body?.prompt ?? "").trim();
-			if (!prompt) return json({ error: "prompt required" }, 400);
-			// BUG 13 (audit #13): same contract as /api/tasks/:id/run — the
-			// synchronous startFireAndForget gate replaces the racy
-			// isBusy()-probe-then-withBusy pair, so a lost mutex race answers
-			// the engine-busy 409 shape instead of a false {started:true}.
-			try {
-				// fire and forget; the client polls /api/runs?kind=interactive
-				router
-					.startFireAndForget(() =>
-						runAgent({
-							kind: "interactive",
-							prompt,
-							timeoutMs: 240_000,
-							label: "console",
-						}),
-					)
-					.catch((e) => emit("router:error", { error: e instanceof Error ? e.message : String(e) }));
-			} catch (err) {
-				if (isEngineBusyError(err)) return engineBusyResponse();
-				throw err;
-			}
-			return json({ started: true });
-		}
+                // ------------------------------------------------------------------
+                // Interactive console
+                // ------------------------------------------------------------------
+                if (method === "POST" && path === "/api/agent/prompt") {
+                        const prompt = String(body?.prompt ?? "").trim();
+                        if (!prompt) return json({ error: "prompt required" }, 400);
+                        // BUG 13 (audit #13): same contract as /api/tasks/:id/run — the
+                        // synchronous startFireAndForget gate replaces the racy
+                        // isBusy()-probe-then-withBusy pair, so a lost mutex race answers
+                        // the engine-busy 409 shape instead of a false {started:true}.
+                        try {
+                                // fire and forget; the client polls /api/runs?kind=interactive
+                                router
+                                        .startFireAndForget(() =>
+                                                runAgent({
+                                                        kind: "interactive",
+                                                        prompt,
+                                                        timeoutMs: 240_000,
+                                                        label: "console",
+                                                }),
+                                        )
+                                        .catch((e) => emit("router:error", { error: e instanceof Error ? e.message : String(e) }));
+                        } catch (err) {
+                                if (isEngineBusyError(err)) return engineBusyResponse();
+                                throw err;
+                        }
+                        return json({ started: true });
+                }
 
-		// ------------------------------------------------------------------
-		// Memory
-		// ------------------------------------------------------------------
-		if (method === "GET" && path === "/api/memory/projects") {
-			// Terminal project memories as first-class objects (TUI dashboard plan §5.6).
-			return json({ projects: projectTiers() });
-		}
-		if (method === "GET" && path === "/api/memory") {
-			return json({
-				tiers: snapshot(),
-				// F8 fix: the ACTUAL resolved block (header +
-				// wrappers + provenance), not the raw tier sum.
-				resolvedChars: resolveMemory().totalChars,
-			});
-		}
-		if (method === "GET" && /^\/api\/memory\/[^/]+\/history$/.test(path)) {
-			const tier = decodeURIComponent(path.split("/")[3]) as Tier;
-			return json({ history: history(tier, 40) });
-		}
-		if (method === "POST" && /^\/api\/memory\/[^/]+\/rollback$/.test(path)) {
-			const tier = decodeURIComponent(path.split("/")[3]) as Tier;
-			const version = Number(body?.version);
-			if (!version) return json({ error: "version required" }, 400);
-			rollback(tier, version, `dashboard rollback to v${version}`);
-			return json({ ok: true });
-		}
+                // ------------------------------------------------------------------
+                // Memory
+                // ------------------------------------------------------------------
+                if (method === "GET" && path === "/api/memory/projects") {
+                        // Terminal project memories as first-class objects (TUI dashboard plan §5.6).
+                        return json({ projects: projectTiers() });
+                }
+                if (method === "GET" && path === "/api/memory") {
+                        return json({
+                                tiers: snapshot(),
+                                // F8 fix: the ACTUAL resolved block (header +
+                                // wrappers + provenance), not the raw tier sum.
+                                resolvedChars: resolveMemory().totalChars,
+                        });
+                }
+                if (method === "GET" && /^\/api\/memory\/[^/]+\/history$/.test(path)) {
+                        const tier = decodeURIComponent(path.split("/")[3]) as Tier;
+                        return json({ history: history(tier, 40) });
+                }
+                if (method === "POST" && /^\/api\/memory\/[^/]+\/rollback$/.test(path)) {
+                        const tier = decodeURIComponent(path.split("/")[3]) as Tier;
+                        const version = Number(body?.version);
+                        if (!version) return json({ error: "version required" }, 400);
+                        rollback(tier, version, `dashboard rollback to v${version}`);
+                        return json({ ok: true });
+                }
 
-		// ------------------------------------------------------------------
-		// Memory platform (mem0) — list + semantic search, scoped
-		// ------------------------------------------------------------------
-		if (method === "GET" && path === "/api/memories") {
-			const q = req.query.get("q");
-			const agentId = req.query.get("agent_id") || undefined;
-			const userId = req.query.get("user_id") || undefined;
-			const across = req.query.get("across") === "1" || req.query.get("across") === "true";
-			const limit = Math.min(Number(req.query.get("limit") ?? 20) || 20, 100);
-			// CROSS-SCOPE SEARCH (shared-memory recall): `across=1` + `q`
-			// fans the query out over the engine scope AND every project
-			// scope that has dreamed, merging best-first with each result
-			// tagged by its source scope — a session in project B can
-			// recall what was learned in project A (read-only; scope
-			// isolation of writes stays intact).
-			if (across) {
-				if (!q) {
-					return json({ error: "across=1 requires q (a search query)" }, 400);
-				}
-				const scopes = [
-					{ scope: ENGINE_SCOPE, label: "engine" },
-					...knownProjectScopes().map((slug) => ({
-						scope: projectScope(slug),
-						label: slug,
-					})),
-				];
-				try {
-					const memories = await searchAcrossScopes(q, scopes, limit);
-					return json({
-						memories,
-						query: q,
-						across: true,
-						scopes: scopes.map((s) => s.label),
-						platform: memoryPlatformStatus(),
-					});
-				} catch (err: any) {
-					console.error("[agent-service] memory search failed:", err);
-					return json({ error: `memory platform unavailable: ${apiErrorMessage(err)}` }, 503);
-				}
-			}
-			// Unscoped = the ENGINE scope (the learning core's own memories —
-			// the same scope dreams and harness ships write). mem0 requires at
-			// least one filter key, so an empty scope is an upstream error,
-			// never a useful default.
-			const scope: MemoryScope = agentId || userId ? { agentId, userId } : ENGINE_SCOPE;
-			try {
-				const memories = q ? await searchMemories(q, scope, limit) : await projectMemories(scope);
-				return json({ memories, query: q ?? null, scope, platform: memoryPlatformStatus() });
-			} catch (err: any) {
-				console.error("[agent-service] memory search failed:", err);
-				return json({ error: `memory platform unavailable: ${apiErrorMessage(err)}` }, 503);
-			}
-		}
+                // ------------------------------------------------------------------
+                // Memory platform (mem0) — list + semantic search, scoped
+                // ------------------------------------------------------------------
+                if (method === "GET" && path === "/api/memories") {
+                        const q = req.query.get("q");
+                        const agentId = req.query.get("agent_id") || undefined;
+                        const userId = req.query.get("user_id") || undefined;
+                        const across = req.query.get("across") === "1" || req.query.get("across") === "true";
+                        const limit = Math.min(Number(req.query.get("limit") ?? 20) || 20, 100);
+                        // CROSS-SCOPE SEARCH (shared-memory recall): `across=1` + `q`
+                        // fans the query out over the engine scope AND every project
+                        // scope that has dreamed, merging best-first with each result
+                        // tagged by its source scope — a session in project B can
+                        // recall what was learned in project A (read-only; scope
+                        // isolation of writes stays intact).
+                        if (across) {
+                                if (!q) {
+                                        return json({ error: "across=1 requires q (a search query)" }, 400);
+                                }
+                                const scopes = [
+                                        { scope: ENGINE_SCOPE, label: "engine" },
+                                        ...knownProjectScopes().map((slug) => ({
+                                                scope: projectScope(slug),
+                                                label: slug,
+                                        })),
+                                ];
+                                try {
+                                        const memories = await searchAcrossScopes(q, scopes, limit);
+                                        return json({
+                                                memories,
+                                                query: q,
+                                                across: true,
+                                                scopes: scopes.map((s) => s.label),
+                                                platform: memoryPlatformStatus(),
+                                        });
+                                } catch (err: any) {
+                                        console.error("[agent-service] memory search failed:", err);
+                                        return json({ error: `memory platform unavailable: ${apiErrorMessage(err)}` }, 503);
+                                }
+                        }
+                        // Unscoped = the ENGINE scope (the learning core's own memories —
+                        // the same scope dreams and harness ships write). mem0 requires at
+                        // least one filter key, so an empty scope is an upstream error,
+                        // never a useful default.
+                        const scope: MemoryScope = agentId || userId ? { agentId, userId } : ENGINE_SCOPE;
+                        try {
+                                const memories = q ? await searchMemories(q, scope, limit) : await projectMemories(scope);
+                                return json({ memories, query: q ?? null, scope, platform: memoryPlatformStatus() });
+                        } catch (err: any) {
+                                console.error("[agent-service] memory search failed:", err);
+                                return json({ error: `memory platform unavailable: ${apiErrorMessage(err)}` }, 503);
+                        }
+                }
 
-		// ------------------------------------------------------------------
-		// Cycles & improvements
-		// ------------------------------------------------------------------
-		if (method === "GET" && path === "/api/cycles") return json({ cycles: listCycles(40) });
-		if (method === "GET" && path === "/api/improvements") return json({ improvements: listImprovements(80) });
-		if (method === "GET" && /^\/api\/improvements\/[^/]+$/.test(path)) {
-			const id = path.split("/")[3];
-			const imp = getImprovement(id);
-			if (!imp) return json({ error: "not found" }, 404);
-			return json({ improvement: imp });
-		}
+                // ------------------------------------------------------------------
+                // Cycles & improvements
+                // ------------------------------------------------------------------
+                if (method === "GET" && path === "/api/cycles") return json({ cycles: listCycles(40) });
+                if (method === "GET" && path === "/api/improvements") return json({ improvements: listImprovements(80) });
+                if (method === "GET" && /^\/api\/improvements\/[^/]+$/.test(path)) {
+                        const id = path.split("/")[3];
+                        const imp = getImprovement(id);
+                        if (!imp) return json({ error: "not found" }, 404);
+                        return json({ improvement: imp });
+                }
 
-		// ------------------------------------------------------------------
-		// Dreams
-		// ------------------------------------------------------------------
-		if (method === "GET" && path === "/api/dreams") return json({ dreams: listDreams(30) });
-		if (method === "GET" && /^\/api\/dreams\/[^/]+\/notes$/.test(path)) {
-			const id = path.split("/")[3];
-			return json({ notes: dreamNotes(id) });
-		}
-		if (method === "POST" && path === "/api/dreams/run") {
-			const pending = store.get<any>(`SELECT COUNT(*) AS c FROM notes WHERE dream_id IS NULL`)?.c ?? 0;
-			if (pending < 1) return json({ skipped: "no undreamed notes" });
-			// The manual trigger mirrors the auto-dream job exactly (router.ts
-			// `case "auto-dream"`): the ENGINE dream consolidates benchmark
-			// notes (needs >= 3 — below that threshold runDream() would just
-			// insert a junk no-notes row), and runProjectDream() consolidates
-			// pending TERMINAL notes into their own projects' memory. Before
-			// this mirror, a project note alone reported {started:true} and
-			// then silently consolidated nothing — the dashboard's "dream now"
-			// key was a no-op for the most common note kind a real user
-			// produces (terminal session notes).
-			try {
-				router
-					.startFireAndForget(async () => {
-						const pendingBenchmark = undreamedNotes(50, "benchmark").length;
-						if (pendingBenchmark >= 3) await runDream();
-						await runProjectDream();
-					})
-					.catch((e) => emit("router:error", { error: e instanceof Error ? e.message : String(e) }));
-			} catch (err) {
-				if (isEngineBusyError(err)) return engineBusyResponse();
-				throw err;
-			}
-			return json({ started: true, pendingNotes: pending });
-		}
+                // ------------------------------------------------------------------
+                // Dreams
+                // ------------------------------------------------------------------
+                if (method === "GET" && path === "/api/dreams") return json({ dreams: listDreams(30) });
+                // The review lane (dream-review.ts): approve or discard a
+                // parked dream. Body: { projectPath, id }. Approve commits
+                // exactly what was previewed (the shared commit path); discard
+                // reverts the platform events and ships nothing.
+                if (method === "POST" && path === "/api/dreams/pending/approve") {
+                        const projectPath = String(body?.projectPath ?? "");
+                        const id = String(body?.id ?? "");
+                        if (!projectPath || !id) return json({ error: "needs { projectPath, id }" }, 400);
+                        const result = await approvePendingDream({ projectPath, id });
+                        return result.ok ? json(result) : json(result, 404);
+                }
+                if (method === "POST" && path === "/api/dreams/pending/discard") {
+                        const projectPath = String(body?.projectPath ?? "");
+                        const id = String(body?.id ?? "");
+                        if (!projectPath || !id) return json({ error: "needs { projectPath, id }" }, 400);
+                        const result = await discardPendingDream({ projectPath, id });
+                        return result.ok ? json(result) : json(result, 404);
+                }
+                if (method === "GET" && /^\/api\/dreams\/[^/]+\/notes$/.test(path)) {
+                        const id = path.split("/")[3];
+                        return json({ notes: dreamNotes(id) });
+                }
+                if (method === "POST" && path === "/api/dreams/run") {
+                        const pending = store.get<any>(`SELECT COUNT(*) AS c FROM notes WHERE dream_id IS NULL`)?.c ?? 0;
+                        if (pending < 1) return json({ skipped: "no undreamed notes" });
+                        // The manual trigger mirrors the auto-dream job exactly (router.ts
+                        // `case "auto-dream"`): the ENGINE dream consolidates benchmark
+                        // notes (needs >= 3 — below that threshold runDream() would just
+                        // insert a junk no-notes row), and runProjectDream() consolidates
+                        // pending TERMINAL notes into their own projects' memory. Before
+                        // this mirror, a project note alone reported {started:true} and
+                        // then silently consolidated nothing — the dashboard's "dream now"
+                        // key was a no-op for the most common note kind a real user
+                        // produces (terminal session notes).
+                        try {
+                                router
+                                        .startFireAndForget(async () => {
+                                                const pendingBenchmark = undreamedNotes(50, "benchmark").length;
+                                                if (pendingBenchmark >= 3) await runDream();
+                                                await runProjectDream();
+                                        })
+                                        .catch((e) => emit("router:error", { error: e instanceof Error ? e.message : String(e) }));
+                        } catch (err) {
+                                if (isEngineBusyError(err)) return engineBusyResponse();
+                                throw err;
+                        }
+                        return json({ started: true, pendingNotes: pending });
+                }
 
-		// ------------------------------------------------------------------
-		// Hooks (the termhook log) + the inbound-webhook surface (M2):
-		// GET /api/hooks/info is bearer-gated (it reveals the hook id) and
-		// reports the hook lane's observability: how many event routines
-		// listen and the last few inbound events. The hook POST itself
-		// lives OUTSIDE handleApi — see handleWebhookPost at the fetch
-		// wrapper (auth-by-URL, 64KB cap, malformed-JSON 400).
-		// ------------------------------------------------------------------
-		if (method === "GET" && path === "/api/hooks/info") {
-			const hookId = ensureHooksToken();
-			const eventRoutines =
-				store.get<{ c: number }>(
-					`SELECT COUNT(*) AS c FROM automations WHERE schedule_kind = 'event' AND lifecycle = 'active'`,
-				)?.c ?? 0;
-			return json({
-				hookId,
-				hookUrl: `/api/hooks/${hookId}`,
-				hint: 'POST {"event": "<name>", "payload": {...}} — knowing the URL is the authorization; `unown routines hook-url` prints the curl-able form',
-				eventRoutines,
-				lastEvents: [...hookEventRing],
-			});
-		}
-		if (method === "GET" && path === "/api/hooks") {
-			const limit = Math.min(Number(query.get("limit") ?? 100), 500);
-			const hooks = store.query<any>(`SELECT * FROM hook_log ORDER BY ts DESC LIMIT ?`, [limit]);
-			return json({ hooks });
-		}
+                // ------------------------------------------------------------------
+                // Hooks (the termhook log) + the inbound-webhook surface (M2):
+                // GET /api/hooks/info is bearer-gated (it reveals the hook id) and
+                // reports the hook lane's observability: how many event routines
+                // listen and the last few inbound events. The hook POST itself
+                // lives OUTSIDE handleApi — see handleWebhookPost at the fetch
+                // wrapper (auth-by-URL, 64KB cap, malformed-JSON 400).
+                // ------------------------------------------------------------------
+                if (method === "GET" && path === "/api/hooks/info") {
+                        const hookId = ensureHooksToken();
+                        const eventRoutines =
+                                store.get<{ c: number }>(
+                                        `SELECT COUNT(*) AS c FROM automations WHERE schedule_kind = 'event' AND lifecycle = 'active'`,
+                                )?.c ?? 0;
+                        return json({
+                                hookId,
+                                hookUrl: `/api/hooks/${hookId}`,
+                                hint: 'POST {"event": "<name>", "payload": {...}} — knowing the URL is the authorization; `unown routines hook-url` prints the curl-able form',
+                                eventRoutines,
+                                lastEvents: [...hookEventRing],
+                        });
+                }
+                if (method === "GET" && path === "/api/hooks") {
+                        const limit = Math.min(Number(query.get("limit") ?? 100), 500);
+                        const hooks = store.query<any>(`SELECT * FROM hook_log ORDER BY ts DESC LIMIT ?`, [limit]);
+                        return json({ hooks });
+                }
 
-		// ------------------------------------------------------------------
-		// Notes
-		// ------------------------------------------------------------------
-		if (method === "GET" && path === "/api/notes") {
-			const limit = Math.min(Number(query.get("limit") ?? 40), 200);
-			const notes = store.query<any>(`SELECT * FROM notes ORDER BY created_at DESC LIMIT ?`, [limit]);
-			return json({ notes });
-		}
-		if (method === "POST" && path === "/api/notes") {
-			// Terminal-session note ingestion (called by the `unown` CLI).
-			const content = typeof body?.content === "string" ? body.content.trim() : "";
-			const projectPath = typeof body?.project_path === "string" ? body.project_path.trim() : "";
-			if (!content || !projectPath) return json({ error: "content and project_path are required" }, 400);
-			if (content.length > 20000) return json({ error: "note too large" }, 413);
-			const id = ingestTerminalNote(content.slice(0, 20000), projectPath);
-			return json({ ok: true, id });
-		}
-		if (method === "POST" && path === "/api/notes/sync") {
-			const synced = syncNoteOutbox();
-			return json({ ok: true, synced });
-		}
-		// ------------------------------------------------------------------
-		// The delegation round (2026-10-30): the cross-session delegation
-		// audit ledger. POST: the terminal agent reports terminal spawns
-		// (why / cost / outcome — delegation.ts). GET: the aggregate the
-		// dashboard renders (recent records + by-agent + by-status tallies).
-		// ------------------------------------------------------------------
-		if (method === "POST" && path === "/api/delegations") {
-			const records = Array.isArray(body?.records) ? body.records : [];
-			if (records.length === 0) return json({ error: "records[] required" }, 400);
-			if (records.length > 32) return json({ error: "too many records (max 32 per batch)" }, 413);
-			const inserted: number[] = [];
-			for (const r of records) {
-				if (!r || typeof r.agent !== "string" || typeof r.task !== "string" || typeof r.status !== "string")
-					continue;
-				if (String(r.task).length > 8000 || (r.why && String(r.why).length > 2000)) continue;
-				const res = store.run(
-					`INSERT INTO delegations (lane, agent, name, task, why, status, turns, tokens_in, tokens_out, tool_calls, elapsed_ms, blocked, project_path, ts)
+                // ------------------------------------------------------------------
+                // Notes
+                // ------------------------------------------------------------------
+                if (method === "GET" && path === "/api/notes") {
+                        const limit = Math.min(Number(query.get("limit") ?? 40), 200);
+                        const notes = store.query<any>(`SELECT * FROM notes ORDER BY created_at DESC LIMIT ?`, [limit]);
+                        return json({ notes });
+                }
+                if (method === "POST" && path === "/api/notes") {
+                        // Terminal-session note ingestion (called by the `unown` CLI).
+                        const content = typeof body?.content === "string" ? body.content.trim() : "";
+                        const projectPath = typeof body?.project_path === "string" ? body.project_path.trim() : "";
+                        if (!content || !projectPath) return json({ error: "content and project_path are required" }, 400);
+                        if (content.length > 20000) return json({ error: "note too large" }, 413);
+                        const id = ingestTerminalNote(content.slice(0, 20000), projectPath);
+                        return json({ ok: true, id });
+                }
+                if (method === "POST" && path === "/api/notes/sync") {
+                        const synced = syncNoteOutbox();
+                        return json({ ok: true, synced });
+                }
+                // ------------------------------------------------------------------
+                // The delegation round (2026-10-30): the cross-session delegation
+                // audit ledger. POST: the terminal agent reports terminal spawns
+                // (why / cost / outcome — delegation.ts). GET: the aggregate the
+                // dashboard renders (recent records + by-agent + by-status tallies).
+                // ------------------------------------------------------------------
+                if (method === "POST" && path === "/api/delegations") {
+                        const records = Array.isArray(body?.records) ? body.records : [];
+                        if (records.length === 0) return json({ error: "records[] required" }, 400);
+                        if (records.length > 32) return json({ error: "too many records (max 32 per batch)" }, 413);
+                        const inserted: number[] = [];
+                        for (const r of records) {
+                                if (!r || typeof r.agent !== "string" || typeof r.task !== "string" || typeof r.status !== "string")
+                                        continue;
+                                if (String(r.task).length > 8000 || (r.why && String(r.why).length > 2000)) continue;
+                                const res = store.run(
+                                        `INSERT INTO delegations (lane, agent, name, task, why, status, turns, tokens_in, tokens_out, tool_calls, elapsed_ms, blocked, project_path, ts)
                                          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-					[
-						r.lane === "fleet" ? "fleet" : "sync",
-						String(r.agent).slice(0, 120),
-						r.name ? String(r.name).slice(0, 120) : null,
-						String(r.task).slice(0, 8000),
-						r.why ? String(r.why).slice(0, 2000) : null,
-						String(r.status).slice(0, 40),
-						Number(r.turns) || 0,
-						Number(r.tokensIn) || 0,
-						Number(r.tokensOut) || 0,
-						Number(r.toolCalls) || 0,
-						Number(r.elapsedMs) || 0,
-						r.blocked ? 1 : 0,
-						r.cwd ? String(r.cwd).slice(0, 500) : null,
-						Number(r.ts) || Date.now(),
-					],
-				);
-				inserted.push(Number(res.lastInsertRowid));
-			}
-			emit("delegation:recorded", { count: inserted.length });
-			return json({ ok: true, inserted: inserted.length });
-		}
-		if (method === "GET" && path === "/api/delegations") {
-			const limit = Math.min(Number(query.get("limit") ?? 50), 500);
-			const since = Number(query.get("since") ?? 0);
-			const rows = store.query<any>(
-				`SELECT id, lane, agent, name, task, why, status, turns, tokens_in, tokens_out, tool_calls, elapsed_ms, blocked, project_path, ts
+                                        [
+                                                r.lane === "fleet" ? "fleet" : "sync",
+                                                String(r.agent).slice(0, 120),
+                                                r.name ? String(r.name).slice(0, 120) : null,
+                                                String(r.task).slice(0, 8000),
+                                                r.why ? String(r.why).slice(0, 2000) : null,
+                                                String(r.status).slice(0, 40),
+                                                Number(r.turns) || 0,
+                                                Number(r.tokensIn) || 0,
+                                                Number(r.tokensOut) || 0,
+                                                Number(r.toolCalls) || 0,
+                                                Number(r.elapsedMs) || 0,
+                                                r.blocked ? 1 : 0,
+                                                r.cwd ? String(r.cwd).slice(0, 500) : null,
+                                                Number(r.ts) || Date.now(),
+                                        ],
+                                );
+                                inserted.push(Number(res.lastInsertRowid));
+                        }
+                        emit("delegation:recorded", { count: inserted.length });
+                        return json({ ok: true, inserted: inserted.length });
+                }
+                if (method === "GET" && path === "/api/delegations") {
+                        const limit = Math.min(Number(query.get("limit") ?? 50), 500);
+                        const since = Number(query.get("since") ?? 0);
+                        const rows = store.query<any>(
+                                `SELECT id, lane, agent, name, task, why, status, turns, tokens_in, tokens_out, tool_calls, elapsed_ms, blocked, project_path, ts
                                  FROM delegations WHERE ts >= ? ORDER BY ts DESC LIMIT ?`,
-				[Number.isFinite(since) ? since : 0, limit],
-			);
-			const tallies = store.query<any>(
-				`SELECT agent, status, COUNT(*) as count, SUM(tokens_in + tokens_out) as tokens, AVG(turns) as avg_turns
+                                [Number.isFinite(since) ? since : 0, limit],
+                        );
+                        const tallies = store.query<any>(
+                                `SELECT agent, status, COUNT(*) as count, SUM(tokens_in + tokens_out) as tokens, AVG(turns) as avg_turns
                                  FROM delegations GROUP BY agent, status ORDER BY agent, status`,
-			);
-			const totals =
-				store.query<any>(
-					`SELECT COUNT(*) as total,
+                        );
+                        const totals =
+                                store.query<any>(
+                                        `SELECT COUNT(*) as total,
                                         SUM(CASE WHEN status = 'done' THEN 1 ELSE 0 END) as ok,
                                         SUM(CASE WHEN blocked = 1 THEN 1 ELSE 0 END) as blocked,
                                         SUM(CASE WHEN status NOT IN ('done') AND blocked = 0 THEN 1 ELSE 0 END) as failed,
@@ -1075,175 +1111,175 @@ export async function handleApi(req: ApiRequest): Promise<Response> {
                                         SUM(turns) as turns, SUM(tool_calls) as tool_calls,
                                         SUM(CASE WHEN why IS NOT NULL AND why != '' THEN 1 ELSE 0 END) as with_why
                                  FROM delegations`,
-				)[0] ?? {};
-			return json({ delegations: rows, tallies, totals });
-		}
-		if (method === "POST" && path === "/api/shutdown") {
-			// Cross-platform graceful drain (M3): SIGTERM cannot reach JS
-			// handlers on Windows (TerminateProcess skips them), so
-			// `unown engine stop` asks over HTTP first and falls back to
-			// signals. Same loopback-only threat model as the rest of the
-			// API surface (UNOWN_ENGINE_HOST, docs/configuration.md).
-			if (!activeShutdown) return json({ error: "shutdown not armed" }, 503);
-			const draining = activeShutdown;
-			setTimeout(() => draining(), 250).unref?.(); // let the response flush
-			return json({ ok: true, draining: true });
-		}
+                                )[0] ?? {};
+                        return json({ delegations: rows, tallies, totals });
+                }
+                if (method === "POST" && path === "/api/shutdown") {
+                        // Cross-platform graceful drain (M3): SIGTERM cannot reach JS
+                        // handlers on Windows (TerminateProcess skips them), so
+                        // `unown engine stop` asks over HTTP first and falls back to
+                        // signals. Same loopback-only threat model as the rest of the
+                        // API surface (UNOWN_ENGINE_HOST, docs/configuration.md).
+                        if (!activeShutdown) return json({ error: "shutdown not armed" }, 503);
+                        const draining = activeShutdown;
+                        setTimeout(() => draining(), 250).unref?.(); // let the response flush
+                        return json({ ok: true, draining: true });
+                }
 
-		// ------------------------------------------------------------------
-		// Routing jobs
-		// ------------------------------------------------------------------
-		if (method === "GET" && path === "/api/jobs") return json({ jobs: listJobs() });
-		if (method === "POST" && /^\/api\/jobs\/[^/]+\/trigger$/.test(path)) {
-			const id = path.split("/")[3];
-			try {
-				const result = await router.execute(id);
-				return json({ ok: true, result });
-			} catch (e: any) {
-				// BUG 13 (audit #13): execute()'s busy conflict joins the
-				// one 409 contract too (it already answered 409 — but the
-				// raw error body, not the guard's {error, reason} shape).
-				if (isEngineBusyError(e)) return engineBusyResponse();
-				console.error("[agent-service] job trigger failed:", e);
-				return json({ error: apiErrorMessage(e) }, 409);
-			}
-		}
-		if (method === "POST" && /^\/api\/jobs\/[^/]+\/toggle$/.test(path)) {
-			const id = path.split("/")[3];
-			const job = store.get<any>(`SELECT enabled FROM jobs WHERE id = ?`, [id]);
-			if (!job) return json({ error: "not found" }, 404);
-			const updated = setJobEnabled(id, !job.enabled);
-			return json({ job: updated });
-		}
+                // ------------------------------------------------------------------
+                // Routing jobs
+                // ------------------------------------------------------------------
+                if (method === "GET" && path === "/api/jobs") return json({ jobs: listJobs() });
+                if (method === "POST" && /^\/api\/jobs\/[^/]+\/trigger$/.test(path)) {
+                        const id = path.split("/")[3];
+                        try {
+                                const result = await router.execute(id);
+                                return json({ ok: true, result });
+                        } catch (e: any) {
+                                // BUG 13 (audit #13): execute()'s busy conflict joins the
+                                // one 409 contract too (it already answered 409 — but the
+                                // raw error body, not the guard's {error, reason} shape).
+                                if (isEngineBusyError(e)) return engineBusyResponse();
+                                console.error("[agent-service] job trigger failed:", e);
+                                return json({ error: apiErrorMessage(e) }, 409);
+                        }
+                }
+                if (method === "POST" && /^\/api\/jobs\/[^/]+\/toggle$/.test(path)) {
+                        const id = path.split("/")[3];
+                        const job = store.get<any>(`SELECT enabled FROM jobs WHERE id = ?`, [id]);
+                        if (!job) return json({ error: "not found" }, 404);
+                        const updated = setJobEnabled(id, !job.enabled);
+                        return json({ job: updated });
+                }
 
-		// ------------------------------------------------------------------
-		// PLM — Process Lifecycle Management (the 2026-10-30 round)
-		// ------------------------------------------------------------------
-		if (method === "GET" && path === "/api/plm") {
-			return json(plmSummary());
-		}
-		if (method === "GET" && path === "/api/processes") {
-			const status = query.get("status") ?? undefined;
-			const kind = query.get("kind") ?? undefined;
-			const limit = Number(query.get("limit"));
-			return json({
-				processes: listProcesses({
-					status,
-					kind,
-					limit: Number.isFinite(limit) && limit > 0 ? limit : 100,
-				}),
-				// The dashboard's Process View census + transition analytics ride
-				// the same response (one fetch, one render).
-				analytics: processAnalytics(),
-			});
-		}
-		if (method === "GET" && /^\/api\/processes\/[^/]+$/.test(path)) {
-			const id = path.split("/")[3];
-			const process = getProcess(id);
-			if (!process) return json({ error: "not found" }, 404);
-			return json({
-				process,
-				events: getProcessEvents(id),
-				children: getProcessChildren(id),
-			});
-		}
-		if (method === "POST" && path === "/api/processes/report") {
-			// The terminal lane's session-process report (fire-and-forget on the
-			// caller — the same best-effort contract as /api/tools/report).
-			const id = ingestTerminalSessionReport(body?.session ?? body);
-			return json({ ok: id !== null, id });
-		}
-		if (method === "GET" && path === "/api/tools") {
-			// The Tool View: per-tool reliability, latency, failure classes,
-			// rankings + recommendations, and the category census.
-			return json(plmSummary().tools);
-		}
-		if (method === "GET" && path === "/api/tools/invocations") {
-			const limit = Number(query.get("limit"));
-			return json({ invocations: listToolInvocations(Number.isFinite(limit) && limit > 0 ? limit : 100) });
-		}
-		if (method === "POST" && path === "/api/tools/report") {
-			// The terminal lane's batched tool-invocation report (the delegation
-			// pattern: fire-and-forget on the caller, best-effort here — a missed
-			// report is a dashboard gap, never data loss).
-			const items = Array.isArray(body?.items) ? body.items : body;
-			const written = ingestToolReport(
-				items,
-				typeof body?.sessionId === "string" ? body.sessionId : null,
-				typeof body?.projectSlug === "string" ? body.projectSlug : null,
-			);
-			return json({ written });
-		}
-		if (method === "GET" && path === "/api/recovery") {
-			const limit = Number(query.get("limit"));
-			return json({
-				events: listRecoveryEvents(Number.isFinite(limit) && limit > 0 ? limit : 100),
-				analytics: recoveryAnalytics(14),
-			});
-		}
-		if (method === "GET" && path === "/api/checkpoints") {
-			const limit = Number(query.get("limit"));
-			return json({ checkpoints: listCheckpoints(Number.isFinite(limit) && limit > 0 ? limit : 100) });
-		}
-		if (method === "GET" && /^\/api\/checkpoints\/[^/]+$/.test(path)) {
-			const id = path.split("/")[3];
-			const checkpoint = getCheckpoint(id);
-			if (!checkpoint) return json({ error: "not found" }, 404);
-			return json({ checkpoint });
-		}
-		if (method === "GET" && path === "/api/learning/attribution") {
-			const limit = Number(query.get("limit"));
-			return json({
-				attributions: listAttributions(Number.isFinite(limit) && limit > 0 ? limit : 50),
-				analytics: plmSummary().learning,
-			});
-		}
+                // ------------------------------------------------------------------
+                // PLM — Process Lifecycle Management (the 2026-10-30 round)
+                // ------------------------------------------------------------------
+                if (method === "GET" && path === "/api/plm") {
+                        return json(plmSummary());
+                }
+                if (method === "GET" && path === "/api/processes") {
+                        const status = query.get("status") ?? undefined;
+                        const kind = query.get("kind") ?? undefined;
+                        const limit = Number(query.get("limit"));
+                        return json({
+                                processes: listProcesses({
+                                        status,
+                                        kind,
+                                        limit: Number.isFinite(limit) && limit > 0 ? limit : 100,
+                                }),
+                                // The dashboard's Process View census + transition analytics ride
+                                // the same response (one fetch, one render).
+                                analytics: processAnalytics(),
+                        });
+                }
+                if (method === "GET" && /^\/api\/processes\/[^/]+$/.test(path)) {
+                        const id = path.split("/")[3];
+                        const process = getProcess(id);
+                        if (!process) return json({ error: "not found" }, 404);
+                        return json({
+                                process,
+                                events: getProcessEvents(id),
+                                children: getProcessChildren(id),
+                        });
+                }
+                if (method === "POST" && path === "/api/processes/report") {
+                        // The terminal lane's session-process report (fire-and-forget on the
+                        // caller — the same best-effort contract as /api/tools/report).
+                        const id = ingestTerminalSessionReport(body?.session ?? body);
+                        return json({ ok: id !== null, id });
+                }
+                if (method === "GET" && path === "/api/tools") {
+                        // The Tool View: per-tool reliability, latency, failure classes,
+                        // rankings + recommendations, and the category census.
+                        return json(plmSummary().tools);
+                }
+                if (method === "GET" && path === "/api/tools/invocations") {
+                        const limit = Number(query.get("limit"));
+                        return json({ invocations: listToolInvocations(Number.isFinite(limit) && limit > 0 ? limit : 100) });
+                }
+                if (method === "POST" && path === "/api/tools/report") {
+                        // The terminal lane's batched tool-invocation report (the delegation
+                        // pattern: fire-and-forget on the caller, best-effort here — a missed
+                        // report is a dashboard gap, never data loss).
+                        const items = Array.isArray(body?.items) ? body.items : body;
+                        const written = ingestToolReport(
+                                items,
+                                typeof body?.sessionId === "string" ? body.sessionId : null,
+                                typeof body?.projectSlug === "string" ? body.projectSlug : null,
+                        );
+                        return json({ written });
+                }
+                if (method === "GET" && path === "/api/recovery") {
+                        const limit = Number(query.get("limit"));
+                        return json({
+                                events: listRecoveryEvents(Number.isFinite(limit) && limit > 0 ? limit : 100),
+                                analytics: recoveryAnalytics(14),
+                        });
+                }
+                if (method === "GET" && path === "/api/checkpoints") {
+                        const limit = Number(query.get("limit"));
+                        return json({ checkpoints: listCheckpoints(Number.isFinite(limit) && limit > 0 ? limit : 100) });
+                }
+                if (method === "GET" && /^\/api\/checkpoints\/[^/]+$/.test(path)) {
+                        const id = path.split("/")[3];
+                        const checkpoint = getCheckpoint(id);
+                        if (!checkpoint) return json({ error: "not found" }, 404);
+                        return json({ checkpoint });
+                }
+                if (method === "GET" && path === "/api/learning/attribution") {
+                        const limit = Number(query.get("limit"));
+                        return json({
+                                attributions: listAttributions(Number.isFinite(limit) && limit > 0 ? limit : 50),
+                                analytics: plmSummary().learning,
+                        });
+                }
 
-		// ------------------------------------------------------------------
-		// Sandboxes
-		// ------------------------------------------------------------------
-		if (method === "GET" && path === "/api/sandboxes") return json({ sandboxes: listSandboxes(60) });
+                // ------------------------------------------------------------------
+                // Sandboxes
+                // ------------------------------------------------------------------
+                if (method === "GET" && path === "/api/sandboxes") return json({ sandboxes: listSandboxes(60) });
 
-		// ------------------------------------------------------------------
-		// Bridge (llm gateway)
-		// ------------------------------------------------------------------
-		if (method === "GET" && path === "/api/bridge") {
-			const stats = await bridgeLog();
-			return json({ ...stats, url: "port 3031" });
-		}
+                // ------------------------------------------------------------------
+                // Bridge (llm gateway)
+                // ------------------------------------------------------------------
+                if (method === "GET" && path === "/api/bridge") {
+                        const stats = await bridgeLog();
+                        return json({ ...stats, url: "port 3031" });
+                }
 
-		// ------------------------------------------------------------------
-		// Web results store (webcache) — stats/clear/sweep for the
-		// dashboard. The store root honors UNOWN_WEB_CACHE_DIR /
-		// UNOWN_HOME exactly like every other process, so these
-		// endpoints report THIS machine's store (where the engine runs).
-		// ------------------------------------------------------------------
-		if (method === "GET" && path === "/api/webcache") {
-			return json(webCacheStats());
-		}
-		if (method === "POST" && path === "/api/webcache/clear") {
-			const { removed, bytes } = webCacheClear();
-			// Mutations announce themselves on the bus (the job-trigger
-			// pattern) so every open dashboard refetches, not just the
-			// caller — providers.tsx maps this to the webcache query.
-			emit("webcache:cleared", { removed, bytes });
-			return json({ ok: true, removed, bytes });
-		}
-		if (method === "POST" && path === "/api/webcache/sweep") {
-			const { evicted, freedBytes, totalBytes } = webCacheSweep();
-			return json({ ok: true, evicted, freedBytes, totalBytes });
-		}
+                // ------------------------------------------------------------------
+                // Web results store (webcache) — stats/clear/sweep for the
+                // dashboard. The store root honors UNOWN_WEB_CACHE_DIR /
+                // UNOWN_HOME exactly like every other process, so these
+                // endpoints report THIS machine's store (where the engine runs).
+                // ------------------------------------------------------------------
+                if (method === "GET" && path === "/api/webcache") {
+                        return json(webCacheStats());
+                }
+                if (method === "POST" && path === "/api/webcache/clear") {
+                        const { removed, bytes } = webCacheClear();
+                        // Mutations announce themselves on the bus (the job-trigger
+                        // pattern) so every open dashboard refetches, not just the
+                        // caller — providers.tsx maps this to the webcache query.
+                        emit("webcache:cleared", { removed, bytes });
+                        return json({ ok: true, removed, bytes });
+                }
+                if (method === "POST" && path === "/api/webcache/sweep") {
+                        const { evicted, freedBytes, totalBytes } = webCacheSweep();
+                        return json({ ok: true, evicted, freedBytes, totalBytes });
+                }
 
-		return json({ error: `not found: ${method} ${path}` }, 404);
-	} catch (err: any) {
-		// BUG 13 (audit #13): a busy conflict that reaches the outer catch (an
-		// awaited withBusy lane, a startFireAndForget re-throw) must answer the
-		// engine-busy 409 contract — never a raw 500. Everything else keeps the
-		// generic 500 handler.
-		if (isEngineBusyError(err)) return engineBusyResponse();
-		console.error("[agent-service] api handler failed:", err);
-		return json({ error: apiErrorMessage(err) }, 500);
-	}
+                return json({ error: `not found: ${method} ${path}` }, 404);
+        } catch (err: any) {
+                // BUG 13 (audit #13): a busy conflict that reaches the outer catch (an
+                // awaited withBusy lane, a startFireAndForget re-throw) must answer the
+                // engine-busy 409 contract — never a raw 500. Everything else keeps the
+                // generic 500 handler.
+                if (isEngineBusyError(err)) return engineBusyResponse();
+                console.error("[agent-service] api handler failed:", err);
+                return json({ error: apiErrorMessage(err) }, 500);
+        }
 }
 
 // ---------------------------------------------------------------------------
@@ -1251,46 +1287,46 @@ export async function handleApi(req: ApiRequest): Promise<Response> {
 // ---------------------------------------------------------------------------
 /** Crash recovery: mark rows left 'running' by a previous process as errored. Exported for tests. */
 export function recoverOrphans() {
-	const now = Date.now();
-	// PLM: processes stuck in non-terminal states by a crashed boot are moved
-	// to FAILED with an honest reason (the sticky-finalize discipline,
-	// generalized to the process registry) — and the heal itself lands in the
-	// recovery ledger as an executed+validated infrastructure recovery (the
-	// boot proceeding IS the validation evidence).
-	const healedProcesses = recoverOrphanProcesses(now);
-	if (healedProcesses > 0) {
-		const recoveryId = recordFailure({
-			failure: `engine boot healed ${healedProcesses} orphaned process(es) left by an interrupted engine`,
-			category: "infrastructure",
-		});
-		if (recoveryId) {
-			markExecuted(recoveryId, { outcome: `state-aware heal: RUNNING/RETRYING/VALIDATING → FAILED, parked/created → ABANDONED (${healedProcesses} rows)` });
-			markValidated(recoveryId, "the engine booted and the registry shows no phantom live work");
-		}
-	}
-	const orphRuns = store.run(
-		`UPDATE runs SET status = 'error', ended_at = ?, error = 'orphaned by service restart' WHERE status = 'running'`,
-		[now],
-	);
-	const orphCycles = store.run(
-		`UPDATE cycles SET status = 'no-fix', ended_at = ?, summary = COALESCE(summary, '') || ' [aborted by service restart]' WHERE status = 'running'`,
-		[now],
-	);
-	store.run(`UPDATE jobs SET status = 'idle' WHERE status = 'running'`);
-	// LOW-2: dreams stuck 'running' showed a phantom in-flight dream on the
-	// dashboard forever; tasks stuck 'validating' stayed invisible (active=0)
-	// with source_run_id set, so the lesson was silently lost. A task that
-	// never finished validating is discarded (same as a failed validation).
-	const orphDreams = store.run(
-		`UPDATE dreams SET status = 'error', ended_at = ?, note = COALESCE(note, '') || ' [orphaned by service restart]' WHERE status = 'running'`,
-		[now],
-	);
-	const orphTasks = store.run(`UPDATE tasks SET status = 'discarded' WHERE status = 'validating'`);
-	if (orphRuns.changes > 0 || orphCycles.changes > 0 || orphDreams.changes > 0 || orphTasks.changes > 0) {
-		console.log(
-			`[agent-service] recovered ${orphRuns.changes} orphaned runs, ${orphCycles.changes} orphaned cycles, ${orphDreams.changes} orphaned dreams, ${orphTasks.changes} unvalidated minted tasks`,
-		);
-	}
+        const now = Date.now();
+        // PLM: processes stuck in non-terminal states by a crashed boot are moved
+        // to FAILED with an honest reason (the sticky-finalize discipline,
+        // generalized to the process registry) — and the heal itself lands in the
+        // recovery ledger as an executed+validated infrastructure recovery (the
+        // boot proceeding IS the validation evidence).
+        const healedProcesses = recoverOrphanProcesses(now);
+        if (healedProcesses > 0) {
+                const recoveryId = recordFailure({
+                        failure: `engine boot healed ${healedProcesses} orphaned process(es) left by an interrupted engine`,
+                        category: "infrastructure",
+                });
+                if (recoveryId) {
+                        markExecuted(recoveryId, { outcome: `state-aware heal: RUNNING/RETRYING/VALIDATING → FAILED, parked/created → ABANDONED (${healedProcesses} rows)` });
+                        markValidated(recoveryId, "the engine booted and the registry shows no phantom live work");
+                }
+        }
+        const orphRuns = store.run(
+                `UPDATE runs SET status = 'error', ended_at = ?, error = 'orphaned by service restart' WHERE status = 'running'`,
+                [now],
+        );
+        const orphCycles = store.run(
+                `UPDATE cycles SET status = 'no-fix', ended_at = ?, summary = COALESCE(summary, '') || ' [aborted by service restart]' WHERE status = 'running'`,
+                [now],
+        );
+        store.run(`UPDATE jobs SET status = 'idle' WHERE status = 'running'`);
+        // LOW-2: dreams stuck 'running' showed a phantom in-flight dream on the
+        // dashboard forever; tasks stuck 'validating' stayed invisible (active=0)
+        // with source_run_id set, so the lesson was silently lost. A task that
+        // never finished validating is discarded (same as a failed validation).
+        const orphDreams = store.run(
+                `UPDATE dreams SET status = 'error', ended_at = ?, note = COALESCE(note, '') || ' [orphaned by service restart]' WHERE status = 'running'`,
+                [now],
+        );
+        const orphTasks = store.run(`UPDATE tasks SET status = 'discarded' WHERE status = 'validating'`);
+        if (orphRuns.changes > 0 || orphCycles.changes > 0 || orphDreams.changes > 0 || orphTasks.changes > 0) {
+                console.log(
+                        `[agent-service] recovered ${orphRuns.changes} orphaned runs, ${orphCycles.changes} orphaned cycles, ${orphDreams.changes} orphaned dreams, ${orphTasks.changes} unvalidated minted tasks`,
+                );
+        }
 }
 
 /** Automations scheduler — one engine-wide instance (zcode's utility-process
@@ -1312,16 +1348,16 @@ const HOOK_MAX_BODY_BYTES = 64 * 1024;
  *  LIVENESS signal ("is my hook wired up"), not an audit log (the run rows
  *  are the durable record of what a trigger did). */
 interface HookEventRecord {
-	event: string;
-	at: number;
-	accepted: boolean;
-	routinesRun: number;
+        event: string;
+        at: number;
+        accepted: boolean;
+        routinesRun: number;
 }
 const hookEventRing: HookEventRecord[] = [];
 
 function recordHookEvent(event: string, result: EventDispatchResult): void {
-	hookEventRing.push({ event, at: Date.now(), accepted: result.dispatched > 0, routinesRun: result.dispatched });
-	while (hookEventRing.length > 10) hookEventRing.shift();
+        hookEventRing.push({ event, at: Date.now(), accepted: result.dispatched > 0, routinesRun: result.dispatched });
+        while (hookEventRing.length > 10) hookEventRing.shift();
 }
 
 /**
@@ -1341,363 +1377,363 @@ function recordHookEvent(event: string, result: EventDispatchResult): void {
  * cause runs).
  */
 async function handleWebhookPost(pathname: string, req: Request): Promise<Response> {
-	const hookId = decodeURIComponent(pathname.split("/")[3] ?? "");
-	const expected = ensureHooksToken();
-	if (!tokenMatches(hookId, expected)) return json({ error: "unknown hook" }, 404);
-	const declared = Number(req.headers.get("content-length") ?? "0");
-	if (Number.isFinite(declared) && declared > HOOK_MAX_BODY_BYTES) {
-		return json({ error: `body too large (max ${HOOK_MAX_BODY_BYTES} bytes)` }, 413);
-	}
-	let raw: string;
-	try {
-		raw = await req.text();
-	} catch {
-		return json({ error: "unreadable body" }, 400);
-	}
-	if (raw.length > HOOK_MAX_BODY_BYTES)
-		return json({ error: `body too large (max ${HOOK_MAX_BODY_BYTES} bytes)` }, 413);
-	let body: any;
-	try {
-		body = JSON.parse(raw);
-	} catch {
-		return json({ error: `body must be JSON: {"event": "<name>", "payload": {...}}` }, 400);
-	}
-	const event = typeof body?.event === "string" ? body.event.trim() : "";
-	if (!EVENT_NAME_RE.test(event)) return json({ error: "event must match [a-z0-9._-]{1,64}" }, 400);
-	// M6: the routine.* namespace is engine-emitted (chained routines) — a
-	// sender who knows the hook URL must not be able to forge a
-	// "routine A just finished successfully" body any more than GitHub lets a
-	// webhook caller forge workflow_run. The token-gated LOCAL lane keeps it
-	// (tests + chain rehearsal).
-	if (event.startsWith(ROUTINE_EVENT_PREFIX)) {
-		return json(
-			{
-				error: `the ${ROUTINE_EVENT_PREFIX}* namespace is reserved for engine-emitted events (chained routines) — pick another event name`,
-			},
-			400,
-		);
-	}
-	let payload = body?.payload ?? {};
-	if (payload === null) payload = {};
-	if (typeof payload !== "object" || Array.isArray(payload)) {
-		return json({ error: "payload must be a JSON object" }, 400);
-	}
-	const result = await automationsScheduler.dispatchEvent(event, payload);
-	recordHookEvent(event, result);
-	return json({ ok: true, ...result });
+        const hookId = decodeURIComponent(pathname.split("/")[3] ?? "");
+        const expected = ensureHooksToken();
+        if (!tokenMatches(hookId, expected)) return json({ error: "unknown hook" }, 404);
+        const declared = Number(req.headers.get("content-length") ?? "0");
+        if (Number.isFinite(declared) && declared > HOOK_MAX_BODY_BYTES) {
+                return json({ error: `body too large (max ${HOOK_MAX_BODY_BYTES} bytes)` }, 413);
+        }
+        let raw: string;
+        try {
+                raw = await req.text();
+        } catch {
+                return json({ error: "unreadable body" }, 400);
+        }
+        if (raw.length > HOOK_MAX_BODY_BYTES)
+                return json({ error: `body too large (max ${HOOK_MAX_BODY_BYTES} bytes)` }, 413);
+        let body: any;
+        try {
+                body = JSON.parse(raw);
+        } catch {
+                return json({ error: `body must be JSON: {"event": "<name>", "payload": {...}}` }, 400);
+        }
+        const event = typeof body?.event === "string" ? body.event.trim() : "";
+        if (!EVENT_NAME_RE.test(event)) return json({ error: "event must match [a-z0-9._-]{1,64}" }, 400);
+        // M6: the routine.* namespace is engine-emitted (chained routines) — a
+        // sender who knows the hook URL must not be able to forge a
+        // "routine A just finished successfully" body any more than GitHub lets a
+        // webhook caller forge workflow_run. The token-gated LOCAL lane keeps it
+        // (tests + chain rehearsal).
+        if (event.startsWith(ROUTINE_EVENT_PREFIX)) {
+                return json(
+                        {
+                                error: `the ${ROUTINE_EVENT_PREFIX}* namespace is reserved for engine-emitted events (chained routines) — pick another event name`,
+                        },
+                        400,
+                );
+        }
+        let payload = body?.payload ?? {};
+        if (payload === null) payload = {};
+        if (typeof payload !== "object" || Array.isArray(payload)) {
+                return json({ error: "payload must be a JSON object" }, 400);
+        }
+        const result = await automationsScheduler.dispatchEvent(event, payload);
+        recordHookEvent(event, result);
+        return json({ ok: true, ...result });
 }
 
 /** Async since the learning-core swap: the boot sequence seeds the memory
  * platform (mem0) and renders the project tier from it before binding. */
 export async function startServer(port: number = PORT) {
-	// Engine-process scope: the governor's ledger/breaker track THIS process's
-	// unattended LLM spend; the shared llm.ts client is inert in CLI processes
-	// without this flag (governor.ts, the M2 detachment contract).
-	markEngineProcess();
-	// H3: every boot starts in warming; the phase flips to ready only after
-	// the port answers and the token is committed (the single assignment
-	// below). A re-import in a long-lived test process re-runs startServer —
-	// the phase must never leak "draining" from a previous drain cycle.
-	setEngineLifecyclePhase("warming");
-	// ---------------------------------------------------------- authentication (M7)
-	// Resolve BEFORE binding: a non-loopback bind with auth disabled must
-	// refuse to boot (an Ollama-style accidental 0.0.0.0-with-no-auth must
-	// never exist), and the token file must be on disk before the port
-	// answers its first request (no torn reads for auto-discovering
-	// clients). See engine-auth.ts for the full design + threat model.
-	const authPolicy = resolveAuthPolicy(process.env);
-	if (authPolicy.refuse) {
-		console.error(`[agent-service] refusing to start: ${authPolicy.refuseReason}`);
-		return null;
-	}
-	const engineToken = authPolicy.mode === "token" ? (authPolicy.token ?? generateEngineToken()) : null;
-	// NOTE: the token file is written ONLY AFTER this process wins the
-	// single-instance lock below. Writing it earlier let a racing loser
-	// engine (auto-start during a kill/recovery window) clobber the
-	// WINNER's token and exit — every same-user client then presented
-	// the dead loser's token and 401'd until a manual restart. The lock
-	// is the mutex that guarantees exactly one token writer; the write
-	// still happens before Bun.serve binds (no torn reads).
-	// ---------------------------------------------------------- single instance
-	// The engine lock (M3, docs/detached-engine-architecture.md F9): the
-	// port bind is a mutex, but only for THIS port — a second engine with
-	// a different PI_AGENT_PORT would still open the same SQLite data.
-	// The lockfile is created exclusively (O_EXCL "wx"), carries the pid,
-	// and is stolen only when that pid is provably dead (or, on Linux,
-	// alive but not an engine — pid-reuse after a crash must not brick
-	// boot). The loser exits 0 with a clear line in the log.
-	const lock = acquireEngineLock();
-	if (!lock.ok) {
-		console.log(`[agent-service] ${lock.reason} — this instance exits`);
-		return null;
-	}
-	// Posture is committed here (the running server reports it); the TOKEN
-	// FILE is deliberately NOT written yet — see the post-bind commit below.
-	activeAuthPosture = { mode: authPolicy.mode, bind: authPolicy.widenedBind ? "network" : "loopback" };
-	// M6 boot-time integrity gate: PRAGMA quick_check is the fast O(N)
-	// pass (docs/resilience.md). A damaged DB must fail HERE, with the
-	// repair hint — not mid-dream, corrupting writes. The outbox + the
-	// on-disk memory files make `unown engine repair` loss-bounded.
-	const qc = store.quickCheck();
-	if (qc !== "ok") {
-		console.error(`[agent-service] database integrity check failed: ${qc}`);
-		console.error("  quarantine it and boot fresh with: unown engine repair");
-		lock.release();
-		return null;
-	}
-	ensureAgentDir();
-	// Async since the learning-core swap: seeding the project tier means
-	// seeding the memory platform (mem0) and rendering from it. Errors
-	// surface to the boot log + /api/overview's memoryPlatform status
-	// instead of killing the engine (policy/user/local file tiers above
-	// still seeded synchronously inside).
-	// BOOT-BOUNDED (the engine-auth flake autopsy): the platform's init
-	// awaits the outside world with no timeout of its own — mem0's
-	// always-sent "init" telemetry POST is an un-timed fetch — so on
-	// restricted/blackholed egress the await never settled and fresh
-	// engines hung BEFORE the bind: no API, no token file, no exit (the
-	// M7 winner zombies this test pins must never be the ENGINE's own
-	// steady state). The auth/bind contract must not depend on it: past
-	// the bound the engine boots degraded, exactly like a failed seed
-	// (the platform singleton settles later, or never — dream/platform
-	// calls report it; boot is what must not hang).
-	// 2026-10-23: the bound is env-tunable (PI_ENGINE_SEED_BUDGET_MS,
-	// floor 3s — a slow-but-healthy upstream LLM call in the seed can
-	// legitimately exceed 30s: measured live, the mem0 platform init's
-	// LLM round took 57s behind the bridge on a healthy Agnes endpoint
-	// under load, booting a perfectly-good engine "degraded"), and the
-	// seed now logs its LATE SETTLEMENT — the operator sees the degraded
-	// boot state lifted instead of a stale one-time warning.
-	const seedStartedAt = Date.now();
-	const seedBudgetMs = (() => {
-		const raw = Number(process.env.PI_ENGINE_SEED_BUDGET_MS);
-		return Number.isFinite(raw) && raw >= 3_000 ? raw : 30_000;
-	})();
-	const seed = seedMemoryIfEmpty()
-		.catch((e) => {
-			console.error("[agent-service] memory platform seed failed:", e instanceof Error ? e.message : String(e));
-			console.error("  the engine runs degraded — dreams will report the platform error until it resolves");
-		})
-		.then(() => {
-			const elapsed = Date.now() - seedStartedAt;
-			if (elapsed > seedBudgetMs) {
-				console.log(
-					`[agent-service] memory platform seed settled late (${Math.round(elapsed / 1000)}s > ${Math.round(seedBudgetMs / 1000)}s budget) — the degraded-boot state is lifted; dreams and platform calls are live`,
-				);
-			} else {
-				// Positive confirmation for the healthy path: the seed used
-				// to settle SILENTLY within budget, so the only signal an
-				// operator ever saw about it was the (spurious — see the
-				// race below) 30s "booting degraded" line. A fast, healthy
-				// seed now says so (the 2026-10-28 live round: a 1.4s seed
-				// still printed "did not settle within 30s" and sent a
-				// real user chasing a degradation that did not exist).
-				console.log(
-					`[agent-service] memory platform seed settled in ${Math.round(elapsed / 1000)}s — memory platform live`,
-				);
-			}
-		});
-	// The race's timeout MUST be cleared when the seed wins it: an un-cleared
-	// timer still fires at seedBudgetMs and logs "did not settle within Ns —
-	// booting degraded" for a seed that settled seconds earlier (measured
-	// live 2026-10-28: seed done at 1.4s, false degraded line at 30s). The
-	// stale line was indistinguishable from the real slow-seed case it was
-	// built to flag, and it never un-said itself on the healthy path.
-	let seedBudgetTimer: ReturnType<typeof setTimeout> | undefined;
-	await Promise.race([
-		seed,
-		new Promise<void>((resolve) => {
-			seedBudgetTimer = setTimeout(() => {
-				console.error(
-					`[agent-service] memory platform seed did not settle within ${Math.round(seedBudgetMs / 1000)}s — booting degraded (restricted network? the platform init awaits un-timed outside calls; tune with PI_ENGINE_SEED_BUDGET_MS)`,
-				);
-				resolve();
-			}, seedBudgetMs);
-			seedBudgetTimer.unref?.();
-		}),
-	]);
-	clearTimeout(seedBudgetTimer);
-	seedTasks();
-	recoverOrphans();
-	const synced = syncNoteOutbox();
-	if (synced > 0) console.log(`[agent-service] ingested ${synced} outbox note(s) from terminal sessions`);
-	wirePlm();
-	router.start().catch((e) => console.error("[router] failed to start:", e));
-	automationsScheduler.start();
+        // Engine-process scope: the governor's ledger/breaker track THIS process's
+        // unattended LLM spend; the shared llm.ts client is inert in CLI processes
+        // without this flag (governor.ts, the M2 detachment contract).
+        markEngineProcess();
+        // H3: every boot starts in warming; the phase flips to ready only after
+        // the port answers and the token is committed (the single assignment
+        // below). A re-import in a long-lived test process re-runs startServer —
+        // the phase must never leak "draining" from a previous drain cycle.
+        setEngineLifecyclePhase("warming");
+        // ---------------------------------------------------------- authentication (M7)
+        // Resolve BEFORE binding: a non-loopback bind with auth disabled must
+        // refuse to boot (an Ollama-style accidental 0.0.0.0-with-no-auth must
+        // never exist), and the token file must be on disk before the port
+        // answers its first request (no torn reads for auto-discovering
+        // clients). See engine-auth.ts for the full design + threat model.
+        const authPolicy = resolveAuthPolicy(process.env);
+        if (authPolicy.refuse) {
+                console.error(`[agent-service] refusing to start: ${authPolicy.refuseReason}`);
+                return null;
+        }
+        const engineToken = authPolicy.mode === "token" ? (authPolicy.token ?? generateEngineToken()) : null;
+        // NOTE: the token file is written ONLY AFTER this process wins the
+        // single-instance lock below. Writing it earlier let a racing loser
+        // engine (auto-start during a kill/recovery window) clobber the
+        // WINNER's token and exit — every same-user client then presented
+        // the dead loser's token and 401'd until a manual restart. The lock
+        // is the mutex that guarantees exactly one token writer; the write
+        // still happens before Bun.serve binds (no torn reads).
+        // ---------------------------------------------------------- single instance
+        // The engine lock (M3, docs/detached-engine-architecture.md F9): the
+        // port bind is a mutex, but only for THIS port — a second engine with
+        // a different PI_AGENT_PORT would still open the same SQLite data.
+        // The lockfile is created exclusively (O_EXCL "wx"), carries the pid,
+        // and is stolen only when that pid is provably dead (or, on Linux,
+        // alive but not an engine — pid-reuse after a crash must not brick
+        // boot). The loser exits 0 with a clear line in the log.
+        const lock = acquireEngineLock();
+        if (!lock.ok) {
+                console.log(`[agent-service] ${lock.reason} — this instance exits`);
+                return null;
+        }
+        // Posture is committed here (the running server reports it); the TOKEN
+        // FILE is deliberately NOT written yet — see the post-bind commit below.
+        activeAuthPosture = { mode: authPolicy.mode, bind: authPolicy.widenedBind ? "network" : "loopback" };
+        // M6 boot-time integrity gate: PRAGMA quick_check is the fast O(N)
+        // pass (docs/resilience.md). A damaged DB must fail HERE, with the
+        // repair hint — not mid-dream, corrupting writes. The outbox + the
+        // on-disk memory files make `unown engine repair` loss-bounded.
+        const qc = store.quickCheck();
+        if (qc !== "ok") {
+                console.error(`[agent-service] database integrity check failed: ${qc}`);
+                console.error("  quarantine it and boot fresh with: unown engine repair");
+                lock.release();
+                return null;
+        }
+        ensureAgentDir();
+        // Async since the learning-core swap: seeding the project tier means
+        // seeding the memory platform (mem0) and rendering from it. Errors
+        // surface to the boot log + /api/overview's memoryPlatform status
+        // instead of killing the engine (policy/user/local file tiers above
+        // still seeded synchronously inside).
+        // BOOT-BOUNDED (the engine-auth flake autopsy): the platform's init
+        // awaits the outside world with no timeout of its own — mem0's
+        // always-sent "init" telemetry POST is an un-timed fetch — so on
+        // restricted/blackholed egress the await never settled and fresh
+        // engines hung BEFORE the bind: no API, no token file, no exit (the
+        // M7 winner zombies this test pins must never be the ENGINE's own
+        // steady state). The auth/bind contract must not depend on it: past
+        // the bound the engine boots degraded, exactly like a failed seed
+        // (the platform singleton settles later, or never — dream/platform
+        // calls report it; boot is what must not hang).
+        // 2026-10-23: the bound is env-tunable (PI_ENGINE_SEED_BUDGET_MS,
+        // floor 3s — a slow-but-healthy upstream LLM call in the seed can
+        // legitimately exceed 30s: measured live, the mem0 platform init's
+        // LLM round took 57s behind the bridge on a healthy Agnes endpoint
+        // under load, booting a perfectly-good engine "degraded"), and the
+        // seed now logs its LATE SETTLEMENT — the operator sees the degraded
+        // boot state lifted instead of a stale one-time warning.
+        const seedStartedAt = Date.now();
+        const seedBudgetMs = (() => {
+                const raw = Number(process.env.PI_ENGINE_SEED_BUDGET_MS);
+                return Number.isFinite(raw) && raw >= 3_000 ? raw : 30_000;
+        })();
+        const seed = seedMemoryIfEmpty()
+                .catch((e) => {
+                        console.error("[agent-service] memory platform seed failed:", e instanceof Error ? e.message : String(e));
+                        console.error("  the engine runs degraded — dreams will report the platform error until it resolves");
+                })
+                .then(() => {
+                        const elapsed = Date.now() - seedStartedAt;
+                        if (elapsed > seedBudgetMs) {
+                                console.log(
+                                        `[agent-service] memory platform seed settled late (${Math.round(elapsed / 1000)}s > ${Math.round(seedBudgetMs / 1000)}s budget) — the degraded-boot state is lifted; dreams and platform calls are live`,
+                                );
+                        } else {
+                                // Positive confirmation for the healthy path: the seed used
+                                // to settle SILENTLY within budget, so the only signal an
+                                // operator ever saw about it was the (spurious — see the
+                                // race below) 30s "booting degraded" line. A fast, healthy
+                                // seed now says so (the 2026-10-28 live round: a 1.4s seed
+                                // still printed "did not settle within 30s" and sent a
+                                // real user chasing a degradation that did not exist).
+                                console.log(
+                                        `[agent-service] memory platform seed settled in ${Math.round(elapsed / 1000)}s — memory platform live`,
+                                );
+                        }
+                });
+        // The race's timeout MUST be cleared when the seed wins it: an un-cleared
+        // timer still fires at seedBudgetMs and logs "did not settle within Ns —
+        // booting degraded" for a seed that settled seconds earlier (measured
+        // live 2026-10-28: seed done at 1.4s, false degraded line at 30s). The
+        // stale line was indistinguishable from the real slow-seed case it was
+        // built to flag, and it never un-said itself on the healthy path.
+        let seedBudgetTimer: ReturnType<typeof setTimeout> | undefined;
+        await Promise.race([
+                seed,
+                new Promise<void>((resolve) => {
+                        seedBudgetTimer = setTimeout(() => {
+                                console.error(
+                                        `[agent-service] memory platform seed did not settle within ${Math.round(seedBudgetMs / 1000)}s — booting degraded (restricted network? the platform init awaits un-timed outside calls; tune with PI_ENGINE_SEED_BUDGET_MS)`,
+                                );
+                                resolve();
+                        }, seedBudgetMs);
+                        seedBudgetTimer.unref?.();
+                }),
+        ]);
+        clearTimeout(seedBudgetTimer);
+        seedTasks();
+        recoverOrphans();
+        const synced = syncNoteOutbox();
+        if (synced > 0) console.log(`[agent-service] ingested ${synced} outbox note(s) from terminal sessions`);
+        wirePlm();
+        router.start().catch((e) => console.error("[router] failed to start:", e));
+        automationsScheduler.start();
 
-	const server = Bun.serve({
-		port,
-		// Loopback by default (MEDIUM-6): the engine API is unauthenticated —
-		// notes ingestion, memory rollback, sandboxed agent runs — so binding
-		// all interfaces would expose the whole learning surface to the LAN.
-		// Opt in deliberately (LAN/dashboard-from-another-device) via
-		// UNOWN_ENGINE_HOST=0.0.0.0.
-		hostname: process.env.UNOWN_ENGINE_HOST || "127.0.0.1", // `||`: empty means unset
-		idleTimeout: 255, // SSE streams + long-lived API connections
-		async fetch(req) {
-			const url = new URL(req.url);
-			const corsOrigin = allowedCorsOrigin(req);
+        const server = Bun.serve({
+                port,
+                // Loopback by default (MEDIUM-6): the engine API is unauthenticated —
+                // notes ingestion, memory rollback, sandboxed agent runs — so binding
+                // all interfaces would expose the whole learning surface to the LAN.
+                // Opt in deliberately (LAN/dashboard-from-another-device) via
+                // UNOWN_ENGINE_HOST=0.0.0.0.
+                hostname: process.env.UNOWN_ENGINE_HOST || "127.0.0.1", // `||`: empty means unset
+                idleTimeout: 255, // SSE streams + long-lived API connections
+                async fetch(req) {
+                        const url = new URL(req.url);
+                        const corsOrigin = allowedCorsOrigin(req);
 
-			// -------------------------------------------------- auth gate (M7)
-			// Three checks, all ABOVE handleApi (the unit suite calls
-			// handleApi directly; HTTP-level concerns live here):
-			//   1. Host validation — same-port DNS rebinding kills CORS
-			//      entirely (page origin == target origin), so a DNS name
-			//      in the Host header must be explicitly allow-listed
-			//      (UNOWN_ENGINE_HOSTS). Vite allowedHosts / CVE-2025-24010.
-			//   2. Origin enforcement — CORS only gates what a browser
-			//      can READ; a text/plain POST is preflight-free and
-			//      apiRequestBody() parses any content-type, so any
-			//      website could drive POST /api/* blind. A request that
-			//      CARRIES an Origin must be on the allow-list.
-			//   3. Bearer token — per-boot random token in
-			//      DATA_DIR/engine.token (Jupyter-style); same-user
-			//      clients auto-discover it via engineFetch. Exempt:
-			//      preflights (carry no credentials) and GET / liveness.
-			// See engine-auth.ts + docs/detached-engine-architecture.md.
-			if (!hostHeaderAllowed(req, authPolicy)) {
-				return new Response(JSON.stringify({ error: "host header not allowed" }), {
-					status: 403,
-					headers: { "Content-Type": "application/json" },
-				});
-			}
-			if (!originAllowed(req, corsOrigin)) {
-				return new Response(JSON.stringify({ error: "origin not allowed" }), {
-					status: 403,
-					headers: { "Content-Type": "application/json" },
-				});
-			}
+                        // -------------------------------------------------- auth gate (M7)
+                        // Three checks, all ABOVE handleApi (the unit suite calls
+                        // handleApi directly; HTTP-level concerns live here):
+                        //   1. Host validation — same-port DNS rebinding kills CORS
+                        //      entirely (page origin == target origin), so a DNS name
+                        //      in the Host header must be explicitly allow-listed
+                        //      (UNOWN_ENGINE_HOSTS). Vite allowedHosts / CVE-2025-24010.
+                        //   2. Origin enforcement — CORS only gates what a browser
+                        //      can READ; a text/plain POST is preflight-free and
+                        //      apiRequestBody() parses any content-type, so any
+                        //      website could drive POST /api/* blind. A request that
+                        //      CARRIES an Origin must be on the allow-list.
+                        //   3. Bearer token — per-boot random token in
+                        //      DATA_DIR/engine.token (Jupyter-style); same-user
+                        //      clients auto-discover it via engineFetch. Exempt:
+                        //      preflights (carry no credentials) and GET / liveness.
+                        // See engine-auth.ts + docs/detached-engine-architecture.md.
+                        if (!hostHeaderAllowed(req, authPolicy)) {
+                                return new Response(JSON.stringify({ error: "host header not allowed" }), {
+                                        status: 403,
+                                        headers: { "Content-Type": "application/json" },
+                                });
+                        }
+                        if (!originAllowed(req, corsOrigin)) {
+                                return new Response(JSON.stringify({ error: "origin not allowed" }), {
+                                        status: 403,
+                                        headers: { "Content-Type": "application/json" },
+                                });
+                        }
 
-			// CORS preflight — answered before any routing (the engine API is
-			// consumed cross-origin by the local dashboard once CORS is on).
-			if (req.method === "OPTIONS") {
-				return new Response(null, { status: 204, headers: corsHeadersFor(corsOrigin) });
-			}
-			if (engineToken && !tokenExempt(req.method, url.pathname)) {
-				if (!tokenMatches(requestToken(req, url), engineToken)) {
-					return new Response(JSON.stringify({ error: "missing or invalid engine token" }), {
-						status: 401,
-						headers: {
-							"Content-Type": "application/json",
-							"WWW-Authenticate": "Bearer",
-						},
-					});
-				}
-			}
+                        // CORS preflight — answered before any routing (the engine API is
+                        // consumed cross-origin by the local dashboard once CORS is on).
+                        if (req.method === "OPTIONS") {
+                                return new Response(null, { status: 204, headers: corsHeadersFor(corsOrigin) });
+                        }
+                        if (engineToken && !tokenExempt(req.method, url.pathname)) {
+                                if (!tokenMatches(requestToken(req, url), engineToken)) {
+                                        return new Response(JSON.stringify({ error: "missing or invalid engine token" }), {
+                                                status: 401,
+                                                headers: {
+                                                        "Content-Type": "application/json",
+                                                        "WWW-Authenticate": "Bearer",
+                                                },
+                                        });
+                                }
+                        }
 
-			// Inbound webhooks (M2): the hook POST lane authenticates by
-			// KNOWING the URL (tokenExempt above), so it is routed here —
-			// before the SSE/handleApi block whose shared body gate cannot
-			// express the 64KB cap or the malformed-JSON 400.
-			if (req.method === "POST" && /^\/api\/hooks\/(?!info$)[^/]+$/.test(url.pathname)) {
-				return withCors(await handleWebhookPost(url.pathname, req), corsOrigin);
-			}
+                        // Inbound webhooks (M2): the hook POST lane authenticates by
+                        // KNOWING the URL (tokenExempt above), so it is routed here —
+                        // before the SSE/handleApi block whose shared body gate cannot
+                        // express the 64KB cap or the malformed-JSON 400.
+                        if (req.method === "POST" && /^\/api\/hooks\/(?!info$)[^/]+$/.test(url.pathname)) {
+                                return withCors(await handleWebhookPost(url.pathname, req), corsOrigin);
+                        }
 
-			// SSE live event stream
-			if (req.method === "GET" && url.pathname === "/api/events") {
-				let unsub = () => {};
-				let ping: ReturnType<typeof setInterval> | null = null;
-				const stream = new ReadableStream({
-					start(controller) {
-						const encoder = new TextEncoder();
-						const send = (data: unknown) => {
-							try {
-								controller.enqueue(encoder.encode(`data: ${JSON.stringify(data)}\n\n`));
-							} catch {
-								/* closed */
-							}
-						};
-						send({ event: "hello", ts: Date.now() });
-						unsub = subscribe(send);
-						// keepalive ping — CLEARED on cancel (MEDIUM-4): each abandoned SSE
-						// connection used to leak its 20s interval + retained closures for
-						// the life of the engine (cancel only unsubscribed the bus listener).
-						ping = setInterval(() => send({ event: "ping", ts: Date.now() }), 20_000);
-					},
-					cancel() {
-						unsub();
-						if (ping) clearInterval(ping);
-					},
-				});
-				return withCors(
-					new Response(stream, {
-						headers: {
-							"Content-Type": "text/event-stream",
-							"Cache-Control": "no-cache",
-							Connection: "keep-alive",
-						},
-					}),
-					corsOrigin,
-				);
-			}
+                        // SSE live event stream
+                        if (req.method === "GET" && url.pathname === "/api/events") {
+                                let unsub = () => {};
+                                let ping: ReturnType<typeof setInterval> | null = null;
+                                const stream = new ReadableStream({
+                                        start(controller) {
+                                                const encoder = new TextEncoder();
+                                                const send = (data: unknown) => {
+                                                        try {
+                                                                controller.enqueue(encoder.encode(`data: ${JSON.stringify(data)}\n\n`));
+                                                        } catch {
+                                                                /* closed */
+                                                        }
+                                                };
+                                                send({ event: "hello", ts: Date.now() });
+                                                unsub = subscribe(send);
+                                                // keepalive ping — CLEARED on cancel (MEDIUM-4): each abandoned SSE
+                                                // connection used to leak its 20s interval + retained closures for
+                                                // the life of the engine (cancel only unsubscribed the bus listener).
+                                                ping = setInterval(() => send({ event: "ping", ts: Date.now() }), 20_000);
+                                        },
+                                        cancel() {
+                                                unsub();
+                                                if (ping) clearInterval(ping);
+                                        },
+                                });
+                                return withCors(
+                                        new Response(stream, {
+                                                headers: {
+                                                        "Content-Type": "text/event-stream",
+                                                        "Cache-Control": "no-cache",
+                                                        Connection: "keep-alive",
+                                                },
+                                        }),
+                                        corsOrigin,
+                                );
+                        }
 
-			if (url.pathname.startsWith("/api/")) {
-				return withCors(
-					await handleApi({
-						method: req.method,
-						path: url.pathname,
-						query: url.searchParams,
-						body: await apiRequestBody(req),
-					}),
-					corsOrigin,
-				);
-			}
+                        if (url.pathname.startsWith("/api/")) {
+                                return withCors(
+                                        await handleApi({
+                                                method: req.method,
+                                                path: url.pathname,
+                                                query: url.searchParams,
+                                                body: await apiRequestBody(req),
+                                        }),
+                                        corsOrigin,
+                                );
+                        }
 
-			return withCors(
-				new Response("pi self-learning agent service\n", {
-					status: 200,
-					headers: { "Content-Type": "text/plain" },
-				}),
-				corsOrigin,
-			);
-		},
-	});
+                        return withCors(
+                                new Response("pi self-learning agent service\n", {
+                                        status: 200,
+                                        headers: { "Content-Type": "text/plain" },
+                                }),
+                                corsOrigin,
+                        );
+                },
+        });
 
-	// TOKEN COMMIT (post-bind): the token file is written only once the
-	// port is actually answering. The invariant this buys — the token on
-	// disk always belongs to the process HOLDING THE PORT — closes the
-	// second race the live PTY lane caught (M7's loser fix was necessary
-	// but not sufficient): a racing engine that acquired the (stolen /
-	// stale) single-instance lock but FAILED the port bind used to exit
-	// having already clobbered the running winner's token, leaving every
-	// same-user client 401-locked-out until a manual restart. A bind
-	// failure now exits with the token file untouched (the microsecond
-	// bind→write window is covered client-side: engineFetch re-reads and
-	// retries once on 401; a probe that lands there degrades for one
-	// cycle, exactly like an engine-down blip).
-	if (engineToken) {
-		writeEngineTokenFile(engineTokenPath(), engineToken);
-		// H6 (2026-10-26 hardening round): mirror the same per-boot token to the
-		// cross-install discovery path ($UNOWN_HOME/engine.token) — same commit
-		// point (post-bind, the port owner writes), same drain-time removal with
-		// ownership check, same maintenance self-heal. Closes resilience.md R11's
-		// binary↔source token split: a binary CLI probing a source-repo engine (or
-		// the reverse) discovers the running engine's token instead of presenting
-		// its own data dir's stale one and reporting `blocked · token` forever.
-		try {
-			writeEngineTokenFile(sharedEngineTokenPath(), engineToken);
-		} catch {
-			/* read-only $UNOWN_HOME — own-data-dir discovery still works */
-		}
-	}
-	// H3: the port answers and the token is committed — the engine is READY.
-	setEngineLifecyclePhase("ready");
-	console.log(
-		`[agent-service] REST+SSE API on http://${process.env.UNOWN_ENGINE_HOST || "127.0.0.1"}:${server.port}` +
-			(engineToken
-				? ` — auth: bearer token (${engineTokenPath()}; discovery mirror ${sharedEngineTokenPath()})`
-				: " — auth: disabled"),
-	);
-	installGracefulShutdown(
-		server,
-		lock.release,
-		engineToken ? () => removeEngineTokenFile(engineTokenPath(), engineToken) : undefined,
-		engineToken ? () => removeEngineTokenFile(sharedEngineTokenPath(), engineToken) : undefined,
-	);
-	startMaintenance(
-		engineToken ? { token: engineToken, path: engineTokenPath(), sharedPath: sharedEngineTokenPath() } : undefined,
-	);
-	return server;
+        // TOKEN COMMIT (post-bind): the token file is written only once the
+        // port is actually answering. The invariant this buys — the token on
+        // disk always belongs to the process HOLDING THE PORT — closes the
+        // second race the live PTY lane caught (M7's loser fix was necessary
+        // but not sufficient): a racing engine that acquired the (stolen /
+        // stale) single-instance lock but FAILED the port bind used to exit
+        // having already clobbered the running winner's token, leaving every
+        // same-user client 401-locked-out until a manual restart. A bind
+        // failure now exits with the token file untouched (the microsecond
+        // bind→write window is covered client-side: engineFetch re-reads and
+        // retries once on 401; a probe that lands there degrades for one
+        // cycle, exactly like an engine-down blip).
+        if (engineToken) {
+                writeEngineTokenFile(engineTokenPath(), engineToken);
+                // H6 (2026-10-26 hardening round): mirror the same per-boot token to the
+                // cross-install discovery path ($UNOWN_HOME/engine.token) — same commit
+                // point (post-bind, the port owner writes), same drain-time removal with
+                // ownership check, same maintenance self-heal. Closes resilience.md R11's
+                // binary↔source token split: a binary CLI probing a source-repo engine (or
+                // the reverse) discovers the running engine's token instead of presenting
+                // its own data dir's stale one and reporting `blocked · token` forever.
+                try {
+                        writeEngineTokenFile(sharedEngineTokenPath(), engineToken);
+                } catch {
+                        /* read-only $UNOWN_HOME — own-data-dir discovery still works */
+                }
+        }
+        // H3: the port answers and the token is committed — the engine is READY.
+        setEngineLifecyclePhase("ready");
+        console.log(
+                `[agent-service] REST+SSE API on http://${process.env.UNOWN_ENGINE_HOST || "127.0.0.1"}:${server.port}` +
+                        (engineToken
+                                ? ` — auth: bearer token (${engineTokenPath()}; discovery mirror ${sharedEngineTokenPath()})`
+                                : " — auth: disabled"),
+        );
+        installGracefulShutdown(
+                server,
+                lock.release,
+                engineToken ? () => removeEngineTokenFile(engineTokenPath(), engineToken) : undefined,
+                engineToken ? () => removeEngineTokenFile(sharedEngineTokenPath(), engineToken) : undefined,
+        );
+        startMaintenance(
+                engineToken ? { token: engineToken, path: engineTokenPath(), sharedPath: sharedEngineTokenPath() } : undefined,
+        );
+        return server;
 }
 
 // ---------------------------------------------------------------------------
@@ -1706,81 +1742,81 @@ export async function startServer(port: number = PORT) {
 
 /** The engine's lockfile path — inside its own data dir, which tests redirect per-suite. */
 function engineLockPath(): string {
-	return join(DATA_DIR, "engine.lock");
+        return join(DATA_DIR, "engine.lock");
 }
 
 /** Is `pid` alive AND (on Linux) actually an engine process? Defends lock-steal against pid reuse. */
 function lockHolderLooksLikeEngine(pid: number): boolean {
-	try {
-		process.kill(pid, 0);
-	} catch (err: any) {
-		// EPERM = the process exists but belongs to another user: ALIVE.
-		// ESRCH = no such process: dead. Anything else: assume dead.
-		return err?.code === "EPERM";
-	}
-	if (process.platform === "linux") {
-		try {
-			const cmdline = readFileSync(`/proc/${pid}/cmdline`, "utf8");
-			return /agent-service|engine[\s/]serve|self-learning/.test(cmdline);
-		} catch {
-			return false; // can't read → can't prove → don't steal lightly
-		}
-	}
-	return true; // non-Linux: pid alive is the best portable signal
+        try {
+                process.kill(pid, 0);
+        } catch (err: any) {
+                // EPERM = the process exists but belongs to another user: ALIVE.
+                // ESRCH = no such process: dead. Anything else: assume dead.
+                return err?.code === "EPERM";
+        }
+        if (process.platform === "linux") {
+                try {
+                        const cmdline = readFileSync(`/proc/${pid}/cmdline`, "utf8");
+                        return /agent-service|engine[\s/]serve|self-learning/.test(cmdline);
+                } catch {
+                        return false; // can't read → can't prove → don't steal lightly
+                }
+        }
+        return true; // non-Linux: pid alive is the best portable signal
 }
 
 function acquireEngineLock(): { ok: true; release: () => void } | { ok: false; reason: string } {
-	mkdirSync(DATA_DIR, { recursive: true });
-	const lockPath = engineLockPath();
-	if (existsSync(lockPath)) {
-		try {
-			const pid = Number(readFileSync(lockPath, "utf8").trim());
-			// Same-pid re-entrancy: a test (or an in-process restart)
-			// calling startServer again owns the lock already.
-			if (pid === process.pid) {
-				return {
-					ok: true,
-					release: () => {
-						try {
-							rmSync(lockPath);
-						} catch {
-							/* best effort */
-						}
-					},
-				};
-			}
-			if (Number.isFinite(pid) && pid > 0 && lockHolderLooksLikeEngine(pid)) {
-				return { ok: false, reason: `another engine is running (pid ${pid}, lock ${lockPath})` };
-			}
-		} catch {
-			/* unreadable lock — steal */
-		}
-		try {
-			rmSync(lockPath);
-		} catch {
-			/* best effort */
-		}
-	}
-	try {
-		const fd = openSync(lockPath, "wx");
-		writeSync(fd, String(process.pid));
-		closeSync(fd);
-	} catch (err: any) {
-		return {
-			ok: false,
-			reason: `cannot create engine lock ${lockPath}: ${err instanceof Error ? err.message : String(err)}`,
-		};
-	}
-	return {
-		ok: true,
-		release: () => {
-			try {
-				rmSync(lockPath);
-			} catch {
-				/* best effort */
-			}
-		},
-	};
+        mkdirSync(DATA_DIR, { recursive: true });
+        const lockPath = engineLockPath();
+        if (existsSync(lockPath)) {
+                try {
+                        const pid = Number(readFileSync(lockPath, "utf8").trim());
+                        // Same-pid re-entrancy: a test (or an in-process restart)
+                        // calling startServer again owns the lock already.
+                        if (pid === process.pid) {
+                                return {
+                                        ok: true,
+                                        release: () => {
+                                                try {
+                                                        rmSync(lockPath);
+                                                } catch {
+                                                        /* best effort */
+                                                }
+                                        },
+                                };
+                        }
+                        if (Number.isFinite(pid) && pid > 0 && lockHolderLooksLikeEngine(pid)) {
+                                return { ok: false, reason: `another engine is running (pid ${pid}, lock ${lockPath})` };
+                        }
+                } catch {
+                        /* unreadable lock — steal */
+                }
+                try {
+                        rmSync(lockPath);
+                } catch {
+                        /* best effort */
+                }
+        }
+        try {
+                const fd = openSync(lockPath, "wx");
+                writeSync(fd, String(process.pid));
+                closeSync(fd);
+        } catch (err: any) {
+                return {
+                        ok: false,
+                        reason: `cannot create engine lock ${lockPath}: ${err instanceof Error ? err.message : String(err)}`,
+                };
+        }
+        return {
+                ok: true,
+                release: () => {
+                        try {
+                                rmSync(lockPath);
+                        } catch {
+                                /* best effort */
+                        }
+                },
+        };
 }
 
 let shutdownInstalled = false;
@@ -1804,12 +1840,12 @@ let engineLifecyclePhase: "warming" | "ready" | "draining" = "warming";
  *  CLI processes that import server.ts without startServer report "warming"
  *  and never serve /api/health, so the value is only meaningful engine-side. */
 export function engineLifecyclePhaseNow(): "warming" | "ready" | "draining" {
-	return engineLifecyclePhase;
+        return engineLifecyclePhase;
 }
 
 /** Set the phase (module-private mutator; startServer and the drain own it). */
 function setEngineLifecyclePhase(phase: "warming" | "ready" | "draining"): void {
-	engineLifecyclePhase = phase;
+        engineLifecyclePhase = phase;
 }
 
 /** How long graceful shutdown waits for the in-flight router job before the
@@ -1819,8 +1855,8 @@ function setEngineLifecyclePhase(phase: "warming" | "ready" | "draining"): void 
  *  lost work recoverable, so 10s is the deliberate trade). Exported for the
  *  health payload + tests. */
 export const ENGINE_DRAIN_BUDGET_MS = (() => {
-	const raw = Number(process.env.UNOWN_ENGINE_DRAIN_BUDGET_MS);
-	return Number.isFinite(raw) && raw >= 500 ? Math.floor(raw) : 10_000;
+        const raw = Number(process.env.UNOWN_ENGINE_DRAIN_BUDGET_MS);
+        return Number.isFinite(raw) && raw >= 500 ? Math.floor(raw) : 10_000;
 })();
 
 /**
@@ -1832,94 +1868,94 @@ export const ENGINE_DRAIN_BUDGET_MS = (() => {
  * skips JS handlers — so the HTTP path is the portable drain).
  */
 function installGracefulShutdown(
-	server: any,
-	releaseLock: () => void,
-	removeToken?: () => void,
-	removeSharedToken?: () => void,
+        server: any,
+        releaseLock: () => void,
+        removeToken?: () => void,
+        removeSharedToken?: () => void,
 ): void {
-	if (shutdownInstalled) return;
-	shutdownInstalled = true;
-	const shutdown = async (signal: string) => {
-		console.log(`[agent-service] ${signal} — draining…`);
-		// H3: the phase flips FIRST — every /api/health poll during the drain
-		// window (in-flight HTTP still answers while server.stop() waits for
-		// them) sees "draining", not a lie of "ready".
-		setEngineLifecyclePhase("draining");
-		// H4: no NEW router jobs may start while the store is about to close.
-		// The HTTP drain window below still answers requests; a trigger that
-		// lands in it would start work the close would kill mid-flight.
-		try {
-			router.beginDraining();
-		} catch {
-			/* ignore — the drain proceeds regardless */
-		}
-		try {
-			await server.stop(); // drain in-flight requests
-		} catch {
-			/* ignore */
-		}
-		try {
-			router.stop();
-			automationsScheduler.stop();
-		} catch {
-			/* ignore */
-		}
-		// H4 (2026-10-26 hardening round): WAIT for the in-flight router job,
-		// bounded by the drain budget. Pre-hardening, a SIGTERM under a
-		// live dream/harness cycle closed the store under it — the dream row
-		// stayed 'running' until the NEXT boot's recoverOrphans healed it,
-		// and the half-finished work was lost (notes stay undreamed — safe,
-		// but the cycle was wasted). The drain lets it FINISH: a deliberate
-		// stop now costs nothing but a bounded wait. Cognee's background-task
-		// registry is the published precedent.
-		try {
-			const drained = await router.drainInFlight(ENGINE_DRAIN_BUDGET_MS);
-			if (drained.job !== "") {
-				console.log(
-					`[agent-service] drain: in-flight job '${drained.job}' ${drained.drained ? "finished" : `still running after ${ENGINE_DRAIN_BUDGET_MS}ms budget — closing under it (next boot's orphan recovery heals)`}`,
-				);
-			}
-		} catch {
-			/* ignore — the budget is the bound */
-		}
-		// M7: remove the per-boot token file when the engine leaves
-		// deliberately (drain/stop) — mirrors Jupyter's runtime-file
-		// lifecycle. Crash paths leave it; the next boot rewrites it.
-		if (removeToken) {
-			try {
-				removeToken();
-			} catch {
-				/* ignore */
-			}
-		}
-		// H6: the cross-install discovery mirror leaves with the same
-		// ownership check — a stale shared token must not outlive the engine
-		// that wrote it (a later foreign-install engine would otherwise be
-		// probed with THIS dead boot's token before its own commit rewrote
-		// the file).
-		if (removeSharedToken) {
-			try {
-				removeSharedToken();
-			} catch {
-				/* ignore */
-			}
-		}
-		try {
-			store.run("PRAGMA wal_checkpoint(TRUNCATE)");
-		} catch {
-			/* ignore */
-		}
-		try {
-			store.close();
-		} catch {
-			/* ignore */
-		}
-		releaseLock();
-		process.exit(0);
-	};
-	activeShutdown = () => void shutdown("api/shutdown");
-	process.on("SIGTERM", () => void shutdown("SIGTERM"));
-	process.on("SIGINT", () => void shutdown("SIGINT"));
+        if (shutdownInstalled) return;
+        shutdownInstalled = true;
+        const shutdown = async (signal: string) => {
+                console.log(`[agent-service] ${signal} — draining…`);
+                // H3: the phase flips FIRST — every /api/health poll during the drain
+                // window (in-flight HTTP still answers while server.stop() waits for
+                // them) sees "draining", not a lie of "ready".
+                setEngineLifecyclePhase("draining");
+                // H4: no NEW router jobs may start while the store is about to close.
+                // The HTTP drain window below still answers requests; a trigger that
+                // lands in it would start work the close would kill mid-flight.
+                try {
+                        router.beginDraining();
+                } catch {
+                        /* ignore — the drain proceeds regardless */
+                }
+                try {
+                        await server.stop(); // drain in-flight requests
+                } catch {
+                        /* ignore */
+                }
+                try {
+                        router.stop();
+                        automationsScheduler.stop();
+                } catch {
+                        /* ignore */
+                }
+                // H4 (2026-10-26 hardening round): WAIT for the in-flight router job,
+                // bounded by the drain budget. Pre-hardening, a SIGTERM under a
+                // live dream/harness cycle closed the store under it — the dream row
+                // stayed 'running' until the NEXT boot's recoverOrphans healed it,
+                // and the half-finished work was lost (notes stay undreamed — safe,
+                // but the cycle was wasted). The drain lets it FINISH: a deliberate
+                // stop now costs nothing but a bounded wait. Cognee's background-task
+                // registry is the published precedent.
+                try {
+                        const drained = await router.drainInFlight(ENGINE_DRAIN_BUDGET_MS);
+                        if (drained.job !== "") {
+                                console.log(
+                                        `[agent-service] drain: in-flight job '${drained.job}' ${drained.drained ? "finished" : `still running after ${ENGINE_DRAIN_BUDGET_MS}ms budget — closing under it (next boot's orphan recovery heals)`}`,
+                                );
+                        }
+                } catch {
+                        /* ignore — the budget is the bound */
+                }
+                // M7: remove the per-boot token file when the engine leaves
+                // deliberately (drain/stop) — mirrors Jupyter's runtime-file
+                // lifecycle. Crash paths leave it; the next boot rewrites it.
+                if (removeToken) {
+                        try {
+                                removeToken();
+                        } catch {
+                                /* ignore */
+                        }
+                }
+                // H6: the cross-install discovery mirror leaves with the same
+                // ownership check — a stale shared token must not outlive the engine
+                // that wrote it (a later foreign-install engine would otherwise be
+                // probed with THIS dead boot's token before its own commit rewrote
+                // the file).
+                if (removeSharedToken) {
+                        try {
+                                removeSharedToken();
+                        } catch {
+                                /* ignore */
+                        }
+                }
+                try {
+                        store.run("PRAGMA wal_checkpoint(TRUNCATE)");
+                } catch {
+                        /* ignore */
+                }
+                try {
+                        store.close();
+                } catch {
+                        /* ignore */
+                }
+                releaseLock();
+                process.exit(0);
+        };
+        activeShutdown = () => void shutdown("api/shutdown");
+        process.on("SIGTERM", () => void shutdown("SIGTERM"));
+        process.on("SIGINT", () => void shutdown("SIGINT"));
 }
 
 let maintenanceTimer: ReturnType<typeof setInterval> | null = null;
@@ -1930,50 +1966,50 @@ let maintenanceTimer: ReturnType<typeof setInterval> | null = null;
  * governor's spend ledger past its 24h window. Unref'd: never blocks exit.
  */
 function startMaintenance(auth?: { token: string; path: string; sharedPath?: string }): void {
-	if (maintenanceTimer) return;
-	let ticks = 0;
-	maintenanceTimer = setInterval(() => {
-		ticks++;
-		try {
-			store.run("PRAGMA wal_checkpoint(TRUNCATE)");
-		} catch {
-			/* ignore — a busy reader can make TRUNCATE a no-op */
-		}
-		if (ticks % 10 === 0) {
-			try {
-				pruneLedger();
-			} catch {
-				/* ignore */
-			}
-		}
-		// Token self-heal (audit M5): a drain/new-boot overlap (bun
-		// --hot reload, supervisor restart, a stale old-binary drain)
-		// can leave this live engine with no discoverable token file
-		// — every client then 401s. Rewriting the SAME token is
-		// idempotent; checked every tick (60 s worst case) because
-		// the failure mode is total API lockout. H6: the cross-install
-		// mirror heals with the same ownership rules (only when missing
-		// or matching — never clobbers a newer boot's file).
-		if (auth) {
-			try {
-				if (healEngineTokenFile(auth.path, auth.token)) {
-					console.warn(
-						"[agent-service] engine token file was missing under a live engine — rewritten (drain/new-boot overlap?)",
-					);
-				}
-			} catch {
-				/* ignore — the in-memory token still serves env-pinned clients */
-			}
-			if (auth.sharedPath) {
-				try {
-					if (healEngineTokenFile(auth.sharedPath, auth.token)) {
-						console.warn("[agent-service] shared discovery token was missing under a live engine — rewritten");
-					}
-				} catch {
-					/* ignore — the own-data-dir file still serves discovery */
-				}
-			}
-		}
-	}, 60_000);
-	maintenanceTimer.unref?.();
+        if (maintenanceTimer) return;
+        let ticks = 0;
+        maintenanceTimer = setInterval(() => {
+                ticks++;
+                try {
+                        store.run("PRAGMA wal_checkpoint(TRUNCATE)");
+                } catch {
+                        /* ignore — a busy reader can make TRUNCATE a no-op */
+                }
+                if (ticks % 10 === 0) {
+                        try {
+                                pruneLedger();
+                        } catch {
+                                /* ignore */
+                        }
+                }
+                // Token self-heal (audit M5): a drain/new-boot overlap (bun
+                // --hot reload, supervisor restart, a stale old-binary drain)
+                // can leave this live engine with no discoverable token file
+                // — every client then 401s. Rewriting the SAME token is
+                // idempotent; checked every tick (60 s worst case) because
+                // the failure mode is total API lockout. H6: the cross-install
+                // mirror heals with the same ownership rules (only when missing
+                // or matching — never clobbers a newer boot's file).
+                if (auth) {
+                        try {
+                                if (healEngineTokenFile(auth.path, auth.token)) {
+                                        console.warn(
+                                                "[agent-service] engine token file was missing under a live engine — rewritten (drain/new-boot overlap?)",
+                                        );
+                                }
+                        } catch {
+                                /* ignore — the in-memory token still serves env-pinned clients */
+                        }
+                        if (auth.sharedPath) {
+                                try {
+                                        if (healEngineTokenFile(auth.sharedPath, auth.token)) {
+                                                console.warn("[agent-service] shared discovery token was missing under a live engine — rewritten");
+                                        }
+                                } catch {
+                                        /* ignore — the own-data-dir file still serves discovery */
+                                }
+                        }
+                }
+        }, 60_000);
+        maintenanceTimer.unref?.();
 }

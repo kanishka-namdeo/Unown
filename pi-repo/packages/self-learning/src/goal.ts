@@ -27,6 +27,7 @@
  * /goal resume, /goal clear, plus the --goal CLI flag for headless runs.
  */
 import { isAbsolute, join } from "node:path";
+import { loadHubPrefs } from "./settings/prefs.ts";
 
 // ---------------------------------------------------------------------------
 // State
@@ -38,6 +39,8 @@ export interface GoalState {
     createdAt: number;
     completedAt?: number;
     completedEvidence?: string[];
+    /** Turns injected while active (the budget counter — additive, optional). */
+    turns?: number;
 }
 
 /** Parse /goal command args into an action. */
@@ -51,9 +54,15 @@ export function parseGoalCommand(args: string): { action: "set" | "status" | "pa
     return { action: "set", text: trimmed };
 }
 
-/** The per-turn context injected while a goal is active. */
+/** The per-turn context injected while a goal is active. The optional
+ *  budget line (settings-hub.json → goalBudgetTurns) is shown when set, so
+ *  the model knows the grind has a ceiling before auto-pause. */
 export function goalContextMessage(goal: GoalState): string {
     const elapsedMin = Math.max(1, Math.round((Date.now() - goal.createdAt) / 60000));
+    const budgetLine =
+        goalBudgetTurnsSetting() > 0
+            ? `\n- Budget: this goal auto-pauses after ${goalBudgetTurnsSetting()} turns (${goal.turns ?? 0} used). If the budget runs out before the objective is met, say so plainly — do not tag.`
+            : "";
     return `[GOAL ACTIVE — ${elapsedMin} min elapsed]
 Objective: ${goal.text}
 
@@ -62,7 +71,19 @@ Rules for completing this goal:
 - When (and ONLY when) the objective is fully achieved, end your reply with a line containing the exact tag [GOAL:COMPLETE].
 - The completion message must cite REAL evidence of BOTH kinds: at least one changed file path AND at least one command output or test result (e.g. a $-prefixed command line or a "<n>/<n> passed" tally). One kind alone does not count; quoted/echoed text does not count.
 - If any todo is unfinished, the goal is not complete — do not emit the tag.
-- If the goal turns out to be infeasible, say so plainly instead of tagging.`;
+- If the goal turns out to be infeasible, say so plainly instead of tagging.${budgetLine}`;
+}
+
+/** The hub-owned goal budget (0 = off). Read live so /settings changes apply
+ *  to the very next turn without a restart. */
+export function goalBudgetTurnsSetting(): number {
+    try {
+        const prefs = loadHubPrefs();
+        if (Number.isFinite(prefs.goalBudgetTurns) && prefs.goalBudgetTurns >= 0) return Math.trunc(prefs.goalBudgetTurns);
+    } catch {
+        /* default off */
+    }
+    return 0;
 }
 
 // ---------------------------------------------------------------------------
@@ -192,6 +213,9 @@ export function parseGoalEntry(data: unknown): { goal: GoalState | null; warning
     if (typeof raw.completedAt === "number" && Number.isFinite(raw.completedAt)) goal.completedAt = raw.completedAt;
     if (Array.isArray(raw.completedEvidence)) {
         goal.completedEvidence = raw.completedEvidence.filter((e): e is string => typeof e === "string");
+    }
+    if (typeof raw.turns === "number" && Number.isFinite(raw.turns) && raw.turns >= 0) {
+        goal.turns = Math.trunc(raw.turns);
     }
     return { goal };
 }

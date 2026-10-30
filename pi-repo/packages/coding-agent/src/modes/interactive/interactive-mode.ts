@@ -724,11 +724,11 @@ export class InteractiveMode {
                         .getRegisteredCommands()
                         .filter((command) => builtinNames.has(command.name))
                         .map((command) => ({
-                                type: "warning" as const,
+                                type: "collision" as const,
                                 message:
                                         command.invocationName === command.name
-                                                ? `Extension command '/${command.name}' conflicts with built-in interactive command. Skipping in autocomplete.`
-                                                : `Extension command '/${command.name}' conflicts with built-in interactive command. Available as '/${command.invocationName}'.`,
+                                                ? `Extension command '/${command.name}' overrides a built-in interactive command. The extension version is dispatched and listed in autocomplete.`
+                                                : `Extension command '/${command.name}' shares a built-in name; it is reachable as '/${command.invocationName}'.`,
                                 path: command.sourceInfo.path,
                         }));
         }
@@ -801,11 +801,25 @@ export class InteractiveMode {
                         ...(cmd.argumentHint && { argumentHint: cmd.argumentHint }),
                 }));
 
-                // Convert extension commands to SlashCommand format
+                // Convert extension commands to SlashCommand format.
+                // Extension-override rule (the Unown settings round): an extension
+                // command whose name matches a built-in REPLACES it in the list —
+                // the old behavior (silently filtering the extension command out)
+                // made a legitimate override both invisible and unreachable, while
+                // the dispatch path (session.prompt → extension commands first)
+                // would happily run it. Overridden built-ins are removed IN PLACE
+                // after their argument-completion mutations above, so surviving
+                // built-ins keep their completions.
+                const extensionCommandsAll = this.session.extensionRunner.getRegisteredCommands();
+                const overriddenBuiltins = new Set(extensionCommandsAll.map((cmd) => cmd.name));
+                if (overriddenBuiltins.size > 0) {
+                        for (let i = slashCommands.length - 1; i >= 0; i--) {
+                                if (overriddenBuiltins.has(slashCommands[i].name)) slashCommands.splice(i, 1);
+                        }
+                }
                 const builtinCommandNames = new Set(slashCommands.map((c) => c.name));
-                const extensionCommands: SlashCommand[] = this.session.extensionRunner
-                        .getRegisteredCommands()
-                        .filter((cmd) => !builtinCommandNames.has(cmd.name))
+                const extensionCommands: SlashCommand[] = extensionCommandsAll
+                        .filter((cmd) => !builtinCommandNames.has(cmd.invocationName))
                         .map((cmd) => ({
                                 name: cmd.invocationName,
                                 description: this.prefixAutocompleteDescription(cmd.description, cmd.sourceInfo),
@@ -3107,7 +3121,15 @@ export class InteractiveMode {
                         if (!text) return;
 
                         // Handle commands
-                        if (text === "/settings") {
+                        // Extension-override rule (the Unown settings round): when an
+                        // extension registers a command with a built-in's name — unown's
+                        // /settings hub being the motivating case — the EXTENSION wins
+                        // and the input falls through to session.prompt(), which
+                        // dispatches extension commands before anything else. Without
+                        // this guard the hard interception below would shadow it
+                        // forever (autocomplete filters duplicates, so the extension
+                        // command was invisible AND unreachable).
+                        if (text === "/settings" && !this.isExtensionCommand(text)) {
                                 this.showSettingsSelector();
                                 this.editor.setText("");
                                 return;
