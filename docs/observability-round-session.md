@@ -193,3 +193,28 @@ the CHANGELOG release stop (43 rail stops).
 release commit, CI green, the v0.0.45 tag (the release workflow builds the six
 per-OS binaries + installers + SBOM and publishes the GitHub release), and the
 deploy verification.
+
+## Checkpoint 5 — the release shipped: v0.0.45
+
+**DONE.** The tag `v0.0.45` pushed; the release workflow green end to end —
+CI green on the tagged commit, the 3-OS install matrix, the production build,
+the six per-OS binaries **each run on its own platform** (darwin-arm64/x64,
+linux-x64/arm64, windows-x64; windows-arm64 shipped with its checklist note
+as always), the SBOM + sha256sums + release.json manifest, the published
+GitHub release verified by fresh installs on all three OSes, and the release
+feed check. The previous push's two Windows child-process timing flakes
+(parked-ask steer, /commit 5s cap) were proven flakes: the identical code
+paths green on the tagged commit's CI.
+
+**VERIFIED:** the landing deployment (routes, SEO, blog + feed, every media
+URL) — `bun scripts/verify-deploy.mjs` all checks passed. Final suite state at
+the tag: self-learning 5047 (0 fail), landing 2063 (0 fail), bridge 221
+(0 fail), lint at baseline, typecheck + build green.
+
+**The mission's ledger, closed:** the five mechanisms kept learning throughout
+(project memory v1 → v6 during the round — the engine consolidated the round's
+own benchmark notes, including the OB-5 listener contract); every discovered
+weakness became a pin (three in-round dogfood fixes); the 60-second metric
+measured with pane receipts; the UX principles card now binds future TUI work.
+The one open lane (OB-7 fleet outcomes in the brief — the FleetManager bridge)
+is recorded with its reason as the next iteration's first build.
