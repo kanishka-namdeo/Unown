@@ -1,0 +1,57 @@
+{
+	"schema": "delegation-round/lane/1",
+	"id": "t3-triptych",
+	"name": "three parallel questions",
+	"injected": false,
+	"prompt": "Answer three independent questions, in parallel: (1) Which dashboard screen is the smallest by line count? (2) Which engine endpoint serves the automation routines? (3) Which six benchmark suites feed the landing figures? Reply with three short numbered sections, one line each.",
+	"exit": 0,
+	"signal": null,
+	"timedOut": false,
+	"durationMs": 323134,
+	"envelope": {
+		"type": "result",
+		"subtype": "success",
+		"result": "1. **Smallest dashboard screen:** `recovery-screen.ts` (212 lines, `pi-repo/packages/self-learning/src/dashboard/screens/` — next smallest is `webcache-screen.ts` at 235).\n\n2. **Routines endpoint:** `GET/POST /api/automations` (plus `/api/automations/{id}`, `/run`, `/skip`, `/snooze`, `/runs`, `/event-dispatch`) — the CLI's `unown routines` alias and agent routine tools all map onto it (`server.ts` in self-learning, bearer-token gated).\n\n3. **Six landing-feeding benchmark suites** (`scripts/landing_benchmarks.mjs:79` TRACKS → `src/components/landing/benchmarks-data.ts`): EDIT_BENCH, HUMANEVAL_PLUS, LIVECODEBENCH, LONGHORIZON, POLYGLOT, SELFIMPROVE — receipts under `benchmarks/{edit-bench,evalplus,livecodebench,longhorizon,polyglot,selfimprove}/`.",
+		"session_id": "01a18bc4-324e-7a1a-9b08-f21c9a91bfeb",
+		"model": "agnes-3.0-flash",
+		"usage": {
+			"input_tokens": 5823,
+			"output_tokens": 752,
+			"cache_read_input_tokens": 119040,
+			"cache_creation_input_tokens": 0
+		},
+		"cost_usd": 0,
+		"duration_ms": 322589,
+		"num_turns": 5,
+		"unown_version": "0.0.45"
+	},
+	"markers": {
+		"/recovery/i": true,
+		"/\\/api\\/automations/i": true,
+		"/edit-bench/i": true,
+		"/selfimprove/i": true
+	},
+	"allMarkersPass": true,
+	"artifact": null,
+	"journalDelta": [
+		"{\"op\":\"spawned\",\"lane\":\"sync\",\"id\":\"sync-mvuo24fu-hmgj3g\",\"name\":\"scout\",\"agent\":\"scout\",\"pid\":8200,\"parentPid\":8182,\"promptFile\":\"/tmp/unown-subagent-u9u1yz/system-prompt.md\",\"ts\":1793346257665}",
+		"{\"op\":\"spawned\",\"lane\":\"sync\",\"id\":\"sync-mvuo24g1-1j7lmm\",\"name\":\"scout\",\"agent\":\"scout\",\"pid\":8201,\"parentPid\":8182,\"promptFile\":\"/tmp/unown-subagent-WCFTBp/system-prompt.md\",\"ts\":1793346257672}",
+		"{\"op\":\"spawned\",\"lane\":\"sync\",\"id\":\"sync-mvuo24g8-2w4mqf\",\"name\":\"scout\",\"agent\":\"scout\",\"pid\":8205,\"parentPid\":8182,\"promptFile\":\"/tmp/unown-subagent-O5PFfV/system-prompt.md\",\"ts\":1793346257684}",
+		"{\"op\":\"finished\",\"id\":\"sync-mvuo24g1-1j7lmm\",\"status\":\"done\",\"ts\":1793346274076}",
+		"{\"op\":\"finished\",\"id\":\"sync-mvuo24g8-2w4mqf\",\"status\":\"done\",\"ts\":1793346274458}",
+		"{\"op\":\"finished\",\"id\":\"sync-mvuo24fu-hmgj3g\",\"status\":\"timeout\",\"ts\":1793346557760}"
+	],
+	"overviewBefore": {
+		"ok": true,
+		"notes": 8,
+		"notesPending": 7,
+		"dreams": 1,
+		"memoryProjectVersion": 1,
+		"raw": 2480
+	},
+	"overviewAfter": {
+		"ok": false,
+		"reason": "TypeError: fetch failed"
+	},
+	"stderrTail": ""
+}

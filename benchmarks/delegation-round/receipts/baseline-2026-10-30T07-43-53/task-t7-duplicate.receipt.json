@@ -1,0 +1,54 @@
+{
+	"schema": "delegation-round/lane/1",
+	"id": "t7-duplicate",
+	"name": "duplicate-work probe",
+	"injected": false,
+	"prompt": "First, find out which env var pins the engine's model id (the one registered with pi's models.json). Then have a FRESH subagent independently double-check that same fact. Report both answers and whether they agree.",
+	"exit": 0,
+	"signal": null,
+	"timedOut": false,
+	"durationMs": 39805,
+	"envelope": {
+		"type": "result",
+		"subtype": "success",
+		"result": "## Report\n\n| | Answer |\n|---|---|\n| **My finding** | `PI_MODEL_ID` — documented in `.env.example:43-45` (\"Model + provider names the engine registers with pi's models.json\") as `PI_MODEL_ID=agnes-3.0-flash`; consumed by `src/term.ts:151` in `writeModelsJson` (`bridgeHealthLite?.defaultModel \\|\\| PI_MODEL_ID \\|\\| \"agnes-3.0-flash\"`) |\n| **Subagent finding** | `PI_MODEL_ID` — same `.env.example` doc block, same `term.ts:151` consumer, plus `runner.ts:41/223` (the sandboxed engine agent dir's models.json), `presets.ts:31`, `llm.ts:11`, `cli.ts:427` |\n| **Agree?** | **Yes, fully.** Same variable, same doc location. |\n\nOne nuance the fresh check surfaced that I hadn't called out: `term.ts` seeds the registry with a precedence chain where a reachable bridge's live `/health` `defaultModel` beats `PI_MODEL_ID` on the first-run seed — so `PI_MODEL_ID` is the pinning env var, but a fresh install with a live bridge can be nudged to the bridge's own default. Also noted: `runner.ts` uses a legacy `kimi-k2.5` fallback for the sandboxed agent dir, vs `agnes-3.0-flash` everywhere else.",
+		"session_id": "01a18bcd-7731-7941-86a7-5f0d33a06f58",
+		"model": "agnes-3.0-flash",
+		"usage": {
+			"input_tokens": 34648,
+			"output_tokens": 907,
+			"cache_read_input_tokens": 98048,
+			"cache_creation_input_tokens": 0
+		},
+		"cost_usd": 0,
+		"duration_ms": 39221,
+		"num_turns": 5,
+		"unown_version": "0.0.45"
+	},
+	"markers": {
+		"/PI_MODEL_ID/": true
+	},
+	"allMarkersPass": true,
+	"artifact": null,
+	"journalDelta": [
+		"{\"op\":\"spawned\",\"lane\":\"sync\",\"id\":\"sync-mvuofc8o-4gauoh\",\"name\":\"explore\",\"agent\":\"explore\",\"pid\":8996,\"parentPid\":8960,\"promptFile\":\"/tmp/unown-subagent-tkdrL6/system-prompt.md\",\"ts\":1793346874305}",
+		"{\"op\":\"finished\",\"id\":\"sync-mvuofc8o-4gauoh\",\"status\":\"done\",\"ts\":1793346896146}"
+	],
+	"overviewBefore": {
+		"ok": true,
+		"notes": 19,
+		"notesPending": 18,
+		"dreams": 1,
+		"memoryProjectVersion": 1,
+		"raw": 2601
+	},
+	"overviewAfter": {
+		"ok": true,
+		"notes": 21,
+		"notesPending": 20,
+		"dreams": 1,
+		"memoryProjectVersion": 1,
+		"raw": 2540
+	},
+	"stderrTail": ""
+}

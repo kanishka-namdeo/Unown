@@ -1,0 +1,38 @@
+# lane-failed — the capture aborted — kept as the audit trail
+
+   general: ✓ 0 turns, 0 tools
+
+
+
+✓  task_control status counter
+   counter (general) — done
+   task: Repo map (read-only structural summaries of the working directory — do NOT edit these files unless the task says to;
+   use them to navigate and target your work):
+   .github/workflows/ci.yml
+   .github/workfl
+   turns: 2 · tools: 1 · steered: 0x
+   usage: 8915 in / 74 out
+
+
+✓ Subagent counter (general) finished in 00:04 — 2 turns · 1 tool calls · 8915 in / 74 out
+
+ No subagents running.
+
+ Resumable (task_control steer <name> <message>):
+   counter — done
+   ts-line-count-2 — done
+   ts-line-count — done
+
+ While the counter subagent ran in the background, the fleet held just that one child — a single general agent doing a wc -l
+ sweep over the self-learning test tree, no other running or parked tasks.
+
+ Final count: 82,204 lines of TypeScript under pi-repo/packages/self-learning/test/.
+
+ ○ no tracked steps · conf ✓ · 0m in session
+»───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+~/my-project/unown (main)
+ctx ▕░░░░░░░░░░▏ 4.7%/524k (auto) ↓248 ↑74k                                                                      agnes-3.0-flash
+conf ✓ memory: up · old build turn 5.1s · ttft 4.1s · ctx 5% · in 73.9k out 248
+? help · ctrl+k palette · / commands · ! bash · ctrl+o tools · esc-esc tree

@@ -1,0 +1,54 @@
+{
+	"schema": "delegation-round/lane/1",
+	"id": "t1-map",
+	"name": "map the fleet journal",
+	"injected": false,
+	"prompt": "Map where the fleet journal is implemented: which file owns the journal entry types, and which operations get journaled? Also name the two lanes that write 'spawned' entries. Keep the final answer under 120 words.",
+	"exit": 0,
+	"signal": null,
+	"timedOut": false,
+	"durationMs": 8042,
+	"envelope": {
+		"type": "result",
+		"subtype": "success",
+		"result": "The fleet journal lives in `pi-repo/packages/self-learning/src/fleet-reaper.ts`: `FleetJournalEntry` is the union (`spawned` [fleet/sync], `worktree`, `finished`, `reaped`, `abandoned`), persisted as JSONL via `appendFleetJournal`/`readFleetJournal` at `.unown/fleet/journal.jsonl`. Journaled ops: `spawned`, `worktree`, `finished` (via `recordFleetChildFinish`), and `reaped`/`abandoned` (sweep outcomes). The two `spawned` lanes are the async fleet lane (`recordFleetChildSpawn` in `src/fleet-runtime.ts:377`) and the sync subagent lane (`recordSyncSubagentSpawn` in `src/tools.ts:891`).",
+		"session_id": "01a18bc3-e826-78ca-9633-1bc394ca4097",
+		"model": "agnes-3.0-flash",
+		"usage": {
+			"input_tokens": 7444,
+			"output_tokens": 390,
+			"cache_read_input_tokens": 91136,
+			"cache_creation_input_tokens": 0
+		},
+		"cost_usd": 0,
+		"duration_ms": 7519,
+		"num_turns": 4,
+		"unown_version": "0.0.45"
+	},
+	"markers": {
+		"/fleet-reaper\\.ts/i": true,
+		"/spawned/i": true,
+		"/finished/i": true,
+		"/sync/i": true
+	},
+	"allMarkersPass": true,
+	"artifact": null,
+	"journalDelta": [],
+	"overviewBefore": {
+		"ok": true,
+		"notes": 6,
+		"notesPending": 5,
+		"dreams": 1,
+		"memoryProjectVersion": 1,
+		"raw": 2480
+	},
+	"overviewAfter": {
+		"ok": true,
+		"notes": 7,
+		"notesPending": 6,
+		"dreams": 1,
+		"memoryProjectVersion": 1,
+		"raw": 2480
+	},
+	"stderrTail": ""
+}

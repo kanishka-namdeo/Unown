@@ -1,0 +1,26 @@
+{
+	"schema": "delegation-round/dream-retry/1",
+	"why": "the original baseline trigger 409ed (engine busy) — re-driven with the fixed retry semantics; the original is preserved in summary.json.dream",
+	"before": {
+		"notes": {
+			"total": 31,
+			"pending": 15
+		},
+		"dreams": 3,
+		"memoryProjectVersion": 3
+	},
+	"trigger": {
+		"status": 200,
+		"body": "{\"ok\":true,\"result\":{\"dream\":{\"id\":\"40d2c276-efe2-4f3c-add8-4e40ec59dad4\",\"status\":\"done\",\"notesIn\":3},\"projects\":[]}}",
+		"attempt": 4
+	},
+	"after": {
+		"notes": {
+			"total": 35,
+			"pending": 3
+		},
+		"dreams": 6,
+		"memoryProjectVersion": 4
+	},
+	"ts": "2026-10-30T08:03:29.275Z"
+}

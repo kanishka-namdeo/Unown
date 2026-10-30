@@ -1,0 +1,57 @@
+{
+	"schema": "delegation-round/lane/1",
+	"id": "t4-script",
+	"name": "self-hashing script (implementation)",
+	"injected": false,
+	"prompt": "Create a Node.js script at /tmp/delegation-bench/baseline-1793346233215/t4.js that prints the SHA-256 hex digest of its own source file contents (the script reading itself), then run it with node and report the printed digest verbatim.",
+	"exit": 0,
+	"signal": null,
+	"timedOut": false,
+	"durationMs": 16730,
+	"envelope": {
+		"type": "result",
+		"subtype": "success",
+		"result": "Created `/tmp/delegation-bench/baseline-1793346233215/t4.js` and ran it with Node.\n\nPrinted digest (verbatim):\n```\n9e5f0953d9f3bf087a55a0c1f6aeaf0bda99bb303694172df0b59e866bd68e9e\n```",
+		"session_id": "01a18bc9-2113-776b-8dca-0543f60a91c1",
+		"model": "agnes-3.0-flash",
+		"usage": {
+			"input_tokens": 1234,
+			"output_tokens": 276,
+			"cache_read_input_tokens": 68352,
+			"cache_creation_input_tokens": 0
+		},
+		"cost_usd": 0,
+		"duration_ms": 16141,
+		"num_turns": 3,
+		"unown_version": "0.0.45"
+	},
+	"markers": {
+		"/^[a-f0-9]{64}$/im": true
+	},
+	"allMarkersPass": true,
+	"artifact": {
+		"exists": true,
+		"scriptBytes": 233,
+		"expectedDigest": "9e5f0953d9f3bf087a55a0c1f6aeaf0bda99bb303694172df0b59e866bd68e9e",
+		"answerDigest": "9e5f0953d9f3bf087a55a0c1f6aeaf0bda99bb303694172df0b59e866bd68e9e",
+		"digestMatches": true
+	},
+	"journalDelta": [],
+	"overviewBefore": {
+		"ok": true,
+		"notes": 12,
+		"notesPending": 11,
+		"dreams": 1,
+		"memoryProjectVersion": 1,
+		"raw": 2540
+	},
+	"overviewAfter": {
+		"ok": true,
+		"notes": 13,
+		"notesPending": 12,
+		"dreams": 1,
+		"memoryProjectVersion": 1,
+		"raw": 2540
+	},
+	"stderrTail": ""
+}

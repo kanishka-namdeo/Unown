@@ -306,3 +306,30 @@ figure, zero LLM calls in collection.
   `docs/memory-effectiveness-report.md`,
   `docs/learning-progress-report.md`,
   `docs/end-user-experience-report.md`.
+
+## The 2026-10-30 delegation round — baseline
+
+The subagent-orchestration round's before/after benchmark, run live against
+the real agent (bridge → Agnes, engine notes/dreams on the production path):
+ten delegation-inviting lanes with byte-pinned prompts, scored on the
+mission's ten axes by a read-only scorer over committed receipts
+(`delegation-round/README.md` is the methodology contract; the honest
+limitations — n=1 per lane, heuristic handoff scoring, author-scored rubric
+axes — are binding).
+
+- **Baseline: v0.0.45 scores 76/100** (`delegation-round/RESULTS.md` carries
+  the full table): delegation quality 86 (handoff 84%, 7/8 spawns ok) ·
+  subagent reuse **0** (no steer/resume event ever happened) · context
+  efficiency 93 (caveat: inflated by the runaway's 596k-token burn) · user
+  explainability **56** (`why` on 0/8 spawns) · progress visibility **55**
+  (TUI widget proven by pane receipt; headless stream shows nothing) · memory
+  utilisation 100 · learning retention 70 (post-workload dream consolidated,
+  v3→4) · failure recovery 100 (2/2 injected) · autonomous decision quality
+  100 (7/7) · human intervention rate 100 (9/9).
+- **The flagship product failure was caught live (F26)**: a runaway scout —
+  104 turns, 596k input tokens, 111 tool calls, killed only by the 300 s
+  wall clock (the Claude Code #106025 shape: no turn cap, no token budget,
+  no loop guard on children). Six further failures (F27–F33, product +
+  harness) are reproduced in `delegation-round/validation-log.md`.
+- The after-run (checkpoint 5 of `docs/delegation-round-session.md`) re-scores
+  the identical workload on the round's build with `--compare`.

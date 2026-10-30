@@ -1,0 +1,52 @@
+{
+	"schema": "delegation-round/lane/1",
+	"id": "t2-callers",
+	"name": "find the catalog tests",
+	"injected": false,
+	"prompt": "Find every test file that pins the advertised-subagent catalog (the <advertised_subagents> block) and cite one assertion from each. Keep the final answer under 120 words.",
+	"exit": 0,
+	"signal": null,
+	"timedOut": false,
+	"durationMs": 10584,
+	"envelope": {
+		"type": "result",
+		"subtype": "success",
+		"result": "Three test files pin the catalog:\n\n1. `pi-repo/packages/self-learning/test/subagent-catalog.test.ts` — `expect(block!.startsWith(\"<advertised_subagents>\")).toBe(true)` (line 122).\n2. `pi-repo/packages/self-learning/test/tools.test.ts` — `expect(result!.systemPrompt.includes(\"<advertised_subagents>\")).toBe(true)` (line 402).\n3. `pi-repo/packages/self-learning/test/subagent-builtins.test.ts` — `expect(block!.includes(\"- name: planner\")).toBe(false)` (planner's `advertise: false` excluded from the rendered block, line 39).\n\n(Other hits like `elicitation.test.ts` use \"advertised\" for unrelated MCP capabilities.)",
+		"session_id": "01a18bc4-0887-7d97-b408-1a9d57d29417",
+		"model": "agnes-3.0-flash",
+		"usage": {
+			"input_tokens": 4639,
+			"output_tokens": 463,
+			"cache_read_input_tokens": 121856,
+			"cache_creation_input_tokens": 0
+		},
+		"cost_usd": 0,
+		"duration_ms": 9931,
+		"num_turns": 5,
+		"unown_version": "0.0.45"
+	},
+	"markers": {
+		"/tools\\.test\\.ts/i": true,
+		"/subagent-catalog\\.test\\.ts/i": true
+	},
+	"allMarkersPass": true,
+	"artifact": null,
+	"journalDelta": [],
+	"overviewBefore": {
+		"ok": true,
+		"notes": 7,
+		"notesPending": 6,
+		"dreams": 1,
+		"memoryProjectVersion": 1,
+		"raw": 2480
+	},
+	"overviewAfter": {
+		"ok": true,
+		"notes": 8,
+		"notesPending": 7,
+		"dreams": 1,
+		"memoryProjectVersion": 1,
+		"raw": 2480
+	},
+	"stderrTail": ""
+}

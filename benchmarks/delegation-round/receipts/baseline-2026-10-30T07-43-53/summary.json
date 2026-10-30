@@ -1,0 +1,107 @@
+{
+	"schema": "delegation-round/run/1",
+	"label": "baseline",
+	"startedAt": "2026-10-30T07:56:39.769Z",
+	"repo": "/home/z/my-project/unown",
+	"gitSha": "bd4b2d920cd2eb772601143682677119eaab32f8",
+	"unownVersion": "0.0.45",
+	"delegationLevel": "standard",
+	"truths": {
+		"srcTsCount": 367,
+		"testTsLines": 82204
+	},
+	"scratchRoot": "/tmp/delegation-bench/baseline-1793346999742",
+	"lanes": [
+		{
+			"id": "t1-map",
+			"resumed": true,
+			"exit": 0,
+			"allMarkersPass": true,
+			"spawns": 0
+		},
+		{
+			"id": "t2-callers",
+			"resumed": true,
+			"exit": 0,
+			"allMarkersPass": true,
+			"spawns": 0
+		},
+		{
+			"id": "t3-triptych",
+			"resumed": true,
+			"exit": 0,
+			"allMarkersPass": true,
+			"spawns": 3
+		},
+		{
+			"id": "t4-script",
+			"resumed": true,
+			"exit": 0,
+			"allMarkersPass": true,
+			"spawns": 0
+		},
+		{
+			"id": "t5-review",
+			"resumed": true,
+			"exit": 0,
+			"allMarkersPass": true,
+			"spawns": 1
+		},
+		{
+			"id": "t6a-unknown-agent",
+			"resumed": true,
+			"exit": 0,
+			"allMarkersPass": true,
+			"spawns": 1
+		},
+		{
+			"id": "t6b-blocked-task",
+			"resumed": true,
+			"exit": 0,
+			"allMarkersPass": true,
+			"spawns": 1
+		},
+		{
+			"id": "t7-duplicate",
+			"resumed": true,
+			"exit": 0,
+			"allMarkersPass": true,
+			"spawns": 1
+		},
+		{
+			"id": "t8-async",
+			"exit": 0,
+			"durationMs": 9157,
+			"allMarkersPass": true,
+			"spawns": 1
+		}
+	],
+	"dream": {
+		"before": {
+			"ok": true,
+			"notes": 26,
+			"notesPending": 25,
+			"dreams": 1,
+			"memoryProjectVersion": 1,
+			"raw": 2539
+		},
+		"trigger": {
+			"status": 409,
+			"body": "{\"error\":\"engine is busy with another job — try again in a moment\",\"reason\":\"engine-busy\"}"
+		},
+		"after": {
+			"ok": true,
+			"notes": 26,
+			"notesPending": 25,
+			"dreams": 1,
+			"memoryProjectVersion": 1,
+			"raw": 2539
+		}
+	},
+	"finishedAt": "2026-10-30T07:57:09.803Z",
+	"tally": {
+		"lanes": 9,
+		"greenLanes": 9,
+		"totalSpawns": 8
+	}
+}

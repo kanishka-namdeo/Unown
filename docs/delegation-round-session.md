@@ -46,7 +46,48 @@ Dogfood rule (inherited): every discovered weakness becomes a benchmark, an eval
 
 ## Checkpoint 1 — phase 1, the baseline: ten scores on v0.0.45
 
-*(opens when the baseline workload has run and the receipts are committed)*
+**DONE.** The baseline benchmark is built, run, and scored —
+[`benchmarks/delegation-round/`](../benchmarks/delegation-round/):
+
+- The methodology contract (`README.md`): ten axes with formulas (delegation
+  quality, subagent reuse, context efficiency, user explainability, progress
+  visibility, memory utilisation, learning retention, failure recovery,
+  autonomous decision quality, human intervention rate), a byte-pinned
+  nine-lane workload + PTY pane-truth lane, the receipt contract, the honest
+  limitations.
+- The runner (`run-delegation-bench.mjs`): live agent, ground truths computed
+  at run time, per-lane receipts (prompt, envelope, markers, journal delta,
+  engine overview before/after), resumable, dream-trigger with retry.
+- The scorer (`score-delegation.mjs`): read-only over receipts, zero model
+  spend at score time, raw measurements + evidence quotes per axis,
+  `--compare` for the after-run.
+- **The baseline: v0.0.45 scores 76/100.** The gaps are the mission's
+  targets: `why` recorded on 0/8 spawns, reuse 0, headless progress
+  visibility 0/45. The strengths are real too: handoffs 84%, failure
+  recovery 2/2, notes and dreams on the production path, the TUI fleet
+  widget pane-proven.
+- **Seven failures caught live** (`validation-log.md`, F26–F33): the runaway
+  scout (104 turns / 596k tokens / 111 tool calls, clock-killed — the
+  flagship product defect), the unpersisted async delivery, the push-channel
+  polling loop, and four harness defects (all fixed in the runner/lane with
+  evidence).
+
+**VERIFIED (receipts from this machine, 2026-10-30,
+`benchmarks/delegation-round/receipts/baseline-2026-10-30T07-43-53/`):**
+
+| Gate | Result |
+|---|---|
+| 9/9 headless lanes green | ✓ (t8 after the F29 marker fix; run1 kept as audit trail) |
+| PTY pane truth | widget live (`fleet-widget.pane.txt`, still rendered) + delivery with vitals (`fleet-result.pane.txt`) |
+| Baseline scores | 76/100 overall; per-axis table in `RESULTS.md` with every raw number |
+| Dream on the production path | 3× 409 then 200 on attempt 4 (F28): dreams Δ3, memory v3→4 (`dream-retry.receipt.json`) |
+| Docs gates | `check_docs` green on the suite's four docs + registrations |
+
+**NEXT.** Checkpoint 2 — the delegation ledger core: the `why` field on
+every task call (journaled, displayed, surfaced), journal entries enriched
+with task/usage/duration/outcome, lean-agent turn caps (F26's fix), the
+persisted async delivery (F27's fix), and the engine's `/api/delegations`
+aggregate — each with pinning tests.
 
 ## Checkpoint 2 — the delegation ledger core
 

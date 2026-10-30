@@ -1,0 +1,54 @@
+{
+	"schema": "delegation-round/lane/1",
+	"id": "t6a-unknown-agent",
+	"name": "injected failure: unknown agent",
+	"injected": true,
+	"prompt": "Delegate this to a subagent named 'repo-cartographer' (exact name): 'Count the .ts files under src/ in this repo.' Then report what happened, and get the count anyway.",
+	"exit": 0,
+	"signal": null,
+	"timedOut": false,
+	"durationMs": 212257,
+	"envelope": {
+		"type": "result",
+		"subtype": "success",
+		"result": "**What happened:** Delegated to a subagent (the requested name `repo-cartographer` isn't a registered agent, so it ran under `explore`). The subagent enumerated the tree via directory listings but couldn't run `find` (no shell access), and gave a listing-derived estimate of ≈335 `.ts` files.\n\n**The actual machine-verified count: 367** `.ts` files under `src/` (`find src -name '*.ts' -type f | wc -l`).\n\nNote: that excludes the ~156 `.tsx` files the subagent also counted.",
+		"session_id": "01a18bca-0036-7445-9bab-2dc699e1bd1e",
+		"model": "agnes-3.0-flash",
+		"usage": {
+			"input_tokens": 2881,
+			"output_tokens": 293,
+			"cache_read_input_tokens": 68352,
+			"cache_creation_input_tokens": 0
+		},
+		"cost_usd": 0,
+		"duration_ms": 211733,
+		"num_turns": 3,
+		"unown_version": "0.0.45"
+	},
+	"markers": {
+		"/367/": true
+	},
+	"allMarkersPass": true,
+	"artifact": null,
+	"journalDelta": [
+		"{\"op\":\"spawned\",\"lane\":\"sync\",\"id\":\"sync-mvuoa8if-oc3mfe\",\"name\":\"explore\",\"agent\":\"explore\",\"pid\":8803,\"parentPid\":8785,\"promptFile\":\"/tmp/unown-subagent-iBSdKF/system-prompt.md\",\"ts\":1793346636190}",
+		"{\"op\":\"finished\",\"id\":\"sync-mvuoa8if-oc3mfe\",\"status\":\"done\",\"ts\":1793346840316}"
+	],
+	"overviewBefore": {
+		"ok": true,
+		"notes": 15,
+		"notesPending": 14,
+		"dreams": 1,
+		"memoryProjectVersion": 1,
+		"raw": 2540
+	},
+	"overviewAfter": {
+		"ok": true,
+		"notes": 17,
+		"notesPending": 16,
+		"dreams": 1,
+		"memoryProjectVersion": 1,
+		"raw": 2601
+	},
+	"stderrTail": ""
+}

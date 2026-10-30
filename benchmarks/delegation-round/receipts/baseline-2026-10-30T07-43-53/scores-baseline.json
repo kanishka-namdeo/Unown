@@ -1,0 +1,272 @@
+{
+	"schema": "delegation-round/scores/1",
+	"run": "baseline-2026-10-30T07-43-53",
+	"label": "baseline",
+	"scoredAt": "2026-10-30T08:16:26.644Z",
+	"unownVersion": "0.0.45",
+	"gitSha": "bd4b2d920cd2eb772601143682677119eaab32f8",
+	"overall": 76,
+	"axes": {
+		"delegationQuality": {
+			"score": 86,
+			"raw": {
+				"spawns": 8,
+				"okSpawns": 7,
+				"handoffPct": 84,
+				"perSpawn": [
+					{
+						"lane": "t3-triptych",
+						"agent": "scout",
+						"score": 1,
+						"hits": [
+							"objective",
+							"context",
+							"boundary",
+							"done"
+						],
+						"misses": []
+					},
+					{
+						"lane": "t3-triptych",
+						"agent": "scout",
+						"score": 0.75,
+						"hits": [
+							"objective",
+							"context",
+							"done"
+						],
+						"misses": [
+							"boundary"
+						]
+					},
+					{
+						"lane": "t3-triptych",
+						"agent": "scout",
+						"score": 1,
+						"hits": [
+							"objective",
+							"context",
+							"boundary",
+							"done"
+						],
+						"misses": []
+					},
+					{
+						"lane": "t5-review",
+						"agent": "reviewer",
+						"score": 0.75,
+						"hits": [
+							"objective",
+							"context",
+							"done"
+						],
+						"misses": [
+							"boundary"
+						]
+					},
+					{
+						"lane": "t6a-unknown-agent",
+						"agent": "explore",
+						"score": 0.75,
+						"hits": [
+							"objective",
+							"context",
+							"done"
+						],
+						"misses": [
+							"boundary"
+						]
+					},
+					{
+						"lane": "t6b-blocked-task",
+						"agent": "general",
+						"score": 0.75,
+						"hits": [
+							"objective",
+							"boundary",
+							"done"
+						],
+						"misses": [
+							"context"
+						]
+					},
+					{
+						"lane": "t7-duplicate",
+						"agent": "explore",
+						"score": 0.75,
+						"hits": [
+							"objective",
+							"context",
+							"done"
+						],
+						"misses": [
+							"boundary"
+						]
+					},
+					{
+						"lane": "t8-async",
+						"agent": "general",
+						"score": 1,
+						"hits": [
+							"objective",
+							"context",
+							"boundary",
+							"done"
+						],
+						"misses": []
+					}
+				],
+				"notOkSpawns": [
+					{
+						"lane": "t3-triptych",
+						"agent": "scout",
+						"status": "timeout"
+					}
+				]
+			},
+			"evidence": []
+		},
+		"subagentReuse": {
+			"score": 0,
+			"raw": {
+				"duplicateSpawns": [],
+				"steerOrResumeEvents": 0,
+				"followUpSpawns": 2,
+				"opportunities": 2
+			},
+			"evidence": []
+		},
+		"contextEfficiency": {
+			"score": 93,
+			"raw": {
+				"childTokens": 901107,
+				"parentTokens": 67208,
+				"offloadSharePct": 93,
+				"parentPeakWindow": 30135
+			},
+			"evidence": []
+		},
+		"userExplainability": {
+			"score": 56,
+			"raw": {
+				"spawns": 8,
+				"withWhy": 0,
+				"reasonPct": 0,
+				"postHocPct": 88,
+				"asyncAckVisible": true,
+				"paneWidgetVisible": true
+			},
+			"evidence": [
+				"why recorded on 0/8 spawns (baseline has no why field)"
+			]
+		},
+		"progressVisibility": {
+			"score": 55,
+			"raw": {
+				"paneBox": true,
+				"paneRow": true,
+				"asyncAck": true,
+				"streamEvents": false
+			},
+			"evidence": []
+		},
+		"memoryUtilisation": {
+			"score": 100,
+			"raw": {
+				"notesBefore": 6,
+				"notesAfter": 26,
+				"notesDelta": 20,
+				"parentRuns": 9,
+				"childNotesApprox": 11,
+				"spawns": 8
+			},
+			"evidence": []
+		},
+		"learningRetention": {
+			"score": 70,
+			"raw": {
+				"memoryProjectVersionBefore": 3,
+				"memoryProjectVersionAfter": 4,
+				"dreamsDelta": 3,
+				"pendingDrained": 0,
+				"triggerStatus": 200
+			},
+			"evidence": []
+		},
+		"failureRecovery": {
+			"score": 100,
+			"raw": {
+				"injected": 2,
+				"recovered": 2,
+				"results": [
+					{
+						"lane": "t6a-unknown-agent",
+						"markerOk": true,
+						"typedErrorSurfaced": true,
+						"recovered": true
+					},
+					{
+						"lane": "t6b-blocked-task",
+						"markerOk": true,
+						"typedErrorSurfaced": true,
+						"recovered": true
+					}
+				]
+			},
+			"evidence": []
+		},
+		"autonomousDecisionQuality": {
+			"score": 100,
+			"raw": {
+				"decisions": [
+					{
+						"lane": "t1-map",
+						"choice": "inline",
+						"ok": true
+					},
+					{
+						"lane": "t2-callers",
+						"choice": "inline",
+						"ok": true
+					},
+					{
+						"lane": "t3-triptych",
+						"choice": "1 call(s) (batch)",
+						"ok": true
+					},
+					{
+						"lane": "t4-script",
+						"choice": "inline",
+						"ok": true
+					},
+					{
+						"lane": "t5-review",
+						"choice": "reviewer",
+						"ok": true
+					},
+					{
+						"lane": "t7-duplicate",
+						"choice": "explore",
+						"ok": true
+					},
+					{
+						"lane": "t8-async",
+						"choice": "async",
+						"ok": true
+					}
+				],
+				"okDecisions": 7
+			},
+			"evidence": []
+		},
+		"humanInterventionRate": {
+			"score": 100,
+			"raw": {
+				"lanes": 9,
+				"completedWithoutIntervention": 9,
+				"interventions": []
+			},
+			"evidence": []
+		}
+	}
+}
