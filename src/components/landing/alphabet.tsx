@@ -172,8 +172,8 @@ export function AlphabetSection() {
                 <span className="text-ink">un</span>own — the <em>Symbol Pokémon</em>: a
                 flat black letter with one eye, alive since 1999. Twenty-six forms
                 at first, ! and ? in 2004; the 28 below are drawn from scratch as
-                inline SVG — no font, no sprite — each decoding twice: the
-                lore it borrows, the mechanism it stands for.
+                inline SVG — no font, no sprite — each decoding twice: borrowed
+                lore, the mechanism it stands for.
               </p>
             </FadeUp>
           </div>

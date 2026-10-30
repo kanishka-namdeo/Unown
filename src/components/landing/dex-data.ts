@@ -657,9 +657,9 @@ const RAW: readonly DexEntryInput[] = [
     name: "The sessions round",
     summary: "abort and resume, consistent",
     practice: [
-      "One abort matrix behind every surface — Esc, the new /abort, the extension API, RPC and ACP: the turn, a running bash, compaction or a retry all stop through one path, the partial answer is kept, and an idle session says so.",
-      "Both stores behind every picker: the in-session /resume unions the user store with the project import lane, exactly like the launch picker.",
-      "Resume in both grammars: --resume <id|name|path> and unown sessions resume <query> walk one ladder over both stores; a crash leaves a valid prefix that -c resumes.",
+      "One abort matrix behind every surface — Esc, /abort, the extension API, RPC, ACP: turn, bash, compaction or retry all stop through one path; the partial answer is kept; idle says so.",
+      "Both stores behind every picker: in-session /resume unions user store and project import lane, like the launch picker.",
+      "Resume in both grammars: --resume <id|name|path> and unown sessions resume <query> walk one ladder over both stores; a crash leaves a prefix -c resumes.",
     ],
     receipts: [
       ["docs/session-lifecycle.md", DOC("docs/session-lifecycle.md")],

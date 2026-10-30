@@ -222,6 +222,11 @@ Shipped:
   compressed FIRST per the sanctioned budget order before any ceiling
   would move — and the dex prose was compressed enough that no ceiling
   amendment was needed (page measures 3,748w ≤ 3,840; 15.4vh ≤ 15.5vh).
+  **CORRECTED 2026-10-31 (the F7 catch, below): that 3,748 figure was the
+  audit script's mid-replay under-count against its STALE 3,800 ceiling —
+  the canonical e2e twin measured 3,859 words on this same commit, over
+  the 3,840 ceiling, and CI on `30b2f65b` was red on the E2E lane. The
+  amendment that settled it is recorded in M5.**
 - The landing: a new dex behavior entry "The sessions round" (abort and
   resume, consistent) with a REAL filmed reel — `film_sessions_round.py`
   drove the live TUI through streaming → `/abort` → the both-stores
@@ -240,6 +245,8 @@ Gates (all green): landing unit suite 2,063 pass; `typecheck` clean;
 `lint` 0 errors (4 pre-existing warnings); `check:docs`,
 `check:changelog`, `check:blog`, `check:claims`, `check:benchmarks`,
 `audit:landing` all ok; the built page audited at 3,748 words.
+**CORRECTED 2026-10-31: the e2e budget twin was NOT green on this commit —
+see the F7 note in M5. Every other lane was.**
 
 Resume-from-here: M5 (release v0.0.49) — version bump, full gate run,
 tag, push, watch the release workflow.
@@ -300,7 +307,46 @@ turn had streamed more partial content than the previous session's).
 Resume-from-here: M5 (release v0.0.49) — the version bump is already in
 the working tree; full gate run, tag, push, watch the release workflow.
 
-### M5 — release v0.0.49 (pending)
+### M5 — release v0.0.49 (in progress)
+
+**F7 — the false green (caught cutting the release, 2026-10-31).** The
+release commit `2c1c4716` was pushed and CI ran; the E2E lane failed:
+"budget breaches: 3859 words > 3840". The same lane had ALSO failed on
+M4's commit `30b2f65b` (same 3,859 — the M4.5 changelog bullet adds zero
+page words; the rail renders tallies and one listed title only). Root
+cause, two layers:
+
+1. **M4 recorded a false green.** Its "page measures 3,748w ≤ 3,840" was
+   `scripts/landing_audit.mjs`'s MID-REPLAY under-count (the script itself
+   warns "the e2e twin is the canonical gate") — the canonical
+   `e2e/landing-budget.spec.ts` measured 3,859 at replay-finished, 19 over.
+   Main was pushed red.
+2. **The twin gates had diverged.** The 0.0.48 release amendment moved the
+   e2e ceiling 3,820 → 3,840 but left the audit script's at 3,800 —
+   violating the landing AGENTS.md rule "the twin gates must not diverge"
+   and hiding the drift from the audit lane.
+
+The fix (the sanctioned order): VISIBLE authored copy compressed FIRST
+(−9 measured words — the loop band's leads/captions plus the alphabet
+intro; no gated literal, no generated number touched), then the ninth
+amendment 3,840 → 3,860 carrying the rail's 47th stop (the 0.0.48 release
+left the page at 3,838, two words under; the stop's undeletable chrome
+measured +21), applied to BOTH twins together — the amendment notes live
+in `e2e/landing-budget.spec.ts`, `scripts/landing_audit.mjs` and the
+landing AGENTS.md contract ledger; the M4 record above is corrected in
+place. A lesson recorded for the next round (the FAQ-collapsed class):
+the round's OWN dex practice bullets were also compressed, but hidden
+dex panes never reach innerText — that compression is hygiene, not
+budget; only copy a resting visitor sees moves the number. The page now
+measures 3,850w at replay-finished (10 words under the new ceiling).
+
+Release state: version bumped (`package.json` 0.0.48 → 0.0.49,
+`bun bin/unown --version` asserts equal); M4.5 landed (`f284580b`); local
+release receipts — landing unit 2,063/2,063, engine 5,202 pass / 0 fail,
+integration 13/13, bridge 243/243, typecheck clean, lint 0 errors,
+production build green, the six per-OS archives built + sha256-verified,
+the linux-x64 binary executed (`--version` prints 0.0.49). Remaining:
+the F7 fix commit, CI green, the `v0.0.49` tag, the release workflow.
 
 ## Related pages
 

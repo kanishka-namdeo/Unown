@@ -100,7 +100,13 @@ const BASE = process.env.LANDING_AUDIT_URL ?? "http://localhost:3000";
 const OUT = join(process.cwd(), "download", "landing");
 const BUDGET = process.argv.includes("--budget");
 const MAX_VH = 15.5;
-const MAX_WORDS = 3800;
+// 2026-10-31: reunited with the e2e twin (3,860) — the 0.0.48 release
+// amendment moved only the e2e spec, leaving this copy at 3,800 while the
+// page measured 3,838; the landing AGENTS.md rule is "the twin gates must
+// not diverge". The sessions round's M4 checkpoint then recorded a false
+// green from this script's mid-replay under-count against the stale
+// ceiling. Both twins now carry the 47th-stop amendment (3,840 -> 3,860).
+const MAX_WORDS = 3860;
 const MAX_BAND_VH = 3;
 
 let chromium = null;

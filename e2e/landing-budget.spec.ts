@@ -84,7 +84,28 @@ import { expect, test } from "@playwright/test";
  * amendment argued for. No gated literal, no generated number touched.
  */
 const MAX_PAGE_VH = 15.5;
-const MAX_WORDS = 3840;
+const MAX_WORDS = 3860;
+
+/*
+ * The 2026-10-31 sessions-round release amendment: 3,840 -> 3,860 carries
+ * the rail's 47th stop — the same structural cost, the same precedent
+ * (the 0.0.48 release left the page at 3,838, two words under, and the
+ * 47th stop's undeletable chrome measured +21: 3,859). Compressed FIRST,
+ * as the contract demands: VISIBLE authored copy — the loop band's leads
+ * and captions plus the alphabet intro (-9 measured words; no gated
+ * literal, no generated number touched). Recorded lesson (the
+ * FAQ-collapsed class): the round's dex practice bullets were also
+ * compressed but hidden dex panes never reach innerText, so that
+ * compression is hygiene, not budget. ALSO reunited here: the audit
+ * twin's ceiling had been left at 3,800 by the 0.0.48 amendment (only
+ * this spec moved) — the landing AGENTS.md rule is "the twin gates must
+ * not diverge", and the stale audit ceiling is why the sessions round's
+ * M4 checkpoint recorded a false green ("3,748w ≤ 3,840"): that number
+ * was the audit's mid-replay under-count, while THIS gate — the
+ * canonical one — measured 3,859 on the same commit. Post-compression
+ * the page measures 3,850w at replay-finished; the breach was caught
+ * cutting v0.0.49 (main was red), and this amendment is the fix.
+ */
 
 /*
  * The 2026-10-30 PLM-round note: the showcase band gained the Processes
