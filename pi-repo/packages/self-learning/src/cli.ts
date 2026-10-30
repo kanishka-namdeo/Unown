@@ -99,7 +99,7 @@ import { RECIPES_USAGE, runRecipesCommand } from "./recipes-cli.ts";
 import { runRepomapCliCommand } from "./repomap/repomap-cli.ts";
 import { describeResume, latestSessionForCwd, resolveResumeQuery } from "./resume.ts";
 import { defaultSessionTools } from "./session-tools.ts";
-import { runSessionsCommand, SESSIONS_USAGE } from "./sessions-cli.ts";
+import { rewriteSessionsResume, runSessionsCommand, SESSIONS_USAGE } from "./sessions-cli.ts";
 import { cmdModelsVerify, MODELS_VERIFY_USAGE, printModelsOverview, runSetupCommand, SETUP_USAGE } from "./setup.ts";
 import { createTerminalDialog } from "./setup-dialog.ts";
 import {
@@ -186,6 +186,9 @@ Usage:
   unown --resume           bare: the interactive session picker at launch
                            (both stores: this project's sessions + imports;
                            Claude Code / Codex / Gemini parity — TTY only)
+  unown sessions resume    the same resume as a subcommand (Codex muscle
+                           memory): bare = the picker, or pass <id|name|path>;
+                           composes with -p "..." like the flag lane
   unown --plan [...]       start (print or TUI) in plan mode: read-only exploration,
                            numbered plan, then execution after approval (also /plan, Ctrl+Alt+P)
   unown --goal "objective"  start with a durable goal: evidence-verified completion,
@@ -3832,11 +3835,28 @@ export async function runCli(argv: string[]) {
 		process.exit(cmdBlame(argv.slice(1)));
 	}
 	if (first === "sessions") {
-		// Milestone 3.5 — `unown sessions export|import|list` (the
-		// opencode session/transfer.ts port). Dispatch before the
-		// generic parser would eat subcommand tokens as prompt text.
-		const code = await runSessionsCommand(argv.slice(1));
-		process.exit(code);
+		// The sessions round — `unown sessions resume [query]`: the noun-verb
+		// twin of the flag lane, the sessions family's missing central verb
+		// (Codex `codex resume` muscle memory; Claude Code ships the flags,
+		// Codex ships the subcommand — unown honors both grammars). Rewrites
+		// onto the SAME resolution machinery — `--resume <query>` (path → id
+		// → name ladder, both stores) or the bare picker — then falls through
+		// to the normal TUI/print boot: composes with `-p "prompt"` exactly
+		// like the flag spelling.
+		if (argv[1] === "resume") {
+			const rewrite = rewriteSessionsResume(argv);
+			if (rewrite.kind === "help") {
+				process.stdout.write(SESSIONS_USAGE + "\n");
+				process.exit(0);
+			}
+			argv = rewrite.argv;
+		} else {
+			// Milestone 3.5 — `unown sessions export|import|list` (the
+			// opencode session/transfer.ts port). Dispatch before the
+			// generic parser would eat subcommand tokens as prompt text.
+			const code = await runSessionsCommand(argv.slice(1));
+			process.exit(code);
+		}
 	}
 	if (first === "import") {
 		// 2026-10-24 parity round — `unown import`: one-command config

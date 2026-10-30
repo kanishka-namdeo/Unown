@@ -162,7 +162,43 @@ Tests (all green):
 
 Resume-from-here: M3 (`unown sessions resume` subcommand) is next.
 
-### M3 — engine: `unown sessions resume` (pending)
+### M3 — engine: `unown sessions resume` (DONE, 2026-10-30)
+
+Shipped:
+
+- `rewriteSessionsResume(argv)` (`sessions-cli.ts`, exported for tests):
+  `unown sessions resume …` rewrites onto the flag lane —
+  `["--resume", ...argv.slice(2)]`. EVERYTHING after `resume` flows exactly
+  as it would after `--resume`: bare = the picker, `<query>` resolves
+  through the path → id → name ladder (both stores), later flags and
+  positional prompt text compose identically (`-p "…"`, a starting prompt,
+  routing flags). One grammar, two spellings, zero divergence — an early
+  draft errored on extra tokens and was cut when live verification showed
+  it broke `sessions resume <id> -p "prompt"` composition.
+- The dispatch (`cli.ts`): `sessions resume` falls through to the normal
+  TUI/print boot instead of the management exit; `sessions resume -h`
+  prints SESSIONS_USAGE.
+- `SESSIONS_USAGE` documents the subcommand; the main HELP gains the
+  `unown sessions resume` line (Codex `codex resume` muscle memory; the
+  sessions family's central verb).
+- Discovery: `unown sessions list` and the in-session `/sessions list`
+  both end with the resume hint — every resume spelling, right where the
+  ids live.
+
+Tests (all green):
+
+- `test/sessions-resume.test.ts` — 10 tests: bare/query/path rewrites,
+  help branch, pass-through composition (flags + prompt text), zero
+  divergence vs the hand-written flag form, picker sentinel, usage docs.
+- Real-user: `unown sessions resume <imp-id> -p "Reply with exactly:
+  MANGO_OK"` → `MANGO_OK` (print lane, import-lane session); the bad-query
+  miss is honest (`no session matches …`); PTY: `unown sessions resume
+  <id>` boots the TUI on the resumed session (history visible in the
+  pane).
+- Regression: 116 unown tests across the session suites (resume,
+  sessions-completion, parse-args, help golden, export, abort-command,
+  sessions-resume) + 49 pi suite tests (abort matrix, extra dirs, queue,
+  retry events, bash persistence) — all green.
 
 ### M4 — docs + landing + changelog + blog (pending)
 

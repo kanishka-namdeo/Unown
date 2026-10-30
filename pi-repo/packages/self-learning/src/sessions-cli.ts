@@ -40,9 +40,13 @@ import {
 } from "./sessions.ts";
 import { resolveUnownHome, resolveUserSessionDir } from "./unown-home.ts";
 
-export const SESSIONS_USAGE = `unown sessions — session export / import / list / delete / rename
+export const SESSIONS_USAGE = `unown sessions — session resume / export / import / list / delete / rename
 
 Usage:
+  unown sessions resume [<id|name|path>]
+                          resume interactively (TUI) — the noun-verb twin of
+                          \`--resume <query>\`; bare = the interactive picker;
+                          composes with -p "..." like the flag lane
   unown sessions list [--all]
   unown sessions export <session-id> [--format <md|json|html>] [--out <file>] [--raw]
   unown sessions import <file> [--from <auto|claude|codex|unown>]
@@ -74,6 +78,12 @@ resolves it immediately; deleting a session a LIVE TUI still holds open is
 refused without --force: the running session would re-create it on its next
 append).
 
+\`sessions resume\` (the sessions round, 2026-10-31) is NOT a management
+subcommand — it rewrites onto the flag lane (\`--resume <query>\` / the bare
+picker) and boots the TUI, or print mode when composed with \`-p "…"\`, with
+the same path → id → name resolution ladder and both stores as
+\`unown --resume\` itself.
+
 \`sessions import\` also converts FOREIGN agent transcripts (the migration
 path away from Claude Code / Codex CLI, which both ship /import themselves):
 a Claude Code session (~/.claude/projects/<slug>/*.jsonl) or a Codex rollout
@@ -90,6 +100,23 @@ after generation (same secret shapes, same markers). --raw opts out for a
 lossless self-transfer between machines you own.
 
 Docs: docs/usage.md (sessions).`;
+
+/** The `sessions resume` rewrite result (the dispatch in cli.ts consumes
+ *  this; exported for the unit tests). */
+export type SessionsResumeRewrite = { kind: "help" } | { kind: "rewrite"; argv: string[] };
+
+/** Rewrite `unown sessions resume …` onto the flag lane — the noun-verb
+ *  twin of `--resume …` (Codex `codex resume` muscle memory; the sessions
+ *  family's central verb). EVERYTHING after `resume` flows exactly as it
+ *  would after `--resume`: bare = the picker, `<query>` resolves through
+ *  the path → id → name ladder, and later flags/positional prompt text
+ *  compose identically (`-p "…"`, a starting prompt, routing flags) — one
+ *  grammar, two spellings, zero divergence. */
+export function rewriteSessionsResume(argv: string[]): SessionsResumeRewrite {
+	// argv is the full CLI argv starting at "sessions".
+	if (argv[2] === "-h" || argv[2] === "--help") return { kind: "help" };
+	return { kind: "rewrite", argv: ["--resume", ...argv.slice(2)] };
+}
 
 function flagValue(argv: string[], name: string): string | undefined {
 	const i = argv.indexOf(name);
@@ -285,7 +312,12 @@ export async function runSessionsCommand(argv: string[]): Promise<number> {
 			const nameSuffix = s.name ? ` · "${s.name}"` : "";
 			return `${s.id}  ${date}  · ${s.messageCount} msg(s)${filesSuffix}${nameSuffix}`;
 		});
-		process.stdout.write(lines.join("\n") + "\n");
+		// The sessions round: the resume hint — the list is the discovery
+		// surface, so it names every resume spelling (flag + noun-verb +
+		// in-session picker) right where the ids live.
+		const hint =
+			"\nresume: unown -c · unown sessions resume <id|name> · unown --resume <id|name|path> · /resume in-session\n";
+		process.stdout.write(lines.join("\n") + hint);
 		return 0;
 	}
 

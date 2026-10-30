@@ -4517,8 +4517,12 @@ export function createUnownToolsExtension(opts: UnownToolsOptions) {
 						return `${s.id}  ${date}  · ${s.messageCount} msg(s)${fc ? ` · ${fc} file(s)` : ""}`;
 					});
 					const more = sessions.length > 30 ? `\n… +${sessions.length - 30} more (unown sessions list --all)` : "";
+					// The sessions round: same resume hint as the CLI list — the
+					// in-session surface names every resume spelling too.
+					const hint =
+						"\nresume: unown -c · unown sessions resume <id|name> · unown --resume <id|name|path> · /resume in-session";
 					ctx.ui.notify(
-						`${all ? "Sessions on this machine" : "Sessions in this project"}:\n${lines.join("\n")}${more}`,
+						`${all ? "Sessions on this machine" : "Sessions in this project"}:\n${lines.join("\n")}${more}${hint}`,
 						"info",
 					);
 					return;
