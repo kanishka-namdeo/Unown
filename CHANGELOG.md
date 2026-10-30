@@ -9,20 +9,7 @@ otherwise specified; the release tag must always equal package.json's version.
 
 Repo conventions: measured claims cite their receipts (`docs/testing-strategy.md`, `benchmarks/memory-eval/*/RESULTS.md`). Changes to agent behavior — prompts, default models, routing, guard rules, hooks, memory injection — are filed under **Agent Behavior**; the policy lives in [docs/BEHAVIOR.md](docs/BEHAVIOR.md).
 
-## [0.0.49] - 2026-10-31
-
-Two rounds ship in this release.
-
-The sessions round — abort and resume made consistent with the product:
-one abort matrix behind every surface (Esc, the new `/abort` command, the
-extension API, RPC, ACP), both session stores behind every picker (the
-in-session `/resume` picker joined the launch picker's union), and resume
-in both grammars the field ships (`--resume` flags AND the
-`unown sessions resume` subcommand). The round was verified like a user
-runs it: the PTY lane booted the real TUI, aborted a live turn through
-`/abort`, asserted the persisted `stopReason: "aborted"`, resumed with
-`-c`, and watched the same session file grow. Receipts: [the session log](docs/sessions-round-session.md) ·
-[the research pass](docs/sessions-competitor-research.md) · [the lifecycle page](docs/session-lifecycle.md).
+## [0.0.50] - 2026-10-31
 
 The planning round — **Plan Mode V2**, rebuilt around a scored plan file and
 mechanical convergence. The v0.0.48 baseline could not produce a plan at all
@@ -47,8 +34,6 @@ endpoint and cap). Receipts: [the gap register](benchmarks/plan-mode/GAP-REGISTE
 
 ### Added
 
-#### The planning round (Plan Mode V2)
-
 - **The plan file** (`.unown/plans/<slug>.md`) — the reviewable artifact: diffable, versionable, `$EDITOR`-editable, compaction-proof, and the single source of truth for the approval gate. Written only by the new **`plan_write`** tool (the ONLY writable path in plan mode — `edit`/`write`/`task` stay disabled), which scores the plan 0-100 and coaches the model on exactly which dimensions to fix (`UNOWN_PLAN_SCORE_THRESHOLD`, default 70).
 - **`exit_plan_mode`** — the structured approval gate (Claude Code's ExitPlanMode contract): reads the plan file, scores it, and offers Execute — auto-accept edits (permission mode `acceptEdits`), Execute — approve each edit (`default`), Edit the plan in $EDITOR (re-scores, re-asks), or Keep planning with feedback (the rejection + feedback return to the model, which revises and re-exits). Approval converts the steps into todo tasks, titles the session `plan: <objective>` when unnamed, re-injects the approved plan, and restores the session model.
 - **`--plan-model <id>`** (+ `PI_PLAN_MODEL_ID`) — the opusplan lane: the given model runs while planning, the session model returns on approval/exit.
@@ -62,18 +47,30 @@ endpoint and cap). Receipts: [the gap register](benchmarks/plan-mode/GAP-REGISTE
 
 ### Fixed
 
-#### The planning round (Plan Mode V2)
-
 - **Resume under-reports step completions after a crash**: the restore trusted only the last persisted `unown-plan-mode` entry; a crash between a `[DONE:n]` and its persist lost the completion. Resume now re-scans the transcript after the last plan-execute marker (the pi example's lane the original port dropped).
 - **"Refine the plan" was a blank editor**: the approval dialog's refine option opened an empty editor with no plan prefill — the plan was echoed above but not editable. The $EDITOR lane now opens the actual plan pre-filled, re-scores the edit, and re-asks.
 - **"Stay in plan mode" did nothing at all** — the old dialog's middle option silently dropped the turn's work; it now feeds back (optionally) and keeps the planning loop alive.
 
 ### Agent Behavior
 
-#### The planning round (Plan Mode V2)
-
 - **The plan-mode system prompt is new**: a five-phase workflow (EXPLORE → CLARIFY → DRAFT → CRITIQUE → EXIT), the required plan structure (`# Plan:` / `## Context` / `## Approach` / `## Steps` with `(files: …)` annotations / `## Risks` / `## Verification`), the turn-ending contract ("end every turn with either a clarifying question or exit_plan_mode"), reuse-first step guidance, and a ≤ ~60-line scannability bound. The rubric threshold and the budget escalation line ride the per-turn injection.
 - **Plan-mode toolset**: `plan_write` + `exit_plan_mode` join the active set while planning (TUI, print and ACP lanes); a stray call outside plan mode gets the guard message instead of a silent no-op.
+
+
+## [0.0.49] - 2026-10-31
+
+The sessions round — abort and resume made consistent with the product:
+one abort matrix behind every surface (Esc, the new `/abort` command, the
+extension API, RPC, ACP), both session stores behind every picker (the
+in-session `/resume` picker joined the launch picker's union), and resume
+in both grammars the field ships (`--resume` flags AND the
+`unown sessions resume` subcommand). The round was verified like a user
+runs it: the PTY lane booted the real TUI, aborted a live turn through
+`/abort`, asserted the persisted `stopReason: "aborted"`, resumed with
+`-c`, and watched the same session file grow. Receipts: [the session log](docs/sessions-round-session.md) ·
+[the research pass](docs/sessions-competitor-research.md) · [the lifecycle page](docs/session-lifecycle.md).
+
+### Added
 
 - **`/abort`** — the named command for the abort matrix that until now only had a KEY. Every other session lifecycle op ships a slash command (`/new`, `/resume`, `/fork`, `/tree`); abort told you to press Esc and left discoverability at the door. The command aborts whatever is running — the agent turn (queued messages return to the editor), a bash command, compaction, or a retry wait — and reports honestly ("Nothing to abort…") when the session is idle.
 - **The unified abort matrix** (`AgentSession.abortActiveOperation(): boolean`, vendored pi): ONE code path — turn, bash, compaction/branch summary, retry — returning whether anything was aborted. The TUI's Esc, the `abortHandler` binding, the extension shortcut context and `/abort` all ride it; `ctx.abortActiveOperation()` joins the extension API (`ctx.abort()` unchanged); `ExtensionBindings.abortHandler` now returns the boolean.
@@ -91,6 +88,7 @@ endpoint and cap). Receipts: [the gap register](benchmarks/plan-mode/GAP-REGISTE
 ### Agent Behavior
 
 - **None** — abort is a cooperative cancellation the agent already settled correctly (`stopReason: "aborted"`, partial content kept); no prompt, model, routing, guard, hook or memory surface changed.
+
 
 ## [0.0.48] - 2026-10-30
 

@@ -33,28 +33,28 @@ export interface ChangelogStop {
 export const CHANGELOG_TOTAL_ENTRIES = 475;
 
 export const CHANGELOG_TOTALS: Record<ChangelogBucket, number> = {
-  "Added": 218,
+  "Added": 224,
   "Changed": 28,
   "Deprecated": 0,
   "Removed": 3,
   "Fixed": 173,
   "Security": 5,
-  "Behavior": 48
+  "Behavior": 42
 };
 
 export const CHANGELOG_STOPS: ChangelogStop[] = [
   {
-    "label": "0.0.49",
+    "label": "0.0.50",
     "date": "2026-10-31",
-    "total": 25,
+    "total": 15,
     "counts": {
       "Added": 10,
       "Changed": 0,
       "Deprecated": 0,
       "Removed": 0,
-      "Fixed": 6,
+      "Fixed": 3,
       "Security": 0,
-      "Behavior": 9
+      "Behavior": 2
     },
     "groups": [
       {
@@ -116,7 +116,70 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
           {
             "title": "\"Stay in plan mode\" did nothing at all",
             "behavior": false
+          }
+        ]
+      },
+      {
+        "bucket": "Behavior",
+        "items": [
+          {
+            "title": "The plan-mode system prompt is new",
+            "behavior": true
           },
+          {
+            "title": "Plan-mode toolset",
+            "behavior": true
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "label": "0.0.49",
+    "date": "2026-10-31",
+    "total": 10,
+    "counts": {
+      "Added": 6,
+      "Changed": 0,
+      "Deprecated": 0,
+      "Removed": 0,
+      "Fixed": 3,
+      "Security": 0,
+      "Behavior": 1
+    },
+    "groups": [
+      {
+        "bucket": "Added",
+        "items": [
+          {
+            "title": "/abort",
+            "behavior": false
+          },
+          {
+            "title": "The unified abort matrix",
+            "behavior": false
+          },
+          {
+            "title": "PI_EXTRA_SESSION_DIRS",
+            "behavior": false
+          },
+          {
+            "title": "unown sessions resume [query]",
+            "behavior": false
+          },
+          {
+            "title": "The resume hint",
+            "behavior": false
+          },
+          {
+            "title": "docs/session-lifecycle.md",
+            "behavior": false
+          }
+        ]
+      },
+      {
+        "bucket": "Fixed",
+        "items": [
           {
             "title": "The in-session picker missed the import lane",
             "behavior": false
@@ -134,38 +197,6 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
       {
         "bucket": "Behavior",
         "items": [
-          {
-            "title": "The plan-mode system prompt is new",
-            "behavior": true
-          },
-          {
-            "title": "Plan-mode toolset",
-            "behavior": true
-          },
-          {
-            "title": "/abort",
-            "behavior": true
-          },
-          {
-            "title": "The unified abort matrix",
-            "behavior": true
-          },
-          {
-            "title": "PI_EXTRA_SESSION_DIRS",
-            "behavior": true
-          },
-          {
-            "title": "unown sessions resume [query]",
-            "behavior": true
-          },
-          {
-            "title": "The resume hint",
-            "behavior": true
-          },
-          {
-            "title": "docs/session-lifecycle.md",
-            "behavior": true
-          },
           {
             "title": "None",
             "behavior": true
