@@ -52,11 +52,11 @@ mkdirSync(join(TEST_TMP_LITERAL, "unown-home"), { recursive: true });
 mkdirSync(join(TEST_TMP_LITERAL, "unown-home", "notes", "outbox"), { recursive: true });
 
 export const TEST_TMP = (() => {
-        try {
-                return realpathSync(TEST_TMP_LITERAL);
-        } catch {
-                return TEST_TMP_LITERAL; // exotic host: keep the literal spelling
-        }
+	try {
+		return realpathSync(TEST_TMP_LITERAL);
+	} catch {
+		return TEST_TMP_LITERAL; // exotic host: keep the literal spelling
+	}
 })();
 
 process.env.PI_SELFLEARNING_DB ??= `${TEST_TMP}/selflearning.db`;
@@ -129,3 +129,10 @@ process.env.UNOWN_ENGINE_URL ??= "http://127.0.0.1:9";
 // singleton still gets the hermetic lexical backend. Live lanes
 // (memory-live/memory-poison) claim their own env under their gates.
 process.env.PI_MEM0_EMBEDDER ??= "lexical";
+// The model-specs round: spec detection's registries point at DEAD loopback
+// ports for the whole suite — a unit test must never depend on live
+// models.dev / LiteLLM fetches (an air-gapped CI or a registry outage would
+// flip verdicts). Tests that WANT a registry pass one via detectModelSpec's
+// opts.env (spec-gate.test.ts spins a local Bun.serve registry).
+process.env.UNOWN_SPEC_MODELSDEV_URL ??= "http://127.0.0.1:9/api.json";
+process.env.UNOWN_SPEC_LITELLM_URL ??= "http://127.0.0.1:9/db.json";

@@ -24,7 +24,7 @@
  */
 import { chmodSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { detectModelSpec, isCompleteSpec, recordSpec } from "./model-spec-detect.ts";
+import { detectModelSpec, isCompleteSpec, recordSpec, type SpecCost } from "./model-spec-detect.ts";
 import { modelSpec } from "./model-specs.ts";
 import { type EndpointProbe, probeProviderEndpoint, readAgentModelsFile } from "./probe.ts";
 
@@ -37,71 +37,73 @@ export type ProviderApi = "openai-completions" | "anthropic-messages";
 
 /** A provider registration to write (upsert semantics). */
 export interface ProviderEntry {
-        /** Registry id — also the `provider/` prefix in canonical model ids. */
-        id: string;
-        name: string;
-        baseUrl: string;
-        api: ProviderApi;
-        /** Primary model id. */
-        modelId: string;
-        /** Extra served model ids registered after modelId. */
-        extraModelIds?: string[];
-        /** Input modalities stamped on newly-registered models. */
-        input: string[];
-        /** Context window stamped on newly-registered models. */
-        contextWindow?: number;
-        /** Max output tokens stamped on newly-registered models. */
-        maxTokens?: number;
-        /** Per-model VERIFIED specs stamped on newly-registered models (the
-         *  model-specs round): `{ [modelId]: { contextWindow, maxTokens } }` —
-         *  detection/user answers land here so a heterogeneous catalog gets
-         *  each model its own numbers instead of the chosen model's. Wins over
-         *  the entry-level contextWindow/maxTokens; write-side input only,
-         *  never persisted as a provider field. */
-        modelSpecs?: Record<string, { contextWindow: number; maxTokens: number }>;
-        /** Literal key inside models.json (bridge placeholder / shared secret). */
-        apiKeyInModelsJson?: string;
-        /** `$ENV_VAR` reference stored in models.json instead of a secret. */
-        apiKeyEnvRef?: string;
-        /** Real secret → auth.json (0600). */
-        apiKeyInAuthJson?: string;
+	/** Registry id — also the `provider/` prefix in canonical model ids. */
+	id: string;
+	name: string;
+	baseUrl: string;
+	api: ProviderApi;
+	/** Primary model id. */
+	modelId: string;
+	/** Extra served model ids registered after modelId. */
+	extraModelIds?: string[];
+	/** Input modalities stamped on newly-registered models. */
+	input: string[];
+	/** Context window stamped on newly-registered models. */
+	contextWindow?: number;
+	/** Max output tokens stamped on newly-registered models. */
+	maxTokens?: number;
+	/** Per-model VERIFIED specs stamped on newly-registered models (the
+	 *  model-specs round): `{ [modelId]: { contextWindow, maxTokens } }` —
+	 *  detection/user answers land here so a heterogeneous catalog gets
+	 *  each model its own numbers instead of the chosen model's. Wins over
+	 *  the entry-level contextWindow/maxTokens; write-side input only,
+	 *  never persisted as a provider field. `cost` (USD per 1M, pi's
+	 *  ModelCost vocabulary) and `imageInput` (a positive modality report)
+	 *  ride along when a source provided them. */
+	modelSpecs?: Record<string, { contextWindow: number; maxTokens: number; cost?: SpecCost; imageInput?: boolean }>;
+	/** Literal key inside models.json (bridge placeholder / shared secret). */
+	apiKeyInModelsJson?: string;
+	/** `$ENV_VAR` reference stored in models.json instead of a secret. */
+	apiKeyEnvRef?: string;
+	/** Real secret → auth.json (0600). */
+	apiKeyInAuthJson?: string;
 }
 
 /** Read-side view of one configured provider. */
 export interface ProviderSummary {
-        id: string;
-        name?: string;
-        baseUrl?: string;
-        api?: string;
-        modelIds: string[];
-        /** Where the key lives, if anywhere. */
-        keyStatus: "auth-json" | "models-json" | "env-ref" | "none";
-        /** The env var named by an `$VAR` reference, when keyStatus = env-ref. */
-        keyEnv?: string;
-        isDefault: boolean;
+	id: string;
+	name?: string;
+	baseUrl?: string;
+	api?: string;
+	modelIds: string[];
+	/** Where the key lives, if anywhere. */
+	keyStatus: "auth-json" | "models-json" | "env-ref" | "none";
+	/** The env var named by an `$VAR` reference, when keyStatus = env-ref. */
+	keyEnv?: string;
+	isDefault: boolean;
 }
 
 /** One-line human label for a provider's key status (doctor, list, engine). */
 export function keyStatusLabel(p: ProviderSummary): string {
-        switch (p.keyStatus) {
-                case "auth-json":
-                        return "key: auth.json";
-                case "models-json":
-                        return "key: in models.json";
-                case "env-ref":
-                        return `key: $${p.keyEnv}`;
-                default:
-                        return "key: none";
-        }
+	switch (p.keyStatus) {
+		case "auth-json":
+			return "key: auth.json";
+		case "models-json":
+			return "key: in models.json";
+		case "env-ref":
+			return `key: $${p.keyEnv}`;
+		default:
+			return "key: none";
+	}
 }
 
 export interface ProviderList {
-        providers: ProviderSummary[];
-        /** defaultProvider/defaultModel from settings.json, when set. */
-        defaultProvider?: string;
-        defaultModel?: string;
-        /** models.json parse error, when the file is invalid. */
-        error?: string;
+	providers: ProviderSummary[];
+	/** defaultProvider/defaultModel from settings.json, when set. */
+	defaultProvider?: string;
+	defaultModel?: string;
+	/** models.json parse error, when the file is invalid. */
+	error?: string;
 }
 
 // ---------------------------------------------------------------------------
@@ -111,12 +113,12 @@ export interface ProviderList {
 type JsonRecord = Record<string, unknown>;
 
 function readJson(path: string): JsonRecord {
-        if (!existsSync(path)) return {};
-        try {
-                return JSON.parse(readFileSync(path, "utf8")) as JsonRecord;
-        } catch {
-                return {};
-        }
+	if (!existsSync(path)) return {};
+	try {
+		return JSON.parse(readFileSync(path, "utf8")) as JsonRecord;
+	} catch {
+		return {};
+	}
 }
 
 /**
@@ -128,39 +130,39 @@ function readJson(path: string): JsonRecord {
  * the alternative of not writing it).
  */
 export function secureFilePermissions(path: string): void {
-        if (process.platform === "win32") {
-                try {
-                        const user = process.env.USERNAME ?? process.env.USERDOMAIN ?? "";
-                        if (!user) return;
-                        const proc = Bun.spawnSync({
-                                cmd: ["icacls", path, "/inheritance:r", "/grant:r", `${user}:F`],
-                                stdout: "ignore",
-                                stderr: "ignore",
-                        });
-                        if (proc.exitCode !== 0) {
-                                console.error(
-                                        `· could not harden ${path} ACLs (icacls exit ${proc.exitCode}) — treat the file as plain text`,
-                                );
-                        }
-                } catch {
-                        /* best effort */
-                }
-        } else {
-                try {
-                        chmodSync(path, 0o600);
-                } catch {
-                        /* best effort */
-                }
-        }
+	if (process.platform === "win32") {
+		try {
+			const user = process.env.USERNAME ?? process.env.USERDOMAIN ?? "";
+			if (!user) return;
+			const proc = Bun.spawnSync({
+				cmd: ["icacls", path, "/inheritance:r", "/grant:r", `${user}:F`],
+				stdout: "ignore",
+				stderr: "ignore",
+			});
+			if (proc.exitCode !== 0) {
+				console.error(
+					`· could not harden ${path} ACLs (icacls exit ${proc.exitCode}) — treat the file as plain text`,
+				);
+			}
+		} catch {
+			/* best effort */
+		}
+	} else {
+		try {
+			chmodSync(path, 0o600);
+		} catch {
+			/* best effort */
+		}
+	}
 }
 
 function writeAuthJson(agentDir: string, mutate: (auth: JsonRecord) => void): string {
-        const authPath = join(agentDir, "auth.json");
-        const auth = readJson(authPath);
-        mutate(auth);
-        writeFileSync(authPath, `${JSON.stringify(auth, null, 2)}\n`, "utf8");
-        secureFilePermissions(authPath);
-        return authPath;
+	const authPath = join(agentDir, "auth.json");
+	const auth = readJson(authPath);
+	mutate(auth);
+	writeFileSync(authPath, `${JSON.stringify(auth, null, 2)}\n`, "utf8");
+	secureFilePermissions(authPath);
+	return authPath;
 }
 
 // ---------------------------------------------------------------------------
@@ -169,41 +171,41 @@ function writeAuthJson(agentDir: string, mutate: (auth: JsonRecord) => void): st
 
 /** Full registry view: models.json + auth.json + settings.json combined. */
 export function listProviders(agentDir: string): ProviderList {
-        const file = readAgentModelsFile(agentDir);
-        if (file.error) return { providers: [], error: file.error };
-        const auth = readJson(join(agentDir, "auth.json"));
-        const settings = readJson(join(agentDir, "settings.json"));
-        const defaultProvider = typeof settings.defaultProvider === "string" ? settings.defaultProvider : undefined;
-        const defaultModel = typeof settings.defaultModel === "string" ? settings.defaultModel : undefined;
+	const file = readAgentModelsFile(agentDir);
+	if (file.error) return { providers: [], error: file.error };
+	const auth = readJson(join(agentDir, "auth.json"));
+	const settings = readJson(join(agentDir, "settings.json"));
+	const defaultProvider = typeof settings.defaultProvider === "string" ? settings.defaultProvider : undefined;
+	const defaultModel = typeof settings.defaultModel === "string" ? settings.defaultModel : undefined;
 
-        // models.json raw — needed for provider-level apiKey detection ($ENV refs).
-        const raw = readJson(join(agentDir, "models.json"));
-        const rawProviders = (raw.providers ?? {}) as Record<string, { apiKey?: string }>;
+	// models.json raw — needed for provider-level apiKey detection ($ENV refs).
+	const raw = readJson(join(agentDir, "models.json"));
+	const rawProviders = (raw.providers ?? {}) as Record<string, { apiKey?: string }>;
 
-        const providers: ProviderSummary[] = file.providers.map((p) => {
-                let keyStatus: ProviderSummary["keyStatus"] = "none";
-                let keyEnv: string | undefined;
-                const authEntry = auth[p.id];
-                if (authEntry && typeof authEntry === "object" && (authEntry as { key?: unknown }).key) keyStatus = "auth-json";
-                else if (typeof rawProviders[p.id]?.apiKey === "string" && rawProviders[p.id].apiKey) {
-                        const key = rawProviders[p.id].apiKey as string;
-                        if (/^\$(\{)?[A-Za-z_][A-Za-z0-9_]*(\})?$/.test(key)) {
-                                keyStatus = "env-ref";
-                                keyEnv = key.replace(/^\$\{?|\}$/g, "");
-                        } else keyStatus = "models-json";
-                }
-                return {
-                        id: p.id,
-                        name: p.name,
-                        baseUrl: p.baseUrl,
-                        api: p.api,
-                        modelIds: p.modelIds,
-                        keyStatus,
-                        keyEnv,
-                        isDefault: p.id === defaultProvider,
-                };
-        });
-        return { providers, defaultProvider, defaultModel };
+	const providers: ProviderSummary[] = file.providers.map((p) => {
+		let keyStatus: ProviderSummary["keyStatus"] = "none";
+		let keyEnv: string | undefined;
+		const authEntry = auth[p.id];
+		if (authEntry && typeof authEntry === "object" && (authEntry as { key?: unknown }).key) keyStatus = "auth-json";
+		else if (typeof rawProviders[p.id]?.apiKey === "string" && rawProviders[p.id].apiKey) {
+			const key = rawProviders[p.id].apiKey as string;
+			if (/^\$(\{)?[A-Za-z_][A-Za-z0-9_]*(\})?$/.test(key)) {
+				keyStatus = "env-ref";
+				keyEnv = key.replace(/^\$\{?|\}$/g, "");
+			} else keyStatus = "models-json";
+		}
+		return {
+			id: p.id,
+			name: p.name,
+			baseUrl: p.baseUrl,
+			api: p.api,
+			modelIds: p.modelIds,
+			keyStatus,
+			keyEnv,
+			isDefault: p.id === defaultProvider,
+		};
+	});
+	return { providers, defaultProvider, defaultModel };
 }
 
 // ---------------------------------------------------------------------------
@@ -215,52 +217,89 @@ export function listProviders(agentDir: string): ProviderList {
  * round), else the entry's own values, else the known-model spec catalog
  * when the id has published limits, else the conservative defaults. */
 function newModelRecord(entry: ProviderEntry, id: string): JsonRecord {
-        const per = entry.modelSpecs?.[id];
-        const spec = modelSpec(id);
-        return {
-                id,
-                name: `${id} (via unown)`,
-                contextWindow: per?.contextWindow ?? entry.contextWindow ?? spec.contextWindow,
-                maxTokens: per?.maxTokens ?? entry.maxTokens ?? spec.maxTokens,
-                input: entry.input,
-        };
+	const per = entry.modelSpecs?.[id];
+	const spec = modelSpec(id);
+	const record: JsonRecord = {
+		id,
+		name: `${id} (via unown)`,
+		contextWindow: per?.contextWindow ?? entry.contextWindow ?? spec.contextWindow,
+		maxTokens: per?.maxTokens ?? entry.maxTokens ?? spec.maxTokens,
+		// A source that POSITIVELY reported image input upgrades the
+		// entry's modalities (never strips — text is always assumed).
+		input: per?.imageInput && !entry.input.includes("image") ? [...entry.input, "image"] : entry.input,
+	};
+	// Cost is written only when both rates are known — pi's ModelCostSchema
+	// requires all four fields, so unknown cache rates become 0.
+	if (per?.cost && typeof per.cost.input === "number" && typeof per.cost.output === "number") {
+		record.cost = {
+			input: per.cost.input,
+			output: per.cost.output,
+			cacheRead: per.cost.cacheRead ?? 0,
+			cacheWrite: per.cost.cacheWrite ?? 0,
+		};
+	}
+	return record;
 }
 
 /** Stamp VERIFIED specs onto EXISTING model records — the self-heal write
  *  behind the model-specs gate (session preflight, providers add). Only
  *  touches models that are already registered (never creates an entry);
- *  unknown provider/model ids are reported as not applied. Returns the ids
- *  whose numbers actually changed. */
+ *  unknown provider/model ids are reported as not applied. `cost` and
+ *  `imageInput`, when a source provided them, ride the same write (cost
+ *  completes pi's four-field ModelCostSchema; image only ever UPGRADES).
+ *  Returns the ids whose records actually changed. */
 export function applyModelSpecs(
-        agentDir: string,
-        providerId: string,
-        specs: Record<string, { contextWindow: number; maxTokens: number }>,
+	agentDir: string,
+	providerId: string,
+	specs: Record<string, { contextWindow: number; maxTokens: number; cost?: SpecCost; imageInput?: boolean }>,
 ): string[] {
-        const modelsPath = join(agentDir, "models.json");
-        const raw = readJson(modelsPath);
-        const providers = (raw.providers ?? {}) as JsonRecord;
-        const entry = providers[providerId] as JsonRecord | undefined;
-        if (!entry || !Array.isArray(entry.models)) return [];
-        const applied: string[] = [];
-        for (const m of entry.models as JsonRecord[]) {
-                const spec = typeof m?.id === "string" ? specs[m.id] : undefined;
-                if (!spec) continue;
-                if (m.contextWindow === spec.contextWindow && m.maxTokens === spec.maxTokens) continue;
-                m.contextWindow = spec.contextWindow;
-                m.maxTokens = spec.maxTokens;
-                applied.push(m.id as string);
-        }
-        if (applied.length > 0) {
-                writeFileSync(modelsPath, `${JSON.stringify(raw, null, 2)}\n`, "utf8");
-        }
-        return applied;
+	const modelsPath = join(agentDir, "models.json");
+	const raw = readJson(modelsPath);
+	const providers = (raw.providers ?? {}) as JsonRecord;
+	const entry = providers[providerId] as JsonRecord | undefined;
+	if (!entry || !Array.isArray(entry.models)) return [];
+	const applied: string[] = [];
+	for (const m of entry.models as JsonRecord[]) {
+		const spec = typeof m?.id === "string" ? specs[m.id] : undefined;
+		if (!spec) continue;
+		let changed = false;
+		if (m.contextWindow !== spec.contextWindow || m.maxTokens !== spec.maxTokens) {
+			m.contextWindow = spec.contextWindow;
+			m.maxTokens = spec.maxTokens;
+			changed = true;
+		}
+		// cost rides the same self-heal write when a source provided it
+		// (pi's ModelCostSchema wants all four fields; unknown cache rates are 0)
+		if (spec.cost && typeof spec.cost.input === "number" && typeof spec.cost.output === "number") {
+			const cost = {
+				input: spec.cost.input,
+				output: spec.cost.output,
+				cacheRead: spec.cost.cacheRead ?? 0,
+				cacheWrite: spec.cost.cacheWrite ?? 0,
+			};
+			if (JSON.stringify(m.cost) !== JSON.stringify(cost)) {
+				m.cost = cost;
+				changed = true;
+			}
+		}
+		// image only ever UPGRADES the modalities, never strips
+		if (spec.imageInput && Array.isArray(m.input) && !(m.input as string[]).includes("image")) {
+			m.input = [...(m.input as string[]), "image"];
+			changed = true;
+		}
+		if (changed) applied.push(m.id as string);
+	}
+	if (applied.length > 0) {
+		writeFileSync(modelsPath, `${JSON.stringify(raw, null, 2)}\n`, "utf8");
+	}
+	return applied;
 }
 
 export interface UpsertOptions {
-        /** RESET models.json to exactly this provider (setup --force semantics). */
-        reset?: boolean;
-        /** Make this the default provider/model (setup semantics; providers add defaults to no). */
-        setDefault?: boolean;
+	/** RESET models.json to exactly this provider (setup --force semantics). */
+	reset?: boolean;
+	/** Make this the default provider/model (setup semantics; providers add defaults to no). */
+	setDefault?: boolean;
 }
 
 /**
@@ -269,78 +308,78 @@ export interface UpsertOptions {
  * fields (headers, compat, modelOverrides…) so hand-edited config survives.
  */
 export function upsertProvider(agentDir: string, entry: ProviderEntry, opts: UpsertOptions = {}): void {
-        mkdirSync(agentDir, { recursive: true });
-        const modelsPath = join(agentDir, "models.json");
-        const raw = readJson(modelsPath);
-        const providers = (opts.reset ? {} : ((raw.providers ?? {}) as JsonRecord)) as JsonRecord;
+	mkdirSync(agentDir, { recursive: true });
+	const modelsPath = join(agentDir, "models.json");
+	const raw = readJson(modelsPath);
+	const providers = (opts.reset ? {} : ((raw.providers ?? {}) as JsonRecord)) as JsonRecord;
 
-        // --- the provider record -------------------------------------------------
-        const incoming: JsonRecord = { name: entry.name, baseUrl: entry.baseUrl, api: entry.api };
-        if (entry.apiKeyInModelsJson) incoming.apiKey = entry.apiKeyInModelsJson;
-        else if (entry.apiKeyEnvRef) incoming.apiKey = `$${entry.apiKeyEnvRef}`;
-        // else: no provider-level key — auth.json (below) or keyless.
+	// --- the provider record -------------------------------------------------
+	const incoming: JsonRecord = { name: entry.name, baseUrl: entry.baseUrl, api: entry.api };
+	if (entry.apiKeyInModelsJson) incoming.apiKey = entry.apiKeyInModelsJson;
+	else if (entry.apiKeyEnvRef) incoming.apiKey = `$${entry.apiKeyEnvRef}`;
+	// else: no provider-level key — auth.json (below) or keyless.
 
-        const modelIds = [entry.modelId, ...(entry.extraModelIds ?? [])];
-        const existing = (opts.reset ? undefined : providers[entry.id]) as JsonRecord | undefined;
-        if (existing && typeof existing === "object") {
-                // Update in place: keep unknown provider-level fields (headers, compat…).
-                const merged: JsonRecord = { ...existing, ...incoming };
-                // Models: keep per-model metadata the user may have curated;
-                // ensure every incoming id is present; drop nothing — an update
-                // with fewer ids KEEPS the registered extras (refresh's "removal
-                // is a deliberate act" rule; `--force` is the reset path). The
-                // old code rebuilt the array from the incoming ids only, so
-                // re-running `setup --provider X --model Y` onto a provider
-                // with a discovered catalog silently truncated it to one model.
-                const existingModels = Array.isArray(existing.models) ? (existing.models as JsonRecord[]) : [];
-                const byId = new Map<string, JsonRecord>();
-                for (const m of existingModels) if (typeof m?.id === "string") byId.set(m.id, m);
-                for (const id of modelIds) if (!byId.has(id)) byId.set(id, newModelRecord(entry, id));
-                const incomingSet = new Set(modelIds);
-                const incomingModels = modelIds.map((id) => byId.get(id)).filter(Boolean);
-                const keptExtras = existingModels.filter((m) => typeof m?.id === "string" && !incomingSet.has(m.id));
-                merged.models = [...incomingModels, ...keptExtras];
-                // A previous provider-level apiKey survives unless the entry
-                // explicitly replaces it (incoming.apiKey set above) — but a
-                // REAL secret moving to auth.json should clear the old
-                // models.json literal to avoid two sources of truth.
-                if (
-                        !incoming.apiKey &&
-                        entry.apiKeyInAuthJson &&
-                        typeof merged.apiKey === "string" &&
-                        !/^\$/.test(merged.apiKey)
-                ) {
-                        delete merged.apiKey;
-                }
-                providers[entry.id] = merged;
-        } else {
-                incoming.models = modelIds.map((id) => newModelRecord(entry, id));
-                providers[entry.id] = incoming;
-        }
+	const modelIds = [entry.modelId, ...(entry.extraModelIds ?? [])];
+	const existing = (opts.reset ? undefined : providers[entry.id]) as JsonRecord | undefined;
+	if (existing && typeof existing === "object") {
+		// Update in place: keep unknown provider-level fields (headers, compat…).
+		const merged: JsonRecord = { ...existing, ...incoming };
+		// Models: keep per-model metadata the user may have curated;
+		// ensure every incoming id is present; drop nothing — an update
+		// with fewer ids KEEPS the registered extras (refresh's "removal
+		// is a deliberate act" rule; `--force` is the reset path). The
+		// old code rebuilt the array from the incoming ids only, so
+		// re-running `setup --provider X --model Y` onto a provider
+		// with a discovered catalog silently truncated it to one model.
+		const existingModels = Array.isArray(existing.models) ? (existing.models as JsonRecord[]) : [];
+		const byId = new Map<string, JsonRecord>();
+		for (const m of existingModels) if (typeof m?.id === "string") byId.set(m.id, m);
+		for (const id of modelIds) if (!byId.has(id)) byId.set(id, newModelRecord(entry, id));
+		const incomingSet = new Set(modelIds);
+		const incomingModels = modelIds.map((id) => byId.get(id)).filter(Boolean);
+		const keptExtras = existingModels.filter((m) => typeof m?.id === "string" && !incomingSet.has(m.id));
+		merged.models = [...incomingModels, ...keptExtras];
+		// A previous provider-level apiKey survives unless the entry
+		// explicitly replaces it (incoming.apiKey set above) — but a
+		// REAL secret moving to auth.json should clear the old
+		// models.json literal to avoid two sources of truth.
+		if (
+			!incoming.apiKey &&
+			entry.apiKeyInAuthJson &&
+			typeof merged.apiKey === "string" &&
+			!/^\$/.test(merged.apiKey)
+		) {
+			delete merged.apiKey;
+		}
+		providers[entry.id] = merged;
+	} else {
+		incoming.models = modelIds.map((id) => newModelRecord(entry, id));
+		providers[entry.id] = incoming;
+	}
 
-        raw.providers = providers;
-        writeFileSync(modelsPath, `${JSON.stringify(raw, null, 2)}\n`, "utf8");
+	raw.providers = providers;
+	writeFileSync(modelsPath, `${JSON.stringify(raw, null, 2)}\n`, "utf8");
 
-        // --- the key ---------------------------------------------------------------
-        if (entry.apiKeyInAuthJson) {
-                writeAuthJson(agentDir, (auth) => {
-                        auth[entry.id] = { type: "api_key", key: entry.apiKeyInAuthJson!.trim() };
-                });
-        }
+	// --- the key ---------------------------------------------------------------
+	if (entry.apiKeyInAuthJson) {
+		writeAuthJson(agentDir, (auth) => {
+			auth[entry.id] = { type: "api_key", key: entry.apiKeyInAuthJson!.trim() };
+		});
+	}
 
-        // --- the default -------------------------------------------------------------
-        const settingsPath = join(agentDir, "settings.json");
-        const settings = readJson(settingsPath);
-        const hadDefault = typeof settings.defaultProvider === "string" && settings.defaultProvider !== "";
-        if (opts.setDefault || !hadDefault) {
-                mergeSettings(agentDir, { defaultProvider: entry.id, defaultModel: entry.modelId });
-        }
+	// --- the default -------------------------------------------------------------
+	const settingsPath = join(agentDir, "settings.json");
+	const settings = readJson(settingsPath);
+	const hadDefault = typeof settings.defaultProvider === "string" && settings.defaultProvider !== "";
+	if (opts.setDefault || !hadDefault) {
+		mergeSettings(agentDir, { defaultProvider: entry.id, defaultModel: entry.modelId });
+	}
 }
 
 export function mergeSettings(agentDir: string, patch: JsonRecord): void {
-        const settingsPath = join(agentDir, "settings.json");
-        const settings = readJson(settingsPath);
-        writeFileSync(settingsPath, `${JSON.stringify({ ...settings, ...patch }, null, 2)}\n`, "utf8");
+	const settingsPath = join(agentDir, "settings.json");
+	const settings = readJson(settingsPath);
+	writeFileSync(settingsPath, `${JSON.stringify({ ...settings, ...patch }, null, 2)}\n`, "utf8");
 }
 
 // ---------------------------------------------------------------------------
@@ -348,63 +387,63 @@ export function mergeSettings(agentDir: string, patch: JsonRecord): void {
 // ---------------------------------------------------------------------------
 
 export interface RemoveResult {
-        removed: boolean;
-        /** The removed provider was the default — default fell back to the first remaining. */
-        wasDefault: boolean;
-        /** Remaining provider count after the removal. */
-        remaining: number;
+	removed: boolean;
+	/** The removed provider was the default — default fell back to the first remaining. */
+	wasDefault: boolean;
+	/** Remaining provider count after the removal. */
+	remaining: number;
 }
 
 /** Drop a provider from models.json + auth.json; re-point the default if it pointed here. */
 export function removeProvider(agentDir: string, providerId: string): RemoveResult {
-        const modelsPath = join(agentDir, "models.json");
-        const raw = readJson(modelsPath);
-        const providers = (raw.providers ?? {}) as JsonRecord;
-        if (!(providerId in providers))
-                return { removed: false, wasDefault: false, remaining: Object.keys(providers).length };
+	const modelsPath = join(agentDir, "models.json");
+	const raw = readJson(modelsPath);
+	const providers = (raw.providers ?? {}) as JsonRecord;
+	if (!(providerId in providers))
+		return { removed: false, wasDefault: false, remaining: Object.keys(providers).length };
 
-        const settings = readJson(join(agentDir, "settings.json"));
-        const wasDefault = settings.defaultProvider === providerId;
+	const settings = readJson(join(agentDir, "settings.json"));
+	const wasDefault = settings.defaultProvider === providerId;
 
-        delete providers[providerId];
-        raw.providers = providers;
-        writeFileSync(modelsPath, `${JSON.stringify(raw, null, 2)}\n`, "utf8");
+	delete providers[providerId];
+	raw.providers = providers;
+	writeFileSync(modelsPath, `${JSON.stringify(raw, null, 2)}\n`, "utf8");
 
-        // auth.json — drop the stored key too (an orphaned secret is a leak).
-        const authPath = join(agentDir, "auth.json");
-        if (existsSync(authPath)) {
-                const auth = readJson(authPath);
-                if (providerId in auth) {
-                        delete auth[providerId];
-                        writeFileSync(authPath, `${JSON.stringify(auth, null, 2)}\n`, "utf8");
-                        secureFilePermissions(authPath);
-                }
-        }
+	// auth.json — drop the stored key too (an orphaned secret is a leak).
+	const authPath = join(agentDir, "auth.json");
+	if (existsSync(authPath)) {
+		const auth = readJson(authPath);
+		if (providerId in auth) {
+			delete auth[providerId];
+			writeFileSync(authPath, `${JSON.stringify(auth, null, 2)}\n`, "utf8");
+			secureFilePermissions(authPath);
+		}
+	}
 
-        // Default re-point: fall back to the first remaining provider, or clear.
-        const remainingIds = Object.keys(providers);
-        if (wasDefault) {
-                if (remainingIds.length > 0) {
-                        const next = providers[remainingIds[0]] as { models?: Array<{ id?: string }> };
-                        const nextModel = next?.models?.[0]?.id;
-                        // A survivor with no models keeps defaultProvider but must
-                        // not carry a bogus defaultModel: "" — leave the key unset so
-                        // pi's resolver falls back to the provider's first model
-                        // once one is registered.
-                        if (nextModel) mergeSettings(agentDir, { defaultProvider: remainingIds[0], defaultModel: nextModel });
-                        else mergeSettings(agentDir, { defaultProvider: remainingIds[0], defaultModel: undefined } as JsonRecord);
-                } else {
-                        mergeSettings(agentDir, { defaultProvider: "", defaultModel: "" });
-                }
-        }
-        return { removed: true, wasDefault, remaining: remainingIds.length };
+	// Default re-point: fall back to the first remaining provider, or clear.
+	const remainingIds = Object.keys(providers);
+	if (wasDefault) {
+		if (remainingIds.length > 0) {
+			const next = providers[remainingIds[0]] as { models?: Array<{ id?: string }> };
+			const nextModel = next?.models?.[0]?.id;
+			// A survivor with no models keeps defaultProvider but must
+			// not carry a bogus defaultModel: "" — leave the key unset so
+			// pi's resolver falls back to the provider's first model
+			// once one is registered.
+			if (nextModel) mergeSettings(agentDir, { defaultProvider: remainingIds[0], defaultModel: nextModel });
+			else mergeSettings(agentDir, { defaultProvider: remainingIds[0], defaultModel: undefined } as JsonRecord);
+		} else {
+			mergeSettings(agentDir, { defaultProvider: "", defaultModel: "" });
+		}
+	}
+	return { removed: true, wasDefault, remaining: remainingIds.length };
 }
 
 export interface SanitizedKey {
-        /** The cleaned key (trimmed, paste artifacts stripped). Empty when input was blank. */
-        key: string;
-        /** Why the key was rejected, when it was (the caller decides how to surface it). */
-        problem?: string;
+	/** The cleaned key (trimmed, paste artifacts stripped). Empty when input was blank. */
+	key: string;
+	/** Why the key was rejected, when it was (the caller decides how to surface it). */
+	problem?: string;
 }
 
 /**
@@ -417,21 +456,21 @@ export interface SanitizedKey {
  * identifiers, not secrets.
  */
 export function sanitizeApiKey(raw: string): SanitizedKey {
-        const stripped = raw.replace(/[\r\n]+/g, "");
-        const key = stripped.trim();
-        if (!key) return { key: "" };
-        if (key === "bridge-local" || key === "bridge-background") return { key };
-        const problems: string[] = [];
-        const lineBreaks = raw.length - stripped.length;
-        if (/\s/.test(key)) problems.push("it contains whitespace inside the key");
-        if (/[\u0000-\u001f\u007f]/.test(stripped)) problems.push("it contains control characters");
-        if (problems.length > 0) {
-                const detail =
-                        problems.join(" and ") +
-                        (lineBreaks > 0 ? " (line breaks were stripped, but the rest could not be salvaged)" : "");
-                return { key: "", problem: `the key looks malformed — ${detail}; check the paste and re-enter it` };
-        }
-        return { key };
+	const stripped = raw.replace(/[\r\n]+/g, "");
+	const key = stripped.trim();
+	if (!key) return { key: "" };
+	if (key === "bridge-local" || key === "bridge-background") return { key };
+	const problems: string[] = [];
+	const lineBreaks = raw.length - stripped.length;
+	if (/\s/.test(key)) problems.push("it contains whitespace inside the key");
+	if (/[\u0000-\u001f\u007f]/.test(stripped)) problems.push("it contains control characters");
+	if (problems.length > 0) {
+		const detail =
+			problems.join(" and ") +
+			(lineBreaks > 0 ? " (line breaks were stripped, but the rest could not be salvaged)" : "");
+		return { key: "", problem: `the key looks malformed — ${detail}; check the paste and re-enter it` };
+	}
+	return { key };
 }
 
 /** Rotate/replace a provider's stored key (auth.json). Returns false when the
@@ -439,21 +478,21 @@ export function sanitizeApiKey(raw: string): SanitizedKey {
  * calling this (the entry points validate + trim; this trims again as the
  * last line of defense). */
 export function setProviderKey(agentDir: string, providerId: string, apiKey: string): boolean {
-        const file = readAgentModelsFile(agentDir);
-        if (!file.providers.some((p) => p.id === providerId)) return false;
-        writeAuthJson(agentDir, (auth) => {
-                auth[providerId] = { type: "api_key", key: apiKey.trim() };
-        });
-        return true;
+	const file = readAgentModelsFile(agentDir);
+	if (!file.providers.some((p) => p.id === providerId)) return false;
+	writeAuthJson(agentDir, (auth) => {
+		auth[providerId] = { type: "api_key", key: apiKey.trim() };
+	});
+	return true;
 }
 
 export interface ClearKeyResult {
-        /** The provider existed in the registry. */
-        found: boolean;
-        /** An auth.json entry was removed. */
-        removedAuthEntry: boolean;
-        /** A provider-level apiKey (literal or $ENV ref) was removed from models.json. */
-        removedModelsKey: boolean;
+	/** The provider existed in the registry. */
+	found: boolean;
+	/** An auth.json entry was removed. */
+	removedAuthEntry: boolean;
+	/** A provider-level apiKey (literal or $ENV ref) was removed from models.json. */
+	removedModelsKey: boolean;
 }
 
 /**
@@ -464,73 +503,73 @@ export interface ClearKeyResult {
  * is a no-op success.
  */
 export function clearProviderKey(agentDir: string, providerId: string): ClearKeyResult {
-        const file = readAgentModelsFile(agentDir);
-        const found = file.providers.some((p) => p.id === providerId);
-        let removedAuthEntry = false;
-        let removedModelsKey = false;
-        // auth.json: drop the entry if present.
-        const authPath = join(agentDir, "auth.json");
-        if (existsSync(authPath)) {
-                const auth = readJson(authPath);
-                if (auth[providerId] !== undefined) {
-                        delete auth[providerId];
-                        writeFileSync(
-                                authPath,
-                                `${JSON.stringify(auth, null, 2)}
+	const file = readAgentModelsFile(agentDir);
+	const found = file.providers.some((p) => p.id === providerId);
+	let removedAuthEntry = false;
+	let removedModelsKey = false;
+	// auth.json: drop the entry if present.
+	const authPath = join(agentDir, "auth.json");
+	if (existsSync(authPath)) {
+		const auth = readJson(authPath);
+		if (auth[providerId] !== undefined) {
+			delete auth[providerId];
+			writeFileSync(
+				authPath,
+				`${JSON.stringify(auth, null, 2)}
 `,
-                                { encoding: "utf8" },
-                        );
-                        secureFilePermissions(authPath);
-                        removedAuthEntry = true;
-                }
-        }
-        // models.json: drop a provider-level apiKey (literal or $ENV ref).
-        const modelsPath = join(agentDir, "models.json");
-        if (existsSync(modelsPath)) {
-                const raw = readJson(modelsPath);
-                const providers = (raw.providers ?? {}) as Record<string, { apiKey?: string }>;
-                const entry = providers[providerId];
-                if (entry && typeof entry.apiKey === "string" && entry.apiKey) {
-                        delete entry.apiKey;
-                        raw.providers = providers;
-                        writeFileSync(
-                                modelsPath,
-                                `${JSON.stringify(raw, null, 2)}
+				{ encoding: "utf8" },
+			);
+			secureFilePermissions(authPath);
+			removedAuthEntry = true;
+		}
+	}
+	// models.json: drop a provider-level apiKey (literal or $ENV ref).
+	const modelsPath = join(agentDir, "models.json");
+	if (existsSync(modelsPath)) {
+		const raw = readJson(modelsPath);
+		const providers = (raw.providers ?? {}) as Record<string, { apiKey?: string }>;
+		const entry = providers[providerId];
+		if (entry && typeof entry.apiKey === "string" && entry.apiKey) {
+			delete entry.apiKey;
+			raw.providers = providers;
+			writeFileSync(
+				modelsPath,
+				`${JSON.stringify(raw, null, 2)}
 `,
-                                { encoding: "utf8" },
-                        );
-                        removedModelsKey = true;
-                }
-        }
-        return { found, removedAuthEntry, removedModelsKey };
+				{ encoding: "utf8" },
+			);
+			removedModelsKey = true;
+		}
+	}
+	return { found, removedAuthEntry, removedModelsKey };
 }
 
 export interface DefaultResult {
-        ok: boolean;
-        error?: string;
+	ok: boolean;
+	error?: string;
 }
 
 /** Point settings.json's default at provider/model (validated against the registry). */
 export function setDefaultModel(agentDir: string, providerId: string, modelId?: string): DefaultResult {
-        const file = readAgentModelsFile(agentDir);
-        const provider = file.providers.find((p) => p.id === providerId);
-        if (!provider) {
-                return {
-                        ok: false,
-                        error: `unknown provider "${providerId}" — configured: ${file.providers.map((p) => p.id).join(", ") || "(none)"}`,
-                };
-        }
-        let model = modelId;
-        if (!model) model = provider.modelIds[0];
-        if (!model) return { ok: false, error: `provider "${providerId}" has no models — add one first` };
-        if (!provider.modelIds.includes(model)) {
-                return {
-                        ok: false,
-                        error: `model "${model}" is not registered on "${providerId}" — models: ${provider.modelIds.join(", ")}`,
-                };
-        }
-        mergeSettings(agentDir, { defaultProvider: providerId, defaultModel: model });
-        return { ok: true };
+	const file = readAgentModelsFile(agentDir);
+	const provider = file.providers.find((p) => p.id === providerId);
+	if (!provider) {
+		return {
+			ok: false,
+			error: `unknown provider "${providerId}" — configured: ${file.providers.map((p) => p.id).join(", ") || "(none)"}`,
+		};
+	}
+	let model = modelId;
+	if (!model) model = provider.modelIds[0];
+	if (!model) return { ok: false, error: `provider "${providerId}" has no models — add one first` };
+	if (!provider.modelIds.includes(model)) {
+		return {
+			ok: false,
+			error: `model "${model}" is not registered on "${providerId}" — models: ${provider.modelIds.join(", ")}`,
+		};
+	}
+	mergeSettings(agentDir, { defaultProvider: providerId, defaultModel: model });
+	return { ok: true };
 }
 
 // ---------------------------------------------------------------------------
@@ -538,53 +577,53 @@ export function setDefaultModel(agentDir: string, providerId: string, modelId?: 
 // ---------------------------------------------------------------------------
 
 export interface ProviderTestResult {
-        found: boolean;
-        probe?: EndpointProbe;
-        /** The credential the probe used (models.json literal/env-ref or auth.json). */
-        keySource?: "auth-json" | "models-json" | "env-ref" | "none";
-        keyEnv?: string;
+	found: boolean;
+	probe?: EndpointProbe;
+	/** The credential the probe used (models.json literal/env-ref or auth.json). */
+	keySource?: "auth-json" | "models-json" | "env-ref" | "none";
+	keyEnv?: string;
 }
 
 /** Resolve the effective key for a provider (auth.json > models.json literal > $ENV at call time). */
 export function resolveProviderKey(
-        agentDir: string,
-        providerId: string,
+	agentDir: string,
+	providerId: string,
 ): { key?: string; source: ProviderTestResult["keySource"]; envVar?: string } {
-        const list = listProviders(agentDir);
-        const p = list.providers.find((x) => x.id === providerId);
-        if (!p) return { source: "none" };
-        if (p.keyStatus === "env-ref" && p.keyEnv) {
-                const fromEnv = process.env[p.keyEnv];
-                return fromEnv ? { key: fromEnv, source: "env-ref", envVar: p.keyEnv } : { source: "env-ref", envVar: p.keyEnv };
-        }
-        if (p.keyStatus === "auth-json") {
-                const auth = readJson(join(agentDir, "auth.json"));
-                const entry = auth[providerId] as { key?: string } | undefined;
-                return entry?.key ? { key: entry.key, source: "auth-json" } : { source: "none" };
-        }
-        if (p.keyStatus === "models-json") {
-                const raw = readJson(join(agentDir, "models.json"));
-                const entry = ((raw.providers ?? {}) as Record<string, { apiKey?: string }>)[providerId];
-                return entry?.apiKey ? { key: entry.apiKey, source: "models-json" } : { source: "none" };
-        }
-        return { source: "none" };
+	const list = listProviders(agentDir);
+	const p = list.providers.find((x) => x.id === providerId);
+	if (!p) return { source: "none" };
+	if (p.keyStatus === "env-ref" && p.keyEnv) {
+		const fromEnv = process.env[p.keyEnv];
+		return fromEnv ? { key: fromEnv, source: "env-ref", envVar: p.keyEnv } : { source: "env-ref", envVar: p.keyEnv };
+	}
+	if (p.keyStatus === "auth-json") {
+		const auth = readJson(join(agentDir, "auth.json"));
+		const entry = auth[providerId] as { key?: string } | undefined;
+		return entry?.key ? { key: entry.key, source: "auth-json" } : { source: "none" };
+	}
+	if (p.keyStatus === "models-json") {
+		const raw = readJson(join(agentDir, "models.json"));
+		const entry = ((raw.providers ?? {}) as Record<string, { apiKey?: string }>)[providerId];
+		return entry?.apiKey ? { key: entry.apiKey, source: "models-json" } : { source: "none" };
+	}
+	return { source: "none" };
 }
 
 /** Probe a configured provider's endpoint with its stored credential — over
  * the provider's own wire (anthropic-messages providers get x-api-key, not
  * a Bearer header that would false-401 against a valid Anthropic key). */
 export async function testProvider(
-        agentDir: string,
-        providerId: string,
-        timeoutMs = 6000,
+	agentDir: string,
+	providerId: string,
+	timeoutMs = 6000,
 ): Promise<ProviderTestResult> {
-        const list = listProviders(agentDir);
-        const p = list.providers.find((x) => x.id === providerId);
-        if (!p) return { found: false };
-        if (!p.baseUrl) return { found: true, keySource: p.keyStatus, keyEnv: p.keyEnv };
-        const { key, source, envVar } = resolveProviderKey(agentDir, providerId);
-        const probe = await probeProviderEndpoint(p.baseUrl, key, { timeoutMs, api: p.api });
-        return { found: true, probe, keySource: source, keyEnv: envVar };
+	const list = listProviders(agentDir);
+	const p = list.providers.find((x) => x.id === providerId);
+	if (!p) return { found: false };
+	if (!p.baseUrl) return { found: true, keySource: p.keyStatus, keyEnv: p.keyEnv };
+	const { key, source, envVar } = resolveProviderKey(agentDir, providerId);
+	const probe = await probeProviderEndpoint(p.baseUrl, key, { timeoutMs, api: p.api });
+	return { found: true, probe, keySource: source, keyEnv: envVar };
 }
 
 // ---------------------------------------------------------------------------
@@ -592,18 +631,18 @@ export async function testProvider(
 // ---------------------------------------------------------------------------
 
 export interface RefreshResult {
-        found: boolean;
-        /** Endpoint probe outcome (absent when the provider is unknown). */
-        probe?: EndpointProbe;
-        /** Model ids newly registered into models.json. */
-        added: string[];
-        /** Registered ids the endpoint no longer serves (kept — removal is a
-         *  deliberate act; they may be typos, locals, or a temporarily empty list). */
-        missing: string[];
-        /** Everything the endpoint served, when it answered with a list. */
-        served?: string[];
-        /** Why the refresh did nothing, when it did not. */
-        problem?: string;
+	found: boolean;
+	/** Endpoint probe outcome (absent when the provider is unknown). */
+	probe?: EndpointProbe;
+	/** Model ids newly registered into models.json. */
+	added: string[];
+	/** Registered ids the endpoint no longer serves (kept — removal is a
+	 *  deliberate act; they may be typos, locals, or a temporarily empty list). */
+	missing: string[];
+	/** Everything the endpoint served, when it answered with a list. */
+	served?: string[];
+	/** Why the refresh did nothing, when it did not. */
+	problem?: string;
 }
 
 /**
@@ -619,120 +658,120 @@ export interface RefreshResult {
  * those into a coding agent's picker is noise.
  */
 const NON_CHAT_RE =
-        /^(?!.*(embed|rerank|tts|whisper|speech|guard|moderation|bge-|text-embedding|davinci|dall-e|stable-diffusion|sdxl|flux|imagen|image|video|voice|audio|realtime|transcribe|caption)).+$/i;
+	/^(?!.*(embed|rerank|tts|whisper|speech|guard|moderation|bge-|text-embedding|davinci|dall-e|stable-diffusion|sdxl|flux|imagen|image|video|voice|audio|realtime|transcribe|caption)).+$/i;
 
 export function looksLikeChatModel(id: string): boolean {
-        return NON_CHAT_RE.test(id);
+	return NON_CHAT_RE.test(id);
 }
 
 export async function refreshProviderModels(
-        agentDir: string,
-        providerId: string,
-        timeoutMs = 8000,
+	agentDir: string,
+	providerId: string,
+	timeoutMs = 8000,
 ): Promise<RefreshResult> {
-        const list = listProviders(agentDir);
-        const p = list.providers.find((x) => x.id === providerId);
-        if (!p) return { found: false, added: [], missing: [] };
-        if (!p.baseUrl) return { found: true, added: [], missing: [], problem: "no baseUrl configured — fix models.json" };
-        const { key } = resolveProviderKey(agentDir, providerId);
-        const probe = await probeProviderEndpoint(p.baseUrl, key, { timeoutMs, api: p.api });
-        if (!probe.ok) {
-                return {
-                        found: true,
-                        probe,
-                        added: [],
-                        missing: [],
-                        problem:
-                                probe.problem === "auth"
-                                        ? `endpoint rejected the credential (HTTP ${probe.status})`
-                                        : probe.problem === "rate-limit"
-                                                ? `endpoint is rate-limiting requests (HTTP ${probe.status}) — retry in a moment`
-                                                : `endpoint unreachable at ${p.baseUrl}`,
-                };
-        }
-        const served = (probe.models ?? []).filter(looksLikeChatModel);
-        if (served.length === 0) {
-                return {
-                        found: true,
-                        probe,
-                        added: [],
-                        missing: [],
-                        served: probe.models,
-                        problem: "endpoint serves no listable models (some APIs do not implement /models)",
-                };
-        }
+	const list = listProviders(agentDir);
+	const p = list.providers.find((x) => x.id === providerId);
+	if (!p) return { found: false, added: [], missing: [] };
+	if (!p.baseUrl) return { found: true, added: [], missing: [], problem: "no baseUrl configured — fix models.json" };
+	const { key } = resolveProviderKey(agentDir, providerId);
+	const probe = await probeProviderEndpoint(p.baseUrl, key, { timeoutMs, api: p.api });
+	if (!probe.ok) {
+		return {
+			found: true,
+			probe,
+			added: [],
+			missing: [],
+			problem:
+				probe.problem === "auth"
+					? `endpoint rejected the credential (HTTP ${probe.status})`
+					: probe.problem === "rate-limit"
+						? `endpoint is rate-limiting requests (HTTP ${probe.status}) — retry in a moment`
+						: `endpoint unreachable at ${p.baseUrl}`,
+		};
+	}
+	const served = (probe.models ?? []).filter(looksLikeChatModel);
+	if (served.length === 0) {
+		return {
+			found: true,
+			probe,
+			added: [],
+			missing: [],
+			served: probe.models,
+			problem: "endpoint serves no listable models (some APIs do not implement /models)",
+		};
+	}
 
-        // Merge new ids into the provider's models array — preserving every
-        // existing record byte-for-byte (curated contextWindow/cost survive).
-        const modelsPath = join(agentDir, "models.json");
-        const raw = readJson(modelsPath);
-        const providers = (raw.providers ?? {}) as Record<string, any>;
-        const entry = providers[providerId];
-        if (!entry || !Array.isArray(entry.models)) {
-                return {
-                        found: true,
-                        probe,
-                        added: [],
-                        missing: [],
-                        served,
-                        problem: "provider entry has no models array — fix models.json",
-                };
-        }
-        const existingIds: string[] = entry.models.map((m: any) => m?.id).filter(Boolean);
-        const existingSet = new Set(existingIds);
-        const inputModalities = inferInputModalities(entry);
-        const added: string[] = [];
-        for (const id of served) {
-                if (existingSet.has(id)) continue;
-                // The model-specs round: every discovered id gets its specs from
-                // the verifiable cascade (the probe's own /models fetch is reused —
-                // no second request), falling back to the curated catalog guess.
-                // Bulk import NEVER asks — undetected ids simply carry no sidecar
-                // record and are gated at session start if they become active
-                // (the research record's bulk-discovery rule).
-                let contextWindow: number | undefined;
-                let maxTokens: number | undefined;
-                try {
-                        const detected = await detectModelSpec(id, {
-                                providerId,
-                                baseUrl: p.baseUrl,
-                                apiKey: key,
-                                ...(p.api ? { api: p.api } : {}),
-                                agentDir,
-                                timeoutMs: 4000,
-                                stopWhenComplete: true,
-                                ...(probe.modelEntries ? { endpointCatalog: { data: probe.modelEntries } } : {}),
-                        });
-                        if (isCompleteSpec(detected.spec)) {
-                                contextWindow = detected.spec.contextWindow;
-                                maxTokens = detected.spec.maxTokens;
-                                recordSpec(agentDir, providerId, id, detected.spec);
-                        }
-                } catch {
-                        /* detection never throws, but a read-only agent dir must not break discovery */
-                }
-                const spec = modelSpec(id);
-                entry.models.push({
-                        id,
-                        name: `${id} (via unown)`,
-                        contextWindow: contextWindow ?? spec.contextWindow,
-                        maxTokens: maxTokens ?? spec.maxTokens,
-                        input: inputModalities,
-                });
-                added.push(id);
-        }
-        if (added.length > 0) {
-                writeFileSync(modelsPath, `${JSON.stringify(raw, null, 2)}\n`, "utf8");
-        }
-        const missing = existingIds.filter((id) => !served.includes(id));
-        return { found: true, probe, added, missing, served };
+	// Merge new ids into the provider's models array — preserving every
+	// existing record byte-for-byte (curated contextWindow/cost survive).
+	const modelsPath = join(agentDir, "models.json");
+	const raw = readJson(modelsPath);
+	const providers = (raw.providers ?? {}) as Record<string, any>;
+	const entry = providers[providerId];
+	if (!entry || !Array.isArray(entry.models)) {
+		return {
+			found: true,
+			probe,
+			added: [],
+			missing: [],
+			served,
+			problem: "provider entry has no models array — fix models.json",
+		};
+	}
+	const existingIds: string[] = entry.models.map((m: any) => m?.id).filter(Boolean);
+	const existingSet = new Set(existingIds);
+	const inputModalities = inferInputModalities(entry);
+	const added: string[] = [];
+	for (const id of served) {
+		if (existingSet.has(id)) continue;
+		// The model-specs round: every discovered id gets its specs from
+		// the verifiable cascade (the probe's own /models fetch is reused —
+		// no second request), falling back to the curated catalog guess.
+		// Bulk import NEVER asks — undetected ids simply carry no sidecar
+		// record and are gated at session start if they become active
+		// (the research record's bulk-discovery rule).
+		let contextWindow: number | undefined;
+		let maxTokens: number | undefined;
+		try {
+			const detected = await detectModelSpec(id, {
+				providerId,
+				baseUrl: p.baseUrl,
+				apiKey: key,
+				...(p.api ? { api: p.api } : {}),
+				agentDir,
+				timeoutMs: 4000,
+				stopWhenComplete: true,
+				...(probe.modelEntries ? { endpointCatalog: { data: probe.modelEntries } } : {}),
+			});
+			if (isCompleteSpec(detected.spec)) {
+				contextWindow = detected.spec.contextWindow;
+				maxTokens = detected.spec.maxTokens;
+				recordSpec(agentDir, providerId, id, detected.spec);
+			}
+		} catch {
+			/* detection never throws, but a read-only agent dir must not break discovery */
+		}
+		const spec = modelSpec(id);
+		entry.models.push({
+			id,
+			name: `${id} (via unown)`,
+			contextWindow: contextWindow ?? spec.contextWindow,
+			maxTokens: maxTokens ?? spec.maxTokens,
+			input: inputModalities,
+		});
+		added.push(id);
+	}
+	if (added.length > 0) {
+		writeFileSync(modelsPath, `${JSON.stringify(raw, null, 2)}\n`, "utf8");
+	}
+	const missing = existingIds.filter((id) => !served.includes(id));
+	return { found: true, probe, added, missing, served };
 }
 
 /** The provider's input modalities, inherited by newly-discovered models. */
 function inferInputModalities(entry: Record<string, any>): string[] {
-        const models = Array.isArray(entry.models) ? entry.models : [];
-        // A provider whose EXISTING models include image input passes it on;
-        // otherwise new models register text-only (the conservative default).
-        const anyImage = models.some((m: any) => Array.isArray(m?.input) && m.input.includes("image"));
-        return anyImage ? ["text", "image"] : ["text"];
+	const models = Array.isArray(entry.models) ? entry.models : [];
+	// A provider whose EXISTING models include image input passes it on;
+	// otherwise new models register text-only (the conservative default).
+	const anyImage = models.some((m: any) => Array.isArray(m?.input) && m.input.includes("image"));
+	return anyImage ? ["text", "image"] : ["text"];
 }
