@@ -14,7 +14,7 @@ import {
 	writeFileSync,
 } from "fs";
 import { readdir, stat } from "fs/promises";
-import { join, resolve } from "path";
+import { delimiter, join, resolve } from "path";
 import { createInterface } from "readline";
 import { StringDecoder } from "string_decoder";
 import { APP_NAME, getAgentDir as getDefaultAgentDir, getSessionsDir } from "../config.ts";
@@ -467,6 +467,45 @@ export function buildSessionContext(
 	const { thinkingLevel, model } = getSessionContextSettings(path);
 	const messages = buildContextEntries(entries, leafId, byId).flatMap(sessionEntryToContextMessages);
 	return { messages, thinkingLevel, model };
+}
+
+export type SessionScope = "current" | "all";
+
+/** Extra session dirs included in every session picker (the wrapper seam):
+ *  a path.delimiter-joined list. Wrappers that keep sessions in more than one
+ *  directory (e.g. an import lane next to the primary store) set it so both
+ *  the launch-time and the in-session pickers show the union — deduped by
+ *  path, newest-first. Empty entries are skipped; nonexistent dirs are
+ *  skipped too (a picker never lists a dir that is not there). */
+export const ENV_EXTRA_SESSION_DIRS = `${APP_NAME.toUpperCase()}_EXTRA_SESSION_DIRS`;
+
+/** Parse ENV_EXTRA_SESSION_DIRS into absolute, deduped, existing dirs. */
+export function getExtraSessionDirs(): string[] {
+	const raw = process.env[ENV_EXTRA_SESSION_DIRS];
+	if (!raw) return [];
+	const seen = new Set<string>();
+	const dirs: string[] = [];
+	for (const entry of raw.split(delimiter)) {
+		const trimmed = entry.trim();
+		if (!trimmed) continue;
+		const abs = resolvePath(trimmed);
+		if (seen.has(abs)) continue;
+		seen.add(abs);
+		if (!existsSync(abs)) continue;
+		dirs.push(abs);
+	}
+	return dirs;
+}
+
+/** Merge SessionInfo lists by path, newest-modified first. */
+export function mergeSessionInfos(lists: SessionInfo[][]): SessionInfo[] {
+	const byPath = new Map<string, SessionInfo>();
+	for (const list of lists) {
+		for (const s of list) {
+			if (!byPath.has(s.path)) byPath.set(s.path, s);
+		}
+	}
+	return [...byPath.values()].sort((a, b) => b.modified.getTime() - a.modified.getTime());
 }
 
 /**

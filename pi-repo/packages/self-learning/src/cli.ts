@@ -29,11 +29,13 @@ import {
 	createAgentSessionFromServices,
 	createAgentSessionRuntime,
 	createAgentSessionServices,
+	ENV_EXTRA_SESSION_DIRS,
 	exportFromFile,
+	getExtraSessionDirs,
 	InteractiveMode,
+	mergeSessionInfos,
 	resolveCliModel,
 	runPrintMode,
-	type SessionInfo,
 	SessionManager,
 	SettingsManager,
 	selectSession,
@@ -961,40 +963,41 @@ function applySubagentEnvOverrides(opts: BootOptions): void {
  * to STDERR so the JSON lanes' stdout contract is intact.
  */
 
-/** Merge SessionInfo lists by path, newest-modified first (the picker's
- *  project lane unions the user store with `<cwd>/.unown/sessions` imports
- *  — the same both-stores rule the rest of the resume lane obeys). */
-function mergeSessionInfos(lists: SessionInfo[][]): SessionInfo[] {
-	const byPath = new Map<string, SessionInfo>();
-	for (const list of lists) {
-		for (const s of list) {
-			if (!byPath.has(s.path)) byPath.set(s.path, s);
-		}
-	}
-	return [...byPath.values()].sort((a, b) => b.modified.getTime() - a.modified.getTime());
-}
-
 /** The launch-time picker (bare `unown --resume`): pi's own selector driven
  *  over BOTH unown stores — the user lane (~/.unown/agent/sessions, cwd-
  *  filtered like `--continue`) and this project's import lane
- *  (<cwd>/.unown/sessions, where `unown sessions import` lands). Returns the
- *  picked session FILE, or exits 0 on cancel (Claude Code's "No session
- *  selected" contract). TTY-gated by the caller. */
+ *  (<cwd>/.unown/sessions, where `unown sessions import` lands). The sessions
+ *  round moved the union onto pi's own seam (ENV_EXTRA_SESSION_DIRS +
+ *  mergeSessionInfos, re-exported from pi-coding-agent): the launch picker
+ *  and the in-session /resume picker now derive from the same mechanism, so
+ *  they cannot drift again. Returns the picked session FILE, or exits 0 on
+ *  cancel (Claude Code's "No session selected" contract). TTY-gated by the
+ *  caller. */
 async function pickSessionInteractive(cwd: string): Promise<string> {
 	const agentDir = await ensureUnownAgentDirAsync();
 	process.env.PI_CODING_AGENT_DIR = agentDir;
-	const userSessionDir = join(UNOWN_AGENT_DIR, "sessions");
 	const importDir = join(cwd, ".unown", "sessions");
+	if (existsSync(importDir)) process.env[ENV_EXTRA_SESSION_DIRS] = importDir;
+	const userSessionDir = join(UNOWN_AGENT_DIR, "sessions");
+	const extraDirs = getExtraSessionDirs();
 	const current = async (onProgress?: (loaded: number, total: number) => void) =>
-		mergeSessionInfos([
-			await SessionManager.list(cwd, userSessionDir, onProgress),
-			await SessionManager.list(cwd, importDir, onProgress),
-		]);
+		extraDirs.length > 0
+			? mergeSessionInfos(
+					await Promise.all([
+						SessionManager.list(cwd, userSessionDir, onProgress),
+						...extraDirs.map((dir) => SessionManager.list(cwd, dir, onProgress)),
+					]),
+				)
+			: SessionManager.list(cwd, userSessionDir, onProgress);
 	const all = async (onProgress?: (loaded: number, total: number) => void) =>
-		mergeSessionInfos([
-			await SessionManager.listAll(userSessionDir, onProgress),
-			await SessionManager.list(cwd, importDir, onProgress),
-		]);
+		extraDirs.length > 0
+			? mergeSessionInfos(
+					await Promise.all([
+						SessionManager.listAll(userSessionDir, onProgress),
+						...extraDirs.map((dir) => SessionManager.list(cwd, dir, onProgress)),
+					]),
+				)
+			: SessionManager.listAll(userSessionDir, onProgress);
 	const settingsManager = SettingsManager.create(cwd, agentDir);
 	const picked = await selectSession(current, all, settingsManager);
 	if (!picked) {
@@ -1113,6 +1116,21 @@ async function bootRuntime(cwd: string, verbose: boolean, bootOpts: BootOptions 
 	// pi's sanctioned override (config.ts:504); project-level .pi/ paths
 	// are cwd-based and unaffected.
 	process.env.PI_CODING_AGENT_DIR = agentDir;
+	// The sessions round (2026-10-31): the both-stores rule, everywhere a
+	// session list is shown. The launch picker, --continue, --resume <query>,
+	// `unown sessions list` and `/sessions list` all union the user lane
+	// (~/.unown/agent/sessions) with this project's import lane
+	// (<cwd>/.unown/sessions, where `unown sessions import` /
+	// `unown import --from …` land). pi's in-session /resume picker was the
+	// one surface that did not — PI_EXTRA_SESSION_DIRS is pi's wrapper seam
+	// (session-manager.ts): every picker it drives shows the union, deduped
+	// by path, newest-first. Set only when the import dir exists (a fresh
+	// project has no import lane — the env stays unset and pi behaves
+	// exactly as before).
+	{
+		const importDir = join(cwd, ".unown", "sessions");
+		if (existsSync(importDir)) process.env[ENV_EXTRA_SESSION_DIRS] = importDir;
+	}
 	// Last-resort child hygiene (child-reaper.ts): LSP/MCP server children get
 	// SIGTERM→SIGKILL on process exit and SIGINT/SIGTERM — idempotent, so every
 	// bootRuntime call (TUI, print, subagents) re-installs it harmlessly.

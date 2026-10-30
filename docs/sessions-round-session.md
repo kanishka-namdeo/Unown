@@ -128,7 +128,39 @@ Tests (all green):
 Resume-from-here: M2 (the `/resume` picker both-stores fix) is next; all
 M1 code is in the working tree, tests + PTY verification green.
 
-### M2 — engine: `/resume` picker both stores (pending)
+### M2 — engine: `/resume` picker both stores (DONE, 2026-10-30)
+
+Shipped:
+
+- pi seam (`session-manager.ts`): `ENV_EXTRA_SESSION_DIRS` (APP_NAME-derived,
+  `PI_EXTRA_SESSION_DIRS` under pi), `getExtraSessionDirs()` (delimiter-split,
+  trimmed, deduped, existing dirs only), `mergeSessionInfos()` (dedupe by
+  path, newest-first). Exported from `pi-coding-agent` (`index.ts`).
+- The in-session `/resume` picker (`interactive-mode.ts`
+  `showSessionSelector`): both scopes merge the extra dirs — cwd-filtered in
+  the current scope, unconditional in the all scope — identical semantics to
+  the launch picker. No env → behavior unchanged (upstream default).
+- unown boot (`cli.ts` `bootRuntime` + `pickSessionInteractive`): sets the
+  seam when `<cwd>/.unown/sessions` exists; the launch picker's LOCAL
+  mergeSessionInfos copy is deleted — both pickers now derive from the same
+  pi seam, so they cannot drift again.
+
+Tests (all green):
+
+- pi: `test/suite/session-extra-dirs.test.ts` — 6 tests: unset/empty env,
+  delimiter-split + trim + dedupe + existing-only, relative resolution,
+  merge dedupe-first-wins + newest-first, empty lists.
+- Real-user PTY lane: `scripts/tui-capture/verify_resume_picker.py` —
+  creates a real user-lane session (live turn), exports + imports it
+  through the real `unown sessions export|import` (import lane), then opens
+  the in-session `/resume` picker and asserts BOTH sessions are listed (2
+  preview rows). Still `05-resume-picker.png` captured for the landing
+  usage lane.
+- Regression: `sessions list` shows both stores; `--resume <imp-id> -p`
+  resumes an import-lane session by id (answered "mango"); resume-by-name
+  misses are honest ("no session matches …").
+
+Resume-from-here: M3 (`unown sessions resume` subcommand) is next.
 
 ### M3 — engine: `unown sessions resume` (pending)
 

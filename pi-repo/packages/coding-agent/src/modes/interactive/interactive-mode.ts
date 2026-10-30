@@ -93,7 +93,13 @@ import { CredentialSynchronizationError } from "../../core/model-runtime.ts";
 import { DefaultPackageManager } from "../../core/package-manager.ts";
 import type { ResourceDiagnostic } from "../../core/resource-loader.ts";
 import { formatMissingSessionCwdPrompt, MissingSessionCwdError } from "../../core/session-cwd.ts";
-import { type SessionEntry, SessionManager, sessionEntryToContextMessages } from "../../core/session-manager.ts";
+import {
+        type SessionEntry,
+        SessionManager,
+        getExtraSessionDirs,
+        mergeSessionInfos,
+        sessionEntryToContextMessages,
+} from "../../core/session-manager.ts";
 import type { FullscreenExitOutput, TuiMode } from "../../core/settings-manager.ts";
 import { BUILTIN_SLASH_COMMANDS } from "../../core/slash-commands.ts";
 import type { SourceInfo } from "../../core/source-info.ts";
@@ -5864,14 +5870,43 @@ export class InteractiveMode {
         }
 
         private showSessionSelector(): void {
+                // The both-stores rule (the sessions round): wrappers that keep
+                // sessions in more than one directory — unown's project import
+                // lane <cwd>/.unown/sessions next to the primary store — set
+                // PI_EXTRA_SESSION_DIRS, and EVERY picker shows the union:
+                // cwd-filtered in the current scope, unconditional in the all
+                // scope, deduped by path, newest-first. The launch-time picker
+                // and `sessions list` already union the stores; the in-session
+                // /resume picker was the one surface that did not.
+                const extraDirs = getExtraSessionDirs();
+                const cwd = this.sessionManager.getCwd();
+                const sessionDir = this.sessionManager.getSessionDir();
+                const currentLoader = async (onProgress?: (loaded: number, total: number) => void) =>
+                        extraDirs.length > 0
+                                ? mergeSessionInfos(
+                                        await Promise.all([
+                                                SessionManager.list(cwd, sessionDir, onProgress),
+                                                ...extraDirs.map((dir) => SessionManager.list(cwd, dir, onProgress)),
+                                        ]),
+                                )
+                                : SessionManager.list(cwd, sessionDir, onProgress);
+                const allLoader = async (onProgress?: (loaded: number, total: number) => void) =>
+                        extraDirs.length > 0
+                                ? mergeSessionInfos(
+                                        await Promise.all([
+                                                this.sessionManager.usesDefaultSessionDir()
+                                                        ? SessionManager.listAll(onProgress)
+                                                        : SessionManager.listAll(sessionDir, onProgress),
+                                                ...extraDirs.map((dir) => SessionManager.list(cwd, dir, onProgress)),
+                                        ]),
+                                )
+                                : this.sessionManager.usesDefaultSessionDir()
+                                  ? SessionManager.listAll(onProgress)
+                                  : SessionManager.listAll(sessionDir, onProgress);
                 this.showSelector((done) => {
                         const selector = new SessionSelectorComponent(
-                                (onProgress) =>
-                                        SessionManager.list(this.sessionManager.getCwd(), this.sessionManager.getSessionDir(), onProgress),
-                                (onProgress) =>
-                                        this.sessionManager.usesDefaultSessionDir()
-                                                ? SessionManager.listAll(onProgress)
-                                                : SessionManager.listAll(this.sessionManager.getSessionDir(), onProgress),
+                                (onProgress) => currentLoader(onProgress),
+                                (onProgress) => allLoader(onProgress),
                                 async (sessionPath) => {
                                         done();
                                         await this.handleResumeSession(sessionPath);
