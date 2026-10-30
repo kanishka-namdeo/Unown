@@ -4445,6 +4445,39 @@ export function createUnownToolsExtension(opts: UnownToolsOptions) {
 			},
 		});
 
+		// The sessions round (2026-10-31): `/abort` — the named command for
+		// the abort matrix that until now only had a KEY (Esc). Every other
+		// session lifecycle op ships a command (/new, /resume, /fork,
+		// /tree); abort was the one surface where the product told you
+		// "press Esc" and left muscle memory at the door. The command rides
+		// pi's unified abort matrix (ctx.abortActiveOperation, new this
+		// round): the running turn (queued messages return to the editor),
+		// a bash command, compaction, or a retry wait — and reports
+		// honestly when nothing is running instead of guessing. Aborts are
+		// cooperative: the partial assistant message is persisted with
+		// stopReason "aborted" and the session resumes with `unown -c`.
+		pi.registerCommand("abort", {
+			description:
+				"Abort what is running — the turn, bash, compaction or a retry wait (Esc parity; the partial turn is kept, unown -c resumes)",
+			handler: async (_args, ctx) => {
+				const streaming = !ctx.isIdle();
+				const aborted = ctx.abortActiveOperation();
+				if (!aborted) {
+					ctx.ui.notify(
+						"Nothing to abort — the session is idle. Esc aborts a running turn; a partial turn is kept in the session file and `unown -c` resumes it.",
+						"info",
+					);
+					return;
+				}
+				ctx.ui.notify(
+					streaming
+						? "Aborted the running turn — what finished is kept in the session; queued messages are back in the editor (`unown -c` resumes)"
+						: "Aborted the running operation (bash / compaction / retry) — the session is otherwise intact (`unown -c` resumes it)",
+					"info",
+				);
+			},
+		});
+
 		// Milestone 3.5 — `/sessions <sub>` slash command: the in-session
 		// alias for the `unown sessions` CLI. Uses the live session
 		// manager (ctx.sessionManager) so export/import operate on the

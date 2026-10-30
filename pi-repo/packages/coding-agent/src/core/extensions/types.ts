@@ -336,6 +336,13 @@ export interface ExtensionContext {
 	signal: AbortSignal | undefined;
 	/** Abort the current agent operation */
 	abort(): void;
+	/** Abort whatever is currently running — the agent turn (queued messages
+	 *  return to the editor in the TUI), a bash command, compaction, or a
+	 *  retry wait. Returns true when something running was aborted, false
+	 *  when the session was already idle. The unified abort matrix behind
+	 *  Esc and /abort — prefer this over abort() when the "was anything
+	 *  running" answer matters. */
+	abortActiveOperation(): boolean;
 	/** Whether there are queued messages waiting */
 	hasPendingMessages(): boolean;
 	/** Gracefully shutdown pi and exit. Available in all contexts. */
@@ -1715,6 +1722,7 @@ export interface ExtensionContextActions {
 	isProjectTrusted: () => boolean;
 	getSignal: () => AbortSignal | undefined;
 	abort: () => void;
+	abortActiveOperation: () => boolean;
 	hasPendingMessages: () => boolean;
 	shutdown: () => void;
 	getContextUsage: () => ContextUsage | undefined;

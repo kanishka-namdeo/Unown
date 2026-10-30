@@ -335,6 +335,7 @@ export class ExtensionRunner {
 	private getSignalFn: () => AbortSignal | undefined = () => undefined;
 	private waitForIdleFn: () => Promise<void> = async () => {};
 	private abortFn: () => void = () => {};
+	private abortActiveOperationFn: () => boolean = () => false;
 	private hasPendingMessagesFn: () => boolean = () => false;
 	private getContextUsageFn: () => ContextUsage | undefined = () => undefined;
 	private compactFn: (options?: CompactOptions) => void = () => {};
@@ -399,6 +400,7 @@ export class ExtensionRunner {
 		this.isProjectTrustedFn = contextActions.isProjectTrusted;
 		this.getSignalFn = contextActions.getSignal;
 		this.abortFn = contextActions.abort;
+		this.abortActiveOperationFn = contextActions.abortActiveOperation;
 		this.hasPendingMessagesFn = contextActions.hasPendingMessages;
 		this.shutdownHandler = contextActions.shutdown;
 		this.getContextUsageFn = contextActions.getContextUsage;
@@ -829,6 +831,10 @@ export class ExtensionRunner {
 			abort: () => {
 				runner.assertActive();
 				runner.abortFn();
+			},
+			abortActiveOperation: () => {
+				runner.assertActive();
+				return runner.abortActiveOperationFn();
 			},
 			hasPendingMessages: () => {
 				runner.assertActive();

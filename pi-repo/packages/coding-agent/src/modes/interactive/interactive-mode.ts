@@ -1978,9 +1978,7 @@ export class InteractiveMode {
                 await this.session.bindExtensions({
                         uiContext,
                         mode: "tui",
-                        abortHandler: () => {
-                                this.restoreQueuedMessagesToEditor({ abort: true });
-                        },
+                        abortHandler: () => this.abortActiveOperation(),
                         commandContextActions: {
                                 waitForIdle: () => this.session.waitForIdle(),
                                 newSession: async (options) => {
@@ -2165,8 +2163,9 @@ export class InteractiveMode {
                         isProjectTrusted: () => this.settingsManager.isProjectTrusted(),
                         signal: this.session.agent.signal,
                         abort: () => {
-                                this.restoreQueuedMessagesToEditor({ abort: true });
+                                this.abortActiveOperation();
                         },
+                        abortActiveOperation: () => this.abortActiveOperation(),
                         hasPendingMessages: () => this.session.pendingMessageCount > 0,
                         shutdown: () => {
                                 this.shutdownRequested = true;
@@ -2977,11 +2976,14 @@ export class InteractiveMode {
                 // Set up handlers on defaultEditor - they use this.editor for text access
                 // so they work correctly regardless of which editor is active
                 this.defaultEditor.onEscape = () => {
-                        if (this.session.isStreaming) {
-                                this.restoreQueuedMessagesToEditor({ abort: true });
-                        } else if (this.session.isBashRunning) {
-                                this.session.abortBash();
-                        } else if (this.isBashMode) {
+                        // The unified abort matrix first (turn / bash / compaction /
+                        // retry — same as /abort and ctx.abort()); the Esc-only
+                        // affordances (bash-mode clear, double-Esc tree picker)
+                        // only fire when nothing is running.
+                        if (this.abortActiveOperation()) {
+                                return;
+                        }
+                        if (this.isBashMode) {
                                 this.editor.setText("");
                                 this.isBashMode = false;
                                 this.updateEditorBorderColor();
@@ -4573,6 +4575,29 @@ export class InteractiveMode {
                         const hintText = theme.fg("dim", `↳ ${dequeueHint} to edit all queued messages`);
                         this.pendingMessagesContainer.addChild(new TruncatedText(hintText, 1, 0));
                 }
+        }
+
+        /** The unified abort surface: the running agent turn (queued messages
+         *  return to the editor first), a bash command, compaction, or a
+         *  retry wait — in the Esc precedence order. Returns whether
+         *  anything was aborted (false when idle). Esc, ctx.abort(),
+         *  ctx.abortActiveOperation() and /abort all ride this one matrix
+         *  so the surfaces cannot drift; compaction/retry keep their
+         *  dedicated temporary Esc handlers (idempotent double-abort is
+         *  harmless). */
+        private abortActiveOperation(): boolean {
+                if (this.session.isStreaming) {
+                        this.restoreQueuedMessagesToEditor({ abort: true });
+                } else if (this.session.isBashRunning) {
+                        this.session.abortBash();
+                } else if (this.session.isCompacting) {
+                        this.session.abortCompaction();
+                } else if (this.session.isRetrying) {
+                        this.session.abortRetry();
+                } else {
+                        return false;
+                }
+                return true;
         }
 
         private restoreQueuedMessagesToEditor(options?: { abort?: boolean; currentText?: string }): number {

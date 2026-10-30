@@ -262,7 +262,10 @@ export interface ExtensionBindings {
         uiContext?: ExtensionUIContext;
         mode?: ExtensionMode;
         commandContextActions?: ExtensionCommandContextActions;
-        abortHandler?: () => void;
+        /** Mode-owned abort surface. Returns whether anything running was
+         *  aborted (the TUI restores queued messages to the editor before
+         *  aborting the turn, then reports honestly). */
+        abortHandler?: () => boolean;
         shutdownHandler?: ShutdownHandler;
         onError?: ExtensionErrorListener;
 }
@@ -392,7 +395,7 @@ export class AgentSession {
         private _extensionUIContext?: ExtensionUIContext;
         private _extensionMode: ExtensionMode = "print";
         private _extensionCommandContextActions?: ExtensionCommandContextActions;
-        private _extensionAbortHandler?: () => void;
+        private _extensionAbortHandler?: () => boolean;
         private _extensionShutdownHandler?: ShutdownHandler;
         private _extensionErrorListener?: ExtensionErrorListener;
         private _extensionErrorUnsubscriber?: () => void;
@@ -1631,6 +1634,39 @@ export class AgentSession {
                 await this.waitForIdle();
         }
 
+        /**
+         * Abort whatever is currently running — the agent turn, a bash
+         * command, compaction/branch summarization, or a retry wait — and
+         * return whether anything was actually aborted (false when the
+         * session was already idle). The unified abort matrix: Esc in the
+         * TUI, ctx.abort()/ctx.abortActiveOperation() in extensions and
+         * every abort lane ride it, so the surfaces cannot drift. Aborts
+         * are cooperative (AbortController per concern, never a process
+         * kill); the partial assistant message is persisted with
+         * stopReason "aborted". Queue handling (returning queued messages
+         * to the editor) stays with the mode's abort surface.
+         */
+        abortActiveOperation(): boolean {
+                let aborted = false;
+                if (!this.isIdle) {
+                        void this.abort();
+                        aborted = true;
+                }
+                if (this.isBashRunning) {
+                        this.abortBash();
+                        aborted = true;
+                }
+                if (this.isCompacting) {
+                        this.abortCompaction();
+                        aborted = true;
+                }
+                if (this.isRetrying) {
+                        this.abortRetry();
+                        aborted = true;
+                }
+                return aborted;
+        }
+
         async waitForIdle(): Promise<void> {
                 if (this.isIdle) {
                         return;
@@ -2632,6 +2668,12 @@ export class AgentSession {
                                                 return;
                                         }
                                         void this.abort();
+                                },
+                                abortActiveOperation: () => {
+                                        if (this._extensionAbortHandler) {
+                                                return this._extensionAbortHandler();
+                                        }
+                                        return this.abortActiveOperation();
                                 },
                                 hasPendingMessages: () => this.pendingMessageCount > 0,
                                 shutdown: () => {
