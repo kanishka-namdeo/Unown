@@ -167,6 +167,10 @@ describe("CLI golden — unown setup", () => {
 	test(
 		"setup --force rewrites models.json, stores the key in auth.json (0600), merges settings",
 		async () => {
+			// This test pins the --force RESET + key-storage + settings-merge
+			// semantics, NOT the spec gate — the model id is deliberately
+			// unregistrarable, so the documented escape keeps the lane
+			// hermetic (the gate itself is pinned by spec-gate-golden.test.ts).
 			const run = await unown(
 				[
 					"setup",
@@ -180,7 +184,7 @@ describe("CLI golden — unown setup", () => {
 					"golden-model",
 					"--force",
 				],
-				base(),
+				base({ env: { UNOWN_ALLOW_UNVERIFIED_SPECS: "1" } }),
 			);
 			expect(run.exitCode).toBe(0);
 			expect(run.stdout).toContain("✓ configured openai");
@@ -228,7 +232,10 @@ describe("CLI golden — unown setup", () => {
 						"--model",
 						"merge-model",
 					],
-					opts,
+					// pins the MERGE semantics; the unregistrarable model id rides the
+					// documented spec-gate escape (hermetic — the gate’s own goldens
+					// live in spec-gate-golden.test.ts)
+					base({ root, env: { UNOWN_ALLOW_UNVERIFIED_SPECS: "1" } }),
 				);
 				// M1 contract: accumulate, never rewrite — no refusal, exit 0.
 				expect(attempt.exitCode).toBe(0);
