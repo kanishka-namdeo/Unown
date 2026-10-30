@@ -131,6 +131,15 @@ export interface DetectSpecOptions {
         fetchImpl?: typeof fetch;
         /** Where the sidecar + cache live (defaults resolved by the caller). */
         agentDir?: string;
+        /** A GET {base}/models body the CALLER already fetched (probe.ts's
+         *  EndpointProbe.modelEntries round-trips here). When present the
+         *  endpoint lane parses it instead of re-fetching — one request per
+         *  configuration, not two. */
+        endpointCatalog?: { data?: unknown[] } & Record<string, unknown>;
+        /** Stop the cascade as soon as both load-bearing numbers are filled
+         *  (session-preflight mode: enrichment from the other registries can
+         *  wait — a snappy startup beats a fuller record on the hot path). */
+        stopWhenComplete?: boolean;
 }
 
 // ---------------------------------------------------------------------------
@@ -659,6 +668,19 @@ async function endpointPart(
         opts: Required<Pick<DetectSpecOptions, "providerId">> & DetectSpecOptions,
         cache: RegistryCacheFile,
 ): Promise<{ part?: Partial<ModelSpecDetection>; outcome: DetectAttempt["outcome"]; note?: string }> {
+        // The caller's own catalog (probe.ts already fetched it): parse, never
+        // re-fetch, never failure-cache — the data is in hand and fresh.
+        if (opts.endpointCatalog) {
+                const data = Array.isArray(opts.endpointCatalog.data) ? (opts.endpointCatalog.data as Json[]) : [];
+                const candidates = specIdCandidates(modelId);
+                let entry: Json | undefined;
+                for (const c of candidates) entry ??= data.find((m) => typeof m?.id === "string" && m.id === c);
+                if (!entry && data.length === 1) entry = data[0];
+                const part = parseEndpointCatalogEntry(entry, opts.endpointCatalog as Json);
+                if (part.contextWindow === undefined && part.maxTokens === undefined)
+                        return { outcome: "miss", note: "catalog carries no specs" };
+                return { part, outcome: "hit", note: "the caller's own /models fetch" };
+        }
         if (!opts.baseUrl) return { outcome: "skipped", note: "no endpoint" };
         const now = opts.now ?? Date.now();
         const ttl = registryCacheTtlMs(opts.env ?? process.env);
@@ -720,6 +742,11 @@ export async function detectModelSpec(modelId: string, opts: DetectSpecOptions):
         const cacheBefore = JSON.stringify(cache);
         // 1. the endpoint's own catalog (the only authoritative source for
         //    local/self-hosted servers; skips without a baseUrl).
+        const stopWhenComplete = opts.stopWhenComplete === true;
+        const complete = () => {
+                for (const p of parts) if (p.part.contextWindow !== undefined && p.part.maxTokens !== undefined) return true;
+                return false;
+        };
         const endpoint = await endpointPart(modelId, opts, cache);
         attempts.push({ source: "endpoint", outcome: endpoint.outcome, ...(endpoint.note ? { note: endpoint.note } : {}) });
         if (endpoint.part) parts.push({ source: "endpoint", part: endpoint.part, match: "exact" });
@@ -730,13 +757,33 @@ export async function detectModelSpec(modelId: string, opts: DetectSpecOptions):
                 attempts.push({ source: "curated", outcome: "hit" });
         } else attempts.push({ source: "curated", outcome: "miss" });
         // 3 & 4. the registries (they can still enrich cost/modalities when a
-        // higher-priority source already filled the limits).
-        const dev = await registryPart("models-dev", modelId, opts, cache);
-        attempts.push({ source: "models-dev", outcome: dev.outcome, ...(dev.note ? { note: dev.note } : {}) });
-        if (dev.part) parts.push({ source: "models-dev", part: dev.part, match: dev.match ?? "exact", ...(dev.sourceUrl ? { sourceUrl: dev.sourceUrl } : {}) });
-        const litellm = await registryPart("litellm", modelId, opts, cache);
-        attempts.push({ source: "litellm", outcome: litellm.outcome, ...(litellm.note ? { note: litellm.note } : {}) });
-        if (litellm.part) parts.push({ source: "litellm", part: litellm.part, match: litellm.match ?? "exact", ...(litellm.sourceUrl ? { sourceUrl: litellm.sourceUrl } : {}) });
+        // higher-priority source already filled the limits). In
+        // stopWhenComplete mode (the session-preflight hot path) they are
+        // skipped once the load-bearing pair is filled — a cold-cache registry
+        // fetch must never add seconds to every session start.
+        if (stopWhenComplete && complete()) {
+                attempts.push({ source: "models-dev", outcome: "skipped", note: "limits already verified" });
+                attempts.push({ source: "litellm", outcome: "skipped", note: "limits already verified" });
+        } else {
+                const dev = await registryPart("models-dev", modelId, opts, cache);
+                attempts.push({ source: "models-dev", outcome: dev.outcome, ...(dev.note ? { note: dev.note } : {}) });
+                if (dev.part)
+                        parts.push({
+                                source: "models-dev",
+                                part: dev.part,
+                                match: dev.match ?? "exact",
+                                ...(dev.sourceUrl ? { sourceUrl: dev.sourceUrl } : {}),
+                        });
+                const litellm = await registryPart("litellm", modelId, opts, cache);
+                attempts.push({ source: "litellm", outcome: litellm.outcome, ...(litellm.note ? { note: litellm.note } : {}) });
+                if (litellm.part)
+                        parts.push({
+                                source: "litellm",
+                                part: litellm.part,
+                                match: litellm.match ?? "exact",
+                                ...(litellm.sourceUrl ? { sourceUrl: litellm.sourceUrl } : {}),
+                        });
+        }
 
         if (agentDir && JSON.stringify(cache) !== cacheBefore) writeRegistryCache(agentDir, cache);
 
@@ -822,6 +869,15 @@ export function formatSpecLine(spec: ModelSpecDetection | ModelSpecRecord): stri
         }
         bits.push(`${specSourceLabel(spec.source)}${spec.match === "exact" ? "" : ` (${spec.match} match)`}`);
         return bits.join(" · ");
+}
+
+/** "524,288 ctx / 65,536 out (curated catalog)" — the compact chip for
+ *  `unown models` and doctor's per-model lines (one line, no pricing). */
+export function formatSpecShort(spec: ModelSpecDetection | ModelSpecRecord): string {
+        const ctx = spec.contextWindow !== undefined ? spec.contextWindow.toLocaleString("en-US") : "?";
+        const out = spec.maxTokens !== undefined ? spec.maxTokens.toLocaleString("en-US") : "?";
+        const label = specSourceLabel(spec.source).split(" (")[0];
+        return `${ctx} ctx / ${out} out (${label}${spec.match === "exact" ? "" : `, ${spec.match}`})`;
 }
 
 function trimNum(n: number): string {

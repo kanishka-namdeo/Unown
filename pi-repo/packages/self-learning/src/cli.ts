@@ -25,18 +25,18 @@
 import { existsSync, readdirSync, writeFileSync, writeSync } from "node:fs";
 import { basename, join } from "node:path";
 import {
-	type CreateAgentSessionRuntimeFactory,
-	createAgentSessionFromServices,
-	createAgentSessionRuntime,
-	createAgentSessionServices,
-	exportFromFile,
-	InteractiveMode,
-	resolveCliModel,
-	runPrintMode,
-	type SessionInfo,
-	SessionManager,
-	SettingsManager,
-	selectSession,
+        type CreateAgentSessionRuntimeFactory,
+        createAgentSessionFromServices,
+        createAgentSessionRuntime,
+        createAgentSessionServices,
+        exportFromFile,
+        InteractiveMode,
+        resolveCliModel,
+        runPrintMode,
+        type SessionInfo,
+        SessionManager,
+        SettingsManager,
+        selectSession,
 } from "@earendil-works/pi-coding-agent";
 import { ACP_HELP, runAcpServer } from "./acp.ts";
 import { createUnownAddonsExtension } from "./addons/index.ts";
@@ -71,25 +71,26 @@ import { MIGRATIONS, readMigrationState } from "./migrations.ts";
 import { loadModelHealth, modelHealthExists } from "./model-health.ts";
 import { emitOsc9, notifyGated, notifyThresholdMs, shouldNotifyOnAnswer, truncateForNotify } from "./notify.ts";
 import {
-	assembleResultJson,
-	captureStdout,
-	createOutputCapture,
-	createOutputCaptureExtension,
-	preferFinalAssistantText,
+        assembleResultJson,
+        captureStdout,
+        createOutputCapture,
+        createOutputCaptureExtension,
+        preferFinalAssistantText,
 } from "./output-format.ts";
 import { loadOutputSchema, renderSchemaFailure, validateAnswerAgainstSchema } from "./output-schema.ts";
+import { formatSpecShort, getRecordedSpec } from "./model-spec-detect.ts";
 import { unownVersion } from "./packaging.ts";
 import { createPermissionGate, createPermissionsExtension, permissionsDoctorSummary } from "./permissions.ts";
 import {
-	isLoopbackProvider,
-	probeLatencyNote,
-	probeProviderEndpoint,
-	rateLimitNote,
-	readAgentModelsFile,
-	resolveActiveProvider,
+        isLoopbackProvider,
+        probeLatencyNote,
+        probeProviderEndpoint,
+        rateLimitNote,
+        readAgentModelsFile,
+        resolveActiveProvider,
 } from "./probe.ts";
 import { createProjectSettingsExtension, loadProjectSettings } from "./project-settings.ts";
-import { keyStatusLabel, listProviders, resolveProviderKey } from "./providers.ts";
+import { applyModelSpecs, keyStatusLabel, listProviders, resolveProviderKey } from "./providers.ts";
 import { PROVIDERS_HELP, runProvidersCommand } from "./providers-cli.ts";
 import { RALPH_USAGE, runRalphCommand } from "./ralph-cli.ts";
 import { RECIPES_USAGE, runRecipesCommand } from "./recipes-cli.ts";
@@ -98,56 +99,65 @@ import { describeResume, latestSessionForCwd, resolveResumeQuery } from "./resum
 import { defaultSessionTools } from "./session-tools.ts";
 import { runSessionsCommand, SESSIONS_USAGE } from "./sessions-cli.ts";
 import { printModelsOverview, runSetupCommand, SETUP_USAGE } from "./setup.ts";
+import { createTerminalDialog } from "./setup-dialog.ts";
+import {
+        allowUnverifiedSpecs,
+        askSpecNumbers,
+        readModelSpecsFromRegistry,
+        recordUserSpec,
+        resolveActiveModelId,
+        resolveSpecGate,
+} from "./spec-gate.ts";
 import { createSplashExtension } from "./splash.ts";
 import { createSplitViewExtension } from "./splitview.ts";
 import {
-	applyEffortToEnv,
-	parseSubagentFlags,
-	SUBAGENT_MCP_SERVERS_ENV,
-	SUBAGENT_MODEL_ENV,
-	SUBAGENT_NO_AGENTS_MD_ENV,
-	type SubagentEffort,
+        applyEffortToEnv,
+        parseSubagentFlags,
+        SUBAGENT_MCP_SERVERS_ENV,
+        SUBAGENT_MODEL_ENV,
+        SUBAGENT_NO_AGENTS_MD_ENV,
+        type SubagentEffort,
 } from "./subagent-routing.ts";
 import {
-	deliverTerminalNote,
-	ENGINE_URL,
-	ensureUnownAgentDirAsync,
-	ensureUnownAgentDirInfoAsync,
-	initProjectMemory,
-	outboxStats,
-	projectMemoryPath,
-	resolveTerminalMemory,
-	STRICT_HOOKS,
-	terminalMemoryForAgent,
-	UNOWN_AGENT_DIR,
-	UNOWN_HOME,
-	unownAgentDirInit,
+        deliverTerminalNote,
+        ENGINE_URL,
+        ensureUnownAgentDirAsync,
+        ensureUnownAgentDirInfoAsync,
+        initProjectMemory,
+        outboxStats,
+        projectMemoryPath,
+        resolveTerminalMemory,
+        STRICT_HOOKS,
+        terminalMemoryForAgent,
+        UNOWN_AGENT_DIR,
+        UNOWN_HOME,
+        unownAgentDirInit,
 } from "./term.ts";
 import { createTerminalExtension } from "./termhooks.ts";
 import {
-	activeTerminalAutoCompact,
-	createTerminalAutoCompactExtension,
-	TERMINAL_AUTO_COMPACT_CONTINUE_PROMPT,
-	waitTerminalAutoCompactSettled,
+        activeTerminalAutoCompact,
+        createTerminalAutoCompactExtension,
+        TERMINAL_AUTO_COMPACT_CONTINUE_PROMPT,
+        waitTerminalAutoCompactSettled,
 } from "./terminal-auto-compact.ts";
 import { createToolRepetitionGuard, parseMaxToolRepetitions } from "./tool-repetition.ts";
 import { createUnownToolsExtension } from "./tools.ts";
 import { cmdUninstall, findShims, parseUninstallFlags, UNINSTALL_HELP } from "./uninstall.ts";
 import {
-	cmdChangelog,
-	cmdUpdate,
-	compareSemver,
-	describeAge,
-	formatUpdateSize,
-	gitShortSha,
-	maybeShowUpdateNotice,
-	parseUpdateFlags,
-	readUpdateCheckCache,
-	readUpdatePrefs,
-	realGit,
-	resolveInstallInfo,
-	resolveRepoRoot,
-	UPDATE_HELP,
+        cmdChangelog,
+        cmdUpdate,
+        compareSemver,
+        describeAge,
+        formatUpdateSize,
+        gitShortSha,
+        maybeShowUpdateNotice,
+        parseUpdateFlags,
+        readUpdateCheckCache,
+        readUpdatePrefs,
+        realGit,
+        resolveInstallInfo,
+        resolveRepoRoot,
+        UPDATE_HELP,
 } from "./update.ts";
 import { runUsageCommand, USAGE_HELP } from "./usage-cli.ts";
 import { runWatchCommand, WATCH_USAGE } from "./watch-cli.ts";
@@ -422,6 +432,10 @@ Environment:
   UNOWN_ENGINE_URL         self-learning engine (default http://127.0.0.1:3030)
   UNOWN_STRICT_HOOKS=1     sandbox-grade hooks (blocks network, git push, sudo)
   UNOWN_NO_PREFLIGHT=1     skip the endpoint reachability check before sessions
+  UNOWN_ALLOW_UNVERIFIED_SPECS=1  use models whose specs (context window /
+                           max output tokens) no verifiable source could
+                           confirm — the model-specs gate's documented escape
+                           (compaction + the reply cap run on unown's defaults)
   UNOWN_LSP=0              disable the lsp tool + after-edit diagnostics loop
                            (waits/timeouts: UNOWN_LSP_WAIT_MS / UNOWN_LSP_TIMEOUT_MS)
   UNOWN_MCP=0              disable the MCP client (no mcp__* tools register)
@@ -446,450 +460,450 @@ Environment:
 // Simple argument parsing
 // ---------------------------------------------------------------------------
 interface CliArgs {
-	command: "tui" | "print" | "init" | "memory" | "doctor" | "note" | "help";
-	prompt?: string;
-	verbose: boolean;
-	jsonMode: boolean;
-	noSession: boolean;
-	tools?: string[];
-	appendSystemPromptPath?: string;
-	plan: boolean;
-	goal?: string;
-	outputFormat?: "text" | "json";
-	/** Fleet lane (pi-interactive-subagents port): resume/continue a
-	 *  specific session FILE instead of creating a fresh one. Set by the
-	 *  new --session <path> flag; consumed by bootRuntime via
-	 *  SessionManager.open. */
-	sessionFile?: string;
-	// Milestone 2.1 + 2.2 — per-subagent routing fields. Set by the new
-	// --model / --effort / --mcp-servers / --no-agents-md flags; consumed by
-	// bootRuntime to set PI_MODEL_ID / BRIDGE_QWEN_THINKING /
-	// UNOWN_MCP_SERVERS / UNOWN_NO_AGENTS_MD before the session starts.
-	model?: string;
-	effort?: SubagentEffort;
-	mcpServers?: string[];
-	noAgentsMd?: boolean;
-	/** --provider <id>: pin the session's provider (its default model is
-	 * used unless --model also names one). Multi-provider parity with pi's
-	 * own CLI and the Cline provider dropdown. */
-	provider?: string;
-	/** --no-split: start bare, ignoring saved split-view startup defaults. */
-	noSplit?: boolean;
-	/** --permission-mode <m> (2026-10-24 trust round): a session-scoped
-	 *  override on the permissions gate — default | acceptEdits |
-	 *  bypassPermissions (the strict-hook refusal still applies inside the
-	 *  gate). Claude Code --permission-mode parity. */
-	permissionMode?: "default" | "acceptEdits" | "bypassPermissions";
-	/** --add-dir <path> (repeatable; 2026-10-24 trust round): additional
-	 *  working directories granted to the session — they extend the write
-	 *  jail (edit/write tools + bash redirect targets). Claude Code
-	 *  --add-dir parity; /add-dir is the in-session twin. */
-	addDirs?: string[];
-	/** --max-turns <N> (2026-10-24 CI round): bound the headless run to N
-	 *  completed agent turns — the (N+1)th turn start aborts (Claude
-	 *  Code / Gemini parity; the JSON envelope gains `capped`). */
-	maxTurns?: number;
-	/** --output-schema <file> (2026-10-24 CI round): validate the final
-	 *  answer against a JSON Schema (Codex exec --output-schema parity);
-	 *  exit 3 on mismatch; composes with --output-format json. */
-	outputSchema?: string;
-	/** --max-tool-repetitions <N> (2026-10-24 parity round): the loop
-	 *  guard — abort when the SAME tool is called with the SAME arguments
-	 *  N times consecutively (goose --max-tool-repetitions parity); exit
-	 *  4 on trip; the JSON envelope gains `loop_guard`. */
-	maxToolRepetitions?: number;
-	/** --worktree [name] / -w (2026-10-24 parity round): run THIS session
-	 *  inside a managed worktree at the repo's HEAD (Claude Code
-	 *  --worktree / Codex --worktree / Gemini -w parity). Fail-closed
-	 *  outside a git repo; exit removes an untouched tree, keeps a
-	 *  changed one for review (unown worktrees list / remove). */
-	worktree?: string | true;
+        command: "tui" | "print" | "init" | "memory" | "doctor" | "note" | "help";
+        prompt?: string;
+        verbose: boolean;
+        jsonMode: boolean;
+        noSession: boolean;
+        tools?: string[];
+        appendSystemPromptPath?: string;
+        plan: boolean;
+        goal?: string;
+        outputFormat?: "text" | "json";
+        /** Fleet lane (pi-interactive-subagents port): resume/continue a
+         *  specific session FILE instead of creating a fresh one. Set by the
+         *  new --session <path> flag; consumed by bootRuntime via
+         *  SessionManager.open. */
+        sessionFile?: string;
+        // Milestone 2.1 + 2.2 — per-subagent routing fields. Set by the new
+        // --model / --effort / --mcp-servers / --no-agents-md flags; consumed by
+        // bootRuntime to set PI_MODEL_ID / BRIDGE_QWEN_THINKING /
+        // UNOWN_MCP_SERVERS / UNOWN_NO_AGENTS_MD before the session starts.
+        model?: string;
+        effort?: SubagentEffort;
+        mcpServers?: string[];
+        noAgentsMd?: boolean;
+        /** --provider <id>: pin the session's provider (its default model is
+         * used unless --model also names one). Multi-provider parity with pi's
+         * own CLI and the Cline provider dropdown. */
+        provider?: string;
+        /** --no-split: start bare, ignoring saved split-view startup defaults. */
+        noSplit?: boolean;
+        /** --permission-mode <m> (2026-10-24 trust round): a session-scoped
+         *  override on the permissions gate — default | acceptEdits |
+         *  bypassPermissions (the strict-hook refusal still applies inside the
+         *  gate). Claude Code --permission-mode parity. */
+        permissionMode?: "default" | "acceptEdits" | "bypassPermissions";
+        /** --add-dir <path> (repeatable; 2026-10-24 trust round): additional
+         *  working directories granted to the session — they extend the write
+         *  jail (edit/write tools + bash redirect targets). Claude Code
+         *  --add-dir parity; /add-dir is the in-session twin. */
+        addDirs?: string[];
+        /** --max-turns <N> (2026-10-24 CI round): bound the headless run to N
+         *  completed agent turns — the (N+1)th turn start aborts (Claude
+         *  Code / Gemini parity; the JSON envelope gains `capped`). */
+        maxTurns?: number;
+        /** --output-schema <file> (2026-10-24 CI round): validate the final
+         *  answer against a JSON Schema (Codex exec --output-schema parity);
+         *  exit 3 on mismatch; composes with --output-format json. */
+        outputSchema?: string;
+        /** --max-tool-repetitions <N> (2026-10-24 parity round): the loop
+         *  guard — abort when the SAME tool is called with the SAME arguments
+         *  N times consecutively (goose --max-tool-repetitions parity); exit
+         *  4 on trip; the JSON envelope gains `loop_guard`. */
+        maxToolRepetitions?: number;
+        /** --worktree [name] / -w (2026-10-24 parity round): run THIS session
+         *  inside a managed worktree at the repo's HEAD (Claude Code
+         *  --worktree / Codex --worktree / Gemini -w parity). Fail-closed
+         *  outside a git repo; exit removes an untouched tree, keeps a
+         *  changed one for review (unown worktrees list / remove). */
+        worktree?: string | true;
 }
 
 // Exported for tests: the parse contract (routing flags, --output-format
 // pairing, print/TUI selection) is asserted by test/cli/parse-args.test.ts.
 export function parseArgs(argv: string[]): CliArgs {
-	// Milestone 2.1 + 2.2 — strip the four new subagent-routing flags out
-	// first so the main loop does not treat their values as prompt text.
-	// The pure helper parseSubagentFlags (in subagent-routing.ts) is the
-	// canonical parser for these flags; it is hermetically testable.
-	const subagentFlags = parseSubagentFlags(argv);
-	const argvRest = subagentFlags.rest;
-	const rest: string[] = [];
-	let print = false;
-	let verbose = false;
-	let jsonMode = false;
-	let noSession = false;
-	let sessionFile: string | undefined;
-	let tools: string[] | undefined;
-	let appendSystemPromptPath: string | undefined;
-	let plan = false;
-	let noSplit = false;
-	let goal: string | undefined;
-	let outputFormat: "text" | "json" | undefined;
-	let provider: string | undefined;
-	let permissionMode: "default" | "acceptEdits" | "bypassPermissions" | undefined;
-	let addDirs: string[] | undefined;
-	let continueLatest = false;
-	let resumeQuery: string | undefined;
-	let resumePicker = false;
-	/** rest.length when the `--` escape fired: the unknown-flag guard scans
-	 *  only the tokens before it (everything after `--` is prompt text). */
-	let escapeMark = -1;
-	let maxTurns: number | undefined;
-	let maxToolRepetitions: number | undefined;
-	let worktree: string | true | undefined;
-	let outputSchema: string | undefined;
-	for (let i = 0; i < argvRest.length; i++) {
-		const a = argvRest[i];
-		if (a === "--help" || a === "-h")
-			return { command: "help", verbose, jsonMode, noSession, plan, noSplit, goal, outputFormat };
-		if (a === "--print" || a === "-p") {
-			print = true;
-			continue;
-		}
-		if (a === "--verbose" || a === "-v") {
-			verbose = true;
-			continue;
-		}
-		if (a === "--mode") {
-			const next = argvRest[i + 1];
-			if (next === "json") jsonMode = true;
-			else if (next !== "text") rest.push(a); // unknown mode value: treat as prompt text
-			i++;
-			continue;
-		}
-		if (a === "--no-session") {
-			noSession = true;
-			continue;
-		}
-		if (a === "--session") {
-			// Fleet lane: an explicit session FILE to continue
-			// (pi-interactive-subagents' resume substrate).
-			const next = argvRest[i + 1];
-			if (next !== undefined && !next.startsWith("-")) {
-				sessionFile = next;
-				i++;
-			}
-			continue;
-		}
-		if (a === "--output-format") {
-			const next = argvRest[i + 1];
-			if (next === "json" || next === "text") {
-				outputFormat = next;
-				i++;
-			} else if (next === "stream-json") {
-				// The muscle-memory lane (2026-10-25 completion round): Claude
-				// Code / Gemini / Cursor all spell their NDJSON event stream
-				// "--output-format stream-json" — unown's stream already exists
-				// as --mode json (pi's JSONL events); this alias maps onto it so
-				// scripts written against those CLIs work verbatim. The conflict
-				// guards downstream key on jsonMode, which is what this sets.
-				jsonMode = true;
-				i++;
-			} else {
-				console.error("unown: --output-format expects json, text or stream-json");
-				process.exit(2);
-			}
-			continue;
-		}
-		if (a === "--plan") {
-			plan = true;
-			continue;
-		}
-		if (a === "--no-split") {
-			noSplit = true;
-			continue;
-		}
-		if (a === "--goal") {
-			const next = argvRest[i + 1];
-			if (next !== undefined && !next.startsWith("--")) {
-				goal = next;
-				i++;
-			}
-			continue;
-		}
-		if (a === "--tools") {
-			const next = argvRest[i + 1];
-			if (next !== undefined) {
-				tools = next
-					.split(",")
-					.map((t) => t.trim())
-					.filter(Boolean);
-				i++;
-			}
-			continue;
-		}
-		if (a === "--append-system-prompt") {
-			const next = argvRest[i + 1];
-			if (next !== undefined) {
-				appendSystemPromptPath = next;
-				i++;
-			}
-			continue;
-		}
-		if (a === "--provider") {
-			const next = argvRest[i + 1];
-			if (next !== undefined && !next.startsWith("--")) {
-				provider = next;
-				i++;
-			}
-			continue;
-		}
-		if (a === "--permission-mode") {
-			const next = argvRest[i + 1];
-			if (next === "default" || next === "acceptEdits" || next === "bypassPermissions") {
-				permissionMode = next;
-				i++;
-			} else {
-				console.error("unown: --permission-mode expects default, acceptEdits or bypassPermissions");
-				process.exit(2);
-			}
-			continue;
-		}
-		if (a === "--add-dir") {
-			const next = argvRest[i + 1];
-			if (next !== undefined && !next.startsWith("--")) {
-				addDirs = [...(addDirs ?? []), next];
-				i++;
-			} else {
-				console.error("unown: --add-dir expects a directory path");
-				process.exit(2);
-			}
-			continue;
-		}
-		if (a === "--continue" || a === "-c") {
-			continueLatest = true;
-			continue;
-		}
-		if (a === "--resume" || a === "-r") {
-			const next = argvRest[i + 1];
-			// Flag-adjacency rule (the --worktree convention): ANY
-			// dash-prefixed token is the next flag, never a query
-			// value — `--resume -p "hello"` opens the picker in print
-			// mode (which then refuses it with exit 2 off-TTY), not a
-			// session named "-p" (the 2026-10-25 fix: only "--"
-			// was excluded, so every single-dash flag was silently
-			// swallowed as the query).
-			if (next !== undefined && !next.startsWith("-")) {
-				resumeQuery = next;
-				i++;
-			} else {
-				// Bare picker lane (2026-10-25 completion round):
-				// `unown --resume` with no query opens the
-				// interactive selector at launch — Claude Code
-				// `claude --resume`, Codex `codex resume`, Gemini
-				// /resume parity. resolveLaunchSession renders
-				// it (TTY-gated: pipes get the usage error).
-				resumePicker = true;
-			}
-			continue;
-		}
-		if (a === "--worktree" || a === "-w") {
-			// Optional value: a following non-flag token is the
-			// tree's name (Claude's --worktree [name] grammar).
-			const next = argvRest[i + 1];
-			worktree = next !== undefined && !next.startsWith("-") ? next : true;
-			if (worktree !== true) i++;
-			continue;
-		}
-		if (a === "--max-turns") {
-			const next = argvRest[i + 1];
-			const parsed =
-				next !== undefined && !next.startsWith("--")
-					? parseMaxTurns(next)
-					: { ok: false as const, error: "--max-turns expects a positive integer" };
-			if (!parsed.ok) {
-				console.error(`unown: ${parsed.error}`);
-				process.exit(2);
-			}
-			maxTurns = parsed.value;
-			i++;
-			continue;
-		}
-		if (a === "--max-tool-repetitions") {
-			const next = argvRest[i + 1];
-			const parsed =
-				next !== undefined && !next.startsWith("--")
-					? parseMaxToolRepetitions(next)
-					: { ok: false as const, error: "--max-tool-repetitions expects a positive integer" };
-			if (!parsed.ok) {
-				console.error(`unown: ${parsed.error}`);
-				process.exit(2);
-			}
-			maxToolRepetitions = parsed.value;
-			i++;
-			continue;
-		}
-		if (a === "--output-schema") {
-			const next = argvRest[i + 1];
-			if (next !== undefined && !next.startsWith("--")) {
-				outputSchema = next;
-				i++;
-			} else {
-				console.error("unown: --output-schema expects a JSON Schema file path");
-				process.exit(2);
-			}
-			continue;
-		}
-		// The `--` escape (2026-10-25 completion round): every token after a
-		// bare `--` joins the prompt verbatim — the standard end-of-options
-		// marker, so a prompt that itself begins with a dash stays spellable.
-		if (a === "--") {
-			if (escapeMark === -1) escapeMark = rest.length;
-			for (let j = i + 1; j < argvRest.length; j++) rest.push(argvRest[j]);
-			i = argvRest.length;
-			continue;
-		}
-		rest.push(a);
-	}
-	// Unknown-flag guard (2026-10-25): an unrecognized dash-token used to
-	// fall into `rest` and ride the prompt to the model as literal text
-	// (measured: `unown --thinking high` sent the words "--thinking high" to
-	// the LLM) — the same silent misroute the bare-typo guard exists to
-	// refuse. Exit 2 with the flag named; `--help` is one keystroke away.
-	{
-		const scan = escapeMark === -1 ? rest : rest.slice(0, escapeMark);
-		const unknown = [...new Set(scan.filter((t) => t.startsWith("-")))];
-		if (unknown.length > 0) {
-			console.error(
-				`unown: unknown flag${unknown.length === 1 ? "" : "s"} ${unknown.join(", ")} — see \`unown --help\` for the accepted surface (a prompt starting with a dash: quote it, or use the \`--\` end-of-options marker)`,
-			);
-			process.exit(2);
-		}
-	}
-	const first = rest[0];
-	if (first === "init" || first === "memory" || first === "doctor" || first === "note") {
-		const prompt = rest.slice(1).join(" ");
-		return { command: first, prompt, verbose, jsonMode, noSession, plan, noSplit, outputFormat };
-	}
-	const prompt = rest.join(" ");
-	// The flow-round launch lane (2026-10-24): -c/--continue and
-	// --resume <query> resolve to an exact session FILE before the boot —
-	// mutually exclusive with --session (which is already exact) and with
-	// each other. parseArgs owns the grammar + conflict checks; the
-	// resolution itself happens in cmdPrint/cmdTui (needs the real cwd
-	// + agent dir), so the sentinel values carry the intent there.
-	if ((continueLatest || resumeQuery || resumePicker) && sessionFile) {
-		console.error(
-			"unown: --session cannot be combined with --continue/--resume (both pick the session file themselves)",
-		);
-		process.exit(2);
-	}
-	if (continueLatest && (resumeQuery || resumePicker)) {
-		console.error("unown: --continue and --resume are mutually exclusive (latest-in-cwd vs id/name/file)");
-		process.exit(2);
-	}
-	const resolvedSessionFile = continueLatest
-		? "__continue__"
-		: resumeQuery
-			? `__resume__:${resumeQuery}`
-			: resumePicker
-				? "__resume_picker__"
-				: sessionFile;
-	// Milestone 2.1 + 2.2 — surface the parsed routing fields (set by
-	// parseSubagentFlags above) on every exit path so bootRuntime's
-	// applySubagentEnvOverrides honors --model / --effort /
-	// --mcp-servers / --no-agents-md (and the task tool's subagent
-	// spawns inherit the same contract).
-	//
-	// Non-TTY stdio forces print mode (same behaviour as pi itself).
-	if (print || !process.stdin.isTTY || !process.stdout.isTTY)
-		return {
-			command: "print",
-			prompt,
-			verbose,
-			jsonMode,
-			noSession,
-			sessionFile: resolvedSessionFile,
-			tools,
-			appendSystemPromptPath,
-			plan,
-			noSplit,
-			goal,
-			outputFormat,
-			model: subagentFlags.model,
-			effort: subagentFlags.effort,
-			mcpServers: subagentFlags.mcpServers,
-			noAgentsMd: subagentFlags.noAgentsMd,
-			provider,
-			permissionMode,
-			addDirs,
-			maxTurns,
-			outputSchema,
-			maxToolRepetitions,
-			worktree,
-		};
-	return {
-		command: "tui",
-		prompt,
-		verbose,
-		jsonMode,
-		noSession,
-		sessionFile: resolvedSessionFile,
-		tools,
-		appendSystemPromptPath,
-		plan,
-		noSplit,
-		goal,
-		outputFormat,
-		model: subagentFlags.model,
-		effort: subagentFlags.effort,
-		mcpServers: subagentFlags.mcpServers,
-		noAgentsMd: subagentFlags.noAgentsMd,
-		provider,
-		permissionMode,
-		addDirs,
-		maxTurns,
-		outputSchema,
-		maxToolRepetitions,
-		worktree,
-	};
+        // Milestone 2.1 + 2.2 — strip the four new subagent-routing flags out
+        // first so the main loop does not treat their values as prompt text.
+        // The pure helper parseSubagentFlags (in subagent-routing.ts) is the
+        // canonical parser for these flags; it is hermetically testable.
+        const subagentFlags = parseSubagentFlags(argv);
+        const argvRest = subagentFlags.rest;
+        const rest: string[] = [];
+        let print = false;
+        let verbose = false;
+        let jsonMode = false;
+        let noSession = false;
+        let sessionFile: string | undefined;
+        let tools: string[] | undefined;
+        let appendSystemPromptPath: string | undefined;
+        let plan = false;
+        let noSplit = false;
+        let goal: string | undefined;
+        let outputFormat: "text" | "json" | undefined;
+        let provider: string | undefined;
+        let permissionMode: "default" | "acceptEdits" | "bypassPermissions" | undefined;
+        let addDirs: string[] | undefined;
+        let continueLatest = false;
+        let resumeQuery: string | undefined;
+        let resumePicker = false;
+        /** rest.length when the `--` escape fired: the unknown-flag guard scans
+         *  only the tokens before it (everything after `--` is prompt text). */
+        let escapeMark = -1;
+        let maxTurns: number | undefined;
+        let maxToolRepetitions: number | undefined;
+        let worktree: string | true | undefined;
+        let outputSchema: string | undefined;
+        for (let i = 0; i < argvRest.length; i++) {
+                const a = argvRest[i];
+                if (a === "--help" || a === "-h")
+                        return { command: "help", verbose, jsonMode, noSession, plan, noSplit, goal, outputFormat };
+                if (a === "--print" || a === "-p") {
+                        print = true;
+                        continue;
+                }
+                if (a === "--verbose" || a === "-v") {
+                        verbose = true;
+                        continue;
+                }
+                if (a === "--mode") {
+                        const next = argvRest[i + 1];
+                        if (next === "json") jsonMode = true;
+                        else if (next !== "text") rest.push(a); // unknown mode value: treat as prompt text
+                        i++;
+                        continue;
+                }
+                if (a === "--no-session") {
+                        noSession = true;
+                        continue;
+                }
+                if (a === "--session") {
+                        // Fleet lane: an explicit session FILE to continue
+                        // (pi-interactive-subagents' resume substrate).
+                        const next = argvRest[i + 1];
+                        if (next !== undefined && !next.startsWith("-")) {
+                                sessionFile = next;
+                                i++;
+                        }
+                        continue;
+                }
+                if (a === "--output-format") {
+                        const next = argvRest[i + 1];
+                        if (next === "json" || next === "text") {
+                                outputFormat = next;
+                                i++;
+                        } else if (next === "stream-json") {
+                                // The muscle-memory lane (2026-10-25 completion round): Claude
+                                // Code / Gemini / Cursor all spell their NDJSON event stream
+                                // "--output-format stream-json" — unown's stream already exists
+                                // as --mode json (pi's JSONL events); this alias maps onto it so
+                                // scripts written against those CLIs work verbatim. The conflict
+                                // guards downstream key on jsonMode, which is what this sets.
+                                jsonMode = true;
+                                i++;
+                        } else {
+                                console.error("unown: --output-format expects json, text or stream-json");
+                                process.exit(2);
+                        }
+                        continue;
+                }
+                if (a === "--plan") {
+                        plan = true;
+                        continue;
+                }
+                if (a === "--no-split") {
+                        noSplit = true;
+                        continue;
+                }
+                if (a === "--goal") {
+                        const next = argvRest[i + 1];
+                        if (next !== undefined && !next.startsWith("--")) {
+                                goal = next;
+                                i++;
+                        }
+                        continue;
+                }
+                if (a === "--tools") {
+                        const next = argvRest[i + 1];
+                        if (next !== undefined) {
+                                tools = next
+                                        .split(",")
+                                        .map((t) => t.trim())
+                                        .filter(Boolean);
+                                i++;
+                        }
+                        continue;
+                }
+                if (a === "--append-system-prompt") {
+                        const next = argvRest[i + 1];
+                        if (next !== undefined) {
+                                appendSystemPromptPath = next;
+                                i++;
+                        }
+                        continue;
+                }
+                if (a === "--provider") {
+                        const next = argvRest[i + 1];
+                        if (next !== undefined && !next.startsWith("--")) {
+                                provider = next;
+                                i++;
+                        }
+                        continue;
+                }
+                if (a === "--permission-mode") {
+                        const next = argvRest[i + 1];
+                        if (next === "default" || next === "acceptEdits" || next === "bypassPermissions") {
+                                permissionMode = next;
+                                i++;
+                        } else {
+                                console.error("unown: --permission-mode expects default, acceptEdits or bypassPermissions");
+                                process.exit(2);
+                        }
+                        continue;
+                }
+                if (a === "--add-dir") {
+                        const next = argvRest[i + 1];
+                        if (next !== undefined && !next.startsWith("--")) {
+                                addDirs = [...(addDirs ?? []), next];
+                                i++;
+                        } else {
+                                console.error("unown: --add-dir expects a directory path");
+                                process.exit(2);
+                        }
+                        continue;
+                }
+                if (a === "--continue" || a === "-c") {
+                        continueLatest = true;
+                        continue;
+                }
+                if (a === "--resume" || a === "-r") {
+                        const next = argvRest[i + 1];
+                        // Flag-adjacency rule (the --worktree convention): ANY
+                        // dash-prefixed token is the next flag, never a query
+                        // value — `--resume -p "hello"` opens the picker in print
+                        // mode (which then refuses it with exit 2 off-TTY), not a
+                        // session named "-p" (the 2026-10-25 fix: only "--"
+                        // was excluded, so every single-dash flag was silently
+                        // swallowed as the query).
+                        if (next !== undefined && !next.startsWith("-")) {
+                                resumeQuery = next;
+                                i++;
+                        } else {
+                                // Bare picker lane (2026-10-25 completion round):
+                                // `unown --resume` with no query opens the
+                                // interactive selector at launch — Claude Code
+                                // `claude --resume`, Codex `codex resume`, Gemini
+                                // /resume parity. resolveLaunchSession renders
+                                // it (TTY-gated: pipes get the usage error).
+                                resumePicker = true;
+                        }
+                        continue;
+                }
+                if (a === "--worktree" || a === "-w") {
+                        // Optional value: a following non-flag token is the
+                        // tree's name (Claude's --worktree [name] grammar).
+                        const next = argvRest[i + 1];
+                        worktree = next !== undefined && !next.startsWith("-") ? next : true;
+                        if (worktree !== true) i++;
+                        continue;
+                }
+                if (a === "--max-turns") {
+                        const next = argvRest[i + 1];
+                        const parsed =
+                                next !== undefined && !next.startsWith("--")
+                                        ? parseMaxTurns(next)
+                                        : { ok: false as const, error: "--max-turns expects a positive integer" };
+                        if (!parsed.ok) {
+                                console.error(`unown: ${parsed.error}`);
+                                process.exit(2);
+                        }
+                        maxTurns = parsed.value;
+                        i++;
+                        continue;
+                }
+                if (a === "--max-tool-repetitions") {
+                        const next = argvRest[i + 1];
+                        const parsed =
+                                next !== undefined && !next.startsWith("--")
+                                        ? parseMaxToolRepetitions(next)
+                                        : { ok: false as const, error: "--max-tool-repetitions expects a positive integer" };
+                        if (!parsed.ok) {
+                                console.error(`unown: ${parsed.error}`);
+                                process.exit(2);
+                        }
+                        maxToolRepetitions = parsed.value;
+                        i++;
+                        continue;
+                }
+                if (a === "--output-schema") {
+                        const next = argvRest[i + 1];
+                        if (next !== undefined && !next.startsWith("--")) {
+                                outputSchema = next;
+                                i++;
+                        } else {
+                                console.error("unown: --output-schema expects a JSON Schema file path");
+                                process.exit(2);
+                        }
+                        continue;
+                }
+                // The `--` escape (2026-10-25 completion round): every token after a
+                // bare `--` joins the prompt verbatim — the standard end-of-options
+                // marker, so a prompt that itself begins with a dash stays spellable.
+                if (a === "--") {
+                        if (escapeMark === -1) escapeMark = rest.length;
+                        for (let j = i + 1; j < argvRest.length; j++) rest.push(argvRest[j]);
+                        i = argvRest.length;
+                        continue;
+                }
+                rest.push(a);
+        }
+        // Unknown-flag guard (2026-10-25): an unrecognized dash-token used to
+        // fall into `rest` and ride the prompt to the model as literal text
+        // (measured: `unown --thinking high` sent the words "--thinking high" to
+        // the LLM) — the same silent misroute the bare-typo guard exists to
+        // refuse. Exit 2 with the flag named; `--help` is one keystroke away.
+        {
+                const scan = escapeMark === -1 ? rest : rest.slice(0, escapeMark);
+                const unknown = [...new Set(scan.filter((t) => t.startsWith("-")))];
+                if (unknown.length > 0) {
+                        console.error(
+                                `unown: unknown flag${unknown.length === 1 ? "" : "s"} ${unknown.join(", ")} — see \`unown --help\` for the accepted surface (a prompt starting with a dash: quote it, or use the \`--\` end-of-options marker)`,
+                        );
+                        process.exit(2);
+                }
+        }
+        const first = rest[0];
+        if (first === "init" || first === "memory" || first === "doctor" || first === "note") {
+                const prompt = rest.slice(1).join(" ");
+                return { command: first, prompt, verbose, jsonMode, noSession, plan, noSplit, outputFormat };
+        }
+        const prompt = rest.join(" ");
+        // The flow-round launch lane (2026-10-24): -c/--continue and
+        // --resume <query> resolve to an exact session FILE before the boot —
+        // mutually exclusive with --session (which is already exact) and with
+        // each other. parseArgs owns the grammar + conflict checks; the
+        // resolution itself happens in cmdPrint/cmdTui (needs the real cwd
+        // + agent dir), so the sentinel values carry the intent there.
+        if ((continueLatest || resumeQuery || resumePicker) && sessionFile) {
+                console.error(
+                        "unown: --session cannot be combined with --continue/--resume (both pick the session file themselves)",
+                );
+                process.exit(2);
+        }
+        if (continueLatest && (resumeQuery || resumePicker)) {
+                console.error("unown: --continue and --resume are mutually exclusive (latest-in-cwd vs id/name/file)");
+                process.exit(2);
+        }
+        const resolvedSessionFile = continueLatest
+                ? "__continue__"
+                : resumeQuery
+                        ? `__resume__:${resumeQuery}`
+                        : resumePicker
+                                ? "__resume_picker__"
+                                : sessionFile;
+        // Milestone 2.1 + 2.2 — surface the parsed routing fields (set by
+        // parseSubagentFlags above) on every exit path so bootRuntime's
+        // applySubagentEnvOverrides honors --model / --effort /
+        // --mcp-servers / --no-agents-md (and the task tool's subagent
+        // spawns inherit the same contract).
+        //
+        // Non-TTY stdio forces print mode (same behaviour as pi itself).
+        if (print || !process.stdin.isTTY || !process.stdout.isTTY)
+                return {
+                        command: "print",
+                        prompt,
+                        verbose,
+                        jsonMode,
+                        noSession,
+                        sessionFile: resolvedSessionFile,
+                        tools,
+                        appendSystemPromptPath,
+                        plan,
+                        noSplit,
+                        goal,
+                        outputFormat,
+                        model: subagentFlags.model,
+                        effort: subagentFlags.effort,
+                        mcpServers: subagentFlags.mcpServers,
+                        noAgentsMd: subagentFlags.noAgentsMd,
+                        provider,
+                        permissionMode,
+                        addDirs,
+                        maxTurns,
+                        outputSchema,
+                        maxToolRepetitions,
+                        worktree,
+                };
+        return {
+                command: "tui",
+                prompt,
+                verbose,
+                jsonMode,
+                noSession,
+                sessionFile: resolvedSessionFile,
+                tools,
+                appendSystemPromptPath,
+                plan,
+                noSplit,
+                goal,
+                outputFormat,
+                model: subagentFlags.model,
+                effort: subagentFlags.effort,
+                mcpServers: subagentFlags.mcpServers,
+                noAgentsMd: subagentFlags.noAgentsMd,
+                provider,
+                permissionMode,
+                addDirs,
+                maxTurns,
+                outputSchema,
+                maxToolRepetitions,
+                worktree,
+        };
 }
 
 // ---------------------------------------------------------------------------
 // Agent boot (shared by TUI, print mode and the ACP server)
 // ---------------------------------------------------------------------------
 interface BootOptions {
-	jsonMode?: boolean;
-	noSession?: boolean;
-	tools?: string[];
-	appendSystemPromptPath?: string;
-	plan?: boolean;
-	goal?: string;
-	/** --no-split: seed the split-view extension's flag so the session starts bare. */
-	noSplit?: boolean;
-	extraExtensions?: Array<{ name: string; hidden: boolean; factory: (pi: any) => void | Promise<void> }>;
-	/** Pre-opened session manager (ACP session/load resumes a persisted
-	 * session instead of creating a fresh one). */
-	sessionManager?: SessionManager;
-	/** Fleet lane (pi-interactive-subagents port): an explicit session
-	 *  FILE to open — the resume substrate for async subagents. */
-	sessionFile?: string;
-	// Milestone 2.1 + 2.2 — per-subagent routing fields. Set by parseArgs
-	// (from the new --model / --effort / --mcp-servers / --no-agents-md
-	// flags); consumed by bootRuntime to set PI_MODEL_ID /
-	// BRIDGE_QWEN_THINKING / UNOWN_MCP_SERVERS / UNOWN_NO_AGENTS_MD before
-	// the session starts. Undefined values leave the inherited env alone
-	// (legacy behavior).
-	model?: string;
-	effort?: SubagentEffort;
-	mcpServers?: string[];
-	noAgentsMd?: boolean;
-	/** --provider pin (M3): resolved against the multi-provider registry
-	 * together with --model by resolveCliModel. */
-	provider?: string;
-	/** The TUI lane's positional prompt (becomes InteractiveMode's
-	 * initialMessage). Onboarding 2.1 "First flights": an immediate
-	 * first message must suppress the startup catalog — the user already
-	 * told us what they want to do. */
-	initialMessage?: string;
-	/** --permission-mode (2026-10-24 trust round): session-scoped mode
-	 *  override applied to the shared permissions gate at boot. */
-	permissionMode?: "default" | "acceptEdits" | "bypassPermissions";
-	/** --add-dir (repeatable; 2026-10-24 trust round): additional working
-	 *  directories granted to the session (the write-jail extension). */
-	addDirs?: string[];
+        jsonMode?: boolean;
+        noSession?: boolean;
+        tools?: string[];
+        appendSystemPromptPath?: string;
+        plan?: boolean;
+        goal?: string;
+        /** --no-split: seed the split-view extension's flag so the session starts bare. */
+        noSplit?: boolean;
+        extraExtensions?: Array<{ name: string; hidden: boolean; factory: (pi: any) => void | Promise<void> }>;
+        /** Pre-opened session manager (ACP session/load resumes a persisted
+         * session instead of creating a fresh one). */
+        sessionManager?: SessionManager;
+        /** Fleet lane (pi-interactive-subagents port): an explicit session
+         *  FILE to open — the resume substrate for async subagents. */
+        sessionFile?: string;
+        // Milestone 2.1 + 2.2 — per-subagent routing fields. Set by parseArgs
+        // (from the new --model / --effort / --mcp-servers / --no-agents-md
+        // flags); consumed by bootRuntime to set PI_MODEL_ID /
+        // BRIDGE_QWEN_THINKING / UNOWN_MCP_SERVERS / UNOWN_NO_AGENTS_MD before
+        // the session starts. Undefined values leave the inherited env alone
+        // (legacy behavior).
+        model?: string;
+        effort?: SubagentEffort;
+        mcpServers?: string[];
+        noAgentsMd?: boolean;
+        /** --provider pin (M3): resolved against the multi-provider registry
+         * together with --model by resolveCliModel. */
+        provider?: string;
+        /** The TUI lane's positional prompt (becomes InteractiveMode's
+         * initialMessage). Onboarding 2.1 "First flights": an immediate
+         * first message must suppress the startup catalog — the user already
+         * told us what they want to do. */
+        initialMessage?: string;
+        /** --permission-mode (2026-10-24 trust round): session-scoped mode
+         *  override applied to the shared permissions gate at boot. */
+        permissionMode?: "default" | "acceptEdits" | "bypassPermissions";
+        /** --add-dir (repeatable; 2026-10-24 trust round): additional working
+         *  directories granted to the session (the write-jail extension). */
+        addDirs?: string[];
 }
 
 /**
@@ -908,29 +922,29 @@ interface BootOptions {
  * the reply length — for now only the env var is set.
  */
 function applySubagentEnvOverrides(opts: BootOptions): void {
-	if (opts.model) {
-		// term.ts:writeModelsJson reads PI_MODEL_ID at call time (inside
-		// ensureUnownAgentDirInfo, called by bootRuntime) — so setting it
-		// here propagates to the spawned session's models.json + bridge.
-		process.env.PI_MODEL_ID = opts.model;
-	}
-	if (opts.effort) {
-		// applyEffortToEnv returns the BRIDGE_QWEN_THINKING mapping; merge
-		// it into process.env (the bridge reads it lazily per request).
-		const effortEnv = applyEffortToEnv(opts.effort);
-		for (const [k, v] of Object.entries(effortEnv)) process.env[k] = v;
-	}
-	if (opts.mcpServers !== undefined) {
-		// Even an empty array is meaningful: empty CSV = "load no MCP
-		// servers" (the background-explore shape). mcp.ts:getManager reads
-		// UNOWN_MCP_SERVERS and filters the merged config accordingly.
-		process.env[SUBAGENT_MCP_SERVERS_ENV] = opts.mcpServers.join(",");
-	}
-	if (opts.noAgentsMd) {
-		// Read by the agentsFilesOverride callback in bootRuntime to skip
-		// the per-tier memory files (AGENTS.md injection).
-		process.env[SUBAGENT_NO_AGENTS_MD_ENV] = "1";
-	}
+        if (opts.model) {
+                // term.ts:writeModelsJson reads PI_MODEL_ID at call time (inside
+                // ensureUnownAgentDirInfo, called by bootRuntime) — so setting it
+                // here propagates to the spawned session's models.json + bridge.
+                process.env.PI_MODEL_ID = opts.model;
+        }
+        if (opts.effort) {
+                // applyEffortToEnv returns the BRIDGE_QWEN_THINKING mapping; merge
+                // it into process.env (the bridge reads it lazily per request).
+                const effortEnv = applyEffortToEnv(opts.effort);
+                for (const [k, v] of Object.entries(effortEnv)) process.env[k] = v;
+        }
+        if (opts.mcpServers !== undefined) {
+                // Even an empty array is meaningful: empty CSV = "load no MCP
+                // servers" (the background-explore shape). mcp.ts:getManager reads
+                // UNOWN_MCP_SERVERS and filters the merged config accordingly.
+                process.env[SUBAGENT_MCP_SERVERS_ENV] = opts.mcpServers.join(",");
+        }
+        if (opts.noAgentsMd) {
+                // Read by the agentsFilesOverride callback in bootRuntime to skip
+                // the per-tier memory files (AGENTS.md injection).
+                process.env[SUBAGENT_NO_AGENTS_MD_ENV] = "1";
+        }
 }
 
 /**
@@ -948,13 +962,13 @@ function applySubagentEnvOverrides(opts: BootOptions): void {
  *  project lane unions the user store with `<cwd>/.unown/sessions` imports
  *  — the same both-stores rule the rest of the resume lane obeys). */
 function mergeSessionInfos(lists: SessionInfo[][]): SessionInfo[] {
-	const byPath = new Map<string, SessionInfo>();
-	for (const list of lists) {
-		for (const s of list) {
-			if (!byPath.has(s.path)) byPath.set(s.path, s);
-		}
-	}
-	return [...byPath.values()].sort((a, b) => b.modified.getTime() - a.modified.getTime());
+        const byPath = new Map<string, SessionInfo>();
+        for (const list of lists) {
+                for (const s of list) {
+                        if (!byPath.has(s.path)) byPath.set(s.path, s);
+                }
+        }
+        return [...byPath.values()].sort((a, b) => b.modified.getTime() - a.modified.getTime());
 }
 
 /** The launch-time picker (bare `unown --resume`): pi's own selector driven
@@ -964,436 +978,512 @@ function mergeSessionInfos(lists: SessionInfo[][]): SessionInfo[] {
  *  picked session FILE, or exits 0 on cancel (Claude Code's "No session
  *  selected" contract). TTY-gated by the caller. */
 async function pickSessionInteractive(cwd: string): Promise<string> {
-	const agentDir = await ensureUnownAgentDirAsync();
-	process.env.PI_CODING_AGENT_DIR = agentDir;
-	const userSessionDir = join(UNOWN_AGENT_DIR, "sessions");
-	const importDir = join(cwd, ".unown", "sessions");
-	const current = async (onProgress?: (loaded: number, total: number) => void) =>
-		mergeSessionInfos([
-			await SessionManager.list(cwd, userSessionDir, onProgress),
-			await SessionManager.list(cwd, importDir, onProgress),
-		]);
-	const all = async (onProgress?: (loaded: number, total: number) => void) =>
-		mergeSessionInfos([
-			await SessionManager.listAll(userSessionDir, onProgress),
-			await SessionManager.list(cwd, importDir, onProgress),
-		]);
-	const settingsManager = SettingsManager.create(cwd, agentDir);
-	const picked = await selectSession(current, all, settingsManager);
-	if (!picked) {
-		console.error("unown: no session selected");
-		process.exit(0);
-	}
-	return picked;
+        const agentDir = await ensureUnownAgentDirAsync();
+        process.env.PI_CODING_AGENT_DIR = agentDir;
+        const userSessionDir = join(UNOWN_AGENT_DIR, "sessions");
+        const importDir = join(cwd, ".unown", "sessions");
+        const current = async (onProgress?: (loaded: number, total: number) => void) =>
+                mergeSessionInfos([
+                        await SessionManager.list(cwd, userSessionDir, onProgress),
+                        await SessionManager.list(cwd, importDir, onProgress),
+                ]);
+        const all = async (onProgress?: (loaded: number, total: number) => void) =>
+                mergeSessionInfos([
+                        await SessionManager.listAll(userSessionDir, onProgress),
+                        await SessionManager.list(cwd, importDir, onProgress),
+                ]);
+        const settingsManager = SettingsManager.create(cwd, agentDir);
+        const picked = await selectSession(current, all, settingsManager);
+        if (!picked) {
+                console.error("unown: no session selected");
+                process.exit(0);
+        }
+        return picked;
 }
 
 async function resolveLaunchSession(sessionFile: string | undefined, cwd: string): Promise<string | undefined> {
-	if (!sessionFile) return undefined;
-	if (sessionFile === "__resume_picker__") {
-		if (!process.stdout.isTTY || !process.stdin.isTTY) {
-			console.error(
-				"unown: the --resume picker is interactive — pass a session id, name or file path (--resume <query>), or use -c for this directory's latest",
-			);
-			process.exit(2);
-		}
-		const picked = await pickSessionInteractive(cwd);
-		console.error(`unown: resumed from the picker — ${basename(picked)}`);
-		return picked;
-	}
-	if (sessionFile === "__continue__") {
-		const res = latestSessionForCwd(cwd, UNOWN_AGENT_DIR);
-		if (!res.ok) {
-			console.error(`unown: ${res.error}`);
-			process.exit(1);
-		}
-		console.error(`unown: ${describeResume(res)}`);
-		return res.file;
-	}
-	if (sessionFile.startsWith("__resume__:")) {
-		const query = sessionFile.slice("__resume__:".length);
-		const res = resolveResumeQuery(cwd, UNOWN_AGENT_DIR, query);
-		if (!res.ok) {
-			console.error(`unown: ${res.error}`);
-			for (const c of res.candidates ?? []) {
-				console.error(`  ${c.id}${c.name ? ` - ${c.name}` : ""}`);
-			}
-			process.exit(1);
-		}
-		console.error(`unown: ${describeResume(res)}`);
-		return res.file;
-	}
-	return sessionFile;
+        if (!sessionFile) return undefined;
+        if (sessionFile === "__resume_picker__") {
+                if (!process.stdout.isTTY || !process.stdin.isTTY) {
+                        console.error(
+                                "unown: the --resume picker is interactive — pass a session id, name or file path (--resume <query>), or use -c for this directory's latest",
+                        );
+                        process.exit(2);
+                }
+                const picked = await pickSessionInteractive(cwd);
+                console.error(`unown: resumed from the picker — ${basename(picked)}`);
+                return picked;
+        }
+        if (sessionFile === "__continue__") {
+                const res = latestSessionForCwd(cwd, UNOWN_AGENT_DIR);
+                if (!res.ok) {
+                        console.error(`unown: ${res.error}`);
+                        process.exit(1);
+                }
+                console.error(`unown: ${describeResume(res)}`);
+                return res.file;
+        }
+        if (sessionFile.startsWith("__resume__:")) {
+                const query = sessionFile.slice("__resume__:".length);
+                const res = resolveResumeQuery(cwd, UNOWN_AGENT_DIR, query);
+                if (!res.ok) {
+                        console.error(`unown: ${res.error}`);
+                        for (const c of res.candidates ?? []) {
+                                console.error(`  ${c.id}${c.name ? ` - ${c.name}` : ""}`);
+                        }
+                        process.exit(1);
+                }
+                console.error(`unown: ${describeResume(res)}`);
+                return res.file;
+        }
+        return sessionFile;
 }
 
 async function bootRuntime(cwd: string, verbose: boolean, bootOpts: BootOptions = {}) {
-	// The flow round (2026-10-24): the trust-gated project settings layer
-	// (.unown/settings.json — Claude Code's committed .claude/settings.json
-	// parity) merges UNDER the CLI flags before anything consumes them:
-	// precedence CLI > project > user defaults. An untrusted file's keys
-	// are ignored with one boot notice (stderr — print-mode stdout stays
-	// a clean contract).
-	{
-		const ps = loadProjectSettings(cwd, { env: process.env });
-		if (ps.found && ps.ignored) {
-			console.error(
-				`unown: ${ps.warnings.find((w) => w.includes("UNTRUSTED")) ?? "project .unown/settings.json is untrusted — ignored"}`,
-			);
-		}
-		if (ps.found && ps.trusted) {
-			for (const w of ps.warnings) console.error(`unown: ${w}`);
-		}
-		if (ps.trusted && Object.keys(ps.settings).length > 0) {
-			bootOpts = {
-				...bootOpts,
-				model: bootOpts.model ?? ps.settings.model,
-				provider: bootOpts.provider ?? ps.settings.provider,
-				effort: bootOpts.effort ?? ps.settings.effort,
-				permissionMode: bootOpts.permissionMode ?? ps.settings.permissionMode,
-				addDirs: bootOpts.addDirs ?? ps.settings.addDirs,
-			};
-			if (verbose) {
-				console.error(
-					`[unown] project settings: ${Object.entries(ps.settings)
-						.map(([k, v]) => `${k}=${Array.isArray(v) ? v.join(",") : v}`)
-						.join(" ")}`,
-				);
-			}
-		}
-	}
-	// Milestone 2.1 + 2.2 — apply the per-subagent routing overrides to
-	// process.env BEFORE the session is created, so term.ts:writeModelsJson
-	// (reads PI_MODEL_ID), the bridge (reads BRIDGE_QWEN_THINKING), the
-	// MCP extension (reads UNOWN_MCP_SERVERS) and the agentsFilesOverride
-	// callback (reads UNOWN_NO_AGENTS_MD) all observe the routed values.
-	applySubagentEnvOverrides(bootOpts);
-	// LR-2 (2026-10-27 long-run round): terminal mid-exchange auto-compact.
-	// pi checks compaction only at agent_end / pre-prompt, so a long
-	// single-prompt tool exchange never compacts mid-run (measured live:
-	// stop=length at ~80 output tokens, then a 1-token empty completion,
-	// then the run dies as an upstream-empty error — the claude-code#105086
-	// family). The engine lane has shipped its own turn_end curve since
-	// M3.7; this is the terminal twin, on the same curve + env knobs
-	// (terminal-auto-compact.ts). Attached HERE so every terminal session
-	// shape gets it (TUI, print mode, subagent children); engine runs boot
-	// through createAgentSessionFromServices and never pass bootRuntime,
-	// so there is no double-wiring. Kill switch: UNOWN_TERMINAL_AUTO_COMPACT=0.
-	const terminalAutoCompact = createTerminalAutoCompactExtension();
-	bootOpts = {
-		...bootOpts,
-		extraExtensions: [...((bootOpts.extraExtensions ?? []) as any[]), terminalAutoCompact.extension as any],
-	};
-	// Async variant: on a FIRST run the bridge /health is probed before
-	// models.json is seeded, so the default model is the bridge's own
-	// route default instead of any hard-coded fallback that can 404 on
-	// the configured upstream (audit M4-a D1).
-	const agentDir = await ensureUnownAgentDirAsync();
-	// M3: point pi's own agent-dir resolution at unown's dir. The session
-	// gets agentDir passed explicitly, but pi code that calls getAgentDir()/
-	// getAuthPath()/getSettingsPath() DIRECTLY (the /login status line,
-	// AuthStorage defaults) resolved ~/.pi/agent — the wrong dir under
-	// unown, producing messages (and, for /login, key writes) that point
-	// at a config location unown never reads back. PI_CODING_AGENT_DIR is
-	// pi's sanctioned override (config.ts:504); project-level .pi/ paths
-	// are cwd-based and unaffected.
-	process.env.PI_CODING_AGENT_DIR = agentDir;
-	// Last-resort child hygiene (child-reaper.ts): LSP/MCP server children get
-	// SIGTERM→SIGKILL on process exit and SIGINT/SIGTERM — idempotent, so every
-	// bootRuntime call (TUI, print, subagents) re-installs it harmlessly.
-	installChildReaper();
-	// Round 4 (2026-10-26) — sync-lane subagent heartbeat (fleet-reaper.ts):
-	// a sync child spawned by runSubagentOnce carries UNOWN_SYNC_HEARTBEAT (the
-	// <id>.hb.json path beside the lifecycle journal); beating ~1x/s gives the
-	// crash sweep the same fresh + self-reported identity fleet children get
-	// from their control poller. Self-gating: a no-op (zero cost) for every
-	// other boot — ordinary sessions and fleet children never carry the env.
-	startSyncSubagentHeartbeat();
-	// Round 3 (2026-10-26, widened in round 4) — subagent crash sweep
-	// (fleet-reaper.ts): children of BOTH lanes whose parent died without a
-	// terminal record leave journal entries open; reap the live
-	// (heartbeat-verified) ones, trace the dead ones, clean the rotting
-	// control/ask channels and orphan heartbeat files, and mark adopted
-	// worktrees orphaned. No-op without a journal (the common boot), never
-	// runs inside subagents, kill-switch UNOWN_FLEET_REAPER=0 (gates both
-	// lanes), and never throws — a corrupt journal must not cost anyone a
-	// boot.
-	try {
-		sweepStaleSubagentChildren(cwd, {
-			log: (message: string) => console.error(`[unown] ${message}`),
-		});
-	} catch {
-		/* best effort */
-	}
-	const checkpointsExtension = createCheckpointsExtension({ cwd, verbose });
-	const mcpExtension = createMcpExtension({ cwd, verbose });
-	// One permission gate shared by the terminal hook seam (tool_call)
-	// and the /permissions command, so session-scoped always-allow rules
-	// and trust notices span both surfaces (docs/permissions.md).
-	const permissionsGate = createPermissionGate({ cwd, strict: STRICT_HOOKS, verbose });
-	const extension = createTerminalExtension({
-		cwd,
-		engineUrl: ENGINE_URL,
-		strict: STRICT_HOOKS,
-		verbose,
-		permissions: permissionsGate,
-	});
-	const permissionsExtension = createPermissionsExtension({
-		cwd,
-		verbose,
-		gate: permissionsGate,
-		initialMode: bootOpts.permissionMode,
-		initialAddDirs: bootOpts.addDirs,
-	});
-	// The flow round (2026-10-24): the project-settings status/trust command.
-	const projectSettingsExtension = createProjectSettingsExtension({ cwd, verbose });
-	// Split-view TUI display mode (thinking/tool band, files dock, response-only): a built-in
-	// port of pi-split-view, persisted via <agentDir>/ui-panels.json (/split-save).
-	const splitviewExtension = createSplitViewExtension({ agentDir, verbose });
-	const toolsExtension = createUnownToolsExtension({
-		cwd,
-		engineUrl: ENGINE_URL,
-		// The /status card's live inputs (2026-10-25 completion round): the
-		// shared permission gate's status + the live --add-dir / /add-dir count.
-		permissionsStatus: () => (typeof permissionsGate.status === "function" ? permissionsGate.status() : undefined),
-		addDirs: () => sessionWriteRoots().length,
-		verbose,
-	});
-	// The TUI addons (ask_user_question, todo, advisor + /addons): bundled
-	// inline extensions with their own user config (~/.unown/agent/addons.json).
-	// ask_user_question + todo register in subagent sessions too (the
-	// questionnaire is stripped from the active tool set when !ctx.hasUI and
-	// a subagent's todo list rides its own session entries); the advisor is
-	// foreground-only — see addons/index.ts.
-	const addonsExtension = createUnownAddonsExtension({ cwd, verbose });
-	// Onboarding 2.1 "First flights": the guided first-task catalog that
-	// replaces the editor slot on a fresh TUI boot (see src/flights.ts).
-	// autoShow is off when the TUI lane carries an initialMessage — that
-	// message is the user's first task and fires the firstTaskAt latch
-	// anyway.
-	const firstFlightsExtension = createFirstFlightsExtension({ cwd, autoShow: !bootOpts.initialMessage });
+        // The flow round (2026-10-24): the trust-gated project settings layer
+        // (.unown/settings.json — Claude Code's committed .claude/settings.json
+        // parity) merges UNDER the CLI flags before anything consumes them:
+        // precedence CLI > project > user defaults. An untrusted file's keys
+        // are ignored with one boot notice (stderr — print-mode stdout stays
+        // a clean contract).
+        {
+                const ps = loadProjectSettings(cwd, { env: process.env });
+                if (ps.found && ps.ignored) {
+                        console.error(
+                                `unown: ${ps.warnings.find((w) => w.includes("UNTRUSTED")) ?? "project .unown/settings.json is untrusted — ignored"}`,
+                        );
+                }
+                if (ps.found && ps.trusted) {
+                        for (const w of ps.warnings) console.error(`unown: ${w}`);
+                }
+                if (ps.trusted && Object.keys(ps.settings).length > 0) {
+                        bootOpts = {
+                                ...bootOpts,
+                                model: bootOpts.model ?? ps.settings.model,
+                                provider: bootOpts.provider ?? ps.settings.provider,
+                                effort: bootOpts.effort ?? ps.settings.effort,
+                                permissionMode: bootOpts.permissionMode ?? ps.settings.permissionMode,
+                                addDirs: bootOpts.addDirs ?? ps.settings.addDirs,
+                        };
+                        if (verbose) {
+                                console.error(
+                                        `[unown] project settings: ${Object.entries(ps.settings)
+                                                .map(([k, v]) => `${k}=${Array.isArray(v) ? v.join(",") : v}`)
+                                                .join(" ")}`,
+                                );
+                        }
+                }
+        }
+        // Milestone 2.1 + 2.2 — apply the per-subagent routing overrides to
+        // process.env BEFORE the session is created, so term.ts:writeModelsJson
+        // (reads PI_MODEL_ID), the bridge (reads BRIDGE_QWEN_THINKING), the
+        // MCP extension (reads UNOWN_MCP_SERVERS) and the agentsFilesOverride
+        // callback (reads UNOWN_NO_AGENTS_MD) all observe the routed values.
+        applySubagentEnvOverrides(bootOpts);
+        // LR-2 (2026-10-27 long-run round): terminal mid-exchange auto-compact.
+        // pi checks compaction only at agent_end / pre-prompt, so a long
+        // single-prompt tool exchange never compacts mid-run (measured live:
+        // stop=length at ~80 output tokens, then a 1-token empty completion,
+        // then the run dies as an upstream-empty error — the claude-code#105086
+        // family). The engine lane has shipped its own turn_end curve since
+        // M3.7; this is the terminal twin, on the same curve + env knobs
+        // (terminal-auto-compact.ts). Attached HERE so every terminal session
+        // shape gets it (TUI, print mode, subagent children); engine runs boot
+        // through createAgentSessionFromServices and never pass bootRuntime,
+        // so there is no double-wiring. Kill switch: UNOWN_TERMINAL_AUTO_COMPACT=0.
+        const terminalAutoCompact = createTerminalAutoCompactExtension();
+        bootOpts = {
+                ...bootOpts,
+                extraExtensions: [...((bootOpts.extraExtensions ?? []) as any[]), terminalAutoCompact.extension as any],
+        };
+        // Async variant: on a FIRST run the bridge /health is probed before
+        // models.json is seeded, so the default model is the bridge's own
+        // route default instead of any hard-coded fallback that can 404 on
+        // the configured upstream (audit M4-a D1).
+        const agentDir = await ensureUnownAgentDirAsync();
+        // M3: point pi's own agent-dir resolution at unown's dir. The session
+        // gets agentDir passed explicitly, but pi code that calls getAgentDir()/
+        // getAuthPath()/getSettingsPath() DIRECTLY (the /login status line,
+        // AuthStorage defaults) resolved ~/.pi/agent — the wrong dir under
+        // unown, producing messages (and, for /login, key writes) that point
+        // at a config location unown never reads back. PI_CODING_AGENT_DIR is
+        // pi's sanctioned override (config.ts:504); project-level .pi/ paths
+        // are cwd-based and unaffected.
+        process.env.PI_CODING_AGENT_DIR = agentDir;
+        // Last-resort child hygiene (child-reaper.ts): LSP/MCP server children get
+        // SIGTERM→SIGKILL on process exit and SIGINT/SIGTERM — idempotent, so every
+        // bootRuntime call (TUI, print, subagents) re-installs it harmlessly.
+        installChildReaper();
+        // Round 4 (2026-10-26) — sync-lane subagent heartbeat (fleet-reaper.ts):
+        // a sync child spawned by runSubagentOnce carries UNOWN_SYNC_HEARTBEAT (the
+        // <id>.hb.json path beside the lifecycle journal); beating ~1x/s gives the
+        // crash sweep the same fresh + self-reported identity fleet children get
+        // from their control poller. Self-gating: a no-op (zero cost) for every
+        // other boot — ordinary sessions and fleet children never carry the env.
+        startSyncSubagentHeartbeat();
+        // Round 3 (2026-10-26, widened in round 4) — subagent crash sweep
+        // (fleet-reaper.ts): children of BOTH lanes whose parent died without a
+        // terminal record leave journal entries open; reap the live
+        // (heartbeat-verified) ones, trace the dead ones, clean the rotting
+        // control/ask channels and orphan heartbeat files, and mark adopted
+        // worktrees orphaned. No-op without a journal (the common boot), never
+        // runs inside subagents, kill-switch UNOWN_FLEET_REAPER=0 (gates both
+        // lanes), and never throws — a corrupt journal must not cost anyone a
+        // boot.
+        try {
+                sweepStaleSubagentChildren(cwd, {
+                        log: (message: string) => console.error(`[unown] ${message}`),
+                });
+        } catch {
+                /* best effort */
+        }
+        const checkpointsExtension = createCheckpointsExtension({ cwd, verbose });
+        const mcpExtension = createMcpExtension({ cwd, verbose });
+        // One permission gate shared by the terminal hook seam (tool_call)
+        // and the /permissions command, so session-scoped always-allow rules
+        // and trust notices span both surfaces (docs/permissions.md).
+        const permissionsGate = createPermissionGate({ cwd, strict: STRICT_HOOKS, verbose });
+        const extension = createTerminalExtension({
+                cwd,
+                engineUrl: ENGINE_URL,
+                strict: STRICT_HOOKS,
+                verbose,
+                permissions: permissionsGate,
+        });
+        const permissionsExtension = createPermissionsExtension({
+                cwd,
+                verbose,
+                gate: permissionsGate,
+                initialMode: bootOpts.permissionMode,
+                initialAddDirs: bootOpts.addDirs,
+        });
+        // The flow round (2026-10-24): the project-settings status/trust command.
+        const projectSettingsExtension = createProjectSettingsExtension({ cwd, verbose });
+        // Split-view TUI display mode (thinking/tool band, files dock, response-only): a built-in
+        // port of pi-split-view, persisted via <agentDir>/ui-panels.json (/split-save).
+        const splitviewExtension = createSplitViewExtension({ agentDir, verbose });
+        const toolsExtension = createUnownToolsExtension({
+                cwd,
+                engineUrl: ENGINE_URL,
+                // The /status card's live inputs (2026-10-25 completion round): the
+                // shared permission gate's status + the live --add-dir / /add-dir count.
+                permissionsStatus: () => (typeof permissionsGate.status === "function" ? permissionsGate.status() : undefined),
+                addDirs: () => sessionWriteRoots().length,
+                verbose,
+        });
+        // The TUI addons (ask_user_question, todo, advisor + /addons): bundled
+        // inline extensions with their own user config (~/.unown/agent/addons.json).
+        // ask_user_question + todo register in subagent sessions too (the
+        // questionnaire is stripped from the active tool set when !ctx.hasUI and
+        // a subagent's todo list rides its own session entries); the advisor is
+        // foreground-only — see addons/index.ts.
+        const addonsExtension = createUnownAddonsExtension({ cwd, verbose });
+        // Onboarding 2.1 "First flights": the guided first-task catalog that
+        // replaces the editor slot on a fresh TUI boot (see src/flights.ts).
+        // autoShow is off when the TUI lane carries an initialMessage — that
+        // message is the user's first task and fires the firstTaskAt latch
+        // anyway.
+        const firstFlightsExtension = createFirstFlightsExtension({ cwd, autoShow: !bootOpts.initialMessage });
 
-	const settingsManager = SettingsManager.create(cwd, agentDir);
+        const settingsManager = SettingsManager.create(cwd, agentDir);
 
-	// Startup mark: a Unown form opens in the header slot for ~1 s, then
-	// hands the header back (src/splash.ts). Created after settingsManager
-	// because a quiet start gets no mark.
-	const splashExtension = createSplashExtension({
-		appName: "unown",
-		version: VERSION,
-		quietStartup: settingsManager.getQuietStartup(),
-	});
+        // Startup mark: a Unown form opens in the header slot for ~1 s, then
+        // hands the header back (src/splash.ts). Created after settingsManager
+        // because a quiet start gets no mark.
+        const splashExtension = createSplashExtension({
+                appName: "unown",
+                version: VERSION,
+                quietStartup: settingsManager.getQuietStartup(),
+        });
 
-	// Verify-first defaults (2026-10): when the user has NOT configured a
-	// default tool set in settings, unown sessions start with pi's base four
-	// PLUS the dedicated search tools (grep/find/ls) when their binaries
-	// answer on PATH — the agent-survey default every major coding agent
-	// ships (Claude Code, Gemini CLI, OpenCode, Cursor, Cline). Passed as
-	// `defaultTools` (NOT `tools`): a default set, not an allowlist —
-	// extension tools still register. An explicit --tools list and a
-	// configured settings defaultTools both win unchanged (sdk.ts order).
-	const unownDefaultTools = defaultSessionTools();
+        // Verify-first defaults (2026-10): when the user has NOT configured a
+        // default tool set in settings, unown sessions start with pi's base four
+        // PLUS the dedicated search tools (grep/find/ls) when their binaries
+        // answer on PATH — the agent-survey default every major coding agent
+        // ships (Claude Code, Gemini CLI, OpenCode, Cursor, Cline). Passed as
+        // `defaultTools` (NOT `tools`): a default set, not an allowlist —
+        // extension tools still register. An explicit --tools list and a
+        // configured settings defaultTools both win unchanged (sdk.ts order).
+        const unownDefaultTools = defaultSessionTools();
 
-	// Per-project unown skills (.unown/skills/) ride alongside pi's own skill dirs.
-	const projectSkillsDir = join(cwd, ".unown", "skills");
-	const additionalSkillPaths = existsSync(projectSkillsDir) ? [projectSkillsDir] : undefined;
+        // Per-project unown skills (.unown/skills/) ride alongside pi's own skill dirs.
+        const projectSkillsDir = join(cwd, ".unown", "skills");
+        const additionalSkillPaths = existsSync(projectSkillsDir) ? [projectSkillsDir] : undefined;
 
-	// Custom slash commands (Claude Code / opencode command port): markdown
-	// files with frontmatter (description, argument-hint) + $ARGUMENTS /
-	// $1..$N substitution, discovered from the project and the agent dir.
-	// pi's prompt-template loader gives us autocomplete, the /commands listing
-	// and the argument grammar for free (same mechanism as .pi/prompts).
-	// Not trust-gated: a command only expands when the user types its name
-	// (user-initiated, like pasting text - the Claude Code .claude/commands
-	// contract); the injection shield still scans anything the command
-	// fetches at runtime.
-	const projectCommandsDir = join(cwd, ".unown", "commands");
-	const userCommandsDir = join(agentDir, "commands");
-	const additionalPromptTemplatePaths = [
-		...(existsSync(projectCommandsDir) ? [projectCommandsDir] : []),
-		...(existsSync(userCommandsDir) ? [userCommandsDir] : []),
-	];
+        // Custom slash commands (Claude Code / opencode command port): markdown
+        // files with frontmatter (description, argument-hint) + $ARGUMENTS /
+        // $1..$N substitution, discovered from the project and the agent dir.
+        // pi's prompt-template loader gives us autocomplete, the /commands listing
+        // and the argument grammar for free (same mechanism as .pi/prompts).
+        // Not trust-gated: a command only expands when the user types its name
+        // (user-initiated, like pasting text - the Claude Code .claude/commands
+        // contract); the injection shield still scans anything the command
+        // fetches at runtime.
+        const projectCommandsDir = join(cwd, ".unown", "commands");
+        const userCommandsDir = join(agentDir, "commands");
+        const additionalPromptTemplatePaths = [
+                ...(existsSync(projectCommandsDir) ? [projectCommandsDir] : []),
+                ...(existsSync(userCommandsDir) ? [userCommandsDir] : []),
+        ];
 
-	const createRuntime: CreateAgentSessionRuntimeFactory = async ({
-		cwd: sessionCwd,
-		sessionManager,
-		sessionStartEvent,
-	}) => {
-		const services = await createAgentSessionServices({
-			cwd: sessionCwd,
-			agentDir,
-			settingsManager,
-			extensionFlagValues:
-				bootOpts.plan || bootOpts.goal || bootOpts.noSplit
-					? new Map<string, boolean | string>([
-							...(bootOpts.plan ? ([["plan", true]] as Array<[string, boolean | string]>) : []),
-							...(bootOpts.goal ? ([["goal", bootOpts.goal]] as Array<[string, boolean | string]>) : []),
-							...(bootOpts.noSplit ? ([["no-split", true]] as Array<[string, boolean | string]>) : []),
-						])
-					: undefined,
-			resourceLoaderOptions: {
-				extensionFactories: [
-					checkpointsExtension as any,
-					extension as any,
-					toolsExtension as any,
-					addonsExtension as any,
-					firstFlightsExtension as any,
-					splashExtension as any,
-					mcpExtension as any,
-					permissionsExtension as any,
-					projectSettingsExtension as any,
-					splitviewExtension as any,
-					// Fleet lane (pi-interactive-subagents port): the
-					// child-side extension — control-inbox steering +
-					// ask_question — injected ONLY when the parent set
-					// UNOWN_FLEET_CONTROL on this spawn.
-					...(fleetChildExtension ? [fleetChildExtension as any] : []),
-					...((bootOpts.extraExtensions ?? []) as any[]),
-				],
-				additionalSkillPaths,
-				additionalPromptTemplatePaths,
-				appendSystemPrompt: bootOpts.appendSystemPromptPath ? [bootOpts.appendSystemPromptPath] : undefined,
-				agentsFilesOverride: (base: any) => {
-					// Milestone 2.2 — skip the per-tier AGENTS.md/memory
-					// injection when UNOWN_NO_AGENTS_MD=1 (e.g. the
-					// background-explore subagent, which wants minimal context
-					// overhead). The base chain (the user's own AGENTS.md /
-					// CLAUDE.md) is still appended.
-					const skipInjection = process.env[SUBAGENT_NO_AGENTS_MD_ENV] === "1";
-					const injected = skipInjection
-						? []
-						: terminalMemoryForAgent(cwd).map((f) => ({ path: f.path, content: f.content }));
-					return {
-						// Supplement (not replace) the user's own AGENTS.md/CLAUDE.md chain.
-						// Re-resolved per session (re)new so AutoDream's concurrent memory
-						// updates become visible without restarting the CLI.
-						agentsFiles: [...base.agentsFiles, ...injected],
-					};
-				},
-			},
-		});
-		const created = await createAgentSessionFromServices({
-			services,
-			sessionManager,
-			sessionStartEvent,
-			tools: bootOpts.tools,
-			defaultTools: unownDefaultTools,
-			// Milestone 2.1 — per-session model routing. writeModelsJson
-			// never clobbers an existing models.json (setup owns it),
-			// so applySubagentEnvOverrides' PI_MODEL_ID write only
-			// matters on a FIRST-RUN seed. The --model flag's real
-			// effect is HERE: resolve the id against the same
-			// resolver pi's own CLI uses and hand the session the
-			// resolved Model. --effort maps 1:1 onto pi's
-			// ThinkingLevel (low/medium/high) on top of the
-			// BRIDGE_QWEN_THINKING env write (applySubagentEnvOverrides).
-			model: (() => {
-				// --provider without --model: pin the provider's default
-				// model (settings defaultModel when it belongs to that
-				// provider, else the provider's first registered model) —
-				// the Cline-dropdown contract. With both flags, the pair
-				// resolves exactly like pi's own CLI.
-				let cliModel = bootOpts.model;
-				if (!cliModel && bootOpts.provider) {
-					const list = listProviders(UNOWN_AGENT_DIR);
-					const p = list.providers.find((x) => x.id.toLowerCase() === bootOpts.provider!.toLowerCase());
-					if (!p) {
-						console.error(
-							`unown: --provider ${bootOpts.provider}: unknown provider — configured: ${
-								list.providers.map((x) => x.id).join(", ") || "(none)"
-							}`,
-						);
-						return undefined;
-					}
-					cliModel = list.defaultProvider === p.id ? list.defaultModel : p.modelIds[0];
-					if (!cliModel) {
-						console.error(`unown: --provider ${bootOpts.provider}: the provider has no models — add one first`);
-						return undefined;
-					}
-				}
-				if (!cliModel) return undefined;
-				const resolved = resolveCliModel({
-					cliModel,
-					cliProvider: bootOpts.provider,
-					modelRuntime: services.modelRuntime,
-				});
-				if (resolved.error) {
-					console.error(
-						`unown: ${[bootOpts.provider && `--provider ${bootOpts.provider}`, bootOpts.model && `--model ${bootOpts.model}`].filter(Boolean).join(" ")}: ${resolved.error}`,
-					);
-					return undefined;
-				}
-				if (resolved.warning) console.error(`unown: ${resolved.warning}`);
-				return resolved.model;
-			})(),
-			thinkingLevel: bootOpts.effort,
-		});
-		return { ...created, services, diagnostics: services.diagnostics };
-	};
+        const createRuntime: CreateAgentSessionRuntimeFactory = async ({
+                cwd: sessionCwd,
+                sessionManager,
+                sessionStartEvent,
+        }) => {
+                const services = await createAgentSessionServices({
+                        cwd: sessionCwd,
+                        agentDir,
+                        settingsManager,
+                        extensionFlagValues:
+                                bootOpts.plan || bootOpts.goal || bootOpts.noSplit
+                                        ? new Map<string, boolean | string>([
+                                                        ...(bootOpts.plan ? ([["plan", true]] as Array<[string, boolean | string]>) : []),
+                                                        ...(bootOpts.goal ? ([["goal", bootOpts.goal]] as Array<[string, boolean | string]>) : []),
+                                                        ...(bootOpts.noSplit ? ([["no-split", true]] as Array<[string, boolean | string]>) : []),
+                                                ])
+                                        : undefined,
+                        resourceLoaderOptions: {
+                                extensionFactories: [
+                                        checkpointsExtension as any,
+                                        extension as any,
+                                        toolsExtension as any,
+                                        addonsExtension as any,
+                                        firstFlightsExtension as any,
+                                        splashExtension as any,
+                                        mcpExtension as any,
+                                        permissionsExtension as any,
+                                        projectSettingsExtension as any,
+                                        splitviewExtension as any,
+                                        // Fleet lane (pi-interactive-subagents port): the
+                                        // child-side extension — control-inbox steering +
+                                        // ask_question — injected ONLY when the parent set
+                                        // UNOWN_FLEET_CONTROL on this spawn.
+                                        ...(fleetChildExtension ? [fleetChildExtension as any] : []),
+                                        ...((bootOpts.extraExtensions ?? []) as any[]),
+                                ],
+                                additionalSkillPaths,
+                                additionalPromptTemplatePaths,
+                                appendSystemPrompt: bootOpts.appendSystemPromptPath ? [bootOpts.appendSystemPromptPath] : undefined,
+                                agentsFilesOverride: (base: any) => {
+                                        // Milestone 2.2 — skip the per-tier AGENTS.md/memory
+                                        // injection when UNOWN_NO_AGENTS_MD=1 (e.g. the
+                                        // background-explore subagent, which wants minimal context
+                                        // overhead). The base chain (the user's own AGENTS.md /
+                                        // CLAUDE.md) is still appended.
+                                        const skipInjection = process.env[SUBAGENT_NO_AGENTS_MD_ENV] === "1";
+                                        const injected = skipInjection
+                                                ? []
+                                                : terminalMemoryForAgent(cwd).map((f) => ({ path: f.path, content: f.content }));
+                                        return {
+                                                // Supplement (not replace) the user's own AGENTS.md/CLAUDE.md chain.
+                                                // Re-resolved per session (re)new so AutoDream's concurrent memory
+                                                // updates become visible without restarting the CLI.
+                                                agentsFiles: [...base.agentsFiles, ...injected],
+                                        };
+                                },
+                        },
+                });
+                const created = await createAgentSessionFromServices({
+                        services,
+                        sessionManager,
+                        sessionStartEvent,
+                        tools: bootOpts.tools,
+                        defaultTools: unownDefaultTools,
+                        // Milestone 2.1 — per-session model routing. writeModelsJson
+                        // never clobbers an existing models.json (setup owns it),
+                        // so applySubagentEnvOverrides' PI_MODEL_ID write only
+                        // matters on a FIRST-RUN seed. The --model flag's real
+                        // effect is HERE: resolve the id against the same
+                        // resolver pi's own CLI uses and hand the session the
+                        // resolved Model. --effort maps 1:1 onto pi's
+                        // ThinkingLevel (low/medium/high) on top of the
+                        // BRIDGE_QWEN_THINKING env write (applySubagentEnvOverrides).
+                        model: (() => {
+                                // --provider without --model: pin the provider's default
+                                // model (settings defaultModel when it belongs to that
+                                // provider, else the provider's first registered model) —
+                                // the Cline-dropdown contract. With both flags, the pair
+                                // resolves exactly like pi's own CLI.
+                                let cliModel = bootOpts.model;
+                                if (!cliModel && bootOpts.provider) {
+                                        const list = listProviders(UNOWN_AGENT_DIR);
+                                        const p = list.providers.find((x) => x.id.toLowerCase() === bootOpts.provider!.toLowerCase());
+                                        if (!p) {
+                                                console.error(
+                                                        `unown: --provider ${bootOpts.provider}: unknown provider — configured: ${
+                                                                list.providers.map((x) => x.id).join(", ") || "(none)"
+                                                        }`,
+                                                );
+                                                return undefined;
+                                        }
+                                        cliModel = list.defaultProvider === p.id ? list.defaultModel : p.modelIds[0];
+                                        if (!cliModel) {
+                                                console.error(`unown: --provider ${bootOpts.provider}: the provider has no models — add one first`);
+                                                return undefined;
+                                        }
+                                }
+                                if (!cliModel) return undefined;
+                                const resolved = resolveCliModel({
+                                        cliModel,
+                                        cliProvider: bootOpts.provider,
+                                        modelRuntime: services.modelRuntime,
+                                });
+                                if (resolved.error) {
+                                        console.error(
+                                                `unown: ${[bootOpts.provider && `--provider ${bootOpts.provider}`, bootOpts.model && `--model ${bootOpts.model}`].filter(Boolean).join(" ")}: ${resolved.error}`,
+                                        );
+                                        return undefined;
+                                }
+                                if (resolved.warning) console.error(`unown: ${resolved.warning}`);
+                                return resolved.model;
+                        })(),
+                        thinkingLevel: bootOpts.effort,
+                });
+                return { ...created, services, diagnostics: services.diagnostics };
+        };
 
-	// Fleet lane (pi-interactive-subagents port): children spawned by the
-	// fleet manager carry UNOWN_FLEET_CONTROL; their session gets the
-	// child-side extension (steer delivery + ask_question). Ordinary
-	// sessions and sync-lane subagents get nothing.
-	const fleetChildExtension = createFleetChildExtension();
+        // Fleet lane (pi-interactive-subagents port): children spawned by the
+        // fleet manager carry UNOWN_FLEET_CONTROL; their session gets the
+        // child-side extension (steer delivery + ask_question). Ordinary
+        // sessions and sync-lane subagents get nothing.
+        const fleetChildExtension = createFleetChildExtension();
 
-	const sessionManager =
-		bootOpts.sessionManager ??
-		(bootOpts.sessionFile
-			? SessionManager.open(bootOpts.sessionFile, join(UNOWN_AGENT_DIR, "sessions"))
-			: bootOpts.noSession
-				? SessionManager.inMemory(cwd)
-				: SessionManager.create(cwd, join(UNOWN_AGENT_DIR, "sessions")));
-	const runtime = await createAgentSessionRuntime(createRuntime, { cwd, agentDir, sessionManager });
-	return { runtime };
+        const sessionManager =
+                bootOpts.sessionManager ??
+                (bootOpts.sessionFile
+                        ? SessionManager.open(bootOpts.sessionFile, join(UNOWN_AGENT_DIR, "sessions"))
+                        : bootOpts.noSession
+                                ? SessionManager.inMemory(cwd)
+                                : SessionManager.create(cwd, join(UNOWN_AGENT_DIR, "sessions")));
+        const runtime = await createAgentSessionRuntime(createRuntime, { cwd, agentDir, sessionManager });
+        return { runtime };
 }
 
 // ---------------------------------------------------------------------------
 // Pre-flight: probe the configured model endpoint before a session starts,
 // so failures come with instructions instead of a raw "Connection error."
+// The model-specs round adds the spec gate on the SAME preflight: the
+// session's model must have verifiable specs (sidecar / hand-edit /
+// detection / one interactive ask) before the first call — a wrong spec is
+// never cosmetic (compaction triggers + the output cap hang off it).
 // ---------------------------------------------------------------------------
 interface PreflightProblem {
-	message: string;
-	hint: string;
+        message: string;
+        hint: string;
+        /** True when the TUI lane must EXIT instead of warn-and-continue
+         *  (the spec gate: an unusable model is unusable; reachability stays
+         *  soft — the stack may come up in another terminal). */
+        fatal?: boolean;
 }
 
-async function runPreflight(pinnedProvider?: string): Promise<PreflightProblem | null> {
-	if (process.env.UNOWN_NO_PREFLIGHT) return null;
-	if (process.env.UNOWN_SUBAGENT) return null; // subagents inherit the parent's validated path
-	const agentDir = await ensureUnownAgentDirAsync();
-	// The CLI pin wins: --provider X / --model provider/model probe THAT
-	// provider's endpoint (the registry's default may be a different one —
-	// probing it would report the wrong outage for this session).
-	const provider = resolveActiveProvider(agentDir, pinnedProvider);
-	if (!provider || !provider.baseUrl) return null; // built-in/unknown endpoint — nothing to probe
-	// resolveProviderKey is the single key source: auth.json > models.json
-	// literal > $ENV resolved at call time. NEVER provider.apiKey directly —
-	// for env-ref providers that field is the literal "$VAR" string, which
-	// would be sent as the bearer token and 401 against the real endpoint.
-	const effectiveKey = resolveProviderKey(agentDir, provider.id).key;
-	// Wire-aware probe: anthropic-messages providers authenticate with
-	// x-api-key — a Bearer probe would false-401 a perfectly good key.
-	const probe = await probeProviderEndpoint(provider.baseUrl, effectiveKey ?? undefined, {
-		timeoutMs: 4000,
-		api: provider.api,
-	});
-	if (probe.ok) return null;
-	if (probe.problem === "auth") {
-		return {
-			message: `the model endpoint rejected the credentials (${provider.baseUrl}, HTTP ${probe.status}).`,
-			hint: "check the API key in ~/.unown/agent/auth.json (or models.json) — or re-run: unown setup",
-		};
-	}
-	if (probe.problem === "rate-limit") {
-		return {
-			message: `the model endpoint is throttling requests (${provider.baseUrl}, HTTP ${probe.status}).`,
-			hint: "this is usually temporary — the endpoint is up and the key passed auth; retry in a moment",
-		};
-	}
-	return {
-		message: `cannot reach the model endpoint at ${provider.baseUrl}.`,
-		hint: isLoopbackProvider(provider)
-			? "start the stack (bun run agent:start in the Unown repo) — or connect a different provider: unown setup"
-			: "check the endpoint URL — or re-run: unown setup",
-	};
+/** The spec half of the preflight. Runs only when the endpoint probe is OK
+ *  (a dead endpoint is the bigger problem and already reported). */
+async function runSpecPreflight(
+        agentDir: string,
+        provider: NonNullable<ReturnType<typeof resolveActiveProvider>>,
+        pinned: string | undefined,
+        effectiveKey: string | undefined,
+        probeModelEntries: unknown[] | undefined,
+        interactive: boolean,
+): Promise<PreflightProblem | null> {
+        // The documented escape hatch (CI / air-gapped installs).
+        if (allowUnverifiedSpecs()) return null;
+        const list = listProviders(agentDir);
+        const modelId = resolveActiveModelId(agentDir, provider, pinned, list.defaultModel);
+        if (!modelId) return null; // nothing to gate (provider without models — the boot reports it)
+        const current = readModelSpecsFromRegistry(agentDir, provider.id, modelId);
+        const gate = await resolveSpecGate(
+                {
+                        providerId: provider.id,
+                        modelId,
+                        baseUrl: provider.baseUrl,
+                        apiKey: effectiveKey,
+                        ...(provider.api ? { api: provider.api } : {}),
+                        ...(current ? { current } : {}),
+                },
+                {
+                        agentDir,
+                        timeoutMs: 2500,
+                        stopWhenComplete: true,
+                        ...(probeModelEntries ? { endpointCatalog: { data: probeModelEntries } } : {}),
+                },
+        );
+        if (gate.status === "verified") {
+                if (gate.healed) {
+                        // Self-heal happened: say where the numbers came from —
+                        // the user should know models.json moved under them.
+                        console.error(`unown: model specs for ${provider.id}/${modelId} verified — ${formatSpecShort(gate.spec)} (models.json updated)`);
+                }
+                return null;
+        }
+        // Unverified: the interactive lane asks ONCE (before the TUI takes the
+        // screen — the same window the first-run gate uses); print mode never
+        // asks (a print session is non-interactive by definition).
+        if (interactive && process.stdin.isTTY && process.stdout.isTTY) {
+                const dialog = createTerminalDialog();
+                dialog.note(
+                        `⚠ no verifiable source for ${modelId}'s specs (tried: the endpoint's own /models, the curated catalog, models.dev, the LiteLLM database).`,
+                );
+                dialog.note("  The context window and max output tokens drive auto-compaction and the reply cap — unown refuses to guess.");
+                const numbers = await askSpecNumbers(dialog, modelId, current);
+                if (numbers) {
+                        const spec = recordUserSpec(agentDir, provider.id, modelId, numbers);
+                        applyModelSpecs(agentDir, provider.id, { [modelId]: { contextWindow: spec.contextWindow!, maxTokens: spec.maxTokens! } });
+                        dialog.note(`  · specs recorded: ${formatSpecShort(spec)}`);
+                        return null;
+                }
+        }
+        return {
+                message: `the model ${provider.id}/${modelId} has no verifiable specs (context window + max output tokens) — it is not usable until they land.`,
+                hint: `re-run setup with the two numbers (unown setup --provider ${provider.id} --model ${modelId} --context-window <N> --max-tokens <K>) or export UNOWN_ALLOW_UNVERIFIED_SPECS=1 to proceed unverified`,
+                fatal: true,
+        };
+}
+
+async function runPreflight(pinnedProvider?: string, opts: { interactive?: boolean } = {}): Promise<PreflightProblem | null> {
+        if (process.env.UNOWN_NO_PREFLIGHT) return null;
+        if (process.env.UNOWN_SUBAGENT) return null; // subagents inherit the parent's validated path
+        const agentDir = await ensureUnownAgentDirAsync();
+        // The CLI pin wins: --provider X / --model provider/model probe THAT
+        // provider's endpoint (the registry's default may be a different one —
+        // probing it would report the wrong outage for this session).
+        const provider = resolveActiveProvider(agentDir, pinnedProvider);
+        if (!provider || !provider.baseUrl) return null; // built-in/unknown endpoint — nothing to probe
+        // resolveProviderKey is the single key source: auth.json > models.json
+        // literal > $ENV resolved at call time. NEVER provider.apiKey directly —
+        // for env-ref providers that field is the literal "$VAR" string, which
+        // would be sent as the bearer token and 401 against the real endpoint.
+        const effectiveKey = resolveProviderKey(agentDir, provider.id).key;
+        // Wire-aware probe: anthropic-messages providers authenticate with
+        // x-api-key — a Bearer probe would false-401 a perfectly good key.
+        const probe = await probeProviderEndpoint(provider.baseUrl, effectiveKey ?? undefined, {
+                timeoutMs: 4000,
+                api: provider.api,
+        });
+        if (!probe.ok) {
+                if (probe.problem === "auth") {
+                        return {
+                                message: `the model endpoint rejected the credentials (${provider.baseUrl}, HTTP ${probe.status}).`,
+                                hint: "check the API key in ~/.unown/agent/auth.json (or models.json) — or re-run: unown setup",
+                        };
+                }
+                if (probe.problem === "rate-limit") {
+                        return {
+                                message: `the model endpoint is throttling requests (${provider.baseUrl}, HTTP ${probe.status}).`,
+                                hint: "this is usually temporary — the endpoint is up and the key passed auth; retry in a moment",
+                        };
+                }
+                return {
+                        message: `cannot reach the model endpoint at ${provider.baseUrl}.`,
+                        hint: isLoopbackProvider(provider)
+                                ? "start the stack (bun run agent:start in the Unown repo) — or connect a different provider: unown setup"
+                                : "check the endpoint URL — or re-run: unown setup",
+                };
+        }
+        // Endpoint healthy → the spec gate (the probe's own /models fetch is
+        // reused; the cascade adds nothing on the hot path once curated hits).
+        return runSpecPreflight(agentDir, provider, pinnedProvider, effectiveKey, probe.modelEntries, opts.interactive === true);
 }
 
 /**
@@ -1403,57 +1493,57 @@ async function runPreflight(pinnedProvider?: string): Promise<PreflightProblem |
  * unit-tested without a TTY.
  */
 export function firstRunGateLines(bridgeUp: boolean): {
-	question: string;
-	declined: string[];
-	wizardFailed: string;
+        question: string;
+        declined: string[];
+        wizardFailed: string;
 } {
-	const decline = bridgeUp ? "n = keep the bundled bridge for now" : "n = skip for now (no provider connected)";
-	return {
-		question: `\nFirst run — no provider connected yet.\nConnect one now? (Agnes, OpenAI, OpenRouter, Anthropic, Dashscope, DeepSeek, local…)\n  Enter = guided setup · ${decline}`,
-		declined: [
-			bridgeUp ? "  Skipped — the bundled bridge is wired for now." : "  Skipped — no provider is connected yet.",
-			"  (anytime: unown setup · unown providers add · unown providers list)",
-		],
-		wizardFailed: bridgeUp
-			? "Continuing with the bundled bridge (re-run `unown setup` anytime)…"
-			: "No provider connected (re-run `unown setup` anytime)…",
-	};
+        const decline = bridgeUp ? "n = keep the bundled bridge for now" : "n = skip for now (no provider connected)";
+        return {
+                question: `\nFirst run — no provider connected yet.\nConnect one now? (Agnes, OpenAI, OpenRouter, Anthropic, Dashscope, DeepSeek, local…)\n  Enter = guided setup · ${decline}`,
+                declined: [
+                        bridgeUp ? "  Skipped — the bundled bridge is wired for now." : "  Skipped — no provider is connected yet.",
+                        "  (anytime: unown setup · unown providers add · unown providers list)",
+                ],
+                wizardFailed: bridgeUp
+                        ? "Continuing with the bundled bridge (re-run `unown setup` anytime)…"
+                        : "No provider connected (re-run `unown setup` anytime)…",
+        };
 }
 
 /** First-run banner lines. Pure so "never claim a bridge that is not
  *  answering" is testable; the binary default is the case that motivated it. */
 export function firstRunBannerLines(opts: {
-	pid: string;
-	mid: string;
-	loopback: boolean;
-	bridgeUp: boolean;
+        pid: string;
+        mid: string;
+        loopback: boolean;
+        bridgeUp: boolean;
 }): string[] {
-	const connect = "  connect any provider (OpenAI, OpenRouter, Anthropic, Dashscope, local): unown setup";
-	if (!opts.loopback) {
-		return [`unown: first run — using ${opts.pid} (${opts.pid}/${opts.mid}).`, connect, ""];
-	}
-	if (opts.bridgeUp) {
-		return [`unown: first run — using the bundled llm-bridge (${opts.pid}/${opts.mid}).`, connect, ""];
-	}
-	return [
-		"unown: first run — no model endpoint is answering. The bundled bridge is part of the source install (bun run agent:start).",
-		"  connect any provider instead: unown setup",
-		"",
-	];
+        const connect = "  connect any provider (OpenAI, OpenRouter, Anthropic, Dashscope, local): unown setup";
+        if (!opts.loopback) {
+                return [`unown: first run — using ${opts.pid} (${opts.pid}/${opts.mid}).`, connect, ""];
+        }
+        if (opts.bridgeUp) {
+                return [`unown: first run — using the bundled llm-bridge (${opts.pid}/${opts.mid}).`, connect, ""];
+        }
+        return [
+                "unown: first run — no model endpoint is answering. The bundled bridge is part of the source install (bun run agent:start).",
+                "  connect any provider instead: unown setup",
+                "",
+        ];
 }
 
 async function printFirstRunBanner(knownBridgeUp?: boolean): Promise<void> {
-	const init = unownAgentDirInit();
-	if (!init?.created) return;
-	// Read the LIVE default, not the seed-time snapshot: a wizard that ran
-	// in this same process (the first-run gate) may have already connected
-	// a real provider — the banner must not name the stale seeded bridge.
-	const active = resolveActiveProvider(UNOWN_AGENT_DIR);
-	const pid = active?.id ?? init.provider;
-	const mid = active?.modelIds?.[0] ?? init.modelId;
-	const loopback = !!active && isLoopbackProvider(active);
-	const bridgeUp = loopback ? (knownBridgeUp ?? (await bridgeHealth(1000))?.ok === true) : false;
-	for (const line of firstRunBannerLines({ pid, mid, loopback, bridgeUp })) console.error(line);
+        const init = unownAgentDirInit();
+        if (!init?.created) return;
+        // Read the LIVE default, not the seed-time snapshot: a wizard that ran
+        // in this same process (the first-run gate) may have already connected
+        // a real provider — the banner must not name the stale seeded bridge.
+        const active = resolveActiveProvider(UNOWN_AGENT_DIR);
+        const pid = active?.id ?? init.provider;
+        const mid = active?.modelIds?.[0] ?? init.modelId;
+        const loopback = !!active && isLoopbackProvider(active);
+        const bridgeUp = loopback ? (knownBridgeUp ?? (await bridgeHealth(1000))?.ok === true) : false;
+        for (const line of firstRunBannerLines({ pid, mid, loopback, bridgeUp })) console.error(line);
 }
 
 // ---------------------------------------------------------------------------
@@ -1464,23 +1554,23 @@ async function printFirstRunBanner(knownBridgeUp?: boolean): Promise<void> {
  *  unown-state check, the doctor web results store line and
  *  `unown webcache stats`. */
 function formatBytes(n: number): string {
-	return n >= 1024 ** 3
-		? `${(n / 1024 ** 3).toFixed(1)} GiB`
-		: n >= 1024 ** 2
-			? `${(n / 1024 ** 2).toFixed(1)} MiB`
-			: n >= 1024
-				? `${Math.max(1, Math.round(n / 1024))} KiB`
-				: `${n} B`;
+        return n >= 1024 ** 3
+                ? `${(n / 1024 ** 3).toFixed(1)} GiB`
+                : n >= 1024 ** 2
+                        ? `${(n / 1024 ** 2).toFixed(1)} MiB`
+                        : n >= 1024
+                                ? `${Math.max(1, Math.round(n / 1024))} KiB`
+                                : `${n} B`;
 }
 
 /** Human-readable duration for the store's TTL / stale-if-error windows
  *  (60m, 24h, 7d …). */
 function formatMs(ms: number): string {
-	if (ms >= 86_400_000 && ms % 86_400_000 === 0) return `${ms / 86_400_000}d`;
-	if (ms >= 3_600_000 && ms % 3_600_000 === 0) return `${ms / 3_600_000}h`;
-	if (ms >= 60_000 && ms % 60_000 === 0) return `${ms / 60_000}m`;
-	if (ms >= 1_000 && ms % 1_000 === 0) return `${ms / 1_000}s`;
-	return `${ms}ms`;
+        if (ms >= 86_400_000 && ms % 86_400_000 === 0) return `${ms / 86_400_000}d`;
+        if (ms >= 3_600_000 && ms % 3_600_000 === 0) return `${ms / 3_600_000}h`;
+        if (ms >= 60_000 && ms % 60_000 === 0) return `${ms / 60_000}m`;
+        if (ms >= 1_000 && ms % 1_000 === 0) return `${ms / 1_000}s`;
+        return `${ms}ms`;
 }
 
 /**
@@ -1490,20 +1580,20 @@ function formatMs(ms: number): string {
  * `--yes` flag. Mirrors clig.dev's "default to the safe action" guidance.
  */
 function promptYesNo(question: string, defaultYes: boolean): boolean {
-	if (!process.stdin.isTTY) return false;
-	process.stdout.write(`${question} ${defaultYes ? "[Y/n]" : "[y/N]"} `);
-	try {
-		const fd = process.stdin.fd;
-		// 1-byte read; the readSync returns the count actually read.
-		const buf = Buffer.alloc(1);
-		const n = require("node:fs").readSync(fd, buf, 0, 1, null);
-		if (n <= 0) return defaultYes;
-		const answer = buf.toString("utf8").trim().toLowerCase();
-		if (answer === "") return defaultYes;
-		return answer === "y" || answer === "yes";
-	} catch {
-		return defaultYes;
-	}
+        if (!process.stdin.isTTY) return false;
+        process.stdout.write(`${question} ${defaultYes ? "[Y/n]" : "[y/N]"} `);
+        try {
+                const fd = process.stdin.fd;
+                // 1-byte read; the readSync returns the count actually read.
+                const buf = Buffer.alloc(1);
+                const n = require("node:fs").readSync(fd, buf, 0, 1, null);
+                if (n <= 0) return defaultYes;
+                const answer = buf.toString("utf8").trim().toLowerCase();
+                if (answer === "") return defaultYes;
+                return answer === "y" || answer === "yes";
+        } catch {
+                return defaultYes;
+        }
 }
 
 /**
@@ -1515,196 +1605,196 @@ function promptYesNo(question: string, defaultYes: boolean): boolean {
  * generation + write failures come back as `[error] …` strings.
  */
 function writeAgentsMd(cwd: string, opts: { overwrite?: boolean; prompt?: boolean } = {}): string {
-	const path = join(cwd, "AGENTS.md");
-	const exists = existsSync(path);
-	const overwriteOk = opts.overwrite ?? false;
-	if (exists && !overwriteOk) {
-		if (!opts.prompt) {
-			return `${path.replace(cwd, ".")}  exists — pass --overwrite to replace, or run \`unown init\` for the interactive prompt`;
-		}
-		const yes = promptYesNo(`AGENTS.md already exists at ${path.replace(cwd, ".")}. Overwrite?`, false);
-		if (!yes) {
-			return `${path.replace(cwd, ".")}  kept (you declined the overwrite)`;
-		}
-	}
-	if (!shouldOverwriteAgentsMd(path)) {
-		return `${path.replace(cwd, ".")}  is a directory — refusing to overwrite`;
-	}
-	let md: string;
-	try {
-		md = generateAgentsMd(cwd);
-	} catch (err: any) {
-		return `[error] AGENTS.md generation failed: ${err instanceof Error ? err.message : String(err)}`;
-	}
-	try {
-		writeFileSync(path, md + "\n", { encoding: "utf8" });
-	} catch (err: any) {
-		return `[error] AGENTS.md write failed: ${err instanceof Error ? err.message : String(err)}`;
-	}
-	return `${path.replace(cwd, ".")}  ${exists ? "updated (was overwritten)" : "generated"}`;
+        const path = join(cwd, "AGENTS.md");
+        const exists = existsSync(path);
+        const overwriteOk = opts.overwrite ?? false;
+        if (exists && !overwriteOk) {
+                if (!opts.prompt) {
+                        return `${path.replace(cwd, ".")}  exists — pass --overwrite to replace, or run \`unown init\` for the interactive prompt`;
+                }
+                const yes = promptYesNo(`AGENTS.md already exists at ${path.replace(cwd, ".")}. Overwrite?`, false);
+                if (!yes) {
+                        return `${path.replace(cwd, ".")}  kept (you declined the overwrite)`;
+                }
+        }
+        if (!shouldOverwriteAgentsMd(path)) {
+                return `${path.replace(cwd, ".")}  is a directory — refusing to overwrite`;
+        }
+        let md: string;
+        try {
+                md = generateAgentsMd(cwd);
+        } catch (err: any) {
+                return `[error] AGENTS.md generation failed: ${err instanceof Error ? err.message : String(err)}`;
+        }
+        try {
+                writeFileSync(path, md + "\n", { encoding: "utf8" });
+        } catch (err: any) {
+                return `[error] AGENTS.md write failed: ${err instanceof Error ? err.message : String(err)}`;
+        }
+        return `${path.replace(cwd, ".")}  ${exists ? "updated (was overwritten)" : "generated"}`;
 }
 
 function cmdInit() {
-	const cwd = process.cwd();
-	const dir = initProjectMemory(cwd);
-	console.log(`✓ initialized ${dir.replace(cwd, ".")}`);
-	console.log(`  ${projectMemoryPath(cwd).replace(cwd, ".")}   project memory (commit this — AutoDream maintains it)`);
-	console.log(`  ./.unown/memory/local.md            local overrides (gitignored)`);
-	console.log(`  ./.unown/.gitignore                 ignores local overrides`);
-	// Milestone 3.1 — also generate AGENTS.md at the project root (interactive
-	// prompt before overwriting; `unown init-agents --overwrite` skips it).
-	const agentsStatus = writeAgentsMd(cwd, { prompt: true });
-	console.log(`✓ ${agentsStatus}`);
+        const cwd = process.cwd();
+        const dir = initProjectMemory(cwd);
+        console.log(`✓ initialized ${dir.replace(cwd, ".")}`);
+        console.log(`  ${projectMemoryPath(cwd).replace(cwd, ".")}   project memory (commit this — AutoDream maintains it)`);
+        console.log(`  ./.unown/memory/local.md            local overrides (gitignored)`);
+        console.log(`  ./.unown/.gitignore                 ignores local overrides`);
+        // Milestone 3.1 — also generate AGENTS.md at the project root (interactive
+        // prompt before overwriting; `unown init-agents --overwrite` skips it).
+        const agentsStatus = writeAgentsMd(cwd, { prompt: true });
+        console.log(`✓ ${agentsStatus}`);
 }
 
 /** `unown init-agents` — generate or update AGENTS.md (Milestone 3.1). */
 function cmdInitAgents(args: string[]): number {
-	const cwd = process.cwd();
-	const overwrite = args.includes("--overwrite") || args.includes("-f") || args.includes("--force");
-	const printOnly = args.includes("--print") || args.includes("--stdout");
-	const jsonOut = args.includes("--json");
-	const help = args.includes("-h") || args.includes("--help");
-	if (help) {
-		console.log(INIT_AGENTS_HELP);
-		return 0;
-	}
-	if (printOnly) {
-		// --print: just emit the generated markdown on stdout, no file write.
-		// Composes with `unown init-agents | less` or `> AGENTS.md`.
-		process.stdout.write(generateAgentsMd(cwd) + "\n");
-		return 0;
-	}
-	if (jsonOut) {
-		// --json: emit the structured RepoForensics JSON for tooling.
-		// Lazy import avoids pulling the type into cli.ts's surface.
-		const { scanRepoForensics } = require("./init-agents.ts");
-		process.stdout.write(JSON.stringify(scanRepoForensics(cwd), null, 2) + "\n");
-		return 0;
-	}
-	const status = writeAgentsMd(cwd, { overwrite });
-	const isError = status.startsWith("[error]");
-	console.log(`${isError ? "✗" : "✓"} ${status}`);
-	return isError ? 1 : 0;
+        const cwd = process.cwd();
+        const overwrite = args.includes("--overwrite") || args.includes("-f") || args.includes("--force");
+        const printOnly = args.includes("--print") || args.includes("--stdout");
+        const jsonOut = args.includes("--json");
+        const help = args.includes("-h") || args.includes("--help");
+        if (help) {
+                console.log(INIT_AGENTS_HELP);
+                return 0;
+        }
+        if (printOnly) {
+                // --print: just emit the generated markdown on stdout, no file write.
+                // Composes with `unown init-agents | less` or `> AGENTS.md`.
+                process.stdout.write(generateAgentsMd(cwd) + "\n");
+                return 0;
+        }
+        if (jsonOut) {
+                // --json: emit the structured RepoForensics JSON for tooling.
+                // Lazy import avoids pulling the type into cli.ts's surface.
+                const { scanRepoForensics } = require("./init-agents.ts");
+                process.stdout.write(JSON.stringify(scanRepoForensics(cwd), null, 2) + "\n");
+                return 0;
+        }
+        const status = writeAgentsMd(cwd, { overwrite });
+        const isError = status.startsWith("[error]");
+        console.log(`${isError ? "✗" : "✓"} ${status}`);
+        return isError ? 1 : 0;
 }
 
 /** `unown doctor-instructions` — run ONLY the instruction-set audit (Milestone 3.2). */
 function cmdDoctorInstructions(args: string[]): number {
-	const cwd = process.cwd();
-	const json = args.includes("--json");
-	const report = auditInstructionSet(cwd);
-	if (json) {
-		console.log(JSON.stringify(report, null, 2));
-		return 0;
-	}
-	console.log("unown doctor-instructions — instruction-set audit");
-	console.log(renderInstructionAudit(report));
-	const sum = summarizeInstructionAudit(report);
-	console.log(`\n  summary: ${sum.errors} error(s), ${sum.warnings} warning(s), ${sum.infos} info`);
-	return sum.errors > 0 ? 1 : 0;
+        const cwd = process.cwd();
+        const json = args.includes("--json");
+        const report = auditInstructionSet(cwd);
+        if (json) {
+                console.log(JSON.stringify(report, null, 2));
+                return 0;
+        }
+        console.log("unown doctor-instructions — instruction-set audit");
+        console.log(renderInstructionAudit(report));
+        const sum = summarizeInstructionAudit(report);
+        console.log(`\n  summary: ${sum.errors} error(s), ${sum.warnings} warning(s), ${sum.infos} info`);
+        return sum.errors > 0 ? 1 : 0;
 }
 
 function cmdMemory() {
-	const cwd = process.cwd();
-	const files = resolveTerminalMemory(cwd);
-	for (const f of files) {
-		console.log(`──────────────────────────────────────────────────────────`);
-		console.log(`【${f.tier.toUpperCase()}】 ${f.path}`);
-		console.log(`──────────────────────────────────────────────────────────`);
-		console.log(f.content.trimEnd());
-		console.log();
-	}
+        const cwd = process.cwd();
+        const files = resolveTerminalMemory(cwd);
+        for (const f of files) {
+                console.log(`──────────────────────────────────────────────────────────`);
+                console.log(`【${f.tier.toUpperCase()}】 ${f.path}`);
+                console.log(`──────────────────────────────────────────────────────────`);
+                console.log(f.content.trimEnd());
+                console.log();
+        }
 }
 
 /** `unown webcache` — inspect and manage the web results store (webcache.ts,
  *  the persistent cache behind web_search + webfetch + fetch_url):
  *  `stats [--json] | clear | sweep`, with stats as the default subcommand. */
 function cmdWebcache(args: string[]): number {
-	const subs = ["stats", "clear", "sweep"];
-	const first = args[0];
-	if (first !== undefined && !first.startsWith("-") && !subs.includes(first)) {
-		console.error(`unown webcache: unknown subcommand "${first}" (stats | clear | sweep)`);
-		console.error("usage: unown webcache [stats] [--json] | clear | sweep  (see 'unown help webcache')");
-		return 1;
-	}
-	const sub = first !== undefined && subs.includes(first) ? first : "stats";
-	const rest = sub === first ? args.slice(1) : args; // flags-only tail
-	if (rest.includes("-h") || rest.includes("--help")) {
-		console.log(WEBCACHE_HELP);
-		return 0;
-	}
-	const json = rest.includes("--json");
-	const unknown = rest.filter((a) => a !== "--json");
-	if (unknown.length > 0) {
-		console.error(`unown webcache: unknown argument(s): ${unknown.join(" ")}`);
-		console.error("usage: unown webcache [stats] [--json] | clear | sweep  (see 'unown help webcache')");
-		return 1;
-	}
-	if (sub === "clear") {
-		const { removed, bytes } = webCacheClear();
-		if (json) console.log(JSON.stringify({ removed, bytes }, null, 2));
-		else console.log(`✓ removed ${removed} ${removed === 1 ? "entry" : "entries"} (${formatBytes(bytes)})`);
-		return 0;
-	}
-	if (sub === "sweep") {
-		const { evicted, freedBytes, totalBytes } = webCacheSweep();
-		if (json) console.log(JSON.stringify({ evicted, freedBytes, totalBytes }, null, 2));
-		else
-			console.log(
-				`✓ sweep — evicted ${evicted} ${evicted === 1 ? "entry" : "entries"} (freed ${formatBytes(
-					freedBytes,
-				)}), ${formatBytes(totalBytes - freedBytes)} of ${formatBytes(webCacheStats().maxBytes)} cap in use`,
-			);
-		return 0;
-	}
-	// stats (the default)
-	const s = webCacheStats();
-	if (json) {
-		console.log(JSON.stringify(s, null, 2));
-		return 0;
-	}
-	const lookups = s.totals.hit + s.totals.revalidated + s.totals.miss;
-	const hitPct = lookups > 0 ? Math.round(((s.totals.hit + s.totals.revalidated) / lookups) * 100) : null;
-	console.log("unown webcache — the web results store");
-	console.log();
-	console.log(`${s.enabled ? "✓ enabled" : "· disabled (UNOWN_WEB_CACHE=0)"} — ${s.root}`);
-	console.log(
-		`  entries     ${s.entries}${s.index.approximate ? " (approx — in-memory index)" : ""} (${formatBytes(s.bytes)} of ${formatBytes(s.maxBytes)} cap)`,
-	);
-	console.log(
-		`  ttl         search ${formatMs(s.ttl.searchMs)} · fetch ${formatMs(s.ttl.fetchMs)} (origin Cache-Control honored, capped 24h)` +
-			` · stale-if-error ${formatMs(s.ttl.searchStaleMs)} search / ${formatMs(s.ttl.fetchStaleMs)} fetch`,
-	);
-	console.log(
-		`  hit rate    ${hitPct === null ? "— (no lookups yet)" : `${hitPct}%`} — ${s.totals.hit} hits, ${s.totals.revalidated} revalidated, ${s.totals.miss} ${
-			s.totals.miss === 1 ? "miss" : "misses"
-		}`,
-	);
-	console.log(`  saved       ${s.savedRequests} upstream ${s.savedRequests === 1 ? "request" : "requests"}`);
-	const kinds: Array<[string, number]> = [
-		["hit", s.totals.hit],
-		["revalidated", s.totals.revalidated],
-		["miss", s.totals.miss],
-		["stale", s.totals.stale],
-		["bypass", s.totals.bypass],
-		["evict", s.totals.evict],
-		["clear", s.totals.clear],
-		["error", s.totals.error],
-	];
-	console.log(`  totals      ${kinds.map(([k, n]) => `${k} ${n}`).join(" · ")}`);
-	const tools = Object.entries(s.byTool).sort((a, b) => b[1] - a[1]);
-	if (tools.length > 0) console.log(`  tools       ${tools.map(([k, n]) => `${k} ${n}`).join(" · ")}`);
-	const providers = Object.entries(s.byProvider)
-		.sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
-		.slice(0, 8);
-	if (providers.length > 0) console.log(`  providers   ${providers.map(([k, n]) => `${k} ${n}`).join(" · ")}`);
-	return 0;
+        const subs = ["stats", "clear", "sweep"];
+        const first = args[0];
+        if (first !== undefined && !first.startsWith("-") && !subs.includes(first)) {
+                console.error(`unown webcache: unknown subcommand "${first}" (stats | clear | sweep)`);
+                console.error("usage: unown webcache [stats] [--json] | clear | sweep  (see 'unown help webcache')");
+                return 1;
+        }
+        const sub = first !== undefined && subs.includes(first) ? first : "stats";
+        const rest = sub === first ? args.slice(1) : args; // flags-only tail
+        if (rest.includes("-h") || rest.includes("--help")) {
+                console.log(WEBCACHE_HELP);
+                return 0;
+        }
+        const json = rest.includes("--json");
+        const unknown = rest.filter((a) => a !== "--json");
+        if (unknown.length > 0) {
+                console.error(`unown webcache: unknown argument(s): ${unknown.join(" ")}`);
+                console.error("usage: unown webcache [stats] [--json] | clear | sweep  (see 'unown help webcache')");
+                return 1;
+        }
+        if (sub === "clear") {
+                const { removed, bytes } = webCacheClear();
+                if (json) console.log(JSON.stringify({ removed, bytes }, null, 2));
+                else console.log(`✓ removed ${removed} ${removed === 1 ? "entry" : "entries"} (${formatBytes(bytes)})`);
+                return 0;
+        }
+        if (sub === "sweep") {
+                const { evicted, freedBytes, totalBytes } = webCacheSweep();
+                if (json) console.log(JSON.stringify({ evicted, freedBytes, totalBytes }, null, 2));
+                else
+                        console.log(
+                                `✓ sweep — evicted ${evicted} ${evicted === 1 ? "entry" : "entries"} (freed ${formatBytes(
+                                        freedBytes,
+                                )}), ${formatBytes(totalBytes - freedBytes)} of ${formatBytes(webCacheStats().maxBytes)} cap in use`,
+                        );
+                return 0;
+        }
+        // stats (the default)
+        const s = webCacheStats();
+        if (json) {
+                console.log(JSON.stringify(s, null, 2));
+                return 0;
+        }
+        const lookups = s.totals.hit + s.totals.revalidated + s.totals.miss;
+        const hitPct = lookups > 0 ? Math.round(((s.totals.hit + s.totals.revalidated) / lookups) * 100) : null;
+        console.log("unown webcache — the web results store");
+        console.log();
+        console.log(`${s.enabled ? "✓ enabled" : "· disabled (UNOWN_WEB_CACHE=0)"} — ${s.root}`);
+        console.log(
+                `  entries     ${s.entries}${s.index.approximate ? " (approx — in-memory index)" : ""} (${formatBytes(s.bytes)} of ${formatBytes(s.maxBytes)} cap)`,
+        );
+        console.log(
+                `  ttl         search ${formatMs(s.ttl.searchMs)} · fetch ${formatMs(s.ttl.fetchMs)} (origin Cache-Control honored, capped 24h)` +
+                        ` · stale-if-error ${formatMs(s.ttl.searchStaleMs)} search / ${formatMs(s.ttl.fetchStaleMs)} fetch`,
+        );
+        console.log(
+                `  hit rate    ${hitPct === null ? "— (no lookups yet)" : `${hitPct}%`} — ${s.totals.hit} hits, ${s.totals.revalidated} revalidated, ${s.totals.miss} ${
+                        s.totals.miss === 1 ? "miss" : "misses"
+                }`,
+        );
+        console.log(`  saved       ${s.savedRequests} upstream ${s.savedRequests === 1 ? "request" : "requests"}`);
+        const kinds: Array<[string, number]> = [
+                ["hit", s.totals.hit],
+                ["revalidated", s.totals.revalidated],
+                ["miss", s.totals.miss],
+                ["stale", s.totals.stale],
+                ["bypass", s.totals.bypass],
+                ["evict", s.totals.evict],
+                ["clear", s.totals.clear],
+                ["error", s.totals.error],
+        ];
+        console.log(`  totals      ${kinds.map(([k, n]) => `${k} ${n}`).join(" · ")}`);
+        const tools = Object.entries(s.byTool).sort((a, b) => b[1] - a[1]);
+        if (tools.length > 0) console.log(`  tools       ${tools.map(([k, n]) => `${k} ${n}`).join(" · ")}`);
+        const providers = Object.entries(s.byProvider)
+                .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
+                .slice(0, 8);
+        if (providers.length > 0) console.log(`  providers   ${providers.map(([k, n]) => `${k} ${n}`).join(" · ")}`);
+        return 0;
 }
 
 /** One doctor check in structured form — the `--json` schema (see docs/usage.md). */
 interface DoctorCheck {
-	id: string;
-	status: "pass" | "warn" | "fail";
-	detail: string;
+        id: string;
+        status: "pass" | "warn" | "fail";
+        detail: string;
 }
 
 /** Doctor's web results store summary — the JSON-mode shape. Counts and
@@ -1712,755 +1802,776 @@ interface DoctorCheck {
  *  detail lines carry query text, which belongs to `unown webcache --json`,
  *  not to a support bundle. */
 interface DoctorWebCacheSummary {
-	enabled: boolean;
-	root: string;
-	entries: number;
-	bytes: number;
-	maxBytes: number;
-	hitRate: number | null;
-	savedRequests: number;
+        enabled: boolean;
+        root: string;
+        entries: number;
+        bytes: number;
+        maxBytes: number;
+        hitRate: number | null;
+        savedRequests: number;
 }
 
 async function cmdDoctor(jsonMode: boolean): Promise<number> {
-	const cwd = process.cwd();
-	const checks: DoctorCheck[] = [];
-	let hardFail = false;
-	let warnings = 0;
-	// M3 — the web results store summary for the JSON envelope, filled by
-	// check 6e below.
-	let webCacheSummary: DoctorWebCacheSummary | undefined;
-	const check = (label: string, pass: boolean, detail: string, level: "fail" | "warn" = "fail") => {
-		const icon = pass ? "✓" : level === "warn" ? "⚠" : "✗";
-		if (!jsonMode) console.log(`${icon} ${label}${detail ? ` — ${detail}` : ""}`);
-		const id = label.toLowerCase().replace(/[^a-z0-9]+/g, "-");
-		checks.push({ id, status: pass ? "pass" : level, detail });
-		if (!pass) {
-			if (level === "fail") hardFail = true;
-			else warnings++;
-		}
-	};
+        const cwd = process.cwd();
+        const checks: DoctorCheck[] = [];
+        let hardFail = false;
+        let warnings = 0;
+        // M3 — the web results store summary for the JSON envelope, filled by
+        // check 6e below.
+        let webCacheSummary: DoctorWebCacheSummary | undefined;
+        const check = (label: string, pass: boolean, detail: string, level: "fail" | "warn" = "fail") => {
+                const icon = pass ? "✓" : level === "warn" ? "⚠" : "✗";
+                if (!jsonMode) console.log(`${icon} ${label}${detail ? ` — ${detail}` : ""}`);
+                const id = label.toLowerCase().replace(/[^a-z0-9]+/g, "-");
+                checks.push({ id, status: pass ? "pass" : level, detail });
+                if (!pass) {
+                        if (level === "fail") hardFail = true;
+                        else warnings++;
+                }
+        };
 
-	// 0. version + update state (from the notifier cache — no network here;
-	// refresh with `unown update --check`)
-	{
-		const install = resolveInstallInfo({ home: UNOWN_HOME });
-		const root = install?.mode === "checkout" ? install.root : null;
-		const shown = VERSION !== "unknown" ? VERSION : (install?.version ?? "unknown");
-		const short = root ? gitShortSha(root, realGit) : null;
-		check(
-			"unown version",
-			true,
-			install?.mode === "binary"
-				? `${shown} · binary install · ${install.root}`
-				: `${shown}${short ? ` · ${short}` : ""} · ${root ?? "(not a git checkout)"}`,
-		);
-		const cache = readUpdateCheckCache(UNOWN_HOME);
-		const prefs = readUpdatePrefs(UNOWN_HOME);
-		const snoozedUntil = prefs.snoozeUntil && Date.parse(prefs.snoozeUntil) > Date.now() ? prefs.snoozeUntil : null;
-		const skipped = Boolean(cache?.latest && prefs.skippedVersion === cache.latest);
-		const staleCache = Boolean(
-			cache &&
-				(cache.legacy === true ||
-					cache.current !== shown ||
-					(install && cache.mode !== install.mode) ||
-					(cache.platform !== undefined &&
-						install?.platform !== undefined &&
-						cache.platform !== install.platform)),
-		);
-		if (cache?.error) {
-			check(
-				"update available",
-				false,
-				`check failed — ${cache.error} (checked ${cache.checkedAt ? describeAge(cache.checkedAt) : "?"})`,
-				"warn",
-			);
-		} else if (staleCache) {
-			check(
-				"update available",
-				true,
-				`${cache?.legacy ? "legacy" : "stale"} cache (checked ${cache?.checkedAt ? describeAge(cache.checkedAt) : "?"}) — run \`unown update --check\``,
-			);
-		} else if (skipped) {
-			check("update available", true, `v${cache?.latest} skipped (\`unown update --unskip\`)`);
-		} else if (snoozedUntil) {
-			check("update available", true, `notices snoozed until ${snoozedUntil}`);
-		} else if (cache?.latest && cache.applicable === false) {
-			check(
-				"update available",
-				true,
-				`latest v${cache.latest} is not installable here${cache.reason ? ` (${cache.reason})` : ""}`,
-			);
-		} else if (cache?.latest && compareSemver(cache.latest, shown) > 0) {
-			const scope = cache.mode === "checkout" ? " · source checkout" : cache.platform ? ` · ${cache.platform}` : "";
-			const size = cache.asset ? ` · ${formatUpdateSize(cache.asset.size)}` : "";
-			check(
-				"update available",
-				false,
-				`v${cache.latest}${scope}${size} — run \`unown update\` (checked ${cache.checkedAt ? describeAge(cache.checkedAt) : "?"})`,
-				"warn",
-			);
-		} else {
-			check(
-				"update available",
-				true,
-				cache?.checkedAt
-					? `up to date as of ${describeAge(cache.checkedAt)}${cache.error ? ` (${cache.error})` : ""}`
-					: "no check yet — run `unown update --check`",
-			);
-		}
-		// 0b. user-state migrations (schema version + pending count)
-		{
-			const mig = readMigrationState(UNOWN_HOME);
-			const pending = MIGRATIONS.filter((m) => m.from >= mig.version).length;
-			check(
-				"user state schema",
-				true,
-				`v${mig.version}${pending ? ` — ${pending} pending (applied by the next \`unown update\`)` : ""}`,
-			);
-		}
-	}
+        // 0. version + update state (from the notifier cache — no network here;
+        // refresh with `unown update --check`)
+        {
+                const install = resolveInstallInfo({ home: UNOWN_HOME });
+                const root = install?.mode === "checkout" ? install.root : null;
+                const shown = VERSION !== "unknown" ? VERSION : (install?.version ?? "unknown");
+                const short = root ? gitShortSha(root, realGit) : null;
+                check(
+                        "unown version",
+                        true,
+                        install?.mode === "binary"
+                                ? `${shown} · binary install · ${install.root}`
+                                : `${shown}${short ? ` · ${short}` : ""} · ${root ?? "(not a git checkout)"}`,
+                );
+                const cache = readUpdateCheckCache(UNOWN_HOME);
+                const prefs = readUpdatePrefs(UNOWN_HOME);
+                const snoozedUntil = prefs.snoozeUntil && Date.parse(prefs.snoozeUntil) > Date.now() ? prefs.snoozeUntil : null;
+                const skipped = Boolean(cache?.latest && prefs.skippedVersion === cache.latest);
+                const staleCache = Boolean(
+                        cache &&
+                                (cache.legacy === true ||
+                                        cache.current !== shown ||
+                                        (install && cache.mode !== install.mode) ||
+                                        (cache.platform !== undefined &&
+                                                install?.platform !== undefined &&
+                                                cache.platform !== install.platform)),
+                );
+                if (cache?.error) {
+                        check(
+                                "update available",
+                                false,
+                                `check failed — ${cache.error} (checked ${cache.checkedAt ? describeAge(cache.checkedAt) : "?"})`,
+                                "warn",
+                        );
+                } else if (staleCache) {
+                        check(
+                                "update available",
+                                true,
+                                `${cache?.legacy ? "legacy" : "stale"} cache (checked ${cache?.checkedAt ? describeAge(cache.checkedAt) : "?"}) — run \`unown update --check\``,
+                        );
+                } else if (skipped) {
+                        check("update available", true, `v${cache?.latest} skipped (\`unown update --unskip\`)`);
+                } else if (snoozedUntil) {
+                        check("update available", true, `notices snoozed until ${snoozedUntil}`);
+                } else if (cache?.latest && cache.applicable === false) {
+                        check(
+                                "update available",
+                                true,
+                                `latest v${cache.latest} is not installable here${cache.reason ? ` (${cache.reason})` : ""}`,
+                        );
+                } else if (cache?.latest && compareSemver(cache.latest, shown) > 0) {
+                        const scope = cache.mode === "checkout" ? " · source checkout" : cache.platform ? ` · ${cache.platform}` : "";
+                        const size = cache.asset ? ` · ${formatUpdateSize(cache.asset.size)}` : "";
+                        check(
+                                "update available",
+                                false,
+                                `v${cache.latest}${scope}${size} — run \`unown update\` (checked ${cache.checkedAt ? describeAge(cache.checkedAt) : "?"})`,
+                                "warn",
+                        );
+                } else {
+                        check(
+                                "update available",
+                                true,
+                                cache?.checkedAt
+                                        ? `up to date as of ${describeAge(cache.checkedAt)}${cache.error ? ` (${cache.error})` : ""}`
+                                        : "no check yet — run `unown update --check`",
+                        );
+                }
+                // 0b. user-state migrations (schema version + pending count)
+                {
+                        const mig = readMigrationState(UNOWN_HOME);
+                        const pending = MIGRATIONS.filter((m) => m.from >= mig.version).length;
+                        check(
+                                "user state schema",
+                                true,
+                                `v${mig.version}${pending ? ` — ${pending} pending (applied by the next \`unown update\`)` : ""}`,
+                        );
+                }
+        }
 
-	// 1. agent dir & models (async ensure: a first run triggered via
-	// `unown doctor` seeds the coherent bridge default too — audit M4-a D1)
-	const agentDir = await ensureUnownAgentDirAsync();
-	const modelsExists = existsSync(join(agentDir, "models.json"));
-	check("agent dir", modelsExists, agentDir);
-	const active = resolveActiveProvider(agentDir);
-	if (modelsExists) {
-		const file = readAgentModelsFile(agentDir);
-		if (file.error) check("models.json parses", false, file.error);
-		else
-			check(
-				"model provider configured",
-				file.providers.length > 0,
-				active ? `${active.id} · ${active.modelIds.join(", ") || "no models"}` : "none",
-			);
-	}
+        // 1. agent dir & models (async ensure: a first run triggered via
+        // `unown doctor` seeds the coherent bridge default too — audit M4-a D1)
+        const agentDir = await ensureUnownAgentDirAsync();
+        const modelsExists = existsSync(join(agentDir, "models.json"));
+        check("agent dir", modelsExists, agentDir);
+        const active = resolveActiveProvider(agentDir);
+        if (modelsExists) {
+                const file = readAgentModelsFile(agentDir);
+                if (file.error) check("models.json parses", false, file.error);
+                else
+                        check(
+                                "model provider configured",
+                                file.providers.length > 0,
+                                active ? `${active.id} · ${active.modelIds.join(", ") || "no models"}` : "none",
+                        );
+                // 1b. model specs (the model-specs round): the sidecar is the
+                // provenance source of truth — every model either carries a
+                // verified record (detection / user / learned) or says so. The
+                // DEFAULT model's verdict is the check; unverified is a warn
+                // (the session preflight will detect-or-ask before first use),
+                // never a hard fail — doctor diagnoses, the gate enforces.
+                if (active && active.modelIds.length > 0) {
+                        const list = listProviders(agentDir);
+                        const defaultModel = resolveActiveModelId(agentDir, active, undefined, list.defaultModel) ?? active.modelIds[0];
+                        const recorded = getRecordedSpec(agentDir, active.id, defaultModel);
+                        if (recorded) {
+                                check("model specs verified", true, `${active.id}/${defaultModel}: ${formatSpecShort(recorded)}`);
+                        } else {
+                                check(
+                                        "model specs verified",
+                                        false,
+                                        `${active.id}/${defaultModel}: no verifiable record yet — detected or asked at the next session start (unown setup --context-window/--max-tokens to answer now)`,
+                                        "warn",
+                                );
+                        }
+                }
+        }
 
-	// 2. memory stack
-	initProjectMemory(cwd);
-	check("project memory", existsSync(projectMemoryPath(cwd)), projectMemoryPath(cwd).replace(cwd, "."));
-	check("user memory", true, `${UNOWN_HOME}/memory/user.md`);
+        // 2. memory stack
+        initProjectMemory(cwd);
+        check("project memory", existsSync(projectMemoryPath(cwd)), projectMemoryPath(cwd).replace(cwd, "."));
+        check("user memory", true, `${UNOWN_HOME}/memory/user.md`);
 
-	// 3. model endpoint (the chat path — failures here break sessions)
-	if (active?.baseUrl) {
-		// resolveProviderKey is the single key source (auth.json > models.json
-		// literal > $ENV) — the active provider usually keeps its key in
-		// auth.json (setup writes it there, mode 0600), so probing with
-		// models.json's apiKey field alone sent NO Authorization header and
-		// misreported healthy Agnes endpoints as "credentials rejected".
-		const probe = await probeProviderEndpoint(active.baseUrl, resolveProviderKey(agentDir, active.id).key, {
-			timeoutMs: 4000,
-			api: active.api,
-		});
-		const serving =
-			probe.models && probe.models.length > 0
-				? ` · serves ${probe.models.slice(0, 4).join(", ")}${probe.models.length > 4 ? " …" : ""}`
-				: "";
-		if (probe.ok) {
-			check("model endpoint reachable", true, `${active.baseUrl}${serving}${probeLatencyNote(probe)}`);
-		} else if (probe.problem === "auth") {
-			check(
-				"model endpoint reachable",
-				false,
-				`credentials rejected (HTTP ${probe.status}) — check the key in ~/.unown/agent/auth.json or run: unown setup`,
-			);
-		} else if (probe.problem === "rate-limit") {
-			// The endpoint answered — a 429 means the chat path is up,
-			// the key passed auth, and only the throttle is in the way.
-			// Claude Code's distinction: "temporarily limiting requests,
-			// not your usage limit".
-			check("model endpoint reachable", true, `${active.baseUrl} · ${rateLimitNote(probe)}`, "warn");
-		} else {
-			check(
-				"model endpoint reachable",
-				false,
-				`${active.baseUrl} unreachable — ${
-					isLoopbackProvider(active)
-						? "start the stack (bun run agent:start) or run: unown setup"
-						: "check the URL or run: unown setup"
-				}`,
-			);
-		}
-		// 3b. bridge specifics: upstream key, upstream health, routable model
-		if (isLoopbackProvider(active)) {
-			try {
-				const res = await fetch(`${active.baseUrl.replace(/\/v1\/?$/, "")}/health`, {
-					signal: AbortSignal.timeout(4000),
-				});
-				if (res.ok) {
-					const body = (await res.json()) as {
-						requests?: number;
-						errors?: number;
-						upstream?: { ok?: boolean; status?: number };
-						fallback?: { ok?: boolean; status?: number; url?: string; model?: string | null } | null;
-						failovers?: number;
-						upstreamKeyIsSet?: boolean;
-						defaultModel?: string;
-						models?: string[];
-						staleKnownModels?: string[];
-					};
-					check(
-						"bridge upstream key",
-						body.upstreamKeyIsSet !== false,
-						body.upstreamKeyIsSet === false
-							? "BRIDGE_UPSTREAM_KEY is not set in the repo's .env — chats will fail with 401"
-							: "BRIDGE_UPSTREAM_KEY set",
-					);
-					// Failover-aware health: an unhealthy primary only fails this
-					// check when no fallback is serving. With a healthy fallback
-					// lane the chat path works — report it as such, with the
-					// FAILOVER ACTIVE detail naming the lane that took over.
-					const fbServing = body.upstream?.ok === false && body.fallback?.ok === true;
-					const fbNote =
-						typeof body.failovers === "number" && body.failovers > 0
-							? `, ${body.failovers} failover${body.failovers === 1 ? "" : "s"} served`
-							: "";
-					check(
-						"bridge upstream health",
-						body.upstream?.ok !== false || fbServing,
-						body.upstream?.ok === false
-							? fbServing
-								? `upstream unhealthy (${body.upstream.status ?? "no answer"}) — FAILOVER ACTIVE: ${
-										body.fallback?.model ?? "the fallback model"
-									} via ${body.fallback?.url ?? "the fallback"} is serving`
-								: `upstream unhealthy (${body.upstream.status ?? "no answer"}) — check BRIDGE_UPSTREAM_URL`
-							: `${body.requests ?? 0} requests, ${body.errors ?? 0} errors${fbNote}`,
-					);
-					const model = active.modelIds[0];
-					if (model && Array.isArray(body.models) && body.models.length > 0 && !body.models.includes(model)) {
-						check(
-							"default model routable",
-							false,
-							`"${model}" is not in the bridge allow-list (BRIDGE_KNOWN_MODELS) — requests route to ${
-								body.defaultModel ?? "the default"
-							}`,
-							"warn",
-						);
-					}
-					// Route-default coherence: unknown model ids route onto
-					// BRIDGE_ROUTE_DEFAULT; if that id is NOT in the allow-list
-					// either, every routed request 404s at the upstream with no
-					// local hint. Classic trigger: BRIDGE_UPSTREAM_URL switched to
-					// a new provider while a stale BRIDGE_ROUTE_DEFAULT stayed
-					// hard-coded in .env (it overrides BRIDGE_MODEL).
-					if (
-						typeof body.defaultModel === "string" &&
-						body.defaultModel.length > 0 &&
-						Array.isArray(body.models) &&
-						body.models.length > 0 &&
-						!body.models.includes(body.defaultModel)
-					) {
-						check(
-							"bridge route default coherent",
-							false,
-							`route default "${body.defaultModel}" is not in the allow-list (BRIDGE_KNOWN_MODELS) — unknown model ids will 404 at the upstream; align BRIDGE_ROUTE_DEFAULT/BRIDGE_MODEL with the upstream catalog`,
-							"warn",
-						);
-					}
-					// Stale allow-list ids (audit M4-a D1): the bridge's
-					// upstream /models catalog (when reachable) names ids in
-					// BRIDGE_KNOWN_MODELS it does NOT serve — requests naming
-					// them pass through and 404. Classic trigger: switching
-					// BRIDGE_UPSTREAM_URL to Agnes while the Dashscope
-					// allow-list stayed in .env, and a fresh install seeded
-					// kimi-k2.5 as its default.
-					const staleKnown = Array.isArray(body.staleKnownModels)
-						? (body.staleKnownModels as unknown[]).filter(
-								(m): m is string => typeof m === "string" && m.length > 0,
-							)
-						: [];
-					if (staleKnown.length > 0) {
-						check(
-							"bridge allow-list served by upstream",
-							false,
-							`BRIDGE_KNOWN_MODELS lists ${staleKnown.join(", ")} but the upstream catalog does not serve ${staleKnown.length === 1 ? "it" : "them"} — requests naming ${staleKnown.length === 1 ? "it" : "them"} will 404; remove ${staleKnown.length === 1 ? "it" : "them"} so they re-route to ${body.defaultModel ?? "the default"} instead`,
-							"warn",
-						);
-					}
-				}
-			} catch {
-				// the endpoint probe above already reported reachability
-			}
-		}
-	} else if (modelsExists) {
-		check(
-			"model endpoint reachable",
-			false,
-			"the configured provider declares no baseUrl — fix ~/.unown/agent/models.json or run: unown setup",
-		);
-	}
+        // 3. model endpoint (the chat path — failures here break sessions)
+        if (active?.baseUrl) {
+                // resolveProviderKey is the single key source (auth.json > models.json
+                // literal > $ENV) — the active provider usually keeps its key in
+                // auth.json (setup writes it there, mode 0600), so probing with
+                // models.json's apiKey field alone sent NO Authorization header and
+                // misreported healthy Agnes endpoints as "credentials rejected".
+                const probe = await probeProviderEndpoint(active.baseUrl, resolveProviderKey(agentDir, active.id).key, {
+                        timeoutMs: 4000,
+                        api: active.api,
+                });
+                const serving =
+                        probe.models && probe.models.length > 0
+                                ? ` · serves ${probe.models.slice(0, 4).join(", ")}${probe.models.length > 4 ? " …" : ""}`
+                                : "";
+                if (probe.ok) {
+                        check("model endpoint reachable", true, `${active.baseUrl}${serving}${probeLatencyNote(probe)}`);
+                } else if (probe.problem === "auth") {
+                        check(
+                                "model endpoint reachable",
+                                false,
+                                `credentials rejected (HTTP ${probe.status}) — check the key in ~/.unown/agent/auth.json or run: unown setup`,
+                        );
+                } else if (probe.problem === "rate-limit") {
+                        // The endpoint answered — a 429 means the chat path is up,
+                        // the key passed auth, and only the throttle is in the way.
+                        // Claude Code's distinction: "temporarily limiting requests,
+                        // not your usage limit".
+                        check("model endpoint reachable", true, `${active.baseUrl} · ${rateLimitNote(probe)}`, "warn");
+                } else {
+                        check(
+                                "model endpoint reachable",
+                                false,
+                                `${active.baseUrl} unreachable — ${
+                                        isLoopbackProvider(active)
+                                                ? "start the stack (bun run agent:start) or run: unown setup"
+                                                : "check the URL or run: unown setup"
+                                }`,
+                        );
+                }
+                // 3b. bridge specifics: upstream key, upstream health, routable model
+                if (isLoopbackProvider(active)) {
+                        try {
+                                const res = await fetch(`${active.baseUrl.replace(/\/v1\/?$/, "")}/health`, {
+                                        signal: AbortSignal.timeout(4000),
+                                });
+                                if (res.ok) {
+                                        const body = (await res.json()) as {
+                                                requests?: number;
+                                                errors?: number;
+                                                upstream?: { ok?: boolean; status?: number };
+                                                fallback?: { ok?: boolean; status?: number; url?: string; model?: string | null } | null;
+                                                failovers?: number;
+                                                upstreamKeyIsSet?: boolean;
+                                                defaultModel?: string;
+                                                models?: string[];
+                                                staleKnownModels?: string[];
+                                        };
+                                        check(
+                                                "bridge upstream key",
+                                                body.upstreamKeyIsSet !== false,
+                                                body.upstreamKeyIsSet === false
+                                                        ? "BRIDGE_UPSTREAM_KEY is not set in the repo's .env — chats will fail with 401"
+                                                        : "BRIDGE_UPSTREAM_KEY set",
+                                        );
+                                        // Failover-aware health: an unhealthy primary only fails this
+                                        // check when no fallback is serving. With a healthy fallback
+                                        // lane the chat path works — report it as such, with the
+                                        // FAILOVER ACTIVE detail naming the lane that took over.
+                                        const fbServing = body.upstream?.ok === false && body.fallback?.ok === true;
+                                        const fbNote =
+                                                typeof body.failovers === "number" && body.failovers > 0
+                                                        ? `, ${body.failovers} failover${body.failovers === 1 ? "" : "s"} served`
+                                                        : "";
+                                        check(
+                                                "bridge upstream health",
+                                                body.upstream?.ok !== false || fbServing,
+                                                body.upstream?.ok === false
+                                                        ? fbServing
+                                                                ? `upstream unhealthy (${body.upstream.status ?? "no answer"}) — FAILOVER ACTIVE: ${
+                                                                                body.fallback?.model ?? "the fallback model"
+                                                                        } via ${body.fallback?.url ?? "the fallback"} is serving`
+                                                                : `upstream unhealthy (${body.upstream.status ?? "no answer"}) — check BRIDGE_UPSTREAM_URL`
+                                                        : `${body.requests ?? 0} requests, ${body.errors ?? 0} errors${fbNote}`,
+                                        );
+                                        const model = active.modelIds[0];
+                                        if (model && Array.isArray(body.models) && body.models.length > 0 && !body.models.includes(model)) {
+                                                check(
+                                                        "default model routable",
+                                                        false,
+                                                        `"${model}" is not in the bridge allow-list (BRIDGE_KNOWN_MODELS) — requests route to ${
+                                                                body.defaultModel ?? "the default"
+                                                        }`,
+                                                        "warn",
+                                                );
+                                        }
+                                        // Route-default coherence: unknown model ids route onto
+                                        // BRIDGE_ROUTE_DEFAULT; if that id is NOT in the allow-list
+                                        // either, every routed request 404s at the upstream with no
+                                        // local hint. Classic trigger: BRIDGE_UPSTREAM_URL switched to
+                                        // a new provider while a stale BRIDGE_ROUTE_DEFAULT stayed
+                                        // hard-coded in .env (it overrides BRIDGE_MODEL).
+                                        if (
+                                                typeof body.defaultModel === "string" &&
+                                                body.defaultModel.length > 0 &&
+                                                Array.isArray(body.models) &&
+                                                body.models.length > 0 &&
+                                                !body.models.includes(body.defaultModel)
+                                        ) {
+                                                check(
+                                                        "bridge route default coherent",
+                                                        false,
+                                                        `route default "${body.defaultModel}" is not in the allow-list (BRIDGE_KNOWN_MODELS) — unknown model ids will 404 at the upstream; align BRIDGE_ROUTE_DEFAULT/BRIDGE_MODEL with the upstream catalog`,
+                                                        "warn",
+                                                );
+                                        }
+                                        // Stale allow-list ids (audit M4-a D1): the bridge's
+                                        // upstream /models catalog (when reachable) names ids in
+                                        // BRIDGE_KNOWN_MODELS it does NOT serve — requests naming
+                                        // them pass through and 404. Classic trigger: switching
+                                        // BRIDGE_UPSTREAM_URL to Agnes while the Dashscope
+                                        // allow-list stayed in .env, and a fresh install seeded
+                                        // kimi-k2.5 as its default.
+                                        const staleKnown = Array.isArray(body.staleKnownModels)
+                                                ? (body.staleKnownModels as unknown[]).filter(
+                                                                (m): m is string => typeof m === "string" && m.length > 0,
+                                                        )
+                                                : [];
+                                        if (staleKnown.length > 0) {
+                                                check(
+                                                        "bridge allow-list served by upstream",
+                                                        false,
+                                                        `BRIDGE_KNOWN_MODELS lists ${staleKnown.join(", ")} but the upstream catalog does not serve ${staleKnown.length === 1 ? "it" : "them"} — requests naming ${staleKnown.length === 1 ? "it" : "them"} will 404; remove ${staleKnown.length === 1 ? "it" : "them"} so they re-route to ${body.defaultModel ?? "the default"} instead`,
+                                                        "warn",
+                                                );
+                                        }
+                                }
+                        } catch {
+                                // the endpoint probe above already reported reachability
+                        }
+                }
+        } else if (modelsExists) {
+                check(
+                        "model endpoint reachable",
+                        false,
+                        "the configured provider declares no baseUrl — fix ~/.unown/agent/models.json or run: unown setup",
+                );
+        }
 
-	// 3c. the OTHER providers (M2) — every non-default provider gets its own
-	// verdict line, warn-class: a broken secondary must never turn doctor's
-	// exit non-zero while the default chat path works (the doctor contract),
-	// but silence would hide a stale secondary until you switch to it.
-	{
-		const file = readAgentModelsFile(agentDir);
-		const others = file.providers.filter((p) => p.id !== active?.id);
-		if (others.length > 0) {
-			const list = listProviders(agentDir);
-			const lines: string[] = [];
-			let anyDown = false;
-			for (const p of others) {
-				if (!p.baseUrl) {
-					lines.push(`${p.id}: no baseUrl`);
-					anyDown = true;
-					continue;
-				}
-				const { key } = resolveProviderKey(agentDir, p.id);
-				const probe = await probeProviderEndpoint(p.baseUrl, key, { timeoutMs: 3000, api: p.api });
-				if (probe.ok) {
-					const summary = list.providers.find((x) => x.id === p.id);
-					const keyNote = summary ? ` (${keyStatusLabel(summary)})` : "";
-					lines.push(`${p.id}: reachable${keyNote}${probeLatencyNote(probe)}`);
-				} else if (probe.problem === "auth") {
-					lines.push(`${p.id}: key rejected (HTTP ${probe.status}) — unown providers key ${p.id}`);
-					anyDown = true;
-				} else if (probe.problem === "rate-limit") {
-					lines.push(`${p.id}: rate-limited (HTTP ${probe.status}) — up, throttling`);
-				} else {
-					lines.push(`${p.id}: unreachable — unown providers test ${p.id}`);
-					anyDown = true;
-				}
-			}
-			check("secondary providers", !anyDown, lines.join(" · "), "warn");
-		}
-	}
+        // 3c. the OTHER providers (M2) — every non-default provider gets its own
+        // verdict line, warn-class: a broken secondary must never turn doctor's
+        // exit non-zero while the default chat path works (the doctor contract),
+        // but silence would hide a stale secondary until you switch to it.
+        {
+                const file = readAgentModelsFile(agentDir);
+                const others = file.providers.filter((p) => p.id !== active?.id);
+                if (others.length > 0) {
+                        const list = listProviders(agentDir);
+                        const lines: string[] = [];
+                        let anyDown = false;
+                        for (const p of others) {
+                                if (!p.baseUrl) {
+                                        lines.push(`${p.id}: no baseUrl`);
+                                        anyDown = true;
+                                        continue;
+                                }
+                                const { key } = resolveProviderKey(agentDir, p.id);
+                                const probe = await probeProviderEndpoint(p.baseUrl, key, { timeoutMs: 3000, api: p.api });
+                                if (probe.ok) {
+                                        const summary = list.providers.find((x) => x.id === p.id);
+                                        const keyNote = summary ? ` (${keyStatusLabel(summary)})` : "";
+                                        lines.push(`${p.id}: reachable${keyNote}${probeLatencyNote(probe)}`);
+                                } else if (probe.problem === "auth") {
+                                        lines.push(`${p.id}: key rejected (HTTP ${probe.status}) — unown providers key ${p.id}`);
+                                        anyDown = true;
+                                } else if (probe.problem === "rate-limit") {
+                                        lines.push(`${p.id}: rate-limited (HTTP ${probe.status}) — up, throttling`);
+                                } else {
+                                        lines.push(`${p.id}: unreachable — unown providers test ${p.id}`);
+                                        anyDown = true;
+                                }
+                        }
+                        check("secondary providers", !anyDown, lines.join(" · "), "warn");
+                }
+        }
 
-	// 3d. model-health marks — the cross-process store subagents use to
-	// skip a provider-failed model for 30 min. Surfaced here so a silent
-	// skip is never mysterious (they used to be invisible everywhere:
-	// modelHealthExists was dead code).
-	{
-		const store = loadModelHealth(agentDir);
-		const marks = Object.entries(store.marks).sort((a, b) => b[1] - a[1]);
-		if (marks.length > 0) {
-			const lines = marks.slice(0, 5).map(([model, ts]) => {
-				const minsAgo = Math.max(1, Math.round((Date.now() - ts) / 60000));
-				return `${model} — failed ${minsAgo} min ago (subagents skip it for up to 30 min)`;
-			});
-			const more = marks.length > 5 ? ` · +${marks.length - 5} more` : "";
-			check("model health marks", false, `${lines.join(" · ")}${more}`, "warn");
-		} else if (modelHealthExists(agentDir)) {
-			check("model health marks", true, "no recent model failures");
-		}
-	}
+        // 3d. model-health marks — the cross-process store subagents use to
+        // skip a provider-failed model for 30 min. Surfaced here so a silent
+        // skip is never mysterious (they used to be invisible everywhere:
+        // modelHealthExists was dead code).
+        {
+                const store = loadModelHealth(agentDir);
+                const marks = Object.entries(store.marks).sort((a, b) => b[1] - a[1]);
+                if (marks.length > 0) {
+                        const lines = marks.slice(0, 5).map(([model, ts]) => {
+                                const minsAgo = Math.max(1, Math.round((Date.now() - ts) / 60000));
+                                return `${model} — failed ${minsAgo} min ago (subagents skip it for up to 30 min)`;
+                        });
+                        const more = marks.length > 5 ? ` · +${marks.length - 5} more` : "";
+                        check("model health marks", false, `${lines.join(" · ")}${more}`, "warn");
+                } else if (modelHealthExists(agentDir)) {
+                        check("model health marks", true, "no recent model failures");
+                }
+        }
 
-	// 4. OS sandbox — fs + network isolation for engine runs. Platform-aware:
-	// Linux checks bubblewrap, macOS checks seatbelt (sandbox-exec), and
-	// Windows reports the native-Windows story (path-jail fallback there —
-	// the same degradation Claude Code ships on native Windows). Always a
-	// non-fatal warning.
-	{
-		const osb = await osSandboxAvailable();
-		const name =
-			process.platform === "darwin"
-				? "OS sandbox (seatbelt)"
-				: process.platform === "win32"
-					? "OS sandbox (Windows)"
-					: "OS sandbox (bubblewrap)";
-		const unavailable =
-			process.platform === "darwin"
-				? "sandbox-exec unavailable — engine runs use the path jail"
-				: process.platform === "win32"
-					? "not available on native Windows — engine runs use the path jail (same as Claude Code's Windows story)"
-					: "unavailable — engine runs fall back to the path jail";
-		const detail =
-			process.platform === "darwin"
-				? `${resolveSandboxExecPath()} — fs isolation active (seatbelt profile${netBlocked() ? "; network denied" : "; network shared"})`
-				: `${resolveBwrapPath()} — fs+net isolation active`;
-		check(name, osb, osb ? detail : unavailable, "warn");
-	}
+        // 4. OS sandbox — fs + network isolation for engine runs. Platform-aware:
+        // Linux checks bubblewrap, macOS checks seatbelt (sandbox-exec), and
+        // Windows reports the native-Windows story (path-jail fallback there —
+        // the same degradation Claude Code ships on native Windows). Always a
+        // non-fatal warning.
+        {
+                const osb = await osSandboxAvailable();
+                const name =
+                        process.platform === "darwin"
+                                ? "OS sandbox (seatbelt)"
+                                : process.platform === "win32"
+                                        ? "OS sandbox (Windows)"
+                                        : "OS sandbox (bubblewrap)";
+                const unavailable =
+                        process.platform === "darwin"
+                                ? "sandbox-exec unavailable — engine runs use the path jail"
+                                : process.platform === "win32"
+                                        ? "not available on native Windows — engine runs use the path jail (same as Claude Code's Windows story)"
+                                        : "unavailable — engine runs fall back to the path jail";
+                const detail =
+                        process.platform === "darwin"
+                                ? `${resolveSandboxExecPath()} — fs isolation active (seatbelt profile${netBlocked() ? "; network denied" : "; network shared"})`
+                                : `${resolveBwrapPath()} — fs+net isolation active`;
+                check(name, osb, osb ? detail : unavailable, "warn");
+        }
 
-	// 5. engine health (notes + dreams + dashboard) — chat works without it;
-	// session notes just queue in the outbox until it returns.
-	const reportEngineDown = (detail: string, hint = "start it: unown engine start") => {
-		const stats = outboxStats();
-		check(
-			"self-learning engine",
-			false,
-			`${detail} — learning paused, chat unaffected; notes queue in ${UNOWN_HOME}/notes/outbox (${stats.queued} pending; ${hint})`,
-			"warn",
-		);
-		// H1 (2026-10-26): dead-lettered notes are the outbox's honest failure
-		// lane — a note that failed ingest too many times is preserved in
-		// notes/dead/ with a reason instead of silently retrying forever.
-		if (stats.dead > 0) {
-			check(
-				"outbox dead-letter",
-				false,
-				`${stats.dead} note(s) exhausted their ingest attempts — inspect ${UNOWN_HOME}/notes/dead/ (each has a .reason.txt; fix and mv back into outbox/ to retry)`,
-				"warn",
-			);
-		}
-		// M6: the crash-loop circuit explains WHY auto-start isn't fixing
-		// this — surfaced here because doctor is the first place users look.
-		const circuit = readSpawnState();
-		if (circuit.gaveUp) {
-			check(
-				"engine auto-start",
-				false,
-				`gave up after ${circuit.attempts} failed start(s) — inspect .run/engine.log; then: unown engine repair (corrupt DB?) or unown engine start (resets the circuit)`,
-				"warn",
-			);
-		} else if (circuit.lastCause) {
-			check(
-				"engine auto-start",
-				false,
-				`auto-start blocked — last probe: ${circuit.lastCause}; no spawn attempted`,
-				"warn",
-			);
-		} else if (circuit.attempts > 0) {
-			check(
-				"engine auto-start",
-				true,
-				`${circuit.attempts} recent attempt(s) — backing off between tries (normal after failures)`,
-			);
-		}
-	};
-	let body: any;
-	try {
-		const probe = await probeEngine({ endpoint: ENGINE_URL, timeoutMs: 3000 });
-		if (probe.kind === "unauthorized") {
-			// The engine is UP and answering — it just refused this CLI's
-			// bearer token. A restart cannot fix a foreign owner, and the
-			// pre-M8 reading below would print "engine predates version
-			// reporting" off the error body — actively wrong advice — so
-			// 5b/5c are skipped entirely: nothing can be learned from an
-			// error payload.
-			check(
-				"self-learning engine",
-				false,
-				`up but rejected this CLI's token — ${describeEngineOwner(probe.owner)}; learning paused, chat unaffected; use the owning install's CLI or set UNOWN_ENGINE_TOKEN to the engine's token (no engine was started)`,
-				"warn",
-			);
-		} else if (probe.kind === "occupied" || probe.kind === "incompatible") {
-			check(
-				"self-learning engine",
-				false,
-				`${probe.detail}${probe.owner ? ` — ${describeEngineOwner(probe.owner)}` : ""}; learning paused, chat unaffected; ${probe.remediation ?? "do not start a second engine"}`,
-				"warn",
-			);
-		} else if (probe.kind === "unreachable") {
-			reportEngineDown(
-				`no answer from ${ENGINE_URL} (${probe.detail})`,
-				"do not start another engine while the port is hung; inspect .run/engine.log",
-			);
-		} else if (probe.kind === "refused") {
-			reportEngineDown("unreachable");
-		} else {
-			body = probe.body;
-			check(
-				"self-learning engine",
-				body?.ok === true,
-				`${body?.kpis?.totalRuns ?? "?"} runs, ${body?.kpis?.dreams ?? "?"} dreams`,
-			);
-		}
-		if (probe.kind === "ok" && body) {
-			// 5b. wedged-but-alive engine (F4, docs/detached-engine-architecture.md):
-			// the router reports how long its busy mutex has been held; past 2x
-			// the job timeout the watchdog should have cut the job off — if it
-			// hasn't, the engine is wedged at a level the watchdog cannot reach
-			// and the operator should restart it (`bun run agent:stop && agent:start`).
-			const routerInfo = body?.router;
-			if (routerInfo && typeof routerInfo.busyMs === "number" && typeof routerInfo.jobTimeoutMs === "number") {
-				const limit = 2 * routerInfo.jobTimeoutMs;
-				if (routerInfo.busyMs > limit) {
-					check(
-						"engine router",
-						false,
-						`busy mutex held ${Math.round(routerInfo.busyMs / 1000)}s on '${routerInfo.activeJob}' — past 2x the job timeout; restart the engine`,
-						"warn",
-					);
-				}
-			}
-			// 5c. engine version skew (M8): the engine reports its build in
-			// /api/overview; warn when it predates the current one — the fix
-			// is `unown engine restart`, never a broken state (chat and
-			// notes work regardless; new learning simply runs on the old
-			// build until restarted). A missing version block is a pre-M8
-			// engine: an info-pass with the same fix (the restart brings
-			// version reporting along).
-			{
-				const engineVer = body?.version;
-				const cmp = compareEngineBuild(
-					{ version: VERSION, gitSha: agentGitSha(), codeMtimeMs: codeMtimeMs() },
-					engineVer,
-					Date.now(),
-				);
-				if (cmp.verdict === "fresh") {
-					check(
-						"engine version",
-						true,
-						`v${engineVer?.version ?? "?"}${engineVer?.gitSha ? ` (${engineVer.gitSha})` : ""}`,
-					);
-				} else if (cmp.verdict === "unknown") {
-					check(
-						"engine version",
-						true,
-						"engine predates version reporting — restart to update: unown engine restart",
-					);
-				} else if (cmp.verdict === "ahead") {
-					check(
-						"engine version",
-						false,
-						`engine v${engineVer?.version ?? "?"} is newer than agent v${VERSION} — run: unown update`,
-						"warn",
-					);
-				} else {
-					check(
-						"engine version",
-						false,
-						`engine is an older build (v${engineVer?.version ?? "?"} vs agent v${VERSION}) — unown engine restart`,
-						"warn",
-					);
-				}
-			}
-		}
-	} catch {
-		reportEngineDown("unreachable");
-	}
+        // 5. engine health (notes + dreams + dashboard) — chat works without it;
+        // session notes just queue in the outbox until it returns.
+        const reportEngineDown = (detail: string, hint = "start it: unown engine start") => {
+                const stats = outboxStats();
+                check(
+                        "self-learning engine",
+                        false,
+                        `${detail} — learning paused, chat unaffected; notes queue in ${UNOWN_HOME}/notes/outbox (${stats.queued} pending; ${hint})`,
+                        "warn",
+                );
+                // H1 (2026-10-26): dead-lettered notes are the outbox's honest failure
+                // lane — a note that failed ingest too many times is preserved in
+                // notes/dead/ with a reason instead of silently retrying forever.
+                if (stats.dead > 0) {
+                        check(
+                                "outbox dead-letter",
+                                false,
+                                `${stats.dead} note(s) exhausted their ingest attempts — inspect ${UNOWN_HOME}/notes/dead/ (each has a .reason.txt; fix and mv back into outbox/ to retry)`,
+                                "warn",
+                        );
+                }
+                // M6: the crash-loop circuit explains WHY auto-start isn't fixing
+                // this — surfaced here because doctor is the first place users look.
+                const circuit = readSpawnState();
+                if (circuit.gaveUp) {
+                        check(
+                                "engine auto-start",
+                                false,
+                                `gave up after ${circuit.attempts} failed start(s) — inspect .run/engine.log; then: unown engine repair (corrupt DB?) or unown engine start (resets the circuit)`,
+                                "warn",
+                        );
+                } else if (circuit.lastCause) {
+                        check(
+                                "engine auto-start",
+                                false,
+                                `auto-start blocked — last probe: ${circuit.lastCause}; no spawn attempted`,
+                                "warn",
+                        );
+                } else if (circuit.attempts > 0) {
+                        check(
+                                "engine auto-start",
+                                true,
+                                `${circuit.attempts} recent attempt(s) — backing off between tries (normal after failures)`,
+                        );
+                }
+        };
+        let body: any;
+        try {
+                const probe = await probeEngine({ endpoint: ENGINE_URL, timeoutMs: 3000 });
+                if (probe.kind === "unauthorized") {
+                        // The engine is UP and answering — it just refused this CLI's
+                        // bearer token. A restart cannot fix a foreign owner, and the
+                        // pre-M8 reading below would print "engine predates version
+                        // reporting" off the error body — actively wrong advice — so
+                        // 5b/5c are skipped entirely: nothing can be learned from an
+                        // error payload.
+                        check(
+                                "self-learning engine",
+                                false,
+                                `up but rejected this CLI's token — ${describeEngineOwner(probe.owner)}; learning paused, chat unaffected; use the owning install's CLI or set UNOWN_ENGINE_TOKEN to the engine's token (no engine was started)`,
+                                "warn",
+                        );
+                } else if (probe.kind === "occupied" || probe.kind === "incompatible") {
+                        check(
+                                "self-learning engine",
+                                false,
+                                `${probe.detail}${probe.owner ? ` — ${describeEngineOwner(probe.owner)}` : ""}; learning paused, chat unaffected; ${probe.remediation ?? "do not start a second engine"}`,
+                                "warn",
+                        );
+                } else if (probe.kind === "unreachable") {
+                        reportEngineDown(
+                                `no answer from ${ENGINE_URL} (${probe.detail})`,
+                                "do not start another engine while the port is hung; inspect .run/engine.log",
+                        );
+                } else if (probe.kind === "refused") {
+                        reportEngineDown("unreachable");
+                } else {
+                        body = probe.body;
+                        check(
+                                "self-learning engine",
+                                body?.ok === true,
+                                `${body?.kpis?.totalRuns ?? "?"} runs, ${body?.kpis?.dreams ?? "?"} dreams`,
+                        );
+                }
+                if (probe.kind === "ok" && body) {
+                        // 5b. wedged-but-alive engine (F4, docs/detached-engine-architecture.md):
+                        // the router reports how long its busy mutex has been held; past 2x
+                        // the job timeout the watchdog should have cut the job off — if it
+                        // hasn't, the engine is wedged at a level the watchdog cannot reach
+                        // and the operator should restart it (`bun run agent:stop && agent:start`).
+                        const routerInfo = body?.router;
+                        if (routerInfo && typeof routerInfo.busyMs === "number" && typeof routerInfo.jobTimeoutMs === "number") {
+                                const limit = 2 * routerInfo.jobTimeoutMs;
+                                if (routerInfo.busyMs > limit) {
+                                        check(
+                                                "engine router",
+                                                false,
+                                                `busy mutex held ${Math.round(routerInfo.busyMs / 1000)}s on '${routerInfo.activeJob}' — past 2x the job timeout; restart the engine`,
+                                                "warn",
+                                        );
+                                }
+                        }
+                        // 5c. engine version skew (M8): the engine reports its build in
+                        // /api/overview; warn when it predates the current one — the fix
+                        // is `unown engine restart`, never a broken state (chat and
+                        // notes work regardless; new learning simply runs on the old
+                        // build until restarted). A missing version block is a pre-M8
+                        // engine: an info-pass with the same fix (the restart brings
+                        // version reporting along).
+                        {
+                                const engineVer = body?.version;
+                                const cmp = compareEngineBuild(
+                                        { version: VERSION, gitSha: agentGitSha(), codeMtimeMs: codeMtimeMs() },
+                                        engineVer,
+                                        Date.now(),
+                                );
+                                if (cmp.verdict === "fresh") {
+                                        check(
+                                                "engine version",
+                                                true,
+                                                `v${engineVer?.version ?? "?"}${engineVer?.gitSha ? ` (${engineVer.gitSha})` : ""}`,
+                                        );
+                                } else if (cmp.verdict === "unknown") {
+                                        check(
+                                                "engine version",
+                                                true,
+                                                "engine predates version reporting — restart to update: unown engine restart",
+                                        );
+                                } else if (cmp.verdict === "ahead") {
+                                        check(
+                                                "engine version",
+                                                false,
+                                                `engine v${engineVer?.version ?? "?"} is newer than agent v${VERSION} — run: unown update`,
+                                                "warn",
+                                        );
+                                } else {
+                                        check(
+                                                "engine version",
+                                                false,
+                                                `engine is an older build (v${engineVer?.version ?? "?"} vs agent v${VERSION}) — unown engine restart`,
+                                                "warn",
+                                        );
+                                }
+                        }
+                }
+        } catch {
+                reportEngineDown("unreachable");
+        }
 
-	// 6. SDLC surfaces (P1 productization — research R-c §2): LSP servers,
-	//    MCP config health (incl. the project trust gate) and .unown disk
-	//    usage. ALL warn-level by doctor's contract: the chat path is the
-	//    only hard-fail, every optional feature degrades to a warning.
-	{
-		// 6a. LSP servers — the DEFAULT_SERVERS registry probed on PATH
-		// (commandExists is a pure fs probe — no spawning here).
-		const detected: string[] = [];
-		for (const spec of DEFAULT_SERVERS) {
-			if (spec.candidates.some((candidate) => commandExists(candidate[0]))) detected.push(spec.label);
-		}
-		check(
-			"LSP servers",
-			detected.length > 0,
-			detected.length > 0
-				? `${detected.join(", ")} on PATH`
-				: "none detected — LSP diagnostics inactive (optional; install a server or configure .unown/lsp.json)",
-			"warn",
-		);
+        // 6. SDLC surfaces (P1 productization — research R-c §2): LSP servers,
+        //    MCP config health (incl. the project trust gate) and .unown disk
+        //    usage. ALL warn-level by doctor's contract: the chat path is the
+        //    only hard-fail, every optional feature degrades to a warning.
+        {
+                // 6a. LSP servers — the DEFAULT_SERVERS registry probed on PATH
+                // (commandExists is a pure fs probe — no spawning here).
+                const detected: string[] = [];
+                for (const spec of DEFAULT_SERVERS) {
+                        if (spec.candidates.some((candidate) => commandExists(candidate[0]))) detected.push(spec.label);
+                }
+                check(
+                        "LSP servers",
+                        detected.length > 0,
+                        detected.length > 0
+                                ? `${detected.join(", ")} on PATH`
+                                : "none detected — LSP diagnostics inactive (optional; install a server or configure .unown/lsp.json)",
+                        "warn",
+                );
 
-		// 6b. MCP config — the merged user+project config with its
-		// validation problems and trust gate surfaced actionably.
-		const mcp = resolveMcpConfig(cwd);
-		const mcpNames = Object.keys(mcp.config.servers);
-		const gated = Object.keys(mcp.gatedServers).length;
-		const serverDetail = `${mcpNames.length} server(s)${
-			mcpNames.length > 0 ? `: ${mcpNames.slice(0, 5).join(", ")}${mcpNames.length > 5 ? " …" : ""}` : ""
-		}${gated > 0 ? ` · ${gated} withheld (untrusted project config)` : ""}`;
-		if (mcp.needsTrust) {
-			// Surface a validation problem too when one exists (the
-			// gate problem itself is the message; formatConfigProblem
-			// on it would be redundant).
-			const validationProblem = mcp.problems.find((p) => !p.message.startsWith("project mcp.json is untrusted"));
-			check(
-				"MCP config",
-				false,
-				`project .unown/mcp.json untrusted — run /mcp trust in a session (${serverDetail})${
-					validationProblem ? ` · also: ${formatConfigProblem(validationProblem)}` : ""
-				}`,
-				"warn",
-			);
-		} else if (mcp.problems.length > 0) {
-			check(
-				"MCP config",
-				false,
-				`${formatConfigProblem(mcp.problems[0])}${mcp.problems.length > 1 ? ` (+${mcp.problems.length - 1} more)` : ""} · ${serverDetail}`,
-				"warn",
-			);
-		} else {
-			check(
-				"MCP config",
-				true,
-				mcpNames.length > 0 ? serverDetail : "no servers configured (optional — unown mcp add)",
-			);
-		}
+                // 6b. MCP config — the merged user+project config with its
+                // validation problems and trust gate surfaced actionably.
+                const mcp = resolveMcpConfig(cwd);
+                const mcpNames = Object.keys(mcp.config.servers);
+                const gated = Object.keys(mcp.gatedServers).length;
+                const serverDetail = `${mcpNames.length} server(s)${
+                        mcpNames.length > 0 ? `: ${mcpNames.slice(0, 5).join(", ")}${mcpNames.length > 5 ? " …" : ""}` : ""
+                }${gated > 0 ? ` · ${gated} withheld (untrusted project config)` : ""}`;
+                if (mcp.needsTrust) {
+                        // Surface a validation problem too when one exists (the
+                        // gate problem itself is the message; formatConfigProblem
+                        // on it would be redundant).
+                        const validationProblem = mcp.problems.find((p) => !p.message.startsWith("project mcp.json is untrusted"));
+                        check(
+                                "MCP config",
+                                false,
+                                `project .unown/mcp.json untrusted — run /mcp trust in a session (${serverDetail})${
+                                        validationProblem ? ` · also: ${formatConfigProblem(validationProblem)}` : ""
+                                }`,
+                                "warn",
+                        );
+                } else if (mcp.problems.length > 0) {
+                        check(
+                                "MCP config",
+                                false,
+                                `${formatConfigProblem(mcp.problems[0])}${mcp.problems.length > 1 ? ` (+${mcp.problems.length - 1} more)` : ""} · ${serverDetail}`,
+                                "warn",
+                        );
+                } else {
+                        check(
+                                "MCP config",
+                                true,
+                                mcpNames.length > 0 ? serverDetail : "no servers configured (optional — unown mcp add)",
+                        );
+                }
 
-		// 6c. unown state — checkpoint blob store size + receipts +
-		// reviews counts under <cwd>/.unown/. Warns past
-		// UNOWN_STATE_WARN_BYTES (default 512 MiB; tolerant parse —
-		// same pattern as UNOWN_CHECKPOINT_MAX_BLOB_BYTES, tests pin
-		// it without re-importing the module).
-		const store = new CheckpointStore(checkpointsDir(cwd));
-		const blobs = store.sizeBytes();
-		const manifests = store.list().length;
-		const countFiles = (dir: string): number => {
-			try {
-				return readdirSync(dir).length;
-			} catch {
-				return 0; // missing/unreadable — no state there yet
-			}
-		};
-		const receipts = countFiles(receiptsDir(cwd));
-		const reviews = countFiles(join(cwd, ".unown", "reviews"));
-		const rawWarn = Number.parseInt(process.env.UNOWN_STATE_WARN_BYTES ?? "", 10);
-		const warnBytes = Number.isFinite(rawWarn) && rawWarn > 0 ? rawWarn : 512 * 1024 * 1024;
-		const hasState = blobs > 0 || manifests > 0 || receipts > 0 || reviews > 0;
-		const stateDetail = hasState
-			? `${manifests} checkpoint(s), ${formatBytes(blobs)} blobs · ${receipts} receipt file(s) · ${reviews} review(s)`
-			: "no .unown state yet (checkpoints/receipts/reviews appear as sessions run)";
-		check(
-			"unown state",
-			blobs <= warnBytes,
-			blobs <= warnBytes
-				? stateDetail
-				: `${stateDetail} — over ${formatBytes(warnBytes)}: consider pruning old checkpoints (/undo consumes turn checkpoints; retention caps apply; UNOWN_STATE_WARN_BYTES adjusts this threshold)`,
-			"warn",
-		);
-		// 6d. granular permissions (Claude Code/Cline port) — config
-		//     files, mode, trust gate and learn state. Warn-level by
-		//     doctor's contract: a missing config is the documented
-		//     default (hard-coded guardrails alone), never a failure.
-		{
-			const pd = permissionsDoctorSummary(cwd, agentDir);
-			check("permissions config", pd.ok, pd.detail, "warn");
-		}
+                // 6c. unown state — checkpoint blob store size + receipts +
+                // reviews counts under <cwd>/.unown/. Warns past
+                // UNOWN_STATE_WARN_BYTES (default 512 MiB; tolerant parse —
+                // same pattern as UNOWN_CHECKPOINT_MAX_BLOB_BYTES, tests pin
+                // it without re-importing the module).
+                const store = new CheckpointStore(checkpointsDir(cwd));
+                const blobs = store.sizeBytes();
+                const manifests = store.list().length;
+                const countFiles = (dir: string): number => {
+                        try {
+                                return readdirSync(dir).length;
+                        } catch {
+                                return 0; // missing/unreadable — no state there yet
+                        }
+                };
+                const receipts = countFiles(receiptsDir(cwd));
+                const reviews = countFiles(join(cwd, ".unown", "reviews"));
+                const rawWarn = Number.parseInt(process.env.UNOWN_STATE_WARN_BYTES ?? "", 10);
+                const warnBytes = Number.isFinite(rawWarn) && rawWarn > 0 ? rawWarn : 512 * 1024 * 1024;
+                const hasState = blobs > 0 || manifests > 0 || receipts > 0 || reviews > 0;
+                const stateDetail = hasState
+                        ? `${manifests} checkpoint(s), ${formatBytes(blobs)} blobs · ${receipts} receipt file(s) · ${reviews} review(s)`
+                        : "no .unown state yet (checkpoints/receipts/reviews appear as sessions run)";
+                check(
+                        "unown state",
+                        blobs <= warnBytes,
+                        blobs <= warnBytes
+                                ? stateDetail
+                                : `${stateDetail} — over ${formatBytes(warnBytes)}: consider pruning old checkpoints (/undo consumes turn checkpoints; retention caps apply; UNOWN_STATE_WARN_BYTES adjusts this threshold)`,
+                        "warn",
+                );
+                // 6d. granular permissions (Claude Code/Cline port) — config
+                //     files, mode, trust gate and learn state. Warn-level by
+                //     doctor's contract: a missing config is the documented
+                //     default (hard-coded guardrails alone), never a failure.
+                {
+                        const pd = permissionsDoctorSummary(cwd, agentDir);
+                        check("permissions config", pd.ok, pd.detail, "warn");
+                }
 
-		// 6e. web results store (the persistent web_search/webfetch
-		//     cache under $UNOWN_HOME/cache/web — webcache.ts).
-		//     Informational: an empty store is the fresh-install
-		//     default, and UNOWN_WEB_CACHE=0 is a deliberate user
-		//     choice — both stay warn-class at most, never a failure.
-		{
-			const wc = webCacheStats();
-			const lookups = wc.totals.hit + wc.totals.revalidated + wc.totals.miss;
-			const hitRate = lookups > 0 ? Math.round(((wc.totals.hit + wc.totals.revalidated) / lookups) * 100) : null;
-			webCacheSummary = {
-				enabled: wc.enabled,
-				root: wc.root,
-				entries: wc.entries,
-				bytes: wc.bytes,
-				maxBytes: wc.maxBytes,
-				hitRate,
-				savedRequests: wc.savedRequests,
-			};
-			check(
-				"web results store",
-				wc.enabled,
-				wc.enabled
-					? `${wc.entries} entries, ${formatBytes(wc.bytes)}, ${
-							hitRate === null ? "no lookups yet" : `${hitRate}% hit rate`
-						} (saved ${wc.savedRequests} requests)`
-					: "disabled (UNOWN_WEB_CACHE=0)",
-				"warn",
-			);
-		}
-	}
+                // 6e. web results store (the persistent web_search/webfetch
+                //     cache under $UNOWN_HOME/cache/web — webcache.ts).
+                //     Informational: an empty store is the fresh-install
+                //     default, and UNOWN_WEB_CACHE=0 is a deliberate user
+                //     choice — both stay warn-class at most, never a failure.
+                {
+                        const wc = webCacheStats();
+                        const lookups = wc.totals.hit + wc.totals.revalidated + wc.totals.miss;
+                        const hitRate = lookups > 0 ? Math.round(((wc.totals.hit + wc.totals.revalidated) / lookups) * 100) : null;
+                        webCacheSummary = {
+                                enabled: wc.enabled,
+                                root: wc.root,
+                                entries: wc.entries,
+                                bytes: wc.bytes,
+                                maxBytes: wc.maxBytes,
+                                hitRate,
+                                savedRequests: wc.savedRequests,
+                        };
+                        check(
+                                "web results store",
+                                wc.enabled,
+                                wc.enabled
+                                        ? `${wc.entries} entries, ${formatBytes(wc.bytes)}, ${
+                                                        hitRate === null ? "no lookups yet" : `${hitRate}% hit rate`
+                                                } (saved ${wc.savedRequests} requests)`
+                                        : "disabled (UNOWN_WEB_CACHE=0)",
+                                "warn",
+                        );
+                }
+        }
 
-	// 7. PATH shim shadowing — a foreign `unown` earlier on PATH is this
-	// repo's OWN observed failure mode (the E2E suite once re-pointed the
-	// shim at a throwaway clone and "unown" kept silently being that one).
-	// findShims orders by PATH precedence; the FIRST hit is what you get.
-	{
-		const root = resolveRepoRoot(realGit);
-		if (root) {
-			const shims = findShims(root);
-			const first = shims[0];
-			if (!first) {
-				check("PATH shim", true, "no shim on PATH — running from the repo checkout directly", "warn");
-			} else if (first.ours) {
-				check("PATH shim", true, first.path);
-			} else {
-				check(
-					"PATH shim",
-					false,
-					`shadowed: ${first.path} runs ${first.target ?? "another install"} — this checkout's unown is NOT first on PATH; fix the PATH order or remove the foreign shim`,
-					"warn",
-				);
-			}
-		}
-	}
+        // 7. PATH shim shadowing — a foreign `unown` earlier on PATH is this
+        // repo's OWN observed failure mode (the E2E suite once re-pointed the
+        // shim at a throwaway clone and "unown" kept silently being that one).
+        // findShims orders by PATH precedence; the FIRST hit is what you get.
+        {
+                const root = resolveRepoRoot(realGit);
+                if (root) {
+                        const shims = findShims(root);
+                        const first = shims[0];
+                        if (!first) {
+                                check("PATH shim", true, "no shim on PATH — running from the repo checkout directly", "warn");
+                        } else if (first.ours) {
+                                check("PATH shim", true, first.path);
+                        } else {
+                                check(
+                                        "PATH shim",
+                                        false,
+                                        `shadowed: ${first.path} runs ${first.target ?? "another install"} — this checkout's unown is NOT first on PATH; fix the PATH order or remove the foreign shim`,
+                                        "warn",
+                                );
+                        }
+                }
+        }
 
-	// 8. Instruction-set audit (Milestone 3.2 — Claude Code's `/doctor`
-	//    prompt-audit port). Extends doctor with an audit of the
-	//    human-authored artifacts that steer the agent: AGENTS.md freshness,
-	//    skills coverage, MCP orphan servers, hooks schema, adversary mode,
-	//    injection scanner, and cross-file references. Always warn-class —
-	//    broken hooks/skills don't break chat (the existing contract).
-	const instructionReport = auditInstructionSet(cwd);
-	const instructionSummary = summarizeInstructionAudit(instructionReport);
-	const instructionClean = instructionSummary.errors === 0 && instructionSummary.warnings === 0;
-	if (jsonMode) {
-		// surfaced in the JSON envelope below under `instructionAudit`
-	} else {
-		// Render the 7 sections inline; errors use ⚠/✗ so the existing
-		// "ready to chat" summary's icon vocabulary stays consistent.
-		if (!instructionClean || instructionSummary.infos > 0) {
-			console.log(renderInstructionAudit(instructionReport));
-		}
-	}
-	check(
-		"instruction-set audit",
-		instructionSummary.errors === 0,
-		instructionSummary.errors > 0
-			? `${instructionSummary.errors} error(s), ${instructionSummary.warnings} warning(s) — run \`unown doctor-instructions\` for the full report`
-			: instructionSummary.warnings > 0
-				? `${instructionSummary.warnings} warning(s), ${instructionSummary.infos} info — run \`unown doctor-instructions\` for the full report`
-				: instructionSummary.infos > 0
-					? `${instructionSummary.infos} info note(s) — run \`unown doctor-instructions\` for the full report`
-					: "clean (AGENTS.md, skills, MCP, hooks, adversary, injection scanner)",
-		"warn",
-	);
+        // 8. Instruction-set audit (Milestone 3.2 — Claude Code's `/doctor`
+        //    prompt-audit port). Extends doctor with an audit of the
+        //    human-authored artifacts that steer the agent: AGENTS.md freshness,
+        //    skills coverage, MCP orphan servers, hooks schema, adversary mode,
+        //    injection scanner, and cross-file references. Always warn-class —
+        //    broken hooks/skills don't break chat (the existing contract).
+        const instructionReport = auditInstructionSet(cwd);
+        const instructionSummary = summarizeInstructionAudit(instructionReport);
+        const instructionClean = instructionSummary.errors === 0 && instructionSummary.warnings === 0;
+        if (jsonMode) {
+                // surfaced in the JSON envelope below under `instructionAudit`
+        } else {
+                // Render the 7 sections inline; errors use ⚠/✗ so the existing
+                // "ready to chat" summary's icon vocabulary stays consistent.
+                if (!instructionClean || instructionSummary.infos > 0) {
+                        console.log(renderInstructionAudit(instructionReport));
+                }
+        }
+        check(
+                "instruction-set audit",
+                instructionSummary.errors === 0,
+                instructionSummary.errors > 0
+                        ? `${instructionSummary.errors} error(s), ${instructionSummary.warnings} warning(s) — run \`unown doctor-instructions\` for the full report`
+                        : instructionSummary.warnings > 0
+                                ? `${instructionSummary.warnings} warning(s), ${instructionSummary.infos} info — run \`unown doctor-instructions\` for the full report`
+                                : instructionSummary.infos > 0
+                                        ? `${instructionSummary.infos} info note(s) — run \`unown doctor-instructions\` for the full report`
+                                        : "clean (AGENTS.md, skills, MCP, hooks, adversary, injection scanner)",
+                "warn",
+        );
 
-	if (jsonMode) {
-		console.log(
-			JSON.stringify(
-				{
-					ok: !hardFail,
-					version: VERSION,
-					cwd,
-					agentDir,
-					engineUrl: ENGINE_URL,
-					strictHooks: STRICT_HOOKS,
-					checks,
-					instructionAudit: instructionReport,
-					webCache: webCacheSummary,
-					summary: {
-						hardFail,
-						warnings,
-						instructionErrors: instructionSummary.errors,
-						instructionWarnings: instructionSummary.warnings,
-					},
-				},
-				null,
-				2,
-			),
-		);
-		process.exit(hardFail ? 1 : 0);
-	}
-	if (hardFail)
-		console.log(
-			`\n✗ unown cannot chat yet — fix the ✗ items above (unown setup, unown --help, docs/troubleshooting.md)`,
-		);
-	else if (warnings > 0) console.log(`\n✓ unown is ready to chat in ${cwd} (⚠ items affect learning features only)`);
-	else console.log(`\n✓ unown is ready in ${cwd}`);
-	process.exit(hardFail ? 1 : 0);
+        if (jsonMode) {
+                console.log(
+                        JSON.stringify(
+                                {
+                                        ok: !hardFail,
+                                        version: VERSION,
+                                        cwd,
+                                        agentDir,
+                                        engineUrl: ENGINE_URL,
+                                        strictHooks: STRICT_HOOKS,
+                                        checks,
+                                        instructionAudit: instructionReport,
+                                        webCache: webCacheSummary,
+                                        summary: {
+                                                hardFail,
+                                                warnings,
+                                                instructionErrors: instructionSummary.errors,
+                                                instructionWarnings: instructionSummary.warnings,
+                                        },
+                                },
+                                null,
+                                2,
+                        ),
+                );
+                process.exit(hardFail ? 1 : 0);
+        }
+        if (hardFail)
+                console.log(
+                        `\n✗ unown cannot chat yet — fix the ✗ items above (unown setup, unown --help, docs/troubleshooting.md)`,
+                );
+        else if (warnings > 0) console.log(`\n✓ unown is ready to chat in ${cwd} (⚠ items affect learning features only)`);
+        else console.log(`\n✓ unown is ready in ${cwd}`);
+        process.exit(hardFail ? 1 : 0);
 }
 
 async function cmdNote(text: string) {
-	if (!text.trim()) {
-		console.error('usage: unown note "something worth remembering"');
-		process.exit(1);
-	}
-	const result = await deliverTerminalNote({ content: text, projectPath: process.cwd(), ts: Date.now() });
-	console.log(
-		result.delivered
-			? `✓ note delivered to the engine`
-			: `· engine unreachable — note queued in outbox (${result.detail ?? ""})`,
-	);
-	process.exit(0);
+        if (!text.trim()) {
+                console.error('usage: unown note "something worth remembering"');
+                process.exit(1);
+        }
+        const result = await deliverTerminalNote({ content: text, projectPath: process.cwd(), ts: Date.now() });
+        console.log(
+                result.delivered
+                        ? `✓ note delivered to the engine`
+                        : `· engine unreachable — note queued in outbox (${result.detail ?? ""})`,
+        );
+        process.exit(0);
 }
 
 /** `unown blame [file]` — the CLI twin of the /blame session command (audit
  * 2-b F2: `unown blame` used to be swallowed as a one-word LLM prompt). Same
  * ledger (.unown/receipts/), same flags: --session <id> --since <ts> --json. */
 function cmdBlame(argv: string[]): number {
-	const tokens = argv.filter((t) => t.length > 0);
-	if (tokens.includes("-h") || tokens.includes("--help")) {
-		console.log(
-			`unown blame — receipts-backed blame: which sessions and tool calls touched a file
+        const tokens = argv.filter((t) => t.length > 0);
+        if (tokens.includes("-h") || tokens.includes("--help")) {
+                console.log(
+                        `unown blame — receipts-backed blame: which sessions and tool calls touched a file
 
 usage: unown blame [file] [--session <id>] [--since <ts>] [--json]
   file        a project-relative path; without it, a whole-ledger summary
@@ -2471,72 +2582,72 @@ usage: unown blame [file] [--session <id>] [--since <ts>] [--json]
 
 The ledger lives at .unown/receipts/ (one JSONL per session; /receipts prints
 it in-session). This is the CLI twin of the /blame slash command.`,
-		);
-		return 0;
-	}
-	const json = tokens.includes("--json");
-	let sessionId: string | undefined;
-	let since: number | undefined;
-	let filePath: string | undefined;
-	for (let i = 0; i < tokens.length; i++) {
-		const t = tokens[i];
-		if (t === "--json") continue;
-		if (t === "--session") {
-			sessionId = tokens[i + 1];
-			i++;
-			continue;
-		}
-		if (t === "--since") {
-			const raw = tokens[i + 1];
-			const asNum = Number(raw);
-			if (!Number.isNaN(asNum)) {
-				since = raw.length >= 10 && /^\d+$/.test(raw) ? asNum : Date.now() - asNum * 1000;
-			} else {
-				const parsed = Date.parse(raw);
-				if (!Number.isNaN(parsed)) since = parsed;
-			}
-			i++;
-			continue;
-		}
-		if (!t.startsWith("--")) filePath = t;
-	}
-	const dir = receiptsDir(process.cwd());
-	if (!filePath) {
-		const summary = blameSummary(dir, { sessionId, since });
-		if (json) {
-			console.log(JSON.stringify(summary, null, 2));
-			return 0;
-		}
-		const toolLines = Object.entries(summary.byTool)
-			.sort((a, b) => b[1] - a[1])
-			.map(([tool, n]) => `- ${tool}: ${n}`)
-			.join("\n");
-		const files = summary.filesTouched.slice(0, 40);
-		const filesLines =
-			files.length > 0
-				? files.map((f) => `- ${f}`).join("\n") +
-					(summary.filesTouched.length > 40 ? `\n- …and ${summary.filesTouched.length - 40} more` : "")
-				: "(no files written yet)";
-		console.log(
-			`Blame summary — ${summary.totalEntries} tool call(s) across receipts.\n\nBy tool:\n${toolLines || "(none)"}\n\nFiles written/edited:\n${filesLines}`,
-		);
-		return 0;
-	}
-	const entries = blameFile(dir, filePath, { sessionId, since }, process.cwd());
-	console.log(json ? formatBlameJson(entries) : formatBlameReport(entries, filePath));
-	return 0;
+                );
+                return 0;
+        }
+        const json = tokens.includes("--json");
+        let sessionId: string | undefined;
+        let since: number | undefined;
+        let filePath: string | undefined;
+        for (let i = 0; i < tokens.length; i++) {
+                const t = tokens[i];
+                if (t === "--json") continue;
+                if (t === "--session") {
+                        sessionId = tokens[i + 1];
+                        i++;
+                        continue;
+                }
+                if (t === "--since") {
+                        const raw = tokens[i + 1];
+                        const asNum = Number(raw);
+                        if (!Number.isNaN(asNum)) {
+                                since = raw.length >= 10 && /^\d+$/.test(raw) ? asNum : Date.now() - asNum * 1000;
+                        } else {
+                                const parsed = Date.parse(raw);
+                                if (!Number.isNaN(parsed)) since = parsed;
+                        }
+                        i++;
+                        continue;
+                }
+                if (!t.startsWith("--")) filePath = t;
+        }
+        const dir = receiptsDir(process.cwd());
+        if (!filePath) {
+                const summary = blameSummary(dir, { sessionId, since });
+                if (json) {
+                        console.log(JSON.stringify(summary, null, 2));
+                        return 0;
+                }
+                const toolLines = Object.entries(summary.byTool)
+                        .sort((a, b) => b[1] - a[1])
+                        .map(([tool, n]) => `- ${tool}: ${n}`)
+                        .join("\n");
+                const files = summary.filesTouched.slice(0, 40);
+                const filesLines =
+                        files.length > 0
+                                ? files.map((f) => `- ${f}`).join("\n") +
+                                        (summary.filesTouched.length > 40 ? `\n- …and ${summary.filesTouched.length - 40} more` : "")
+                                : "(no files written yet)";
+                console.log(
+                        `Blame summary — ${summary.totalEntries} tool call(s) across receipts.\n\nBy tool:\n${toolLines || "(none)"}\n\nFiles written/edited:\n${filesLines}`,
+                );
+                return 0;
+        }
+        const entries = blameFile(dir, filePath, { sessionId, since }, process.cwd());
+        console.log(json ? formatBlameJson(entries) : formatBlameReport(entries, filePath));
+        return 0;
 }
 
 /** F10 silence budget for print mode (ms). Floor 10s; default 3 min — above the worst measured upstream round (Agnes direct 2–12 s + bridge queueing), below any acceptable hang. */
 function printStallMs(): number {
-	const raw = Number(process.env.PI_PRINT_STALL_MS);
-	return Number.isFinite(raw) && raw >= 10_000 ? raw : 180_000;
+        const raw = Number(process.env.PI_PRINT_STALL_MS);
+        return Number.isFinite(raw) && raw >= 10_000 ? raw : 180_000;
 }
 
 /** Hard-exit grace AFTER the agent finishes (ms). Nothing re-arms this. */
 function printExitGraceMs(): number {
-	const raw = Number(process.env.PI_PRINT_EXIT_GRACE_MS);
-	return Number.isFinite(raw) && raw >= 2_000 ? raw : 15_000;
+        const raw = Number(process.env.PI_PRINT_EXIT_GRACE_MS);
+        return Number.isFinite(raw) && raw >= 2_000 ? raw : 15_000;
 }
 
 /**
@@ -2582,7 +2693,7 @@ function printExitGraceMs(): number {
  * (50/75/90% of the budget), at most once each per stall window; stdout
  * stays pure. PI_PRINT_STALL_PROGRESS=0 silences them. */
 function printStallProgressEnabled(): boolean {
-	return (process.env.PI_PRINT_STALL_PROGRESS ?? "") !== "0";
+        return (process.env.PI_PRINT_STALL_PROGRESS ?? "") !== "0";
 }
 
 /** The milestone fractions of the stall budget, ascending. */
@@ -2595,152 +2706,152 @@ export const STALL_PROGRESS_FRACTIONS = [0.5, 0.75, 0.9] as const;
  * and writes; this never touches env, clock, or streams.
  */
 export function nextStallMilestone(elapsedMs: number, budgetMs: number, emitted: ReadonlyArray<number>): number | null {
-	if (budgetMs <= 0) return null;
-	for (const fraction of STALL_PROGRESS_FRACTIONS) {
-		if (elapsedMs >= budgetMs * fraction && !emitted.includes(fraction)) return fraction;
-	}
-	return null;
+        if (budgetMs <= 0) return null;
+        for (const fraction of STALL_PROGRESS_FRACTIONS) {
+                if (elapsedMs >= budgetMs * fraction && !emitted.includes(fraction)) return fraction;
+        }
+        return null;
 }
 
 export function installPrintStallWatchdog(runtime: any, lastResort?: () => void): { dispose: () => void } {
-	try {
-		// F3 (2026-10-29, the parley round): every forced exit below used to
-		// call process.exit() bare — bounded, but an unattended caller's
-		// result vanished whenever post-answer teardown hung past the
-		// grace (measured live: a 59-tool-call build session exited via
-		// the hard-exit grace with a 0-byte envelope). The lastResort
-		// hook lets cmdPrint write its envelope (writeSync — unloseable)
-		// + one stderr line BEFORE the bounded exit. Fail-open: a
-		// throwing hook must never block the exit.
-		const runLastResort = () => {
-			try {
-				lastResort?.();
-			} catch {
-				/* boundedness outranks the envelope */
-			}
-		};
-		let timer: any = null;
-		let lastEventTs = Date.now();
-		let emitted: Record<number, boolean> = {};
-		const stallProgress = () => {
-			if (!printStallProgressEnabled()) return;
-			const elapsed = Date.now() - lastEventTs;
-			const budget = printStallMs();
-			const fraction = nextStallMilestone(elapsed, budget, Object.keys(emitted).map(Number));
-			if (fraction !== null) {
-				emitted[fraction] = true;
-				console.error(
-					`unown: no session events for ${Math.round(elapsed / 1000)}s — still waiting (stall guard at ${Math.round(budget / 1000)}s; tune with PI_PRINT_STALL_MS)`,
-				);
-			}
-		};
-		const arm = () => {
-			lastEventTs = Date.now();
-			emitted = {};
-			if (timer) clearTimeout(timer);
-			timer = setTimeout(() => {
-				console.error(
-					`unown: print mode stalled — no session events for ${Math.round(printStallMs() / 1000)}s; forcing exit (tune with PI_PRINT_STALL_MS)`,
-				);
-				runLastResort();
-				process.exit(1);
-			}, printStallMs());
-		};
-		arm();
-		let hardExit: any = null;
-		const armHardExit = () => {
-			if (hardExit) clearTimeout(hardExit);
-			hardExit = setTimeout(() => {
-				// Fleet guard (2026-10-26 stress round): a live
-				// async fleet holds the process open — the
-				// drain contract waits for children AND the
-				// model's answer to the last delivered result.
-				// Pre-fix, this timer fired at +15 s after the
-				// SPAWNED turn's agent_end while the child was
-				// mid-bash: exit 0, zero result deliveries,
-				// orphaned tree, "success" to the caller.
-				// Re-arm while the fleet is busy; the drain's
-				// completion (or the fleet timeout watchdog)
-				// ends the run instead.
-				if (isFleetBusy()) {
-					armHardExit();
-					return;
-				}
-				// LR-2 (2026-10-27 long-run round): an in-flight
-				// terminal auto-compact also holds the process open —
-				// the summarization outlives the aborted loop, and
-				// cmdPrint's continuation round is still due. Same
-				// re-arm contract as the fleet guard.
-				if (activeTerminalAutoCompact()?.compactInFlight) {
-					armHardExit();
-					return;
-				}
-				// The agent finished; dispose had its grace. Leave quietly —
-				// but never silently: the caller's envelope goes first (F3).
-				runLastResort();
-				process.exit(0);
-			}, printExitGraceMs());
-		};
-		let lastSession: unknown = null;
-		let off: (() => void) | null = null;
-		const poll = setInterval(() => {
-			// Stall progress: the poll interval doubles as the progress tick —
-			// bounded (1s), and milestones emit at most once per stall window.
-			stallProgress();
-			// Fleet liveness (2026-10-26 stress round): a healthy
-			// async fleet produces NO session events while its
-			// children work (they are separate processes), so the
-			// 180 s stall guard would kill a long-but-fine fleet
-			// run mid-drain (the drain itself waits up to 900 s).
-			// While the fleet is busy, fleet liveness IS session
-			// liveness — keep the stall guard re-armed.
-			if (isFleetBusy()) arm();
-			const s = runtime?.session;
-			if (s && s !== lastSession) {
-				lastSession = s;
-				try {
-					off?.();
-				} catch {
-					/* best effort */
-				}
-				off =
-					typeof s.subscribe === "function"
-						? s.subscribe((event: any) => {
-								arm();
-								// Final completion: an agent_end that will not retry.
-								// The answer is written; only teardown remains.
-								if (event?.type === "agent_end" && !event?.willRetry) armHardExit();
-								// LR-2 (2026-10-27 long-run round): a NEW round
-								// (an auto-compact continuation, a fleet steer-back
-								// turn) cancels any armed hard exit — a running
-								// turn is not "finished", and the timer would
-								// otherwise fire mid-round (armed at the previous
-								// round's agent_end +15s). The next agent_end
-								// re-arms it.
-								if (event?.type === "agent_start" && hardExit) {
-									clearTimeout(hardExit);
-									hardExit = null;
-								}
-							})
-						: null;
-			}
-		}, 1_000);
-		// F3: the test lane's dispose — clears every timer the watchdog
-		// armed (stall guard, hard-exit grace, the 1s poll) so a pinning
-		// test can install the real watchdog without keeping the test
-		// process alive. Production never calls it (the process exits
-		// through one of the guarded paths first).
-		return {
-			dispose: () => {
-				if (timer) clearTimeout(timer);
-				if (hardExit) clearTimeout(hardExit);
-				clearInterval(poll);
-			},
-		};
-	} catch {
-		/* best effort only */
-	}
-	return { dispose: () => {} };
+        try {
+                // F3 (2026-10-29, the parley round): every forced exit below used to
+                // call process.exit() bare — bounded, but an unattended caller's
+                // result vanished whenever post-answer teardown hung past the
+                // grace (measured live: a 59-tool-call build session exited via
+                // the hard-exit grace with a 0-byte envelope). The lastResort
+                // hook lets cmdPrint write its envelope (writeSync — unloseable)
+                // + one stderr line BEFORE the bounded exit. Fail-open: a
+                // throwing hook must never block the exit.
+                const runLastResort = () => {
+                        try {
+                                lastResort?.();
+                        } catch {
+                                /* boundedness outranks the envelope */
+                        }
+                };
+                let timer: any = null;
+                let lastEventTs = Date.now();
+                let emitted: Record<number, boolean> = {};
+                const stallProgress = () => {
+                        if (!printStallProgressEnabled()) return;
+                        const elapsed = Date.now() - lastEventTs;
+                        const budget = printStallMs();
+                        const fraction = nextStallMilestone(elapsed, budget, Object.keys(emitted).map(Number));
+                        if (fraction !== null) {
+                                emitted[fraction] = true;
+                                console.error(
+                                        `unown: no session events for ${Math.round(elapsed / 1000)}s — still waiting (stall guard at ${Math.round(budget / 1000)}s; tune with PI_PRINT_STALL_MS)`,
+                                );
+                        }
+                };
+                const arm = () => {
+                        lastEventTs = Date.now();
+                        emitted = {};
+                        if (timer) clearTimeout(timer);
+                        timer = setTimeout(() => {
+                                console.error(
+                                        `unown: print mode stalled — no session events for ${Math.round(printStallMs() / 1000)}s; forcing exit (tune with PI_PRINT_STALL_MS)`,
+                                );
+                                runLastResort();
+                                process.exit(1);
+                        }, printStallMs());
+                };
+                arm();
+                let hardExit: any = null;
+                const armHardExit = () => {
+                        if (hardExit) clearTimeout(hardExit);
+                        hardExit = setTimeout(() => {
+                                // Fleet guard (2026-10-26 stress round): a live
+                                // async fleet holds the process open — the
+                                // drain contract waits for children AND the
+                                // model's answer to the last delivered result.
+                                // Pre-fix, this timer fired at +15 s after the
+                                // SPAWNED turn's agent_end while the child was
+                                // mid-bash: exit 0, zero result deliveries,
+                                // orphaned tree, "success" to the caller.
+                                // Re-arm while the fleet is busy; the drain's
+                                // completion (or the fleet timeout watchdog)
+                                // ends the run instead.
+                                if (isFleetBusy()) {
+                                        armHardExit();
+                                        return;
+                                }
+                                // LR-2 (2026-10-27 long-run round): an in-flight
+                                // terminal auto-compact also holds the process open —
+                                // the summarization outlives the aborted loop, and
+                                // cmdPrint's continuation round is still due. Same
+                                // re-arm contract as the fleet guard.
+                                if (activeTerminalAutoCompact()?.compactInFlight) {
+                                        armHardExit();
+                                        return;
+                                }
+                                // The agent finished; dispose had its grace. Leave quietly —
+                                // but never silently: the caller's envelope goes first (F3).
+                                runLastResort();
+                                process.exit(0);
+                        }, printExitGraceMs());
+                };
+                let lastSession: unknown = null;
+                let off: (() => void) | null = null;
+                const poll = setInterval(() => {
+                        // Stall progress: the poll interval doubles as the progress tick —
+                        // bounded (1s), and milestones emit at most once per stall window.
+                        stallProgress();
+                        // Fleet liveness (2026-10-26 stress round): a healthy
+                        // async fleet produces NO session events while its
+                        // children work (they are separate processes), so the
+                        // 180 s stall guard would kill a long-but-fine fleet
+                        // run mid-drain (the drain itself waits up to 900 s).
+                        // While the fleet is busy, fleet liveness IS session
+                        // liveness — keep the stall guard re-armed.
+                        if (isFleetBusy()) arm();
+                        const s = runtime?.session;
+                        if (s && s !== lastSession) {
+                                lastSession = s;
+                                try {
+                                        off?.();
+                                } catch {
+                                        /* best effort */
+                                }
+                                off =
+                                        typeof s.subscribe === "function"
+                                                ? s.subscribe((event: any) => {
+                                                                arm();
+                                                                // Final completion: an agent_end that will not retry.
+                                                                // The answer is written; only teardown remains.
+                                                                if (event?.type === "agent_end" && !event?.willRetry) armHardExit();
+                                                                // LR-2 (2026-10-27 long-run round): a NEW round
+                                                                // (an auto-compact continuation, a fleet steer-back
+                                                                // turn) cancels any armed hard exit — a running
+                                                                // turn is not "finished", and the timer would
+                                                                // otherwise fire mid-round (armed at the previous
+                                                                // round's agent_end +15s). The next agent_end
+                                                                // re-arms it.
+                                                                if (event?.type === "agent_start" && hardExit) {
+                                                                        clearTimeout(hardExit);
+                                                                        hardExit = null;
+                                                                }
+                                                        })
+                                                : null;
+                        }
+                }, 1_000);
+                // F3: the test lane's dispose — clears every timer the watchdog
+                // armed (stall guard, hard-exit grace, the 1s poll) so a pinning
+                // test can install the real watchdog without keeping the test
+                // process alive. Production never calls it (the process exits
+                // through one of the guarded paths first).
+                return {
+                        dispose: () => {
+                                if (timer) clearTimeout(timer);
+                                if (hardExit) clearTimeout(hardExit);
+                                clearInterval(poll);
+                        },
+                };
+        } catch {
+                /* best effort only */
+        }
+        return { dispose: () => {} };
 }
 
 /** M3 answer-watch accumulator for cmdPrint's OSC-9 ping (notify.ts): a
@@ -2763,616 +2874,628 @@ export function installPrintStallWatchdog(runtime: any, lastResort?: () => void)
  *  recovered from this tracker at the exit paths instead of depending on a
  *  race in pi's message bookkeeping. */
 function createAnswerWatch(): {
-	get answer(): { text: string; stopReason?: string; at: number } | null;
-	get lastCompleted(): { text: string; at: number } | null;
-	extension: { name: string; hidden: boolean; factory(pi: any): void };
+        get answer(): { text: string; stopReason?: string; at: number } | null;
+        get lastCompleted(): { text: string; at: number } | null;
+        extension: { name: string; hidden: boolean; factory(pi: any): void };
 } {
-	const watch = {
-		answer: null as { text: string; stopReason?: string; at: number } | null,
-		lastCompleted: null as { text: string; at: number } | null,
-	};
-	return {
-		// Getters, not copied values: the extension mutates `watch` AFTER
-		// cmdPrint has already received this handle.
-		get answer() {
-			return watch.answer;
-		},
-		get lastCompleted() {
-			return watch.lastCompleted;
-		},
-		extension: {
-			name: "unown-answer-watch",
-			hidden: true,
-			factory(pi: any) {
-				pi.on("agent_end", ((event: any) => {
-					try {
-						const messages = Array.isArray(event?.messages) ? event.messages : [];
-						const last = messages[messages.length - 1];
-						if (last?.role !== "assistant") return;
-						watch.answer = {
-							text: assistantTextOf(last),
-							stopReason: typeof last.stopReason === "string" ? last.stopReason : undefined,
-							at: Date.now(),
-						};
-					} catch {
-						/* best effort — the ping is cosmetic */
-					}
-				}) as any);
-				pi.on("message_end", ((event: any) => {
-					try {
-						const msg = event?.message;
-						if (msg?.role !== "assistant") return;
-						if (msg.stopReason === "aborted" || msg.stopReason === "error") return;
-						const text = assistantTextOf(msg).trim();
-						if (text) watch.lastCompleted = { text, at: Date.now() };
-					} catch {
-						/* best effort */
-					}
-				}) as any);
-			},
-		},
-	};
+        const watch = {
+                answer: null as { text: string; stopReason?: string; at: number } | null,
+                lastCompleted: null as { text: string; at: number } | null,
+        };
+        return {
+                // Getters, not copied values: the extension mutates `watch` AFTER
+                // cmdPrint has already received this handle.
+                get answer() {
+                        return watch.answer;
+                },
+                get lastCompleted() {
+                        return watch.lastCompleted;
+                },
+                extension: {
+                        name: "unown-answer-watch",
+                        hidden: true,
+                        factory(pi: any) {
+                                pi.on("agent_end", ((event: any) => {
+                                        try {
+                                                const messages = Array.isArray(event?.messages) ? event.messages : [];
+                                                const last = messages[messages.length - 1];
+                                                if (last?.role !== "assistant") return;
+                                                watch.answer = {
+                                                        text: assistantTextOf(last),
+                                                        stopReason: typeof last.stopReason === "string" ? last.stopReason : undefined,
+                                                        at: Date.now(),
+                                                };
+                                        } catch {
+                                                /* best effort — the ping is cosmetic */
+                                        }
+                                }) as any);
+                                pi.on("message_end", ((event: any) => {
+                                        try {
+                                                const msg = event?.message;
+                                                if (msg?.role !== "assistant") return;
+                                                if (msg.stopReason === "aborted" || msg.stopReason === "error") return;
+                                                const text = assistantTextOf(msg).trim();
+                                                if (text) watch.lastCompleted = { text, at: Date.now() };
+                                        } catch {
+                                                /* best effort */
+                                        }
+                                }) as any);
+                        },
+                },
+        };
 }
 
 async function cmdPrint(prompt: string | undefined, args: CliArgs, verbose: boolean) {
-	const cwd = process.cwd();
-	// Flow round (2026-10-24): -c/--continue and --resume <query> resolve to
-	// an exact session file here (exit 1 with the actionable message when
-	// nothing matches). Real --session paths pass through untouched.
-	const launchSessionFile = await resolveLaunchSession(args.sessionFile, cwd);
-	// Pre-flight: fail fast with instructions when the model endpoint is
-	// unreachable or rejects credentials (stderr — stdout may carry the
-	// JSON event stream in --mode json).
-	await ensureUnownAgentDirInfoAsync();
-	maybeShowUpdateNotice({ mode: "print" });
-	// The pin for pre-flight: --provider wins; else the --model string's
-	// provider prefix; else the registry default (inside runPreflight).
-	const pre = await runPreflight(args.provider ?? args.model);
-	await printFirstRunBanner();
-	if (pre) {
-		console.error(`unown: ${pre.message}`);
-		console.error(`  → ${pre.hint}`);
-		console.error("  (set UNOWN_NO_PREFLIGHT=1 to skip this check)");
-		process.exit(1);
-	}
-	// Piped stdin (e.g. `cat error.log | unown -p "fix this"`) joins the prompt.
-	//
-	// Three hazards the naive "attach a data listener + 500 ms timeout"
-	// reader carried (audited live), all fixed here:
-	//   1. Late-byte consumption — after the timeout resolved, the listener
-	//      STAYED attached, so an open idle stdin (an agent harness, an
-	//      editor, a supervisor) kept being drained: bytes belonging to the
-	//      CALLER's protocol were silently eaten.
-	//   2. Loop-hold — that lingering listener on an open pipe holds the
-	//      event loop (measured: bare bun + open pipe + data listener never
-	//      exits), so any path that does not hard-exit would hang.
-	//   3. Unbounded read — an infinite/stdout-heavy pipe (`yes | unown -p`)
-	//      was read forever because only a total-time cap existed.
-	// Reader contract now: read while data actively flows (idle window
-	// re-armed per chunk), settle on EOF, cap total bytes; once settled,
-	// every listener is detached and the stream paused so nothing further
-	// is ever consumed.
-	let piped = "";
-	if (!process.stdin.isTTY) {
-		const rawIdle = Number(process.env.PI_PRINT_STDIN_IDLE_MS);
-		const idleMs = Number.isFinite(rawIdle) && rawIdle >= 0 ? rawIdle : 500;
-		const rawMax = Number(process.env.PI_PRINT_STDIN_MAX_BYTES);
-		const maxBytes = Number.isFinite(rawMax) && rawMax >= 0 ? rawMax : 1_048_576;
-		piped = await new Promise<string>((resolveStdin) => {
-			let data = "";
-			let settled = false;
-			let idleTimer: ReturnType<typeof setTimeout> | null = null;
-			const settle = () => {
-				if (settled) return;
-				settled = true;
-				if (idleTimer) clearTimeout(idleTimer);
-				try {
-					process.stdin.removeAllListeners("data");
-					process.stdin.removeAllListeners("end");
-					process.stdin.pause();
-				} catch {
-					/* already destroyed — nothing to do */
-				}
-				resolveStdin(data);
-			};
-			process.stdin.setEncoding("utf8");
-			process.stdin.on("data", (c: string) => {
-				data += c;
-				if (data.length >= maxBytes) {
-					settle(); // byte cap: stop draining an endless pipe
-					return;
-				}
-				if (idleTimer) clearTimeout(idleTimer);
-				// Re-arm: keep reading while the pipe delivers. REF'd on
-				// purpose — the F10 lesson (print-mode timers, 2026-10-22):
-				// an unref'd timer never wakes a Bun event loop parked on
-				// an idle-but-open pipe's poll. Measured live (2026-10-23):
-				// `unown -p` with a silent open stdin (a supervisor's
-				// control pipe) hung >110s with the 500ms idle timer armed
-				// but unref'd — the loop had nothing ref'd left to wake it.
-				// Ref'd is safe: settle() clears it, and the byte cap +
-				// idle window bound the read either way.
-				idleTimer = setTimeout(settle, idleMs);
-			});
-			process.stdin.on("end", settle);
-			// Same F10 mirror for the initial arm (see comment above).
-			idleTimer = setTimeout(settle, idleMs);
-		});
-	}
-	const message = [prompt, piped.trim()].filter(Boolean).join("\n\n");
-	if (!message) {
-		console.error("unown: no prompt given (pass one or pipe stdin)");
-		process.exit(1);
-	}
-	// --output-format json (Claude Code port): one final JSON object with
-	// the result AND the accounting. The text channel is captured, not
-	// printed; preflight errors stay on stderr (exit 1) exactly as before.
-	// Mutually exclusive with --mode json (the JSONL event stream) — Claude
-	// Code errors on the same combination rather than silently picking one.
-	if (args.outputFormat === "json" && args.jsonMode) {
-		console.error("unown: --output-format json cannot be combined with --mode json (the event stream)");
-		process.exit(2);
-	}
-	const wantResultJson = args.outputFormat === "json" && !args.jsonMode;
-	// CI round (2026-10-24): --output-schema needs a final-answer lane —
-	// the JSONL event stream has no single answer to validate, so the
-	// combination is a usage error exactly like --output-format json +
-	// --mode json.
-	const schema = args.outputSchema ? loadOutputSchema(args.outputSchema) : undefined;
-	if (schema && !schema.ok) {
-		console.error(`unown: ${schema.error}`);
-		process.exit(2);
-	}
-	if (schema && args.jsonMode) {
-		console.error(
-			"unown: --output-schema cannot be combined with --mode json (the event stream) — use --output-format json or the text lane",
-		);
-		process.exit(2);
-	}
-	// CI round: the bounded run (--max-turns) — the (N+1)th turn start
-	// aborts; the envelope gains `capped`, the stderr note lands once.
-	// LR-1 (2026-10-27 long-run round): the note no longer promises an
-	// answer — whether one exists is only known when the run settles, and
-	// a cap that lands mid-tool-work leaves NO final text; the exit path
-	// (F11 guard below) now names the cap in that case instead.
-	const maxTurnsGuard = args.maxTurns
-		? createMaxTurnsGuard(args.maxTurns, (n) => {
-				console.error(`unown: --max-turns ${n} reached — the run stopped after ${n} completed turn(s)`);
-			})
-		: undefined;
-	// Parity round (2026-10-24): the loop guard (--max-tool-repetitions) —
-	// the same-tool-same-args streak aborts; exit 4 + envelope `loop_guard`.
-	const repetitionGuard = args.maxToolRepetitions
-		? createToolRepetitionGuard(args.maxToolRepetitions, (info) => {
-				console.error(
-					`unown: loop guard — tool ${info.tool} called with identical arguments ${info.count} time(s) in a row (limit ${info.limit}); aborting (--max-tool-repetitions)`,
-				);
-			})
-		: undefined;
-	const capture = wantResultJson ? createOutputCapture() : undefined;
-	const startedAt = wantResultJson ? Date.now() : 0;
-	// M3 answer ping (notify.ts): a SEPARATE clock from the json lane's
-	// startedAt — the ping's wall time starts at cmdPrint entry (preflight,
-	// stdin drain and boot are all part of the session the user waited
-	// through), while the json envelope's clock only runs when it is built.
-	const answerStartedAt = Date.now();
-	const answerWatch = createAnswerWatch();
-	const { runtime } = await bootRuntime(cwd, verbose, {
-		jsonMode: args.jsonMode,
-		noSession: args.noSession,
-		sessionFile: launchSessionFile,
-		tools: args.tools,
-		appendSystemPromptPath: args.appendSystemPromptPath,
-		plan: args.plan,
-		noSplit: args.noSplit,
-		goal: args.goal,
-		// M3 answer ping (notify.ts): the wall clock starts at cmdPrint entry
-		// (preflight, stdin drain and boot are all part of the session the user
-		// waited through) and the arrival timestamp comes from the final
-		// agent_end — see the answer-watch extension below.
-		extraExtensions: [
-			...(capture ? [createOutputCaptureExtension(capture)] : []),
-			...(maxTurnsGuard ? [maxTurnsGuard.extension] : []),
-			...(repetitionGuard ? [repetitionGuard.extension] : []),
-			answerWatch.extension,
-		],
-		// Milestone 2.1 + 2.2 — surface the routing fields (set by
-		// parseSubagentFlags inside parseArgs). bootRuntime applies
-		// them to process.env via applySubagentEnvOverrides BEFORE
-		// the session is created.
-		model: args.model,
-		effort: args.effort,
-		mcpServers: args.mcpServers,
-		noAgentsMd: args.noAgentsMd,
-		provider: args.provider,
-		permissionMode: args.permissionMode,
-		addDirs: args.addDirs,
-	});
-	// F3 (2026-10-29, the parley round): the last-resort envelope lane.
-	// The watchdog's forced exits (stall guard, post-answer hard-exit
-	// grace) call the current closure BEFORE process.exit so an
-	// unattended caller never loses the result to a hung teardown
-	// (measured: 59 tool calls, 0-byte envelope, receipt ended at the
-	// drain sentinel). The holder is assigned per lane below — the
-	// watchdog installs before either lane exists, so before assignment
-	// the dispatcher is a no-op (a stall during the run itself still
-	// exits through the stall guard's own stderr line).
-	let envelopeWritten = false;
-	const lastResort: { current: (() => void) | null } = { current: null };
-	installPrintStallWatchdog(runtime, () => lastResort.current?.());
-	// The fleet drain sentinel rides as the final message in orchestrator
-	// runs: the fleet's input handler intercepts it (never model-visible)
-	// and waits for async subagents so their steer-back results land while
-	// the process is alive. Subagent runs carry no fleet — the sentinel
-	// would leak to the model — so it is omitted there.
-	const drainTail = process.env.UNOWN_SUBAGENT === "1" ? [] : [FLEET_DRAIN_SENTINEL];
-	// LR-2 (2026-10-27 long-run round): the print-mode continuation loop.
-	// When the terminal auto-compact extension fires mid-exchange, pi's
-	// compact() aborts the loop (stop-the-world by design) and the run
-	// would end as an interrupted job. Here we do what an unattended
-	// caller needs: wait for the compaction to settle, then submit an
-	// honest continuation prompt in the SAME session — the transcript
-	// keeps every completed turn, the model re-orients from the compacted
-	// history, and the run finishes on its own merits. Cap: the
-	// extension's continuationRounds (TERMINAL_AUTO_COMPACT_MAX_CONTINUATIONS).
-	//
-	// LR-2b: the fleet drain sentinel gets its OWN final round, submitted
-	// only when no compaction is in flight — pi's session.prompt() refuses
-	// submissions while compaction runs, and the sentinel's input
-	// interception happens INSIDE prompt() (after that guard), so an
-	// inline sentinel would throw and kill the run. The --mode json event
-	// stream keeps the inline sentinel: the extension stays warn-only in
-	// "json" mode, so nothing can race it there.
-	const runPrintRounds = async (firstMessages: string[]): Promise<number> => {
-		const autoCompact = activeTerminalAutoCompact();
-		let compactionsSeen = autoCompact?.compactions ?? 0;
-		// keepRuntimeAlive (the LR-2d pi patch): runPrintMode's finally
-		// disposes the runtime by default, and dispose() aborts an
-		// in-flight compaction — measured live as "Compaction
-		// cancelled" (run 7 of the calibration series). The caller
-		// owns the dispose here (after every round + sentinel land).
-		let code = await runPrintMode(runtime as any, {
-			mode: "text",
-			messages: firstMessages,
-			keepRuntimeAlive: true,
-		});
-		while (autoCompact && autoCompact.compactions > compactionsSeen && autoCompact.continuationRounds > 0) {
-			compactionsSeen = autoCompact.compactions;
-			await waitTerminalAutoCompactSettled(autoCompact);
-			if (!autoCompact.lastCompactSucceeded) break;
-			console.error("unown: [auto-compact] continuing the run on the compacted context");
-			code = await runPrintMode(runtime as any, {
-				mode: "text",
-				messages: [TERMINAL_AUTO_COMPACT_CONTINUE_PROMPT],
-				keepRuntimeAlive: true,
-			});
-		}
-		if (drainTail.length > 0) {
-			if (autoCompact) await waitTerminalAutoCompactSettled(autoCompact);
-			// The sentinel goes straight to session.prompt — its input
-			// interception (fleet-runtime) fires inside prompt() and
-			// returns "handled" before any model call, and going direct
-			// (not through runPrintMode) avoids re-printing the final
-			// assistant text a second time (the golden suite pins ONE
-			// answer on stdout).
-			try {
-				await (runtime as any).session.prompt(drainTail[0]);
-			} catch {
-				/* the drain is best-effort; the answer already stands */
-			}
-		}
-		// The caller-owned dispose (keepRuntimeAlive above): one
-		// best-effort dispose after every round + sentinel landed. The
-		// stall watchdog's hard-exit grace remains the boundedness net
-		// if this throws.
-		try {
-			await (runtime as any).dispose?.();
-		} catch {
-			/* the hard-exit grace bounds the process regardless */
-		}
-		return code;
-	};
-	if (wantResultJson && capture) {
-		const wrap = captureStdout();
-		// F3: this lane's last resort — the full envelope, subtype
-		// forced_exit, written via writeSync(1, …) so no exit race can
-		// lose it. The text recovers the cap case exactly like the
-		// normal path (LR-1b): a capped run's answer-so-far stands.
-		lastResort.current = () => {
-			if (envelopeWritten) return;
-			envelopeWritten = true;
-			const capped = maxTurnsGuard?.state.capped === true;
-			const text =
-				(answerWatch.answer?.text ?? "").trim() || (capped ? (answerWatch.lastCompleted?.text ?? "").trim() : "");
-			const result = assembleResultJson({
-				capture,
-				text,
-				subtype: "forced_exit",
-				durationMs: Date.now() - startedAt,
-				version: VERSION,
-			});
-			if (capped) result.capped = true;
-			if (repetitionGuard?.state.tripped) {
-				result.loop_guard = {
-					tool: repetitionGuard.state.tool,
-					count: repetitionGuard.state.count,
-					limit: repetitionGuard.state.limit,
-				};
-			}
-			console.error(
-				"unown: post-answer teardown exceeded the exit grace — envelope written, forcing exit (tune with PI_PRINT_EXIT_GRACE_MS)",
-			);
-			writeSync(1, JSON.stringify(result) + "\n");
-		};
-		let code = 0;
-		try {
-			code = await runPrintRounds([message]);
-		} finally {
-			let text = wrap.unwrap().trim();
-			// F35 (the delegation round, live 2026-10-30): an async fleet
-			// child delivered after the main loop settled runs its answering
-			// turn inside the session, but pi's text channel never prints the
-			// synthesis — the captured stdout held the interim answer. The
-			// envelope's contract is the FINAL assistant text: the answer
-			// watch's last completed message wins (pure helper, pinned).
-			text = preferFinalAssistantText(text, answerWatch.lastCompleted?.text, code);
-			// LR-1b (2026-10-27 long-run round): pi's print mode prints
-			// NOTHING when the run's last message is the aborted one — so
-			// a --max-turns cap landing mid-work always left `text` empty
-			// and the documented "cap with an answer is still 0" branch
-			// was unreachable in practice. Recover the last SETTLED
-			// assistant text at the cap (a controlled stop): the answer
-			// produced so far still stands, exactly as max-turns.ts
-			// documents, and `capped: true` keeps it honest for callers.
-			const capped = maxTurnsGuard?.state.capped === true;
-			let recoveredAtCap = false;
-			if (capped && text.length === 0) {
-				const recovered = (answerWatch.lastCompleted?.text ?? "").trim();
-				if (recovered) {
-					text = recovered;
-					code = 0;
-					recoveredAtCap = true;
-				}
-			}
-			// --no-session: the id names an ephemeral in-memory
-			// session — nothing to resume, so the contract says null.
-			if (args.noSession) capture.sessionId = null;
-			// F11 empty-answer guard (2026-10-23): never report success on an
-			// empty result — a silent empty 200 from the upstream (see the
-			// bridge/pi-ai guards) must not reach automation callers as
-			// subtype "success" + exit 0. The CI-round cap refines this: a
-			// CAPPED run is a controlled stop, so the abort's non-zero code
-			// must not masquerade as an execution error when an answer
-			// exists — `capped: true` in the envelope is the honest signal.
-			const emptyAnswer = (code === 0 || capped) && text.length === 0;
-			const result = assembleResultJson({
-				capture,
-				text,
-				subtype: (code === 0 || capped) && !emptyAnswer ? "success" : "error_during_execution",
-				durationMs: Date.now() - startedAt,
-				version: VERSION,
-			});
-			// CI round: schema + cap facts ride the envelope (additive
-			// fields — only present when the flags were used).
-			if (schema?.ok) {
-				const v = validateAnswerAgainstSchema(text, schema.schema);
-				result.schema_valid = v.valid;
-				result.schema_issues = v.issues;
-			}
-			if (maxTurnsGuard) {
-				result.capped = maxTurnsGuard.state.capped;
-				// Completed turns only — the aborted (N+1)th turn's
-				// message_end (when pi emits one) is subtracted.
-				const completed = capture.numTurns - maxTurnsGuard.state.abortedTurnEnds;
-				if (completed >= 0 && completed !== capture.numTurns) result.num_turns = completed;
-				if (maxTurnsGuard.state.capped && recoveredAtCap) {
-					// LR-1b: record that the answer was recovered at the
-					// cap, so stderr and the envelope tell one story.
-					result.capped_answer_recovered = true;
-				}
-			}
-			if (repetitionGuard?.state.tripped) {
-				result.loop_guard = {
-					tool: repetitionGuard.state.tool,
-					count: repetitionGuard.state.count,
-					limit: repetitionGuard.state.limit,
-				};
-			}
-			envelopeWritten = true; // F3: the real envelope landed — the last resort stands down
-			process.stdout.write(JSON.stringify(result) + "\n");
-			if (repetitionGuard?.state.tripped) {
-				// The loop guard is a distinct, documented exit
-				// (4) — automation can tell "stuck agent" from
-				// "execution error" (1) and "invalid answer" (3).
-				process.exit(4);
-			}
-			if (schema?.ok && result.schema_valid === false) {
-				console.error(renderSchemaFailure(result.schema_issues as string[]));
-				process.exit(3);
-			}
-			if (emptyAnswer) {
-				// LR-1 (2026-10-27 long-run round): a cap that lands mid-work
-				// is a DIFFERENT empty from an upstream fault — say which one
-				// happened, so the contradictory pre-fix pair ("the answer so
-				// far stands" + "ended without an answer") can never land in
-				// the same transcript again.
-				console.error(
-					maxTurnsGuard?.state.capped
-						? "unown: the --max-turns cap hit mid-work — no answer was produced; reported as error, not success"
-						: "unown: the run ended without an answer (empty completion) — reported as error, not success",
-				);
-				process.exit(1);
-			}
-		}
-		process.exit(code);
-	}
-	let code: number;
-	// F3: the text/--mode-json lanes' last resort — stdout already carries
-	// the live answer (pi prints as it goes), so a JSON envelope would
-	// corrupt the lane; the honest last resort is the stderr note. The
-	// --mode json event stream is exempt like its F11 guard: its consumer
-	// sees the raw events.
-	lastResort.current = () => {
-		if (envelopeWritten) return;
-		envelopeWritten = true;
-		console.error(
-			"unown: post-answer teardown exceeded the exit grace — forcing exit; the printed answer stands (tune with PI_PRINT_EXIT_GRACE_MS)",
-		);
-	};
-	if (args.jsonMode) {
-		// The JSONL event stream: one runPrintMode call, sentinel inline
-		// (the extension is warn-only in "json" mode — nothing races it).
-		code = await runPrintMode(runtime as any, { mode: "json", messages: [message, ...drainTail] });
-	} else {
-		code = await runPrintRounds([message]);
-	}
-	// LR-1b (2026-10-27 long-run round), text lane: pi's print mode prints
-	// nothing when the run's last message is the aborted one, so a cap
-	// landing mid-work exits 1 with an empty stdout — the "answer produced
-	// so far still prints" contract (max-turns.ts) was unreachable here
-	// too. Recover the last SETTLED assistant text at the cap: print it,
-	// exit 0, and say so on stderr. Only the CONTROLLED cap recovers — a
-	// plain abort (Ctrl-C / stall watchdog) keeps pi's interrupted-run
-	// semantics.
-	if (
-		!args.jsonMode &&
-		maxTurnsGuard?.state.capped === true &&
-		code !== 0 &&
-		(answerWatch.answer?.text ?? "").trim().length === 0 &&
-		(answerWatch.lastCompleted?.text ?? "").trim().length > 0
-	) {
-		const recovered = (answerWatch.lastCompleted?.text ?? "").trim();
-		console.log(recovered);
-		console.error("unown: --max-turns cap hit mid-work — printing the answer produced so far");
-		process.exit(0);
-	}
-	// F11 empty-answer guard (2026-10-23, text lane): a completed run whose
-	// final assistant message carries no text is NOT success. Measured live:
-	// an Agnes flash upstream under concurrent load answers 200 streams with
-	// zero content — pre-fix, print mode wrote an empty stdout and exited 0,
-	// poison for every unattended caller (CI, engine automations, scripts).
-	// The bridge retry + pi-ai's empty-completion throw are the first two
-	// layers; this is the last net: a loud stderr line + exit 1. The
-	// --mode json event stream is exempt (its consumer sees the raw events);
-	// --output-format json is guarded in its own branch above.
-	if (!args.jsonMode && code === 0 && (answerWatch.answer?.text ?? "").trim().length === 0) {
-		console.error(
-			"unown: the model returned an empty answer (no text content) — likely an upstream fault; retry the run (the bridge and the provider layer already retried once each)",
-		);
-		process.exit(1);
-	}
-	// CI round (2026-10-24): text-lane schema validation — the final
-	// answer must parse as JSON and validate against the schema, or the
-	// run exits 3 (the answer itself still printed above). Runs AFTER the
-	// F11 guard on purpose: an empty answer is an upstream fault (exit 1),
-	// not a schema failure; only a NON-empty invalid answer is exit 3.
-	if (schema?.ok) {
-		const answerText = (answerWatch.answer?.text ?? "").trim();
-		const v = validateAnswerAgainstSchema(answerText, schema.schema);
-		if (!v.valid) {
-			console.error(renderSchemaFailure(v.issues));
-			process.exit(3);
-		}
-	}
-	if (maxTurnsGuard?.state.capped) {
-		console.error(`unown: (the run stopped at the --max-turns ${args.maxTurns} cap)`);
-		// LR-1 (2026-10-27 long-run round), text lane: say it when the
-		// cap landed with no answer produced (nothing was printed to
-		// stdout) — the same honesty the json lane's F11 branch carries.
-		if (code !== 0 && (answerWatch.answer?.text ?? "").trim().length === 0) {
-			console.error(
-				"unown: the --max-turns cap hit mid-work — no answer was produced; reported as error, not success",
-			);
-		}
-	}
-	if (repetitionGuard?.state.tripped) {
-		console.error(
-			`unown: (the run aborted on the --max-tool-repetitions ${args.maxToolRepetitions} loop guard — tool ${repetitionGuard.state.tool})`,
-		);
-		process.exit(4);
-	}
-	// M3 answer ping (notify.ts) — TEXT LANE ONLY: `--mode json` streams
-	// JSONL events and `--output-format json` returned above, so neither
-	// framed channel can ever see these bytes. runPrintMode has already
-	// printed AND flushed the answer by the time it resolves (its finally
-	// awaits flushRawStdout), so the escape lands on a quiet stream right
-	// after the answer it announces. The TUI never runs this code — see
-	// notify.ts for why that lane is skipped (user present; frame loop).
-	if (
-		!args.jsonMode &&
-		shouldNotifyOnAnswer({
-			elapsedMs: (answerWatch.answer?.at ?? Date.now()) - answerStartedAt,
-			thresholdMs: notifyThresholdMs(),
-			gated: notifyGated(process.stdout.isTTY === true),
-			answer: answerWatch.answer,
-		})
-	) {
-		emitOsc9("unown", truncateForNotify(answerWatch.answer?.text ?? ""));
-	}
-	process.exit(code);
+        const cwd = process.cwd();
+        // Flow round (2026-10-24): -c/--continue and --resume <query> resolve to
+        // an exact session file here (exit 1 with the actionable message when
+        // nothing matches). Real --session paths pass through untouched.
+        const launchSessionFile = await resolveLaunchSession(args.sessionFile, cwd);
+        // Pre-flight: fail fast with instructions when the model endpoint is
+        // unreachable or rejects credentials (stderr — stdout may carry the
+        // JSON event stream in --mode json).
+        await ensureUnownAgentDirInfoAsync();
+        maybeShowUpdateNotice({ mode: "print" });
+        // The pin for pre-flight: --provider wins; else the --model string's
+        // provider prefix; else the registry default (inside runPreflight).
+        const pre = await runPreflight(args.provider ?? args.model);
+        await printFirstRunBanner();
+        if (pre) {
+                console.error(`unown: ${pre.message}`);
+                console.error(`  → ${pre.hint}`);
+                console.error("  (set UNOWN_NO_PREFLIGHT=1 to skip this check)");
+                process.exit(1);
+        }
+        // Piped stdin (e.g. `cat error.log | unown -p "fix this"`) joins the prompt.
+        //
+        // Three hazards the naive "attach a data listener + 500 ms timeout"
+        // reader carried (audited live), all fixed here:
+        //   1. Late-byte consumption — after the timeout resolved, the listener
+        //      STAYED attached, so an open idle stdin (an agent harness, an
+        //      editor, a supervisor) kept being drained: bytes belonging to the
+        //      CALLER's protocol were silently eaten.
+        //   2. Loop-hold — that lingering listener on an open pipe holds the
+        //      event loop (measured: bare bun + open pipe + data listener never
+        //      exits), so any path that does not hard-exit would hang.
+        //   3. Unbounded read — an infinite/stdout-heavy pipe (`yes | unown -p`)
+        //      was read forever because only a total-time cap existed.
+        // Reader contract now: read while data actively flows (idle window
+        // re-armed per chunk), settle on EOF, cap total bytes; once settled,
+        // every listener is detached and the stream paused so nothing further
+        // is ever consumed.
+        let piped = "";
+        if (!process.stdin.isTTY) {
+                const rawIdle = Number(process.env.PI_PRINT_STDIN_IDLE_MS);
+                const idleMs = Number.isFinite(rawIdle) && rawIdle >= 0 ? rawIdle : 500;
+                const rawMax = Number(process.env.PI_PRINT_STDIN_MAX_BYTES);
+                const maxBytes = Number.isFinite(rawMax) && rawMax >= 0 ? rawMax : 1_048_576;
+                piped = await new Promise<string>((resolveStdin) => {
+                        let data = "";
+                        let settled = false;
+                        let idleTimer: ReturnType<typeof setTimeout> | null = null;
+                        const settle = () => {
+                                if (settled) return;
+                                settled = true;
+                                if (idleTimer) clearTimeout(idleTimer);
+                                try {
+                                        process.stdin.removeAllListeners("data");
+                                        process.stdin.removeAllListeners("end");
+                                        process.stdin.pause();
+                                } catch {
+                                        /* already destroyed — nothing to do */
+                                }
+                                resolveStdin(data);
+                        };
+                        process.stdin.setEncoding("utf8");
+                        process.stdin.on("data", (c: string) => {
+                                data += c;
+                                if (data.length >= maxBytes) {
+                                        settle(); // byte cap: stop draining an endless pipe
+                                        return;
+                                }
+                                if (idleTimer) clearTimeout(idleTimer);
+                                // Re-arm: keep reading while the pipe delivers. REF'd on
+                                // purpose — the F10 lesson (print-mode timers, 2026-10-22):
+                                // an unref'd timer never wakes a Bun event loop parked on
+                                // an idle-but-open pipe's poll. Measured live (2026-10-23):
+                                // `unown -p` with a silent open stdin (a supervisor's
+                                // control pipe) hung >110s with the 500ms idle timer armed
+                                // but unref'd — the loop had nothing ref'd left to wake it.
+                                // Ref'd is safe: settle() clears it, and the byte cap +
+                                // idle window bound the read either way.
+                                idleTimer = setTimeout(settle, idleMs);
+                        });
+                        process.stdin.on("end", settle);
+                        // Same F10 mirror for the initial arm (see comment above).
+                        idleTimer = setTimeout(settle, idleMs);
+                });
+        }
+        const message = [prompt, piped.trim()].filter(Boolean).join("\n\n");
+        if (!message) {
+                console.error("unown: no prompt given (pass one or pipe stdin)");
+                process.exit(1);
+        }
+        // --output-format json (Claude Code port): one final JSON object with
+        // the result AND the accounting. The text channel is captured, not
+        // printed; preflight errors stay on stderr (exit 1) exactly as before.
+        // Mutually exclusive with --mode json (the JSONL event stream) — Claude
+        // Code errors on the same combination rather than silently picking one.
+        if (args.outputFormat === "json" && args.jsonMode) {
+                console.error("unown: --output-format json cannot be combined with --mode json (the event stream)");
+                process.exit(2);
+        }
+        const wantResultJson = args.outputFormat === "json" && !args.jsonMode;
+        // CI round (2026-10-24): --output-schema needs a final-answer lane —
+        // the JSONL event stream has no single answer to validate, so the
+        // combination is a usage error exactly like --output-format json +
+        // --mode json.
+        const schema = args.outputSchema ? loadOutputSchema(args.outputSchema) : undefined;
+        if (schema && !schema.ok) {
+                console.error(`unown: ${schema.error}`);
+                process.exit(2);
+        }
+        if (schema && args.jsonMode) {
+                console.error(
+                        "unown: --output-schema cannot be combined with --mode json (the event stream) — use --output-format json or the text lane",
+                );
+                process.exit(2);
+        }
+        // CI round: the bounded run (--max-turns) — the (N+1)th turn start
+        // aborts; the envelope gains `capped`, the stderr note lands once.
+        // LR-1 (2026-10-27 long-run round): the note no longer promises an
+        // answer — whether one exists is only known when the run settles, and
+        // a cap that lands mid-tool-work leaves NO final text; the exit path
+        // (F11 guard below) now names the cap in that case instead.
+        const maxTurnsGuard = args.maxTurns
+                ? createMaxTurnsGuard(args.maxTurns, (n) => {
+                                console.error(`unown: --max-turns ${n} reached — the run stopped after ${n} completed turn(s)`);
+                        })
+                : undefined;
+        // Parity round (2026-10-24): the loop guard (--max-tool-repetitions) —
+        // the same-tool-same-args streak aborts; exit 4 + envelope `loop_guard`.
+        const repetitionGuard = args.maxToolRepetitions
+                ? createToolRepetitionGuard(args.maxToolRepetitions, (info) => {
+                                console.error(
+                                        `unown: loop guard — tool ${info.tool} called with identical arguments ${info.count} time(s) in a row (limit ${info.limit}); aborting (--max-tool-repetitions)`,
+                                );
+                        })
+                : undefined;
+        const capture = wantResultJson ? createOutputCapture() : undefined;
+        const startedAt = wantResultJson ? Date.now() : 0;
+        // M3 answer ping (notify.ts): a SEPARATE clock from the json lane's
+        // startedAt — the ping's wall time starts at cmdPrint entry (preflight,
+        // stdin drain and boot are all part of the session the user waited
+        // through), while the json envelope's clock only runs when it is built.
+        const answerStartedAt = Date.now();
+        const answerWatch = createAnswerWatch();
+        const { runtime } = await bootRuntime(cwd, verbose, {
+                jsonMode: args.jsonMode,
+                noSession: args.noSession,
+                sessionFile: launchSessionFile,
+                tools: args.tools,
+                appendSystemPromptPath: args.appendSystemPromptPath,
+                plan: args.plan,
+                noSplit: args.noSplit,
+                goal: args.goal,
+                // M3 answer ping (notify.ts): the wall clock starts at cmdPrint entry
+                // (preflight, stdin drain and boot are all part of the session the user
+                // waited through) and the arrival timestamp comes from the final
+                // agent_end — see the answer-watch extension below.
+                extraExtensions: [
+                        ...(capture ? [createOutputCaptureExtension(capture)] : []),
+                        ...(maxTurnsGuard ? [maxTurnsGuard.extension] : []),
+                        ...(repetitionGuard ? [repetitionGuard.extension] : []),
+                        answerWatch.extension,
+                ],
+                // Milestone 2.1 + 2.2 — surface the routing fields (set by
+                // parseSubagentFlags inside parseArgs). bootRuntime applies
+                // them to process.env via applySubagentEnvOverrides BEFORE
+                // the session is created.
+                model: args.model,
+                effort: args.effort,
+                mcpServers: args.mcpServers,
+                noAgentsMd: args.noAgentsMd,
+                provider: args.provider,
+                permissionMode: args.permissionMode,
+                addDirs: args.addDirs,
+        });
+        // F3 (2026-10-29, the parley round): the last-resort envelope lane.
+        // The watchdog's forced exits (stall guard, post-answer hard-exit
+        // grace) call the current closure BEFORE process.exit so an
+        // unattended caller never loses the result to a hung teardown
+        // (measured: 59 tool calls, 0-byte envelope, receipt ended at the
+        // drain sentinel). The holder is assigned per lane below — the
+        // watchdog installs before either lane exists, so before assignment
+        // the dispatcher is a no-op (a stall during the run itself still
+        // exits through the stall guard's own stderr line).
+        let envelopeWritten = false;
+        const lastResort: { current: (() => void) | null } = { current: null };
+        installPrintStallWatchdog(runtime, () => lastResort.current?.());
+        // The fleet drain sentinel rides as the final message in orchestrator
+        // runs: the fleet's input handler intercepts it (never model-visible)
+        // and waits for async subagents so their steer-back results land while
+        // the process is alive. Subagent runs carry no fleet — the sentinel
+        // would leak to the model — so it is omitted there.
+        const drainTail = process.env.UNOWN_SUBAGENT === "1" ? [] : [FLEET_DRAIN_SENTINEL];
+        // LR-2 (2026-10-27 long-run round): the print-mode continuation loop.
+        // When the terminal auto-compact extension fires mid-exchange, pi's
+        // compact() aborts the loop (stop-the-world by design) and the run
+        // would end as an interrupted job. Here we do what an unattended
+        // caller needs: wait for the compaction to settle, then submit an
+        // honest continuation prompt in the SAME session — the transcript
+        // keeps every completed turn, the model re-orients from the compacted
+        // history, and the run finishes on its own merits. Cap: the
+        // extension's continuationRounds (TERMINAL_AUTO_COMPACT_MAX_CONTINUATIONS).
+        //
+        // LR-2b: the fleet drain sentinel gets its OWN final round, submitted
+        // only when no compaction is in flight — pi's session.prompt() refuses
+        // submissions while compaction runs, and the sentinel's input
+        // interception happens INSIDE prompt() (after that guard), so an
+        // inline sentinel would throw and kill the run. The --mode json event
+        // stream keeps the inline sentinel: the extension stays warn-only in
+        // "json" mode, so nothing can race it there.
+        const runPrintRounds = async (firstMessages: string[]): Promise<number> => {
+                const autoCompact = activeTerminalAutoCompact();
+                let compactionsSeen = autoCompact?.compactions ?? 0;
+                // keepRuntimeAlive (the LR-2d pi patch): runPrintMode's finally
+                // disposes the runtime by default, and dispose() aborts an
+                // in-flight compaction — measured live as "Compaction
+                // cancelled" (run 7 of the calibration series). The caller
+                // owns the dispose here (after every round + sentinel land).
+                let code = await runPrintMode(runtime as any, {
+                        mode: "text",
+                        messages: firstMessages,
+                        keepRuntimeAlive: true,
+                });
+                while (autoCompact && autoCompact.compactions > compactionsSeen && autoCompact.continuationRounds > 0) {
+                        compactionsSeen = autoCompact.compactions;
+                        await waitTerminalAutoCompactSettled(autoCompact);
+                        if (!autoCompact.lastCompactSucceeded) break;
+                        console.error("unown: [auto-compact] continuing the run on the compacted context");
+                        code = await runPrintMode(runtime as any, {
+                                mode: "text",
+                                messages: [TERMINAL_AUTO_COMPACT_CONTINUE_PROMPT],
+                                keepRuntimeAlive: true,
+                        });
+                }
+                if (drainTail.length > 0) {
+                        if (autoCompact) await waitTerminalAutoCompactSettled(autoCompact);
+                        // The sentinel goes straight to session.prompt — its input
+                        // interception (fleet-runtime) fires inside prompt() and
+                        // returns "handled" before any model call, and going direct
+                        // (not through runPrintMode) avoids re-printing the final
+                        // assistant text a second time (the golden suite pins ONE
+                        // answer on stdout).
+                        try {
+                                await (runtime as any).session.prompt(drainTail[0]);
+                        } catch {
+                                /* the drain is best-effort; the answer already stands */
+                        }
+                }
+                // The caller-owned dispose (keepRuntimeAlive above): one
+                // best-effort dispose after every round + sentinel landed. The
+                // stall watchdog's hard-exit grace remains the boundedness net
+                // if this throws.
+                try {
+                        await (runtime as any).dispose?.();
+                } catch {
+                        /* the hard-exit grace bounds the process regardless */
+                }
+                return code;
+        };
+        if (wantResultJson && capture) {
+                const wrap = captureStdout();
+                // F3: this lane's last resort — the full envelope, subtype
+                // forced_exit, written via writeSync(1, …) so no exit race can
+                // lose it. The text recovers the cap case exactly like the
+                // normal path (LR-1b): a capped run's answer-so-far stands.
+                lastResort.current = () => {
+                        if (envelopeWritten) return;
+                        envelopeWritten = true;
+                        const capped = maxTurnsGuard?.state.capped === true;
+                        const text =
+                                (answerWatch.answer?.text ?? "").trim() || (capped ? (answerWatch.lastCompleted?.text ?? "").trim() : "");
+                        const result = assembleResultJson({
+                                capture,
+                                text,
+                                subtype: "forced_exit",
+                                durationMs: Date.now() - startedAt,
+                                version: VERSION,
+                        });
+                        if (capped) result.capped = true;
+                        if (repetitionGuard?.state.tripped) {
+                                result.loop_guard = {
+                                        tool: repetitionGuard.state.tool,
+                                        count: repetitionGuard.state.count,
+                                        limit: repetitionGuard.state.limit,
+                                };
+                        }
+                        console.error(
+                                "unown: post-answer teardown exceeded the exit grace — envelope written, forcing exit (tune with PI_PRINT_EXIT_GRACE_MS)",
+                        );
+                        writeSync(1, JSON.stringify(result) + "\n");
+                };
+                let code = 0;
+                try {
+                        code = await runPrintRounds([message]);
+                } finally {
+                        let text = wrap.unwrap().trim();
+                        // F35 (the delegation round, live 2026-10-30): an async fleet
+                        // child delivered after the main loop settled runs its answering
+                        // turn inside the session, but pi's text channel never prints the
+                        // synthesis — the captured stdout held the interim answer. The
+                        // envelope's contract is the FINAL assistant text: the answer
+                        // watch's last completed message wins (pure helper, pinned).
+                        text = preferFinalAssistantText(text, answerWatch.lastCompleted?.text, code);
+                        // LR-1b (2026-10-27 long-run round): pi's print mode prints
+                        // NOTHING when the run's last message is the aborted one — so
+                        // a --max-turns cap landing mid-work always left `text` empty
+                        // and the documented "cap with an answer is still 0" branch
+                        // was unreachable in practice. Recover the last SETTLED
+                        // assistant text at the cap (a controlled stop): the answer
+                        // produced so far still stands, exactly as max-turns.ts
+                        // documents, and `capped: true` keeps it honest for callers.
+                        const capped = maxTurnsGuard?.state.capped === true;
+                        let recoveredAtCap = false;
+                        if (capped && text.length === 0) {
+                                const recovered = (answerWatch.lastCompleted?.text ?? "").trim();
+                                if (recovered) {
+                                        text = recovered;
+                                        code = 0;
+                                        recoveredAtCap = true;
+                                }
+                        }
+                        // --no-session: the id names an ephemeral in-memory
+                        // session — nothing to resume, so the contract says null.
+                        if (args.noSession) capture.sessionId = null;
+                        // F11 empty-answer guard (2026-10-23): never report success on an
+                        // empty result — a silent empty 200 from the upstream (see the
+                        // bridge/pi-ai guards) must not reach automation callers as
+                        // subtype "success" + exit 0. The CI-round cap refines this: a
+                        // CAPPED run is a controlled stop, so the abort's non-zero code
+                        // must not masquerade as an execution error when an answer
+                        // exists — `capped: true` in the envelope is the honest signal.
+                        const emptyAnswer = (code === 0 || capped) && text.length === 0;
+                        const result = assembleResultJson({
+                                capture,
+                                text,
+                                subtype: (code === 0 || capped) && !emptyAnswer ? "success" : "error_during_execution",
+                                durationMs: Date.now() - startedAt,
+                                version: VERSION,
+                        });
+                        // CI round: schema + cap facts ride the envelope (additive
+                        // fields — only present when the flags were used).
+                        if (schema?.ok) {
+                                const v = validateAnswerAgainstSchema(text, schema.schema);
+                                result.schema_valid = v.valid;
+                                result.schema_issues = v.issues;
+                        }
+                        if (maxTurnsGuard) {
+                                result.capped = maxTurnsGuard.state.capped;
+                                // Completed turns only — the aborted (N+1)th turn's
+                                // message_end (when pi emits one) is subtracted.
+                                const completed = capture.numTurns - maxTurnsGuard.state.abortedTurnEnds;
+                                if (completed >= 0 && completed !== capture.numTurns) result.num_turns = completed;
+                                if (maxTurnsGuard.state.capped && recoveredAtCap) {
+                                        // LR-1b: record that the answer was recovered at the
+                                        // cap, so stderr and the envelope tell one story.
+                                        result.capped_answer_recovered = true;
+                                }
+                        }
+                        if (repetitionGuard?.state.tripped) {
+                                result.loop_guard = {
+                                        tool: repetitionGuard.state.tool,
+                                        count: repetitionGuard.state.count,
+                                        limit: repetitionGuard.state.limit,
+                                };
+                        }
+                        envelopeWritten = true; // F3: the real envelope landed — the last resort stands down
+                        process.stdout.write(JSON.stringify(result) + "\n");
+                        if (repetitionGuard?.state.tripped) {
+                                // The loop guard is a distinct, documented exit
+                                // (4) — automation can tell "stuck agent" from
+                                // "execution error" (1) and "invalid answer" (3).
+                                process.exit(4);
+                        }
+                        if (schema?.ok && result.schema_valid === false) {
+                                console.error(renderSchemaFailure(result.schema_issues as string[]));
+                                process.exit(3);
+                        }
+                        if (emptyAnswer) {
+                                // LR-1 (2026-10-27 long-run round): a cap that lands mid-work
+                                // is a DIFFERENT empty from an upstream fault — say which one
+                                // happened, so the contradictory pre-fix pair ("the answer so
+                                // far stands" + "ended without an answer") can never land in
+                                // the same transcript again.
+                                console.error(
+                                        maxTurnsGuard?.state.capped
+                                                ? "unown: the --max-turns cap hit mid-work — no answer was produced; reported as error, not success"
+                                                : "unown: the run ended without an answer (empty completion) — reported as error, not success",
+                                );
+                                process.exit(1);
+                        }
+                }
+                process.exit(code);
+        }
+        let code: number;
+        // F3: the text/--mode-json lanes' last resort — stdout already carries
+        // the live answer (pi prints as it goes), so a JSON envelope would
+        // corrupt the lane; the honest last resort is the stderr note. The
+        // --mode json event stream is exempt like its F11 guard: its consumer
+        // sees the raw events.
+        lastResort.current = () => {
+                if (envelopeWritten) return;
+                envelopeWritten = true;
+                console.error(
+                        "unown: post-answer teardown exceeded the exit grace — forcing exit; the printed answer stands (tune with PI_PRINT_EXIT_GRACE_MS)",
+                );
+        };
+        if (args.jsonMode) {
+                // The JSONL event stream: one runPrintMode call, sentinel inline
+                // (the extension is warn-only in "json" mode — nothing races it).
+                code = await runPrintMode(runtime as any, { mode: "json", messages: [message, ...drainTail] });
+        } else {
+                code = await runPrintRounds([message]);
+        }
+        // LR-1b (2026-10-27 long-run round), text lane: pi's print mode prints
+        // nothing when the run's last message is the aborted one, so a cap
+        // landing mid-work exits 1 with an empty stdout — the "answer produced
+        // so far still prints" contract (max-turns.ts) was unreachable here
+        // too. Recover the last SETTLED assistant text at the cap: print it,
+        // exit 0, and say so on stderr. Only the CONTROLLED cap recovers — a
+        // plain abort (Ctrl-C / stall watchdog) keeps pi's interrupted-run
+        // semantics.
+        if (
+                !args.jsonMode &&
+                maxTurnsGuard?.state.capped === true &&
+                code !== 0 &&
+                (answerWatch.answer?.text ?? "").trim().length === 0 &&
+                (answerWatch.lastCompleted?.text ?? "").trim().length > 0
+        ) {
+                const recovered = (answerWatch.lastCompleted?.text ?? "").trim();
+                console.log(recovered);
+                console.error("unown: --max-turns cap hit mid-work — printing the answer produced so far");
+                process.exit(0);
+        }
+        // F11 empty-answer guard (2026-10-23, text lane): a completed run whose
+        // final assistant message carries no text is NOT success. Measured live:
+        // an Agnes flash upstream under concurrent load answers 200 streams with
+        // zero content — pre-fix, print mode wrote an empty stdout and exited 0,
+        // poison for every unattended caller (CI, engine automations, scripts).
+        // The bridge retry + pi-ai's empty-completion throw are the first two
+        // layers; this is the last net: a loud stderr line + exit 1. The
+        // --mode json event stream is exempt (its consumer sees the raw events);
+        // --output-format json is guarded in its own branch above.
+        if (!args.jsonMode && code === 0 && (answerWatch.answer?.text ?? "").trim().length === 0) {
+                console.error(
+                        "unown: the model returned an empty answer (no text content) — likely an upstream fault; retry the run (the bridge and the provider layer already retried once each)",
+                );
+                process.exit(1);
+        }
+        // CI round (2026-10-24): text-lane schema validation — the final
+        // answer must parse as JSON and validate against the schema, or the
+        // run exits 3 (the answer itself still printed above). Runs AFTER the
+        // F11 guard on purpose: an empty answer is an upstream fault (exit 1),
+        // not a schema failure; only a NON-empty invalid answer is exit 3.
+        if (schema?.ok) {
+                const answerText = (answerWatch.answer?.text ?? "").trim();
+                const v = validateAnswerAgainstSchema(answerText, schema.schema);
+                if (!v.valid) {
+                        console.error(renderSchemaFailure(v.issues));
+                        process.exit(3);
+                }
+        }
+        if (maxTurnsGuard?.state.capped) {
+                console.error(`unown: (the run stopped at the --max-turns ${args.maxTurns} cap)`);
+                // LR-1 (2026-10-27 long-run round), text lane: say it when the
+                // cap landed with no answer produced (nothing was printed to
+                // stdout) — the same honesty the json lane's F11 branch carries.
+                if (code !== 0 && (answerWatch.answer?.text ?? "").trim().length === 0) {
+                        console.error(
+                                "unown: the --max-turns cap hit mid-work — no answer was produced; reported as error, not success",
+                        );
+                }
+        }
+        if (repetitionGuard?.state.tripped) {
+                console.error(
+                        `unown: (the run aborted on the --max-tool-repetitions ${args.maxToolRepetitions} loop guard — tool ${repetitionGuard.state.tool})`,
+                );
+                process.exit(4);
+        }
+        // M3 answer ping (notify.ts) — TEXT LANE ONLY: `--mode json` streams
+        // JSONL events and `--output-format json` returned above, so neither
+        // framed channel can ever see these bytes. runPrintMode has already
+        // printed AND flushed the answer by the time it resolves (its finally
+        // awaits flushRawStdout), so the escape lands on a quiet stream right
+        // after the answer it announces. The TUI never runs this code — see
+        // notify.ts for why that lane is skipped (user present; frame loop).
+        if (
+                !args.jsonMode &&
+                shouldNotifyOnAnswer({
+                        elapsedMs: (answerWatch.answer?.at ?? Date.now()) - answerStartedAt,
+                        thresholdMs: notifyThresholdMs(),
+                        gated: notifyGated(process.stdout.isTTY === true),
+                        answer: answerWatch.answer,
+                })
+        ) {
+                emitOsc9("unown", truncateForNotify(answerWatch.answer?.text ?? ""));
+        }
+        process.exit(code);
 }
 
 async function cmdTui(prompt: string | undefined, verbose: boolean, bootOpts: BootOptions = {}) {
-	const cwd = process.cwd();
-	// Flow round (2026-10-24): the TUI lane resolves -c/--resume the same way
-	// (fail-fast exit 1; the landing notice lands on stderr before the TUI
-	// takes over the screen).
-	if (bootOpts.sessionFile)
-		bootOpts = { ...bootOpts, sessionFile: await resolveLaunchSession(bootOpts.sessionFile, cwd) };
-	await ensureUnownAgentDirInfoAsync();
-	maybeShowUpdateNotice();
-	// M3 first-run onboarding (W1): a FRESH seed on an interactive TTY gets
-	// the offer to connect a provider BEFORE the TUI boots — the guided
-	// wizard (presets + live verification) instead of discovering the
-	// bundled-bridge default by trial. Declining keeps today's behaviour:
-	// the seeded bridge + the first-run banner.
-	// Hermes-posture (the reverse-engineered onboarding): state the
-	// situation plainly, make the offer ONE yes/no, name the recovery
-	// command on decline, and never re-ask (the `created` gate). The wizard
-	// itself is the SAME flow `unown setup` runs — one source of truth.
-	const init = unownAgentDirInit();
-	let wizardSucceeded = false;
-	let gateBridgeUp: boolean | undefined;
-	if (init?.created && process.stdin.isTTY && process.stdout.isTTY && !bootOpts.provider && !bootOpts.model) {
-		gateBridgeUp = (await bridgeHealth(1000))?.ok === true;
-		const gate = firstRunGateLines(gateBridgeUp);
-		if (promptYesNo(gate.question, true)) {
-			const code = await runSetupCommand([]);
-			wizardSucceeded = code === 0;
-			if (code === 0) console.log("\nStarting the session with your provider…\n");
-			else console.log(`\n${gate.wizardFailed}\n`);
-		} else {
-			for (const line of gate.declined) console.log(line);
-		}
-	}
-	// Pre-flight honors the CLI pin: --provider / --model provider/… probe
-	// THAT provider (warn-and-continue here, unlike print mode's exit 1).
-	const pre = await runPreflight(bootOpts.provider ?? bootOpts.model);
-	// The first-run banner is redundant after a completed wizard — its setup
-	// summary already said everything. Keep it for the decline/no-wizard path
-	// (and print mode, which never runs a wizard).
-	if (!wizardSucceeded) await printFirstRunBanner(gateBridgeUp);
-	if (pre) {
-		// Warn and continue: the user may start the stack in another
-		// terminal — pi's built-in retries cover that window.
-		console.log(`⚠ pre-flight: ${pre.message}`);
-		console.log(`  → ${pre.hint}`);
-		console.log();
-	}
-	const { runtime } = await bootRuntime(cwd, verbose, {
-		...bootOpts,
-		// First flights: the positional prompt becomes the TUI's
-		// initialMessage — surface it to bootRuntime so the flights
-		// extension can suppress the startup catalog.
-		initialMessage: prompt,
-	});
-	const mode = new InteractiveMode(runtime as any, {
-		// Brand the interactive TUI as unown (header, terminal title); suppress pi's own update check.
-		appName: "unown",
-		appVersion: VERSION,
-		...(prompt ? { initialMessage: prompt } : {}),
-	});
-	await mode.run(); // blocks until exit; normal exit path is process.exit(0)
+        const cwd = process.cwd();
+        // Flow round (2026-10-24): the TUI lane resolves -c/--resume the same way
+        // (fail-fast exit 1; the landing notice lands on stderr before the TUI
+        // takes over the screen).
+        if (bootOpts.sessionFile)
+                bootOpts = { ...bootOpts, sessionFile: await resolveLaunchSession(bootOpts.sessionFile, cwd) };
+        await ensureUnownAgentDirInfoAsync();
+        maybeShowUpdateNotice();
+        // M3 first-run onboarding (W1): a FRESH seed on an interactive TTY gets
+        // the offer to connect a provider BEFORE the TUI boots — the guided
+        // wizard (presets + live verification) instead of discovering the
+        // bundled-bridge default by trial. Declining keeps today's behaviour:
+        // the seeded bridge + the first-run banner.
+        // Hermes-posture (the reverse-engineered onboarding): state the
+        // situation plainly, make the offer ONE yes/no, name the recovery
+        // command on decline, and never re-ask (the `created` gate). The wizard
+        // itself is the SAME flow `unown setup` runs — one source of truth.
+        const init = unownAgentDirInit();
+        let wizardSucceeded = false;
+        let gateBridgeUp: boolean | undefined;
+        if (init?.created && process.stdin.isTTY && process.stdout.isTTY && !bootOpts.provider && !bootOpts.model) {
+                gateBridgeUp = (await bridgeHealth(1000))?.ok === true;
+                const gate = firstRunGateLines(gateBridgeUp);
+                if (promptYesNo(gate.question, true)) {
+                        const code = await runSetupCommand([]);
+                        wizardSucceeded = code === 0;
+                        if (code === 0) console.log("\nStarting the session with your provider…\n");
+                        else console.log(`\n${gate.wizardFailed}\n`);
+                } else {
+                        for (const line of gate.declined) console.log(line);
+                }
+        }
+        // Pre-flight honors the CLI pin: --provider / --model provider/… probe
+        // THAT provider (warn-and-continue here, unlike print mode's exit 1).
+        // interactive:true lets the model-specs gate ask ONCE before the TUI
+        // takes the screen; a declined ask is FATAL (an unverified model is
+        // not usable — the whole point of the gate), unlike reachability.
+        const pre = await runPreflight(bootOpts.provider ?? bootOpts.model, { interactive: true });
+        // The first-run banner is redundant after a completed wizard — its setup
+        // summary already said everything. Keep it for the decline/no-wizard path
+        // (and print mode, which never runs a wizard).
+        if (!wizardSucceeded) await printFirstRunBanner(gateBridgeUp);
+        if (pre) {
+                if (pre.fatal) {
+                        // The spec gate refused (and its ask, if any, was declined):
+                        // exit like print mode — continuing would boot a session whose
+                        // compaction triggers and output cap run on guesswork.
+                        console.error(`unown: ${pre.message}`);
+                        console.error(`  → ${pre.hint}`);
+                        console.error("  (set UNOWN_ALLOW_UNVERIFIED_SPECS=1 to skip this check)");
+                        process.exit(1);
+                }
+                // Warn and continue: the user may start the stack in another
+                // terminal — pi's built-in retries cover that window.
+                console.log(`⚠ pre-flight: ${pre.message}`);
+                console.log(`  → ${pre.hint}`);
+                console.log();
+        }
+        const { runtime } = await bootRuntime(cwd, verbose, {
+                ...bootOpts,
+                // First flights: the positional prompt becomes the TUI's
+                // initialMessage — surface it to bootRuntime so the flights
+                // extension can suppress the startup catalog.
+                initialMessage: prompt,
+        });
+        const mode = new InteractiveMode(runtime as any, {
+                // Brand the interactive TUI as unown (header, terminal title); suppress pi's own update check.
+                appName: "unown",
+                appVersion: VERSION,
+                ...(prompt ? { initialMessage: prompt } : {}),
+        });
+        await mode.run(); // blocks until exit; normal exit path is process.exit(0)
 }
 
 // ---------------------------------------------------------------------------
@@ -3466,42 +3589,42 @@ byte-cap / store-dir knobs are documented in docs/configuration.md.`;
 /** clig.dev: `help` is a command too — the word used to fall through to the
  * generic parser and start a TUI with "help" as the prompt. */
 function cmdHelp(topics: string[]): number {
-	if (topics.length === 0) {
-		console.log(HELP);
-		return 0;
-	}
-	const topic = topics[0];
-	const pages: Record<string, string> = {
-		doctor: DOCTOR_HELP,
-		mcp: MCP_HELP,
-		info: INFO_HELP,
-		update: UPDATE_HELP,
-		uninstall: UNINSTALL_HELP,
-		completions: COMPLETIONS_HELP,
-		setup: SETUP_USAGE,
-		providers: PROVIDERS_HELP,
-		acp: ACP_HELP,
-		"init-agents": INIT_AGENTS_HELP,
-		"doctor-instructions": DOCTOR_INSTRUCTIONS_HELP,
-		routines: AUTOMATIONS_USAGE,
-		automations: AUTOMATIONS_USAGE,
-		usage: USAGE_HELP,
-		sessions: SESSIONS_USAGE,
-		recipes: RECIPES_USAGE,
-		wiki: WIKI_USAGE,
-		webcache: WEBCACHE_HELP,
-		watch: WATCH_USAGE,
-		ralph: RALPH_USAGE,
-		dashboard: DASHBOARD_HELP,
-	};
-	const page = pages[topic];
-	if (!page) {
-		console.error(`unown help: unknown command "${topic}"`);
-		console.error("Run `unown --help` for the command list.");
-		return 1;
-	}
-	console.log(page);
-	return 0;
+        if (topics.length === 0) {
+                console.log(HELP);
+                return 0;
+        }
+        const topic = topics[0];
+        const pages: Record<string, string> = {
+                doctor: DOCTOR_HELP,
+                mcp: MCP_HELP,
+                info: INFO_HELP,
+                update: UPDATE_HELP,
+                uninstall: UNINSTALL_HELP,
+                completions: COMPLETIONS_HELP,
+                setup: SETUP_USAGE,
+                providers: PROVIDERS_HELP,
+                acp: ACP_HELP,
+                "init-agents": INIT_AGENTS_HELP,
+                "doctor-instructions": DOCTOR_INSTRUCTIONS_HELP,
+                routines: AUTOMATIONS_USAGE,
+                automations: AUTOMATIONS_USAGE,
+                usage: USAGE_HELP,
+                sessions: SESSIONS_USAGE,
+                recipes: RECIPES_USAGE,
+                wiki: WIKI_USAGE,
+                webcache: WEBCACHE_HELP,
+                watch: WATCH_USAGE,
+                ralph: RALPH_USAGE,
+                dashboard: DASHBOARD_HELP,
+        };
+        const page = pages[topic];
+        if (!page) {
+                console.error(`unown help: unknown command "${topic}"`);
+                console.error("Run `unown --help` for the command list.");
+                return 1;
+        }
+        console.log(page);
+        return 0;
 }
 
 /**
@@ -3511,422 +3634,422 @@ function cmdHelp(topics: string[]): number {
  * fail-closed (exit 1 with the typed reason — never a silent shared run).
  */
 async function runSessionInWorktree(name: string, runSession: () => Promise<unknown>): Promise<void> {
-	const result = await withSessionWorktree(name.length > 0 ? name : undefined, runSession, (line) => {
-		console.error(line);
-	});
-	if (!result.ok) {
-		console.error(`unown: --worktree failed (${result.reason}): ${result.detail}`);
-		process.exit(1);
-	}
+        const result = await withSessionWorktree(name.length > 0 ? name : undefined, runSession, (line) => {
+                console.error(line);
+        });
+        if (!result.ok) {
+                console.error(`unown: --worktree failed (${result.reason}): ${result.detail}`);
+                process.exit(1);
+        }
 }
 
 export async function runCli(argv: string[]) {
-	// `setup`, `models`, `update`, `changelog`, `info`, `completions`,
-	// `uninstall`, `doctor` and `mcp` own their own flag grammar — dispatch
-	// before the generic parser would eat their flags as prompt text.
-	const first = argv[0];
-	// `unown help [command]` — clig.dev: help is a command, not a TUI prompt.
-	if (first === "help") process.exit(cmdHelp(argv.slice(1)));
-	if (first === "setup") process.exit(await runSetupCommand(argv.slice(1)));
-	if (first === "providers") process.exit(await runProvidersCommand(argv.slice(1)));
-	if (first === "models") {
-		await printModelsOverview();
-		process.exit(0);
-	}
-	if (first === "doctor") {
-		const rest = argv.slice(1);
-		const unknown = rest.filter((a) => a !== "--json" && a !== "-h" && a !== "--help");
-		if (unknown.length) {
-			console.error(`unown doctor: unknown argument(s): ${unknown.join(" ")}`);
-			process.exit(1);
-		}
-		// clig.dev: --help never RUNS the command (diagnostics used to execute
-		// instead of helping).
-		if (rest.includes("-h") || rest.includes("--help")) {
-			console.log(DOCTOR_HELP);
-			process.exit(0);
-		}
-		process.exit(await cmdDoctor(rest.includes("--json")));
-	}
-	if (first === "info") {
-		const rest = argv.slice(1);
-		const unknown = rest.filter((a) => a !== "--json" && a !== "-h" && a !== "--help");
-		if (unknown.length) {
-			console.error(`unown info: unknown argument(s): ${unknown.join(" ")}`);
-			process.exit(1);
-		}
-		if (rest.includes("-h") || rest.includes("--help")) {
-			console.log(INFO_HELP);
-			process.exit(0);
-		}
-		process.exit(cmdInfo(rest.includes("--json")));
-	}
-	if (first === "init-agents") {
-		// Milestone 3.1 — `unown init-agents` owns its own flag grammar
-		// (--overwrite / --print / --json); dispatch before the generic
-		// parser would eat the flags as prompt text.
-		process.exit(cmdInitAgents(argv.slice(1)));
-	}
-	if (first === "doctor-instructions") {
-		// Milestone 3.2 — `unown doctor-instructions` owns its own flag
-		// grammar (--json); dispatch before the generic parser.
-		const rest = argv.slice(1);
-		const unknown = rest.filter((a) => a !== "--json" && a !== "-h" && a !== "--help");
-		if (unknown.length) {
-			console.error(`unown doctor-instructions: unknown argument(s): ${unknown.join(" ")}`);
-			process.exit(1);
-		}
-		if (rest.includes("-h") || rest.includes("--help")) {
-			console.log(DOCTOR_INSTRUCTIONS_HELP);
-			process.exit(0);
-		}
-		process.exit(cmdDoctorInstructions(rest));
-	}
-	if (first === "mcp") {
-		// P1 (R-c): Claude Code-style MCP config management — see mcp-cli.ts.
-		// -h/--help inside the subcommand grammar is handled there too.
-		const result = await runMcpCommand(argv.slice(1), { cwd: process.cwd(), userDir: UNOWN_AGENT_DIR });
-		if (result.stdout) process.stdout.write(result.stdout);
-		if (result.stderr) process.stderr.write(result.stderr);
-		process.exit(result.exitCode);
-	}
-	if (first === "engine") {
-		// M3 — `unown engine status|start|stop|serve`: supervision for the
-		// detached self-learning engine (engine-cli.ts). Owns its own flag
-		// grammar; dispatch before the generic parser would eat the
-		// subcommand tokens as prompt text.
-		const code = await runEngineCommand(argv.slice(1));
-		process.exit(code);
-	}
-	if (first === "dashboard" || first === "dash") {
-		// The TUI mission control (docs/tui-dashboard-plan.md): a
-		// standalone fullscreen dashboard over the engine REST+SSE
-		// surface — the Next.js dashboard's terminal-native successor.
-		process.exit(await runDashboardCommand(argv.slice(1)));
-	}
-	if (first === "routines" || first === "automations") {
-		// Routines — scheduled recurring agent runs (the zcode Automations
-		// port, grown the v2 recurrence semantics); see automations-cli.ts.
-		// "automations" stays as the historical alias.
-		const result = await runAutomationsCommand(argv.slice(1), { cwd: process.cwd() });
-		if (result.stdout) process.stdout.write(result.stdout);
-		if (result.stderr) process.stderr.write(result.stderr);
-		process.exit(result.exitCode);
-	}
-	if (first === "watch") {
-		// M3 — `unown watch list|run|roots`: the AI-comment watch (aider's
-		// --watch-files semantics on the always-on engine). Owns its own flag
-		// grammar; dispatch before the generic parser would eat the
-		// subcommand tokens as prompt text.
-		const result = await runWatchCommand(argv.slice(1), { cwd: process.cwd() });
-		if (result.stdout) process.stdout.write(result.stdout);
-		if (result.stderr) process.stderr.write(result.stderr);
-		process.exit(result.exitCode);
-	}
-	if (first === "repomap") {
-		// M6 — `unown repomap`: the graph-ranked tree-sitter symbol map
-		// (aider's repomap). Owns its flag grammar; dispatched before the
-		// generic parser for the same reason as watch.
-		const result = await runRepomapCliCommand(argv.slice(1), { cwd: process.cwd() });
-		if (result.stdout) process.stdout.write(result.stdout);
-		if (result.stderr) process.stderr.write(result.stderr);
-		process.exit(result.exitCode);
-	}
-	if (first === "ralph") {
-		// M4 — `unown ralph "<task>"`: the worker→reviewer loop (goose's
-		// Ralph pattern). Owns its own flag grammar (a quoted free-text
-		// task + flags); dispatched before the generic parser for the
-		// same reason as watch.
-		const result = await runRalphCommand(argv.slice(1), { cwd: process.cwd() });
-		if (result.stdout) process.stdout.write(result.stdout);
-		if (result.stderr) process.stderr.write(result.stderr);
-		process.exit(result.exitCode);
-	}
-	if (first === "usage") {
-		// opencode/Cursor-style usage & cost report — see usage-cli.ts.
-		const result = await runUsageCommand(argv.slice(1));
-		if (result.stdout) process.stdout.write(result.stdout);
-		if (result.stderr) process.stderr.write(result.stderr);
-		process.exit(result.exitCode);
-	}
-	if (first === "webcache") {
-		// M3 — `unown webcache stats|clear|sweep` manages the web
-		// results store (webcache.ts). Owns its own flag grammar;
-		// dispatch before the generic parser would eat the
-		// subcommand tokens as prompt text.
-		process.exit(cmdWebcache(argv.slice(1)));
-	}
-	if (first === "blame") {
-		// Audit 2-b F2 — `unown blame` used to be swallowed as a one-word
-		// LLM prompt; it is a real command now (the CLI twin of /blame).
-		process.exit(cmdBlame(argv.slice(1)));
-	}
-	if (first === "sessions") {
-		// Milestone 3.5 — `unown sessions export|import|list` (the
-		// opencode session/transfer.ts port). Dispatch before the
-		// generic parser would eat subcommand tokens as prompt text.
-		const code = await runSessionsCommand(argv.slice(1));
-		process.exit(code);
-	}
-	if (first === "import") {
-		// 2026-10-24 parity round — `unown import`: one-command config
-		// migration from Claude Code / Codex / Gemini / Cursor / OpenCode
-		// (the Claude Code /import acquisition play, pointed this way).
-		// Sessions-only imports stay on `unown sessions import`.
-		const code = await runImportCommand(argv.slice(1));
-		process.exit(code);
-	}
-	if (first === "worktrees") {
-		// 2026-10-24 parity round — `unown worktrees list|remove`: the
-		// management surface for the trees `--worktree` sessions leave
-		// behind (kept-for-review ones, after the merge).
-		const code = await runWorktreesCommand(argv.slice(1));
-		process.exit(code);
-	}
-	if (first === "recipes") {
-		// Milestone 4.1 — `unown recipes list|run|create|validate` (the
-		// goose Recipes port). Dispatch before the generic parser would
-		// eat subcommand tokens as prompt text.
-		const code = await runRecipesCommand(argv.slice(1));
-		process.exit(code);
-	}
-	if (first === "wiki") {
-		// Milestone 4.2 — `unown wiki generate|search|list|show` (the
-		// zcode Repo Wiki port). Dispatch before the generic parser would
-		// eat subcommand tokens as prompt text.
-		const code = await runWikiCommand(argv.slice(1));
-		process.exit(code);
-	}
-	if (first === "delegations") {
-		// The delegation round — `unown delegations`: the audit view over
-		// the fleet journal (both lanes) + the engine's aggregate. Dispatch
-		// before the generic parser (own flag grammar, never prompt text).
-		const code = await runDelegationsCommand(argv.slice(1));
-		process.exit(code);
-	}
-	if (first === "completions") process.exit(cmdCompletions(argv.slice(1)));
-	if (first === "acp") {
-		// The ACP editor server (Zed et al.): stdio JSON-RPC. Own flag
-		// grammar like mcp/automations — dispatch before the generic
-		// parser would eat flags as prompt text.
-		const rest = argv.slice(1);
-		const verbose = rest.includes("--verbose") || rest.includes("-v");
-		if (rest.includes("-h") || rest.includes("--help")) {
-			console.log(ACP_HELP);
-			process.exit(0);
-		}
-		const unknown = rest.filter((a) => a !== "--verbose" && a !== "-v");
-		if (unknown.length) {
-			console.error(`unown acp: unknown argument(s): ${unknown.join(" ")}`);
-			console.error("usage: unown acp [--verbose]");
-			process.exit(1);
-		}
-		await ensureUnownAgentDirAsync(); // silent scaffold — no banners: stdout is protocol
-		await runAcpServer({
-			boot: (cwd, v, bootOpts) => bootRuntime(cwd, v, bootOpts as BootOptions),
-			agentName: "unown",
-			agentVersion: VERSION,
-			verbose,
-		});
-		process.exit(0); // unreachable — runAcpServer exits on stdin EOF/signals
-	}
-	if (first === "uninstall") {
-		const { flags, error } = parseUninstallFlags(argv.slice(1));
-		if (error) {
-			console.error(`unown uninstall: ${error}`);
-			console.error("usage: unown uninstall [--dry-run] [--purge-data] [--purge-checkout]");
-			process.exit(1);
-		}
-		if (flags.help) {
-			console.log(UNINSTALL_HELP);
-			process.exit(0);
-		}
-		process.exit(cmdUninstall(flags));
-	}
-	// `update` and `changelog` likewise (update owns --check/--json/etc).
-	if (first === "update") {
-		const { flags, error } = parseUpdateFlags(argv.slice(1));
-		if (error) {
-			console.error(`unown update: ${error}`);
-			console.error(
-				"usage: unown update [--check] [--json] [--allow-dirty] [--rollback] [--dry-run] " +
-					"[--skip [version]] [--unskip] [--snooze <duration>] [version]",
-			);
-			process.exit(1);
-		}
-		if (flags.help) {
-			console.log(UPDATE_HELP);
-			process.exit(0);
-		}
-		process.exit(await cmdUpdate(flags));
-	}
-	if (first === "changelog") process.exit(cmdChangelog(argv.slice(1)));
-	// Version surface: the ROOT package.json is the single source of
-	// truth (the self-learning package carries its own 0.x number); CI
-	// asserts `unown --version` === package.json.version on every run.
-	if (argv.includes("--version") || argv.includes("-V")) {
-		console.log(VERSION);
-		process.exit(0);
-	}
-	// Unknown-command guard (audit 2-b F1 / 2-a-1 F1): a LONE command-like
-	// first word that matches no subcommand is almost certainly a typo —
-	// and the failure mode it used to hit was the worst kind: the word was
-	// silently folded into a full LLM session (a 19k-token system prompt
-	// and a model turn burned on "badcommand"). Error out instead, with
-	// the nearest commands as suggestions. Multi-word prompts and
-	// non-command-like words still start a session, exactly as before.
-	{
-		const KNOWN_COMMANDS = new Set([
-			"help",
-			"setup",
-			"providers",
-			"models",
-			"doctor",
-			"info",
-			"init-agents",
-			"doctor-instructions",
-			"mcp",
-			"engine",
-			"routines",
-			"automations",
-			"watch",
-			"usage",
-			"webcache",
-			"blame",
-			"sessions",
-			"import",
-			"recipes",
-			"wiki",
-			"completions",
-			"acp",
-			"uninstall",
-			"update",
-			"changelog",
-			"init",
-			"memory",
-			"note",
-		]);
-		const VALUE_FLAGS = new Set([
-			"--mode",
-			"--session",
-			"--output-format",
-			"--goal",
-			"--tools",
-			"--append-system-prompt",
-			"--model",
-			"--effort",
-			"--mcp-servers",
-			"--provider",
-		]);
-		const positionals: string[] = [];
-		let sawFlag = false;
-		for (let i = 0; i < argv.length; i++) {
-			const a = argv[i];
-			if (a === "--") break; // everything after -- is prompt text
-			if (a.startsWith("-")) {
-				sawFlag = true; // explicit intent (-p, --plan, --model …): never a typo guard
-				if (VALUE_FLAGS.has(a)) i++; // skip the flag's value
-				continue;
-			}
-			positionals.push(a);
-		}
-		const firstWord = positionals[0];
-		if (
-			!sawFlag &&
-			positionals.length === 1 &&
-			firstWord &&
-			/^[a-z][a-z0-9_-]*$/i.test(firstWord) &&
-			!KNOWN_COMMANDS.has(firstWord.toLowerCase())
-		) {
-			const lower = firstWord.toLowerCase();
-			const near = [...KNOWN_COMMANDS]
-				.filter((c) => c.startsWith(lower.slice(0, 2)) || lower.startsWith(c.slice(0, 2)))
-				.sort()
-				.slice(0, 4);
-			console.error(`unown: unknown command "${firstWord}"`);
-			if (near.length) console.error(`  did you mean: ${near.map((c) => `unown ${c}`).join(", ")}?`);
-			console.error(`  run \`unown --help\` for the command list.`);
-			console.error(
-				`  to run a one-word prompt instead, use -p: unown -p "${firstWord}"\n` +
-					`  (or add more words: unown ${firstWord} the failing tests)`,
-			);
-			process.exit(2);
-		}
-	}
-	const args = parseArgs(argv);
-	switch (args.command) {
-		case "help":
-			console.log(HELP);
-			process.exit(0);
-			break;
-		case "init":
-			cmdInit();
-			process.exit(0);
-			break;
-		case "memory":
-			cmdMemory();
-			process.exit(0);
-			break;
-		case "note":
-			await cmdNote(args.prompt ?? "");
-			break;
-		case "print":
-			if (args.worktree !== undefined) {
-				await runSessionInWorktree(String(args.worktree === true ? "" : args.worktree), () =>
-					cmdPrint(args.prompt, args, args.verbose),
-				);
-				break;
-			}
-			await cmdPrint(args.prompt, args, args.verbose);
-			break;
-		case "tui":
-			// Claude Code parity: --output-format is a print-mode
-			// contract; in the TUI there is no final object to emit.
-			if (args.outputFormat === "json") {
-				console.error("unown: --output-format json requires print mode (-p)");
-				process.exit(2);
-			}
-			if (args.worktree !== undefined) {
-				await runSessionInWorktree(String(args.worktree === true ? "" : args.worktree), () =>
-					cmdTui(args.prompt, args.verbose, {
-						tools: args.tools,
-						appendSystemPromptPath: args.appendSystemPromptPath,
-						plan: args.plan,
-						noSplit: args.noSplit,
-						goal: args.goal,
-						sessionFile: args.sessionFile,
-						model: args.model,
-						effort: args.effort,
-						mcpServers: args.mcpServers,
-						noAgentsMd: args.noAgentsMd,
-						provider: args.provider,
-						permissionMode: args.permissionMode,
-						addDirs: args.addDirs,
-					}),
-				);
-				break;
-			}
-			await cmdTui(args.prompt, args.verbose, {
-				tools: args.tools,
-				appendSystemPromptPath: args.appendSystemPromptPath,
-				plan: args.plan,
-				noSplit: args.noSplit,
-				goal: args.goal,
-				// Fleet lane: --session <path> continues a specific
-				// session file (the resume substrate).
-				sessionFile: args.sessionFile,
-				// Milestone 2.1 + 2.2 — surface the routing fields
-				// (set by parseSubagentFlags inside parseArgs) into
-				// the TUI boot path so applySubagentEnvOverrides
-				// (called inside bootRuntime) honors them.
-				model: args.model,
-				effort: args.effort,
-				mcpServers: args.mcpServers,
-				noAgentsMd: args.noAgentsMd,
-				provider: args.provider,
-				permissionMode: args.permissionMode,
-				addDirs: args.addDirs,
-			});
-			break;
-	}
+        // `setup`, `models`, `update`, `changelog`, `info`, `completions`,
+        // `uninstall`, `doctor` and `mcp` own their own flag grammar — dispatch
+        // before the generic parser would eat their flags as prompt text.
+        const first = argv[0];
+        // `unown help [command]` — clig.dev: help is a command, not a TUI prompt.
+        if (first === "help") process.exit(cmdHelp(argv.slice(1)));
+        if (first === "setup") process.exit(await runSetupCommand(argv.slice(1)));
+        if (first === "providers") process.exit(await runProvidersCommand(argv.slice(1)));
+        if (first === "models") {
+                await printModelsOverview();
+                process.exit(0);
+        }
+        if (first === "doctor") {
+                const rest = argv.slice(1);
+                const unknown = rest.filter((a) => a !== "--json" && a !== "-h" && a !== "--help");
+                if (unknown.length) {
+                        console.error(`unown doctor: unknown argument(s): ${unknown.join(" ")}`);
+                        process.exit(1);
+                }
+                // clig.dev: --help never RUNS the command (diagnostics used to execute
+                // instead of helping).
+                if (rest.includes("-h") || rest.includes("--help")) {
+                        console.log(DOCTOR_HELP);
+                        process.exit(0);
+                }
+                process.exit(await cmdDoctor(rest.includes("--json")));
+        }
+        if (first === "info") {
+                const rest = argv.slice(1);
+                const unknown = rest.filter((a) => a !== "--json" && a !== "-h" && a !== "--help");
+                if (unknown.length) {
+                        console.error(`unown info: unknown argument(s): ${unknown.join(" ")}`);
+                        process.exit(1);
+                }
+                if (rest.includes("-h") || rest.includes("--help")) {
+                        console.log(INFO_HELP);
+                        process.exit(0);
+                }
+                process.exit(cmdInfo(rest.includes("--json")));
+        }
+        if (first === "init-agents") {
+                // Milestone 3.1 — `unown init-agents` owns its own flag grammar
+                // (--overwrite / --print / --json); dispatch before the generic
+                // parser would eat the flags as prompt text.
+                process.exit(cmdInitAgents(argv.slice(1)));
+        }
+        if (first === "doctor-instructions") {
+                // Milestone 3.2 — `unown doctor-instructions` owns its own flag
+                // grammar (--json); dispatch before the generic parser.
+                const rest = argv.slice(1);
+                const unknown = rest.filter((a) => a !== "--json" && a !== "-h" && a !== "--help");
+                if (unknown.length) {
+                        console.error(`unown doctor-instructions: unknown argument(s): ${unknown.join(" ")}`);
+                        process.exit(1);
+                }
+                if (rest.includes("-h") || rest.includes("--help")) {
+                        console.log(DOCTOR_INSTRUCTIONS_HELP);
+                        process.exit(0);
+                }
+                process.exit(cmdDoctorInstructions(rest));
+        }
+        if (first === "mcp") {
+                // P1 (R-c): Claude Code-style MCP config management — see mcp-cli.ts.
+                // -h/--help inside the subcommand grammar is handled there too.
+                const result = await runMcpCommand(argv.slice(1), { cwd: process.cwd(), userDir: UNOWN_AGENT_DIR });
+                if (result.stdout) process.stdout.write(result.stdout);
+                if (result.stderr) process.stderr.write(result.stderr);
+                process.exit(result.exitCode);
+        }
+        if (first === "engine") {
+                // M3 — `unown engine status|start|stop|serve`: supervision for the
+                // detached self-learning engine (engine-cli.ts). Owns its own flag
+                // grammar; dispatch before the generic parser would eat the
+                // subcommand tokens as prompt text.
+                const code = await runEngineCommand(argv.slice(1));
+                process.exit(code);
+        }
+        if (first === "dashboard" || first === "dash") {
+                // The TUI mission control (docs/tui-dashboard-plan.md): a
+                // standalone fullscreen dashboard over the engine REST+SSE
+                // surface — the Next.js dashboard's terminal-native successor.
+                process.exit(await runDashboardCommand(argv.slice(1)));
+        }
+        if (first === "routines" || first === "automations") {
+                // Routines — scheduled recurring agent runs (the zcode Automations
+                // port, grown the v2 recurrence semantics); see automations-cli.ts.
+                // "automations" stays as the historical alias.
+                const result = await runAutomationsCommand(argv.slice(1), { cwd: process.cwd() });
+                if (result.stdout) process.stdout.write(result.stdout);
+                if (result.stderr) process.stderr.write(result.stderr);
+                process.exit(result.exitCode);
+        }
+        if (first === "watch") {
+                // M3 — `unown watch list|run|roots`: the AI-comment watch (aider's
+                // --watch-files semantics on the always-on engine). Owns its own flag
+                // grammar; dispatch before the generic parser would eat the
+                // subcommand tokens as prompt text.
+                const result = await runWatchCommand(argv.slice(1), { cwd: process.cwd() });
+                if (result.stdout) process.stdout.write(result.stdout);
+                if (result.stderr) process.stderr.write(result.stderr);
+                process.exit(result.exitCode);
+        }
+        if (first === "repomap") {
+                // M6 — `unown repomap`: the graph-ranked tree-sitter symbol map
+                // (aider's repomap). Owns its flag grammar; dispatched before the
+                // generic parser for the same reason as watch.
+                const result = await runRepomapCliCommand(argv.slice(1), { cwd: process.cwd() });
+                if (result.stdout) process.stdout.write(result.stdout);
+                if (result.stderr) process.stderr.write(result.stderr);
+                process.exit(result.exitCode);
+        }
+        if (first === "ralph") {
+                // M4 — `unown ralph "<task>"`: the worker→reviewer loop (goose's
+                // Ralph pattern). Owns its own flag grammar (a quoted free-text
+                // task + flags); dispatched before the generic parser for the
+                // same reason as watch.
+                const result = await runRalphCommand(argv.slice(1), { cwd: process.cwd() });
+                if (result.stdout) process.stdout.write(result.stdout);
+                if (result.stderr) process.stderr.write(result.stderr);
+                process.exit(result.exitCode);
+        }
+        if (first === "usage") {
+                // opencode/Cursor-style usage & cost report — see usage-cli.ts.
+                const result = await runUsageCommand(argv.slice(1));
+                if (result.stdout) process.stdout.write(result.stdout);
+                if (result.stderr) process.stderr.write(result.stderr);
+                process.exit(result.exitCode);
+        }
+        if (first === "webcache") {
+                // M3 — `unown webcache stats|clear|sweep` manages the web
+                // results store (webcache.ts). Owns its own flag grammar;
+                // dispatch before the generic parser would eat the
+                // subcommand tokens as prompt text.
+                process.exit(cmdWebcache(argv.slice(1)));
+        }
+        if (first === "blame") {
+                // Audit 2-b F2 — `unown blame` used to be swallowed as a one-word
+                // LLM prompt; it is a real command now (the CLI twin of /blame).
+                process.exit(cmdBlame(argv.slice(1)));
+        }
+        if (first === "sessions") {
+                // Milestone 3.5 — `unown sessions export|import|list` (the
+                // opencode session/transfer.ts port). Dispatch before the
+                // generic parser would eat subcommand tokens as prompt text.
+                const code = await runSessionsCommand(argv.slice(1));
+                process.exit(code);
+        }
+        if (first === "import") {
+                // 2026-10-24 parity round — `unown import`: one-command config
+                // migration from Claude Code / Codex / Gemini / Cursor / OpenCode
+                // (the Claude Code /import acquisition play, pointed this way).
+                // Sessions-only imports stay on `unown sessions import`.
+                const code = await runImportCommand(argv.slice(1));
+                process.exit(code);
+        }
+        if (first === "worktrees") {
+                // 2026-10-24 parity round — `unown worktrees list|remove`: the
+                // management surface for the trees `--worktree` sessions leave
+                // behind (kept-for-review ones, after the merge).
+                const code = await runWorktreesCommand(argv.slice(1));
+                process.exit(code);
+        }
+        if (first === "recipes") {
+                // Milestone 4.1 — `unown recipes list|run|create|validate` (the
+                // goose Recipes port). Dispatch before the generic parser would
+                // eat subcommand tokens as prompt text.
+                const code = await runRecipesCommand(argv.slice(1));
+                process.exit(code);
+        }
+        if (first === "wiki") {
+                // Milestone 4.2 — `unown wiki generate|search|list|show` (the
+                // zcode Repo Wiki port). Dispatch before the generic parser would
+                // eat subcommand tokens as prompt text.
+                const code = await runWikiCommand(argv.slice(1));
+                process.exit(code);
+        }
+        if (first === "delegations") {
+                // The delegation round — `unown delegations`: the audit view over
+                // the fleet journal (both lanes) + the engine's aggregate. Dispatch
+                // before the generic parser (own flag grammar, never prompt text).
+                const code = await runDelegationsCommand(argv.slice(1));
+                process.exit(code);
+        }
+        if (first === "completions") process.exit(cmdCompletions(argv.slice(1)));
+        if (first === "acp") {
+                // The ACP editor server (Zed et al.): stdio JSON-RPC. Own flag
+                // grammar like mcp/automations — dispatch before the generic
+                // parser would eat flags as prompt text.
+                const rest = argv.slice(1);
+                const verbose = rest.includes("--verbose") || rest.includes("-v");
+                if (rest.includes("-h") || rest.includes("--help")) {
+                        console.log(ACP_HELP);
+                        process.exit(0);
+                }
+                const unknown = rest.filter((a) => a !== "--verbose" && a !== "-v");
+                if (unknown.length) {
+                        console.error(`unown acp: unknown argument(s): ${unknown.join(" ")}`);
+                        console.error("usage: unown acp [--verbose]");
+                        process.exit(1);
+                }
+                await ensureUnownAgentDirAsync(); // silent scaffold — no banners: stdout is protocol
+                await runAcpServer({
+                        boot: (cwd, v, bootOpts) => bootRuntime(cwd, v, bootOpts as BootOptions),
+                        agentName: "unown",
+                        agentVersion: VERSION,
+                        verbose,
+                });
+                process.exit(0); // unreachable — runAcpServer exits on stdin EOF/signals
+        }
+        if (first === "uninstall") {
+                const { flags, error } = parseUninstallFlags(argv.slice(1));
+                if (error) {
+                        console.error(`unown uninstall: ${error}`);
+                        console.error("usage: unown uninstall [--dry-run] [--purge-data] [--purge-checkout]");
+                        process.exit(1);
+                }
+                if (flags.help) {
+                        console.log(UNINSTALL_HELP);
+                        process.exit(0);
+                }
+                process.exit(cmdUninstall(flags));
+        }
+        // `update` and `changelog` likewise (update owns --check/--json/etc).
+        if (first === "update") {
+                const { flags, error } = parseUpdateFlags(argv.slice(1));
+                if (error) {
+                        console.error(`unown update: ${error}`);
+                        console.error(
+                                "usage: unown update [--check] [--json] [--allow-dirty] [--rollback] [--dry-run] " +
+                                        "[--skip [version]] [--unskip] [--snooze <duration>] [version]",
+                        );
+                        process.exit(1);
+                }
+                if (flags.help) {
+                        console.log(UPDATE_HELP);
+                        process.exit(0);
+                }
+                process.exit(await cmdUpdate(flags));
+        }
+        if (first === "changelog") process.exit(cmdChangelog(argv.slice(1)));
+        // Version surface: the ROOT package.json is the single source of
+        // truth (the self-learning package carries its own 0.x number); CI
+        // asserts `unown --version` === package.json.version on every run.
+        if (argv.includes("--version") || argv.includes("-V")) {
+                console.log(VERSION);
+                process.exit(0);
+        }
+        // Unknown-command guard (audit 2-b F1 / 2-a-1 F1): a LONE command-like
+        // first word that matches no subcommand is almost certainly a typo —
+        // and the failure mode it used to hit was the worst kind: the word was
+        // silently folded into a full LLM session (a 19k-token system prompt
+        // and a model turn burned on "badcommand"). Error out instead, with
+        // the nearest commands as suggestions. Multi-word prompts and
+        // non-command-like words still start a session, exactly as before.
+        {
+                const KNOWN_COMMANDS = new Set([
+                        "help",
+                        "setup",
+                        "providers",
+                        "models",
+                        "doctor",
+                        "info",
+                        "init-agents",
+                        "doctor-instructions",
+                        "mcp",
+                        "engine",
+                        "routines",
+                        "automations",
+                        "watch",
+                        "usage",
+                        "webcache",
+                        "blame",
+                        "sessions",
+                        "import",
+                        "recipes",
+                        "wiki",
+                        "completions",
+                        "acp",
+                        "uninstall",
+                        "update",
+                        "changelog",
+                        "init",
+                        "memory",
+                        "note",
+                ]);
+                const VALUE_FLAGS = new Set([
+                        "--mode",
+                        "--session",
+                        "--output-format",
+                        "--goal",
+                        "--tools",
+                        "--append-system-prompt",
+                        "--model",
+                        "--effort",
+                        "--mcp-servers",
+                        "--provider",
+                ]);
+                const positionals: string[] = [];
+                let sawFlag = false;
+                for (let i = 0; i < argv.length; i++) {
+                        const a = argv[i];
+                        if (a === "--") break; // everything after -- is prompt text
+                        if (a.startsWith("-")) {
+                                sawFlag = true; // explicit intent (-p, --plan, --model …): never a typo guard
+                                if (VALUE_FLAGS.has(a)) i++; // skip the flag's value
+                                continue;
+                        }
+                        positionals.push(a);
+                }
+                const firstWord = positionals[0];
+                if (
+                        !sawFlag &&
+                        positionals.length === 1 &&
+                        firstWord &&
+                        /^[a-z][a-z0-9_-]*$/i.test(firstWord) &&
+                        !KNOWN_COMMANDS.has(firstWord.toLowerCase())
+                ) {
+                        const lower = firstWord.toLowerCase();
+                        const near = [...KNOWN_COMMANDS]
+                                .filter((c) => c.startsWith(lower.slice(0, 2)) || lower.startsWith(c.slice(0, 2)))
+                                .sort()
+                                .slice(0, 4);
+                        console.error(`unown: unknown command "${firstWord}"`);
+                        if (near.length) console.error(`  did you mean: ${near.map((c) => `unown ${c}`).join(", ")}?`);
+                        console.error(`  run \`unown --help\` for the command list.`);
+                        console.error(
+                                `  to run a one-word prompt instead, use -p: unown -p "${firstWord}"\n` +
+                                        `  (or add more words: unown ${firstWord} the failing tests)`,
+                        );
+                        process.exit(2);
+                }
+        }
+        const args = parseArgs(argv);
+        switch (args.command) {
+                case "help":
+                        console.log(HELP);
+                        process.exit(0);
+                        break;
+                case "init":
+                        cmdInit();
+                        process.exit(0);
+                        break;
+                case "memory":
+                        cmdMemory();
+                        process.exit(0);
+                        break;
+                case "note":
+                        await cmdNote(args.prompt ?? "");
+                        break;
+                case "print":
+                        if (args.worktree !== undefined) {
+                                await runSessionInWorktree(String(args.worktree === true ? "" : args.worktree), () =>
+                                        cmdPrint(args.prompt, args, args.verbose),
+                                );
+                                break;
+                        }
+                        await cmdPrint(args.prompt, args, args.verbose);
+                        break;
+                case "tui":
+                        // Claude Code parity: --output-format is a print-mode
+                        // contract; in the TUI there is no final object to emit.
+                        if (args.outputFormat === "json") {
+                                console.error("unown: --output-format json requires print mode (-p)");
+                                process.exit(2);
+                        }
+                        if (args.worktree !== undefined) {
+                                await runSessionInWorktree(String(args.worktree === true ? "" : args.worktree), () =>
+                                        cmdTui(args.prompt, args.verbose, {
+                                                tools: args.tools,
+                                                appendSystemPromptPath: args.appendSystemPromptPath,
+                                                plan: args.plan,
+                                                noSplit: args.noSplit,
+                                                goal: args.goal,
+                                                sessionFile: args.sessionFile,
+                                                model: args.model,
+                                                effort: args.effort,
+                                                mcpServers: args.mcpServers,
+                                                noAgentsMd: args.noAgentsMd,
+                                                provider: args.provider,
+                                                permissionMode: args.permissionMode,
+                                                addDirs: args.addDirs,
+                                        }),
+                                );
+                                break;
+                        }
+                        await cmdTui(args.prompt, args.verbose, {
+                                tools: args.tools,
+                                appendSystemPromptPath: args.appendSystemPromptPath,
+                                plan: args.plan,
+                                noSplit: args.noSplit,
+                                goal: args.goal,
+                                // Fleet lane: --session <path> continues a specific
+                                // session file (the resume substrate).
+                                sessionFile: args.sessionFile,
+                                // Milestone 2.1 + 2.2 — surface the routing fields
+                                // (set by parseSubagentFlags inside parseArgs) into
+                                // the TUI boot path so applySubagentEnvOverrides
+                                // (called inside bootRuntime) honors them.
+                                model: args.model,
+                                effort: args.effort,
+                                mcpServers: args.mcpServers,
+                                noAgentsMd: args.noAgentsMd,
+                                provider: args.provider,
+                                permissionMode: args.permissionMode,
+                                addDirs: args.addDirs,
+                        });
+                        break;
+        }
 }
