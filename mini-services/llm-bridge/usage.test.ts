@@ -26,17 +26,22 @@ import {
         buildUsageSummary,
         dayKeyUtc,
         estimateRecordCostUsd,
+        learnedSpecsFile,
+        loadLearnedSpecs,
         MODEL_PRICES_ESTIMATE,
         parseUsageLine,
         priceEnvVarSuffix,
         readUsageTail,
         readUsageTails,
+        recordLearnedSpec,
         resolveModelPrice,
         resolveUsageStateDir,
         roundCostUsd,
+        sidecarModelPrice,
         USAGE_LOG_FILE_NAME,
         type UsageRecord,
 } from "./usage";
+import * as fs from "node:fs";
 
 const DAY = 86_400_000;
 const HOUR = 3_600_000;
@@ -331,7 +336,7 @@ describe("aggregateUsage", () => {
                         { model: "qwen3.7-plus", requests: 1, promptTokens: 500_000, completionTokens: 100_000, tokens: 600_000, costUsd: 0.7, avgDurationMs: 2000 },
                 ]);
                 expect(s.byDay).toEqual([{ date: "2026-10-19", requests: 4, tokens: 2_112_100, costUsd: null }]);
-                expect(s.pricing).toEqual({ estimate: true, overridden: [], unknownModels: ["local-qwen3-0.6b"] });
+                expect(s.pricing).toEqual({ estimate: true, overridden: [], sidecarPriced: [], unknownModels: ["local-qwen3-0.6b"] });
         });
 
         test("7-day window: yesterday + 3-days-ago rows appear, error counted, 8-day-old excluded", () => {
@@ -359,7 +364,7 @@ describe("aggregateUsage", () => {
                 const env = { UNOWN_PRICE_KIMI_K2_5_IN: "1", UNOWN_PRICE_KIMI_K2_5_OUT: "4" };
                 const s = aggregateUsage(FIXTURE.slice(0, 1), { sinceTs: NOW - DAY, days: 1, env });
                 expect(s.totals.costUsd).toBe(3); // 1M*1 + 0.5M*4
-                expect(s.pricing).toEqual({ estimate: false, overridden: ["kimi-k2.5"], unknownModels: [] });
+                expect(s.pricing).toEqual({ estimate: false, overridden: ["kimi-k2.5"], sidecarPriced: [], unknownModels: [] });
         });
 
         test("model filter matches requested OR upstream id; routed rows group under the filter", () => {
@@ -462,4 +467,118 @@ describe("resolveUsageStateDir", () => {
                 // the real bridge module dir resolves to THIS checkout's .run
                 expect(resolveUsageStateDir({}, [outside, import.meta.dir])).toBe(join(import.meta.dir, "..", "..", ".run"));
         });
+});
+
+// ---------------------------------------------------------------------------
+// The model-specs round: learned specs + the sidecar price source
+// ---------------------------------------------------------------------------
+describe("learned specs (context limits upstream 400s reveal)", () => {
+	test("recordLearnedSpec round-trips and only writes on NEW numbers", () => {
+		const dir = mkdtempSync(join(tmpdir(), "learned-specs-"));
+		try {
+			expect(loadLearnedSpecs(dir)).toEqual({});
+			const wrote = recordLearnedSpec(dir, "mystery-7b", { contextWindow: 32768 }, "This model's maximum context length is 32768 tokens.", 1000);
+			expect(wrote).toBe(true);
+			const all = loadLearnedSpecs(dir);
+			expect(all["mystery-7b"]).toEqual({
+				model: "mystery-7b",
+				contextWindow: 32768,
+				learnedAt: 1000,
+				fromError: "This model's maximum context length is 32768 tokens.",
+			});
+			// same numbers → no rewrite
+			expect(recordLearnedSpec(dir, "mystery-7b", { contextWindow: 32768 }, "same error", 2000)).toBe(false);
+			// changed numbers → rewrite
+			expect(recordLearnedSpec(dir, "mystery-7b", { contextWindow: 65536 }, "bigger", 3000)).toBe(true);
+			expect(loadLearnedSpecs(dir)["mystery-7b"].contextWindow).toBe(65536);
+			// empty parses write nothing
+			expect(recordLearnedSpec(dir, "x", {}, "err")).toBe(false);
+			expect(recordLearnedSpec(dir, "", { contextWindow: 1 }, "err")).toBe(false);
+		} finally {
+			rmSync(dir, { recursive: true, force: true });
+		}
+	});
+
+	test("a corrupt store reads as empty and a re-record heals it", () => {
+		const dir = mkdtempSync(join(tmpdir(), "learned-specs-corrupt-"));
+		try {
+			fs.writeFileSync(learnedSpecsFile(dir), "{not json", "utf8");
+			expect(loadLearnedSpecs(dir)).toEqual({});
+			expect(recordLearnedSpec(dir, "m", { contextWindow: 1024 }, "e")).toBe(true);
+			expect(loadLearnedSpecs(dir)["m"].contextWindow).toBe(1024);
+		} finally {
+			rmSync(dir, { recursive: true, force: true });
+		}
+	});
+});
+
+describe("sidecarModelPrice — the model-specs sidecar as a price source", () => {
+	function sidecarHome(dir: string, specs: Record<string, any>): string {
+		fs.mkdirSync(join(dir, "agent"), { recursive: true });
+		fs.writeFileSync(join(dir, "agent", "model-specs.json"), JSON.stringify({ version: 1, specs }), "utf8");
+		return dir;
+	}
+
+	test("a provider/model key with a verified cost prices the bare model id", () => {
+		const dir = sidecarHome(mkdtempSync(join(tmpdir(), "sidecar-price-")), {
+			"agnes/agnes-3.0-flash": { cost: { input: 0.11, output: 0.6 } },
+		});
+		try {
+			const env = { UNOWN_HOME: dir };
+			expect(sidecarModelPrice("agnes-3.0-flash", env)).toEqual({ inputUsdPer1M: 0.11, outputUsdPer1M: 0.6 });
+			// resolution order: env > sidecar > estimate
+			const resolved = resolveModelPrice("agnes-3.0-flash", env);
+			expect(resolved?.source).toBe("sidecar");
+			expect(resolved?.inputUsdPer1M).toBe(0.11);
+			// an env override still wins
+			const overridden = resolveModelPrice("agnes-3.0-flash", {
+				...env,
+				UNOWN_PRICE_AGNES_3_0_FLASH_IN: "1",
+				UNOWN_PRICE_AGNES_3_0_FLASH_OUT: "2",
+			});
+			expect(overridden?.source).toBe("env");
+			// a model with a partial cost (no output) prices null from the sidecar
+			expect(sidecarModelPrice("partial-model", env)).toBeNull();
+		} finally {
+			rmSync(dir, { recursive: true, force: true });
+		}
+	});
+
+	test("no sidecar / corrupt sidecar / unknown model → null (estimate fallback intact)", () => {
+		const empty = mkdtempSync(join(tmpdir(), "sidecar-empty-"));
+		try {
+			expect(sidecarModelPrice("kimi-k2.5", { UNOWN_HOME: empty })).toBeNull();
+			fs.mkdirSync(join(empty, "agent"), { recursive: true });
+			fs.writeFileSync(join(empty, "agent", "model-specs.json"), "{broken", "utf8");
+			expect(sidecarModelPrice("kimi-k2.5", { UNOWN_HOME: empty })).toBeNull();
+			// the estimate table still answers
+			expect(resolveModelPrice("kimi-k2.5", { UNOWN_HOME: empty })?.source).toBe("estimate");
+		} finally {
+			rmSync(empty, { recursive: true, force: true });
+		}
+	});
+
+	test("aggregateUsage tracks sidecar-priced models", () => {
+		const dir = sidecarHome(mkdtempSync(join(tmpdir(), "sidecar-agg-")), {
+			"agnes/agnes-3.0-flash": { cost: { input: 0.1, output: 0.4 } },
+		});
+		try {
+			const rec: UsageRecord = {
+				ts: NOW,
+				model: "agnes-3.0-flash",
+				stream: false,
+				promptTokens: 1_000_000,
+				completionTokens: 500_000,
+				durationMs: 100,
+				status: "ok",
+			};
+			const s = aggregateUsage([rec], { sinceTs: NOW - DAY, days: 1, env: { UNOWN_HOME: dir } });
+			expect(s.totals.costUsd).toBe(0.3); // 1M*0.1 + 0.5M*0.4
+			expect(s.pricing.estimate).toBe(false);
+			expect(s.pricing.sidecarPriced).toEqual(["agnes-3.0-flash"]);
+			expect(s.pricing.overridden).toEqual([]);
+		} finally {
+			rmSync(dir, { recursive: true, force: true });
+		}
+	});
 });

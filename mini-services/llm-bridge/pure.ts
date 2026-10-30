@@ -664,3 +664,124 @@ export function mergeCatalogIntoKnown(
         }
         return { merged, stale };
 }
+
+// ---------------------------------------------------------------------------
+// Upstream catalog specs (the model-specs round)
+// ---------------------------------------------------------------------------
+
+/** Spec fields one upstream /models entry may carry, normalized. */
+export interface CatalogSpec {
+	contextWindow?: number;
+	maxTokens?: number;
+	imageInput?: boolean;
+}
+
+function specNum(v: unknown): number | undefined {
+	return typeof v === "number" && Number.isFinite(v) && v > 0 && Number.isInteger(v) ? v : undefined;
+}
+
+/**
+ * Extract the spec fields from ONE upstream /models entry — the same field
+ * names the agent's `parseEndpointCatalogEntry` reads (vLLM `max_model_len`,
+ * LM Studio `loaded_context_length`, llama.cpp `meta.n_ctx`, OpenRouter
+ * `top_provider.max_completion_tokens` + `architecture.input_modalities`,
+ * DeepInfra `metadata.*`), so the bridge's /v1/models passthrough speaks the
+ * agent's dialect natively and no translation layer is needed.
+ */
+export function parseCatalogEntrySpecs(entry: unknown): CatalogSpec {
+	if (!entry || typeof entry !== "object") return {};
+	const e = entry as Record<string, any>;
+	const meta = e.meta ?? {};
+	const metadata = e.metadata ?? {};
+	const top = e.top_provider ?? {};
+	const contextCandidates = [
+		specNum(metadata.loaded_context_length),
+		specNum(e.loaded_context_length),
+		specNum(e.max_model_len),
+		specNum(meta.n_ctx),
+		specNum(metadata.max_model_len),
+		specNum(e.max_context_length),
+		specNum(metadata.context_length),
+		specNum(e.context_length),
+		specNum(e.context_window),
+		specNum(metadata.max_input_tokens),
+		specNum(e.max_input_tokens),
+	];
+	const outputCandidates = [
+		specNum(top.max_completion_tokens),
+		specNum(metadata.max_tokens),
+		specNum(e.max_completion_tokens),
+		specNum(e.max_output_tokens),
+		specNum(metadata.max_output_tokens),
+		specNum(e.max_tokens),
+	];
+	const contextWindow = contextCandidates.find((n) => n !== undefined);
+	const maxTokens = outputCandidates.find((n) => n !== undefined);
+	const arch = e.architecture ?? {};
+	const caps = e.capabilities;
+	const imageInput =
+		(Array.isArray(caps) && caps.includes("vision")) ||
+		(Array.isArray(arch.input_modalities) && arch.input_modalities.includes("image"));
+	return {
+		...(contextWindow !== undefined ? { contextWindow } : {}),
+		...(maxTokens !== undefined ? { maxTokens } : {}),
+		...(imageInput ? { imageInput: true } : {}),
+	};
+}
+
+/**
+ * The upstream catalog's specs, by model id — only the entries that carry at
+ * least one spec field. This is what /health reports as `modelSpecs` and what
+ * /v1/models passes through per entry.
+ */
+export function extractCatalogSpecs(body: unknown): Record<string, CatalogSpec> {
+	const out: Record<string, CatalogSpec> = {};
+	const data = (body as { data?: unknown } | null)?.data;
+	if (!Array.isArray(data)) return out;
+	for (const entry of data) {
+		const id = typeof (entry as { id?: unknown })?.id === "string" ? ((entry as { id: string }).id ?? "").trim() : "";
+		if (!id) continue;
+		const spec = parseCatalogEntrySpecs(entry);
+		if (spec.contextWindow !== undefined || spec.maxTokens !== undefined || spec.imageInput) out[id] = spec;
+	}
+	return out;
+}
+
+// ---------------------------------------------------------------------------
+// Context-limit learning from upstream 400s (surfaced, never auto-applied)
+// ---------------------------------------------------------------------------
+
+/**
+ * Parse an upstream 400/413 error text for the REAL context limit it
+ * reveals. The patterns mirror pi's `isContextOverflow` catalog (OpenAI,
+ * OpenRouter, Together, Mistral, Grok, Kimi, DS4, DashScope…) — but where pi
+ * only asks "is this an overflow?", we want the NUMBER the upstream just
+ * told us, so the next `unown models verify` can record it.
+ */
+export function parseContextLimitError(text: string): { contextWindow?: number; maxTokens?: number } | undefined {
+	if (!text || typeof text !== "string") return undefined;
+	// "maximum context length is 131072 tokens" / "maximum context length of 65536 tokens"
+	// "maximum allowed input length of 200000 tokens" / "context size is 32768 tokens"
+	// "context length (131072 tokens)" / "exceeded model token limit: 262144 (requested: …)"
+	const contextPatterns = [
+		/maximum(?:'s)?\s+(?:model\s+)?context\s+length\s+(?:is|of)\s+(\d{4,})\s*tokens?/i,
+		/maximum\s+context\s+length\s+\((\d{4,})\)/i,
+		/maximum\s+allowed\s+input\s+length\s+of\s+(\d{4,})\s*tokens?/i,
+		/configured\s+context\s+size\s+is\s+(\d{4,})\s*tokens?/i,
+		/context\s+length\s+\((\d{4,})\s*tokens?\)/i,
+		/exceeded\s+model\s+token\s+limit:\s*(\d{4,})/i,
+		/maximum\s+context\s+size\s+(?:is\s+)?(\d{4,})/i,
+		// Mistral: "too large for model with 131072 maximum context length"
+		/with\s+(\d{4,})\s+maximum\s+context\s+length/i,
+		// DashScope/Qwen: "Range of input length should be [1, 100000]"
+		/Range\s+of\s+input\s+length\s+should\s+be\s*\[1,\s*(\d{4,})\]/i,
+	];
+	for (const re of contextPatterns) {
+		const m = text.match(re);
+		if (m) {
+			const n = Number(m[1]);
+			if (Number.isInteger(n) && n >= 1024 && n <= 100_000_000) return { contextWindow: n };
+		}
+	}
+	return undefined;
+}

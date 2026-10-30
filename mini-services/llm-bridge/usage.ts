@@ -100,10 +100,12 @@ export interface UsageSummary {
         /** True when the line cap was hit before covering the window — old entries may be missing. */
         truncated: boolean;
         pricing: {
-                /** True when at least one cost came from the built-in ESTIMATE table (vs. env-pinned prices). */
+                /** True when at least one cost came from the built-in ESTIMATE table (vs. env-pinned or verified prices). */
                 estimate: boolean;
                 /** In-scope models priced via UNOWN_PRICE_* overrides. */
                 overridden: string[];
+                /** In-scope models priced from the model-specs sidecar (verified vendor-published rates). */
+                sidecarPriced: string[];
                 /** In-scope models with no price data at all (their costs are excluded / null). */
                 unknownModels: string[];
         };
@@ -163,12 +165,40 @@ export function priceEnvVarSuffix(model: string): string {
 }
 
 export interface ResolvedModelPrice extends ModelPrice {
-        source: "env" | "estimate";
+        source: "env" | "sidecar" | "estimate";
+}
+
+/**
+ * The model-specs sidecar (~/.unown/agent/model-specs.json) as a price
+ * source: detection recorded a VERIFIED vendor-published cost for a
+ * `provider/model` key — the suffix match keeps the bridge (which only knows
+ * bare model ids) reading the agent's provenance store without sharing its
+ * files. Corrupt/missing sidecar = no price from this source.
+ */
+export function sidecarModelPrice(model: string, env: Record<string, string | undefined> = process.env): ModelPrice | null {
+        if (!model) return null;
+        const home = env.UNOWN_HOME || path.join(homedir(), ".unown");
+        let specs: Record<string, { cost?: { input?: number; output?: number } }>;
+        try {
+                specs = JSON.parse(fs.readFileSync(path.join(home, "agent", "model-specs.json"), "utf8")).specs ?? {};
+        } catch {
+                return null;
+        }
+        const num = (n: unknown) => (typeof n === "number" && Number.isFinite(n) && n >= 0 && n < 10_000 ? n : undefined);
+        for (const [key, record] of Object.entries(specs)) {
+                if (key !== model && !key.endsWith(`/${model}`)) continue;
+                const input = num(record?.cost?.input);
+                const output = num(record?.cost?.output);
+                if (input !== undefined && output !== undefined) return { inputUsdPer1M: input, outputUsdPer1M: output };
+        }
+        return null;
 }
 
 /**
  * Resolve the price for one model id: an env override (BOTH _IN and _OUT,
- * finite, non-negative) wins; then the built-in ESTIMATE table; else null.
+ * finite, non-negative) wins; then the model-specs SIDECAR (verified
+ * vendor-published pricing the detection cascade recorded); then the built-in
+ * ESTIMATE table; else null.
  */
 export function resolveModelPrice(model: string, env: Record<string, string | undefined> = process.env): ResolvedModelPrice | null {
         const suffix = priceEnvVarSuffix(model);
@@ -183,6 +213,8 @@ export function resolveModelPrice(model: string, env: Record<string, string | un
                         return { inputUsdPer1M: inN, outputUsdPer1M: outN, source: "env" };
                 }
         }
+        const sidecar = sidecarModelPrice(model, env);
+        if (sidecar) return { ...sidecar, source: "sidecar" };
         const base = MODEL_PRICES_ESTIMATE[model];
         return base ? { ...base, source: "estimate" } : null;
 }
@@ -238,6 +270,69 @@ export function resolveUsageStateDir(env: Record<string, string | undefined>, st
         // an empty UNOWN_HOME means unset).
         const home = env.UNOWN_HOME || path.join(homedir(), ".unown");
         return path.join(home, "bridge");
+}
+
+// ---------------------------------------------------------------------------
+// Learned specs (the model-specs round) — context limits upstream 400s reveal
+// ---------------------------------------------------------------------------
+
+/** One learned spec record — the durable shape in model-specs-learned.json. */
+export interface LearnedSpecRecord {
+        model: string;
+        contextWindow?: number;
+        maxTokens?: number;
+        learnedAt: number;
+        /** The (truncated) upstream error the numbers came from — the receipt. */
+        fromError: string;
+}
+
+/** Where the learned-specs store lives (same state dir as the usage log). */
+export function learnedSpecsFile(stateDir: string): string {
+        return path.join(stateDir.replace(/\/+$/, ""), "model-specs-learned.json");
+}
+
+export function loadLearnedSpecs(stateDir: string): Record<string, LearnedSpecRecord> {
+        try {
+                const raw = JSON.parse(fs.readFileSync(learnedSpecsFile(stateDir), "utf8")) as Record<string, LearnedSpecRecord>;
+                if (raw && typeof raw === "object") return raw;
+        } catch {
+                /* missing/corrupt — empty */
+        }
+        return {};
+}
+
+/**
+ * Record what an upstream 400 just taught us about a model's real context
+ * limit. Only writes when the numbers are NEW (or changed) — a wedged client
+ * hammering the same overflow must not rewrite the file per request. Returns
+ * true when the store was written. Never throws (the chat path owns this
+ * call's error budget).
+ */
+export function recordLearnedSpec(
+        stateDir: string,
+        model: string,
+        parsed: { contextWindow?: number; maxTokens?: number },
+        fromError: string,
+        now = Date.now(),
+): boolean {
+        if (!model || (parsed.contextWindow === undefined && parsed.maxTokens === undefined)) return false;
+        const all = loadLearnedSpecs(stateDir);
+        const prev = all[model];
+        if (prev && prev.contextWindow === parsed.contextWindow && prev.maxTokens === parsed.maxTokens) return false;
+        all[model] = {
+                model,
+                ...(parsed.contextWindow !== undefined ? { contextWindow: parsed.contextWindow } : {}),
+                ...(parsed.maxTokens !== undefined ? { maxTokens: parsed.maxTokens } : {}),
+                learnedAt: now,
+                fromError: fromError.slice(0, 300),
+        };
+        try {
+                fs.mkdirSync(stateDir, { recursive: true });
+                fs.writeFileSync(learnedSpecsFile(stateDir), `${JSON.stringify(all, null, 2)}\n`, "utf8");
+                return true;
+        } catch {
+                return false;
+        }
 }
 
 // ---------------------------------------------------------------------------
@@ -472,6 +567,7 @@ export function aggregateUsage(records: UsageRecord[], opts: AggregateOptions): 
         const byDay = new Map<string, Bucket>();
         const unknownModels = new Set<string>();
         const overridden = new Set<string>();
+        const sidecarPriced = new Set<string>();
 
         for (const rec of records) {
                 if (rec.ts < opts.sinceTs) continue;
@@ -480,6 +576,7 @@ export function aggregateUsage(records: UsageRecord[], opts: AggregateOptions): 
                 const price = resolveModelPrice(rec.model, env) ?? resolveModelPrice(rec.upstreamModel ?? "", env);
                 if (!price) unknownModels.add(rec.model);
                 else if (price.source === "env") overridden.add(rec.model);
+                else if (price.source === "sidecar") sidecarPriced.add(rec.model);
 
                 const apply = (b: Bucket) => {
                         b.requests++;
@@ -546,6 +643,7 @@ export function aggregateUsage(records: UsageRecord[], opts: AggregateOptions): 
                 pricing: {
                         estimate: totals.anyEstimate,
                         overridden: [...overridden].sort(),
+                        sidecarPriced: [...sidecarPriced].sort(),
                         unknownModels: [...unknownModels].sort(),
                 },
         };

@@ -84,16 +84,21 @@ import {
         coherentKnownModels,
         parseModelCatalog,
         mergeCatalogIntoKnown,
+        extractCatalogSpecs,
+        parseContextLimitError,
         sseFrameSignalsContent,
         isDegenerateCompletion,
         sanitizeMessages,
         MAX_ATTEMPTS,
         type BridgeLogEntry,
+        type CatalogSpec,
         type SseStats,
 } from "./pure";
 import {
         appendUsageRecord,
         buildUsageSummary,
+        loadLearnedSpecs,
+        recordLearnedSpec,
         resolveUsageStateDir,
         USAGE_LOG_FILE_NAME,
         type UsageRecord,
@@ -132,6 +137,12 @@ const KNOWN_MODELS = coherentKnownModels(ENV_KNOWN_MODELS, DEFAULT_MODEL, ROUTE_
 // catalog-merged id missing from one snapshot is noise, not a 404 trap.
 let upstreamCatalog: string[] | null = null;
 let staleKnownModels: string[] = [];
+// The model-specs round: spec fields the upstream's own /models entries
+// carried (by model id) — reported through /health's `modelSpecs` and passed
+// through /v1/models per entry so the agent's endpoint-catalog detection lane
+// sees the upstream's truth without a second hop. Empty until a catalog
+// parse lands.
+let upstreamSpecs: Record<string, CatalogSpec> = {};
 let lastCatalogParse = 0;
 
 /** Merge a parsed upstream catalog into the coherence state. Pure enough to
@@ -172,7 +183,8 @@ let upstreamHealthy: boolean | null = null;
 // PRIVACY: only counts, model ids, timestamps, durations and status are
 // written; prompts, messages and tool payloads never reach this file.
 // ---------------------------------------------------------------------------
-const USAGE_FILE = join(resolveUsageStateDir(process.env, import.meta.dir), USAGE_LOG_FILE_NAME);
+const USAGE_STATE_DIR = resolveUsageStateDir(process.env, import.meta.dir);
+const USAGE_FILE = join(USAGE_STATE_DIR, USAGE_LOG_FILE_NAME);
 let usageEntries = 0; // appends since process start (health/report only)
 let usageLogFailureLogged = false;
 
@@ -659,14 +671,26 @@ const server = Bun.serve({
                 }
 
                 if (req.method === "GET" && url.pathname === "/v1/models") {
+                        // The model-specs round: entries carry the upstream's spec
+                        // fields when it publishes them (the DeepInfra precedent —
+                        // extra fields per /models entry), in the same shapes the
+                        // agent's catalog parser reads: max_model_len (context),
+                        // max_completion_tokens (output), architecture.input_modalities
+                        // (vision). Ids only when the upstream stays silent.
                         return Response.json({
                                 object: "list",
-                                data: [...KNOWN_MODELS, ...(LOCAL_URL ? LOCAL_MODELS : [])].map((id) => ({
-                                        id,
-                                        object: "model",
-                                        created: Math.floor(Date.now() / 1000),
-                                        owned_by: "llm-bridge",
-                                })),
+                                data: [...KNOWN_MODELS, ...(LOCAL_URL ? LOCAL_MODELS : [])].map((id) => {
+                                        const spec = upstreamSpecs[id];
+                                        return {
+                                                id,
+                                                object: "model",
+                                                created: Math.floor(Date.now() / 1000),
+                                                owned_by: "llm-bridge",
+                                                ...(spec?.contextWindow !== undefined ? { max_model_len: spec.contextWindow } : {}),
+                                                ...(spec?.maxTokens !== undefined ? { max_completion_tokens: spec.maxTokens } : {}),
+                                                ...(spec?.imageInput ? { architecture: { input_modalities: ["text", "image"] } } : {}),
+                                        };
+                                }),
                         });
                 }
 
@@ -687,8 +711,10 @@ const server = Bun.serve({
                                 if (res.ok && Date.now() - lastCatalogParse > 30_000) {
                                         lastCatalogParse = Date.now();
                                         try {
-                                                const catalog = parseModelCatalog(await res.json());
+                                                const body = await res.json();
+                                                const catalog = parseModelCatalog(body);
                                                 if (catalog) mergeUpstreamCatalog(catalog);
+                                                upstreamSpecs = extractCatalogSpecs(body);
                                         } catch {
                                                 /* non-JSON body — env-only behavior */
                                         }
@@ -763,6 +789,12 @@ const server = Bun.serve({
                                 // disproves (they 404 at the upstream).
                                 upstreamModels: upstreamCatalog,
                                 staleKnownModels,
+                                // The model-specs round: spec fields the upstream's own
+                                // catalog carries (by id) + the context limits learned
+                                // from upstream 400s (surfaced, never auto-applied —
+                                // `unown models verify` records them on the agent side).
+                                modelSpecs: upstreamSpecs,
+                                learnedSpecs: loadLearnedSpecs(USAGE_STATE_DIR),
                                 // usage tracking (additive, non-breaking): where the
                                 // persistent log lives + appends since process start
                                 usageLog: { file: USAGE_FILE, entries: usageEntries },
@@ -931,6 +963,22 @@ const server = Bun.serve({
                         } catch (err: any) {
                                 totalErrors++;
                                 entry.error = err?.message ?? String(err);
+                                // The model-specs round — context-limit learning: an
+                                // upstream 400 that names the real context limit is FREE
+                                // truth (pi's overflow catalog knows the shapes). Learned
+                                // into model-specs-learned.json and surfaced through
+                                // /health — never auto-applied to the agent's config.
+                                // Only pass-through requests teach (model === upstream):
+                                // a routed id's 400 describes the DEFAULT model's limits,
+                                // not the id the agent asked for.
+                                if (err?.status === 400 && entry.model === entry.upstreamModel) {
+                                        try {
+                                                const parsed = parseContextLimitError(entry.error);
+                                                if (parsed) recordLearnedSpec(USAGE_STATE_DIR, entry.model, parsed, entry.error);
+                                        } catch {
+                                                /* learning is best effort — never amplifies the error */
+                                        }
+                                }
                                 pushLog();
                                 persist();
                                 const status = err?.status ?? (/api key|auth|401|403/i.test(String(entry.error)) ? 401 : 500);
@@ -958,13 +1006,15 @@ void (async () => {
                         signal: AbortSignal.timeout(6000),
                 });
                 if (res.ok) {
-                        const catalog = parseModelCatalog(await res.json());
+                        const body = await res.json();
+                        const catalog = parseModelCatalog(body);
                         if (catalog) {
                                 mergeUpstreamCatalog(catalog);
                                 console.log(
                                         `[llm-bridge] upstream catalog: ${catalog.length} model(s); allow-list now ${KNOWN_MODELS.length} id(s)`,
                                 );
                         }
+                        upstreamSpecs = extractCatalogSpecs(body);
                 }
         } catch {
                 /* best effort — /health probes keep retrying */

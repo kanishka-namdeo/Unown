@@ -30,7 +30,7 @@
  * {stdout, stderr, exitCode}. NO store.ts import (it opens SQLite at module
  * scope); this file touches only node:fs/node:path/node:os and fetch.
  */
-import { existsSync, openSync, closeSync, fstatSync, readSync } from "node:fs";
+import { closeSync, existsSync, fstatSync, openSync, readFileSync, readSync } from "node:fs";
 import { homedir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 
@@ -93,12 +93,20 @@ export interface UsageSummary {
 		cachedTokens: number;
 		costUsd: number | null;
 	};
-	byModel: Array<{ model: string; requests: number; promptTokens: number; completionTokens: number; tokens: number; costUsd: number | null; avgDurationMs: number }>;
+	byModel: Array<{
+		model: string;
+		requests: number;
+		promptTokens: number;
+		completionTokens: number;
+		tokens: number;
+		costUsd: number | null;
+		avgDurationMs: number;
+	}>;
 	byDay: Array<{ date: string; requests: number; tokens: number; costUsd: number | null }>;
 	skippedLines: number;
 	linesRead: number;
 	truncated: boolean;
-	pricing: { estimate: boolean; overridden: string[]; unknownModels: string[] };
+	pricing: { estimate: boolean; overridden: string[]; sidecarPriced: string[]; unknownModels: string[] };
 }
 
 const DAY_MS = 86_400_000;
@@ -127,7 +135,36 @@ export function priceEnvVarSuffix(model: string): string {
 	return model.toUpperCase().replace(/[^A-Z0-9]+/g, "_");
 }
 
-export function resolveModelPrice(model: string, env: Record<string, string | undefined>): (ModelPrice & { source: "env" | "estimate" }) | null {
+/**
+ * The model-specs sidecar (~/.unown/agent/model-specs.json) as a price source
+ * — the CLI-side mirror of the bridge's sidecarModelPrice (kept in sync by the
+ * mirrored fixture tests): detection recorded a VERIFIED vendor-published cost
+ * for a `provider/model` key, and the suffix match keeps this reader on bare
+ * model ids. Corrupt/missing sidecar = no price from this source.
+ */
+export function sidecarModelPrice(model: string, env: Record<string, string | undefined>): ModelPrice | null {
+	if (!model) return null;
+	const home = env.UNOWN_HOME || join(homedir(), ".unown");
+	let specs: Record<string, { cost?: { input?: number; output?: number } }>;
+	try {
+		specs = JSON.parse(readFileSync(join(home, "agent", "model-specs.json"), "utf8")).specs ?? {};
+	} catch {
+		return null;
+	}
+	const num = (n: unknown) => (typeof n === "number" && Number.isFinite(n) && n >= 0 && n < 10_000 ? n : undefined);
+	for (const [key, record] of Object.entries(specs)) {
+		if (key !== model && !key.endsWith(`/${model}`)) continue;
+		const input = num(record?.cost?.input);
+		const output = num(record?.cost?.output);
+		if (input !== undefined && output !== undefined) return { inputUsdPer1M: input, outputUsdPer1M: output };
+	}
+	return null;
+}
+
+export function resolveModelPrice(
+	model: string,
+	env: Record<string, string | undefined>,
+): (ModelPrice & { source: "env" | "sidecar" | "estimate" }) | null {
 	const suffix = priceEnvVarSuffix(model);
 	const inRaw = env[`UNOWN_PRICE_${suffix}_IN`] || "";
 	const outRaw = env[`UNOWN_PRICE_${suffix}_OUT`] || "";
@@ -138,6 +175,8 @@ export function resolveModelPrice(model: string, env: Record<string, string | un
 			return { inputUsdPer1M: inN, outputUsdPer1M: outN, source: "env" };
 		}
 	}
+	const sidecar = sidecarModelPrice(model, env);
+	if (sidecar) return { ...sidecar, source: "sidecar" };
 	const base = MODEL_PRICES_ESTIMATE[model];
 	return base ? { ...base, source: "estimate" } : null;
 }
@@ -205,7 +244,11 @@ export function parseUsageLine(line: string): UsageRecord | null {
  * readUsageTail: stops at the first out-of-window record, tolerates
  * malformed lines (skipped + counted), honors the line cap.
  */
-function readUsageTail(file: string, sinceTs: number, maxLines: number): { records: UsageRecord[]; skipped: number; linesRead: number; hitCap: boolean; stoppedAtOldRecord: boolean } {
+function readUsageTail(
+	file: string,
+	sinceTs: number,
+	maxLines: number,
+): { records: UsageRecord[]; skipped: number; linesRead: number; hitCap: boolean; stoppedAtOldRecord: boolean } {
 	const out: UsageRecord[] = [];
 	let skipped = 0;
 	let linesRead = 0;
@@ -283,7 +326,10 @@ function readUsageTails(files: string[], sinceTs: number, maxLines: number) {
 }
 
 /** Mirror of the bridge's aggregateUsage — see usage.ts there for semantics. */
-export function aggregateUsage(records: UsageRecord[], opts: { sinceTs: number; days: number; model?: string; env: Record<string, string | undefined> }): UsageSummary {
+export function aggregateUsage(
+	records: UsageRecord[],
+	opts: { sinceTs: number; days: number; model?: string; env: Record<string, string | undefined> },
+): UsageSummary {
 	const wanted = opts.model?.trim() || undefined;
 	interface Bucket {
 		requests: number;
@@ -296,20 +342,36 @@ export function aggregateUsage(records: UsageRecord[], opts: { sinceTs: number; 
 		anyUnpriced: boolean;
 		anyEstimate: boolean;
 	}
-	const zero = (): Bucket => ({ requests: 0, errors: 0, promptTokens: 0, completionTokens: 0, cachedTokens: 0, durationMsTotal: 0, costUsd: 0, anyUnpriced: false, anyEstimate: false });
+	const zero = (): Bucket => ({
+		requests: 0,
+		errors: 0,
+		promptTokens: 0,
+		completionTokens: 0,
+		cachedTokens: 0,
+		durationMsTotal: 0,
+		costUsd: 0,
+		anyUnpriced: false,
+		anyEstimate: false,
+	});
 	const totals = zero();
 	const byModel = new Map<string, Bucket>();
 	const byDay = new Map<string, Bucket>();
 	const unknownModels = new Set<string>();
 	const overridden = new Set<string>();
+	const sidecarPriced = new Set<string>();
 
 	for (const rec of records) {
 		if (rec.ts < opts.sinceTs) continue;
 		if (wanted && rec.model !== wanted && rec.upstreamModel !== wanted) continue;
 		const price = resolveModelPrice(rec.model, opts.env) ?? resolveModelPrice(rec.upstreamModel ?? "", opts.env);
-		const cost = price ? roundCostUsd((rec.promptTokens / 1e6) * price.inputUsdPer1M + (rec.completionTokens / 1e6) * price.outputUsdPer1M) : null;
+		const cost = price
+			? roundCostUsd(
+					(rec.promptTokens / 1e6) * price.inputUsdPer1M + (rec.completionTokens / 1e6) * price.outputUsdPer1M,
+				)
+			: null;
 		if (!price) unknownModels.add(rec.model);
 		else if (price.source === "env") overridden.add(rec.model);
+		else if (price.source === "sidecar") sidecarPriced.add(rec.model);
 		const apply = (b: Bucket) => {
 			b.requests++;
 			if (rec.status === "error") b.errors++;
@@ -358,12 +420,22 @@ export function aggregateUsage(records: UsageRecord[], opts: { sinceTs: number; 
 			}))
 			.sort((a, b) => b.requests - a.requests || (a.model < b.model ? -1 : 1)),
 		byDay: [...byDay.entries()]
-			.map(([date, b]) => ({ date, requests: b.requests, tokens: b.promptTokens + b.completionTokens, costUsd: b.anyUnpriced ? null : roundCostUsd(b.costUsd) }))
+			.map(([date, b]) => ({
+				date,
+				requests: b.requests,
+				tokens: b.promptTokens + b.completionTokens,
+				costUsd: b.anyUnpriced ? null : roundCostUsd(b.costUsd),
+			}))
 			.sort((a, b) => (a.date < b.date ? -1 : 1)),
 		skippedLines: 0,
 		linesRead: 0,
 		truncated: false,
-		pricing: { estimate: totals.anyEstimate, overridden: [...overridden].sort(), unknownModels: [...unknownModels].sort() },
+		pricing: {
+			estimate: totals.anyEstimate,
+			overridden: [...overridden].sort(),
+			sidecarPriced: [...sidecarPriced].sort(),
+			unknownModels: [...unknownModels].sort(),
+		},
 	};
 }
 
@@ -457,15 +529,43 @@ export function renderUsageTable(summary: UsageSummary, opts: RenderOptions = {}
 	}
 	const rows: string[][] = [["MODEL", "REQUESTS", "TOKENS IN", "TOKENS OUT", "COST", "AVG LATENCY"]];
 	for (const m of summary.byModel) {
-		rows.push([m.model, formatInt(m.requests), formatInt(m.promptTokens), formatInt(m.completionTokens), formatCostUsd(m.costUsd, estimate), formatDuration(m.avgDurationMs)]);
+		rows.push([
+			m.model,
+			formatInt(m.requests),
+			formatInt(m.promptTokens),
+			formatInt(m.completionTokens),
+			formatCostUsd(m.costUsd, estimate),
+			formatDuration(m.avgDurationMs),
+		]);
 	}
-	const totalAvg = summary.totals.requests ? Math.round(summary.byModel.reduce((acc, m) => acc + m.avgDurationMs * m.requests, 0) / summary.totals.requests) : 0;
-	rows.push(["TOTAL", formatInt(summary.totals.requests), formatInt(summary.totals.promptTokens), formatInt(summary.totals.completionTokens), formatCostUsd(summary.totals.costUsd, estimate), formatDuration(totalAvg)]);
+	const totalAvg = summary.totals.requests
+		? Math.round(summary.byModel.reduce((acc, m) => acc + m.avgDurationMs * m.requests, 0) / summary.totals.requests)
+		: 0;
+	rows.push([
+		"TOTAL",
+		formatInt(summary.totals.requests),
+		formatInt(summary.totals.promptTokens),
+		formatInt(summary.totals.completionTokens),
+		formatCostUsd(summary.totals.costUsd, estimate),
+		formatDuration(totalAvg),
+	]);
 	const lines = [header, "", ...padColumns(rows)];
-	if (summary.totals.errors > 0) lines.push("", `${formatInt(summary.totals.errors)} request(s) ended in error (still counted; their token usage is whatever the upstream reported).`);
-	if (estimate) lines.push("", "costs are ~estimates — set UNOWN_PRICE_<MODEL>_IN/OUT (USD per 1M tokens) to pin exact prices");
-	if (summary.pricing.unknownModels.length) lines.push(`no price data for: ${summary.pricing.unknownModels.join(", ")} — their cost shows as — (override with UNOWN_PRICE_<MODEL>_IN/OUT)`);
-	if (summary.truncated) lines.push("note: the usage log read hit its line cap — older entries in this window may be missing");
+	if (summary.totals.errors > 0)
+		lines.push(
+			"",
+			`${formatInt(summary.totals.errors)} request(s) ended in error (still counted; their token usage is whatever the upstream reported).`,
+		);
+	if (estimate)
+		lines.push(
+			"",
+			"costs are ~estimates — verified pricing lands via `unown models verify`, or set UNOWN_PRICE_<MODEL>_IN/OUT (USD per 1M tokens)",
+		);
+	if (summary.pricing.unknownModels.length)
+		lines.push(
+			`no price data for: ${summary.pricing.unknownModels.join(", ")} — their cost shows as — (override with UNOWN_PRICE_<MODEL>_IN/OUT)`,
+		);
+	if (summary.truncated)
+		lines.push("note: the usage log read hit its line cap — older entries in this window may be missing");
 	if (summary.skippedLines > 0) lines.push(`note: ${summary.skippedLines} malformed log line(s) skipped`);
 	if (opts.sourceNote) lines.push(opts.sourceNote);
 	return lines.join("\n");
@@ -487,7 +587,12 @@ export function resolveBridgeUrl(env: Record<string, string | undefined>): strin
 }
 
 /** Fetch GET /v1/usage from the bridge; null when unreachable/malformed. */
-export async function fetchBridgeUsage(baseUrl: string, days: number, model: string | undefined, apiKey: string | undefined): Promise<UsageSummary | null> {
+export async function fetchBridgeUsage(
+	baseUrl: string,
+	days: number,
+	model: string | undefined,
+	apiKey: string | undefined,
+): Promise<UsageSummary | null> {
 	const qs = new URLSearchParams({ days: String(days) });
 	if (model) qs.set("model", model);
 	try {
@@ -497,7 +602,13 @@ export async function fetchBridgeUsage(baseUrl: string, days: number, model: str
 		});
 		if (!res.ok) return null;
 		const data: any = await res.json();
-		if (typeof data?.since !== "number" || !data?.totals || !Array.isArray(data?.byModel) || !Array.isArray(data?.byDay)) return null;
+		if (
+			typeof data?.since !== "number" ||
+			!data?.totals ||
+			!Array.isArray(data?.byModel) ||
+			!Array.isArray(data?.byDay)
+		)
+			return null;
 		return data as UsageSummary;
 	} catch {
 		return null;
@@ -515,7 +626,10 @@ export async function runUsageCommand(argv: string[], opts: UsageCommandOptions 
 	const fromBridge = await fetchBridgeUsage(bridgeUrl, flags.days, flags.model, env.BRIDGE_API_KEY || undefined);
 	if (fromBridge) {
 		if (flags.json) {
-			return { stdout: `${JSON.stringify({ source: "bridge", bridgeUrl, summary: fromBridge }, null, 2)}\n`, exitCode: 0 };
+			return {
+				stdout: `${JSON.stringify({ source: "bridge", bridgeUrl, summary: fromBridge }, null, 2)}\n`,
+				exitCode: 0,
+			};
 		}
 		return { stdout: `${renderUsageTable(fromBridge)}\n`, exitCode: 0 };
 	}
@@ -541,5 +655,8 @@ export async function runUsageCommand(argv: string[], opts: UsageCommandOptions 
 	if (flags.json) {
 		return { stdout: `${JSON.stringify({ source: "file", file, summary }, null, 2)}\n`, exitCode: 0 };
 	}
-	return { stdout: `${renderUsageTable(summary, { sourceNote: `source: ${file} (direct read — the bridge at ${bridgeUrl} was unreachable)` })}\n`, exitCode: 0 };
+	return {
+		stdout: `${renderUsageTable(summary, { sourceNote: `source: ${file} (direct read — the bridge at ${bridgeUrl} was unreachable)` })}\n`,
+		exitCode: 0,
+	};
 }
