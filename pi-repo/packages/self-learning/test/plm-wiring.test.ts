@@ -14,7 +14,7 @@ import "./_env.ts";
 import { emit } from "../src/bus.ts";
 import { wirePlm } from "../src/plm/index.ts";
 import { listAttributions } from "../src/plm/learning-attribution.ts";
-import { getProcess, listProcesses } from "../src/plm/process-registry.ts";
+import { getProcess, getProcessEvents, listProcesses } from "../src/plm/process-registry.ts";
 import { listRecoveryEvents } from "../src/plm/recovery-engine.ts";
 import { router } from "../src/router.ts";
 import { handleApi, recoverOrphans } from "../src/server.ts";
@@ -100,8 +100,13 @@ describe("the router writes the job process lifecycle", () => {
 		const after = store.get<{ n: number }>(`SELECT COUNT(*) AS n FROM processes WHERE kind = 'job'`)?.n ?? 0;
 		expect(after).toBeGreaterThan(before);
 		const row = listProcesses({ kind: "job", limit: 1 })[0]!;
-		expect(["SUCCEEDED", "ABANDONED"]).toContain(row.status);
+		// The tightened pin (the first dogfooding run caught jobs landing
+		// ABANDONED-with-success-outcome via the illegal CREATED→RUNNING
+		// shortcut — a successful job MUST walk to SUCCEEDED).
+		expect(row.status).toBe("SUCCEEDED");
 		expect(row.owner).toBe("router");
+		const events = getProcessEvents(row.id);
+		expect(events.map((e) => e.to_status)).toEqual(["CREATED", "QUEUED", "RUNNING", "SUCCEEDED"]);
 	});
 });
 

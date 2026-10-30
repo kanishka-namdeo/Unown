@@ -269,14 +269,25 @@ describe("runRetentionPass (throwaway stores)", () => {
                 s.close();
         }, 60_000);
 
-        test("the registry covers exactly the six operational tables (precious tables have no predicate)", () => {
+        test("the registry covers exactly the twelve operational tables (precious tables have no predicate)", () => {
+                // The PLM round (2026-10-30) added six: tool_invocations,
+                // process_events, recovery_events, checkpoints, replay_runs,
+                // processes. learning_attribution stays PRECIOUS (no predicate,
+                // structurally excluded) — it is the proof chain of every claimed
+                // improvement.
                 expect([...RETENTION_TABLES].sort()).toEqual([
                         "automation_runs",
+                        "checkpoints",
                         "cycles",
                         "dreams",
                         "hook_log",
                         "notes",
+                        "process_events",
+                        "processes",
+                        "recovery_events",
+                        "replay_runs",
                         "runs",
+                        "tool_invocations",
                 ]);
         });
 

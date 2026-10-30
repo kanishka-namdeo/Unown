@@ -1,0 +1,36 @@
+◆ unown dashboard · ● engine up · ● bridge · ⧗ busy                                             zai-bridge/agnes-3.0-flash 15:50
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+│▐ tools
+ LEARNING│● engine up · 19 invocation(s) · 84% success
+ 1 Overview│categories: exec 8 · write 7 · read 4
+ 2 Memory│
+ 3 Dreams│recommendations
+ 4 Notes│  ▲ bash: success 75% over 8 calls (2 failures)
+ 5 Skills│    → mine a recent failing invocation's transcript and mint a regression task (unown task mint)
+ 6 Learning Lab│
+ 7 Hooks│per-tool reliability
+ 8 Router│▸ bash 75% · 8 calls · avg 50ms · p95 158ms · 7e/1t
+│    failures: logic ×2
+ OPERATIONS│  read 100% · 4 calls · avg 4ms · p95 4ms · 3e/1t
+ 9 Recovery│  edit 75% · 4 calls · avg 4ms · p95 6ms · 4e/0t
+ 0 Processes│    failures: logic ×1
+▌· Tools│  write 100% · 3 calls · avg 4ms · p95 5ms · 2e/1t
+ · Delegation│
+ · Gateway│↑↓ navigate · r: refresh
+ · Routines│
+ · Web Cache│
+│
+ ── loop state│
+ notes 3 pending│
+ dreams 10│
+ shipped 0│
+│
+│
+│
+│
+│
+│
+│
+│
+│
+↑↓ select · r refresh · : palette ? help [ ] screens                                                                      q quit

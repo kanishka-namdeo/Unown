@@ -52,14 +52,23 @@ SCREENS: dict[str, list[str]] = {
     # delegations payload carries the F26 runaway row, the counter row with
     # its why, and the reviewer row (test/dashboard-mock-engine.ts).
     "delegation": ["delegation", "why recorded", "hit the wall-clock budget", "by agent"],
+    # The PLM round (2026-10-30): the Process View (the registry census +
+    # per-process rows — the live engine carries real processes by now) and
+    # the Tool View (per-tool reliability rows; the vocabulary words render
+    # with any data, the honest-absence states included).
+    "processes": ["processes", "tracked"],
+    "tools": ["tools", "invocation"],
 }
 
 # The sidebar's digit accelerators cover the first ten screens (1-9, then 0).
 # The delegation round inserted Delegation after Recovery: recovery took 9
 # and delegation takes 0; gateway/routines/web-cache ride the unnumbered rail.
+# The PLM round (2026-10-30) inserted Processes + Tools after Recovery:
+# processes takes the 0 accelerator; tools joins delegation on the
+# unnumbered rail (captured via the deep-link restart flow).
 ACCEL = {
     "overview": "1", "memory": "2", "dreams": "3", "notes": "4", "skills": "5",
-    "lab": "6", "hooks": "7", "router": "8", "recovery": "9", "delegation": "0",
+    "lab": "6", "hooks": "7", "router": "8", "recovery": "9", "processes": "0",
 }
 
 

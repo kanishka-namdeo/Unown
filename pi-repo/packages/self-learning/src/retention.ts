@@ -107,6 +107,12 @@ export function historyDays(): number {
 export function notesDays(): number {
         return windowDays("UNOWN_RETENTION_NOTES_DAYS", 90);
 }
+export function plmTelemetryDays(): number {
+        return windowDays("UNOWN_RETENTION_PLM_DAYS", 30);
+}
+export function plmHistoryDays(): number {
+        return windowDays("UNOWN_RETENTION_PLM_HISTORY_DAYS", 90);
+}
 
 // ---------------------------------------------------------------------------
 // The operational table registry (table-driven — the predicates ARE the policy)
@@ -191,6 +197,71 @@ const TABLES: TableSpec[] = [
                         // ONLY dreamed notes. Undreamed notes are AutoDream's work queue —
                         // excluded structurally (the predicate cannot match them), not by config.
                         return [[`dream_id IS NOT NULL AND created_at < ?`, [now - days * DAY_MS]]];
+                },
+        },
+        // The PLM round's operational telemetry (2026-10-30). The split mirrors
+        // the round's own precious/operational divide:
+        //   OPERATIONAL (pruned past the window)     PRECIOUS (never pruned)
+        //   tool_invocations, process_events,        learning_attribution (the
+        //   recovery_events, checkpoints,            proof chain of every
+        //   replay_runs, processes (terminal         claimed improvement),
+        //   states only)                             processes in non-terminal
+        //                                            states (live work)
+        // processes is BOTH: terminal rows age like history; a row in ANY
+        // non-terminal state is live work and survives structurally.
+        {
+                table: "tool_invocations",
+                predicates: (now) => {
+                        const days = plmTelemetryDays();
+                        if (days <= 0) return [];
+                        return [[`ts < ?`, [now - days * DAY_MS]]];
+                },
+        },
+        {
+                table: "process_events",
+                predicates: (now) => {
+                        const days = plmTelemetryDays();
+                        if (days <= 0) return [];
+                        // Never the events of a row that still exists (a process with a
+                        // surviving row keeps its full chain — pruning orphans first,
+                        // below, makes the survivors rare and bounded by the cap).
+                        return [[`process_id NOT IN (SELECT id FROM processes) AND ts < ?`, [now - days * DAY_MS]]];
+                },
+        },
+        {
+                table: "recovery_events",
+                predicates: (now) => {
+                        const days = plmTelemetryDays();
+                        if (days <= 0) return [];
+                        return [[`ts < ?`, [now - days * DAY_MS]]];
+                },
+        },
+        {
+                table: "checkpoints",
+                predicates: (now) => {
+                        const days = plmHistoryDays();
+                        if (days <= 0) return [];
+                        // UNOWN_PLM_MAX_CHECKPOINTS is the count cap (checkpoints.ts
+                        // prunes it live); the day window is the age backstop.
+                        return [[`ts < ?`, [now - days * DAY_MS]]];
+                },
+        },
+        {
+                table: "replay_runs",
+                predicates: (now) => {
+                        const days = plmHistoryDays();
+                        if (days <= 0) return [];
+                        return [[`ts < ?`, [now - days * DAY_MS]]];
+                },
+        },
+        {
+                table: "processes",
+                predicates: (now) => {
+                        const days = plmHistoryDays();
+                        if (days <= 0) return [];
+                        // TERMINAL rows only (SUCCEEDED/FAILED/ABANDONED/ARCHIVED) — live
+                        // work in any non-terminal state survives structurally.
+                        return [[`status IN ('SUCCEEDED','FAILED','ABANDONED','ARCHIVED') AND ended_at < ?`, [now - days * DAY_MS]]];
                 },
         },
 ];

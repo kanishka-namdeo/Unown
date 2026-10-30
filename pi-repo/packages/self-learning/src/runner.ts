@@ -328,14 +328,17 @@ export async function runAgent(opts: RunOptions): Promise<RunResult> {
 	// harness cycle's baseline/candidate runs, the dream's canary runs) —
 	// otherwise parentless (manual API triggers).
 	const jobCtx = getJobProcessContext();
+	// `started: true` births the run straight through CREATED → RUNNING (the
+	// run begins executing the moment it exists — there is no queue between
+	// runAgent and its sandbox; both events land in the journal).
 	const runProcess: ProcessHandle = beginProcess({
 		owner: "runner",
 		kind: "run",
 		objective: `${opts.kind} run ${opts.label ?? runId}`,
 		taskRef: runId,
 		parentId: jobCtx.jobProcessId,
+		started: true,
 	});
-	runProcess.transition("RUNNING", `sandbox ${sandbox.id}`);
 	// §5.5: the injected block is hard-capped (PI_MEMORY_TOTAL_CHARS) with
 	// oldest-rules-first degradation at injection time — the stored memory is
 	// untouched, and every degraded run carries an audit receipt.

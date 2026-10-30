@@ -1,0 +1,36 @@
+◆ unown dashboard · ● engine up · ● bridge · ⧗ busy                                             zai-bridge/agnes-3.0-flash 15:50
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+│▐ processes
+ LEARNING│● engine up · 14 tracked · 1 live · 0 parked · 8 ok · 0 failed
+ 1 Overview│transitions: (birth)→CREATED ×14 · RUNNING→SUCCEEDED ×8 · CREATED→QUEUED ×7 · QUEUED→RUNNING ×7
+ 2 Memory│avg duration 5.5s · kinds: job 11 · run 2 · terminal-session 1
+ 3 Dreams│
+ 4 Notes│▸ ▶ RUNNING job · router · — · 0 calls · just now
+ 5 Skills│    job dream-check
+ 6 Learning Lab│  ✓ SUCCEEDED run · runner · 8.7s · 6 calls · 10s ago
+ 7 Hooks│    baseline run impl-map-limit-baseline
+ 8 Router│  ✓ SUCCEEDED job · router · 8.7s · 0 calls · 10s ago
+│    job harness-cycle
+ OPERATIONS│  ✓ SUCCEEDED job · router · 46.4s · 0 calls · 60s ago
+ 9 Recovery│    job auto-dream
+▌0 Processes│  ✓ SUCCEEDED job · router · 0ms · 0 calls · 65s ago
+ · Tools│    job note-sync
+ · Delegation│  ✓ SUCCEEDED job · router · 1ms · 0 calls · 2m ago
+ · Gateway│    job watch-scan
+ · Routines│  ✓ SUCCEEDED terminal-session · terminal · 7.8s · 3 calls · 4m ago
+ · Web Cache│    terminal session 298adf65 in /home/z/my-project/dogfood-target
+│  ✓ SUCCEEDED job · router · 1ms · 0 calls · 4m ago
+ ── loop state│    job watch-scan
+ notes 2 pending│  ✓ SUCCEEDED job · router · 2ms · 0 calls · 4m ago
+ dreams 10│    job sandbox-gc
+ shipped 0│  ∅ ABANDONED job · router · 0ms · 0 calls · 6m ago
+│    job note-sync
+│  ∅ ABANDONED job · router · 0ms · 0 calls · 6m ago
+│    job watch-scan
+│  ∅ ABANDONED job · router · 0ms · 0 calls · 6m ago
+│    job sandbox-gc
+│  ∅ ABANDONED run · runner · 0ms · 10 calls · 7m ago
+│    baseline run mint-fix-drop-right-strict-mintval
+│  ∅ ABANDONED job · router · 0ms · 0 calls · 7m ago
+│    job task-mint
+↑↓ select · enter history · r refresh · : palette ? help [ ] screens                                                      q quit

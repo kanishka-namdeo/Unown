@@ -85,6 +85,15 @@ import { expect, test } from "@playwright/test";
  */
 const MAX_PAGE_VH = 15.5;
 const MAX_WORDS = 3820;
+
+/*
+ * The 2026-10-30 PLM-round note: the showcase band gained the Processes
+ * tile + two index entries (the Process View's real PTY still, 13-processes.png)
+ * — measured +21 visible words. Paid in the same band and the FAQ's authored
+ * prose (showcase captions/index compressed -17w; three FAQ answers tightened
+ * in faq-data.ts, JSON-LD kept word-identical): the page measures 3,817w at
+ * replay-finished, the pre-round number EXACTLY, ceiling untouched.
+ */
 const MAX_BAND_VH = 3;
 
 // The contract measures at 1440x900 (landing AGENTS.md + the audit script).

@@ -13,7 +13,7 @@ import { FadeUp, SectionHead, TerminalWindow } from "./shell";
  * (D7: the web dashboard is retired; this is the TUI's showcase). The
  * stills are real `unown dashboard` PTY captures (public/landing/tui/
  * dashboard/stills/ — pane-audited, VLM-critiqued; the capture lane is
- * scripts/tui-capture/). The eleven-screen index became a tile row in the
+ * scripts/tui-capture/). The screen index became a tile row in the
  * models-band shape; the screens each drive something real — the index
  * names them without pretending each needs a paragraph.
  *
@@ -23,14 +23,16 @@ import { FadeUp, SectionHead, TerminalWindow } from "./shell";
  * addons.test.tsx` drift-gates that data against pi-repo's addons/config.ts.
  */
 const SCREENS: [string, string][] = [
-  ["Overview", "pass rate, dreams, memory version"],
+  ["Overview", "pass rate, dreams, memory"],
   ["Memory", "four tiers, one-key rollback"],
   ["Dreams", "AutoDream sessions"],
-  ["Notes", "the raw learning material"],
-  ["Skills", "what the agent shipped itself"],
+  ["Notes", "raw learning material"],
+  ["Skills", "what it shipped itself"],
   ["Learning Lab", "harness cycles, transcripts"],
-  ["Hooks", "every allow, deny, augment"],
+  ["Hooks", "every allow and deny"],
   ["Router", "the background jobs"],
+  ["Processes", "tracked processes"],
+  ["Tools", "reliability + fixes"],
   ["Gateway", "tokens, latency, per-model"],
   ["Routines", "scheduled recurring runs — cron, every, after"],
   ["Web Cache", "the persistent results store"],
@@ -61,7 +63,7 @@ export function ShowcaseSection() {
                     className="w-full"
                   />
                   <figcaption className="border-t border-line px-3.5 py-2 text-[11.5px] leading-relaxed text-faint">
-                    Overview: KPI band, task table, live activity rail.
+                    Overview: KPIs, tasks, activity rail.
                   </figcaption>
                 </figure>
               </TerminalWindow>
@@ -77,7 +79,22 @@ export function ShowcaseSection() {
                       className="w-full"
                     />
                     <figcaption className="border-t border-line px-3.5 py-2 text-[11.5px] leading-relaxed text-faint">
-                      Memory: tiers, budget meter, provenance.
+                      Memory: tiers, budget, provenance.
+                    </figcaption>
+                  </figure>
+                </TerminalWindow>
+                <TerminalWindow title="unown dashboard — processes">
+                  <figure className="m-0">
+                    <img
+                      src="/landing/tui/dashboard/stills/13-processes.png"
+                      alt="unown dashboard — the Processes screen: the registry census with live, parked, ok and failed counts, transition analytics and per-process rows"
+                      width={1792}
+                      height={1042}
+                      loading="lazy"
+                      className="w-full"
+                    />
+                    <figcaption className="border-t border-line px-3.5 py-2 text-[11.5px] leading-relaxed text-faint">
+                      Processes: the registry.
                     </figcaption>
                   </figure>
                 </TerminalWindow>
@@ -92,17 +109,14 @@ export function ShowcaseSection() {
                       className="w-full"
                     />
                     <figcaption className="border-t border-line px-3.5 py-2 text-[11.5px] leading-relaxed text-faint">
-                      Embedded: <span className="font-mono">/dashboard</span> inside a live session.
+                      Embedded: <span className="font-mono">/dashboard</span> in a live session.
                     </figcaption>
                   </figure>
                 </TerminalWindow>
               </div>
               <p className="mt-3 text-[11px] text-faint">
                 Real <span className="font-mono">unown dashboard</span> stills,
-                streamed over SSE from <span className="font-mono">:3030</span>{" "}
-                ({" "}
-                <span className="font-mono">bun run agent:start</span>, then{" "}
-                <span className="font-mono">unown dashboard</span>).
+                streamed over SSE from <span className="font-mono">:3030</span>.
               </p>
             </div>
 

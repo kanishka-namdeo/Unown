@@ -358,6 +358,10 @@ export class Router {
 				objective: `job ${jobId}`,
 				taskRef: jobId,
 			});
+			// CREATED → QUEUED the moment the scheduler picks the job up (the
+			// state machine refuses a CREATED → RUNNING shortcut — caught live by
+			// the first dogfooding run, 2026-10-30).
+			jobProcess.transition("QUEUED", "scheduled job picked up");
 			setJobProcessContext(jobProcess.id, jobId);
 			try {
 				// M11: declared before anything in this block can throw, because the
