@@ -77,6 +77,16 @@ jobs:
         # Only the workflow_run leg has a conclusion to read; a schedule or a
         # manual dispatch has none, and inventing a pass there would be worse
         # than skipping the step.
+        #
+        # A `cancelled` CI gets a second look before it is called red: when a
+        # newer push lands mid-run GitHub cancels the older CI (the supersede
+        # race), and that cancellation is not a gate failure — the newer
+        # commit's own CI + deploy-verify carry the verdict. The check is
+        # `git ls-remote` against the public origin (this repository is
+        # public; no credential is involved — persist-credentials is false
+        # and none is needed): if main has moved past the cancelled sha, this
+        # run warns and stands down; if the cancelled sha is STILL main's
+        # head, a human cancelled the only CI and the red stays.
         if: ${{ github.event_name == 'workflow_run' }}
         shell: bash
         env:
@@ -86,6 +96,19 @@ jobs:
         run: |
           set -euo pipefail
           echo "CI for ${HEAD_SHA} concluded: ${CONCLUSION} (${RUN_URL})"
+          if [ "${CONCLUSION}" = "cancelled" ]; then
+            # If the tip check itself fails (network, origin unreachable), the
+            # empty tip falls through to the red below — an infra failure
+            # never silently stands down a cancelled CI.
+            MAIN_TIP=$(git ls-remote origin refs/heads/main | cut -f1 || true)
+            echo "main's tip is now ${MAIN_TIP:-<unreachable>}"
+            if [ -n "${MAIN_TIP}" ] && [ "${MAIN_TIP}" != "${HEAD_SHA}" ]; then
+              echo "::warning::the CI for ${HEAD_SHA:0:8} was cancelled because a newer commit superseded it — the newer commit's own CI and deploy-verify carry the verdict; standing down"
+              exit 0
+            fi
+            echo "::error::main's CI was cancelled${MAIN_TIP:+ for the current tip}${MAIN_TIP:+ (no newer commit superseded it)} — production may be serving a commit whose gates never completed"
+            exit 1
+          fi
           if [ "${CONCLUSION}" != "success" ]; then
             echo "::error::main's CI was ${CONCLUSION} and Vercel deploys main on push — production may be serving a commit that failed its own gates"
             exit 1
