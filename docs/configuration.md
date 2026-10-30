@@ -122,7 +122,11 @@ Author `.env` in the repo root from [`.env.example`](../.env.example). This tabl
 | `UNOWN_PERMISSIONS` | `1` | `0` disables the granular permissions layer entirely (the hard-coded deny-list + path jail are unaffected — they run first regardless). See [permissions](permissions.md). |
 | `UNOWN_PERMISSIONS_LEARN` | unset | `1` persists learned allow rules: when a bash command passes with no matching rule, an allow rule for its leading command is appended to the **user** config (idempotent, capped at 1000 learned rules). |
 | `UNOWN_AUTO_COMMIT` | unset | `1` snapshots pending project-dir work as a `unown(auto): session end snapshot` commit when a session truly ends (opt-in; default OFF — `/commit` is the interactive form). See [usage: git-native commits](usage.md#git-native-commits-commit). |
-| `UNOWN_PRICE_<MODEL>_IN/_OUT` | estimates | Pin per-model prices (USD per 1M tokens) for `unown usage` cost math; model id upper-cased with `.`/`-` → `_` (e.g. `UNOWN_PRICE_KIMI_K2_5_IN`). Unset = shipped `~$` estimates. See [usage tracking](usage-tracking.md). |
+| `UNOWN_PRICE_<MODEL>_IN/_OUT` | estimates | Pin per-model prices (USD per 1M tokens) for `unown usage` cost math; model id upper-cased with `.`/`-` → `_` (e.g. `UNOWN_PRICE_KIMI_K2_5_IN`). Unset = the model-specs sidecar when detection recorded a verified vendor-published cost for the model, else the shipped `~$` estimates. See [usage tracking](usage-tracking.md). |
+| `UNOWN_ALLOW_UNVERIFIED_SPECS` | unset | `1` (also `true`/`yes`) is the model-specs gate's documented escape hatch: a model whose specs (context window + max output tokens) no verifiable source could confirm still runs — loudly, marked unverified (compaction triggers and the reply cap fall back to unown's defaults). For CI and air-gapped installs. See [providers → model specs](providers.md#model-specs--detection-the-gate-the-sidecar). |
+| `UNOWN_SPEC_CACHE_TTL_MIN` | `1440` | Registry-cache TTL for model-spec detection, in minutes (24 h): how long the trimmed models.dev + LiteLLM indexes in `~/.unown/agent/model-spec-cache.json` stay fresh. A failed re-fetch serves the stale cache (stale-while-error); endpoint `/models` probes that 404/401 are not retried inside the window. |
+| `UNOWN_SPEC_MODELSDEV_URL` | `https://models.dev/api.json` | The models.dev registry the model-spec detection cascade consults (override for mirrors or tests). |
+| `UNOWN_SPEC_LITELLM_URL` | the raw GitHub `model_prices_and_context_window.json` | The LiteLLM price/context database the cascade consults (override for mirrors or tests). |
 | `UNOWN_BRIDGE_STATE_DIR` | auto | Where the bridge writes its persistent state (usage log). Default: the unown repo's `.run/` when running from the checkout, else `$UNOWN_HOME/bridge`. |
 | `UNOWN_NO_PREFLIGHT` | unset | `1` skips the model-endpoint reachability check before each session. Print mode exits non-zero when the endpoint is down — see [troubleshooting](troubleshooting.md). |
 | `UNOWN_LSP` | `1` | `0` disables the `lsp` tool and the PostToolUse diagnostics feedback loop in terminal sessions. |
@@ -290,6 +294,12 @@ Where everything lives — all of it deletable, none of it required to pre-exist
 ~/.unown/                        terminal-agent state (UNOWN_HOME)
   agent/
     models.json                  provider + model registry — what unown setup writes
+    model-specs.json             spec provenance sidecar (the model-specs round) — per
+                                 provider/model: the numbers, the source, the match
+                                 quality, every contributing source, verifiedAt
+    model-spec-cache.json        trimmed models.dev + LiteLLM indexes behind spec
+                                 detection (24h TTL, stale-while-error) + cached
+                                 endpoint /models probe failures
     auth.json                    API keys, file mode 0600
     settings.json                defaultProvider + defaultModel + tuiMode (interface layout)
     ui-panels.json               split-view startup defaults — written by /split-save only
@@ -353,7 +363,7 @@ What is safe to delete and what that costs is covered in [troubleshooting](troub
 
 | File | Written how | Safe to hand-edit? |
 |------|-------------|--------------------|
-| `models.json` | full rewrite on setup (setup is an explicit reconfigure action) | yes — point it at any OpenAI-compatible endpoint; the first-run bootstrap never clobbers an existing file |
+| `models.json` | full rewrite on setup (setup is an explicit reconfigure action) | yes — point it at any OpenAI-compatible endpoint; the first-run bootstrap never clobbers an existing file. Hand-edited `contextWindow`/`maxTokens` that differ from the catalog's guess for the id count as your own verified spec answer (recorded with user provenance — see [providers → model specs](providers.md#model-specs--detection-the-gate-the-sidecar)) |
 | `auth.json` | merges your provider key, mode 0600 | yes — secrets only; keep it out of any repo |
 | `settings.json` | merges `defaultProvider` + `defaultModel`; the first-run seed also pins the theme and `tuiMode` | yes — pins the model sessions start on (switch mid-session with `/model`) and the interface layout (see below) |
 

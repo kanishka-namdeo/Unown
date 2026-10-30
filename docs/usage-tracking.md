@@ -1,4 +1,4 @@
-# Usage tracking — tokens, latency and (estimated) cost
+# Usage tracking — tokens, latency and cost
 
 The bundled llm-bridge proxies every chat completion to your upstream. On
 each request it appends one line to a persistent usage log — the TUI
@@ -29,7 +29,7 @@ MODEL      REQUESTS  TOKENS IN  TOKENS OUT      COST  AVG LATENCY
 kimi-k2.5         1      4,597           2  ~$0.0028         3.7s
 TOTAL             1      4,597           2  ~$0.0028         3.7s
 
-costs are ~estimates — set UNOWN_PRICE_<MODEL>_IN/OUT (USD per 1M tokens) to pin exact prices
+costs are ~estimates — verified pricing lands via `unown models verify`, or set UNOWN_PRICE_<MODEL>_IN/OUT (USD per 1M tokens)
 ```
 
 | Flag | Meaning |
@@ -58,27 +58,44 @@ see the bridge's file — the fallback error says exactly that.
   "skippedLines": 0,
   "linesRead": 0,
   "truncated": false,
-  "pricing": { "estimate": false, "overridden": [], "unknownModels": [] }
+  "pricing": { "estimate": false, "overridden": [], "sidecarPriced": [], "unknownModels": [] }
 }
 ```
 
 `GET /health` additionally reports `usageLog: {file, entries}`.
 
-## Cost estimates and pricing overrides
+## Cost resolution and pricing overrides
 
-Shipped prices for the bundled models are **estimates** (marked `~$` in the
-table, `pricing.estimate: true` in the API) — list prices move; pin yours
-with per-model env vars in **USD per 1M tokens**:
+Each model's price resolves in this order — the first source that answers
+wins, in `unown usage` and the bridge's `/v1/usage` alike (the same mirrored
+resolver on both sides):
+
+1. **Env override** — `UNOWN_PRICE_<MODEL>_IN` / `UNOWN_PRICE_<MODEL>_OUT`
+   in **USD per 1M tokens**. Model id → env suffix: upper-case, `.`/`-` → `_`
+   (`qwen3.7-plus` → `QWEN3_7_PLUS`). Both vars must be set — a half-override
+   is ignored (an accidentally halved price is worse than an estimate).
+   Overridden models are listed in `pricing.overridden`.
+2. **The model-specs sidecar** (`~/.unown/agent/model-specs.json`) — verified
+   vendor-published pricing the model-spec detection cascade recorded for
+   the model (see [providers → model
+   specs](providers.md#model-specs--detection-the-gate-the-sidecar);
+   `unown models verify` re-runs detection on demand). Sidecar-priced models
+   are listed in `pricing.sidecarPriced`; with no estimate-priced model in
+   the window the `~` marker disappears from the table entirely.
+3. **The built-in estimate table** — conservative placeholders for the
+   bundled models (`kimi-k2.5`, `qwen3.7-plus`, `qwen3.6-plus`), marked `~$`
+   in the table and `pricing.estimate: true` in the API.
+4. **`null`** — no price data. A model with no price shows `—` and reports
+   `costUsd: null`, **never 0** — an honest unknown, never a silent free
+   ride. Such models are listed in `pricing.unknownModels` (override with
+   `UNOWN_PRICE_<MODEL>_IN/OUT`).
 
 ```
 UNOWN_PRICE_KIMI_K2_5_IN=0.55
 UNOWN_PRICE_KIMI_K2_5_OUT=2.15
 ```
 
-Model id → env suffix: upper-case, `.`/`-` → `_` (`qwen3.7-plus` →
-`QWEN3_7_PLUS`). Unknown models report `costUsd: null` (not 0 — an honest
-unknown), and are listed in `pricing.unknownModels`. Overridden models are
-listed in `pricing.overridden` and the estimate marker disappears.
-
 Set the vars where the **bridge** runs (`.env` — the mini-services symlink
-the root `.env`), not just in your shell.
+the root `.env`), not just in your shell. The turn-meter `~$` chip in the TUI
+uses the same price model (unknown models drop the cost segment — a price is
+never invented).

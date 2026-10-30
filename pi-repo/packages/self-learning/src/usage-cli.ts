@@ -523,6 +523,13 @@ export interface RenderOptions {
 /** Render the human table for a usage summary. Pure. */
 export function renderUsageTable(summary: UsageSummary, opts: RenderOptions = {}): string {
 	const estimate = summary.pricing.estimate;
+	// Per-row estimate honesty (the model-specs round): the global `~` marker
+	// used to tildE every row once ANY model was estimate-priced — a
+	// sidecar-priced (verified) or env-pinned row then looked estimated. A row
+	// carries `~` only when ITS model priced from the estimate table.
+	const sidecarPriced = summary.pricing.sidecarPriced ?? [];
+	const rowEstimate = (model: string): boolean =>
+		!summary.pricing.overridden.includes(model) && !sidecarPriced.includes(model);
 	const header = `LLM usage — last ${summary.days} day${summary.days === 1 ? "" : "s"} (since ${new Date(summary.since).toISOString().replace("T", " ").slice(0, 16)} UTC)${summary.model ? ` · model: ${summary.model}` : ""}`;
 	if (summary.totals.requests === 0) {
 		return `${header}\n\nNo usage recorded in this window.\nStart a session (or run the engine) and check back — every proxied chat completion is logged.`;
@@ -534,7 +541,7 @@ export function renderUsageTable(summary: UsageSummary, opts: RenderOptions = {}
 			formatInt(m.requests),
 			formatInt(m.promptTokens),
 			formatInt(m.completionTokens),
-			formatCostUsd(m.costUsd, estimate),
+			formatCostUsd(m.costUsd, estimate && rowEstimate(m.model)),
 			formatDuration(m.avgDurationMs),
 		]);
 	}

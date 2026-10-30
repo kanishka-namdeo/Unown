@@ -11,6 +11,7 @@ Related pages: [usage](usage.md) · [addons](addons.md) · [subagents](subagents
 - [Subagent routing, elicitation, context tools (Milestone 2 — 2026-10-19)](#subagent-routing-elicitation-context-tools-milestone-2--2026-10-19)
 - [Session UX additions (Milestone 3 — 2026-10-19)](#session-ux-additions-milestone-3--2026-10-19)
 - [Recipes and repo wiki (Milestone 4 — 2026-10-19)](#recipes-and-repo-wiki-milestone-4--2026-10-19)
+- [Model-spec verification (2026-10-30)](#model-spec-verification-2026-10-30)
 - [Sandbox model](#sandbox-model)
 - [Hooks policy](#hooks-policy)
 - [Injection shield](#injection-shield)
@@ -88,6 +89,35 @@ The 2026-10 reverse-engineering survey of the popular coding agents and IDEs (Cl
 **Recipes** (the goose Recipes port): declarative agent instruction bundles — a markdown body (the task prompt) with YAML frontmatter carrying `name`, `description`, `parameters` (JSON Schema), `sub_recipes` (referenced by name, run as sub-tasks), `response_schema` (the final reply is validated against it with corrective retries, reusing the Milestone 2 task-tool structured-output lane), `templates` (file templates instantiated with `{{param}}` interpolation), `allowed_tools` (restricts the active tool set) and `model` + `effort` overrides (the Milestone 2 routing flags, applied to the recipe's subagent). `{{param}}` tokens interpolate the body from the args — missing params render empty, never throw. Stored in `.unown/recipes/*.md` (project) and `$UNOWN_HOME/recipes/*.md` (user; project wins on collision); invoked via `/recipe list | show <name> | <name> [--key value]` in-session or `unown recipes list|run|create|validate` from the shell. Full contract: [recipes](recipes.md); pinned by `test/recipes.test.ts` (41 tests).
 
 **Repo wiki** (the zcode Repo Wiki port): auto-generated repo documentation with `file:line` cross-links, written atomically to `.unown/wiki/` — `index.md` (overview: languages, frameworks, entry points), `modules/<name>.md` (one page per module: responsibilities, public API with file:line, key files, dependencies), `architecture.md` (DOT + markdown dependency graph, cycle detection), `changes.md` (recent changes from CHANGELOG.md) and `wiki.json` (the manifest, written last). Generation walks the repo (excluding `node_modules/`, `.git/`, dist/build/`.unown/`), spawns a parallel read-only `task` subagent per module with an `output_schema` enforcing the page structure, synthesizes the index + architecture pages from the structured replies, and atomic-writes the tree; a scheduled automation can regenerate it on cron. Surface: `/wiki generate [--force] | search <q> | list | show <page>` and `unown wiki generate|search|list|show`. Full contract: [repo-wiki](repo-wiki.md); pinned by `test/repo-wiki.test.ts` (34 tests).
+
+## Model-spec verification (2026-10-30)
+
+A model's context window and max output tokens drive auto-compaction and the
+reply cap — a wrong spec is never cosmetic (either a silent capability cut or
+an overflow loop). Since the model-specs round, specs are VERIFIED, not
+guessed:
+
+- **Detection at configuration time** (`unown setup`, `unown providers
+  add/refresh`): the cascade (the endpoint's own `/models` → the curated
+  catalog → models.dev → the LiteLLM database) fills the spec field-by-field;
+  provenance is recorded in `~/.unown/agent/model-specs.json` and surfaced
+  everywhere specs are shown (`unown models`, doctor, the setup summary).
+- **The gate**: a model whose specs no source could verify is not usable.
+  Interactive setup asks for the two numbers (validated, clamps reported);
+  non-interactive setup requires `--context-window N --max-tokens K` or exits
+  1 with the remediation; the session preflight self-heals, asks once
+  (interactive) or aborts with the remediation (print mode);
+  `UNOWN_ALLOW_UNVERIFIED_SPECS=1` is the documented escape. `unown providers
+  add` registers-and-warns (exit 0) — registration is not use; the hard gate
+  fires when the model becomes active.
+- **Hand edits count**: `contextWindow`/`maxTokens` values in models.json that
+  differ from the catalog guess are the user's own verified answer.
+- **`unown models verify`** re-runs detection for the registered models,
+  heals models.json, and records the bridge's learned limits (context limits
+  its upstream 400s reveal) with `learned` provenance.
+- **The engine never gates**: sandbox runs seed sidecar-first with one
+  bounded best-effort detection — unattended work must not block on
+  registries.
 
 ## Sandbox model
 
