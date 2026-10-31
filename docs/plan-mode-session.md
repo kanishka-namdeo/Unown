@@ -189,10 +189,17 @@ as designed (the v0.0.42 lesson). Two lanes were red, both this round's own:
    the compressed copy.
 
 Recorded honestly in the CHANGELOG's own Fixed bucket ("The release gate
-caught the tag itself"). The release is then re-cut by deleting and
-re-pushing the `v0.0.50` tag on the fixed commit — the version in
-package.json stays 0.0.50 (the tag matches; the release simply ships the
-round with its gate-scars showing).
+caught the tag itself"). The release was then re-cut by deleting and
+re-pushing the `v0.0.50` tag on the fixed commit (`73cccaf6`,
+"fix(release): the gate's two catches") — the version in package.json
+stays 0.0.50 (the tag matches; the release ships the round with its
+gate-scars showing). Outcome: CI on the tagged commit green **18/18**
+(both previously-red lanes included), the release assertion matrix green
+on all three OSes, all five runnable archives booted on their own
+platforms, the published feed verified, the installer matrix green — and
+the **v0.0.50 release published 2026-10-31T07:49:44Z with all 13 assets**
+(six per-OS binaries, both installers, the update manifest, version.txt,
+sha256sums, the SPDX SBOM, the checklist; 243.6 MB total).
 
 ## Resume-from-here
 
