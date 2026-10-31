@@ -117,9 +117,21 @@ jobs:
             # The probe is a WAITER, not an assertion: a 5xx/network/gh
             # failure must not errexit the job. stderr goes to a scratch
             # file so the failure's own words land in the log exactly once.
+            #
+            # `and .event == "push"` is load-bearing, not tidiness: ci.yml
+            # now takes a workflow_dispatch (the force_cross_platform escape
+            # hatch, testing-strategy.md §6 gate 22), so a SHA can have more
+            # than one CI run and runs come back newest-first. A dispatched
+            # run is a maintainer asking a question about the tip, not the
+            # commit's landing verdict, and the two can legitimately disagree:
+            # gitleaks scopes a push run to the pushed commits but scans FULL
+            # history on a dispatch, so run 41243067806 went red on fixture
+            # UUIDs in committed benchmark receipts while the push run on the
+            # same SHA (41242580161) was green. The release gate reads the
+            # push run.
             probe_err="$(mktemp)"
             if json="$(gh api "repos/${GITHUB_REPOSITORY}/actions/runs?head_sha=${sha}&per_page=100" \
-                --jq '[.workflow_runs[] | select(.name == "CI")][0] // empty' 2>"${probe_err}")"; then
+                --jq '[.workflow_runs[] | select(.name == "CI" and .event == "push")][0] // empty' 2>"${probe_err}")"; then
               consecutive_probe_failures=0
               if [ -n "$json" ]; then
                 status="$(printf '%s' "$json" | jq -r '.status')"

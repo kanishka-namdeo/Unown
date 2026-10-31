@@ -30,14 +30,14 @@ export interface ChangelogStop {
   groups: ChangelogGroup[];
 }
 
-export const CHANGELOG_TOTAL_ENTRIES = 501;
+export const CHANGELOG_TOTAL_ENTRIES = 502;
 
 export const CHANGELOG_TOTALS: Record<ChangelogBucket, number> = {
   "Added": 231,
   "Changed": 30,
   "Deprecated": 0,
   "Removed": 3,
-  "Fixed": 187,
+  "Fixed": 188,
   "Security": 5,
   "Behavior": 45
 };
@@ -46,13 +46,13 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
   {
     "label": "Unreleased",
     "date": null,
-    "total": 1,
+    "total": 2,
     "counts": {
       "Added": 0,
       "Changed": 1,
       "Deprecated": 0,
       "Removed": 0,
-      "Fixed": 0,
+      "Fixed": 1,
       "Security": 0,
       "Behavior": 0
     },
@@ -62,6 +62,15 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
         "items": [
           {
             "title": "Per-OS CI now costs per release, not per push",
+            "behavior": false
+          }
+        ]
+      },
+      {
+        "bucket": "Fixed",
+        "items": [
+          {
+            "title": "Two things the forced per-OS dispatch caught about the pipeline itself",
             "behavior": false
           }
         ]

@@ -21,7 +21,7 @@
 useDefault = true
 
 [allowlist]
-description = "test fixtures and eval corpora with deliberately secret-shaped strings (sk-…, Bearer …, KEY=VALUE): the redactSecrets / receipts-privacy / share-redact tests must recognize them, and the ADV_2974 memory-eval case grades the agent on NOT writing user_api_key to memory — none are real credentials"
+description = "test fixtures and eval corpora with deliberately secret-shaped strings (sk-…, Bearer …, KEY=VALUE, and the label->UUID maps the retrieval-rank harness synthesizes as `\"authz\": \"b17f24a9-…\"`): the redactSecrets / receipts-privacy / share-redact tests must recognize them, the ADV_2974 memory-eval case grades the agent on NOT writing user_api_key to memory, and the retrieval-rank receipts carry generated id vocabularies — none are real credentials"
 paths = [
     '''pi-repo/packages/self-learning/test/checkpoints\.test\.ts''',
     '''pi-repo/packages/self-learning/test/sessions-completion\.test\.ts''',
@@ -29,4 +29,7 @@ paths = [
     '''pi-repo/packages/coding-agent/test/share-redact\.test\.ts''',
     '''benchmarks/memory-eval/mpbench/corpus\.json''',
     '''benchmarks/memory-eval/mpbench/results/.*per-case/ADV_2974\.json''',
+    '''benchmarks/memory-eval/retrieval-rank/results/summary\.json''',
+    '''benchmarks/memory-eval/retrieval-rank/results/onnx/summary\.json''',
+    '''benchmarks/memory-eval/retrieval-rank/results/onnx-fallback/summary\.json''',
 ]
