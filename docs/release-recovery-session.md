@@ -220,6 +220,27 @@ The re-cut procedure (the version contract holds: package.json is already
    attestations, 5-leg binary smoke, draft → published with 13 assets, feed
    verify, installer smoke) and record the receipts in this log's closeout.
 
+## Closeout — the re-cut executed, with receipts
+
+- Commits: `b4ae0d0f` (engine: the bridge-cycle contract + the snapshot-class
+  pair + the pins) and `ae1d6c0c` (docs: the paper trail), pushed to `main`.
+- **CI on `ae1d6c0c`: 18/18 jobs green** (run `41234835139`) — the first
+  green CI on main since `7aeaf1ec` (v0.0.52).
+- Tag moved: `v0.0.53` deleted at `53b8d766` and re-cut at `ae1d6c0c`
+  (lightweight, matching the release line's existing tag shape).
+- **Release workflow run `41235703871`: completed / success** — ci-green →
+  the 3-OS verify matrix → the production build with 6 cross-compiled
+  artifacts + SPDX SBOM + attestations → the 5-leg binary smoke → draft →
+  published → feed verify → installer smoke.
+- **The release is live**: `v0.0.53` published 2026-10-31T20:00:03Z with
+  **13 assets** (6 platform archives 31.5–48.1 MB, `install.sh` +
+  `install.ps1`, `release.json` severity `normal`, `sha256sums.txt` with 12
+  entries, `sbom-spdx.json`, `release-checklist.md`, `version.txt` =
+  `0.0.53`); latest now points at it. The checklists and receipts ride the
+  release body itself.
+- Post-publish state: `main` green at the docs closeout commit; the 0.0.54
+  queue below is the next session's opening position.
+
 **The 0.0.54 queue (recorded, prepped):** the S2 ledger's head — S2-11 (the
 spend meter) and S2-4 (the memory health card), each flipping a pinned,
 waiting benchmark miss; then S2-7/S2-8/S2-9, the S2-3/S2-16 L-pair, S2-22;
