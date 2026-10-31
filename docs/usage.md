@@ -558,7 +558,7 @@ The most useful defaults (Windows/WSL variants in parentheses):
 
 | Key | Action |
 |---|---|
-| Shift+Tab | Cycle thinking level |
+| Alt+T | Cycle thinking level (rebindable; `shift+tab` before the keyboard round — freed for the plan-mode cycle below) |
 | Ctrl+P | Cycle to the next model |
 | Ctrl+Shift+P | Cycle to the previous model (Alt+P) |
 | Ctrl+L | Open the model selector |

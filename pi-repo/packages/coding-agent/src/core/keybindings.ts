@@ -98,7 +98,16 @@ export const KEYBINDINGS = {
                 description: "Suspend to background",
         },
         "app.thinking.cycle": {
-                defaultKeys: "shift+tab",
+                // Vendored-fork change (Unown, 2026-10-31): shift+tab is the
+                // plan-mode permission-cycle key (the Claude Code / Gemini lane,
+                // registered by the unown extension). Extension shortcuts that
+                // collide with a reserved default are dropped by
+                // ExtensionRunner.getShortcuts, so keeping shift+tab here made
+                // plan-mode cycling unreachable on every fresh install.
+                // alt+t is free across all default bindings and passes through
+                // the major terminals (Windows Terminal, GNOME Terminal,
+                // Konsole, tmux, Ghostty); users can rebind via keybindings.json.
+                defaultKeys: "alt+t",
                 description: "Cycle thinking level",
         },
         "app.model.cycleForward": {
