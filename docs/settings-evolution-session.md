@@ -293,7 +293,9 @@ the Interface section + goal extras; usage.md's /goal row; the DOX tree),
 README, the landing rail (regen + word budget in the SAME commit as the
 CHANGELOG entry — the F39 lesson), the blog post. Then **M8 — the
 release:** version bump, tag, release builds per the release workflow
-(v0.0.50 → v0.0.51; the round's story ships through the changelog rail).
+(the next free version — v0.0.52 as of this writing, the keyboard round took
+0.0.51; check git tag before bumping; the round's story ships through the
+changelog rail).
 
 ## Environment notes for a resuming session
 
