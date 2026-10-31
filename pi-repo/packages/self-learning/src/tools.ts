@@ -33,7 +33,7 @@
  * subagent) and every subagent session writes its own note — subagents learn
  * too.
  */
-import { spawn } from "node:child_process";
+import { spawn, spawnSync } from "node:child_process";
 import {
 	type Dirent,
 	existsSync,
@@ -86,6 +86,7 @@ import {
 import { FleetManager, type FleetSpawnRequest, registerFleetSurface } from "./fleet-runtime.ts";
 import { registerGitTools } from "./gittools.ts";
 import {
+	appendGoalHistory,
 	checkGoalCompletion,
 	type GoalState,
 	goalBudgetTurnsSetting,
@@ -93,6 +94,7 @@ import {
 	hasGoalTag,
 	parseGoalCommand,
 	parseGoalEntry,
+	renderGoalHistory,
 	renderGoalStatus,
 } from "./goal.ts";
 import { generateAgentsMd } from "./init-agents.ts";
@@ -1464,10 +1466,36 @@ const setStatusLine = (ctx: any, key: string, text: string | undefined): void =>
 	}
 };
 
+/** S2-13: run the goal's verify gate — exit 0 completes, anything else
+ *  fails with the honest detail (timeout included). Runs through the shell
+ *  in the session cwd with a 120s ceiling; never throws. */
+const runGoalVerify = async (cwd: string, command: string): Promise<{ ok: boolean; detail: string }> => {
+	try {
+		const proc = spawnSync("bash", ["-c", command], {
+			cwd,
+			encoding: "utf8",
+			timeout: 120_000,
+		});
+		if (proc.status === 0) return { ok: true, detail: "exit 0" };
+		const tail = (proc.stderr ?? "").trim().slice(-200);
+		return {
+			ok: false,
+			detail: proc.signal ? `killed by ${proc.signal} (timeout?)` : `exit ${proc.status}${tail ? `: ${tail}` : ""}`,
+		};
+	} catch (err) {
+		return { ok: false, detail: err instanceof Error ? err.message : String(err) };
+	}
+};
+
 /** The /goal footer line for a goal state (undefined = clear the key). */
 const goalFooterLine = (g: GoalState | null): string | undefined => {
 	if (!g) return undefined;
-	if (g.status === "active") return "goal: active";
+	if (g.status === "active") {
+		// S2-13: the age nudge — a goal older than a day carries its age in
+		// the footer, so the grind is visible between turns.
+		const days = (Date.now() - g.createdAt) / 86_400_000;
+		return days >= 1 ? `goal: active \u00b7 ${days >= 2 ? `${Math.floor(days)}d` : "1d"} old` : "goal: active";
+	}
 	if (g.status === "paused") return "goal: paused";
 	return "goal: \u2713 complete";
 };
@@ -4744,14 +4772,70 @@ export function createUnownToolsExtension(opts: UnownToolsOptions) {
 		});
 
 		pi.registerCommand("goal", {
-			description: "Durable goal with evidence-verified completion: /goal <objective> | pause | resume | clear",
+			description: "Durable goal with evidence-verified completion: /goal <objective> | pause | resume | clear | history | verify <cmd>",
 			handler: async (args, ctx) => {
 				const { action, text } = parseGoalCommand(args ?? "");
 				switch (action) {
 					case "status":
 						ctx.ui.notify(renderGoalStatus(goal), "info");
 						return;
+					case "history":
+						ctx.ui.notify(renderGoalHistory(10), "info");
+						return;
+					case "verify": {
+						if (!goal) {
+							ctx.ui.notify("No goal to verify — set one first: /goal <objective>", "warning");
+							return;
+						}
+						const verifyCmd = (text ?? "").trim();
+						if (!verifyCmd) {
+							if (goal.verifyCommand) {
+								const clearGate = await ctx.ui.confirm(
+									`Remove the verify gate "${goal.verifyCommand}"?`,
+									"Completion would again need only the evidence gate.",
+								);
+								if (!clearGate) return;
+								goal = { ...goal, verifyCommand: undefined };
+								persistGoal();
+								ctx.ui.notify("Verify gate removed.", "info");
+							} else {
+								ctx.ui.notify(
+									"No verify gate set. Usage: /goal verify <command> — it must exit 0 before completion counts.",
+									"info",
+								);
+							}
+							return;
+						}
+						goal = { ...goal, verifyCommand: verifyCmd };
+						persistGoal();
+						setStatusLine(ctx, "goal", goalFooterLine(goal));
+						ctx.ui.notify(
+							`Verify gate set: ${verifyCmd}\nIt must exit 0 before the goal can complete (run in ${opts.cwd}, 120s timeout).`,
+							"info",
+						);
+						return;
+					}
 					case "set": {
+						// S2-13: replacing an ACTIVE goal needs a confirmation —
+						// silently overwriting a durable objective was the drift.
+						if (goal && goal.status === "active" && goal.text.trim() !== text!.trim()) {
+							const replace = await ctx.ui.confirm(
+								`Replace the active goal?\n  current: ${goal.text.slice(0, 80)}${goal.text.length > 80 ? "…" : ""}\n  new:     ${text!.slice(0, 80)}${text!.length > 80 ? "…" : ""}`,
+								"The current goal lands in /goal history as [replaced].",
+							);
+							if (!replace) {
+								ctx.ui.notify("Goal unchanged.", "info");
+									return;
+							}
+							appendGoalHistory({
+								text: goal.text,
+								outcome: "replaced",
+								setAt: goal.createdAt,
+								endedAt: Date.now(),
+								turns: goal.turns,
+								verifyCommand: goal.verifyCommand,
+							});
+						}
 						goal = { text: text!.trim(), status: "active", createdAt: Date.now() };
 						persistGoal();
 						setStatusLine(ctx, "goal", goalFooterLine(goal));
@@ -4787,6 +4871,16 @@ export function createUnownToolsExtension(opts: UnownToolsOptions) {
 						return;
 					}
 					case "clear": {
+						if (goal) {
+							appendGoalHistory({
+								text: goal.text,
+								outcome: goal.status === "complete" ? "complete" : "cleared",
+								setAt: goal.createdAt,
+								endedAt: goal.completedAt ?? Date.now(),
+								turns: goal.turns,
+								verifyCommand: goal.verifyCommand,
+							});
+						}
 						goal = null;
 						persistGoal();
 						setStatusLine(ctx, "goal", undefined);
@@ -6086,7 +6180,33 @@ Execute the steps in order. After completing a step, include a [DONE:n] tag in y
 					// tag) neither completes the goal nor triggers reject noise.
 					if (hasGoalTag(text)) {
 						const check = checkGoalCompletion(text, foregroundTodosForGoalGate());
+						if (check.complete && goal?.verifyCommand) {
+							// S2-13: the verify gate — the evidence check passed, but
+							// the goal's own command must ALSO exit 0 to complete.
+							const verdict = await runGoalVerify(opts.cwd, goal.verifyCommand);
+							if (!verdict.ok) {
+								if (ctx?.hasUI) {
+									ctx.ui.notify(
+										`Goal NOT complete — the verify gate failed: ${goal.verifyCommand} (${verdict.detail}). Fix and resend, or /goal verify to change the gate.`,
+											"warning",
+									);
+								}
+								return;
+							}
+							if (ctx?.hasUI) {
+								ctx.ui.notify(`Verify gate passed: ${goal.verifyCommand}`, "info");
+							}
+						}
 						if (check.complete) {
+							appendGoalHistory({
+								text: goal.text,
+								outcome: "complete",
+								setAt: goal.createdAt,
+								endedAt: Date.now(),
+								turns: goal.turns,
+								verifyCommand: goal.verifyCommand,
+								completedEvidence: check.evidence,
+							});
 							goal = {
 								...goal,
 								status: "complete",

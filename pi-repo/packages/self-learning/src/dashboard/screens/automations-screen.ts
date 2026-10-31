@@ -1100,6 +1100,7 @@ export function createAutomationsScreen(deps: ScreenDeps): Screen {
 					["S", "snooze"],
 					["e", "edit"],
 					["x", "delete"],
+					["K", "stop now"],
 				];
 			}
 			return [
@@ -1111,6 +1112,7 @@ export function createAutomationsScreen(deps: ScreenDeps): Screen {
 				["S", "snooze"],
 				["e", "edit"],
 				["x", "delete"],
+				["K", "stop now"],
 				["j/k", "select"],
 			];
 		},
@@ -1245,7 +1247,24 @@ export function createAutomationsScreen(deps: ScreenDeps): Screen {
 				return true;
 			}
 
-			if (matchesKey(data, "x")) {
+			// S2-19: the kill switch on the dashboard — same lane as the hub's
+		// automation.stop (SIGKILL live children, close zombies, stop honestly).
+		if (matchesKey(data, "shift+k")) {
+			void store
+				.stopAutomationRuns(a.id)
+				.then((r) =>
+					toast(
+						r.ok
+							? `stopped — ${r.stopped} run${r.stopped === 1 ? "" : "s"} killed, ${r.closed} closed${r.detail ? ` (${r.detail})` : ""}`
+							: `stop failed${r.detail ? `: ${r.detail}` : ""}`,
+						r.ok ? "amber" : "rose",
+					),
+				)
+				.catch((e) => toast((e as Error).message, "rose"));
+			return true;
+		}
+
+		if (matchesKey(data, "x")) {
 				const id = a.id;
 				const title = a.title ?? a.id;
 				confirm(`delete routine "${title}"? its run history goes with it`, () => {

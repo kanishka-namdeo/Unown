@@ -737,6 +737,27 @@ export class DashboardStore {
 		}
 	}
 
+	/** S2-19: the pending-dream lanes — the Dreams screen's approve/discard
+	 *  ride the same engine endpoints as the hub's Dream review inbox. */
+	async approvePendingDream(id: string, projectPath: string): Promise<{ ok: boolean; detail?: string; error?: string }> {
+		return this.client.post("/api/dreams/pending/approve", { projectPath, id });
+	}
+
+	async discardPendingDream(id: string, projectPath: string): Promise<{ ok: boolean; detail?: string; error?: string }> {
+		return this.client.post("/api/dreams/pending/discard", { projectPath, id });
+	}
+
+	/** S2-19: the kill-switch lane — SIGKILL live children, close zombie
+	 *  rows, release claims. Same endpoint the hub's automation.stop rides. */
+	async stopAutomationRuns(id: string): Promise<{ ok: boolean; stopped: number; closed: number; detail?: string }> {
+		try {
+			return await this.client.post(`/api/automations/${encodeURIComponent(id)}/stop`);
+		} finally {
+			void this.refresh("automations");
+			this.clearDetailCache(`automationruns:${id}`);
+		}
+	}
+
 	async skipAutomation(id: string): Promise<Automation> {
 		const r = await this.client.post<{ automation: Automation }>(`/api/automations/${encodeURIComponent(id)}/skip`);
 		void this.refresh("automations");

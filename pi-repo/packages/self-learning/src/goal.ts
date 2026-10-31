@@ -26,8 +26,10 @@
  * The command surface: /goal <objective>, /goal (status), /goal pause,
  * /goal resume, /goal clear, plus the --goal CLI flag for headless runs.
  */
-import { isAbsolute, join } from "node:path";
+import { appendFileSync, mkdirSync, readFileSync } from "node:fs";
+import { dirname, isAbsolute, join } from "node:path";
 import { loadHubPrefs } from "./settings/prefs.ts";
+import { resolveUnownHome } from "./unown-home.ts";
 
 // ---------------------------------------------------------------------------
 // State
@@ -41,16 +43,26 @@ export interface GoalState {
     completedEvidence?: string[];
     /** Turns injected while active (the budget counter — additive, optional). */
     turns?: number;
+    /** S2-13: a command that must exit 0 before completion counts
+     *  (/goal verify <command>). Absent = the evidence gate alone. */
+    verifyCommand?: string;
 }
 
 /** Parse /goal command args into an action. */
-export function parseGoalCommand(args: string): { action: "set" | "status" | "pause" | "resume" | "clear"; text?: string } {
+export function parseGoalCommand(
+    args: string,
+): { action: "set" | "status" | "pause" | "resume" | "clear" | "history" | "verify"; text?: string } {
     const trimmed = (args ?? "").trim();
     if (!trimmed) return { action: "status" };
     const lower = trimmed.toLowerCase();
     if (lower === "pause") return { action: "pause" };
     if (lower === "resume") return { action: "resume" };
     if (lower === "clear" || lower === "stop" || lower === "done") return { action: "clear" };
+    if (lower === "history") return { action: "history" };
+    if (lower.startsWith("verify")) {
+        const rest = trimmed.slice("verify".length).trim();
+        return { action: "verify", text: rest };
+    }
     return { action: "set", text: trimmed };
 }
 
@@ -222,18 +234,91 @@ export function parseGoalEntry(data: unknown): { goal: GoalState | null; warning
 
 /** Status line for /goal. */
 export function renderGoalStatus(goal: GoalState | null): string {
-    if (!goal) return "No goal set. Usage: /goal <objective> — durable, evidence-verified completion; /goal pause|resume|clear.";
+    if (!goal) return "No goal set. Usage: /goal <objective> — durable, evidence-verified completion; /goal pause|resume|clear|history|verify <cmd>.";
     const age = new Date(goal.createdAt).toISOString().slice(0, 19).replace("T", " ");
     const status =
         goal.status === "complete"
             ? `COMPLETE (finished ${new Date(goal.completedAt ?? goal.createdAt).toISOString().slice(0, 19).replace("T", " ")})`
             : goal.status.toUpperCase();
     const evidence = goal.completedEvidence?.length ? `\nEvidence: ${goal.completedEvidence.slice(0, 5).join(" | ")}` : "";
-    return `Goal [${status}] (since ${age}): ${goal.text}${evidence}`;
+    const verify = goal.verifyCommand ? `\nVerify gate: ${goal.verifyCommand} (must exit 0 before completion counts)` : "";
+    const days = goalAgeDays(goal);
+    const nudge =
+        goal.status !== "complete" && days >= 3
+            ? `\n⚠ ${Math.floor(days)} days old — still the goal you want? /goal pause, /goal clear, or replace it (with confirmation).`
+            : "";
+    return `Goal [${status}] (since ${age}): ${goal.text}${evidence}${verify}${nudge}`;
+}
+
+/** Whole days since the goal was set (the age nudge's clock — S2-13). */
+export function goalAgeDays(goal: GoalState): number {
+    return (Date.now() - goal.createdAt) / 86_400_000;
 }
 
 /** Resolve a claimed evidence path against the project (display helper). */
 export function resolveEvidencePath(cwd: string, raw: string): string {
     const cleaned = raw.trim().replace(/^["'`]|["'`]$/g, "");
     return isAbsolute(cleaned) ? cleaned : join(cwd, cleaned);
+}
+
+// ---------------------------------------------------------------------------
+// Goal history (S2-13): every goal that ended — replaced, cleared, or
+// completed — lands in ~/.unown/agent/goal-history.jsonl. Append-only,
+// call-time home resolution (the unown-home.ts contract), malformed lines
+// skipped like every other jsonl lane.
+// ---------------------------------------------------------------------------
+
+export interface GoalHistoryEntry {
+    text: string;
+    outcome: "replaced" | "cleared" | "complete";
+    setAt: number;
+    endedAt: number;
+    turns?: number;
+    verifyCommand?: string;
+    /** Completion-gate evidence (outcome === "complete" only). */
+    completedEvidence?: string[];
+}
+
+function goalHistoryPath(): string {
+    return join(resolveUnownHome(), "agent", "goal-history.jsonl");
+}
+
+export function appendGoalHistory(entry: GoalHistoryEntry): void {
+    try {
+        const path = goalHistoryPath();
+        mkdirSync(dirname(path), { recursive: true });
+        appendFileSync(path, JSON.stringify(entry) + "\n", "utf8");
+    } catch {
+        /* history is best-effort — never block a goal transition */
+    }
+}
+
+export function readGoalHistory(n = 10): GoalHistoryEntry[] {
+    try {
+        const raw = readFileSync(goalHistoryPath(), "utf8");
+        const entries: GoalHistoryEntry[] = [];
+        for (const line of raw.split("\n")) {
+            const t = line.trim();
+            if (!t) continue;
+            try {
+                entries.push(JSON.parse(t) as GoalHistoryEntry);
+            } catch {
+                /* skip malformed */
+            }
+        }
+        return entries.slice(-n).reverse();
+    } catch {
+        return [];
+    }
+}
+
+export function renderGoalHistory(n = 10): string {
+    const entries = readGoalHistory(n);
+    if (entries.length === 0) return "No goal history yet — replaced/cleared/completed goals land here.";
+    const lines = entries.map((e) => {
+        const when = new Date(e.endedAt).toISOString().slice(0, 16).replace("T", " ");
+        const turns = e.turns !== undefined ? ` · ${e.turns} turns` : "";
+        return `  ${when} [${e.outcome}] ${e.text.slice(0, 70)}${e.text.length > 70 ? "…" : ""}${turns}`;
+    });
+    return `Goal history (newest first, last ${entries.length}):\n${lines.join("\n")}`;
 }

@@ -14,10 +14,14 @@ import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import {
+    appendGoalHistory,
     checkGoalCompletion,
+    type GoalState,
     goalContextMessage,
     hasGoalTag,
     parseGoalCommand,
+    readGoalHistory,
+    renderGoalHistory,
     parseGoalEntry,
     renderGoalStatus,
     resolveEvidencePath,
@@ -465,5 +469,124 @@ describe("/goal wiring in the unown-tools extension", () => {
         const warning = notify.messages.find((m) => m.level === "warning");
         expect(warning).toBeDefined();
         expect(warning!.text).toContain("malformed unown-goal");
+    });
+});
+
+// ---------------------------------------------------------------------------
+// S2-13 — the goal extras: replace-confirm, history, age nudge, verify gate
+// ---------------------------------------------------------------------------
+
+describe("goal extras (S2-13)", () => {
+    test("parseGoalCommand: history + verify actions", () => {
+        expect(parseGoalCommand("history").action).toBe("history");
+        expect(parseGoalCommand("verify bun test").action).toBe("verify");
+        expect(parseGoalCommand("verify bun test").text).toBe("bun test");
+        expect(parseGoalCommand("verify").action).toBe("verify");
+        expect(parseGoalCommand("verify").text).toBe("");
+    });
+
+    test("history: append → read (newest first) → render; malformed lines skipped", () => {
+        const home = mkdtempSync(join(tmpdir(), "goal-hist-"));
+        const prior = process.env.UNOWN_HOME;
+        process.env.UNOWN_HOME = home;
+        try {
+            appendGoalHistory({ text: "ship v1", outcome: "replaced", setAt: 1, endedAt: 2, turns: 5 });
+            appendGoalHistory({ text: "ship v2", outcome: "complete", setAt: 3, endedAt: 4, completedEvidence: ["src/a.ts"] });
+            const entries = readGoalHistory(10);
+            expect(entries.length).toBe(2);
+            expect(entries[0].text).toBe("ship v2"); // newest first
+            expect(entries[0].outcome).toBe("complete");
+            expect(entries[1].turns).toBe(5);
+            const rendered = renderGoalHistory(10);
+            expect(rendered).toContain("[complete] ship v2");
+            expect(rendered).toContain("[replaced] ship v1");
+            // malformed line tolerance
+            const { appendFileSync } = require("node:fs");
+            appendFileSync(join(home, "agent", "goal-history.jsonl"), "{not json}\n", "utf8");
+            expect(readGoalHistory(10).length).toBe(2);
+        } finally {
+            if (prior === undefined) delete process.env.UNOWN_HOME;
+            else process.env.UNOWN_HOME = prior;
+            rmSync(home, { recursive: true, force: true });
+        }
+    });
+
+    test("renderGoalStatus: the age nudge appears at ≥3 days, the verify gate when set", () => {
+        const fresh: GoalState = { text: "young goal", status: "active", createdAt: Date.now() };
+        expect(renderGoalStatus(fresh)).not.toContain("days old");
+        const old: GoalState = { text: "old goal", status: "active", createdAt: Date.now() - 4 * 86_400_000 };
+        expect(renderGoalStatus(old)).toContain("days old");
+        const gated: GoalState = { text: "gated", status: "active", createdAt: Date.now(), verifyCommand: "bun test" };
+        expect(renderGoalStatus(gated)).toContain("Verify gate: bun test");
+    });
+
+    test("/goal wiring: replacing an active goal asks; declining keeps it; accepting lands history", async () => {
+        const { createUnownToolsExtension } = await import("../src/tools.ts");
+        const fake = makeFakePi();
+        const dir = join(tmpRoot, "s213-replace");
+        createUnownToolsExtension({ cwd: dir, engineUrl: "http://127.0.0.1:3030" }).factory(fake.pi);
+        const confirmations: string[] = [];
+        let confirmAnswer = false;
+        const ctx = {
+            hasUI: true,
+            ui: {
+                notify: () => {},
+                setStatus: () => {},
+                setWidget: () => {},
+                select: async () => null,
+                confirm: async (title: string) => {
+                    confirmations.push(title);
+                    return confirmAnswer;
+                },
+            },
+        };
+        const opts = { cwd: process.cwd(), engineUrl: "http://127.0.0.1:1" };
+        // (extension registered above)
+        await fake.runCommand("goal", "first objective", ctx);
+        // decline the replace
+        await fake.runCommand("goal", "second objective", ctx);
+        expect(confirmations.length).toBe(1);
+        expect(confirmations[0]).toContain("Replace the active goal?");
+        const kept = fake.appended.filter((e) => e.customType === "unown-goal").at(-1);
+        expect(kept?.data.text).toBe("first objective");
+        // accept the replace
+        confirmAnswer = true;
+        await fake.runCommand("goal", "second objective", ctx);
+        const replaced = fake.appended.filter((e) => e.customType === "unown-goal").at(-1);
+        expect(replaced?.data.text).toBe("second objective");
+    });
+
+    test("/goal wiring: verify sets the gate and bare verify offers the clear", async () => {
+        const { createUnownToolsExtension } = await import("../src/tools.ts");
+        const fake = makeFakePi();
+        const dir = join(tmpRoot, "s213-verify");
+        createUnownToolsExtension({ cwd: dir, engineUrl: "http://127.0.0.1:3030" }).factory(fake.pi);
+        const confirms: string[] = [];
+        const notes: string[] = [];
+        let confirmAnswer = false;
+        const ctx = {
+            hasUI: true,
+            ui: {
+                notify: (text: string) => notes.push(text),
+                setStatus: () => {},
+                setWidget: () => {},
+                select: async () => null,
+                confirm: async (title: string) => {
+                    confirms.push(title);
+                    return confirmAnswer;
+                },
+            },
+        };
+        // (extension registered above)
+        await fake.runCommand("goal", "objective with a gate", ctx);
+        await fake.runCommand("goal", "verify bun test", ctx);
+        const gated = fake.appended.filter((e) => e.customType === "unown-goal").at(-1);
+        expect(gated?.data.verifyCommand).toBe("bun test");
+        expect(notes.some((n) => n.includes("Verify gate set"))).toBe(true);
+        // bare verify on a gated goal: confirm=false keeps the gate
+        await fake.runCommand("goal", "verify", ctx);
+        expect(confirms.some((c) => c.includes("Remove the verify gate"))).toBe(true);
+        const stillGated = fake.appended.filter((e) => e.customType === "unown-goal").at(-1);
+        expect(stillGated?.data.verifyCommand).toBe("bun test");
     });
 });

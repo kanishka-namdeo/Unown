@@ -10,6 +10,7 @@
  */
 
 import { matchesKey } from "@earendil-works/pi-tui";
+import { listPendingDreams } from "../../dream-review.ts";
 import type { Dream, DreamNote, DreamsResponse, OverviewResponse } from "../dashboard-types.ts";
 import type { Screen, ScreenDeps, SelectionWindow } from "../screen.ts";
 import { SelectionWindow as Window } from "../screen.ts";
@@ -27,7 +28,7 @@ import {
 } from "../widgets/bits.ts";
 
 export function createDreamsScreen(deps: ScreenDeps): Screen {
-	const { store, theme, toast, requestRender } = deps;
+	const { store, theme, toast, requestRender, confirm } = deps;
 	let viewport = 24;
 	let mode: "list" | "detail" = "list";
 	let detailDream: Dream | null = null;
@@ -43,6 +44,19 @@ export function createDreamsScreen(deps: ScreenDeps): Screen {
 	function dreams(): Dream[] {
 		return store.snapshot<DreamsResponse>("dreams").data?.dreams ?? [];
 	}
+
+	// S2-19: the parked-dream review lane — pending dreams for THIS project
+	// (review mode parks fully-passed dreams as diffs; the engine applies
+	// approvals). A approves the first pending, X discards it.
+	let pendingReview: ReturnType<typeof listPendingDreams> = [];
+	function refreshPending(): void {
+		try {
+			pendingReview = listPendingDreams(process.cwd());
+		} catch {
+			pendingReview = [];
+		}
+	}
+	refreshPending();
 
 	const win: SelectionWindow = new Window(
 		() => dreams().length,
@@ -77,6 +91,15 @@ export function createDreamsScreen(deps: ScreenDeps): Screen {
 				pending === null ? theme.fg("dim", "…") : theme.fg(pending > 0 ? "warning" : "dim", `${pending}`)
 			}   ${theme.fg("accent", "D")} ${theme.fg("dim", "run autodream now")}`,
 		);
+		if (pendingReview.length > 0) {
+			const p = pendingReview[0]!;
+			lines.push(
+				`${theme.fg("warning", `⏸ pending dream ${p.slug}`)} ${theme.fg("muted", `(${p.notesIn} notes · ${timeAgo(p.createdAt)})`)}   ${theme.fg("accent", "A")} ${theme.fg("dim", "approve")} ${theme.fg("accent", "X")} ${theme.fg("dim", "discard")}`,
+			);
+			if (pendingReview.length > 1) {
+				lines.push(theme.fg("dim", `  … ${pendingReview.length - 1} more pending (handled one at a time)`));
+			}
+		}
 		lines.push("");
 		lines.push(heading(theme, "dreams"));
 		if (snap.error && !snap.data) {
@@ -175,14 +198,47 @@ export function createDreamsScreen(deps: ScreenDeps): Screen {
 					["j/k", "scroll"],
 				];
 			}
-			return [
+			const hints: [string, string][] = [
 				["enter", "dream"],
 				["D", "dream now"],
 				["j/k", "select"],
 			];
+			if (pendingReview.length > 0) {
+				hints.push(["A", "approve pending"], ["X", "discard pending"]);
+			}
+			return hints;
 		},
 
 		handleKey(data: string): boolean {
+			// S2-19: the pending-dream review keys (list mode, when parked).
+			if (mode === "list" && pendingReview.length > 0) {
+				if (matchesKey(data, "a")) {
+					const p = pendingReview[0]!;
+					void store
+						.approvePendingDream(p.id, p.projectPath)
+						.then((r) => {
+							toast(r.ok ? (r.detail ?? "pending dream approved") : (r.error ?? "approve failed"), r.ok ? "emerald" : "rose");
+							refreshPending();
+							requestRender();
+						})
+						.catch((e) => toast((e as Error).message, "rose"));
+					return true;
+				}
+				if (matchesKey(data, "x")) {
+					const p = pendingReview[0]!;
+					confirm(`Discard the pending dream ${p.slug}? (reverts its events, ships nothing)`, () => {
+						void store
+							.discardPendingDream(p.id, p.projectPath)
+							.then((r) => {
+								toast(r.ok ? (r.detail ?? "pending dream discarded") : (r.error ?? "discard failed"), r.ok ? "amber" : "rose");
+								refreshPending();
+								requestRender();
+							})
+							.catch((e) => toast((e as Error).message, "rose"));
+					});
+					return true;
+				}
+			}
 			// D works everywhere — the list and the drill-in alike.
 			if (matchesKey(data, "shift+d")) {
 				void store

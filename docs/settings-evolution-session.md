@@ -232,11 +232,35 @@ toggle item shipped with a missing closing paren (`},` instead of `}),`)
 item in seconds. Recorded because the receipts-before-claims rule is the
 round's spine.
 
-### The plan (M4 → M8)
+### M4 — the trust batch (PARTIAL 2026-10-31: S2-13 + S2-19 landed)
 
-- **M4** — the trust batch: S2-3, S2-7, S2-8, S2-9, S2-13, S2-19 (as capacity
-  allows; the L items S2-5 / S2-16 / S2-22 recorded as follow-ups unless
-  measurement forces them).
+**S2-13 (goal extras) — all four:** replacing an ACTIVE goal now asks
+(`ctx.ui.confirm`) and lands the old one in history as [replaced];
+`~/.unown/agent/goal-history.jsonl` records every ended goal
+(replaced/cleared/complete, turns, verify gate, evidence) with
+`/goal history` rendering the last 10; the footer carries the age nudge
+(`goal: active · 2d old` past 24h) and `/goal` shows the ≥3-day
+"still the goal you want?" line; `/goal verify <command>` arms a gate the
+completion handler runs (exit 0 or the goal does NOT complete — timeout
+and stderr tail in the notice). Tests: 5 new in goal.test.ts (32/32).
+
+**S2-19 (dashboard lanes) — both:** the Automations screen gains `K` —
+stop now (the kill switch riding the same `POST /api/automations/<id>/stop`
+as the hub's automation.stop, with the stopped/closed toast); the Dreams
+screen gains the pending-dream review lane — parked dreams render inline
+(slug, notes, age) with `A` approve / `X` discard (discard behind the
+confirm bar), riding the engine's `/api/dreams/pending/*` endpoints.
+Store: `stopAutomationRuns` / `approvePendingDream` / `discardPendingDream`.
+
+**The honest remainder (recorded, not hidden):** S2-3 (hoist toggle) is
+coupled to S2-16's safe-env-write lane — the L item the plan already
+defers; both stay follow-ups together. S2-7 (elicitation matrix),
+S2-8 (undo badge), S2-9 (skill health) remain the M4 capacity items for
+the next session — the S2 ledger rows stay open, and BM-3's `spend` /
+`memory health` misses (S2-11/S2-4) stay honest misses until they land.
+
+### The plan (M5 → M8)
+
 - **M5** — AFTER receipts + the BEFORE/AFTER/DELTA table.
 - **M6** — phase 10 learning artifacts: mint tasks from the round's failures,
   dream, staged skills, the learning report.
@@ -245,14 +269,16 @@ round's spine.
 
 ## Resume-from-here
 
-Round 2, M3 done (the Interface repair landed and is receipt-verified: 0
-pi rows unreachable, 6/6 probes changed, no regressions). Next: **M4 —
-the trust batch: S2-3 (hoist toggle), S2-7 (elicitation matrix), S2-8
-(undo-coverage badge), S2-9 (skill health), S2-13 (goal extras), S2-19
-(dashboard lanes)** — as capacity allows, with the L items recorded as
-follow-ups. The remaining BM-3 misses (`spend`, `memory health`) flip only
-if S2-11/S2-4 land in M4. Then M5 (the AFTER run + DELTA table), M6
-(learning artifacts), M7 (docs/DOX/landing/CHANGELOG), M8 (release).
+Round 2, M4 partial (S2-13 + S2-19 landed; S2-7/S2-8/S2-9 open as capacity
+items; S2-3 rides with S2-16 as a follow-up). Next: **M5 — the AFTER
+benchmark run** (`python3 benchmarks/settings-ux/run-settings-ux-bench.py`
+into a fresh `receipts/run-after/` dir, lanes one tool-call at a time —
+the sandbox kills background processes) **+ the DELTA table in
+`benchmarks/settings-ux/RESULTS.md`.** Then M6 (learning artifacts: mint
+the round's three author-catches as benchmark tasks, the dream, the
+learning report), M7 (docs/DOX/README/landing sync + the CHANGELOG entry +
+rail regen in the SAME commit), M8 (version bump + tag + release builds
+per the release workflow).
 
 ## Environment notes for a resuming session
 
