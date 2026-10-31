@@ -9,6 +9,12 @@ otherwise specified; the release tag must always equal package.json's version.
 
 Repo conventions: measured claims cite their receipts (`docs/testing-strategy.md`, `benchmarks/memory-eval/*/RESULTS.md`). Changes to agent behavior — prompts, default models, routing, guard rules, hooks, memory injection — are filed under **Agent Behavior**; the policy lives in [docs/BEHAVIOR.md](docs/BEHAVIOR.md).
 
+## [Unreleased]
+
+### Changed
+
+- **Per-OS CI now costs per release, not per push.** `build-test`'s macOS and Windows legs were the most expensive thing in the pipeline and they booted for every commit. Measured over the 25 most recent CI runs: ubuntu 4.3 min, macOS 4.5 min, Windows 8.1 min — and because GitHub meters a macOS minute at 10x and a Windows minute at 2x a Linux minute, ~61 of the ~65 Linux-equivalent minutes a run burns (93%) sat in those two non-Linux legs. The 100 most recent CI runs spanned ~49 h of `main` (~50 runs/day), most of them docs or TUI commits no user installs from: roughly 19k macOS+Windows runner-minutes a month spent re-verifying intermediate commits. A new `cross-platform-gate` job reads `package.json`'s version at the base and the head of the change through the contents API (no checkout, no `fetch-depth: 0` over a vendored workspace) and runs the macOS + Windows legs only when the version differs — the release candidate, i.e. the commit that gets tagged — or when a `ci.yml` dispatch checks `force_cross_platform`. The ubuntu leg never skips: it is the one lane that runs the real installer, the engine unit + integration suites, version consistency and the CLI smokes, at 1x cost. An unreadable or absent base fails SAFE toward the full matrix, so "unanswerable" can never read as "no bump". Nothing shipped got weaker: `release.yml` still installs on all three OSes for every tag, boots all six per-OS archives on their own runners, and its `ci-green` job still requires CI success on the tagged SHA. `Build + test (macos-latest)` and `(windows-latest)` left `main`'s required status checks in the same change (required checks 7 → 5) because a skipped conditional job reports no context at all, and a required conditional check hangs every PR at "Expected". For a commit that is not a bump, the per-OS verdict is on demand: `node scripts/xplat.mjs dispatch --scenario smoke --os windows-latest`. Contract + receipt (the shipped script run against 8 real-commit cases): `docs/testing-strategy.md` §6 gate 22.
+
 ## [0.0.53] - 2026-11-01
 
 The footer quiet round — the area below the input, decluttered end to end —

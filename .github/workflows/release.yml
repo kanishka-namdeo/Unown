@@ -6,8 +6,10 @@
 # binaries of the `unown` CLI:
 #
 #   1. the full install path on all three OSes (the same real-installer
-#      matrix CI runs — a release that does not install cleanly does not
-#      exist),
+#      matrix CI runs on a version-bump commit — ci.yml gates its macOS +
+#      Windows legs to exactly the commits that bump package.json, so a
+#      release is proven on all three OSes twice: on the bump commit's CI and
+#      here — a release that does not install cleanly does not exist),
 #   2. the production landing build + standalone-server smoke,
 #   3. the engine suite + integration suite + bridge suite + version
 #      consistency + CLI smokes (the release assertion: strategy §12

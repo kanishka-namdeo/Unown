@@ -8,8 +8,11 @@
 # `main` on push, in parallel with CI, and `main` is not protected against an
 # admin push (`enforce_admins: false`), so a red commit reaches production:
 # commit 839600e (2026-10-26T07:37Z) landed four failing jobs, two of them
-# required contexts (`Unit tests (landing)`, `Build + test (windows-latest)`),
-# and stayed live for ~59 minutes until aa9a955 went green. Nothing said so.
+# required contexts at the time (`Unit tests (landing)`, `Build + test
+# (windows-latest)` — the macOS + Windows legs left the required list on
+# 2026-11-01 when the per-OS CI gate made them version-bump-conditional,
+# testing-strategy.md §6 gate 22), and stayed live for ~59 minutes until
+# aa9a955 went green. Nothing said so.
 #
 # WHAT IT DOES.
 #   - `workflow_run` after CI finishes on main: names the CI conclusion, then

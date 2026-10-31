@@ -4,6 +4,13 @@ on:
   push:
     branches: [main]
   pull_request:
+  workflow_dispatch:
+    inputs:
+      force_cross_platform:
+        description: "Run the macOS + Windows legs even though this commit does not bump the version"
+        type: boolean
+        required: false
+        default: false
 
 # Least-privilege token for the whole workflow (OpenSSF Token-Permissions):
 # every CI job only needs to read the checkout. Jobs needing more carry
@@ -30,12 +37,20 @@ concurrency:
 # Still deferred: Lighthouse — see the trailing comments.
 #
 # Cross-platform legs (M4):
-#   - build-test exercises the REAL installer end to end on
-#     ubuntu/macos/windows: `bun scripts/install.ts` with UNOWN_NO_LINK=1 runs
-#     both bun installs, the model-data hydration (network) and build:offline —
-#     the exact path a fresh clone takes on a user machine (~5-8 min per OS,
-#     hence the 30-minute job timeout). Then the self-learning engine tests and
-#     a CLI boot smoke — the engine suite is a CI gate from here on.
+#   - build-test exercises the REAL installer end to end: `bun scripts/install.ts`
+#     with UNOWN_NO_LINK=1 runs both bun installs, the model-data hydration
+#     (network) and build:offline — the exact path a fresh clone takes on a user
+#     machine (~5-8 min per OS, hence the 30-minute job timeout). Then the
+#     self-learning engine tests and a CLI boot smoke — the engine suite is a CI
+#     gate from here on.
+#     The matrix is three OSes, but only the ubuntu leg runs on every push/PR.
+#     The macOS + Windows legs run when the commit bumps package.json's version
+#     (the release candidate, i.e. the commit that gets tagged) or when a
+#     workflow_dispatch forces them. The gate + the measured cost behind that
+#     policy are documented on the cross-platform-gate job below; per-OS
+#     verification for any other commit is xplat.yml's job
+#     (`node scripts/xplat.mjs dispatch --scenario smoke --os macos-latest`),
+#     which is what docs/xplat-testing.md has always been for.
 #   - sandbox-smoke runs the repo-relative bwrap verification tools
 #     (scripts/bwrap_smoke.sh + scripts/verify_sandbox.mjs) on ubuntu only —
 #     the OS sandbox is a Linux surface (bwrap is a Linux ELF; src/bwrap.ts
@@ -78,8 +93,120 @@ jobs:
           done
           exit $failed
 
+  cross-platform-gate:
+    name: Cross-platform gate (version bump?)
+    # WHY THIS EXISTS — the arithmetic. build-test is CI's only per-OS lane and
+    # by far its most expensive. Measured over the last 25 CI runs (2026-11-01):
+    # ubuntu 4.3 min, macOS 4.5 min, Windows 8.1 min per run. GitHub bills a
+    # macOS minute at 10x and a Windows minute at 2x a Linux minute, so of the
+    # ~65 Linux-equivalent minutes one CI run burns, ~61 (93%) sit in the two
+    # non-Linux legs. The 100 most recent CI runs covered ~49h of main, i.e.
+    # ~50 runs a day most of which are docs or TUI commits no user ever installs
+    # from — ~19k macOS+Windows runner-minutes a month spent re-verifying
+    # intermediate commits.
+    #
+    # THE POLICY — spend the per-OS minutes where the verdict is owed:
+    #   - the ubuntu leg NEVER skips. It is the lane that runs the real
+    #     installer, the engine unit + integration suites, version consistency
+    #     and the CLI smokes, at 1x cost. That stays the per-push gate.
+    #   - the macOS + Windows legs run when package.json's version differs
+    #     between the base and the head of the change — the release candidate,
+    #     the commit that gets tagged — or when the dispatch input forces them.
+    #   - a per-OS verdict for any other commit did not disappear, it moved to
+    #     xplat.yml, which is agent-drivable on any ref without a push
+    #     (docs/xplat-testing.md). That lane is the reason this gate is safe to
+    #     pull: the capability is on-demand, not absent.
+    #
+    # WHAT IS NOT WEAKENED: release.yml installs on all three OSes and boots
+    # every one of the six per-OS binaries on its own runner for each tag, and
+    # its ci-green job still requires CI success on the tagged SHA. Nothing
+    # ships that has not been run on its own OS.
+    #
+    # HOW IT READS THE VERSION: the contents API at two commit SHAs — no
+    # checkout, no `fetch-depth: 0` over a repo carrying a vendored workspace.
+    # An unreadable base (force-push, a pruned commit, a fork head the API will
+    # not resolve) fails SAFE toward running the full matrix: the gate's own
+    # blind spot must never be the reason a platform goes silent.
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    outputs:
+      per-os: ${{ steps.decide.outputs.per-os }}
+      reason: ${{ steps.decide.outputs.reason }}
+    steps:
+      - name: Decide whether the macOS + Windows legs run
+        id: decide
+        env:
+          GH_TOKEN: ${{ github.token }}
+          EVENT: ${{ github.event_name }}
+          BEFORE: ${{ github.event.before }}
+          BASE: ${{ github.event.pull_request.base.sha }}
+          AFTER: ${{ github.event.after }}
+          PR_HEAD: ${{ github.event.pull_request.head.sha }}
+          FORCE: ${{ github.event.inputs.force_cross_platform }}
+        run: |
+          set -uo pipefail
+
+          version_at() {
+            gh api "repos/${GITHUB_REPOSITORY}/contents/package.json?ref=$1" \
+              --jq '.content' | tr -d '\n\r' | base64 -d \
+              | node -p "JSON.parse(require('fs').readFileSync(0,'utf8')).version"
+          }
+
+          per_os=false
+          reason=""
+          base=""
+          head=""
+          compare=false
+
+          # Every read is default-expanded: the script runs under `set -u`, and
+          # it has to stay runnable outside a runner (proving the decision
+          # against real commits is how this gate is trusted).
+          if [ "${FORCE:-}" = "true" ]; then
+            per_os=true
+            reason="forced by the force_cross_platform dispatch input"
+          else
+            case "${EVENT:-}" in
+              push) base="${BEFORE:-}"; head="${AFTER:-${GITHUB_SHA:-}}"; compare=true ;;
+              pull_request) base="${BASE:-}"; head="${PR_HEAD:-${GITHUB_SHA:-}}"; compare=true ;;
+              *) reason="${EVENT:-this event} reports no base/head pair, so the per-OS legs skip (force them with the dispatch input)" ;;
+            esac
+            if [ "$compare" = "true" ]; then
+              if [ -z "$base" ] || [ "$base" = "0000000000000000000000000000000000000000" ]; then
+                # A ref with no predecessor (first push, recreated branch) has no
+                # version to diff against. "Unanswerable" must never read as
+                # "no bump", so this fails safe the same way an unreadable one does.
+                per_os=true
+                reason="this ${EVENT} reports no base commit to diff against - failing safe to the full matrix"
+              else
+                bv="$(version_at "$base" 2>/dev/null || true)"
+                hv="$(version_at "${head:-${GITHUB_SHA:-}}" 2>/dev/null || true)"
+                if [ -z "$bv" ] || [ -z "$hv" ]; then
+                  per_os=true
+                  reason="could not read the version at base ${base:0:7} or head ${head:0:7} - failing safe to the full matrix"
+                elif [ "$bv" != "$hv" ]; then
+                  per_os=true
+                  reason="version bump ${bv} -> ${hv}: the release candidate owes the three-OS verdict"
+                else
+                  reason="version unchanged at ${hv}: macOS + Windows skip, ubuntu still gates. On-demand per-OS verdict: node scripts/xplat.mjs dispatch --scenario smoke --os macos-latest"
+                fi
+              fi
+            fi
+          fi
+
+          echo "per-os=$per_os" >> "$GITHUB_OUTPUT"
+          echo "reason=$reason" >> "$GITHUB_OUTPUT"
+          echo "cross-platform gate -> per-OS legs: $per_os"
+          echo "$reason"
+          echo "::notice title=Cross-platform gate::per-OS legs = $per_os - $reason"
+
   build-test:
     name: Build + test (${{ matrix.os }})
+    needs: cross-platform-gate
+    # ubuntu always; macOS + Windows only when the gate says so. A leg whose
+    # condition is false boots no runner at all — which IS the saving.
+    if: needs.cross-platform-gate.outputs.per-os == 'true' || matrix.os == 'ubuntu-latest'
     strategy:
       fail-fast: false
       matrix:
@@ -93,6 +220,15 @@ jobs:
         # sees the global config; git is preinstalled on the runner.
         if: runner.os == 'Windows'
         run: git config --global core.longpaths true
+      - name: Why this leg ran
+        # One line of provenance: when a per-OS leg appears (or is missing) in
+        # a release investigation, the job log should already say what decided
+        # it instead of leaving the reader to guess at the gate.
+        shell: bash
+        env:
+          GATE_REASON: ${{ needs.cross-platform-gate.outputs.reason }}
+        run: |
+          echo "cross-platform-gate (${{ github.event_name }}): $GATE_REASON"
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
         with:

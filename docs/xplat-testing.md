@@ -360,6 +360,15 @@ same verdict semantics.
   Smoke is the reflex; full is the checkpoint; release-verify is the gate.
   Do not dispatch `full` in a fix-verify loop - run `local` between
   dispatches and let the remote lane confirm, not iterate.
+- **This lane is now load-bearing.** Since the per-OS CI gate
+  ([testing strategy](testing-strategy.md) §6 gate 22, 2026-11-01) `ci.yml`
+  runs its macOS + Windows legs only on a commit that bumps
+  `package.json`'s version, or on a `ci.yml` dispatch with
+  `force_cross_platform`. For every other commit this lane is not a nice
+  extra, it is the only per-OS evidence that exists - so a change that can
+  break one OS (installer, launcher, process lifecycle, path handling, a
+  shell-specific step) owes a dispatch before it merges, not a wish that CI
+  caught it.
 
 ## Security notes
 
