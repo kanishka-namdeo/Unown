@@ -1,0 +1,107 @@
+# Footer Quiet Round — Session Log (2026-10-31)
+
+Session doc per the repo's checkpoint discipline. Resume from the latest
+checkpoint if this session is interrupted.
+
+Objective (user task): *"The area below the user keyboard input in the TUI has
+too many elements showing. Map out user journeys to understand and evaluate
+what we should be showing at all times and how vs what is supposed to be shown
+only at certain times and how. research and reverse engineer competing
+products and learn from them. implement changes end to end"* — with the
+standing instructions: document each checkpoint, use subagents aggressively,
+research extensively, push on every milestone, production-grade work with
+edge cases, cross-platform support, verify like a real user, update
+landing/readme/blog/stale docs, update the DOX tree, never delete media
+assets.
+
+Scope: the TUI's bottom dock **below the input editor** — the vendored
+`FooterComponent` (`pi-repo/packages/coding-agent/src/modes/interactive/components/footer.ts`)
+and the extension-status chips Unown paints through `ctx.ui.setStatus` (the
+sixteen keys in `tools.ts`/`engine-status.ts`/`mcp.ts`/`fleet.ts`/`addons/`).
+The mission panel and the plan/todo widgets **above** the editor are out of
+scope — the open [todo-unification
+round](plan-mode-todo-unification-round-session.md) owns that lane; this
+round only fixes the footer↔panel duplications (conf, goal-active) by making
+the chips yield to the panel.
+
+## Research baseline (done before any edit)
+
+- **Codebase audit** (subagents, very thorough): the bottom dock's seven
+  containers, the footer's four-line render, every chip key with its
+  file:line, the responsive tiers, the existing hide/show levers, and the
+  test suites covering them (vendored `footer-width`/`footer-diff-stat`/
+  `footer-data-provider` vitest; self-learning `engine-status`/`turn-meter`/
+  `mission`/`learning-feed` bun suites).
+- **Competitor lane** (subagents, live web research with sources):
+  [the research doc](bottom-area-competitor-research.md) — Claude Code
+  (statusline-as-a-trade, budgeted hints), Codex (status row hidden while
+  streaming, expiring hints, duplicate-indicators-are-defects), Gemini
+  (declarative ordered footer items, high-priority transients, drop-whole-
+  items), aider (scrollback-as-status), Crush (healthy-states-silent, 5 s
+  TTL transients, no badge in the default mode), OpenCode (conditional
+  everything, focus-dimmed hints) + NN/g + clig.dev grounding.
+- **Baseline evidence** (PTY+pyte lane, 128×36, real session over the live
+  Agnes bridge): 4 stills + pane dumps in `download/tui-bottom-redesign/before/`
+  — the idle footer is 4 rows; after ONE trivial turn the extension-status
+  line reads `conf ✓ memory: up · stale (v0.0.51) turn 2.7s · ttft 2.7s · ctx
+  5% · in 26.8k out 2` — three chips, alphabetical, truncated mid-chip.
+- **Journeys**: [the user-journeys doc](bottom-area-user-journeys.md) — four
+  personas, the friction inventory, and the manifest table dispositioning
+  every element persistent vs situational vs demoted.
+
+## Findings (each confirmed against source)
+
+| # | Finding | Where | Severity |
+|---|---|---|---|
+| F1 | **Four stacked footer rows at rest.** Location, stats, extension statuses, hints — 8 rows of bottom chrome with the mission panel, 22 % of a 36-row terminal before any work happens. | `footer.ts:161-389`; baseline stills | critical — the reported bug |
+| F2 | **The extension-status line is an unsorted dump that truncates mid-chip.** Every `setStatus` key paints (sixteen today), joined alphabetically by key, cut at width mid-text (observed `out 2`); an actionable chip (health ✗) can be the one truncated away. | `footer.ts:354-364` (alphabetical sort + `truncateToWidth`), `footer-data-provider.ts:135-152`; baseline `after-turn.pane.txt` | critical |
+| F3 | **The same facts render twice.** Context % on the meter AND the turn chip; in/out tokens on the stats chips AND the turn chip; session cost on the stats `$` chip AND the turn chip's `~$`. | `turn-meter.ts:125-149` vs `footer.ts:124-149, 246-270` | high — Codex names this class a defect |
+| F4 | **conf duplicates the mission panel.** The panel's status row shows `conf ✓/◐/✗` (`renderConfidenceChip`) and the footer paints the same chip on every turn end. | `tools.ts:6100` vs `mission.ts:292`; baseline pane | high |
+| F5 | **goal-active duplicates the mission panel's objective line.** `goal: active · 1d old` under the editor while the panel already shows `● mission — … (goal · 2h)`. | `tools.ts:1491-1501` (goalFooterLine) + 5 call sites vs `mission.ts:275-282` | medium |
+| F6 | **Healthy-ambient states paint permanent lines.** `memory: up · auto-dream 4m · mem ▕██░░ v2 · 107 rules · dreamed 12m ago`, `mcp: 3/3 · 14 tools`, `lsp: ts,py ready` — no action attached, rewriting on the probe cadence (the ~30-50 s heartbeat churn). Competitors: healthy states are silent (Crush mode badge "an empty string in the default coding mode"; Gemini items "not shown when unavailable"). | `engine-status.ts:189-219`, `mcp.ts:1858-1871`, `tools.ts:3754-3763` | high |
+| F7 | **Session cost is the most fragile metric.** The `$` stats chip is last in the ordered-drop queue (audit B2) — the one number the ops seat cares about drops first at narrow widths. | `footer.ts:261-270, 288-335` | medium |
+| F8 | **No kill switch.** The footer's density has no off switch — no setting or env restores a different layout; the UX card's "kill switches stay first-class" applies to every ambient surface. | `footer.ts` (no mode), `.env.example` (no knob) | medium |
+| F9 | Verified NON-issues (documented so nobody re-litigates): the hint line is already contextual (I3 busy/queued/idle swap with ordered-segment fit — kept verbatim); the narrow-tier degradation is already ordered-drop; `widgetContainerBelow` is empty except the opt-in split-view dock; the attention line's data (extension statuses) already flows through one provider; the startup header and first-flights are above-input surfaces with their own rounds. | `interactive-mode.ts:4339-4396`; baseline | none |
+
+## Fix plan (milestones; each = commit + push)
+
+- **M1 (vendored footer, quiet layout)**: merge location into the status line
+  (left: `cwd (branch) [• session @ wide+]`, then meter + chips; right: model,
+  existing degrade ladder) — idle footer = 2 rows; the extension-status line
+  becomes the **attention line** (priority-ordered, whole-chip dropping with a
+  dim `+N`, never mid-chip cuts); `ctx.ui.setStatus(key, text, {priority?})`
+  (priority DESC then key ASC; default 0); `UNOWN_FOOTER_CLASSIC=1` restores
+  the exact legacy render path (fork-change comment, the clearOnShrink env
+  pattern); vendored footer tests for every tier + priority + drop + classic.
+- **M2 (Unown chip policy)**: `engineFooterAttention()` — up-without-skew
+  stops painting (bar/rules/dreams stay in /engine, dashboard, doctor); mcp
+  failures/withheld paint (critical), healthy doesn't; lsp ready clears,
+  restarting (active) / paused (critical) paint; conf + goal-active yield to
+  the mission panel (paint only when the panel is killed — the panel-composes
+  rule); turn meter deduplicates to `turn Xs · ttft Ys · ~$Z` and inherits
+  the session cost (F7: cost's one home); priorities wired on every chip;
+  self-learning tests updated/added.
+- **M3 (real-user verification)**: `verify_footer_quiet.py` in the PTY lane —
+  pane-truth assertions for: 2-row idle footer, no ambient chips at rest,
+  attention states paint (engine stopped → `memory: down`), busy hint swap,
+  turn chip dedup, classic mode restore; before/after stills captured.
+- **M4 (docs/DOX/landing)**: UX-principles amendment (the placement law's
+  footer clause + the manifest), BEHAVIOR.md footer references, usage.md,
+  configuration.md + `.env.example` (the knob), self-learning AGENTS.md +
+  the vendored-patch ledger, CHANGELOG [Unreleased] + Agent Behavior entry,
+  landing regeneration + checks, blog post, media: new stills added (existing
+  assets never deleted).
+- **M5 (release)**: version 0.0.53, changelog rail, tag `v0.0.53`, local
+  gates, xplat smoke, release workflow verification.
+
+## Checkpoints
+
+- **CP0 (pre-work)**: repo synced to `7aeaf1ec` (v0.0.52 — the settings
+  round; ff-only pull, 4 commits, no bottom-area files touched by them); bun
+  1.4.4 (the pi lockfile floor — sandbox had 1.3.14, upgraded via npm);
+  `.env` from `.env.example` with the Agnes AI upstream; stack up (engine
+  `{"ok":true,"phase":"ready"}` :3030, bridge healthy :3031, upstream Agnes
+  200); `fd` 10.2.0 installed to `~/.local/bin` (the boot-time
+  `ensureTool("fd")` GitHub download stalled the first PTY boot — `rg` was
+  already present); baseline captured (4 stills + pane dumps, PASS); research
+  + journeys + this session doc written. Next: M1.
