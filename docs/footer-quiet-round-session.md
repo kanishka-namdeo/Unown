@@ -105,3 +105,49 @@ the chips yield to the panel.
   `ensureTool("fd")` GitHub download stalled the first PTY boot — `rg` was
   already present); baseline captured (4 stills + pane dumps, PASS); research
   + journeys + this session doc written. Next: M1.
+- **CP1 (M1 — the vendored quiet layout)**: `footer.ts` rewritten around a
+  classic/quiet split — quiet renders ONE merged status row
+  (`assembleMergedStatusLine`: location · meter · chips left, model right
+  with the existing degrade ladder; location ellipsizes, never drops) and an
+  attention row (`renderAttentionRow`: priority-desc/key-asc, whole-chip
+  admission, dim `+N` overflow counter, highest-priority-chip-ellipsized last
+  resort); `setStatus(key, text, {priority?})` added across
+  `types.ts`/`interactive-mode.ts`/`footer-data-provider.ts`
+  (`FooterStatusEntry`); the stats `$` chip is classic-only; the session name
+  is wide-tier-only in quiet. `UNOWN_FOOTER_CLASSIC=1` restores the exact
+  pre-round render path. pi-repo rebuilt (`build:offline`). Vendored footer
+  suites 43/43 (new quiet suite: one-row rest, tier merge, session/cost
+  placement, attention order, +N dropping, last resort, chrome widths at six
+  tiers, classic restore); full coding-agent suite 2162 pass / 27 fail — the
+  same 27 as pristine HEAD (model-registry network + find.ts fd flakes,
+  stash-verified), zero regressions. Pushed `4f8dd054`.
+- **CP2 (M2 — the quiet chip policy)**: `engineFooterAttention()` gates the
+  engine chip (healthy up paints nothing; down/blocked/paused/starting and
+  build-skew paint critical — `engineFooterText` unchanged for classic,
+  /engine and the pinned copy tests); conf and goal-active yield to the
+  mission panel via `missionPanelLive()` (both return when the panel is
+  killed — the signals never disappear); the turn meter deduplicated to
+  `turn Xs · ttft Ys · ~$Z` (classic keeps the full legacy format via the
+  env-aware pure core; a dedicated `cost` chip carries the number when
+  `UNOWN_TURN_METER=0`); mcp healthy is classic-only, failures/withheld paint
+  critical (refuse-first kept); lsp ready is classic-only, restarting paints
+  active / exhausted paints critical; `FOOTER_PRIORITY` wired on every chip
+  through the new third argument. New `src/footer-mode.ts` (the kill switch +
+  the priority ladder, pure). Full self-learning suite **5426 pass / 0 fail**
+  (baseline 5306/0 + the todo round's remote +10; one automations failure on
+  the first full run verified as a suite-parallelism flake — passes in
+  isolation on both trees). Pushed `9fd5de32`.
+- **CP3 (M3 — real-user verification)**:
+  `scripts/tui-capture/verify_footer_quiet.py` (PTY lane, pane-truth
+  discipline) drives the real TUI against the live stack — **9/9 checks
+  held**: A1 the merged status row (cwd+branch+meter+model on one line), A2
+  exactly two footer rows at rest, A3 ambient chips silent (no memory:/mcp:/
+  lsp: lines with a healthy engine), B1 the busy hint swap, B2 the turn chip
+  dedup (`turn 2.9s · ttft 2.9s` — no ctx/in/out/cached), C1/C2 a dead
+  engine URL paints `memory: down` on the attention row below the status row
+  above the hints (measured live: `starting…` at ~1 s, `down` at ~8 s — the
+  spawn-kick re-probe cadence), D1/D2 `UNOWN_FOOTER_CLASSIC=1` restores the
+  four-row layout with the ambient `memory: up` line. Stills + pane dumps:
+  quiet-idle / quiet-busy / quiet-after-turn / quiet-attention-down /
+  classic-idle (OUT_DIR). The before/after evidence pairs with the baseline
+  captures in `download/tui-bottom-redesign/before/`. Next: M4.
