@@ -1,0 +1,66 @@
+{
+ "bm": "bm6",
+ "seeded": true,
+ "questions": [
+  {
+   "question": "Q1 What can it do?",
+   "anchors": [
+    "Capability map",
+    "Session permission mode"
+   ],
+   "missingAnchors": [],
+   "covered": true
+  },
+  {
+   "question": "Q2 What is it allowed to do?",
+   "anchors": [
+    "Effective permission envelope",
+    "Trust manifest (this project)"
+   ],
+   "missingAnchors": [],
+   "covered": true
+  },
+  {
+   "question": "Q3 What does it remember?",
+   "anchors": [
+    "Memory stack (4 tiers)",
+    "Manual notes protection"
+   ],
+   "missingAnchors": [],
+   "covered": true
+  },
+  {
+   "question": "Q4 What has it learned?",
+   "anchors": [
+    "Learning feed",
+    "Dream review inbox",
+    "Staged skills inbox"
+   ],
+   "missingAnchors": [],
+   "covered": true
+  },
+  {
+   "question": "Q5 What could it change automatically?",
+   "anchors": [
+    "Routines",
+    "Stop a running routine (kill switch)"
+   ],
+   "missingAnchors": [],
+   "covered": true
+  },
+  {
+   "question": "Q6 How do I recover?",
+   "anchors": [
+    "Undo file changes",
+    "Roll back learned memory",
+    "Reset settings (scoped)"
+   ],
+   "missingAnchors": [],
+   "covered": true
+  }
+ ],
+ "summary": {
+  "covered": "6/6"
+ },
+ "writtenAt": "2026-10-31T10:30:40Z"
+}

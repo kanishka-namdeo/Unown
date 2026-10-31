@@ -1,0 +1,19 @@
+{
+ "q": "dark mode",
+ "targetId": "(pi selector: theme)",
+ "expectedAtBefore": "miss",
+ "topResults": [
+  "Automation \u2192 Default run mode",
+  "Models & Cost \u2192 Model spec verification",
+  "adv.spec-overrides \u2192 Spec & price overrides",
+  "Learning \u2192 Dream review inbox",
+  "Automation \u2192 Misfire policy",
+  "Safety \u2192 Strict hooks \u25cbHIGH",
+  "Agent \u2192 Worktree isolation",
+  "Agent \u2192 Active goal",
+  "Memory \u2192 Project identity",
+  "Learning \u2192 Staged skills inbox"
+ ],
+ "hit": false,
+ "rank": null
+}

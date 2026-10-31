@@ -1,0 +1,36 @@
+
+ Warning: memory engine blocked — the engine is not answering; run `unown engine status`; chat unaffected
+
+ Models & Cost → Thinking level  (action)
+   Reasoning effort for this session + per-model defaults
+ Automation → Run history & spend  (action)
+   Recent runs with turns, tokens and outcome — the cost view
+ Memory → Manual notes protection  (readonly)
+   The '## Manual notes' lane survives every AutoDream re-render
+ Memory → Project identity  (readonly)
+   How this project's memory is keyed (git remote / path)
+ rec → Reset settings (scoped)  (action, HIGH RISK)
+   Per-section reset to defaults — with an automatic backup first
+ Learning → Dream canary gate  (readonly, HIGH RISK)
+   Re-run passing tasks under new memory; auto-rollback on regression
+ Memory → Memory stack (4 tiers)  (action)
+   The effective policy → project → user → local stack, with staleness + budget
+ Tools & Integrations → Hook loop breaker (max depth)  (number)
+   Bound hook→agent→hook recursion before it runs away (default 3)
+ Learning → Dream review mode  (toggle)
+   Dreams land as pending diffs; apply only after your approval
+ Learning → Staged skills inbox  (action)
+   Minted skills awaiting YOUR promotion (they never auto-load)
+ rec → Undo file changes  (action)
+   Revert the last N turns' file changes (crash-safe, journaled)
+ Safety → Instruction-set write guard  (readonly, HIGH RISK)
+   In-session writes to AGENTS.md/skills/memory/hooks are DENIED
+
+ ○ no tracked steps · conf ✓ · 0m in session
+»───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+/tmp/settings-ux-bench/bm2-cwd
+ctx ▕░░░░░░░░░░▏ 0.0%/524k (auto)                                                                                agnes-3.0-flash
+memory: up · old build
+? help · ctrl+k palette · / commands · ! bash · ctrl+o tools · esc-esc tree

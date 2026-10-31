@@ -1,0 +1,19 @@
+{
+ "q": "theme",
+ "targetId": "(pi selector: theme)",
+ "expectedAtBefore": "miss",
+ "topResults": [
+  "Models & Cost \u2192 Default model",
+  "Agent \u2192 Session permission mode",
+  "adv.bridge \u2192 Bridge concurrency & upstream",
+  "Agent \u2192 Auto-verify after edits",
+  "obs.context \u2192 Context window",
+  "Memory \u2192 Edit / roll back memory",
+  "Memory \u2192 Manual notes protection",
+  "Agent \u2192 Output style",
+  "adv.compaction \u2192 Terminal compaction thresholds",
+  "obs.mission-panel \u2192 Mission panel"
+ ],
+ "hit": false,
+ "rank": null
+}

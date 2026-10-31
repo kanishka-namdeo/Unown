@@ -333,3 +333,24 @@ axes — are binding).
   harness) are reproduced in `delegation-round/validation-log.md`.
 - The after-run (checkpoint 5 of `docs/delegation-round-session.md`) re-scores
   the identical workload on the round's build with `--compare`.
+
+## The 2026-10-31 settings-ux round — the BEFORE baseline
+
+The Settings Evolution round's Phase-9 lane (M2): seven PTY-driven
+benchmarks (BM-1..BM-7) measuring first-configuration time, find-and-change
+success, search hit-rate, IA depth, recovery-path reachability, six-question
+coverage and the trust gates — scripted-driver methodology with pane-truth
+receipts (`settings-ux/README.md` is the contract; the honest limits are
+binding: machine timings compare BEFORE/AFTER, never human labs).
+
+- **BEFORE (v0.0.50, `settings-ux/RESULTS.md`)**: the round-1 hub holds its
+  core promises — BM-1 five-minute test **PASS** (5.7s, 5 steps), BM-2
+  **5/5** reachable changes (disk + ledger verified), BM-5 **5/5** recovery
+  paths, BM-6 **6/6** mission questions, BM-7 audit + typed-confirmation
+  gate green. The measured debts: **32 pi-selector rows unreachable from
+  the TUI** (S2-1, machine-counted; the setup wizard still tells users
+  `/settings` switches themes — false since the override), search hit-rate
+  **8/12** (the 4 misses are S2-1 ×2, S2-11, S2-4), settable coverage
+  **10/89 (11.2%)**, browse depth mean 9.6 Downs.
+- The AFTER run (M5) re-measures the identical pinned workload on the
+  round's build; the DELTA table lands in `settings-ux/RESULTS.md`.

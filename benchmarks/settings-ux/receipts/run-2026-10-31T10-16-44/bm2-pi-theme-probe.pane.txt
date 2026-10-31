@@ -1,0 +1,36 @@
+
+ Warning: memory engine blocked — the engine is not answering; run `unown engine status`; chat unaffected
+
+ Models & Cost → Default model  (readonly)
+   The effective model with its precedence chain
+ Agent → Session permission mode  (readonly)
+   The effective permission envelope for THIS session
+ adv → Bridge concurrency & upstream  (readonly)
+   The llm-bridge: spacing, concurrency cap, upstream timeouts
+ Agent → Auto-verify after edits  (readonly)
+   Run the project's check command after edits (aider-style loop)
+ obs → Context window  (action)
+   The utilization bar + where the window goes + compaction advice
+ Memory → Edit / roll back memory  (action)
+   The dashboard Memory screen: browse, edit, roll back versions
+ Memory → Manual notes protection  (readonly)
+   The '## Manual notes' lane survives every AutoDream re-render
+ Agent → Output style  (action)
+   The response format directive (built-ins + .unown/styles/*.md)
+ adv → Terminal compaction thresholds  (readonly)
+   The unown-layer auto-compact curve (85% trigger / 95% hard limit)
+ obs → Mission panel  (readonly)
+   The objective/progress/confidence panel (goal > /mission pin > auto-title)
+ Safety → Permissions layer  (readonly, HIGH RISK)
+   The granular permissions layer itself (deny-list + jail stay on regardless)
+ Agent → Todo widget lines  (number)
+   Max content rows the todo panel may use (3-64)
+
+ ○ no tracked steps · conf ✓ · 0m in session
+»───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+/tmp/settings-ux-bench/bm2-cwd
+ctx ▕░░░░░░░░░░▏ 0.0%/524k (auto)                                                                                agnes-3.0-flash
+memory: up · old build
+? help · ctrl+k palette · / commands · ! bash · ctrl+o tools · esc-esc tree

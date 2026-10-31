@@ -1,0 +1,35 @@
+✓ update available — no check yet — run `unown update --check`
+✓ user state schema — v1
+✓ agent dir — /tmp/settings-ux-bench/bm1-home/agent
+✓ model provider configured — zai-bridge · agnes-3.0-flash, agnes-2.5-flash
+✓ model specs verified — zai-bridge/agnes-3.0-flash: 524,288 ctx / 65,536 out (curated catalog)
+✓ project memory — ./.unown/memory/project.md
+✓ user memory — /tmp/settings-ux-bench/bm1-home/memory/user.md
+✓ model endpoint reachable — http://127.0.0.1:3031/v1 · serves agnes-3.0-flash, agnes-2.5-flash, agnes-video-2.5-flash, agnes-im
+age-2.1-flash … · 13 ms
+✓ bridge upstream key — BRIDGE_UPSTREAM_KEY set
+✓ bridge upstream health — 189 requests, 0 errors
+✓ OS sandbox (bubblewrap) — /home/z/my-project/Unown/pi-repo/packages/self-learning/native/bin/bwrap — fs+net isolation active
+✓ self-learning engine — 23 runs, 9 dreams
+⚠ engine version — engine is an older build (v0.0.50 vs agent v0.0.50) — unown engine restart
+⚠ LSP servers — none detected — LSP diagnostics inactive (optional; install a server or configure .unown/lsp.json)
+✓ MCP config — no servers configured (optional — unown mcp add)
+✓ unown state — 0 checkpoint(s), 0 B blobs · 2 receipt file(s) · 0 review(s)
+✓ permissions config — no permissions config — defaults active (docs/permissions.md)
+✓ web results store — 0 entries, 0 B, no lookups yet (saved 0 requests)
+✓ PATH shim — /home/z/.local/bin/unown
+
+Instruction-set audit:
+  • AGENTS.md:
+    · [info] no AGENTS.md found at the project root
+        → run `unown init` (or the `/init-agents` slash command) to generate one from repo forensics
+  ✓ Skills: clean
+  ✓ MCP config: clean
+  ✓ Hooks config: clean
+  ✓ Adversary mode: clean
+  ✓ Injection scanner: clean
+  ✓ Stale config: clean
+  ✓ Unicode integrity: clean
+✓ instruction-set audit — 1 info note(s) — run `unown doctor-instructions` for the full report
+
+✓ unown is ready to chat in /tmp/settings-ux-bench/bm1-cwd (⚠ items affect learning features only)

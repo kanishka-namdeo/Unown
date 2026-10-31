@@ -1,0 +1,36 @@
+preferences), .unown/memory/local.md (local overrides — highest precedence)
+
+── Skills ──
+  methodical-debugging, repo-exploration, unown-self-learning, verification-first
+
+── Extensions ──
+  <inline:6>
+
+── Themes ──
+  unown
+
+[Extension issues]
+  <inline:unown-tools>
+    Extension command '/settings' overrides a built-in interactive command. The extension version is dispatched and listed in
+autocomplete.
+  <inline:unown-tools>
+    Extension shortcut 'shift+tab' from <inline:unown-tools> conflicts with built-in shortcut. Skipping.
+
+
+ fd not found. Downloading...
+ Warning: Failed to download fd: GitHub API error: 403
+
+ Saved: Goal budget (turns) = 25
+
+ Warning: memory engine blocked — the engine is not answering; run `unown engine status`; chat unaffected
+
+ No settings matched.
+
+ ○ no tracked steps · conf ✓ · 0m in session
+»───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+/tmp/settings-ux-bench/bm2-cwd
+ctx ▕░░░░░░░░░░▏ 0.0%/524k (auto)                                                                                agnes-3.0-flash
+memory: up · old build
+? help · ctrl+k palette · / commands · ! bash · ctrl+o tools · esc-esc tree

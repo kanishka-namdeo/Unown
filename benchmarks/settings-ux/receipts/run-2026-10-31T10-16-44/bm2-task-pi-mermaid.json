@@ -1,0 +1,8 @@
+{
+ "task": "pi-mermaid",
+ "piRow": "mermaid-rendering",
+ "outcome": "unreachable-from-tui",
+ "searchRowHadResults": true,
+ "subcommandMentions": false,
+ "ms": 10096
+}

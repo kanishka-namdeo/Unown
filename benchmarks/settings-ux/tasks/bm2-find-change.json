@@ -1,0 +1,61 @@
+{
+  "$comment": "BM-2 find-and-change — the pinned task set. Reachable tasks: the scripted novice path is the hub's own advertised find surface (Search row → query → open hit → editor → change → save). Unreachable probes: pi-selector settings that the S2-1 ledger documents as unreachable from the TUI since the /settings override; the probe searches (hub Search row + /settings search subcommand) and records the miss with pane evidence, cross-checked against audit-registry.mjs's machine inventory. Values are pinned so BEFORE/AFTER runs are comparable; scratch UNOWN_HOME per run makes writes disposable.",
+  "reachable": [
+    {
+      "task": "goal-budget",
+      "query": "goal budget",
+      "itemId": "agent.goal-budget",
+      "kind": "number",
+      "newValue": 25,
+      "editorAnchor": "Goal budget (turns)",
+      "saveAnchor": "Saved: Goal budget (turns) = 25",
+      "diskCheck": { "file": "agent/settings-hub.json", "key": "goalBudgetTurns", "expect": 25 }
+    },
+    {
+      "task": "review-mode",
+      "query": "dream review",
+      "itemId": "learning.review-mode",
+      "kind": "toggle",
+      "editorAnchor": "Dream review mode",
+      "toggleLabel": ["Turn ON", "Turn OFF"],
+      "diskCheck": { "file": "agent/settings-hub.json", "key": "learningReviewMode", "expect": true }
+    },
+    {
+      "task": "hook-depth",
+      "query": "hook loop",
+      "itemId": "tools.hook-depth",
+      "kind": "number",
+      "newValue": 3,
+      "editorAnchor": "Hook loop breaker (max depth)",
+      "saveAnchor": "Saved: Hook loop breaker (max depth) = 3",
+      "diskCheck": { "file": "agent/settings-hub.json", "key": "hookMaxDepth", "expect": 3 }
+    },
+    {
+      "task": "todo-lines",
+      "query": "todo widget",
+      "itemId": "agent.addon-todo-lines",
+      "kind": "number",
+      "newValue": 6,
+      "editorAnchor": "Todo widget lines",
+      "saveAnchor": "Saved: Todo widget lines = 6",
+      "diskCheck": { "file": "agent/addons.json", "key": "todo.maxWidgetLines", "expect": 6 }
+    },
+    {
+      "task": "addon-advisor",
+      "query": "advisor",
+      "itemId": "agent.addon-advisor",
+      "kind": "toggle",
+      "editorAnchor": "advisor addon (second model)",
+      "toggleLabel": ["Turn ON", "Turn OFF"],
+      "diskCheck": { "file": "agent/addons.json", "key": "advisor.enabled", "expect": "flipped" }
+    }
+  ],
+  "unreachable_probes": [
+    { "task": "pi-theme", "query": "theme", "piRow": "theme", "expected": "unreachable-from-tui", "gapRef": "S2-1" },
+    { "task": "pi-steering", "query": "steering mode", "piRow": "steering-mode", "expected": "unreachable-from-tui", "gapRef": "S2-1" },
+    { "task": "pi-followup", "query": "follow-up mode", "piRow": "follow-up-mode", "expected": "unreachable-from-tui", "gapRef": "S2-1" },
+    { "task": "pi-hide-thinking", "query": "hide thinking", "piRow": "hide-thinking", "expected": "unreachable-from-tui", "gapRef": "S2-1" },
+    { "task": "pi-mermaid", "query": "mermaid diagrams", "piRow": "mermaid-rendering", "expected": "unreachable-from-tui", "gapRef": "S2-1" },
+    { "task": "pi-tree-filter", "query": "tree filter", "piRow": "tree-filter-mode", "expected": "unreachable-from-tui", "gapRef": "S2-1" }
+  ]
+}

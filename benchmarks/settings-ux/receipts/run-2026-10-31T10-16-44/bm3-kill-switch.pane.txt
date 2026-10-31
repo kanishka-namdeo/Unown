@@ -1,0 +1,36 @@
+
+── Extensions ──
+  <inline:6>
+
+── Themes ──
+  unown
+
+[Extension issues]
+  <inline:unown-tools>
+    Extension command '/settings' overrides a built-in interactive command. The extension version is dispatched and listed in
+autocomplete.
+  <inline:unown-tools>
+    Extension shortcut 'shift+tab' from <inline:unown-tools> conflicts with built-in shortcut. Skipping.
+
+
+ ○ no tracked steps · conf ✓ · 0m in session
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+
+ Search: "kill switch" (7 hits)
+
+ → Automation → Stop a running routine (kill switch) ○HIGH
+   Learning → Staged skills inbox
+   Safety → Default project trust ○HIGH
+   Memory → Project identity
+   Safety → Trust manifest (this project) ○HIGH
+   adv.spec-overrides → Spec & price overrides
+   Safety → Strict hooks ○HIGH
+   Back
+
+  ↑↓ navigate · Enter to select · Esc to cancel
+
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+/tmp/settings-ux-bench/bm3-cwd
+ctx ▕░░░░░░░░░░▏ 0.0%/524k (auto)                                                                                agnes-3.0-flash
+memory: up · old build
+? help · ctrl+k palette · / commands · ! bash · ctrl+o tools · esc-esc tree

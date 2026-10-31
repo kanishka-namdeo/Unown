@@ -1,0 +1,80 @@
+{
+ "ranAt": "2026-10-31T10:30:47.165Z",
+ "registryCount": 89,
+ "registryIntegrity": {
+  "ok": true,
+  "errors": []
+ },
+ "riskCounts": {
+  "low": 32,
+  "med": 33,
+  "high": 24
+ },
+ "settable": [
+  "agent.goal-budget",
+  "agent.autocompact",
+  "agent.quiet-startup",
+  "agent.addon-ask",
+  "agent.addon-todo",
+  "agent.addon-todo-lines",
+  "agent.addon-advisor",
+  "learning.review-mode",
+  "safety.default-project-trust",
+  "tools.hook-depth"
+ ],
+ "fieldGaps": [],
+ "persistenceNotNamedCount": 77,
+ "settableWithoutPersistence": [],
+ "piSelector": {
+  "rowsFound": 37,
+  "settingsRows": 35,
+  "dialogChromeExcluded": [
+   "apply",
+   "single-mode"
+  ],
+  "hubMirrored": [
+   "autocompact",
+   "quiet-startup",
+   "default-project-trust"
+  ],
+  "unreachableCount": 32,
+  "unreachableRows": [
+   "anthropic-extra-usage",
+   "light-theme",
+   "dark-theme",
+   "steering-mode",
+   "follow-up-mode",
+   "transport",
+   "http-idle-timeout",
+   "hide-thinking",
+   "mermaid-rendering",
+   "cache-miss-notices",
+   "collapse-changelog",
+   "install-telemetry",
+   "double-escape-action",
+   "tree-filter-mode",
+   "warnings",
+   "model-thinking",
+   "tui-mode",
+   "fullscreen-exit-output",
+   "fullscreen-scrollbar",
+   "fullscreen-copy-on-select",
+   "theme",
+   "show-images",
+   "image-width-cells",
+   "auto-resize-images",
+   "block-images",
+   "skill-commands",
+   "show-hardware-cursor",
+   "editor-padding",
+   "output-padding",
+   "autocomplete-max-visible",
+   "clear-on-shrink",
+   "terminal-progress"
+  ]
+ },
+ "coverage": {
+  "settableOverTotal": 0.11235955056179775,
+  "hubReachablePlusPi": 0.23809523809523808
+ }
+}

@@ -1,0 +1,36 @@
+
+ Warning: memory engine blocked — the engine is not answering; run `unown engine status`; chat unaffected
+
+ Safety → Permissions layer  (readonly, HIGH RISK)
+   The granular permissions layer itself (deny-list + jail stay on regardless)
+ Tools & Integrations → Browser lane  (readonly)
+   Headless browser: stealth tier, captcha, profile persistence
+ Tools & Integrations → Web search & fetch  (readonly)
+   Providers, timeouts, cache (webcache) — and the SSRF guard
+ rec → Undo file changes  (action)
+   Revert the last N turns' file changes (crash-safe, journaled)
+ rec → Recovery triage  (action)
+   What needs attention: tool errors, verify failures, engine, dead letters
+ Learning → Canary sample size  (readonly)
+   How many recent passing tasks the dream canary re-runs (K=3)
+ rec → Roll back learned memory  (action)
+   Version rollback for any dream-applied memory tier
+ Tools & Integrations → Subagents  (action)
+   The catalog: built-ins + .unown/agents/*.md
+ Safety → Extra writable directories  (action, HIGH RISK)
+   Grant the session a write root beyond the project (--add-dir)
+ Tools & Integrations → MCP servers  (action, HIGH RISK)
+   Status, reconnect, trust, elicitation per server
+ Safety → Project-config trust bypass  (readonly, HIGH RISK)
+   UNOWN_TRUST_PROJECT_CONFIG=1 skips the trust gate for cloned configs
+ Automation → Routines  (action)
+   Every routine with its schedule, state and last run
+
+ ○ no tracked steps · conf ✓ · 0m in session
+»───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+/tmp/settings-ux-bench/bm2-cwd
+ctx ▕░░░░░░░░░░▏ 0.0%/524k (auto)                                                                                agnes-3.0-flash
+memory: up · old build
+? help · ctrl+k palette · / commands · ! bash · ctrl+o tools · esc-esc tree

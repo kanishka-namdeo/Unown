@@ -1,0 +1,227 @@
+{
+ "generatedAt": "2026-10-31T10:31:54Z",
+ "bm": {
+  "bm1": {
+   "success": true,
+   "totalMs": 5715,
+   "underFiveMinutes": true,
+   "steps": 5,
+   "wizardThemeStepClaimsSettingsSwitchesTheme": true
+  },
+  "bm2": {
+   "reachableSuccess": "5/5",
+   "unreachableConfirmed": 6,
+   "unreachableTotal": 6,
+   "meanReachableMs": 5867.2,
+   "reachableDetail": [
+    {
+     "task": "goal-budget",
+     "outcome": "changed",
+     "success": true,
+     "diskOk": true,
+     "ledgerOk": true,
+     "ms": 6207
+    },
+    {
+     "task": "review-mode",
+     "outcome": "changed",
+     "success": true,
+     "diskOk": true,
+     "ledgerOk": true,
+     "ms": 5354
+    },
+    {
+     "task": "hook-depth",
+     "outcome": "changed",
+     "success": true,
+     "diskOk": true,
+     "ledgerOk": true,
+     "ms": 6208
+    },
+    {
+     "task": "todo-lines",
+     "outcome": "changed",
+     "success": true,
+     "diskOk": true,
+     "ledgerOk": true,
+     "ms": 6208
+    },
+    {
+     "task": "addon-advisor",
+     "outcome": "changed",
+     "success": true,
+     "diskOk": true,
+     "ledgerOk": true,
+     "ms": 5359
+    }
+   ],
+   "probeDetail": [
+    {
+     "task": "pi-theme",
+     "outcome": "unreachable-from-tui"
+    },
+    {
+     "task": "pi-steering",
+     "outcome": "unreachable-from-tui"
+    },
+    {
+     "task": "pi-followup",
+     "outcome": "unreachable-from-tui"
+    },
+    {
+     "task": "pi-hide-thinking",
+     "outcome": "unreachable-from-tui"
+    },
+    {
+     "task": "pi-mermaid",
+     "outcome": "unreachable-from-tui"
+    },
+    {
+     "task": "pi-tree-filter",
+     "outcome": "unreachable-from-tui"
+    }
+   ]
+  },
+  "bm3": {
+   "hitRate": "8/12",
+   "hitRatePct": 66.7,
+   "expectedHitsMade": "8/8",
+   "detail": [
+    {
+     "q": "budget",
+     "hit": true,
+     "rank": 2,
+     "expectedAtBefore": "hit"
+    },
+    {
+     "q": "kill switch",
+     "hit": true,
+     "rank": 1,
+     "expectedAtBefore": "hit"
+    },
+    {
+     "q": "undo",
+     "hit": true,
+     "rank": 1,
+     "expectedAtBefore": "hit"
+    },
+    {
+     "q": "rollback",
+     "hit": true,
+     "rank": 1,
+     "expectedAtBefore": "hit"
+    },
+    {
+     "q": "permissions",
+     "hit": true,
+     "rank": 2,
+     "expectedAtBefore": "hit"
+    },
+    {
+     "q": "hook",
+     "hit": true,
+     "rank": 2,
+     "expectedAtBefore": "hit"
+    },
+    {
+     "q": "dream",
+     "hit": true,
+     "rank": 3,
+     "expectedAtBefore": "hit"
+    },
+    {
+     "q": "cost",
+     "hit": true,
+     "rank": 1,
+     "expectedAtBefore": "hit"
+    },
+    {
+     "q": "theme",
+     "hit": false,
+     "rank": null,
+     "expectedAtBefore": "miss"
+    },
+    {
+     "q": "dark mode",
+     "hit": false,
+     "rank": null,
+     "expectedAtBefore": "miss"
+    },
+    {
+     "q": "spend",
+     "hit": false,
+     "rank": null,
+     "expectedAtBefore": "miss"
+    },
+    {
+     "q": "memory health",
+     "hit": false,
+     "rank": null,
+     "expectedAtBefore": "miss"
+    }
+   ]
+  },
+  "bm4": {
+   "reached": "10/10",
+   "meanDowns": 9.6,
+   "maxDowns": 13,
+   "registryCoverage": {
+    "settableOverTotal": 0.11235955056179775,
+    "piUnreachable": 32
+   }
+  },
+  "bm5": {
+   "okPaths": "5/5"
+  },
+  "bm6": {
+   "covered": "6/6",
+   "detail": [
+    {
+     "question": "Q1 What can it do?",
+     "covered": true,
+     "missingAnchors": []
+    },
+    {
+     "question": "Q2 What is it allowed to do?",
+     "covered": true,
+     "missingAnchors": []
+    },
+    {
+     "question": "Q3 What does it remember?",
+     "covered": true,
+     "missingAnchors": []
+    },
+    {
+     "question": "Q4 What has it learned?",
+     "covered": true,
+     "missingAnchors": []
+    },
+    {
+     "question": "Q5 What could it change automatically?",
+     "covered": true,
+     "missingAnchors": []
+    },
+    {
+     "question": "Q6 How do I recover?",
+     "covered": true,
+     "missingAnchors": []
+    }
+   ]
+  },
+  "bm7": {
+   "auditOk": true,
+   "gateFullCycle": true,
+   "auditHeadline": {
+    "items": 89,
+    "risk": {
+     "low": 32,
+     "med": 33,
+     "high": 24
+    },
+    "settable": 10,
+    "piUnreachable": 32
+   }
+  }
+ },
+ "writtenAt": "2026-10-31T10:31:54Z"
+}

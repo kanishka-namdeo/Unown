@@ -155,11 +155,46 @@ entry without compression). Lessons: derive anchors from the checker;
 regenerate the rail in the SAME commit as any CHANGELOG edit; provision the
 audit environment before claiming a number.
 
-### The plan (M2 → M8)
+### M2 — the settings-ux benchmark suite + the BEFORE baseline (DONE 2026-10-31)
 
-- **M2** — build `benchmarks/settings-ux/`: the BM-1..BM-7 task set, a pinned
-  runner, BEFORE receipts on the current tree (the S2-1 regression measured,
-  not asserted). Register in `benchmarks/RESULTS.md` + `benchmarks/AGENTS.md`.
+`benchmarks/settings-ux/` now exists: `README.md` (the methodology contract —
+scripted-driver honesty clause, lane table, anti-tamper rules),
+`run-settings-ux-bench.py` (the pinned PTY runner, BM-1..BM-7, task-level
+resume receipts), `audit-registry.mjs` (the registry audit through the real
+vendored module + the pi-selector cross-check), `tasks/` (the pinned
+workload: 11 find-and-change tasks, 12 search queries, the depth sample +
+the six-question map), `RESULTS.md` (the BEFORE table + AFTER targets) and
+`receipts/run-2026-10-31T10-16-44/` (the baseline: 7 lane receipts + 23
+task/query receipts + pane exhibits + summary.json). Registered in
+`benchmarks/RESULTS.md` + `benchmarks/AGENTS.md`.
+
+**The BEFORE baseline (all receipts committed):** BM-1 five-minute test
+**PASS** (5.7s, 5 steps; the wizard still claims `/settings` switches themes
+— S2-1's most user-visible symptom, exhibit `bm1-wizard-theme.pane.txt`);
+BM-2 **5/5 reachable** (disk+ledger verified, mean 5.9s) + **6/6 probes
+unreachable** (S2-1 measured); BM-3 **8/12** search hit-rate (8/8 catalogued
+targets hit; the misses are S2-1 ×2, S2-11 spend, S2-4 memory-health);
+BM-4 **10/10** browse-reachable, mean 9.6 Downs, settable coverage **10/89
+(11.2%)**, **32 pi rows unreachable** (machine count — the audit corroborates
+the S2 ledger's hand count exactly); BM-5 **5/5** recovery paths; BM-6 **6/6**
+six questions; BM-7 audit ok (89 items, 24 high, 0 field gaps) + the
+typed-confirmation gate full cycle (wrong phrase cancels, nothing written;
+"yes" writes + ledger).
+
+**The suite caught its own author twice (the receipts keep the evidence):**
+(1) the toggle-marker bug — the editor's selected row renders `→ Turn ON`,
+so `startswith("Turn ON")` never matched (40 Downs, honest failures, fix
+by substring match); (2) the no-op drift — BM-5's diff probe first set
+hook-depth to 3, which IS the default (`DEFAULT_HUB_PREFS.hookMaxDepth`),
+so the diff correctly said "no settings differ" (the task now sets 5).
+
+**Environment lesson (recorded for this sandbox):** background processes
+are killed at tool-call end even under `setsid nohup` — long lanes must run
+inside one foreground call; the runner's per-task resume receipts make that
+safe (a killed lane loses only its in-flight task).
+
+### The plan (M3 → M8)
+
 - **M3** — S2-1 (the Interface group, or the escape hatch — decided by
   measurement) + S2-20 + S2-21.
 - **M4** — the trust batch: S2-3, S2-7, S2-8, S2-9, S2-13, S2-19 (as capacity
@@ -173,10 +208,14 @@ audit environment before claiming a number.
 
 ## Resume-from-here
 
-Round 2, M1 done, all M1 files committed. Next: **M2 — build
-`benchmarks/settings-ux/` and capture the BEFORE receipts on the current
-tree.** Do not start M3 before the baseline exists: every improvement claim
-this round must cite a receipt (drift register #3 is the cautionary tale).
+Round 2, M2 done (the baseline exists — every improvement claim can now
+cite a receipt). Next: **M3 — S2-1: the Interface group for the 32
+unreachable pi rows (or the escape hatch — decided by measurement), plus
+S2-20 (dead scaffolding) and S2-21 (health-view consistency).** The M3
+acceptance gates are already pinned: BM-2's six probes flip to reachable,
+BM-3's theme/dark-mode queries hit, the wizard's theme-step claim becomes
+true, and BM-2/5/6/7 stay green (no regression). AFTER targets live in
+`benchmarks/settings-ux/RESULTS.md`.
 
 ## Environment notes for a resuming session
 

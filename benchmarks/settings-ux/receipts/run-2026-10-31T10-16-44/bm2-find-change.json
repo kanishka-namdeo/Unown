@@ -1,0 +1,148 @@
+{
+ "bm": "bm2",
+ "seeded": true,
+ "reachable": [
+  {
+   "task": "goal-budget",
+   "itemId": "agent.goal-budget",
+   "outcome": "changed",
+   "valueAfter": 25,
+   "diskOk": true,
+   "ledgerOk": true,
+   "success": true,
+   "ms": 6207,
+   "input": {
+    "downs": 0,
+    "enters": 5,
+    "escs": 0,
+    "typed": 26,
+    "prompts": 1
+   }
+  },
+  {
+   "task": "review-mode",
+   "itemId": "learning.review-mode",
+   "outcome": "changed",
+   "valueAfter": true,
+   "diskOk": true,
+   "ledgerOk": true,
+   "success": true,
+   "ms": 5354,
+   "input": {
+    "downs": 0,
+    "enters": 4,
+    "escs": 0,
+    "typed": 24,
+    "prompts": 1
+   }
+  },
+  {
+   "task": "hook-depth",
+   "itemId": "tools.hook-depth",
+   "outcome": "changed",
+   "valueAfter": 3,
+   "diskOk": true,
+   "ledgerOk": true,
+   "success": true,
+   "ms": 6208,
+   "input": {
+    "downs": 0,
+    "enters": 5,
+    "escs": 0,
+    "typed": 23,
+    "prompts": 1
+   }
+  },
+  {
+   "task": "todo-lines",
+   "itemId": "agent.addon-todo-lines",
+   "outcome": "changed",
+   "valueAfter": 6,
+   "diskOk": true,
+   "ledgerOk": true,
+   "success": true,
+   "ms": 6208,
+   "input": {
+    "downs": 0,
+    "enters": 5,
+    "escs": 0,
+    "typed": 25,
+    "prompts": 1
+   }
+  },
+  {
+   "task": "addon-advisor",
+   "itemId": "agent.addon-advisor",
+   "outcome": "changed",
+   "valueAfter": true,
+   "diskOk": true,
+   "ledgerOk": true,
+   "success": true,
+   "ms": 5359,
+   "input": {
+    "downs": 0,
+    "enters": 4,
+    "escs": 0,
+    "typed": 19,
+    "prompts": 1
+   }
+  }
+ ],
+ "unreachableProbes": [
+  {
+   "task": "pi-theme",
+   "piRow": "theme",
+   "outcome": "unreachable-from-tui",
+   "searchRowHadResults": true,
+   "subcommandMentions": false,
+   "ms": 9363
+  },
+  {
+   "task": "pi-steering",
+   "piRow": "steering-mode",
+   "outcome": "unreachable-from-tui",
+   "searchRowHadResults": true,
+   "subcommandMentions": true,
+   "ms": 9893
+  },
+  {
+   "task": "pi-followup",
+   "piRow": "follow-up-mode",
+   "outcome": "unreachable-from-tui",
+   "searchRowHadResults": false,
+   "subcommandMentions": false,
+   "ms": 9259
+  },
+  {
+   "task": "pi-hide-thinking",
+   "piRow": "hide-thinking",
+   "outcome": "unreachable-from-tui",
+   "searchRowHadResults": false,
+   "subcommandMentions": false,
+   "ms": 9893
+  },
+  {
+   "task": "pi-mermaid",
+   "piRow": "mermaid-rendering",
+   "outcome": "unreachable-from-tui",
+   "searchRowHadResults": true,
+   "subcommandMentions": false,
+   "ms": 10096
+  },
+  {
+   "task": "pi-tree-filter",
+   "piRow": "tree-filter-mode",
+   "outcome": "unreachable-from-tui",
+   "searchRowHadResults": true,
+   "subcommandMentions": true,
+   "ms": 9760
+  }
+ ],
+ "summary": {
+  "reachableSuccess": "5/5",
+  "unreachableConfirmed": 6,
+  "unreachableTotal": 6,
+  "meanReachableMs": 5867.2
+ },
+ "writtenAt": "2026-10-31T10:31:15Z"
+}

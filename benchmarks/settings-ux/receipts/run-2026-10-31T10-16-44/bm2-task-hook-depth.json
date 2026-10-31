@@ -1,0 +1,17 @@
+{
+ "task": "hook-depth",
+ "itemId": "tools.hook-depth",
+ "outcome": "changed",
+ "valueAfter": 3,
+ "diskOk": true,
+ "ledgerOk": true,
+ "success": true,
+ "ms": 6208,
+ "input": {
+  "downs": 0,
+  "enters": 5,
+  "escs": 0,
+  "typed": 23,
+  "prompts": 1
+ }
+}

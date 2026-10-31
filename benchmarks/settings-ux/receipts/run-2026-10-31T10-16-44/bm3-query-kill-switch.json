@@ -1,0 +1,16 @@
+{
+ "q": "kill switch",
+ "targetId": "automation.stop",
+ "expectedAtBefore": "hit",
+ "topResults": [
+  "Automation \u2192 Stop a running routine (kill switch) \u25cbHIGH",
+  "Learning \u2192 Staged skills inbox",
+  "Safety \u2192 Default project trust \u25cbHIGH",
+  "Memory \u2192 Project identity",
+  "Safety \u2192 Trust manifest (this project) \u25cbHIGH",
+  "adv.spec-overrides \u2192 Spec & price overrides",
+  "Safety \u2192 Strict hooks \u25cbHIGH"
+ ],
+ "hit": true,
+ "rank": 1
+}

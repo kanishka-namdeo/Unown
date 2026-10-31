@@ -1,0 +1,17 @@
+{
+ "task": "todo-lines",
+ "itemId": "agent.addon-todo-lines",
+ "outcome": "changed",
+ "valueAfter": 6,
+ "diskOk": true,
+ "ledgerOk": true,
+ "success": true,
+ "ms": 6208,
+ "input": {
+  "downs": 0,
+  "enters": 5,
+  "escs": 0,
+  "typed": 25,
+  "prompts": 1
+ }
+}

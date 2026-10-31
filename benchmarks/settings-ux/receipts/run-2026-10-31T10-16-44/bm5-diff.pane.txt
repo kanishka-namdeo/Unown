@@ -1,0 +1,36 @@
+
+
+── Context ──
+  memory/how-to-use.md (guide: how to read the memory tiers), memory/tier0-policy.md (enterprise policy — highest authority),
+.unown/memory/project.md (project memory — provenance in the injected header), memory/tier2-user.md (user memory — global
+preferences), .unown/memory/local.md (local overrides — highest precedence)
+
+── Skills ──
+  methodical-debugging, repo-exploration, unown-self-learning, verification-first
+
+── Extensions ──
+  <inline:6>
+
+── Themes ──
+  unown
+
+[Extension issues]
+  <inline:unown-tools>
+    Extension command '/settings' overrides a built-in interactive command. The extension version is dispatched and listed in
+autocomplete.
+  <inline:unown-tools>
+    Extension shortcut 'shift+tab' from <inline:unown-tools> conflicts with built-in shortcut. Skipping.
+
+
+ unown settings — diff vs defaults
+ ────────────────────────────────────────────────────────────────
+ tools → Hook loop breaker (max depth): 5  (default: 3)
+
+ ○ no tracked steps · conf ✓ · 0m in session
+»───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+/tmp/settings-ux-bench/bm5-cwd
+ctx ▕░░░░░░░░░░▏ 0.0%/524k (auto)                                                                                agnes-3.0-flash
+memory: up · old build
+? help · ctrl+k palette · / commands · ! bash · ctrl+o tools · esc-esc tree

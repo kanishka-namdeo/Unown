@@ -1,0 +1,17 @@
+{
+  "$comment": "BM-3 search success — 12 pinned queries. targetId = the item a user looking for this thing needs (the intent target, not any fuzzy false-positive). hit = target appears among the TOP-3 rendered results of the hub Search row (a user scans the first rows; the list renders up to 10). expectedAtBefore documents the honest BEFORE state: 'hit' for the 8 catalogued targets, 'miss' for the 4 known gaps (2× S2-1 pi rows, S2-11 spend meter, S2-4 memory health card) — AFTER runs should flip the misses to hits as M3/M4 land, and the receipt records whatever actually happens.",
+  "queries": [
+    { "q": "budget", "targetId": "agent.goal-budget", "targetLabel": "Goal budget (turns)", "expectedAtBefore": "hit" },
+    { "q": "kill switch", "targetId": "automation.stop", "targetLabel": "Stop a running routine (kill switch)", "expectedAtBefore": "hit" },
+    { "q": "undo", "targetId": "rec.undo", "targetLabel": "Undo file changes", "expectedAtBefore": "hit" },
+    { "q": "rollback", "targetId": "rec.dream-rollback", "targetLabel": "Roll back learned memory", "expectedAtBefore": "hit" },
+    { "q": "permissions", "targetId": "safety.permissions", "targetLabel": "Permission rules", "expectedAtBefore": "hit" },
+    { "q": "hook", "targetId": "tools.hook-depth", "targetLabel": "Hook loop breaker (max depth)", "expectedAtBefore": "hit" },
+    { "q": "dream", "targetId": "learning.pending-dreams", "targetLabel": "Dream review inbox", "expectedAtBefore": "hit" },
+    { "q": "cost", "targetId": "models.usage", "targetLabel": "Usage & cost", "expectedAtBefore": "hit" },
+    { "q": "theme", "targetId": "(pi selector: theme)", "targetLabel": "theme", "expectedAtBefore": "miss", "gapRef": "S2-1" },
+    { "q": "dark mode", "targetId": "(pi selector: theme)", "targetLabel": "theme", "expectedAtBefore": "miss", "gapRef": "S2-1" },
+    { "q": "spend", "targetId": "(missing: automation spend meter)", "targetLabel": "spend meter", "expectedAtBefore": "miss", "gapRef": "S2-11" },
+    { "q": "memory health", "targetId": "(missing: memory health card)", "targetLabel": "memory health", "expectedAtBefore": "miss", "gapRef": "S2-4" }
+  ]
+}

@@ -1,0 +1,8 @@
+{
+ "task": "pi-followup",
+ "piRow": "follow-up-mode",
+ "outcome": "unreachable-from-tui",
+ "searchRowHadResults": false,
+ "subcommandMentions": false,
+ "ms": 9259
+}

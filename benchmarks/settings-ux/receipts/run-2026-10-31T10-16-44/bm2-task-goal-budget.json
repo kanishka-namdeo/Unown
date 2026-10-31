@@ -1,0 +1,17 @@
+{
+ "task": "goal-budget",
+ "itemId": "agent.goal-budget",
+ "outcome": "changed",
+ "valueAfter": 25,
+ "diskOk": true,
+ "ledgerOk": true,
+ "success": true,
+ "ms": 6207,
+ "input": {
+  "downs": 0,
+  "enters": 5,
+  "escs": 0,
+  "typed": 26,
+  "prompts": 1
+ }
+}

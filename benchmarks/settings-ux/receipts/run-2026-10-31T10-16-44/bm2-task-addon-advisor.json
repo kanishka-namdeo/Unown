@@ -1,0 +1,17 @@
+{
+ "task": "addon-advisor",
+ "itemId": "agent.addon-advisor",
+ "outcome": "changed",
+ "valueAfter": true,
+ "diskOk": true,
+ "ledgerOk": true,
+ "success": true,
+ "ms": 5359,
+ "input": {
+  "downs": 0,
+  "enters": 4,
+  "escs": 0,
+  "typed": 19,
+  "prompts": 1
+ }
+}

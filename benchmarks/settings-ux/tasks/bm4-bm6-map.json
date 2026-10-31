@@ -1,0 +1,47 @@
+{
+  "$comment": "BM-4 depth-to-setting + BM-6 six-questions coverage. bm4_sample: one registry row per section — the browse-only depth (Down-arrow count from the hub root to the item editor) that measures the IA's mechanical depth (NN/g progressive-disclosure metric; advanced items are expected deeper than one level). bm6_map: the six mission questions, each mapped to the surface(s) that must answer it from /settings alone, with pane anchors pinned to the registry's own row names — a question is COVERED only if every anchor renders on the reached surface (pane truth).",
+  "bm4_sample": [
+    { "itemId": "agent.goal-budget", "section": "Agent", "rowLabel": "Goal budget (turns)" },
+    { "itemId": "memory.stack", "section": "Memory", "rowLabel": "Memory stack (4 tiers)" },
+    { "itemId": "learning.review-mode", "section": "Learning", "rowLabel": "Dream review mode" },
+    { "itemId": "automation.stop", "section": "Automation", "rowLabel": "Stop a running routine (kill switch)" },
+    { "itemId": "safety.envelope", "section": "Safety", "rowLabel": "Effective permission envelope" },
+    { "itemId": "models.usage", "section": "Models & Cost", "rowLabel": "Usage & cost" },
+    { "itemId": "tools.hook-depth", "section": "Tools & Integrations", "rowLabel": "Hook loop breaker (max depth)" },
+    { "itemId": "obs.status", "section": "Observability", "rowLabel": "Status card" },
+    { "itemId": "rec.undo", "section": "Recovery", "rowLabel": "Undo file changes" },
+    { "itemId": "adv.env-browser", "section": "Advanced", "rowLabel": "Environment variable browser" }
+  ],
+  "bm6_map": [
+    {
+      "question": "Q1 What can it do?",
+      "path": ["Agent"],
+      "anchors": ["Capability map", "Session permission mode"]
+    },
+    {
+      "question": "Q2 What is it allowed to do?",
+      "path": ["Safety"],
+      "anchors": ["Effective permission envelope", "Trust manifest (this project)"]
+    },
+    {
+      "question": "Q3 What does it remember?",
+      "path": ["Memory"],
+      "anchors": ["Memory stack (4 tiers)", "Manual notes protection"]
+    },
+    {
+      "question": "Q4 What has it learned?",
+      "path": ["Learning"],
+      "anchors": ["Learning feed", "Dream review inbox", "Staged skills inbox"]
+    },
+    {
+      "question": "Q5 What could it change automatically?",
+      "path": ["Automation"],
+      "anchors": ["Routines", "Stop a running routine (kill switch)"]
+    },
+    {
+      "question": "Q6 How do I recover?",
+      "path": ["Recovery"],
+      "anchors": ["Undo file changes", "Roll back learned memory", "Reset settings (scoped)"]
+    }
+  ]
+}

@@ -1,0 +1,30 @@
+{
+ "bm": "bm1",
+ "home": "/tmp/settings-ux-bench/bm1-home",
+ "phases": [
+  {
+   "phase": "wizard",
+   "ms": 2630,
+   "steps": 3,
+   "ok": true
+  },
+  {
+   "phase": "doctor",
+   "ms": 937,
+   "steps": 1,
+   "ok": true
+  },
+  {
+   "phase": "first-reply",
+   "ms": 2047,
+   "steps": 1,
+   "ok": true
+  }
+ ],
+ "success": true,
+ "wizardThemeStepClaimsSettingsSwitchesTheme": true,
+ "totalMs": 5715,
+ "underFiveMinutes": true,
+ "stepsTotal": 5,
+ "writtenAt": "2026-10-31T10:31:08Z"
+}

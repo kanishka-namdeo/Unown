@@ -1,0 +1,19 @@
+{
+ "q": "hook",
+ "targetId": "tools.hook-depth",
+ "expectedAtBefore": "hit",
+ "topResults": [
+  "Tools & Integrations \u2192 Hooks \u25cbHIGH",
+  "Tools & Integrations \u2192 Hook loop breaker (max depth)",
+  "Safety \u2192 Strict hooks \u25cbHIGH",
+  "Safety \u2192 Instruction-set write guard \u25cbHIGH",
+  "obs.turn-meter \u2192 Turn meter",
+  "Memory \u2192 Project identity",
+  "Models & Cost \u2192 Usage & cost",
+  "adv.engine-network \u2192 Engine network exposure \u25cbHIGH",
+  "Models & Cost \u2192 Governor ceilings (engine jobs) \u25cbHIGH",
+  "Safety \u2192 Default project trust \u25cbHIGH"
+ ],
+ "hit": true,
+ "rank": 2
+}
