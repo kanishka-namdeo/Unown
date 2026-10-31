@@ -516,17 +516,24 @@ export interface KeyRouterRuntime {
 	collapseKey: string;
 }
 
-/** Detect raw Tab / Shift+Tab / ← / → presses. */
+/** Detect Tab / Shift+Tab / ← / → presses. Routed through the shared key
+ * matcher (never raw bytes) so every encoding of the same logical key works:
+ * CSI arrows (\x1b[D/\x1b[C), SS3 arrows in DECCKM application-cursor mode
+ * (\x1bOD/\x1bOC), Kitty CSI-u and xterm modifyOtherKeys forms, and plain
+ * \t / \x1b[Z. The pre-fix raw table listed \x1bOC in BOTH the left and the
+ * right branch (first match won → SS3 Right moved tabs backward) and never
+ * listed \x1bOD at all. */
 export function tabSwitchAction(
 	data: string,
 	_state: QuestionnaireState,
 	params: QuestionParams,
+	matches: (data: string, keyId: string) => boolean,
 ): QuestionnaireAction | undefined {
 	if (params.questions.length <= 1) return undefined;
-	if (data === "\t") return { kind: "tab_switch", delta: 1 };
-	if (data === "\x1b[Z") return { kind: "tab_switch", delta: -1 };
-	if (data === "\x1b[D" || data === "\x1bOC") return { kind: "tab_switch", delta: -1 };
-	if (data === "\x1b[C" || data === "\x1bOC") return { kind: "tab_switch", delta: 1 };
+	if (matches(data, "tab")) return { kind: "tab_switch", delta: 1 };
+	if (matches(data, "shift+tab")) return { kind: "tab_switch", delta: -1 };
+	if (matches(data, "left")) return { kind: "tab_switch", delta: -1 };
+	if (matches(data, "right")) return { kind: "tab_switch", delta: 1 };
 	return undefined;
 }
 
@@ -573,7 +580,7 @@ export function routeQuestionnaireKey(
 	// 5. Submit tab.
 	if (onSubmitTab) {
 		if (matches(data, "escape") || matches(data, "esc")) return { kind: "cancel" };
-		const tab = tabSwitchAction(data, state, params);
+		const tab = tabSwitchAction(data, state, params, matches);
 		if (tab) return tab;
 		if (matches(data, "up")) return { kind: "submit_nav", direction: -1 };
 		if (matches(data, "down")) return { kind: "submit_nav", direction: 1 };
@@ -584,7 +591,7 @@ export function routeQuestionnaireKey(
 		return { kind: "ignore" };
 	}
 	// 6. Tab switch keys (multi-question only).
-	const tab = tabSwitchAction(data, state, params);
+	const tab = tabSwitchAction(data, state, params, matches);
 	if (tab) return tab;
 	// 7. Universal 'n' → notes.
 	if (data === "n") return { kind: "notes_enter" };

@@ -7,6 +7,7 @@
 // headlessly. The interactive dialog is exercised by the TUI-capture
 // scenarios (scripts/tui-capture/) instead.
 import { describe, expect, test } from "bun:test";
+import { matchesKey } from "@earendil-works/pi-tui";
 import {
 	assembleQuestionnaireResult,
 	buildQuestionnaireResponse,
@@ -158,7 +159,9 @@ const singleQuestion: QuestionParams = {
 	],
 };
 
-/** A matcher that understands the small raw-escape subset the router needs. */
+/** A matcher that understands the raw-escape subset the router needs —
+ * tab/shift+tab/left/right included so the tab-switch lane is exercised in
+ * every encoding family the real pi-tui matcher normalizes (CSI, SS3/DECCKM). */
 function fakeMatcher(data: string, keyId: string): boolean {
 	const raw: Record<string, string> = {
 		escape: "\x1b",
@@ -167,6 +170,29 @@ function fakeMatcher(data: string, keyId: string): boolean {
 		return: "\r",
 		up: "\x1b[A",
 		down: "\x1b[B",
+		tab: "\t",
+		"shift+tab": "\x1b[Z",
+		left: "\x1b[D",
+		right: "\x1b[C",
+	};
+	return raw[keyId] === data;
+}
+
+/** The same subset in SS3 (DECCKM application-cursor) encoding — the regression
+ * family for the pre-fix bug where \x1bOC sat in both the left and the right
+ * branch and \x1bOD was missing entirely. */
+function fakeMatcherSS3(data: string, keyId: string): boolean {
+	const raw: Record<string, string> = {
+		escape: "\x1b",
+		esc: "\x1b",
+		enter: "\r",
+		return: "\r",
+		up: "\x1bOA",
+		down: "\x1bOB",
+		tab: "\t",
+		"shift+tab": "\x1b[Z",
+		left: "\x1bOD",
+		right: "\x1bOC",
 	};
 	return raw[keyId] === data;
 }
@@ -409,6 +435,39 @@ describe("questionnaire key routing", () => {
 		expect(routeQuestionnaireKey("\t", single, singleQuestion, { collapseKey: "off" }, fakeMatcher).kind).toBe(
 			"ignore",
 		);
+	});
+
+	test("tab switching: every arrow encoding family routes to the right delta", () => {
+		const state = initialQuestionnaireState(twoQuestions);
+		const run = (data: string, matches = fakeMatcher) =>
+			routeQuestionnaireKey(data, state, twoQuestions, { collapseKey: "off" }, matches);
+		// CSI arrows (default cursor mode).
+		expect(run("\x1b[D")).toEqual({ kind: "tab_switch", delta: -1 });
+		expect(run("\x1b[C")).toEqual({ kind: "tab_switch", delta: 1 });
+		// SS3 arrows (DECCKM application-cursor mode) — the pre-fix bug:
+		// Right moved tabs backward and Left did nothing.
+		expect(run("\x1bOD", fakeMatcherSS3)).toEqual({ kind: "tab_switch", delta: -1 });
+		expect(run("\x1bOC", fakeMatcherSS3)).toEqual({ kind: "tab_switch", delta: 1 });
+		// Shift+Tab moves backward, Tab forward.
+		expect(run("\x1b[Z")).toEqual({ kind: "tab_switch", delta: -1 });
+		expect(run("\t")).toEqual({ kind: "tab_switch", delta: 1 });
+	});
+
+	test("composition: the real pi-tui matcher drives the SS3 lane (no fake drift)", () => {
+		// The component wires matchesKey directly; pin the composition so a
+		// fake-matcher drift can never mask a real-matcher regression.
+		expect(matchesKey("\x1bOD", "left")).toBe(true);
+		expect(matchesKey("\x1bOC", "right")).toBe(true);
+		expect(matchesKey("\x1b[D", "left")).toBe(true);
+		expect(matchesKey("\x1b[C", "right")).toBe(true);
+		expect(matchesKey("\t", "tab")).toBe(true);
+		expect(matchesKey("\x1b[Z", "shift+tab")).toBe(true);
+		const state = initialQuestionnaireState(twoQuestions);
+		const route = (data: string) =>
+			routeQuestionnaireKey(data, state, twoQuestions, { collapseKey: "off" }, matchesKey);
+		expect(route("\x1bOD")).toEqual({ kind: "tab_switch", delta: -1 });
+		expect(route("\x1bOC")).toEqual({ kind: "tab_switch", delta: 1 });
+		expect(route("\x1b[Z")).toEqual({ kind: "tab_switch", delta: -1 });
 	});
 
 	test("submit tab: Enter submits or cancels per the picker", () => {
