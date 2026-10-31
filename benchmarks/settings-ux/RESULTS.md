@@ -66,3 +66,48 @@ suite working as designed (failures leave receipts, not silence):
 - `receipts/run-2026-10-31T10-16-44/` — the BEFORE baseline (7 lanes, 7
   lane receipts + 11 bm2 task receipts + 12 bm3 query receipts + pane
   exhibits + `summary.json`).
+
+## AFTER — the round-2 build (2026-10-31, receipts/run-after/)
+
+The identical pinned workload on the post-M3/M4 tree (M3: the Interface
+repair + S2-20/S2-21; M4 partial: S2-13 goal extras + S2-19 dashboard
+lanes). The M4 remainder (S2-7/S2-8/S2-9, and S2-11/S2-4 which would flip
+the last two search misses) stays open in the S2 ledger — the misses below
+are honest, not hidden.
+
+## The DELTA table (BEFORE → AFTER)
+
+| Metric | BEFORE (run-2026-10-31T10-16-44) | AFTER (run-after) | DELTA |
+|---|---|---|---|
+| BM-1 five-minute test | PASS — 5.7s, 5 steps | PASS — 6.7s, 5 steps | holds; the wizard's "/settings switches theme" claim went true-but-false → **true-and-true** |
+| BM-2 reachable changes | 5/5 (mean 5.9s, disk+ledger) | 5/5 (mean 5.9s) | no regression |
+| BM-2 S2-1 probes | **6/6 unreachable-from-tui** | **6/6 reachable+changed** (settings.json + ledger verified; theme switched live) | **the regression is fixed, measured** |
+| BM-3 search hit-rate | 8/12 (66.7%) | **10/12 (83.3%)** | theme + dark mode hit at rank 1; `spend` (S2-11) and `memory health` (S2-4) stay honest misses |
+| BM-3 catalogued-target hits | 8/8 | 8/8 | no regression |
+| BM-4 browse reachability | 10/10, mean 9.6 Downs | 10/10, mean 10.5 Downs | +0.9 Downs — the Interface menu row's honest price |
+| BM-4 settable coverage | **10/89 (11.2%)** | **41/120 (34.2%)** | +23.0pp — 31 Interface items with real setters |
+| BM-4 pi rows unreachable | **32** | **0** (35/35 hub-mirrored, machine-counted) | **S2-1 closed** |
+| BM-5 recovery paths | 5/5 | 5/5 | no regression |
+| BM-6 six questions | 6/6 | 6/6 | no regression |
+| BM-7 registry audit | ok — 89 items, 24 high, 0 field gaps | ok — 120 items, 24 high, 0 field gaps | holds at the larger registry |
+| BM-7 typed-confirmation gate | full cycle | full cycle | no regression |
+
+### Reading the delta
+
+The round's two headline debts are closed with receipts: the S2-1
+unreachability (32 pi settings rows lost to the override — the wizard was
+actively misdirecting users) is fixed end-to-end, and settable coverage
+tripled. The costs are visible and small: browse depth +0.9 Downs (the
+eleventh section row), BM-1 +1.0s (the wizard's theme step now describes
+a real lane). The two remaining search misses trace to two ledger items
+deliberately deferred (S2-11 spend meter, S2-4 memory health card) — they
+flip in a future round that lands those items, and the pinned queries are
+waiting for them.
+
+### Run index (updated)
+
+- `receipts/run-2026-10-31T10-16-44/` — the BEFORE baseline.
+- `receipts/run-after-m3/` — the M3 verification snapshots (same lanes,
+  post-Interface-repair tree).
+- `receipts/run-after/` — **the AFTER run of record** for this DELTA
+  table (the post-M4-partial tree).

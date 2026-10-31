@@ -1,0 +1,10 @@
+{
+ "task": "pi-theme",
+ "piRow": "theme",
+ "expectedItem": "interface.theme",
+ "outcome": "reachable+changed",
+ "settingsChanged": true,
+ "ledgerOk": true,
+ "success": true,
+ "ms": 7773
+}

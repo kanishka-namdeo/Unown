@@ -1,0 +1,10 @@
+{
+ "task": "pi-tree-filter",
+ "piRow": "tree-filter-mode",
+ "expectedItem": "interface.tree-filter",
+ "outcome": "reachable+changed",
+ "settingsChanged": true,
+ "ledgerOk": true,
+ "success": true,
+ "ms": 8045
+}

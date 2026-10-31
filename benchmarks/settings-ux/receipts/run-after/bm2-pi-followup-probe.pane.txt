@@ -1,0 +1,36 @@
+
+── Themes ──
+  unown
+
+[Extension issues]
+  <inline:unown-tools>
+    Extension command '/settings' overrides a built-in interactive command. The extension version is dispatched and listed in
+autocomplete.
+  <inline:unown-tools>
+    Extension shortcut 'shift+tab' from <inline:unown-tools> conflicts with built-in shortcut. Skipping.
+
+
+ Saved: Follow-up mode = all
+
+ ○ no tracked steps · conf ✓ · 0m in session
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+
+ Interface → Follow-up mode
+ ● low · select
+ How queued follow-up messages deliver when the agent stops
+ Now: all
+ Default: one-at-a-time
+ Lives in: ~/.unown/agent/settings.json
+
+ → Change value…
+   Revert to default
+   Help (what / where / how to revert)
+   Back
+
+  ↑↓ navigate · Enter to select · Esc to cancel
+
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+/tmp/settings-ux-bench/bm2-cwd
+ctx ▕░░░░░░░░░░▏ 0.0%/524k (auto)                                                                                agnes-3.0-flash
+memory: up · old build
+? help · ctrl+k palette · / commands · ! bash · ctrl+o tools · esc-esc tree

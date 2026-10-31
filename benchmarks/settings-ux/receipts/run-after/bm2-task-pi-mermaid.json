@@ -1,0 +1,10 @@
+{
+ "task": "pi-mermaid",
+ "piRow": "mermaid-rendering",
+ "expectedItem": "interface.mermaid",
+ "outcome": "reachable+changed",
+ "settingsChanged": true,
+ "ledgerOk": true,
+ "success": true,
+ "ms": 7778
+}

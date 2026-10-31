@@ -1,0 +1,10 @@
+{
+ "task": "pi-followup",
+ "piRow": "follow-up-mode",
+ "expectedItem": "interface.follow-up",
+ "outcome": "reachable+changed",
+ "settingsChanged": true,
+ "ledgerOk": true,
+ "success": true,
+ "ms": 8046
+}

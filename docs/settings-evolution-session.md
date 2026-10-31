@@ -259,9 +259,21 @@ S2-8 (undo badge), S2-9 (skill health) remain the M4 capacity items for
 the next session — the S2 ledger rows stay open, and BM-3's `spend` /
 `memory health` misses (S2-11/S2-4) stay honest misses until they land.
 
-### The plan (M5 → M8)
+### M5 — the AFTER run + the DELTA table (DONE 2026-10-31)
 
-- **M5** — AFTER receipts + the BEFORE/AFTER/DELTA table.
+`receipts/run-after/` — the identical pinned workload on the post-M4
+tree, all seven lanes. **The DELTA** (benchmarks/settings-ux/RESULTS.md
+carries the full table): S2-1's probes **6/6 unreachable → 6/6
+reachable+changed** (theme live-switched through the hub); search
+**8/12 → 10/12**; settable coverage **10/89 (11.2%) → 41/120 (34.2%)**;
+pi rows unreachable **32 → 0**; BM-1/2/5/6/7 hold green (BM-1's wizard
+claim went true-but-false → true-and-true; BM-4 +0.9 Downs — the
+Interface row's honest price). The two remaining BM-3 misses are the
+deferred S2-11/S2-4 — honest misses, pinned queries waiting.
+
+### The plan (M6 → M8)
+
+- **M6** — phase 10 learning artifacts.
 - **M6** — phase 10 learning artifacts: mint tasks from the round's failures,
   dream, staged skills, the learning report.
 - **M7** — docs/DOX/README/landing sync + the round's CHANGELOG entry.
@@ -269,16 +281,19 @@ the next session — the S2 ledger rows stay open, and BM-3's `spend` /
 
 ## Resume-from-here
 
-Round 2, M4 partial (S2-13 + S2-19 landed; S2-7/S2-8/S2-9 open as capacity
-items; S2-3 rides with S2-16 as a follow-up). Next: **M5 — the AFTER
-benchmark run** (`python3 benchmarks/settings-ux/run-settings-ux-bench.py`
-into a fresh `receipts/run-after/` dir, lanes one tool-call at a time —
-the sandbox kills background processes) **+ the DELTA table in
-`benchmarks/settings-ux/RESULTS.md`.** Then M6 (learning artifacts: mint
-the round's three author-catches as benchmark tasks, the dream, the
-learning report), M7 (docs/DOX/README/landing sync + the CHANGELOG entry +
-rail regen in the SAME commit), M8 (version bump + tag + release builds
-per the release workflow).
+Round 2, M5 done — the DELTA table is committed in
+`benchmarks/settings-ux/RESULTS.md` (S2-1 closed with receipts; coverage
+11.2% → 34.2%; no regressions). Next: **M6 — the phase-10 learning
+artifacts:** mint the round's three author-catches (toggle-marker,
+no-op-drift, missing-paren) as benchmark/learning tasks, let the engine
+dream the round's notes, stage any minted skills, and write the round's
+learning report (docs/unown-learning-report.md is the round-1 precedent).
+Then **M7 — the sync:** docs (configuration.md's settings section gains
+the Interface section + goal extras; usage.md's /goal row; the DOX tree),
+README, the landing rail (regen + word budget in the SAME commit as the
+CHANGELOG entry — the F39 lesson), the blog post. Then **M8 — the
+release:** version bump, tag, release builds per the release workflow
+(v0.0.50 → v0.0.51; the round's story ships through the changelog rail).
 
 ## Environment notes for a resuming session
 

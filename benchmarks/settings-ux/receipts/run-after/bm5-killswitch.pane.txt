@@ -1,0 +1,36 @@
+  <inline:unown-tools>
+    Extension shortcut 'shift+tab' from <inline:unown-tools> conflicts with built-in shortcut. Skipping.
+
+
+ unown settings — diff vs defaults
+ ────────────────────────────────────────────────────────────────
+ interface → TUI mode: fullscreen  (default: regular)
+ interface → Mermaid diagrams: streaming  (default: final)
+ interface → Image width (cells): 60  (default: 80)
+ interface → Editor padding (columns): 0  (default: 2)
+ interface → Clear on shrink: off  (default: on)
+ interface → Terminal progress: off  (default: on)
+ interface → Copy on select (fullscreen): on  (default: off)
+ interface → Fullscreen exit output: transcript  (default: resume-hint)
+ tools → Hook loop breaker (max depth): 5  (default: 3)
+
+ ○ no tracked steps · conf ✓ · 0m in session
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+
+ Automation — What runs unattended — and how to stop it
+
+ → Routines ◐
+   Stop a running routine (kill switch) ○
+   Run history & spend
+   Default run mode ◐ = read-only (create with --mode standard to overri
+   Misfire policy = default (skip)
+   Chain depth cap = 3 hops (hardcoded, visible in history rows)
+   Back
+
+  ↑↓ navigate · Enter to select · Esc to cancel
+
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+/tmp/settings-ux-bench/bm5-cwd
+ctx ▕░░░░░░░░░░▏ 0.0%/524k (auto)                                                                                agnes-3.0-flash
+memory: up · old build
+? help · ctrl+k palette · / commands · ! bash · ctrl+o tools · esc-esc tree

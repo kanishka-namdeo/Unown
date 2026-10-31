@@ -1,0 +1,15 @@
+{
+ "q": "memory health",
+ "targetId": "(missing: memory health card)",
+ "expectedAtBefore": "miss",
+ "topResults": [
+  "Agent \u2192 Capability map",
+  "Tools & Integrations \u2192 Hook loop breaker (max depth)",
+  "Memory \u2192 Project identity",
+  "rec.reset \u2192 Reset settings (scoped) \u25cbHIGH",
+  "Learning \u2192 Dream review mode",
+  "Interface \u2192 Light theme (auto mode)"
+ ],
+ "hit": false,
+ "rank": null
+}
