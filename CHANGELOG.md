@@ -9,6 +9,20 @@ otherwise specified; the release tag must always equal package.json's version.
 
 Repo conventions: measured claims cite their receipts (`docs/testing-strategy.md`, `benchmarks/memory-eval/*/RESULTS.md`). Changes to agent behavior — prompts, default models, routing, guard rules, hooks, memory injection — are filed under **Agent Behavior**; the policy lives in [docs/BEHAVIOR.md](docs/BEHAVIOR.md).
 
+## [Unreleased]
+
+The plan-mode todo unification round — one list, two input paths. The
+reported bug: two to-do lists around plan mode. Receipts:
+[the session log](docs/plan-mode-todo-unification-round-session.md).
+
+### Fixed
+
+- **Two to-do lists around plan mode.** The V1 plan-steps widget and the V2 seeded todo overlay both mounted above the editor after every approval (the plan→todo seed hook shipped without retiring the old widget); approving a second plan stacked plan B's steps on plan A's inside the same panel; the seeded panel only popped in after the model's first `todo` call; and `[DONE:n]` tags and todo flips never synced. The seeded **Todos panel is now the ONE checklist above the editor** — the legacy widget survives only as the fallback for a todo addon disabled via `/addons` (both can never mount in one process); approval REPLACES the foreground list atomically (ids rewind, one replayable seed entry) and mounts the panel at the approval moment; `[DONE:n]` tags flip the matching seeded todos and hand-driven todo completions flip the matching plan steps — the footer chip, the mission panel and the panel always agree, and `/resume` reconciles both directions before the first paint.
+
+### Agent Behavior
+
+- **The todo tool is excluded while planning** (the Codex/Gemini lane): the plan-mode system prompt states that the plan file is the single checklist and its approved steps become todos automatically at approval — the tool no longer rides the plan-mode toolset, nudging a second list mid-planning, and the Todos overlay stands down while the PLAN chip is on (data kept; approval or leaving plan mode restores it). The fallback approval gate's model-facing execute instruction is no longer displayed — the user sees the approved plan once, then the live panel.
+
 ## [0.0.52] - 2026-10-31
 
 The Settings Evolution round — round 2, measured. Round 1 (v0.0.49) shipped

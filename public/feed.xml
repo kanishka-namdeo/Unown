@@ -48,6 +48,16 @@
       <category>release</category>
     </item>
     <item>
+      <title>&quot;The todo unification round: why you saw two to-do lists in plan mode&quot;</title>
+      <link>https://unown-nine.vercel.app/blog/2026-10-31-the-todo-unification-round</link>
+      <guid isPermaLink="true">https://unown-nine.vercel.app/blog/2026-10-31-the-todo-unification-round</guid>
+      <pubDate>Sat, 31 Oct 2026 00:00:00 GMT</pubDate>
+      <description>&quot;The plan-steps widget and the seeded Todos panel both mounted after approval. This round made them one list — verified live, with receipts.&quot;</description>
+      <category>planning</category>
+      <category>tui</category>
+      <category>verification</category>
+    </item>
+    <item>
       <title>&quot;The craft axes: teaching the agent to see what elite pages never do&quot;</title>
       <link>https://unown-nine.vercel.app/blog/2026-10-30-the-craft-axes</link>
       <guid isPermaLink="true">https://unown-nine.vercel.app/blog/2026-10-30-the-craft-axes</guid>

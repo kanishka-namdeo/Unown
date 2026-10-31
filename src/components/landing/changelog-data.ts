@@ -30,19 +30,53 @@ export interface ChangelogStop {
   groups: ChangelogGroup[];
 }
 
-export const CHANGELOG_TOTAL_ENTRIES = 495;
+export const CHANGELOG_TOTAL_ENTRIES = 497;
 
 export const CHANGELOG_TOTALS: Record<ChangelogBucket, number> = {
   "Added": 231,
   "Changed": 28,
   "Deprecated": 0,
   "Removed": 3,
-  "Fixed": 184,
+  "Fixed": 185,
   "Security": 5,
-  "Behavior": 44
+  "Behavior": 45
 };
 
 export const CHANGELOG_STOPS: ChangelogStop[] = [
+  {
+    "label": "Unreleased",
+    "date": null,
+    "total": 2,
+    "counts": {
+      "Added": 0,
+      "Changed": 0,
+      "Deprecated": 0,
+      "Removed": 0,
+      "Fixed": 1,
+      "Security": 0,
+      "Behavior": 1
+    },
+    "groups": [
+      {
+        "bucket": "Fixed",
+        "items": [
+          {
+            "title": "Two to-do lists around plan mode",
+            "behavior": false
+          }
+        ]
+      },
+      {
+        "bucket": "Behavior",
+        "items": [
+          {
+            "title": "The todo tool is excluded while planning",
+            "behavior": true
+          }
+        ]
+      }
+    ]
+  },
   {
     "label": "0.0.52",
     "date": "2026-10-31",
