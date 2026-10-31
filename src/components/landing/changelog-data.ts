@@ -30,19 +30,73 @@ export interface ChangelogStop {
   groups: ChangelogGroup[];
 }
 
-export const CHANGELOG_TOTAL_ENTRIES = 478;
+export const CHANGELOG_TOTAL_ENTRIES = 485;
 
 export const CHANGELOG_TOTALS: Record<ChangelogBucket, number> = {
   "Added": 225,
   "Changed": 28,
   "Deprecated": 0,
   "Removed": 3,
-  "Fixed": 174,
+  "Fixed": 180,
   "Security": 5,
-  "Behavior": 43
+  "Behavior": 44
 };
 
 export const CHANGELOG_STOPS: ChangelogStop[] = [
+  {
+    "label": "0.0.51",
+    "date": "2026-10-31",
+    "total": 7,
+    "counts": {
+      "Added": 0,
+      "Changed": 0,
+      "Deprecated": 0,
+      "Removed": 0,
+      "Fixed": 6,
+      "Security": 0,
+      "Behavior": 1
+    },
+    "groups": [
+      {
+        "bucket": "Fixed",
+        "items": [
+          {
+            "title": "Shift+Tab never cycled into plan mode",
+            "behavior": false
+          },
+          {
+            "title": "Questionnaire arrows mis-routed in SS3 terminals",
+            "behavior": false
+          },
+          {
+            "title": "Typed astral characters corrupted input",
+            "behavior": false
+          },
+          {
+            "title": "The approval gate ignored half the keyboard",
+            "behavior": false
+          },
+          {
+            "title": "A stray Esc silently discarded plan edits",
+            "behavior": false
+          },
+          {
+            "title": "Approval routing hung on display strings",
+            "behavior": false
+          }
+        ]
+      },
+      {
+        "bucket": "Behavior",
+        "items": [
+          {
+            "title": "Plan-mode curl is read-only",
+            "behavior": true
+          }
+        ]
+      }
+    ]
+  },
   {
     "label": "0.0.50",
     "date": "2026-10-31",

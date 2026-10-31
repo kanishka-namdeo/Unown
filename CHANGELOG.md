@@ -9,6 +9,27 @@ otherwise specified; the release tag must always equal package.json's version.
 
 Repo conventions: measured claims cite their receipts (`docs/testing-strategy.md`, `benchmarks/memory-eval/*/RESULTS.md`). Changes to agent behavior — prompts, default models, routing, guard rules, hooks, memory injection — are filed under **Agent Behavior**; the policy lives in [docs/BEHAVIOR.md](docs/BEHAVIOR.md).
 
+## [0.0.51] - 2026-10-31
+
+The plan-mode keyboard & interactivity round — an audit of every interactive
+surface in plan mode found the headline feature of the planning round dead on
+arrival, plus five more keyboard and input defects. Every fix ships with a
+regression pin; the receipts and the resumable log are in
+[the session doc](docs/plan-mode-keyboard-round-session.md).
+
+### Fixed
+
+- **Shift+Tab never cycled into plan mode** — the planning round's own headline. The unown extension registers Shift+Tab for the permission-mode cycle (default → acceptEdits → plan), but pi's extension runner drops any extension shortcut colliding with a reserved built-in default, and `app.thinking.cycle` defaulted to Shift+Tab: on every fresh install the key cycled thinking levels instead, and `docs/usage.md` documented the same key twice with contradictory meanings. The vendored default now lives on **Alt+T** (free, terminal-safe, mnemonic; explicit `keybindings.json` overrides still win — sessions that cycled thinking levels on Shift+Tab press Alt+T or rebind). Pinned three ways: the extension registers and walks the full cycle, the runner keeps `shift+tab` under default keybindings, and the defaults can never drift back.
+- **Questionnaire arrows mis-routed in SS3 terminals** — the ask-user-question tab switcher matched raw bytes and listed `OC` (SS3 Right) in BOTH the left and right branches (first match won, so Right moved tabs backward) while SS3 Left (`OD`) was missing entirely. The router now matches logical keys (tab / shift+tab / left / right) through the shared pi-tui matcher, so CSI, SS3/DECCKM, Kitty CSI-u, modifyOtherKeys and Windows encodings all route identically.
+- **Typed astral characters corrupted input** — StdinBuffer split non-escape input per UTF-16 unit, so a typed emoji or rare CJK character became two lone surrogates that the editor inserted as invalid text (pasted text and Kitty-protocol terminals were safe; legacy terminals were not). The buffer now emits whole code points (with a remainder hold for string-level split reassembly) and the base editor rejects unpaired surrogates as defense in depth.
+- **The approval gate ignored half the keyboard** — the selector answered only ↑/↓/j/k/Enter/Esc: PageUp/PageDown (bindings that exist and every other selector honors), Home/End, and Claude-Code-style numbered quick-select were all missing. Options are now numbered when 1-9 can reach every row (`1`-`4` select the approval lanes directly, in plain, Kitty CSI-u and modifyOtherKeys encodings), the digit lane appears in the hint strip, and lists longer than nine stay unnumbered and digit-inert.
+- **A stray Esc silently discarded plan edits** — the plan editor dialog cancelled on the first Esc with no dirty check; minutes of plan editing died to one keypress. The guard is deterministic: first cancel key on a dirty editor arms a "press Esc again to discard" hint, the second consecutive press discards, any other key disarms (no timer). Esc with the editor's autocomplete open now just closes the autocomplete, matching the main editor.
+- **Approval routing hung on display strings** — the dialog routed `choice.startsWith("Execute — auto-accept")`, so a cosmetic label tweak could silently break approval. Routing is now exact-match against stable option constants; the 6-round editor cap surfaces a warning notice instead of stopping silently; and the edit lane's label no longer promises the $EDITOR it never opened (the in-TUI editor's own Ctrl+G hint covers external editing).
+
+### Agent Behavior
+
+- **Plan-mode `curl` is read-only**: the bash allowlist admitted bare `curl`, and every file-writing flag form (`-o` spaced or attached, `--output`, `-O`/`--remote-name`, `-D`/`--dump-header`, clusters like `-sO`/`-Lo`) was a file-write primitive inside the read-only phase. Those forms are now blocked with the standard reason string; `-s`/`-I`/`-L`/`-H` fetching stays allowed. Pinned by 12 new `isSafeCommand` table cases.
+
 ## [0.0.50] - 2026-10-31
 
 The planning round — **Plan Mode V2**, rebuilt around a scored plan file and
