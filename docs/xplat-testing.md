@@ -33,7 +33,10 @@ Related pages: [testing strategy](testing-strategy.md) · [install](install.md) 
 ## What it is
 
 `ci.yml` answers one question well: "does this **push** pass the gates?" It
-is push/PR-triggered by design, which means a mid-session agent has no way to
+fires on push/PR - and since the per-OS CI gate (testing-strategy.md §6 gate
+22) it also takes a `workflow_dispatch` that can force the macOS + Windows
+legs, but only on the branch tip, with no scenario choice, no `--os` targeting
+and no machine-readable receipts. So a mid-session agent still has no way to
 ask the question it most needs answered — *"is this green on all three OSes
 right now?"* — without committing something to find out. The xplat lane is
 that way back: a `workflow_dispatch` surface over the **same test steps CI

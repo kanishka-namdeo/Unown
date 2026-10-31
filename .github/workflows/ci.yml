@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
     inputs:
       force_cross_platform:
-        description: "Run the macOS + Windows legs even though this commit does not bump the version"
+        description: "Run the macOS + Windows legs even though this commit does not bump the version (note: the concurrency group is keyed by ref, so dispatching while a push run is in flight cancels that run)"
         type: boolean
         required: false
         default: false
