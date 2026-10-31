@@ -3,7 +3,7 @@
  * Displays a list of string options with keyboard navigation.
  */
 
-import { Container, getKeybindings, Spacer, Text, type TUI } from "@earendil-works/pi-tui";
+import { Container, decodePrintableKey, getKeybindings, Spacer, Text, type TUI } from "@earendil-works/pi-tui";
 import { theme } from "../theme/theme.ts";
 import { CountdownTimer } from "./countdown-timer.ts";
 import { DynamicBorder } from "./dynamic-border.ts";
@@ -25,6 +25,11 @@ export class ExtensionSelectorComponent extends Container {
         private baseTitle: string;
         private countdown: CountdownTimer | undefined;
         private onToggleToolsExpanded: (() => void) | undefined;
+        /** Numbered quick-select (the Claude Code approval lane): options are
+         * numbered and 1-9 select directly when the list is short enough for
+         * every number to be reachable. Display-only — the callback still
+         * receives the raw option string. */
+        private readonly numberedQuickSelect: boolean;
 
         constructor(
                 title: string,
@@ -40,6 +45,7 @@ export class ExtensionSelectorComponent extends Container {
                 this.onCancelCallback = onCancel;
                 this.onToggleToolsExpanded = opts?.onToggleToolsExpanded;
                 this.baseTitle = title;
+                this.numberedQuickSelect = options.length > 0 && options.length <= 9;
 
                 this.addChild(new DynamicBorder());
                 this.addChild(new Spacer(1));
@@ -64,7 +70,11 @@ export class ExtensionSelectorComponent extends Container {
                 // same component the model/thinking selectors and the palette use, so
                 // hint lines degrade by dropping whole segments at narrow widths instead
                 // of each dialog improvising its own join style.
-                this.addChild(new SelectorHints(["↑↓ navigate", "Enter to select", "Esc to cancel"]));
+                const hints = ["↑↓ navigate", "Enter to select", "Esc to cancel"];
+                if (this.numberedQuickSelect) {
+                        hints.push(`1-${options.length} quick select`);
+                }
+                this.addChild(new SelectorHints(hints));
                 this.addChild(new Spacer(1));
                 this.addChild(new DynamicBorder());
 
@@ -75,11 +85,21 @@ export class ExtensionSelectorComponent extends Container {
                 this.listContainer.clear();
                 for (let i = 0; i < this.options.length; i++) {
                         const isSelected = i === this.selectedIndex;
+                        const label = this.numberedQuickSelect ? `${i + 1}. ${this.options[i]}` : this.options[i];
                         const text = isSelected
-                                ? theme.fg("accent", "→ ") + theme.fg("accent", this.options[i])
-                                : `  ${theme.fg("text", this.options[i])}`;
+                                ? theme.fg("accent", "→ ") + theme.fg("accent", label)
+                                : `  ${theme.fg("text", label)}`;
                         this.listContainer.addChild(new Text(text, 1, 0));
                 }
+        }
+
+        /** A 1-9 digit in any encoding the input stack produces: plain ASCII,
+         * Kitty CSI-u or xterm modifyOtherKeys (decodePrintableKey covers the
+         * last two; plain bytes are checked directly). */
+        private quickSelectDigit(keyData: string): string | undefined {
+                if (/^[1-9]$/.test(keyData)) return keyData;
+                const printable = decodePrintableKey(keyData);
+                return printable && /^[1-9]$/.test(printable) ? printable : undefined;
         }
 
         handleInput(keyData: string): void {
@@ -92,7 +112,35 @@ export class ExtensionSelectorComponent extends Container {
                 } else if (kb.matches(keyData, "tui.select.down") || keyData === "j") {
                         this.selectedIndex = Math.min(this.options.length - 1, this.selectedIndex + 1);
                         this.updateList();
-                } else if (kb.matches(keyData, "tui.select.confirm") || keyData === "\n") {
+                } else if (kb.matches(keyData, "tui.select.pageUp")) {
+                        // The list renders in full (no viewport cap), so a page is
+                        // the whole list — first row, SelectList's clamp semantics.
+                        this.selectedIndex = 0;
+                        this.updateList();
+                } else if (kb.matches(keyData, "tui.select.pageDown")) {
+                        this.selectedIndex = this.options.length - 1;
+                        this.updateList();
+                } else if (kb.matches(keyData, "tui.select.first")) {
+                        this.selectedIndex = 0;
+                        this.updateList();
+                } else if (kb.matches(keyData, "tui.select.last")) {
+                        this.selectedIndex = this.options.length - 1;
+                        this.updateList();
+                } else if (this.numberedQuickSelect) {
+                        const digit = this.quickSelectDigit(keyData);
+                        if (digit !== undefined) {
+                                const selected = this.options[Number(digit) - 1];
+                                if (selected) this.onSelectCallback(selected);
+                                return;
+                        }
+                        this.confirmOrCancel(keyData, kb);
+                } else {
+                        this.confirmOrCancel(keyData, kb);
+                }
+        }
+
+        private confirmOrCancel(keyData: string, kb: ReturnType<typeof getKeybindings>): void {
+                if (kb.matches(keyData, "tui.select.confirm") || keyData === "\n") {
                         const selected = this.options[this.selectedIndex];
                         if (selected) this.onSelectCallback(selected);
                 } else if (kb.matches(keyData, "tui.select.cancel")) {

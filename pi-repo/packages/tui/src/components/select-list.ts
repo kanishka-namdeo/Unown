@@ -142,6 +142,16 @@ export class SelectList implements Component {
 			this.selectedIndex = Math.min(this.filteredItems.length - 1, this.selectedIndex + this.maxVisible);
 			this.notifySelectionChange();
 		}
+		// Home - jump to the first item
+		else if (kb.matches(keyData, "tui.select.first")) {
+			this.selectedIndex = 0;
+			this.notifySelectionChange();
+		}
+		// End - jump to the last item
+		else if (kb.matches(keyData, "tui.select.last")) {
+			this.selectedIndex = this.filteredItems.length - 1;
+			this.notifySelectionChange();
+		}
 		// Enter
 		else if (kb.matches(keyData, "tui.select.confirm")) {
 			const selectedItem = this.filteredItems[this.selectedIndex];

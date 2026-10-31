@@ -18,6 +18,20 @@ const visibleIndexOf = (line: string, text: string): number => {
 };
 
 describe("SelectList", () => {
+	it("home/end jump to the first and last item (tui.select.first / last)", () => {
+		const items = Array.from({ length: 12 }, (_, index) => ({ value: `item-${index}`, label: `item-${index}` }));
+		const list = new SelectList(items, 5, testTheme);
+		let selected = "";
+		list.onSelectionChange = (item) => {
+			selected = item.value;
+		};
+
+		list.handleInput("\x1b[F"); // End — last item
+		assert.equal(selected, "item-11");
+		list.handleInput("\x1b[H"); // Home — first item
+		assert.equal(selected, "item-0");
+	});
+
 	it("normalizes multiline descriptions to single line", () => {
 		const items = [
 			{

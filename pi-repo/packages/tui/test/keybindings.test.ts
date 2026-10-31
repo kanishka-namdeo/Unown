@@ -46,6 +46,13 @@ describe("KeybindingsManager", () => {
 		assert.deepStrictEqual(keybindings.getKeys("tui.altScreen.bottom"), ["end"]);
 	});
 
+	it("binds selector home/end navigation (tui.select.first / tui.select.last)", () => {
+		const keybindings = new KeybindingsManager(TUI_KEYBINDINGS);
+
+		assert.deepStrictEqual(keybindings.getKeys("tui.select.first"), ["home"]);
+		assert.deepStrictEqual(keybindings.getKeys("tui.select.last"), ["end"]);
+	});
+
 	it("does not evict selector confirm when input submit is rebound", () => {
 		const keybindings = new KeybindingsManager(TUI_KEYBINDINGS, {
 			"tui.input.submit": ["enter", "ctrl+enter"],

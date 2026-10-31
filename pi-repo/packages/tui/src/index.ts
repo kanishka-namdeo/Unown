@@ -65,6 +65,7 @@ export {
 // Keyboard input handling
 export {
         decodeKittyPrintable,
+        decodePrintableKey,
         isKeyRelease,
         isKeyRepeat,
         isKittyProtocolActive,
