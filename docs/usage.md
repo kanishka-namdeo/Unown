@@ -95,6 +95,38 @@ suppresses the whole header), or export `NO_COLOR`. See
 
 ## Terminal status & the turn meter (2026-10-25)
 
+### The bottom area (the quiet footer, 2026-10-31)
+
+The area below the input box is **two rows at rest**: one merged status line
+and the contextual hint line. What shows when — the round's contract,
+learned from [the competitor research](bottom-area-competitor-research.md)
+and [the user journeys](bottom-area-user-journeys.md):
+
+- **Always (the status row)**: where you are (`~/repo (branch)`, plus the
+  session name on wide terminals), the live context meter
+  (`ctx ▕████░░░░░░▏ 42%` — the one risk metric that survives every width),
+  the usage chips that fit (`+3 -1` diff after the first edit, `↑`/`↓`
+  tokens, cache stats) and the model identity on the right. At narrow
+  widths segments drop whole, in priority order — never a mid-word cut.
+- **Only when they need attention (the attention row)**: failures and
+  blockers first (`✗ 2 to fix · /recovery`, `memory: down`, `mcp: 1 ✗`,
+  `lsp: ts (restarting)`, `no model connected · /setup`, build skew), then
+  active work (`plan 2/5`, `fleet: 3 subagents running`, `update: 0.0.53`,
+  the turn meter, unseen `✦` learning events). The row orders by priority
+  and drops whole chips with a dim `+N` counter. Healthy ambient state is
+  silent — an up engine, an all-connected MCP set, a ready language server:
+  `/engine`, `/mcp`, `/lsp`, `/status` and the dashboard answer on demand.
+- **Contextually (the hint line)**: `? help · ctrl+k palette · / commands ·
+  ! bash` at idle; `esc interrupt · ctrl+o tools · ctrl+t thinking` while a
+  turn streams; the queue keys while messages are queued.
+- **One fact, one home**: the context % and token totals live on the status
+  row (not repeated in the turn chip); the session cost lives on the turn
+  chip; confidence and the active goal live in the mission panel above the
+  editor (kill the panel — `UNOWN_MISSION_PANEL=0` or `/mission off` — and
+  their chips return).
+- **The kill switch**: `UNOWN_FOOTER_CLASSIC=1` restores the pre-round
+  four-row footer with every ambient chip line.
+
 Three always-on presence surfaces ship with the convergence round:
 
 - **OSC 7501 program status** — the terminal-status protocol Claude Code
@@ -108,13 +140,16 @@ Three always-on presence surfaces ship with the convergence round:
   Emission is TTY-only and opt-out: `PROGRAM_STATUS=0` (the spec-wide name) or
   `UNOWN_OSC7501=0`.
 - **The turn meter** — after every turn the footer carries the live chip
-  `turn 3.4s · ctx 62% · in 45.2k out 1.1k (cached 42k) · ~$0.0084`: the
-  turn's duration, the context utilization, the session token rollup (the
-  `/usage` attribution) and the price-model estimate
-  (`UNOWN_PRICE_<MODEL>_IN/_OUT` overrides; unknown models drop the cost
-  segment — a price is never invented). This is the per-turn visibility
+  `turn 3.4s · ttft 0.8s · ~$0.0084`: the turn's duration, the
+  time-to-first-token (the latency you felt) and the session cost (the
+  `/usage` attribution + price-model estimate — `UNOWN_PRICE_<MODEL>_IN/_OUT`
+  overrides; unknown models drop the cost segment, a price is never
+  invented). The context % and token rollups it used to repeat live on the
+  status row instead — one fact, one home. This is the per-turn visibility
   Goose (v1.42+), Gemini CLI (`/stats`) and Claude Code (the status line)
-  all normalize; `UNOWN_TURN_METER=0` turns it off.
+  all normalize; `UNOWN_TURN_METER=0` turns it off (a dedicated cost chip
+  keeps the spend visible) and `UNOWN_FOOTER_CLASSIC=1` restores the full
+  legacy format.
 - **The model pill** — while the agent dir has no provider configured, the
   footer carries `no model connected · /setup`. The first-run gate asks the
   connect-a-provider question once and then deliberately never re-asks it; the
@@ -371,7 +406,7 @@ Writes are atomic read-modify-write (existing entries and unknown keys are prese
 - Goal state persists as a session entry — it survives `/new`, `/resume`, `/fork`. `/goal` shows status, `/goal pause` stops the per-turn injection, `/goal resume` restores it, `/goal clear` removes the goal.
 - **Goal history** (the settings round, 2026-10-31): every ended goal — replaced, cleared or complete — is recorded in `~/.unown/agent/goal-history.jsonl` with its turns, verify gate and evidence; `/goal history` renders the last ten. Replacing an ACTIVE goal asks first (`Yes` lands the old one in history as `[replaced]`; `No` keeps it).
 - **`/goal verify <command>`** arms a completion gate: the command runs when the agent claims completion — exit 0 or the goal does NOT complete (timeout and the stderr tail land in the notice). The natural form: a test command, a build, a lint pass.
-- **The age nudge**: an active goal older than 24h shows its age in the footer (`goal: active · 2d old`) and `/goal` carries a "still the goal you want?" line past day three — durable authority should not outlive its intent.
+- **The age nudge**: an active goal older than 24h shows its age (the mission panel's objective line, and the footer chip when the panel is off — `goal: active · 2d old`) and `/goal` carries a "still the goal you want?" line past day three — durable authority should not outlive its intent.
 - **Honest limit**: the gate is agent-honest, not cryptographic — it verifies that the model *cited* evidence, not that the evidence is true. Pair it with the LSP diagnostics loop and `/review` for actual verification.
 
 ## Mission & observability (the observability round)

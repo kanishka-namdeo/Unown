@@ -1,0 +1,36 @@
+
+── Context ──
+  AGENTS.md, memory/how-to-use.md (guide: how to read the memory tiers), memory/tier0-policy.md (enterprise policy — highest
+authority), .unown/memory/project.md (project memory — provenance in the injected header), memory/tier2-user.md (user memory —
+global preferences), .unown/memory/local.md (local overrides — highest precedence)
+
+── Skills ──
+  accessibility-auditor, design-system-generator, fix-nocturne-seed-invariants, frontend-craftsman, landing-page-architect,
+methodical-debugging, motion-designer, pin-settings-defaults, pre-commit-engine-check, recover-failed-cycle, repo-exploration,
+restart-engine, test-cadence-domain, unown-self-learning, ux-reviewer, verification-first
+
+── Extensions ──
+  <inline:6>
+
+── Themes ──
+  unown
+
+[Extension issues]
+  <inline:unown-tools>
+    Extension command '/settings' overrides a built-in interactive command. The extension version is dispatched and listed in
+autocomplete.
+
+» reply with the single word: ready
+
+ ready
+
+ You're flying — the first task is done. /flights has more starters · /help lists everything · ctrl+k searches commands.
+
+ ○ no tracked steps · conf ✓ · 1m in session
+»───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+~/my-project/Unown (main)
+ctx ▕█░░░░░░░░░▏ 5.1%/524k (auto) ↓2 ↑27k                                                                        agnes-3.0-flash
+conf ✓ memory: up · stale (v0.0.51) turn 2.7s · ttft 2.7s · ctx 5% · in 26.8k out 2
+? help · ctrl+k palette · / commands · ! bash · ctrl+o tools · esc-esc tree

@@ -11,9 +11,21 @@ Repo conventions: measured claims cite their receipts (`docs/testing-strategy.md
 
 ## [Unreleased]
 
-The plan-mode todo unification round — one list, two input paths. The
-reported bug: two to-do lists around plan mode. Receipts:
-[the session log](docs/plan-mode-todo-unification-round-session.md).
+The footer quiet round — the area below the input, decluttered end to end —
+plus the plan-mode todo unification round's fix (one list, two input paths).
+Receipts: [the footer session log](docs/footer-quiet-round-session.md) ·
+[the competitor research](docs/bottom-area-competitor-research.md) ·
+[the user journeys + manifest](docs/bottom-area-user-journeys.md) ·
+[the todo round's session log](docs/plan-mode-todo-unification-round-session.md).
+
+### Changed
+
+- **The quiet footer — the bottom area is two rows at rest, and ambient state earns no row.** The reported bug: too many elements below the input. The footer rendered four stacked rows at rest (location, stats, every extension chip joined alphabetically, hints — 8 rows of bottom chrome with the mission panel, 22% of a 36-row terminal before any work), the chip row admitted every `setStatus` key ambient-or-not and truncated mid-chip at width (observed live: `… in 26.8k out 2`), and the same facts rendered twice (context % and tokens on BOTH the stats chips and the turn chip; `conf ✓` on both the mission panel and the footer; the active goal on both the panel and its chip). The redesign — grounded in [six-competitor research](docs/bottom-area-competitor-research.md) (Claude Code's statusline-as-a-trade and budgeted hints, Codex's "duplicate indicators are a defect", Gemini's declarative ordered footer with high-priority transients, Crush's healthy-states-silent + 5s TTL, OpenCode's conditional everything) and [four user journeys](docs/bottom-area-user-journeys.md) with a persistent-vs-contextual manifest for every element:
+  - **One merged status row**: `~/repo (main) · ctx ▕████░░░░░░▏ 42% (auto) · +3 -1 · ↑45k … agnes-3.0-flash` — location folded into the stats line (session name at wide tiers only), the meter and the model identity the survivors, ordered segment dropping at narrow widths (never a mid-word cut).
+  - **The attention row** replaces the chip dump: only chips that need attention paint — failures and blockers first (health ✗, engine down/blocked/paused, mcp failures/withheld, lsp restarting/exhausted, model unconfigured, build skew), then active work (plan, fleet, review, update, goal transitions, feed, delegation, the turn meter, first-flights) — priority-ordered via a new `setStatus(key, text, {priority})` third argument, dropping WHOLE chips with a dim `+N` counter (the highest-priority chip renders ellipsized as the last resort). Healthy ambient state is silent: engine up, mcp all-connected, lsp ready paint nothing (`/engine`, `/mcp`, `/lsp`, `/status` and the dashboard answer on demand; dream events still ride the `✦` feed chip and the panel's learned line — "learning must paint" holds).
+  - **One fact, one home**: the turn chip is `turn 3.4s · ttft 0.8s · ~$0.0084` (per-turn dynamics + the session cost — which used to be the stats chip that degraded FIRST at narrow widths, audit B2); the context % and token rollups stay on the status row; `conf` and the goal chip's active state yield to the mission panel that already carries them (kill the panel and both chips return).
+  - **The kill switch**: `UNOWN_FOOTER_CLASSIC=1` restores the exact pre-round four-row footer, the ambient chip lines and the turn meter's full legacy format — read per render, both layers, one variable.
+  - Verified like a real user: `scripts/tui-capture/verify_footer_quiet.py` (PTY lane, pane-truth) — 9/9 checks: the merged row, the two-row rest, ambient silence, the busy hint swap, the turn-chip dedup, the engine-down attention row (below the status row, above the hints), and the classic restore. Unit suites: vendored footer 43/43 (new quiet suite), self-learning 5426/0.
 
 ### Fixed
 

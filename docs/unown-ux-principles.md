@@ -36,7 +36,7 @@ Priority top-down; a higher level may never be displaced by a lower one:
 8. **Metrics** — cost/time/context, in the panel and the brief, reusing the /usage attribution exactly.
 9. **Logs** — raw output stays on its existing surfaces (ctrl+o, transcripts, receipts); it never gets promoted into ambient chrome.
 
-The placement law: 1–3 live in the mission panel; 4–7 in the panel's compact rows and the brief; 8 in footer chips and the brief; 9 stays where it is. New surfaces compose existing facts — they do not fork the data.
+The placement law: 1–3 live in the mission panel; 4–7 in the panel's compact rows and the brief; 8 in footer chips and the brief; 9 stays where it is. New surfaces compose existing facts — they do not fork the data. The footer quiet round (2026-10-31) amended the level-8 clause with the field's convergent rule — **healthy ambient state earns no row**: footer chips paint only when they need attention (failures, blocked/degraded states, active work), priority-ordered, dropping whole chips; the persistent budget below the input is two rows (one merged status line, one contextual hint line). The element-by-element contract is the manifest table in [the bottom-area user journeys](bottom-area-user-journeys.md); the kill switch is `UNOWN_FOOTER_CLASSIC=1`.
 
 ## The honesty rules
 
@@ -50,7 +50,7 @@ The placement law: 1–3 live in the mission panel; 4–7 in the panel's compact
 ## The composition rules
 
 - **One idempotent refresh pass.** All ambient surfaces repaint through one guarded pass; a quiet session is byte-identical to pre-change; every seam is TUI-only, never in a subagent.
-- **Compose, don't compete.** The panel restates what the widgets know (progress, activity) in one place; it never steals budget from the todo/fleet/plan widgets — it composes them and yields rows gracefully at narrow widths.
+- **Compose, don't compete.** The panel restates what the widgets know (progress, activity) in one place; it never steals budget from the todo/fleet/plan widgets — it composes them and yields rows gracefully at narrow widths. A fact with two homes has no home: the footer's turn chip does not repeat the status line's context/tokens (the quiet round's dedup), and the conf/goal chips yield to the mission panel that already carries them.
 - **Deterministic before LLM.** The auto surfaces (brief, panel, recovery) never touch the model on the prompt path — the user's next keystroke is never taxed. LLM depth (the decision miner) is explicit and optional (`/brief`), through the side channel that never enters the transcript.
 - **Kill switches stay first-class.** Every ambient surface has one: `UNOWN_MISSION_PANEL=0`, `/mission off`, `UNOWN_TURN_METER=0`, `UNOWN_RECAP_IDLE_MINUTES=0`. A feature that cannot be turned off is not shipped.
 - **Survive everything.** Restore-on-restart for the pin; counter resets per session; a throwing listener can never break a push; malformed entries load as null with a warning, never a crash.
@@ -74,5 +74,6 @@ Rejected with reasons (the full ledger in [the competitor research](observabilit
 | `/recovery` + the health chip | 4, 6 (+ the standing fixes) | informational; chip appears only when true |
 | `/feed` + the feed chip | 7 (+ sources named on the card) | `/feed` marks seen; chip only while unseen |
 | The turn meter | 8 | `UNOWN_TURN_METER=0` |
+| The quiet footer (status row + attention row) | 8 + the attention gate for 6/7 | `UNOWN_FOOTER_CLASSIC=1` |
 | The todo/plan/fleet widgets | 2, 3 | their own addon/config switches |
 | The dashboard (12 screens) | the deep surfaces for every level | n/a (the ambient layer points here) |

@@ -30,11 +30,11 @@ export interface ChangelogStop {
   groups: ChangelogGroup[];
 }
 
-export const CHANGELOG_TOTAL_ENTRIES = 497;
+export const CHANGELOG_TOTAL_ENTRIES = 498;
 
 export const CHANGELOG_TOTALS: Record<ChangelogBucket, number> = {
   "Added": 231,
-  "Changed": 28,
+  "Changed": 29,
   "Deprecated": 0,
   "Removed": 3,
   "Fixed": 185,
@@ -46,10 +46,10 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
   {
     "label": "Unreleased",
     "date": null,
-    "total": 2,
+    "total": 3,
     "counts": {
       "Added": 0,
-      "Changed": 0,
+      "Changed": 1,
       "Deprecated": 0,
       "Removed": 0,
       "Fixed": 1,
@@ -57,6 +57,15 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
       "Behavior": 1
     },
     "groups": [
+      {
+        "bucket": "Changed",
+        "items": [
+          {
+            "title": "The quiet footer — the bottom area is two rows at rest, and ambient state earns no row",
+            "behavior": false
+          }
+        ]
+      },
       {
         "bucket": "Fixed",
         "items": [
