@@ -2,6 +2,8 @@
 
 Everything below was re-checked against the repository at `v0.0.53` (`main`, commit `ae1d6c0c`) on 2026-11-01, with the code as the authority wherever the README or the docs disagreed with it. Appendix A lists every claim the earlier draft got wrong, each with its file and line; Appendix B lists what it missed. Where a number could not be backed by a committed receipt or a source file, it was cut.
 
+This file's maintenance contract lives in the root `AGENTS.md` under Root Contracts: it is refreshed in the same change that moves anything it counts, and re-stamped with the version, commit, and date it was verified against. No counted surface has moved since the stamp above.
+
 **Unown** is an MIT-licensed, self-improving coding agent by Kanishka Namdeo, built on the open-source [pi coding agent](https://github.com/earendil-works/pi). The README states it applies "the five mechanisms Anthropic popularized by *using Claude Code to improve Claude Code*: Let the agent find its own weaknesses. Let it fix them. Let it remember what worked." It runs two ways: an interactive terminal session, and a background learning-engine daemon that keeps working while you are away.
 
 ## Ways to run it
