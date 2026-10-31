@@ -1,0 +1,86 @@
+{
+ "bm": "bm4",
+ "seeded": true,
+ "items": [
+  {
+   "itemId": "agent.goal-budget",
+   "section": "Agent",
+   "depthDowns": 7,
+   "reached": true,
+   "ms": 4452
+  },
+  {
+   "itemId": "memory.stack",
+   "section": "Memory",
+   "depthDowns": 6,
+   "reached": true,
+   "ms": 4180
+  },
+  {
+   "itemId": "learning.review-mode",
+   "section": "Learning",
+   "depthDowns": 8,
+   "reached": true,
+   "ms": 4725
+  },
+  {
+   "itemId": "automation.stop",
+   "section": "Automation",
+   "depthDowns": 9,
+   "reached": true,
+   "ms": 4998
+  },
+  {
+   "itemId": "safety.envelope",
+   "section": "Safety",
+   "depthDowns": 9,
+   "reached": true,
+   "ms": 4999
+  },
+  {
+   "itemId": "models.usage",
+   "section": "Models & Cost",
+   "depthDowns": 13,
+   "reached": true,
+   "ms": 6088
+  },
+  {
+   "itemId": "tools.hook-depth",
+   "section": "Tools & Integrations",
+   "depthDowns": 14,
+   "reached": true,
+   "ms": 6362
+  },
+  {
+   "itemId": "obs.status",
+   "section": "Observability",
+   "depthDowns": 12,
+   "reached": true,
+   "ms": 5816
+  },
+  {
+   "itemId": "rec.undo",
+   "section": "Recovery",
+   "depthDowns": 13,
+   "reached": true,
+   "ms": 6090
+  },
+  {
+   "itemId": "adv.env-browser",
+   "section": "Advanced",
+   "depthDowns": 14,
+   "reached": true,
+   "ms": 6363
+  }
+ ],
+ "summary": {
+  "reached": "10/10",
+  "meanDowns": 10.5,
+  "maxDowns": 14,
+  "registryCoverage": {
+   "settableOverTotal": 0.3416666666666667,
+   "piUnreachable": 0
+  }
+ },
+ "writtenAt": "2026-10-31T10:56:35Z"
+}

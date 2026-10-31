@@ -1,0 +1,36 @@
+preferences), .unown/memory/local.md (local overrides — highest precedence)
+
+── Skills ──
+  methodical-debugging, repo-exploration, unown-self-learning, verification-first
+
+── Extensions ──
+  <inline:6>
+
+── Themes ──
+  unown
+
+[Extension issues]
+  <inline:unown-tools>
+    Extension command '/settings' overrides a built-in interactive command. The extension version is dispatched and listed in
+autocomplete.
+  <inline:unown-tools>
+    Extension shortcut 'shift+tab' from <inline:unown-tools> conflicts with built-in shortcut. Skipping.
+
+
+ ○ no tracked steps · conf ✓ · 0m in session
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+
+ HIGH RISK — Default project trust
+ This writes "always" to ~/.unown/agent/settings.json. HIGH RISK: 'Always trust' auto-accepts every new project — including
+ cloned repos with hostile .unown/ configs (they are still refuse-first, but the gate is your backstop). Keep 'Ask'.
+ Type "yes" to confirm (anything else cancels):
+
+>
+
+ enter submit  escape/ctrl+c cancel
+
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+/tmp/settings-ux-bench/bm7-cwd
+ctx ▕░░░░░░░░░░▏ 0.0%/524k (auto)                                                                                agnes-3.0-flash
+memory: up · old build
+? help · ctrl+k palette · / commands · ! bash · ctrl+o tools · esc-esc tree

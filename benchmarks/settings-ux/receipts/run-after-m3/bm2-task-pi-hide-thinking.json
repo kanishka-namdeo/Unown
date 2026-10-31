@@ -1,0 +1,10 @@
+{
+ "task": "pi-hide-thinking",
+ "piRow": "hide-thinking",
+ "expectedItem": "interface.hide-thinking",
+ "outcome": "reachable+changed",
+ "settingsChanged": true,
+ "ledgerOk": true,
+ "success": true,
+ "ms": 7219
+}

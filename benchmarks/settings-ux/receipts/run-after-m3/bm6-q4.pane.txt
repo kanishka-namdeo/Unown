@@ -1,0 +1,36 @@
+  <inline:6>
+
+── Themes ──
+  unown
+
+[Extension issues]
+  <inline:unown-tools>
+    Extension command '/settings' overrides a built-in interactive command. The extension version is dispatched and listed in
+autocomplete.
+  <inline:unown-tools>
+    Extension shortcut 'shift+tab' from <inline:unown-tools> conflicts with built-in shortcut. Skipping.
+
+
+ ○ no tracked steps · conf ✓ · 0m in session
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+
+ Learning — What it learned, and what it may learn automatically
+
+ → Learning feed
+   Dream review mode = off
+   Dream review inbox ◐
+   Dream canary gate ○ = default (on — keep it on)
+   Canary sample size = default (3)
+   Staged skills inbox ◐
+   Skills (shipped)
+   Mint caps = default (8)
+   Standing orders ◐ = check /promote and docs/standing-orders.md
+   Back
+
+  ↑↓ navigate · Enter to select · Esc to cancel
+
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+/tmp/settings-ux-bench/bm6-cwd
+ctx ▕░░░░░░░░░░▏ 0.0%/524k (auto)                                                                                agnes-3.0-flash
+memory: up · old build
+? help · ctrl+k palette · / commands · ! bash · ctrl+o tools · esc-esc tree

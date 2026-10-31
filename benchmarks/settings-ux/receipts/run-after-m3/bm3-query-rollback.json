@@ -1,0 +1,19 @@
+{
+ "q": "rollback",
+ "targetId": "rec.dream-rollback",
+ "expectedAtBefore": "hit",
+ "topResults": [
+  "rec.dream-rollback \u2192 Roll back learned memory",
+  "rec.update-rollback \u2192 Roll back an update",
+  "Memory \u2192 Edit / roll back memory",
+  "Learning \u2192 Dream canary gate \u25cbHIGH",
+  "Learning \u2192 Skills (shipped)",
+  "Memory \u2192 Search memories",
+  "Models & Cost \u2192 Update channel \u25cbHIGH",
+  "Interface \u2192 Show images",
+  "adv.engine-network \u2192 Engine network exposure \u25cbHIGH",
+  "adv.local-ml \u2192 Local-ML dream lanes"
+ ],
+ "hit": true,
+ "rank": 1
+}

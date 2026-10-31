@@ -1,0 +1,19 @@
+{
+ "q": "spend",
+ "targetId": "(missing: automation spend meter)",
+ "expectedAtBefore": "miss",
+ "topResults": [
+  "Automation \u2192 Run history & spend",
+  "Agent \u2192 Session permission mode",
+  "Learning \u2192 Dream review mode",
+  "adv.spec-overrides \u2192 Spec & price overrides",
+  "Agent \u2192 Quiet startup",
+  "Interface \u2192 Double-escape action",
+  "Interface \u2192 Cache miss notices",
+  "Agent \u2192 Output style",
+  "Models & Cost \u2192 Model spec verification",
+  "Models & Cost \u2192 Governor ceilings (engine jobs) \u25cbHIGH"
+ ],
+ "hit": false,
+ "rank": null
+}

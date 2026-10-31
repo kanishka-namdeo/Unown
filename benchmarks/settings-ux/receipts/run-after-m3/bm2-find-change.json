@@ -1,0 +1,161 @@
+{
+ "bm": "bm2",
+ "seeded": true,
+ "reachable": [
+  {
+   "task": "goal-budget",
+   "itemId": "agent.goal-budget",
+   "outcome": "changed",
+   "valueAfter": 25,
+   "diskOk": true,
+   "ledgerOk": true,
+   "success": true,
+   "ms": 6207,
+   "input": {
+    "downs": 0,
+    "enters": 5,
+    "escs": 0,
+    "typed": 26,
+    "prompts": 1
+   }
+  },
+  {
+   "task": "review-mode",
+   "itemId": "learning.review-mode",
+   "outcome": "changed",
+   "valueAfter": true,
+   "diskOk": true,
+   "ledgerOk": true,
+   "success": true,
+   "ms": 5356,
+   "input": {
+    "downs": 0,
+    "enters": 4,
+    "escs": 0,
+    "typed": 24,
+    "prompts": 1
+   }
+  },
+  {
+   "task": "hook-depth",
+   "itemId": "tools.hook-depth",
+   "outcome": "changed",
+   "valueAfter": 3,
+   "diskOk": true,
+   "ledgerOk": true,
+   "success": true,
+   "ms": 6214,
+   "input": {
+    "downs": 0,
+    "enters": 5,
+    "escs": 0,
+    "typed": 23,
+    "prompts": 1
+   }
+  },
+  {
+   "task": "todo-lines",
+   "itemId": "agent.addon-todo-lines",
+   "outcome": "changed",
+   "valueAfter": 6,
+   "diskOk": true,
+   "ledgerOk": true,
+   "success": true,
+   "ms": 6211,
+   "input": {
+    "downs": 0,
+    "enters": 5,
+    "escs": 0,
+    "typed": 25,
+    "prompts": 1
+   }
+  },
+  {
+   "task": "addon-advisor",
+   "itemId": "agent.addon-advisor",
+   "outcome": "changed",
+   "valueAfter": true,
+   "diskOk": true,
+   "ledgerOk": true,
+   "success": true,
+   "ms": 5360,
+   "input": {
+    "downs": 0,
+    "enters": 4,
+    "escs": 0,
+    "typed": 19,
+    "prompts": 1
+   }
+  }
+ ],
+ "unreachableProbes": [
+  {
+   "task": "pi-theme",
+   "piRow": "theme",
+   "expectedItem": "interface.theme",
+   "outcome": "reachable+changed",
+   "settingsChanged": true,
+   "ledgerOk": true,
+   "success": true,
+   "ms": 7774
+  },
+  {
+   "task": "pi-steering",
+   "piRow": "steering-mode",
+   "expectedItem": "interface.steering",
+   "outcome": "reachable+changed",
+   "settingsChanged": true,
+   "ledgerOk": true,
+   "success": true,
+   "ms": 8052
+  },
+  {
+   "task": "pi-followup",
+   "piRow": "follow-up-mode",
+   "expectedItem": "interface.follow-up",
+   "outcome": "reachable+changed",
+   "settingsChanged": true,
+   "ledgerOk": true,
+   "success": true,
+   "ms": 8051
+  },
+  {
+   "task": "pi-hide-thinking",
+   "piRow": "hide-thinking",
+   "expectedItem": "interface.hide-thinking",
+   "outcome": "reachable+changed",
+   "settingsChanged": true,
+   "ledgerOk": true,
+   "success": true,
+   "ms": 7219
+  },
+  {
+   "task": "pi-mermaid",
+   "piRow": "mermaid-rendering",
+   "expectedItem": "interface.mermaid",
+   "outcome": "reachable+changed",
+   "settingsChanged": true,
+   "ledgerOk": true,
+   "success": true,
+   "ms": 7775
+  },
+  {
+   "task": "pi-tree-filter",
+   "piRow": "tree-filter-mode",
+   "expectedItem": "interface.tree-filter",
+   "outcome": "reachable+changed",
+   "settingsChanged": true,
+   "ledgerOk": true,
+   "success": true,
+   "ms": 8045
+  }
+ ],
+ "summary": {
+  "reachableSuccess": "5/5",
+  "unreachableConfirmed": 0,
+  "probesReachableAndChanged": 6,
+  "unreachableTotal": 6,
+  "meanReachableMs": 5869.6
+ },
+ "writtenAt": "2026-10-31T10:51:31Z"
+}

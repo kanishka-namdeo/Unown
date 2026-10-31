@@ -17,7 +17,12 @@ function line(char = "─", width = 64): string {
         return char.repeat(width);
 }
 
-export async function renderStatus(): Promise<string> {
+/**
+ * The status card. `verbose` adds the capability map card (the --verbose
+ * lane the help text always implied — implemented in the S2-20 sweep; before
+ * that the flag was documented but silently ignored).
+ */
+export async function renderStatus(opts?: { verbose?: boolean }): Promise<string> {
         const out: string[] = [];
         out.push("unown settings — status");
         out.push(line());
@@ -45,6 +50,10 @@ export async function renderStatus(): Promise<string> {
                         out.push(`  ${new Date(entry.ts).toISOString().slice(0, 16)} ${entry.itemName}: ${String(entry.before)} → ${String(entry.after)} (${entry.actor})`);
                 }
         }
+        if (opts?.verbose) {
+                out.push("");
+                out.push(renderCapabilityMap());
+        }
         return out.join("\n");
 }
 
@@ -53,7 +62,7 @@ export function renderHelp(): string {
                 "unown settings hub",
                 line(),
                 "/settings                  open the interactive hub (TUI)",
-                "/settings status           print every section + effective values (headless-safe)",
+                "/settings status [--verbose] print every section + effective values; --verbose adds the capability map (headless-safe)",
                 "/settings search <query>   fuzzy-search the catalog (headless-safe)",
                 "/settings health           run the health checks (headless-safe)",
                 "/settings diff             settings that differ from defaults (headless-safe)",

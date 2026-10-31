@@ -1,0 +1,235 @@
+{
+ "bm": "bm3",
+ "seeded": true,
+ "queries": [
+  {
+   "q": "budget",
+   "targetId": "agent.goal-budget",
+   "expectedAtBefore": "hit",
+   "topResults": [
+    "Memory \u2192 Injection budget",
+    "Agent \u2192 Goal budget (turns)",
+    "Memory \u2192 Memory stack (4 tiers)",
+    "Interface \u2192 Output padding",
+    "Tools & Integrations \u2192 Hook loop breaker (max depth)",
+    "Models & Cost \u2192 Thinking level",
+    "Memory \u2192 Per-tier write cap",
+    "Learning \u2192 Standing orders",
+    "rec.transfer \u2192 Export / import settings",
+    "Interface \u2192 Default thinking level"
+   ],
+   "hit": true,
+   "rank": 2
+  },
+  {
+   "q": "kill switch",
+   "targetId": "automation.stop",
+   "expectedAtBefore": "hit",
+   "topResults": [
+    "Automation \u2192 Stop a running routine (kill switch) \u25cbHIGH",
+    "Interface \u2192 Block images",
+    "Interface \u2192 Skill commands",
+    "Learning \u2192 Staged skills inbox",
+    "Safety \u2192 Default project trust \u25cbHIGH",
+    "Memory \u2192 Project identity",
+    "Safety \u2192 Trust manifest (this project) \u25cbHIGH",
+    "adv.spec-overrides \u2192 Spec & price overrides",
+    "Safety \u2192 Strict hooks \u25cbHIGH"
+   ],
+   "hit": true,
+   "rank": 1
+  },
+  {
+   "q": "undo",
+   "targetId": "rec.undo",
+   "expectedAtBefore": "hit",
+   "topResults": [
+    "rec.undo \u2192 Undo file changes",
+    "Agent \u2192 ask_user_question addon",
+    "Interface \u2192 Output padding",
+    "Interface \u2192 Editor padding (columns)",
+    "rec.transfer \u2192 Export / import settings",
+    "Tools & Integrations \u2192 Hook loop breaker (max depth)",
+    "Safety \u2192 OS sandbox (bubblewrap) \u25cbHIGH",
+    "Agent \u2192 Quiet startup",
+    "adv.spec-overrides \u2192 Spec & price overrides",
+    "Automation \u2192 Stop a running routine (kill switch) \u25cbHIGH"
+   ],
+   "hit": true,
+   "rank": 1
+  },
+  {
+   "q": "rollback",
+   "targetId": "rec.dream-rollback",
+   "expectedAtBefore": "hit",
+   "topResults": [
+    "rec.dream-rollback \u2192 Roll back learned memory",
+    "rec.update-rollback \u2192 Roll back an update",
+    "Memory \u2192 Edit / roll back memory",
+    "Learning \u2192 Dream canary gate \u25cbHIGH",
+    "Learning \u2192 Skills (shipped)",
+    "Memory \u2192 Search memories",
+    "Models & Cost \u2192 Update channel \u25cbHIGH",
+    "Interface \u2192 Show images",
+    "adv.engine-network \u2192 Engine network exposure \u25cbHIGH",
+    "adv.local-ml \u2192 Local-ML dream lanes"
+   ],
+   "hit": true,
+   "rank": 1
+  },
+  {
+   "q": "permissions",
+   "targetId": "safety.permissions",
+   "expectedAtBefore": "hit",
+   "topResults": [
+    "Safety \u2192 Permissions layer \u25cbHIGH",
+    "Safety \u2192 Permission rules \u25cbHIGH",
+    "Safety \u2192 Effective permission envelope",
+    "Agent \u2192 Session permission mode",
+    "obs.status \u2192 Status card",
+    "Safety \u2192 Strict hooks \u25cbHIGH",
+    "Automation \u2192 Misfire policy",
+    "Interface \u2192 Cache miss notices",
+    "Safety \u2192 Project-config trust bypass \u25cbHIGH",
+    "rec.transfer \u2192 Export / import settings"
+   ],
+   "hit": true,
+   "rank": 2
+  },
+  {
+   "q": "hook",
+   "targetId": "tools.hook-depth",
+   "expectedAtBefore": "hit",
+   "topResults": [
+    "Tools & Integrations \u2192 Hooks \u25cbHIGH",
+    "Tools & Integrations \u2192 Hook loop breaker (max depth)",
+    "Safety \u2192 Strict hooks \u25cbHIGH",
+    "Safety \u2192 Instruction-set write guard \u25cbHIGH",
+    "obs.turn-meter \u2192 Turn meter",
+    "Memory \u2192 Project identity",
+    "Models & Cost \u2192 Usage & cost",
+    "adv.engine-network \u2192 Engine network exposure \u25cbHIGH",
+    "Models & Cost \u2192 Governor ceilings (engine jobs) \u25cbHIGH",
+    "Safety \u2192 Default project trust \u25cbHIGH"
+   ],
+   "hit": true,
+   "rank": 2
+  },
+  {
+   "q": "dream",
+   "targetId": "learning.pending-dreams",
+   "expectedAtBefore": "hit",
+   "topResults": [
+    "Learning \u2192 Dream canary gate \u25cbHIGH",
+    "Learning \u2192 Dream review mode",
+    "Learning \u2192 Dream review inbox",
+    "adv.local-ml \u2192 Local-ML dream lanes",
+    "rec.dream-rollback \u2192 Roll back learned memory",
+    "Learning \u2192 Learning feed",
+    "Learning \u2192 Canary sample size",
+    "adv.bridge \u2192 Bridge concurrency & upstream",
+    "Memory \u2192 Manual notes protection",
+    "Interface \u2192 Dark theme (auto mode)"
+   ],
+   "hit": true,
+   "rank": 3
+  },
+  {
+   "q": "cost",
+   "targetId": "models.usage",
+   "expectedAtBefore": "hit",
+   "topResults": [
+    "Models & Cost \u2192 Usage & cost",
+    "Interface \u2192 Cache miss notices",
+    "Automation \u2192 Run history & spend",
+    "Models & Cost \u2192 Default model",
+    "Models & Cost \u2192 Governor ceilings (engine jobs) \u25cbHIGH",
+    "Models & Cost \u2192 Model spec verification",
+    "Models & Cost \u2192 Providers \u25cbHIGH",
+    "Models & Cost \u2192 Thinking level",
+    "Models & Cost \u2192 Update channel \u25cbHIGH",
+    "Memory \u2192 Cross-project hoist"
+   ],
+   "hit": true,
+   "rank": 1
+  },
+  {
+   "q": "theme",
+   "targetId": "(pi selector: theme)",
+   "expectedAtBefore": "miss",
+   "topResults": [
+    "Interface \u2192 Theme",
+    "Interface \u2192 Dark theme (auto mode)",
+    "Interface \u2192 Light theme (auto mode)",
+    "Models & Cost \u2192 Default model",
+    "Interface \u2192 Default thinking level",
+    "Agent \u2192 Session permission mode",
+    "Interface \u2192 Autocomplete max rows",
+    "Interface \u2192 Hardware cursor",
+    "adv.bridge \u2192 Bridge concurrency & upstream",
+    "Interface \u2192 Clear on shrink"
+   ],
+   "hit": true,
+   "rank": 1
+  },
+  {
+   "q": "dark mode",
+   "targetId": "(pi selector: theme)",
+   "expectedAtBefore": "miss",
+   "topResults": [
+    "Interface \u2192 Dark theme (auto mode)",
+    "Interface \u2192 Fullscreen scrollbar",
+    "Interface \u2192 Follow-up mode",
+    "Interface \u2192 Hide thinking blocks",
+    "Interface \u2192 Mermaid diagrams",
+    "Interface \u2192 Steering mode",
+    "Interface \u2192 Tree filter mode",
+    "Automation \u2192 Default run mode",
+    "Models & Cost \u2192 Model spec verification",
+    "adv.spec-overrides \u2192 Spec & price overrides"
+   ],
+   "hit": true,
+   "rank": 1
+  },
+  {
+   "q": "spend",
+   "targetId": "(missing: automation spend meter)",
+   "expectedAtBefore": "miss",
+   "topResults": [
+    "Automation \u2192 Run history & spend",
+    "Agent \u2192 Session permission mode",
+    "Learning \u2192 Dream review mode",
+    "adv.spec-overrides \u2192 Spec & price overrides",
+    "Agent \u2192 Quiet startup",
+    "Interface \u2192 Double-escape action",
+    "Interface \u2192 Cache miss notices",
+    "Agent \u2192 Output style",
+    "Models & Cost \u2192 Model spec verification",
+    "Models & Cost \u2192 Governor ceilings (engine jobs) \u25cbHIGH"
+   ],
+   "hit": false,
+   "rank": null
+  },
+  {
+   "q": "memory health",
+   "targetId": "(missing: memory health card)",
+   "expectedAtBefore": "miss",
+   "topResults": [
+    "Agent \u2192 Capability map",
+    "Tools & Integrations \u2192 Hook loop breaker (max depth)",
+    "Memory \u2192 Project identity",
+    "rec.reset \u2192 Reset settings (scoped) \u25cbHIGH",
+    "Learning \u2192 Dream review mode",
+    "Interface \u2192 Light theme (auto mode)"
+   ],
+   "hit": false,
+   "rank": null
+  }
+ ],
+ "summary": {
+  "hitRate": "10/12",
+  "hitRatePct": 83.3,
+  "expectedHitsMade": "8/8"
+ },
+ "writtenAt": "2026-10-31T10:52:55Z"
+}

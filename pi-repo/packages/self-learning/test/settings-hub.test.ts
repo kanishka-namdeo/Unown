@@ -62,12 +62,14 @@ describe("settings registry", () => {
                 const { registryIntegrity, SETTINGS_REGISTRY } = await import("../src/settings/registry.ts");
                 const result = registryIntegrity();
                 expect(result.ok).toBe(true);
-                // The catalog must cover every intent-ordered section.
+                // The catalog must cover every intent-ordered section
+                // (eleven since the Interface repair — S2-1's 32 orphaned
+                // pi rows got their home in round 2 M3).
                 const sections = new Set(SETTINGS_REGISTRY.map((i) => i.section));
-                expect(sections.size).toBe(10);
+                expect(sections.size).toBe(11);
                 // Breadth: the inventory found ~410 entries; the hub catalogs the
-                // decisions a user actually makes across all ten sections.
-                expect(SETTINGS_REGISTRY.length).toBeGreaterThanOrEqual(80);
+                // decisions a user actually makes across all eleven sections.
+                expect(SETTINGS_REGISTRY.length).toBeGreaterThanOrEqual(110);
         });
 
         test("the six mission questions each have a home", async () => {
@@ -419,10 +421,10 @@ describe("pending dreams (dream-review.ts)", () => {
 // ---------------------------------------------------------------------------
 
 describe("headless renders (print/RPC parity)", () => {
-        test("status covers all ten sections with risk badges; search/diff/health/recent render text", async () => {
+        test("status covers all eleven sections with risk badges; search/diff/health/recent render text", async () => {
                 const { renderStatus, renderSearch, renderHealth, renderRecent, renderHelp } = await import("../src/settings/render.ts");
                 const status = await renderStatus();
-                for (const title of ["Agent", "Memory", "Learning", "Automation", "Safety", "Models & Cost", "Tools & Integrations", "Observability", "Recovery", "Advanced"]) {
+                for (const title of ["Agent", "Interface", "Memory", "Learning", "Automation", "Safety", "Models & Cost", "Tools & Integrations", "Observability", "Recovery", "Advanced"]) {
                         expect(status).toContain(title);
                 }
                 expect(status).toContain("●"); // low badge present
@@ -430,5 +432,140 @@ describe("headless renders (print/RPC parity)", () => {
                 expect(await renderHealth(TEST_PROJECT)).toContain("health");
                 expect(renderRecent(5)).toContain("No settings changes recorded");
                 expect(renderHelp()).toContain("/settings search");
+        });
+});
+
+// ---------------------------------------------------------------------------
+// The Interface section (round 2 M3 — the S2-1 repair)
+// ---------------------------------------------------------------------------
+
+describe("the interface section (S2-1: every pi selector row has a settable home)", () => {
+        // The vendored pi settings-selector's 35 settings rows (the audit's
+        // machine inventory; dialog chrome apply/single-mode excluded), each
+        // mapped to the hub item that now owns it. This is the regression
+        // gate BM-2's probes measure end-to-end: if a pi row loses its hub
+        // home, this table says exactly which one.
+        const PI_ROWS_TO_HUB: Array<[piRow: string, hubId: string]> = [
+                ["theme", "interface.theme"],
+                ["light-theme", "interface.theme-light"],
+                ["dark-theme", "interface.theme-dark"],
+                ["tui-mode", "interface.tui-mode"],
+                ["steering-mode", "interface.steering"],
+                ["follow-up-mode", "interface.follow-up"],
+                ["transport", "interface.transport"],
+                ["http-idle-timeout", "interface.http-idle-timeout"],
+                ["hide-thinking", "interface.hide-thinking"],
+                ["mermaid-rendering", "interface.mermaid"],
+                ["cache-miss-notices", "interface.cache-miss"],
+                ["collapse-changelog", "interface.collapse-changelog"],
+                ["quiet-startup", "agent.quiet-startup"],
+                ["install-telemetry", "interface.install-telemetry"],
+                ["default-project-trust", "safety.default-project-trust"],
+                ["double-escape-action", "interface.double-escape"],
+                ["tree-filter-mode", "interface.tree-filter"],
+                ["warnings", "interface.anthropic-extra-usage"],
+                ["model-thinking", "interface.thinking-level"],
+                ["anthropic-extra-usage", "interface.anthropic-extra-usage"],
+                ["fullscreen-exit-output", "interface.fullscreen-exit-output"],
+                ["fullscreen-scrollbar", "interface.fullscreen-scrollbar"],
+                ["fullscreen-copy-on-select", "interface.copy-on-select"],
+                ["show-images", "interface.show-images"],
+                ["image-width-cells", "interface.image-width"],
+                ["auto-resize-images", "interface.auto-resize-images"],
+                ["block-images", "interface.block-images"],
+                ["skill-commands", "interface.skill-commands"],
+                ["show-hardware-cursor", "interface.hardware-cursor"],
+                ["editor-padding", "interface.editor-padding"],
+                ["output-padding", "interface.output-padding"],
+                ["autocomplete-max-visible", "interface.autocomplete-height"],
+                ["clear-on-shrink", "interface.clear-on-shrink"],
+                ["terminal-progress", "interface.terminal-progress"],
+                ["autocompact", "agent.autocompact"],
+        ];
+
+        test("every pi selector row maps to a hub item WITH a setter", async () => {
+                const { itemById } = await import("../src/settings/registry.ts");
+                for (const [piRow, hubId] of PI_ROWS_TO_HUB) {
+                        const item = itemById(hubId);
+                        expect(item, `${piRow} → ${hubId} must exist`).toBeDefined();
+                        expect(typeof item!.set, `${hubId} must be settable (S2-1: reachable AND changeable)`).toBe("function");
+                }
+        });
+
+        test("interface round-trips: toggle + select write through the owning manager", async () => {
+                const { itemById, resetPiManagerCache } = await import("../src/settings/registry.ts");
+                resetPiManagerCache();
+                const hide = itemById("interface.hide-thinking")!;
+                expect(hide.get!()).toBe(false);
+                hide.set!(true);
+                expect(hide.get!()).toBe(true);
+                const steering = itemById("interface.steering")!;
+                expect(steering.get!()).toBe("one-at-a-time");
+                steering.set!("all");
+                expect(steering.get!()).toBe("all");
+                const timeout = itemById("interface.http-idle-timeout")!;
+                timeout.set!(60000);
+                expect(timeout.get!()).toBe(60000);
+        });
+
+        test("theme composite: light/dark items write the 'light/dark' encoding", async () => {
+                const { itemById, resetPiManagerCache } = await import("../src/settings/registry.ts");
+                resetPiManagerCache();
+                const theme = itemById("interface.theme")!;
+                theme.set!("dark");
+                expect(theme.get!()).toBe("dark");
+                const light = itemById("interface.theme-light")!;
+                light.set!("papercolor-light");
+                // single theme "dark" becomes the dark side; light side is the pick
+                expect(light.get!()).toBe("papercolor-light");
+                expect(itemById("interface.theme-dark")!.get!()).toBe("dark");
+        });
+
+        test("getChoices resolves from the live UI surface; afterSet rides it (the theme lane)", async () => {
+                const { itemById, resetPiManagerCache } = await import("../src/settings/registry.ts");
+                resetPiManagerCache();
+                const theme = itemById("interface.theme")!;
+                expect(typeof theme.getChoices).toBe("function");
+                const applied: string[] = [];
+                const fakeUi = {
+                        getAllThemes: () => [{ name: "unown" }, { name: "dark" }, { name: "light" }],
+                        setTheme: (name: string) => {
+                                applied.push(name);
+                                return { success: true };
+                        },
+                };
+                const choices = theme.getChoices!(fakeUi as never);
+                expect(choices.map((c) => c.value)).toEqual(["unown", "dark", "light"]);
+                // persistence rides set; the live switch rides afterSet
+                theme.set!("light");
+                expect(applied).toEqual([]); // set alone must NOT live-switch
+                theme.afterSet!(fakeUi as never, "light");
+                expect(applied).toEqual(["light"]);
+        });
+
+        test("health reads the CALL-TIME home (S2-21: repointed UNOWN_HOME is honored)", async () => {
+                const { runHealthChecks } = await import("../src/settings/health.ts");
+                // A second home with NO models.json — if health read the
+                // boot-time dir it would report the first home's provider ok.
+                const otherHome = join(TEST_ROOT, "other-home");
+                mkdirSync(join(otherHome, "agent"), { recursive: true });
+                // seed the FIRST home with a models.json so the two differ
+                writeFileSync(
+                        join(TEST_HOME, "agent", "models.json"),
+                        JSON.stringify({ providers: [{ name: "zai-bridge" }] }),
+                );
+                process.env.UNOWN_HOME = otherHome;
+                const checks = await runHealthChecks(TEST_PROJECT);
+                const provider = checks.find((c) => c.id === "health.provider");
+                expect(provider?.status).toBe("fail"); // the new home has no models.json
+                process.env.UNOWN_HOME = TEST_HOME;
+        });
+
+        test("status --verbose appends the capability map (S2-20: the documented flag, now real)", async () => {
+                const { renderStatus } = await import("../src/settings/render.ts");
+                const plain = await renderStatus();
+                expect(plain).not.toContain("capability map");
+                const verbose = await renderStatus({ verbose: true });
+                expect(verbose).toContain("capability map");
         });
 });

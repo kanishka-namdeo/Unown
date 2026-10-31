@@ -1,0 +1,36 @@
+── Extensions ──
+  <inline:6>
+
+── Themes ──
+  unown
+
+[Extension issues]
+  <inline:unown-tools>
+    Extension command '/settings' overrides a built-in interactive command. The extension version is dispatched and listed in
+autocomplete.
+  <inline:unown-tools>
+    Extension shortcut 'shift+tab' from <inline:unown-tools> conflicts with built-in shortcut. Skipping.
+
+
+ ○ no tracked steps · conf ✓ · 0m in session
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+
+ Memory — What Unown remembers — inspect, edit, forget
+
+ → Memory stack (4 tiers)
+   Search memories
+   Per-tier write cap ◐ = default (48000)
+   Injection budget ◐ = default (80000)
+   Cross-project hoist ◐ = default (off (opt-in))
+   Project identity = shown in the Memory screen (dashboard); git proj
+   Manual notes protection = protected lane (see .unown/memory/project.md)
+   Edit / roll back memory ◐
+   Back
+
+  ↑↓ navigate · Enter to select · Esc to cancel
+
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+/tmp/settings-ux-bench/bm6-cwd
+ctx ▕░░░░░░░░░░▏ 0.0%/524k (auto)                                                                                agnes-3.0-flash
+memory: up · old build
+? help · ctrl+k palette · / commands · ! bash · ctrl+o tools · esc-esc tree

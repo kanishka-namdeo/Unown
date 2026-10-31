@@ -1,0 +1,27 @@
+{
+ "bm": "bm7",
+ "auditOk": true,
+ "auditHeadline": {
+  "items": 120,
+  "risk": {
+   "low": 58,
+   "med": 38,
+   "high": 24
+  },
+  "settable": 41,
+  "piUnreachable": 0
+ },
+ "seeded": true,
+ "probe": {
+  "item": "safety.default-project-trust",
+  "gateShown": true,
+  "wrongPhraseCancels": true,
+  "yesWrites": true,
+  "ledgerEntry": true
+ },
+ "summary": {
+  "auditOk": true,
+  "gateFullCycle": true
+ },
+ "writtenAt": "2026-10-31T10:53:11Z"
+}

@@ -563,17 +563,30 @@ def bm2_one_reachable(cp: CountingPty, home: str, run_dir: str, task: dict) -> d
     return row
 
 
-def bm2_one_probe(cp: CountingPty, run_dir: str, probe: dict) -> dict:
-    """S2-1 probe: can the pi setting be FOUND from any /settings surface?"""
+def bm2_one_probe(cp: CountingPty, home: str, run_dir: str, probe: dict) -> dict:
+    """S2-1 probe: find AND change the pi setting through /settings.
+
+    At BEFORE (receipts run-2026-10-31T10-16-44) these probes confirmed
+    unreachability. Since the M3 Interface repair each probe runs the full
+    cycle: search → open the interface item → change its value → verify
+    settings.json on disk + the change ledger. Outcome 'reachable+changed'
+    is the AFTER gate; anything else is an honest failure receipt.
+    """
     task_receipt = os.path.join(run_dir, f"bm2-task-{probe['task']}.json")
     if os.path.exists(task_receipt):
         with open(task_receipt, "r", encoding="utf-8") as fh:
             log(f"BM-2 probe {probe['task']}: resume skip (receipt exists)")
             return json.load(fh)
-    row = {"task": probe["task"], "piRow": probe["piRow"], "outcome": "fail"}
+    row = {
+        "task": probe["task"],
+        "piRow": probe["piRow"],
+        "expectedItem": probe.get("expectedItem"),
+        "outcome": "fail",
+    }
     t0 = now_ms()
+    settings_before = read_home_json(home, "agent/settings.json") or {}
     try:
-        # Surface 1: the hub Search row.
+        # Surface 1: the hub Search row (the advertised find path).
         open_hub(cp)
         navigate_to(cp, "Search settings", desc="Search row")
         cp.key("Enter")
@@ -583,31 +596,59 @@ def bm2_one_probe(cp: CountingPty, run_dir: str, probe: dict) -> dict:
         cp.send("\r")
         cp.pump(0.8)
         pane = cp.pane_text()
-        found = "No settings matched" not in pane
-        # Surface 2: the /settings search subcommand.
-        close_dialogs(cp)
-        back_to_editor(cp)
-        cp.type_prompt(f"/settings search {probe['query']}")
-        time.sleep(1.2)
-        cp.pump(0.8)
-        pane2 = cp.pane_text()
-        save_pane(run_dir, f"bm2-{probe['task']}-probe", pane2)
-        # The probe's pi row id (e.g. 'steering-mode') has no registry row;
-        # a hit is any result whose label names the pi concept.
-        label_hit = any(
-            frag in pane2
-            for frag in (probe["query"].split() + [probe["piRow"].replace("-", " ")])
-        )
-        # Both surfaces must MISS the concept for 'unreachable' — a fuzzy
-        # false-positive (e.g. 'theme' hitting 'models.default') is not a find.
-        row["searchRowHadResults"] = found
-        row["subcommandMentions"] = bool(label_hit)
-        row["outcome"] = "unreachable-from-tui"
+        if "No settings matched" in pane:
+            row["outcome"] = "unreachable-from-tui"
+            row["error"] = f"no results for {probe['query']!r}"
+            save_pane(run_dir, f"bm2-{probe['task']}-probe-miss", pane)
+            close_dialogs(cp)
+            back_to_editor(cp)
+            row["ms"] = now_ms() - t0
+            with open(task_receipt, "w", encoding="utf-8") as fh:
+                json.dump(row, fh, indent=1)
+            return row
+        # Open the hit (the top relevant result names the interface item).
+        navigate_to(cp, probe["editorAnchor"], desc="the interface hit")
+        cp.key("Enter")
+        cp.wait_for([probe["editorAnchor"], "Back"], mode="all", timeout=15, desc="the item editor")
+        # Change the value per kind.
+        if probe["kind"] == "toggle":
+            for _ in range(40):
+                cp.pump(0.15)
+                label = selected_label(cp.pane())
+                if "Turn ON" in label or "Turn OFF" in label:
+                    break
+                cp.key("Down", delay=0.07)
+            cp.key("Enter")
+            cp.wait_for(["Saved:"], timeout=15, desc="toggle save notice")
+        else:  # select / select-theme
+            navigate_to(cp, "Change value", desc="Change value")
+            cp.key("Enter")
+            cp.wait_for(["pick a value"], timeout=15, desc="value picker")
+            navigate_to(cp, probe["pickLabel"], desc=f"pick {probe['pickLabel']!r}")
+            cp.key("Enter")
+            cp.wait_for(["Saved:"], timeout=15, desc="save notice")
+        row["outcome"] = "changed"
     except Exception as exc:
         row["error"] = repr(exc)[:300]
         save_pane(run_dir, f"bm2-{probe['task']}-probe-error", cp.pane_text())
         close_dialogs(cp)
         back_to_editor(cp)
+        row["ms"] = now_ms() - t0
+        with open(task_receipt, "w", encoding="utf-8") as fh:
+            json.dump(row, fh, indent=1)
+        return row
+    # disk + ledger verification
+    time.sleep(0.8)
+    settings_after = read_home_json(home, "agent/settings.json") or {}
+    row["settingsChanged"] = settings_after != settings_before
+    row["ledgerOk"] = any(
+        e.get("itemId") == probe.get("expectedItem") for e in ledger_entries(home)
+    )
+    row["success"] = row["outcome"] == "changed" and row["settingsChanged"] and row["ledgerOk"]
+    row["outcome"] = "reachable+changed" if row["success"] else row["outcome"]
+    save_pane(run_dir, f"bm2-{probe['task']}-probe", cp.pane_text())
+    close_dialogs(cp)
+    back_to_editor(cp)
     row["ms"] = now_ms() - t0
     with open(task_receipt, "w", encoding="utf-8") as fh:
         json.dump(row, fh, indent=1)
@@ -634,13 +675,14 @@ def run_bm2(run_dir: str, args) -> dict:
             receipt["reachable"].append(bm2_one_reachable(cp, home, run_dir, task))
         for probe in tasks["unreachable_probes"]:
             log(f"BM-2 probe: {probe['task']}")
-            receipt["unreachableProbes"].append(bm2_one_probe(cp, run_dir, probe))
+            receipt["unreachableProbes"].append(bm2_one_probe(cp, home, run_dir, probe))
     finally:
         cp.close()
     ok = [r for r in receipt["reachable"] if r.get("success")]
     receipt["summary"] = {
         "reachableSuccess": f"{len(ok)}/{len(tasks['reachable'])}",
         "unreachableConfirmed": sum(1 for r in receipt["unreachableProbes"] if r["outcome"] == "unreachable-from-tui"),
+        "probesReachableAndChanged": sum(1 for r in receipt["unreachableProbes"] if r["outcome"] == "reachable+changed"),
         "unreachableTotal": len(tasks["unreachable_probes"]),
         "meanReachableMs": (sum(r.get("ms", 0) for r in receipt["reachable"]) / max(1, len(receipt["reachable"]))),
     }

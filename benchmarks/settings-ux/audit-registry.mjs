@@ -33,9 +33,48 @@ import { readFileSync } from "node:fs";
 // anthropic-extra-usage (each opens a real config submenu) — verified
 // against the selector source, not guessed.
 const DIALOG_IDS = new Set(["apply", "single-mode"]);
-// pi selector rows the hub mirrors with a working setter (verified by
-// BM-2's reachable tasks; the ids are the pi-side keys).
-const HUB_MIRRORED = new Set(["autocompact", "quiet-startup", "default-project-trust"]);
+// pi selector row → the hub item that owns it (the round-2 M3 Interface
+// repair). Every row must map to a hub item WITH a setter — the S2-1
+// regression gate. Keep in sync with the PI_ROWS_TO_HUB table in
+// test/settings-hub.test.ts (the test fails if a row loses its home;
+// this audit reports the machine count the receipts cite).
+const PI_ROW_TO_HUB = {
+        "theme": "interface.theme",
+        "light-theme": "interface.theme-light",
+        "dark-theme": "interface.theme-dark",
+        "tui-mode": "interface.tui-mode",
+        "steering-mode": "interface.steering",
+        "follow-up-mode": "interface.follow-up",
+        "transport": "interface.transport",
+        "http-idle-timeout": "interface.http-idle-timeout",
+        "hide-thinking": "interface.hide-thinking",
+        "mermaid-rendering": "interface.mermaid",
+        "cache-miss-notices": "interface.cache-miss",
+        "collapse-changelog": "interface.collapse-changelog",
+        "quiet-startup": "agent.quiet-startup",
+        "install-telemetry": "interface.install-telemetry",
+        "default-project-trust": "safety.default-project-trust",
+        "double-escape-action": "interface.double-escape",
+        "tree-filter-mode": "interface.tree-filter",
+        "warnings": "interface.anthropic-extra-usage",
+        "model-thinking": "interface.thinking-level",
+        "anthropic-extra-usage": "interface.anthropic-extra-usage",
+        "fullscreen-exit-output": "interface.fullscreen-exit-output",
+        "fullscreen-scrollbar": "interface.fullscreen-scrollbar",
+        "fullscreen-copy-on-select": "interface.copy-on-select",
+        "show-images": "interface.show-images",
+        "image-width-cells": "interface.image-width",
+        "auto-resize-images": "interface.auto-resize-images",
+        "block-images": "interface.block-images",
+        "skill-commands": "interface.skill-commands",
+        "show-hardware-cursor": "interface.hardware-cursor",
+        "editor-padding": "interface.editor-padding",
+        "output-padding": "interface.output-padding",
+        "autocomplete-max-visible": "interface.autocomplete-height",
+        "clear-on-shrink": "interface.clear-on-shrink",
+        "terminal-progress": "interface.terminal-progress",
+        "autocompact": "agent.autocompact",
+};
 
 const items = SETTINGS_REGISTRY.map((i) => ({
         id: i.id,
@@ -71,7 +110,22 @@ const selectorSrc = readFileSync(
 );
 const piIds = [...selectorSrc.matchAll(/^\s*id: "([a-z0-9-]+)",$/gm)].map((m) => m[1]);
 const piSettingsRows = piIds.filter((id) => !DIALOG_IDS.has(id));
-const unreachable = piSettingsRows.filter((id) => !HUB_MIRRORED.has(id));
+// A pi row is hub-mirrored when its mapped hub item EXISTS and carries a
+// setter — verified against the runtime registry, not the mapping alone
+// (a mapping to a missing item is itself a finding).
+const hubMirrored = [];
+const mappingMisses = [];
+for (const id of piSettingsRows) {
+        const hubId = PI_ROW_TO_HUB[id];
+        if (!hubId) {
+                mappingMisses.push({ piRow: id, hubId: "(no mapping)" });
+                continue;
+        }
+        const item = items.find((i) => i.id === hubId);
+        if (item && item.settable) hubMirrored.push(id);
+        else mappingMisses.push({ piRow: id, hubId });
+}
+const unreachable = piSettingsRows.filter((id) => !hubMirrored.includes(id));
 
 const audit = {
         ranAt: new Date().toISOString(),
@@ -86,7 +140,8 @@ const audit = {
                 rowsFound: piIds.length,
                 settingsRows: piSettingsRows.length,
                 dialogChromeExcluded: piIds.filter((id) => DIALOG_IDS.has(id)),
-                hubMirrored: piSettingsRows.filter((id) => HUB_MIRRORED.has(id)),
+                hubMirrored,
+                mappingMisses,
                 unreachableCount: unreachable.length,
                 unreachableRows: unreachable,
         },

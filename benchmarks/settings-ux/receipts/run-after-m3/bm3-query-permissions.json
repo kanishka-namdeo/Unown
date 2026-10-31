@@ -1,0 +1,19 @@
+{
+ "q": "permissions",
+ "targetId": "safety.permissions",
+ "expectedAtBefore": "hit",
+ "topResults": [
+  "Safety \u2192 Permissions layer \u25cbHIGH",
+  "Safety \u2192 Permission rules \u25cbHIGH",
+  "Safety \u2192 Effective permission envelope",
+  "Agent \u2192 Session permission mode",
+  "obs.status \u2192 Status card",
+  "Safety \u2192 Strict hooks \u25cbHIGH",
+  "Automation \u2192 Misfire policy",
+  "Interface \u2192 Cache miss notices",
+  "Safety \u2192 Project-config trust bypass \u25cbHIGH",
+  "rec.transfer \u2192 Export / import settings"
+ ],
+ "hit": true,
+ "rank": 2
+}

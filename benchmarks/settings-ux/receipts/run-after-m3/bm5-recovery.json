@@ -1,0 +1,40 @@
+{
+ "bm": "bm5",
+ "seeded": true,
+ "paths": [
+  {
+   "path": "change\u2192recent\u2192revert",
+   "ok": true,
+   "valueAfterRevert": 0,
+   "ms": 11632
+  },
+  {
+   "path": "diff-shows-drift",
+   "ok": true,
+   "ms": 7981
+  },
+  {
+   "path": "kill-switch-reachable",
+   "ok": true,
+   "ms": 4172
+  },
+  {
+   "path": "dream-rollback-reachable",
+   "ok": true,
+   "ms": 5531
+  },
+  {
+   "path": "scoped-reset-backup",
+   "ok": true,
+   "backupOnDisk": true,
+   "backupFiles": [
+    "reset-2026-10-31T10-54-09-160Z-1.json"
+   ],
+   "ms": 2105
+  }
+ ],
+ "summary": {
+  "okPaths": "5/5"
+ },
+ "writtenAt": "2026-10-31T10:54:09Z"
+}

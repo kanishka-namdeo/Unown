@@ -193,10 +193,47 @@ are killed at tool-call end even under `setsid nohup` — long lanes must run
 inside one foreground call; the runner's per-task resume receipts make that
 safe (a killed lane loses only its in-flight task).
 
-### The plan (M3 → M8)
+### M3 — the Interface repair + the dead-scaffolding sweep (DONE 2026-10-31)
 
-- **M3** — S2-1 (the Interface group, or the escape hatch — decided by
-  measurement) + S2-20 + S2-21.
+**S2-1 fixed by measurement-gated design:** the new **Interface section**
+(`interface.*`, 31 items — the hub's 11th section, after Agent) gives every
+pi-selector row a hub home with a REAL setter through the owning
+SettingsManager. The theme lane is the showcase: `getChoices` resolves the
+installed themes from the live UI surface (`ctx.ui.getAllThemes`), `set`
+persists through the manager, and `afterSet` switches the TUI live
+(`ctx.ui.setTheme`) — the setup wizard's "switch any time in-session:
+/settings" claim is TRUE again. The audit's machine gate: **35/35 pi rows
+hub-mirrored with setters, 0 unreachable** (was 32); registry 120 items,
+41 settable (was 89/10). The long tail (paddings, scrollbar, transport,
+http-timeout…) rides the now-REAL advanced gate (14 rows `advanced: true` —
+S2-20's inert gate is inert no more).
+
+**The M3 verification receipts** (`receipts/run-after-m3/`): BM-2 **5/5
+reachable + 6/6 probes reachable+changed** (each probe: search → editor →
+change → settings.json verified + ledger entry — the theme probe exercised
+the live-switch path end to end); BM-3 **10/12** (theme and dark mode hit
+at rank 1; the 2 misses are M4's S2-11/S2-4, as pinned); BM-7 audit ok +
+gate full cycle + piUnreachable 0; BM-1 ✓ / BM-5 5/5 / BM-6 6/6 — no
+regressions. BM-4: 10/10 reached, mean 10.5 Downs (was 9.6 — the +1 cost
+of the Interface menu row, the honest price of the repair). The real-user
+PTY lane (`verify_settings_hub.py`): EXIT=0. Full self-learning suite:
+**5,275 pass / 0 fail**.
+
+**S2-20 paid:** the advanced gate is real; the dead `group` kind + the
+never-used `SettingsGroup` interface removed; `/settings status
+--verbose` implemented (the documented-but-ignored flag now appends the
+capability map — tested). **S2-21 paid:** health checks resolve the agent
+dir at CALL time (the repointed-UNOWN_HOME test pins it); the 13-vs-14
+check-count nit stays recorded in the drift register where it belongs.
+
+**The suite caught its author again (the third catch):** the copy-on-select
+toggle item shipped with a missing closing paren (`},` instead of `}),`)
+— both parsers pointed at the array's `];`; a bisect harness found the
+item in seconds. Recorded because the receipts-before-claims rule is the
+round's spine.
+
+### The plan (M4 → M8)
+
 - **M4** — the trust batch: S2-3, S2-7, S2-8, S2-9, S2-13, S2-19 (as capacity
   allows; the L items S2-5 / S2-16 / S2-22 recorded as follow-ups unless
   measurement forces them).
@@ -208,14 +245,14 @@ safe (a killed lane loses only its in-flight task).
 
 ## Resume-from-here
 
-Round 2, M2 done (the baseline exists — every improvement claim can now
-cite a receipt). Next: **M3 — S2-1: the Interface group for the 32
-unreachable pi rows (or the escape hatch — decided by measurement), plus
-S2-20 (dead scaffolding) and S2-21 (health-view consistency).** The M3
-acceptance gates are already pinned: BM-2's six probes flip to reachable,
-BM-3's theme/dark-mode queries hit, the wizard's theme-step claim becomes
-true, and BM-2/5/6/7 stay green (no regression). AFTER targets live in
-`benchmarks/settings-ux/RESULTS.md`.
+Round 2, M3 done (the Interface repair landed and is receipt-verified: 0
+pi rows unreachable, 6/6 probes changed, no regressions). Next: **M4 —
+the trust batch: S2-3 (hoist toggle), S2-7 (elicitation matrix), S2-8
+(undo-coverage badge), S2-9 (skill health), S2-13 (goal extras), S2-19
+(dashboard lanes)** — as capacity allows, with the L items recorded as
+follow-ups. The remaining BM-3 misses (`spend`, `memory health`) flip only
+if S2-11/S2-4 land in M4. Then M5 (the AFTER run + DELTA table), M6
+(learning artifacts), M7 (docs/DOX/landing/CHANGELOG), M8 (release).
 
 ## Environment notes for a resuming session
 

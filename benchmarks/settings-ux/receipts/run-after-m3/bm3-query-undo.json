@@ -1,0 +1,19 @@
+{
+ "q": "undo",
+ "targetId": "rec.undo",
+ "expectedAtBefore": "hit",
+ "topResults": [
+  "rec.undo \u2192 Undo file changes",
+  "Agent \u2192 ask_user_question addon",
+  "Interface \u2192 Output padding",
+  "Interface \u2192 Editor padding (columns)",
+  "rec.transfer \u2192 Export / import settings",
+  "Tools & Integrations \u2192 Hook loop breaker (max depth)",
+  "Safety \u2192 OS sandbox (bubblewrap) \u25cbHIGH",
+  "Agent \u2192 Quiet startup",
+  "adv.spec-overrides \u2192 Spec & price overrides",
+  "Automation \u2192 Stop a running routine (kill switch) \u25cbHIGH"
+ ],
+ "hit": true,
+ "rank": 1
+}

@@ -1,5 +1,5 @@
 {
-  "$comment": "BM-2 find-and-change — the pinned task set. Reachable tasks: the scripted novice path is the hub's own advertised find surface (Search row → query → open hit → editor → change → save). Unreachable probes: pi-selector settings that the S2-1 ledger documents as unreachable from the TUI since the /settings override; the probe searches (hub Search row + /settings search subcommand) and records the miss with pane evidence, cross-checked against audit-registry.mjs's machine inventory. Values are pinned so BEFORE/AFTER runs are comparable; scratch UNOWN_HOME per run makes writes disposable.",
+  "$comment": "BM-2 find-and-change — the pinned task set. Reachable tasks: the scripted novice path is the hub's own advertised find surface (Search row → query → open hit → editor → change → save). The six probes were the S2-1 unreachable probes at BEFORE (outcome: unreachable-from-tui, receipts run-2026-10-31T10-16-44); since the round-2 M3 Interface repair each probe now runs the FULL find-and-change cycle against its interface item (search → editor → change → disk verification), so the AFTER receipt proves reachable+changed, not just findable. The task-file evolution is recorded in RESULTS.md (the BEFORE receipts stay as committed history).",
   "reachable": [
     {
       "task": "goal-budget",
@@ -51,11 +51,70 @@
     }
   ],
   "unreachable_probes": [
-    { "task": "pi-theme", "query": "theme", "piRow": "theme", "expected": "unreachable-from-tui", "gapRef": "S2-1" },
-    { "task": "pi-steering", "query": "steering mode", "piRow": "steering-mode", "expected": "unreachable-from-tui", "gapRef": "S2-1" },
-    { "task": "pi-followup", "query": "follow-up mode", "piRow": "follow-up-mode", "expected": "unreachable-from-tui", "gapRef": "S2-1" },
-    { "task": "pi-hide-thinking", "query": "hide thinking", "piRow": "hide-thinking", "expected": "unreachable-from-tui", "gapRef": "S2-1" },
-    { "task": "pi-mermaid", "query": "mermaid diagrams", "piRow": "mermaid-rendering", "expected": "unreachable-from-tui", "gapRef": "S2-1" },
-    { "task": "pi-tree-filter", "query": "tree filter", "piRow": "tree-filter-mode", "expected": "unreachable-from-tui", "gapRef": "S2-1" }
+    {
+      "task": "pi-theme",
+      "query": "theme",
+      "piRow": "theme",
+      "expectedItem": "interface.theme",
+      "kind": "select-theme",
+      "editorAnchor": "Theme",
+      "pickLabel": "dark",
+      "expectedAtBefore": "unreachable-from-tui",
+      "gapRef": "S2-1"
+    },
+    {
+      "task": "pi-steering",
+      "query": "steering mode",
+      "piRow": "steering-mode",
+      "expectedItem": "interface.steering",
+      "kind": "select",
+      "editorAnchor": "Steering mode",
+      "pickLabel": "All at once",
+      "expectedAtBefore": "unreachable-from-tui",
+      "gapRef": "S2-1"
+    },
+    {
+      "task": "pi-followup",
+      "query": "follow-up mode",
+      "piRow": "follow-up-mode",
+      "expectedItem": "interface.follow-up",
+      "kind": "select",
+      "editorAnchor": "Follow-up mode",
+      "pickLabel": "All at once",
+      "expectedAtBefore": "unreachable-from-tui",
+      "gapRef": "S2-1"
+    },
+    {
+      "task": "pi-hide-thinking",
+      "query": "hide thinking",
+      "piRow": "hide-thinking",
+      "expectedItem": "interface.hide-thinking",
+      "kind": "toggle",
+      "editorAnchor": "Hide thinking blocks",
+      "expectedAtBefore": "unreachable-from-tui",
+      "gapRef": "S2-1"
+    },
+    {
+      "task": "pi-mermaid",
+      "query": "mermaid diagrams",
+      "piRow": "mermaid-rendering",
+      "expectedItem": "interface.mermaid",
+      "kind": "select",
+      "editorAnchor": "Mermaid diagrams",
+      "pickLabel": "Off (plain code)",
+      "expectedAtBefore": "unreachable-from-tui",
+      "gapRef": "S2-1"
+    },
+    {
+      "task": "pi-tree-filter",
+      "query": "tree filter",
+      "piRow": "tree-filter-mode",
+      "expectedItem": "interface.tree-filter",
+      "kind": "select",
+      "editorAnchor": "Tree filter mode",
+      "pickLabel": "No tools",
+      "expectedAtBefore": "unreachable-from-tui",
+      "gapRef": "S2-1"
+    }
   ]
 }

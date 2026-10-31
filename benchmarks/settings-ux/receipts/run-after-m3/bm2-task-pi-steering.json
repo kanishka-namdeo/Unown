@@ -1,0 +1,10 @@
+{
+ "task": "pi-steering",
+ "piRow": "steering-mode",
+ "expectedItem": "interface.steering",
+ "outcome": "reachable+changed",
+ "settingsChanged": true,
+ "ledgerOk": true,
+ "success": true,
+ "ms": 8052
+}

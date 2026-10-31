@@ -106,6 +106,18 @@ async function applyValue(
                 after: value,
                 via,
         });
+        // The owning surface's live side effect (e.g. a theme switch
+        // re-renders the TUI) — persistence already rode item.set.
+        if (item.afterSet) {
+                try {
+                        item.afterSet(ctx.ui, value);
+                } catch (err) {
+                        ctx.ui.notify(
+                                `Saved, but the live apply failed: ${err instanceof Error ? err.message : String(err)} — /reload binds it`,
+                                "warning",
+                        );
+                }
+        }
         const reload = item.reloadNote ? ` — ${item.reloadNote}` : "";
         ctx.ui.notify(`Saved: ${item.name} = ${String(value)}${reload}`, "info");
         return true;
@@ -128,7 +140,7 @@ async function openItem(ctx: ExtensionContext, opts: HubOptions, item: SettingsI
                 ].filter(Boolean);
                 const options: string[] = [];
                 if (item.kind === "toggle") options.push(item.get ? (await item.get()) ? "Turn OFF" : "Turn ON" : "Toggle");
-                if (item.kind === "select" && item.choices) options.push("Change value…");
+                if (item.kind === "select" && (item.choices || item.getChoices)) options.push("Change value…");
                 if (item.kind === "number") options.push("Change value…");
                 if (item.kind === "text") options.push("Change value…");
                 if (item.kind === "action") options.push(item.actionLabel ? item.actionLabel.replace(/^runs /, "Run: ") : "Run");
@@ -147,13 +159,18 @@ async function openItem(ctx: ExtensionContext, opts: HubOptions, item: SettingsI
                         continue;
                 }
                 if (choice === "Change value…") {
-                        if (item.kind === "select" && item.choices) {
+                        if (item.kind === "select") {
+                                const choices = item.getChoices ? item.getChoices(ctx.ui) : (item.choices ?? []);
+                                if (choices.length === 0) {
+                                        ctx.ui.notify("No choices available (themes not loaded?) — try /reload", "warning");
+                                        continue;
+                                }
                                 const picked = await ctx.ui.select(
                                         `${item.name} — pick a value`,
-                                        item.choices.map((c) => c.label),
+                                        choices.map((c) => c.label),
                                 );
                                 if (picked === undefined) continue;
-                                const match = item.choices.find((c) => c.label === picked);
+                                const match = choices.find((c) => c.label === picked);
                                 if (match) await applyValue(ctx, item, match.value, "/settings hub");
                         } else if (item.kind === "number") {
                                 const raw = await ctx.ui.input(`${item.name} (${item.min ?? "-∞"}..${item.max ?? "∞"}${item.integer ? ", whole" : ""})`, String(value));

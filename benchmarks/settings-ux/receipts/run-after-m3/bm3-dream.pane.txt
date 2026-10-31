@@ -1,0 +1,36 @@
+
+── Themes ──
+  unown
+
+[Extension issues]
+  <inline:unown-tools>
+    Extension command '/settings' overrides a built-in interactive command. The extension version is dispatched and listed in
+autocomplete.
+  <inline:unown-tools>
+    Extension shortcut 'shift+tab' from <inline:unown-tools> conflicts with built-in shortcut. Skipping.
+
+
+ ○ no tracked steps · conf ✓ · 0m in session
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+
+ Search: "dream" (10 hits)
+
+ → Learning → Dream canary gate ○HIGH
+   Learning → Dream review mode
+   Learning → Dream review inbox
+   adv.local-ml → Local-ML dream lanes
+   rec.dream-rollback → Roll back learned memory
+   Learning → Learning feed
+   Learning → Canary sample size
+   adv.bridge → Bridge concurrency & upstream
+   Memory → Manual notes protection
+   Interface → Dark theme (auto mode)
+   Back
+
+  ↑↓ navigate · Enter to select · Esc to cancel
+
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+/tmp/settings-ux-bench/bm3-cwd
+ctx ▕░░░░░░░░░░▏ 0.0%/524k (auto)                                                                                agnes-3.0-flash
+memory: up · old build
+? help · ctrl+k palette · / commands · ! bash · ctrl+o tools · esc-esc tree

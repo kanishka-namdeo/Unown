@@ -1,0 +1,36 @@
+── Themes ──
+  unown
+
+[Extension issues]
+  <inline:unown-tools>
+    Extension command '/settings' overrides a built-in interactive command. The extension version is dispatched and listed in
+autocomplete.
+  <inline:unown-tools>
+    Extension shortcut 'shift+tab' from <inline:unown-tools> conflicts with built-in shortcut. Skipping.
+
+
+ Saved: Hook loop breaker (max depth) = 3
+
+ ○ no tracked steps · conf ✓ · 0m in session
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+
+ Tools & Integrations → Hook loop breaker (max depth)
+ ● low · number
+ Bound hook→agent→hook recursion before it runs away (default 3)
+ Now: 3
+ Default: 3
+ Lives in: ~/.unown/agent/settings-hub.json
+ Related: tools.hooks
+
+ → Change value…
+   Revert to default
+   Help (what / where / how to revert)
+   Back
+
+  ↑↓ navigate · Enter to select · Esc to cancel
+
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+/tmp/settings-ux-bench/bm2-cwd
+ctx ▕░░░░░░░░░░▏ 0.0%/524k (auto)                                                                                agnes-3.0-flash
+memory: up · old build
+? help · ctrl+k palette · / commands · ! bash · ctrl+o tools · esc-esc tree

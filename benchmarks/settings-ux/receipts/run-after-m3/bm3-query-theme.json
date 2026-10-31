@@ -1,0 +1,19 @@
+{
+ "q": "theme",
+ "targetId": "(pi selector: theme)",
+ "expectedAtBefore": "miss",
+ "topResults": [
+  "Interface \u2192 Theme",
+  "Interface \u2192 Dark theme (auto mode)",
+  "Interface \u2192 Light theme (auto mode)",
+  "Models & Cost \u2192 Default model",
+  "Interface \u2192 Default thinking level",
+  "Agent \u2192 Session permission mode",
+  "Interface \u2192 Autocomplete max rows",
+  "Interface \u2192 Hardware cursor",
+  "adv.bridge \u2192 Bridge concurrency & upstream",
+  "Interface \u2192 Clear on shrink"
+ ],
+ "hit": true,
+ "rank": 1
+}

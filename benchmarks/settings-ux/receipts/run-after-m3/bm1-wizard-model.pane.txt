@@ -1,0 +1,27 @@
+No provider connected yet — let's fix that.
+
+  1) The bundled llm-bridge (this repo's stack — Agnes AI upstream)  ← recommended (your bundled stack is up, key set — zero ext
+ra keys)
+  2) OpenAI
+  3) OpenRouter (one key, every model)
+  4) Anthropic (Claude)
+  5) Dashscope (Alibaba Cloud — Qwen/Kimi)
+  6) DeepSeek
+  7) Agnes AI (OpenAI-compatible, image-capable)
+  8) Any other OpenAI-compatible endpoint (vLLM, llama.cpp, Ollama, …)
+  9) Keep the current configuration
+What should unown talk to? [1]:
+
+Bundled llm-bridge: http://127.0.0.1:3031/v1
+  status: upstream healthy · key set · serves: agnes-3.0-flash, agnes-2.5-flash, agnes-video-2.5-flash, agnes-image-2.1-flash, a
+gnes-image-2.0-flash, agnes-image-2.5-flash, agnes-2.5-pro-alpha, agnes-video-2.5, agnes-2.5-pro-beta (default agnes-3.0-flash)
+  1) agnes-3.0-flash (bridge default)
+  2) agnes-2.5-flash
+  3) agnes-video-2.5-flash
+  4) agnes-image-2.1-flash
+  5) agnes-image-2.0-flash
+  6) agnes-image-2.5-flash
+  7) agnes-2.5-pro-alpha
+  8) agnes-video-2.5
+  9) agnes-2.5-pro-beta
+Model (the bridge serves these live) [1]:
