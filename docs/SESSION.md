@@ -8,19 +8,45 @@ archaeology. When a round completes, its log graduates to a round-specific
 
 ---
 
-## ACTIVE ROUND — the Settings Evolution round (started 2026-10-31)
+## ACTIVE ROUND — none (the queue is prepared, not started)
 
-**Mission**: redesign, validate, benchmark and self-improve the complete
-Settings experience of Unown's TUI (see `docs/settings-evolution-session.md`
-for the full mission brief and phase ledger).
+The last three rounds are complete and graduated to their own logs:
+the Settings Evolution round (v0.0.49 + v0.0.52 —
+`docs/settings-evolution-session.md`), the plan-mode todo unification +
+footer quiet rounds (v0.0.53 — `docs/plan-mode-todo-unification-round-session.md`
++ `docs/footer-quiet-round-session.md`), and the release-recovery round that
+re-cut v0.0.53 after its first tag landed against red CI
+(`docs/release-recovery-session.md`).
 
-Round status: **round 1 shipped inside v0.0.49** (phases 1–8 — the six phase
-docs + the `/settings` hub, `4740224f` + `f02e4e26`). **Round 2 in flight**
-(2026-10-31, post-v0.0.50 @ `499a9412`): phase 9 benchmarks + phase 10 learning
-artifacts + the S2 ledger of open items. Resumable log:
-`docs/settings-evolution-session.md`.
+**The next round's queue (recorded, in priority order)**: the S2 ledger's head
+— S2-11 (the spend meter) and S2-4 (the memory health card), each flipping a
+pinned, waiting benchmark miss — then S2-7/S2-8/S2-9, the S2-3/S2-16 L-pair,
+S2-22 (see the settings log's "Resume-from-here"); the injection-scanner ML
+classifier (the production TODO); the delegation round's subagent-reuse axis;
+OB-7 (fleet outcomes in the brief); the landing next-round queue (cmd-K
+search, blog hover-previews); the term.ts snapshot-class follow-up
+(release-recovery CP2). When the first v0.0.54 content lands, re-add
+`## [Unreleased]` to CHANGELOG.md and regenerate the rail in the same commit;
+the version bump itself is the release commit (package.json version + dated
+heading + rail + tag on the green SHA).
 
-### Environment checkpoint (2026-10-31, round 2 — setup complete)
+### Environment checkpoint (2026-11-01, the recovery session — updated)
+
+- Sandbox recycled between sessions (the prior workspace was reclaimed);
+  the repo re-cloned @ `53b8d766` (v0.0.53's first tag) into
+  `/home/z/repos/Unown` — the PTY harness needs
+  `UNOWN_ROOT=/home/z/repos/Unown` (its default points at the prior
+  sandbox's path).
+- bun **1.4.3** (CI's exact pin; `npm i -g bun@1.4.3`).
+- `UNOWN_NO_LINK=1 UNOWN_NO_ENGINE_SERVICE=1 bun scripts/install.ts` green;
+  `.env` from `.env.example` with the Agnes upstream
+  (`BRIDGE_UPSTREAM_URL=https://apihub.agnes-ai.com/v1`, key set,
+  `BRIDGE_MODEL=agnes-3.0-flash`); `bun run agent:start` — bridge :3031
+  (upstream ok 200, 6 agnes models), engine :3030 (v0.0.53).
+- Playwright chromium installed for the e2e lane (the sandbox ships without
+  it); `python3 -m pip install pyte pillow` for the PTY harness.
+- The prior settings-round environment notes (bun 1.4.4, the
+  `/home/z/my-project/Unown` lineage) are history — superseded above.
 
 - Round 1 cloned @ `68055455` (v0.0.48); round 2 cloned @ `499a9412` (v0.0.50,
   main) — one sandbox lineage, `/home/z/my-project/Unown`.

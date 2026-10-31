@@ -9,14 +9,17 @@ otherwise specified; the release tag must always equal package.json's version.
 
 Repo conventions: measured claims cite their receipts (`docs/testing-strategy.md`, `benchmarks/memory-eval/*/RESULTS.md`). Changes to agent behavior — prompts, default models, routing, guard rules, hooks, memory injection — are filed under **Agent Behavior**; the policy lives in [docs/BEHAVIOR.md](docs/BEHAVIOR.md).
 
-## [0.0.53] - 2026-10-31
+## [0.0.53] - 2026-11-01
 
 The footer quiet round — the area below the input, decluttered end to end —
 plus the plan-mode todo unification round's fix (one list, two input paths).
+First tagged 2026-10-31 against red CI (the release never published); repaired
+and re-cut 2026-11-01 by the release-recovery round — see Fixed.
 Receipts: [the footer session log](docs/footer-quiet-round-session.md) ·
 [the competitor research](docs/bottom-area-competitor-research.md) ·
 [the user journeys + manifest](docs/bottom-area-user-journeys.md) ·
-[the todo round's session log](docs/plan-mode-todo-unification-round-session.md).
+[the todo round's session log](docs/plan-mode-todo-unification-round-session.md) ·
+[the release-recovery session log](docs/release-recovery-session.md).
 
 ### Changed
 
@@ -30,6 +33,38 @@ Receipts: [the footer session log](docs/footer-quiet-round-session.md) ·
 ### Fixed
 
 - **Two to-do lists around plan mode.** The V1 plan-steps widget and the V2 seeded todo overlay both mounted above the editor after every approval (the plan→todo seed hook shipped without retiring the old widget); approving a second plan stacked plan B's steps on plan A's inside the same panel; the seeded panel only popped in after the model's first `todo` call; and `[DONE:n]` tags and todo flips never synced. The seeded **Todos panel is now the ONE checklist above the editor** — the legacy widget survives only as the fallback for a todo addon disabled via `/addons` (both can never mount in one process); approval REPLACES the foreground list atomically (ids rewind, one replayable seed entry) and mounts the panel at the approval moment; `[DONE:n]` tags flip the matching seeded todos and hand-driven todo completions flip the matching plan steps — the footer chip, the mission panel and the panel always agree, and `/resume` reconciles both directions before the first paint.
+- **The 0.0.53 tag pointed at red CI — the release never published; repaired and re-cut.**
+  The tag was cut while the `Build + test` job failed on all three OSes, so the release
+  workflow's `ci-green` gate skipped everything downstream (latest stayed 0.0.52, no
+  assets, no feed). The failing test was the todo round's own M1 fallback pin, and the
+  failure was order-dependence: `registerTodoAddon` sets module-level bridges nothing
+  ever resets, `goal.test.ts` (earlier in bun's single-process file order) had already
+  registered the addon, and `isTodoOverlayAvailable()` kept answering true — the fallback
+  test never saw the legacy widget (red 3/3 OSes while the file alone passed 11/11; the
+  round's local run had hit a friendlier file order, the exact variance `test/_env.ts`
+  documents). The bridges are now a **(re)registration-cycle contract**:
+  `resetTodoAddonBridges()` runs at the top of every addons-factory cycle — which also
+  fixes the production defect the one-way latch hid: after a `/addons` disable +
+  `/reload` (same process, factories re-run), the stale latch kept the seeded-overlay
+  claim alive while the overlay could never mount again, so the legacy plan-steps
+  fallback stayed retired and the session ran with NO progress surface until a full
+  restart. Pinned three ways: every test in the unification suite starts from the
+  unregistered state (order-proof by construction), a new RELOAD pin drives two real
+  addons-factory cycles (enabled → disabled) and asserts the legacy widget returns, and
+  the file passes in both orders. Verified like a real user: the unification PTY lane
+  14/14 and the footer lane 9/9 against the live model on the repaired tree; full
+  self-learning suite 5326/0 in the order that reproduced the failure.
+- **Two test-order ghosts from the term.ts snapshot class.**
+  `engine-token-mirror.test.ts` imported `../src/term.ts` before `./_env.ts` (against
+  the suite's first-import convention) and asserted the call-time
+  `sharedEngineTokenPath()` against the module-scope `UNOWN_HOME` snapshot;
+  `writeAgentConfig` wrote through the same snapshot. In file orders where term.ts
+  first loads inside `settings-hub.test.ts`'s redirected-home window the snapshot
+  freezes a deleted directory — the H6 pair assertion failed and the agent-config
+  writes landed in a ghost tree (`models-catalog` ENOENT). The test now follows the
+  convention and asserts call-time against call-time; `writeAgentConfig` resolves the
+  agent dir at call time per `unown-home.ts`'s documented contract (the env override
+  is read at CALL time, not module load).
 
 ### Agent Behavior
 

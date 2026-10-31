@@ -172,3 +172,19 @@ the chips yield to the panel.
   typecheck clean; lint 0 errors (4 pre-existing warnings, none in the
   round's files); `bun test src` 2063/0; e2e 15/15 against the production
   build. Pushed `caa93195`. Next: M5.
+- **CP5 (M5 — release): the cut went RED; the release-recovery round re-cut
+  it.** The bump commit `53b8d766` (version 0.0.53, dated heading, rail,
+  tag `v0.0.53`) was pushed and tagged while CI on the SHA was failing —
+  the release workflow's `ci-green` gate blocked everything downstream, so
+  NO release published (latest stayed v0.0.52; no assets, no feed entry,
+  no installs). The red was the todo-unification round's M1 fallback pin:
+  an order-dependent test (goal.test.ts registers the todo addon into
+  module state that survives into the later file) hiding a real production
+  defect (the todo bridges' one-way latch vs `/reload`). The repair, the
+  re-verification (this round's footer PTY lane re-run on the repaired
+  tree: 9/9) and the re-cut are the release-recovery round's record:
+  [docs/release-recovery-session.md](release-recovery-session.md). The
+  lesson this round owes forward: **the pre-release gate matrix is run
+  BEFORE the tag, and the tag waits for the green SHA** — the local
+  `xplat full` pass and the CI poll are both part of the cut, not
+  afterthoughts.

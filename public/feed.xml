@@ -7,6 +7,16 @@
     <description>How each feature and release works, what it does, and the receipts behind it — the longhand record of the self-improving terminal coding agent Unown.</description>
     <language>en</language>
     <item>
+      <title>&quot;The release that never was: re-cutting v0.0.53 from a red tag&quot;</title>
+      <link>https://unown-nine.vercel.app/blog/2026-11-01-the-release-recovery-round</link>
+      <guid isPermaLink="true">https://unown-nine.vercel.app/blog/2026-11-01-the-release-recovery-round</guid>
+      <pubDate>Sun, 01 Nov 2026 00:00:00 GMT</pubDate>
+      <description>&quot;The tag shipped while CI was red on all three OSes, so the release never published. The story of the one-way latch that caused it — and the fix.&quot;</description>
+      <category>release</category>
+      <category>verification</category>
+      <category>testing</category>
+    </item>
+    <item>
       <title>&quot;The footer quiet round: what a terminal owes you at rest&quot;</title>
       <link>https://unown-nine.vercel.app/blog/2026-10-31-the-footer-quiet-round</link>
       <guid isPermaLink="true">https://unown-nine.vercel.app/blog/2026-10-31-the-footer-quiet-round</guid>
