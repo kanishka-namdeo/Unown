@@ -7,6 +7,17 @@
     <description>How each feature and release works, what it does, and the receipts behind it — the longhand record of the self-improving terminal coding agent Unown.</description>
     <language>en</language>
     <item>
+      <title>&quot;The keyboard round: the shortcut that never worked, and five more finds&quot;</title>
+      <link>https://unown-nine.vercel.app/blog/2026-10-31-the-keyboard-round</link>
+      <guid isPermaLink="true">https://unown-nine.vercel.app/blog/2026-10-31-the-keyboard-round</guid>
+      <pubDate>Sat, 31 Oct 2026 00:00:00 GMT</pubDate>
+      <description>&quot;The planning round&apos;s headline shortcut never worked on a fresh install. The keyboard round found it and five more, fixed all six, verified live.&quot;</description>
+      <category>planning</category>
+      <category>keyboard</category>
+      <category>tui</category>
+      <category>release</category>
+    </item>
+    <item>
       <title>&quot;Plan Mode V2: the round where unown learned to actually plan&quot;</title>
       <link>https://unown-nine.vercel.app/blog/2026-10-31-the-planning-round</link>
       <guid isPermaLink="true">https://unown-nine.vercel.app/blog/2026-10-31-the-planning-round</guid>

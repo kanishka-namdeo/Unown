@@ -31,11 +31,30 @@ export interface BlogPost {
   html: string;
 }
 
-export const BLOG_TOTAL_POSTS = 32;
+export const BLOG_TOTAL_POSTS = 33;
 
-export const BLOG_TAGS: string[] = ["benchmark","benchmarks","beta","browser","cli","critique","demo","design","engine","gallery","hardening","landing","learning","media","memory","meta","observability","planning","plm","providers","release","security","sessions","stress","subagents","tui","verification","website-excellence"];
+export const BLOG_TAGS: string[] = ["benchmark","benchmarks","beta","browser","cli","critique","demo","design","engine","gallery","hardening","keyboard","landing","learning","media","memory","meta","observability","planning","plm","providers","release","security","sessions","stress","subagents","tui","verification","website-excellence"];
 
 export const BLOG_POSTS: BlogPost[] = [
+  {
+    "slug": "2026-10-31-the-keyboard-round",
+    "title": "\"The keyboard round: the shortcut that never worked, and five more finds\"",
+    "description": "\"The planning round's headline shortcut never worked on a fresh install. The keyboard round found it and five more, fixed all six, verified live.\"",
+    "date": "2026-10-31",
+    "lastmod": "2026-10-31",
+    "tags": [
+      "planning",
+      "keyboard",
+      "tui",
+      "release"
+    ],
+    "type": "feature",
+    "readingMinutes": 3,
+    "media": [
+      "/landing/tui/plan-mode/stills/02-plan-mode-on.png"
+    ],
+    "html": "<p>The planning round shipped Shift+Tab mode cycling — the Claude Code lane —\nand documented it in two places. One of them was wrong about what the key\ndid, and the honest answer is: <strong>both were, because the shortcut never\nworked.</strong> Not on a fresh install, not once. This round audited every\ninteractive surface in plan mode and fixed what the audit found.</p>\n<h2>The shortcut that never worked</h2>\n<p>unown&#39;s plan-mode cycle registers as an extension shortcut on <code>shift+tab</code>.\nThe pi coding agent underneath drops any extension shortcut that collides\nwith a reserved built-in default — and <code>app.thinking.cycle</code> defaults to\nexactly that key. On every fresh install, Shift+Tab cycled thinking levels,\nthe permission cycle never ran, and the docs contradicted themselves about\nwhich one you&#39;d get.</p>\n<p>The fix moved the vendored thinking-cycle default to <strong>Alt+T</strong> (free,\nterminal-safe, mnemonic). Your explicit <code>keybindings.json</code> still wins, and\nthe runner test now pins that <code>shift+tab</code> registers under default\nkeybindings — the exact failure can&#39;t come back silently.</p>\n<h2>Five more finds</h2>\n<ul>\n<li><strong>Questionnaire arrows pointed the wrong way in half the terminals.</strong> The\nask-user-question tab switcher matched raw escape bytes, listed SS3\nright-arrow in <em>both</em> the left and right branches, and never listed SS3\nleft at all. In application-cursor mode (DECCKM), right moved you back.\nIt now matches logical keys through the same matcher everything else\nuses — CSI, SS3, Kitty CSI-u, modifyOtherKeys and Windows encodings all\nroute identically.</li>\n<li><strong>Typing an emoji corrupted the input line.</strong> The input buffer split\nnon-escape input per UTF-16 unit, so a directly-typed astral character\n(emoji, rare CJK) became two lone surrogates the editor happily inserted.\nPastes and Kitty-protocol terminals were safe; legacy terminals were not.\nThe buffer now emits whole code points and the editor rejects unpaired\nsurrogates as defense in depth.</li>\n<li><strong>The approval gate ignored half the keyboard.</strong> PageUp, PageDown, Home,\nEnd — bindings that exist and every other selector honors — did nothing.\nOptions are now numbered: <strong>press <code>1</code>-<code>4</code> to pick an approval lane\ndirectly</strong>, in plain, Kitty and modifyOtherKeys encodings. Lists longer\nthan nine stay unnumbered rather than display an unreachable number.</li>\n<li><strong>A stray Esc destroyed your plan edits.</strong> The plan editor cancelled on\nthe first Esc with no dirty check. Now the first press arms a &quot;press Esc\nagain to discard&quot; guard, any other key disarms it, and the second\nconsecutive press discards. No timer — deterministic, and testable\nwithout a clock.</li>\n<li><strong>The plan-mode bash gate had a curl write primitive.</strong> <code>curl -o</code>,\n<code>--output</code>, <code>-O</code>, <code>--remote-name</code>, <code>-D</code> and clusters like <code>-sO</code> wrote\nfiles inside &quot;read-only&quot; plan mode. All of those forms now sit on the\ndestructive side; read-only fetching still works.</li>\n</ul>\n<h2>Verified like a user, not like a test suite</h2>\n<p>Every fix has a regression pin, but the headline got more than that: a live\nPTY session drove the real TUI against the real model — Shift+Tab stepped\ndefault → acceptEdits → plan → default, the gate rendered its numbered\noptions, digit <code>1</code> approved, and the agent executed the approved plan (it\ncreated the file and ran the verification command). The questionnaire\nrendered live too, numbered options and all.</p>\n<p>The receipts — findings, fixes, milestones and the resumable log — live in\n<a href=\"https://github.com/kanishka-namdeo/Unown/blob/main/docs/plan-mode-keyboard-round-session.md\">the session doc</a>.</p>\n"
+  },
   {
     "slug": "2026-10-31-the-planning-round",
     "title": "\"Plan Mode V2: the round where unown learned to actually plan\"",
