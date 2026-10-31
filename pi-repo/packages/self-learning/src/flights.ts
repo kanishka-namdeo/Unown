@@ -54,6 +54,7 @@ import { truncateToWidth, visibleWidth, wrapTextWithAnsi } from "@earendil-works
 import { firstFlightCatalog, flightsHandleKey, type Flight } from "./flights-core.ts";
 import { readOnboardingState, writeOnboardingState } from "./onboarding-state.ts";
 import { flyingTipText, FLYING_TIP_ID, nextSessionTip } from "./onboarding-tips.ts";
+import { FOOTER_PRIORITY } from "./footer-mode.ts";
 
 export interface FirstFlightsOptions {
         cwd: string;
@@ -73,10 +74,10 @@ export type FlightsCatalogResult = Flight | "never-again" | undefined;
  * the UI shape varies across pi modes/builds, so a missing or throwing
  * setStatus degrades to no status line — never a crash.
  */
-const setStatusLine = (ctx: ExtensionContext, key: string, text: string | undefined): void => {
+const setStatusLine = (ctx: ExtensionContext, key: string, text: string | undefined, opts?: { priority?: number }): void => {
         try {
                 if (!ctx?.hasUI || typeof ctx.ui?.setStatus !== "function") return;
-                ctx.ui.setStatus(key, text);
+                ctx.ui.setStatus(key, text, opts);
         } catch {
                 /* the footer is cosmetic — degrade silently */
         }
@@ -258,7 +259,7 @@ async function showCatalog(pi: ExtensionAPI, ctx: ExtensionContext, home?: strin
         // to do with it. The hint is cleared by the input handler on the first
         // real message.
         ctx.ui.setEditorText(result.prompt);
-        setStatusLine(ctx, "flights", "press Enter to send — or edit the prompt first");
+        setStatusLine(ctx, "flights", "press Enter to send — or edit the prompt first", { priority: FOOTER_PRIORITY.active });
 }
 
 // ---------------------------------------------------------------------------

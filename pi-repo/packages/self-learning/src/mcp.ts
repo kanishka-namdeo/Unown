@@ -60,6 +60,7 @@ import {
     type ElicitationRequest,
 } from "./elicitation.ts";
 import { annotateToolOutput, recordShieldFlag } from "./shield.ts";
+import { FOOTER_PRIORITY, footerClassicMode } from "./footer-mode.ts";
 import { UNOWN_AGENT_DIR } from "./term.ts";
 
 // ---------------------------------------------------------------------------
@@ -1839,10 +1840,10 @@ export function createMcpExtension(opts: McpOptions) {
      * every call: the UI shape varies across pi modes/builds, so a missing
      * or throwing setStatus degrades to no status line — never a crash.
      */
-    const setStatusLine = (ctx: any, key: string, text: string | undefined): void => {
+    const setStatusLine = (ctx: any, key: string, text: string | undefined, opts?: { priority?: number }): void => {
         try {
             if (!ctx?.hasUI || typeof ctx.ui?.setStatus !== "function") return;
-            ctx.ui.setStatus(key, text);
+            ctx.ui.setStatus(key, text, opts);
         } catch {
             /* the footer is cosmetic — degrade silently */
         }
@@ -1854,6 +1855,12 @@ export function createMcpExtension(opts: McpOptions) {
      * "mcp: N withheld (untrusted)" when the trust gate is withholding every
      * configured server. Undefined = nothing worth a footer line (R-c §3
      * budget discipline: ~40 chars, one key, no animation).
+     *
+     * Footer quiet round: in the quiet layout only the ATTENTION variant of
+     * this line paints — any failure or any withheld server (the refuse-first
+     * visibility must stay). The all-healthy "3/3 · 14 tools" line is
+     * classic-only ambient state: it answers nothing actionable, and /mcp,
+     * /status and the dashboard carry it on demand. `mcpFooterPaint` decides.
      */
     const mcpFooterText = (m: McpManager): string | undefined => {
         const statuses = m.status();
@@ -1868,6 +1875,25 @@ export function createMcpExtension(opts: McpOptions) {
         if (failed > 0) text += ` · ${failed} ✗`;
         if (gated > 0) text += ` · ${gated} withheld`;
         return text;
+    };
+
+    /** Does the mcp line need the footer's attention row? (any failure, or
+     *  any withheld server — the refuse-first rule). Healthy all-connected
+     *  state does not (quiet layout); classic mode paints everything. */
+    const mcpFooterPaint = (m: McpManager, text: string | undefined): string | undefined => {
+        if (text === undefined) return undefined;
+        if (footerClassicMode()) return text;
+        const statuses = m.status();
+        const live = statuses.filter((s) => s.state !== "not-configured");
+        const gated = statuses.length - live.length;
+        const connected = live.filter((s) => s.state === "connected");
+        return gated > 0 || connected.length < live.length ? text : undefined;
+    };
+
+    /** The guarded mcp footer setter: attention-gated in the quiet layout,
+     *  priority critical (failures and withheld servers outrank active work). */
+    const setMcpFooter = (ctx: any, m: McpManager): void => {
+        setStatusLine(ctx, "mcp", mcpFooterPaint(m, mcpFooterText(m)), { priority: FOOTER_PRIORITY.critical });
     };
 
     const getManager = (): McpManager => {
@@ -2014,7 +2040,7 @@ export function createMcpExtension(opts: McpOptions) {
                     // untrusted project config's withheld servers deserve one
                     // footer line instead of silence.
                     if (!m.disabled && m.gatedServerCount > 0) {
-                        setStatusLine(ctx, "mcp", mcpFooterText(m));
+                        setMcpFooter(ctx, m);
                     }
                     return;
                 }
@@ -2024,7 +2050,7 @@ export function createMcpExtension(opts: McpOptions) {
                     try {
                         const okServers = await m.connectAll();
                         for (const server of okServers) registerServerTools(pi, server, registered);
-                        setStatusLine(ctx, "mcp", mcpFooterText(m));
+                        setMcpFooter(ctx, m);
                     } catch (err: any) {
                         log(`background connect failed: ${err instanceof Error ? err.message : String(err)}`);
                     }
@@ -2078,7 +2104,7 @@ export function createMcpExtension(opts: McpOptions) {
                         const before = m.status().filter((s) => s.state === "connected").map((s) => s.name);
                         const okServers = await m.connectAll(true);
                         for (const server of okServers) registerServerTools(pi, server, registered);
-                        setStatusLine(ctx, "mcp", mcpFooterText(m));
+                        setMcpFooter(ctx, m);
                         ctx.ui.notify(renderMcpStatus(m.status(), m.problems, m.projectNeedsTrust), "info");
                         const newly = okServers.filter((s) => !before.includes(s));
                         if (newly.length > 0) {
@@ -2134,7 +2160,7 @@ export function createMcpExtension(opts: McpOptions) {
                     ctx.ui.notify("Connecting MCP servers…", "info");
                     const okServers = await m.connectAll(true);
                     for (const server of okServers) registerServerTools(pi, server, registered);
-                    setStatusLine(ctx, "mcp", mcpFooterText(m));
+                    setMcpFooter(ctx, m);
                     const statuses = m.status();
                     ctx.ui.notify(renderMcpStatus(statuses, m.problems, m.projectNeedsTrust), "info");
                     const newly = okServers.filter((s) => !before.includes(s));

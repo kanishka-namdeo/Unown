@@ -444,35 +444,44 @@ function makeNotify() {
 }
 
 describe("createMcpExtension", () => {
-    test("session_start background-connects and registers mcp__server__tool entries", async () => {
+    test("session_start background-connects and registers mcp__server__tool entries (classic: healthy line paints)", async () => {
         const dir = join(tmpRoot, "ext1");
         mkdirSync(dir, { recursive: true });
-        const ext = createMcpExtension({
-            cwd: dir,
-            config: { servers: { mock: { command: NODE, args: [MOCK_SERVER] } } },
-        });
-        const { pi, emit, tools } = makeFakePi();
-        ext.factory(pi);
+        const prevClassic = process.env.UNOWN_FOOTER_CLASSIC;
+        process.env.UNOWN_FOOTER_CLASSIC = "1";
+        try {
+            const ext = createMcpExtension({
+                cwd: dir,
+                config: { servers: { mock: { command: NODE, args: [MOCK_SERVER] } } },
+            });
+            const { pi, emit, tools } = makeFakePi();
+            ext.factory(pi);
 
-        const { ctx, statuses } = makeNotify();
-        await emit("session_start", {}, ctx);
-        // background connect — poll briefly for registration
-        const deadline = Date.now() + 8000;
-        while (tools.size < 3 && Date.now() < deadline) {
-            await new Promise((r) => setTimeout(r, 100));
+            const { ctx, statuses } = makeNotify();
+            await emit("session_start", {}, ctx);
+            // background connect — poll briefly for registration
+            const deadline = Date.now() + 8000;
+            while (tools.size < 3 && Date.now() < deadline) {
+                await new Promise((r) => setTimeout(r, 100));
+            }
+            expect(tools.has("mcp__mock__echo")).toBe(true);
+            expect(tools.has("mcp__mock__add")).toBe(true);
+            expect(tools.has("mcp__mock__schemaless")).toBe(true);
+            const echoTool = tools.get("mcp__mock__echo")!;
+            expect(echoTool.description).toContain("Echo a message back");
+            expect(echoTool.description).toContain("MCP server: mock");
+            const result = await echoTool.execute("t1", { message: "via extension" });
+            expect(result.content[0].text).toBe("echo: via extension");
+            expect(result.isError).toBeUndefined();
+            // P1-b footer line: once the background connect finishes, the footer
+            // carries the one-line integration health summary (the quiet layout
+            // gates the all-healthy line — classic paints it; the p1b test below
+            // pins the quiet behavior for both states).
+            expect(statuses.some(([k, t]) => k === "mcp" && t === "mcp: 1/1 · 3 tools")).toBe(true);
+        } finally {
+            if (prevClassic === undefined) delete process.env.UNOWN_FOOTER_CLASSIC;
+            else process.env.UNOWN_FOOTER_CLASSIC = prevClassic;
         }
-        expect(tools.has("mcp__mock__echo")).toBe(true);
-        expect(tools.has("mcp__mock__add")).toBe(true);
-        expect(tools.has("mcp__mock__schemaless")).toBe(true);
-        const echoTool = tools.get("mcp__mock__echo")!;
-        expect(echoTool.description).toContain("Echo a message back");
-        expect(echoTool.description).toContain("MCP server: mock");
-        const result = await echoTool.execute("t1", { message: "via extension" });
-        expect(result.content[0].text).toBe("echo: via extension");
-        expect(result.isError).toBeUndefined();
-        // P1-b footer line: once the background connect finishes, the footer
-        // carries the one-line integration health summary.
-        expect(statuses.some(([k, t]) => k === "mcp" && t === "mcp: 1/1 · 3 tools")).toBe(true);
     });
 
     test("/mcp renders status and empty-config guidance", async () => {
@@ -968,7 +977,7 @@ describe("H2 trust gate + validation", () => {
         expect(tools.has("mcp__gated__echo")).toBe(true);
     });
 
-    test("footer line (P1-b): withheld → 'mcp: N withheld (untrusted)' at session_start, live count after /mcp trust", async () => {
+    test("footer line (P1-b, quiet): withheld paints (attention); all-healthy after trust stays silent", async () => {
         const dir = join(tmpRoot, "p1b-footer");
         mkdirSync(join(dir, ".unown"), { recursive: true });
         writeFileSync(
@@ -984,8 +993,12 @@ describe("H2 trust gate + validation", () => {
         await emit("session_start", {}, ctx);
         await new Promise((r) => setTimeout(r, 400));
         expect(tools.size).toBe(0); // refused, never spawned
+        // Withheld is refuse-first ATTENTION — it paints in the quiet layout.
         expect(statuses.some(([k, t]) => k === "mcp" && t === "mcp: 1 withheld (untrusted)")).toBe(true);
-        // /mcp trust admits it: connect + registration + a live footer line.
+        // /mcp trust admits it: connect + registration; the all-healthy line is
+        // ambient state in the quiet layout — it must NOT paint (the healthy
+        // summary lives in /mcp, /status and the dashboard; classic restores it,
+        // pinned by the ext1 test above).
         await runCommand("mcp", "trust", ctx);
         expect(messages.some((m) => m.text.includes("Trusted"))).toBe(true);
         const deadline = Date.now() + 8000;
@@ -993,7 +1006,7 @@ describe("H2 trust gate + validation", () => {
             await new Promise((r) => setTimeout(r, 100));
         }
         expect(tools.has("mcp__gated__echo")).toBe(true);
-        expect(statuses.some(([k, t]) => k === "mcp" && t === "mcp: 1/1 · 3 tools")).toBe(true);
+        expect(statuses.some(([k, t]) => k === "mcp" && t === "mcp: 1/1 · 3 tools")).toBe(false);
     });
 
     test("URL validation: non-http schemes and unparseable URLs surface actionable problems at config load", () => {

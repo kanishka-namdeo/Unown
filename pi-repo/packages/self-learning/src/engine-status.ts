@@ -185,7 +185,12 @@ function engineBusySuffix(info: EngineStatusInfo): string {
  * M3 precedence, continued: the memory bar is the BOTTOM of the same ladder
  * (see the module header). It rides only the undecorated `memory: up…` line
  * and nothing else — a warning line with a delight meter bolted on would
- * undercut both halves. */
+ * undercut both halves.
+ *
+ * Footer quiet round: the quiet layout no longer paints the plain up-state
+ * (see engineFooterAttention) — this function keeps returning its text for
+ * every state so classic mode, /engine and the pinned copy tests are
+ * unchanged. */
 export function engineFooterText(info: EngineStatusInfo, memoryBar?: string): string {
         switch (info.state) {
                 case "up": {
@@ -216,6 +221,23 @@ export function engineFooterText(info: EngineStatusInfo, memoryBar?: string): st
                 default:
                         return "memory: --";
         }
+}
+
+/** Footer quiet round: does this engine state deserve the footer's attention
+ * row? Every non-up state does (down/blocked/paused/starting), and so does
+ * an up state with a build verdict (old-build/stale/ancient — M8's standing
+ * condition). A plain healthy up state does NOT: the field's convergent rule
+ * is that healthy states are silent (Crush's mode badge is "an empty string
+ * in the default coding mode"; Gemini's footer items are "not shown when
+ * unavailable") — its memory bar, rules count and dream recency live in
+ * /engine, the dashboard and doctor, and dream events ride the feed chip
+ * (✦) and the mission panel's learned line, which the UX card owns. The
+ * transition toasts still narrate down → up, so "silence is a claim" holds:
+ * nothing is happening that needs narrating. */
+export function engineFooterAttention(info: EngineStatusInfo): boolean {
+        if (info.state !== "up") return true;
+        const v = info.buildVerdict?.verdict;
+        return v === "old-build" || v === "stale" || v === "ancient";
 }
 
 /** Toast text for a transition (undefined = no toast). */
@@ -411,8 +433,11 @@ export function dreamNewsToastText(news: DreamNews): string {
 }
 
 export interface EngineStatusHooks {
-        /** Footer line setter (ctx.ui.setStatus("engine", text) — guarded by caller). */
-        onFooter?: (text: string | undefined) => void;
+        /** Footer line setter (ctx.ui.setStatus("engine", text) — guarded by
+         *  caller). The quiet round adds `attention`: false only for the plain
+         *  healthy up-state — the caller decides whether that deserves a row
+         *  (quiet layout: no; classic: yes, the legacy behavior). */
+        onFooter?: (text: string | undefined, attention: boolean) => void;
         /** Toast (ctx.ui.notify — guarded by caller). */
         onToast?: (message: string, level: "info" | "warning") => void;
         /** The observability round's learning feed: fired at the same
@@ -557,7 +582,7 @@ export function startEngineStatusLoop(hooks: EngineStatusHooks = {}): EngineStat
                 if (prev !== next) since = Date.now();
                 state = next;
                 lastProbeAt = Date.now();
-                if (hooks.onFooter) hooks.onFooter(engineFooterText(info(), memoryBar));
+                if (hooks.onFooter) hooks.onFooter(engineFooterText(info(), memoryBar), engineFooterAttention(info()));
                 if (prev !== next || forceToast) {
                         const toast = engineToastText(prev, next, outboxStats().queued, detail.probe);
                         if (toast && prev !== "unknown") hooks.onToast?.(toast.message, toast.level);

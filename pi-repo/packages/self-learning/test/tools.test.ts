@@ -332,7 +332,7 @@ describe("/lsp trust (P1-b)", () => {
 });
 
 describe("footer status lines (P1-b)", () => {
-    test("lsp line appears once a warmed server runs, and only on transitions", async () => {
+    test("classic: lsp ready line appears once a warmed server runs, and only on transitions", async () => {
         const dir = join(lspTmp, "footer");
         mkdirSync(join(dir, ".unown"), { recursive: true });
         // A REAL server command the warm can bring up: the mock LSP server,
@@ -343,7 +343,9 @@ describe("footer status lines (P1-b)", () => {
         );
         writeFileSync(join(dir, "a.ts"), "const x: number = 1;\n");
         const prev = process.env.UNOWN_TRUST_PROJECT_CONFIG;
+        const prevClassic = process.env.UNOWN_FOOTER_CLASSIC;
         process.env.UNOWN_TRUST_PROJECT_CONFIG = "1";
+        process.env.UNOWN_FOOTER_CLASSIC = "1";
         try {
             const ext = createUnownToolsExtension({ cwd: dir, engineUrl: "http://127.0.0.1:3030" });
             const { pi, emit } = makeToolsFakePi();
@@ -369,22 +371,82 @@ describe("footer status lines (P1-b)", () => {
         } finally {
             if (prev === undefined) delete process.env.UNOWN_TRUST_PROJECT_CONFIG;
             else process.env.UNOWN_TRUST_PROJECT_CONFIG = prev;
+            if (prevClassic === undefined) delete process.env.UNOWN_FOOTER_CLASSIC;
+            else process.env.UNOWN_FOOTER_CLASSIC = prevClassic;
         }
     });
 
-    test("/goal sets, updates and clears its footer line", async () => {
+    test("quiet: a warmed, healthy server paints NOTHING (ambient state) but the refresh still runs", async () => {
+        const dir = join(lspTmp, "footer-quiet");
+        mkdirSync(join(dir, ".unown"), { recursive: true });
+        writeFileSync(
+            join(dir, ".unown", "lsp.json"),
+            JSON.stringify({ servers: { typescript: { command: [NODE, MOCK_LSP_SERVER] } } }),
+        );
+        writeFileSync(join(dir, "a.ts"), "const x: number = 1;\n");
+        const prev = process.env.UNOWN_TRUST_PROJECT_CONFIG;
+        process.env.UNOWN_TRUST_PROJECT_CONFIG = "1";
+        try {
+            const ext = createUnownToolsExtension({ cwd: dir, engineUrl: "http://127.0.0.1:3030" });
+            const { pi, emit } = makeToolsFakePi();
+            ext.factory(pi);
+            const { ctx, statuses } = makeStatusCtx();
+
+            await emit("tool_result", { toolName: "write", input: { path: join(dir, "a.ts") } }, ctx);
+            // Give the warm a beat to bring the server up and the footer a beat
+            // to consider painting — then assert it never painted text.
+            const deadline = Date.now() + 8000;
+            while (statuses.filter(([k]) => k === "lsp").length === 0 && Date.now() < deadline) {
+                await new Promise((r) => setTimeout(r, 100));
+            }
+            // The refresh DID run (it considered the state — the undefined
+            // paints are the transition-guarded clear calls)…
+            expect(statuses.some(([k]) => k === "lsp")).toBe(true);
+            // …but a healthy server never paints a line in the quiet layout.
+            expect(statuses.some(([k, t]) => k === "lsp" && t !== undefined)).toBe(false);
+
+            await emit("session_shutdown", {}); // disposes the mock server
+        } finally {
+            if (prev === undefined) delete process.env.UNOWN_TRUST_PROJECT_CONFIG;
+            else process.env.UNOWN_TRUST_PROJECT_CONFIG = prev;
+        }
+    });
+
+    test("quiet + UNOWN_MISSION_PANEL=0: an active goal paints (the panel is its home otherwise)", async () => {
+        const dir = join(lspTmp, "goal-nopanel");
+        mkdirSync(dir, { recursive: true });
+        const prevPanel = process.env.UNOWN_MISSION_PANEL;
+        process.env.UNOWN_MISSION_PANEL = "0";
+        try {
+            const ext = createUnownToolsExtension({ cwd: dir, engineUrl: "http://127.0.0.1:3030" });
+            const { pi, runCommand } = makeToolsFakePi();
+            ext.factory(pi);
+            const { ctx, statuses } = makeStatusCtx();
+            await runCommand("goal", "ship the status bar", ctx);
+            expect(statuses.some(([k, t]) => k === "goal" && t === "goal: active")).toBe(true);
+            await runCommand("goal", "clear", ctx);
+        } finally {
+            if (prevPanel === undefined) delete process.env.UNOWN_MISSION_PANEL;
+            else process.env.UNOWN_MISSION_PANEL = prevPanel;
+        }
+    });
+
+    test("/goal: paused/complete paint on the attention row; active yields to the mission panel", async () => {
         const dir = join(lspTmp, "goal");
         mkdirSync(dir, { recursive: true });
         const ext = createUnownToolsExtension({ cwd: dir, engineUrl: "http://127.0.0.1:3030" });
         const { pi, runCommand } = makeToolsFakePi();
         ext.factory(pi);
         const { ctx, statuses } = makeStatusCtx();
+        // The panel is live by default (no env) — an ACTIVE goal is the panel's
+        // objective line, so the chip must not duplicate it (F5).
         await runCommand("goal", "ship the status bar", ctx);
-        expect(statuses.some(([k, t]) => k === "goal" && t === "goal: active")).toBe(true);
+        expect(statuses.some(([k, t]) => k === "goal" && t === "goal: active")).toBe(false);
+        // Paused is attention — it paints in both layouts.
         await runCommand("goal", "pause", ctx);
         expect(statuses.some(([k, t]) => k === "goal" && t === "goal: paused")).toBe(true);
         await runCommand("goal", "resume", ctx);
-        expect(statuses.filter(([k, t]) => k === "goal" && t === "goal: active").length).toBe(2);
+        expect(statuses.some(([k, t]) => k === "goal" && t === "goal: active")).toBe(false);
         await runCommand("goal", "clear", ctx);
         expect(statuses.some(([k, t]) => k === "goal" && t === undefined)).toBe(true);
     });

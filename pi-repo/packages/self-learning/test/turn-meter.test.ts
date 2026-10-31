@@ -9,6 +9,7 @@ import {
         compactDuration,
         compactTokens,
         estimateSessionCostUsd,
+        formatCostChip,
         formatTurnMeter,
         turnMeterEnabled,
         type TurnMeterInput,
@@ -69,25 +70,57 @@ describe("cost estimate", () => {
 });
 
 describe("the chip", () => {
-        test("assembled order: turn, ctx, tokens, cost", () => {
+        test("quiet layout: turn dynamics + the session cost (F3 dedup — ctx/tokens live on the status line)", () => {
                 const { text, enabled } = formatTurnMeter(input());
                 expect(enabled).toBe(true);
+                expect(text).toBe("turn 3.4s · ~$0.0091");
+        });
+        test("quiet layout without a price: dynamics only", () => {
+                const { text } = formatTurnMeter(input({ resolvePrice: () => null }));
+                expect(text).toBe("turn 3.4s");
+        });
+        test("quiet layout ignores context usage (the meter on the status line owns it)", () => {
+                const withCtx = formatTurnMeter(input({ context: { tokens: 62_000, contextWindow: 100_000 } }));
+                const withoutCtx = formatTurnMeter(input({ context: undefined }));
+                expect(withCtx.text).toBe(withoutCtx.text);
+        });
+        test("classic layout (UNOWN_FOOTER_CLASSIC=1): the legacy full format", () => {
+                const { text } = formatTurnMeter(input({ env: { UNOWN_FOOTER_CLASSIC: "1" } }));
                 expect(text).toBe("turn 3.4s · ctx 62% · in 12.3k out 678 (cached 9k) · ~$0.0091");
         });
-        test("without context usage the ctx segment is omitted", () => {
-                const { text } = formatTurnMeter(input({ context: undefined }));
+        test("classic: without context usage the ctx segment is omitted", () => {
+                const { text } = formatTurnMeter(input({ context: undefined, env: { UNOWN_FOOTER_CLASSIC: "1" } }));
                 expect(text).toBe("turn 3.4s · in 12.3k out 678 (cached 9k) · ~$0.0091");
         });
-        test("zero cache reads drop the cached segment", () => {
-                const { text } = formatTurnMeter(input({ usage: { tokensIn: 100, tokensOut: 10, cacheRead: 0, model: "kimi-k2.5" } }));
+        test("classic: zero cache reads drop the cached segment", () => {
+                const { text } = formatTurnMeter(
+                        input({
+                                usage: { tokensIn: 100, tokensOut: 10, cacheRead: 0, model: "kimi-k2.5" },
+                                env: { UNOWN_FOOTER_CLASSIC: "1" },
+                        }),
+                );
                 expect(text).toBe("turn 3.4s · ctx 62% · in 100 out 10 · ~$0.0001");
         });
-        test("without a price the cost segment is omitted, tokens remain", () => {
-                const { text } = formatTurnMeter(input({ resolvePrice: () => null }));
+        test("classic: without a price the cost segment is omitted, tokens remain", () => {
+                const { text } = formatTurnMeter(input({ resolvePrice: () => null, env: { UNOWN_FOOTER_CLASSIC: "1" } }));
                 expect(text).toBe("turn 3.4s · ctx 62% · in 12.3k out 678 (cached 9k)");
         });
         test("sub-cent costs keep four decimals", () => {
                 const { text } = formatTurnMeter(input({ usage: { tokensIn: 1_000, tokensOut: 100, cacheRead: 0, model: "kimi-k2.5" } }));
                 expect(text).toContain("~$0.0009");
+        });
+        test("ttft rides between turn and cost", () => {
+                const { text } = formatTurnMeter(input({ firstTokenMs: 830 }));
+                expect(text).toBe("turn 3.4s · ttft <1s · ~$0.0091");
+        });
+});
+
+describe("the cost chip (the meter-off fallback)", () => {
+        test("formats the session cost alone", () => {
+                expect(formatCostChip(input().usage, () => FIXED_PRICE, {})).toBe("~$0.0091");
+        });
+        test("unknown model → undefined (a price is never invented)", () => {
+                expect(formatCostChip({ tokensIn: 1, tokensOut: 1, cacheRead: 0 }, () => FIXED_PRICE, {})).toBeUndefined();
+                expect(formatCostChip(input().usage, () => null, {})).toBeUndefined();
         });
 });
