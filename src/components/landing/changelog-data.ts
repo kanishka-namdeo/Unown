@@ -30,14 +30,14 @@ export interface ChangelogStop {
   groups: ChangelogGroup[];
 }
 
-export const CHANGELOG_TOTAL_ENTRIES = 475;
+export const CHANGELOG_TOTAL_ENTRIES = 476;
 
 export const CHANGELOG_TOTALS: Record<ChangelogBucket, number> = {
   "Added": 224,
   "Changed": 28,
   "Deprecated": 0,
   "Removed": 3,
-  "Fixed": 173,
+  "Fixed": 174,
   "Security": 5,
   "Behavior": 42
 };
@@ -46,13 +46,13 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
   {
     "label": "0.0.50",
     "date": "2026-10-31",
-    "total": 15,
+    "total": 16,
     "counts": {
       "Added": 10,
       "Changed": 0,
       "Deprecated": 0,
       "Removed": 0,
-      "Fixed": 3,
+      "Fixed": 4,
       "Security": 0,
       "Behavior": 2
     },
@@ -61,7 +61,7 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
         "bucket": "Added",
         "items": [
           {
-            "title": "The plan file",
+            "title": "Plan file",
             "behavior": false
           },
           {
@@ -105,6 +105,10 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
       {
         "bucket": "Fixed",
         "items": [
+          {
+            "title": "The release gate caught the tag itself",
+            "behavior": false
+          },
           {
             "title": "Resume under-reports step completions after a crash",
             "behavior": false

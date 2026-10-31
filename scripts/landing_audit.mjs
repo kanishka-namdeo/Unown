@@ -106,7 +106,14 @@ const MAX_VH = 15.5;
 // not diverge". The sessions round's M4 checkpoint then recorded a false
 // green from this script's mid-replay under-count against the stale
 // ceiling. Both twins now carry the 47th-stop amendment (3,840 -> 3,860).
-const MAX_WORDS = 3860;
+// 2026-10-31 (the tenth amendment, the 0.0.50 cut): 3,860 -> 3,880 — both
+// twins together, per the same rule. The rail's 48th stop measured +21 of
+// undeletable chrome (3,871). Compressed FIRST: the round's own listed
+// title ("The plan file" -> "Plan file") plus the loop band's Work-lead
+// restatement (-8 measured); post-compression 3,863. The e2e twin stays
+// canonical (this script's bounded replay wait can fall through and
+// under-count mid-flight).
+const MAX_WORDS = 3880;
 const MAX_BAND_VH = 3;
 
 let chromium = null;

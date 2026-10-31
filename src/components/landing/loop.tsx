@@ -67,7 +67,11 @@ const BEATS: Beat[] = [
     label: "Work",
     caption: "you chat",
     title: "The session ends by writing something down.",
-    lead: "Every session hands the engine a templated note; a down engine gets it from the outbox — learning never depends on the loop being up.",
+    // 2026-10-31: the lead's opening clause restated the hero ("every
+    // session hands a background engine a note") AND the title; the
+    // outbox-fallback clause is the only claim unique to this line, so the
+    // restatement went (the 0.0.50 release's compress-first, −7w).
+    lead: "A down engine gets the note from the outbox — learning never depends on the loop being up.",
     filename: "~/.unown/notes/outbox/1757...-checkout.md",
     body: [
       "Terminal session outcome in ~/code/checkout:",

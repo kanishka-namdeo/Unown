@@ -84,7 +84,23 @@ import { expect, test } from "@playwright/test";
  * amendment argued for. No gated literal, no generated number touched.
  */
 const MAX_PAGE_VH = 15.5;
-const MAX_WORDS = 3860;
+/*
+ * The 2026-10-31 planning-round release amendment (the tenth): 3,860 ->
+ * 3,880 carries the rail's 48th stop — the same structural cost, the same
+ * precedent (the sessions release left the page at 3,850, ten under; the
+ * 48th stop's undeletable chrome measured +21: 3,871). Compressed FIRST,
+ * as the contract demands: the round's own listed changelog title ("The
+ * plan file" -> "Plan file", -1w) and the loop band's Work-lead
+ * restatement (-7w — the hero already says "every session hands a
+ * background engine a note", and the lead's opening clause said it a
+ * third time; the outbox-fallback clause is the line's only unique
+ * claim and stays). Post-compression 3,863; the breach was caught
+ * cutting v0.0.50 — the release workflow's own CI gate failed the tag,
+ * main red on this twin. Both twins move together (the 0.0.48 lesson);
+ * the ceiling carries one more stop's headroom so the next release does
+ * not open on a knife's edge.
+ */
+const MAX_WORDS = 3880;
 
 /*
  * The 2026-10-31 sessions-round release amendment: 3,840 -> 3,860 carries

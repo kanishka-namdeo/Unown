@@ -616,7 +616,9 @@ describe("CLI golden — plan mode", () => {
                         expect(envelope.plan.hasVerification).toBe(true);
                         expect(envelope.plan.score).toBeGreaterThanOrEqual(70);
                         expect(envelope.plan.passes).toBe(true);
-                        expect(String(envelope.plan.file)).toContain(".unown/plans/");
+                        // Windows reports the file with backslash separators —
+                        // normalize before asserting the POSIX-shaped suffix.
+                        expect(String(envelope.plan.file).replaceAll("\\", "/")).toContain(".unown/plans/");
                 },
                 LONG,
         );

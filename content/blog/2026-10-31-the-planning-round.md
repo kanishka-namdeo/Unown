@@ -86,3 +86,12 @@ The pt-1 plan the benchmark produced is worth reading on its own: it found
 the real theme APIs in the vendored TUI (`getAvailableThemesWithPaths`,
 `InteractiveThemeController`, `ThemeSelectorComponent`) and cited
 line-accurate reuse points — a plan you could hand to a developer untouched.
+
+One last thing worth recording: the release gate refused this round's own
+tag. Cutting v0.0.50 tripped the release workflow's CI-green gate — two of
+the round's own lanes were red on the tagged commit (a Windows-only path
+assertion in the new plan-mode end-to-end test, and the landing page's
+scroll budget, breached by the release rail's newest stop) — and the
+workflow refused to build a single artifact until both were fixed. A
+release that does not clear the repository's own gates does not exist;
+this one now does, with the catch in the changelog.

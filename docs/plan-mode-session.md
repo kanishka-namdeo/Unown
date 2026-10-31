@@ -4,8 +4,9 @@
 > experience available in terminal-based coding agents — every execution both
 > product development and planner evaluation, a Planning Gap Register with
 > reproduce → root-cause → benchmark → regression-test → fix → validate →
-> re-run for every gap. This is the round's resumable record; it ships as
-> **v0.0.49** together with the sessions round.
+> re-run for every gap. This is the round's resumable record; it ended up
+> shipping as **v0.0.50** — its own release, after the sessions round took
+> v0.0.49.
 
 Date: 2026-10-31 (UTC). Model: agnes-3.0-flash (metered free tier) through the
 bundled llm-bridge (:3031). Everything below was executed live in this
@@ -152,6 +153,46 @@ Every step below was a real run, feeding the next fix:
 - Landing: `bun run check:changelog` + `check:blog` + `check:claims` +
   `check:benchmarks` + `check:docs` regenerated/green; the changelog rail
   carries the planning round's entry.
+
+## M7 — the release the gate refused (the completion session, same day)
+
+The v0.0.50 tag was pushed at the end of M6 and the **Release workflow
+failed its own first job**: the `ci-green` gate (F21) found CI on the tagged
+commit red and refused to build a single artifact — the gate working exactly
+as designed (the v0.0.42 lesson). Two lanes were red, both this round's own:
+
+1. **Windows, `Self-learning engine tests`**: the new golden end-to-end
+   (`--plan + plan_write`) asserted the envelope's `plan.file` contains
+   `.unown/plans/` — a POSIX-shaped literal, while Windows reports the
+   path with backslash separators. Fix: normalise (`replaceAll("\\", "/")`)
+   before the assertion (a no-op on POSIX, and the only authored word in
+   the stop is the title — everything else is generated receipts).
+   Local: the whole self-learning suite ran clean this session
+   (5,263 pass / 101 skip / 0 fail — even the two bwrap cases that were
+   environmental in M5 pass in this sandbox), plus the integration scope
+   (13 pass).
+2. **Landing, the E2E word budget**: 3,871 > 3,860 — the round's own 48th
+   rail stop carries +21 words of undeletable chrome (label, date, tally,
+   the one listed title, links), the same structural cost the 0.0.44 and
+   0.0.49 releases paid. Compressed FIRST, per the contract: the round's
+   listed rail title ("The plan file" → "Plan file", the f16e8fda
+   sanctioned order) and the loop band's Work-lead restatement (the hero
+   already says "every session hands a background engine a note"; the
+   lead's opening clause said it a third time) — −8 measured words,
+   page at 3,863. Then the **tenth amendment** (3,860 → 3,880) in BOTH
+   twins together (`e2e/landing-budget.spec.ts` + `scripts/landing_audit.mjs`,
+   the 0.0.48 no-divergence lesson) and the AGENTS.md amendment ledger.
+   The E2E twin re-measured 3,863 ≤ 3,880; all 15 e2e tests green; the
+   root unit suite 2,063 pass; typecheck clean; eslint 0 errors; biome
+   shows zero new findings on changed files (verified against a stash);
+   `landing_og_shots.mjs` regenerated the full-page OG shot that carries
+   the compressed copy.
+
+Recorded honestly in the CHANGELOG's own Fixed bucket ("The release gate
+caught the tag itself"). The release is then re-cut by deleting and
+re-pushing the `v0.0.50` tag on the fixed commit — the version in
+package.json stays 0.0.50 (the tag matches; the release simply ships the
+round with its gate-scars showing).
 
 ## Resume-from-here
 
