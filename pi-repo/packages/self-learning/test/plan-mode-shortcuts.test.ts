@@ -35,13 +35,14 @@ type Handler = (event: any, ctx?: any) => any;
 function makeFakePi() {
 	const commands = new Map<string, { description: string; handler: Handler }>();
 	const shortcuts = new Map<string, { description?: string; handler: Handler }>();
+	const piTools = new Map<string, { execute: (...args: any[]) => Promise<any> }>();
 	const calls: string[] = [];
 	let activeTools: string[] = ["read", "bash", "edit", "write", "task", "grep", "glob"];
 	const pi: any = {
 		on: () => {},
 		registerCommand: (name: string, def: { description: string; handler: Handler }) => commands.set(name, def),
 		registerFlag: () => {},
-		registerTool: () => {},
+		registerTool: (tool: any) => piTools.set(tool.name, tool),
 		registerShortcut: (key: string, def: { description?: string; handler: Handler }) =>
 			shortcuts.set(key, def),
 		appendEntry: () => {},
@@ -54,7 +55,7 @@ function makeFakePi() {
 		sendMessage: () => {},
 		setModel: async () => true,
 	};
-	return { pi, commands, shortcuts, calls, getActiveTools: () => activeTools };
+	return { pi, commands, shortcuts, piTools, calls, getActiveTools: () => activeTools };
 }
 
 /** Minimal TUI ctx for the plan-mode state machine: notify, status, widget. */
@@ -169,5 +170,120 @@ describe("plan-mode keyboard shortcuts (the unown-tools extension)", () => {
 		await handler(ctx);
 		expect(fake.getActiveTools()).not.toContain("plan_write");
 		expect(notices.at(-1)?.text).toContain("Plan mode OFF");
+	});
+});
+
+const VALID_PLAN = `# Plan: Add the export button
+
+## Context
+The dashboard needs an export button next to the filter bar (files: src/dashboard.tsx).
+
+## Approach
+Add a button component wired to the existing export API endpoint.
+
+## Steps
+1. Add the button component (files: src/button.tsx)
+2. Wire the click handler to the export API (files: src/dashboard.tsx)
+
+## Risks
+- API rate limits under large exports.
+
+## Verification
+- bun test src
+`;
+
+/** A TUI ctx whose ui.select is scripted per-call; captures every select's
+ * option list so the dialog's labels are assertable too. */
+function makeApprovalCtx(script: Array<string | undefined>) {
+	const selects: Array<{ title: string; options: string[] }> = [];
+	const notices: Array<{ text: string; level: string }> = [];
+	let call = 0;
+	const ctx = {
+		hasUI: true,
+		mode: "tui",
+		ui: {
+			select: async (title: string, options: string[]) => {
+				selects.push({ title, options });
+				return script[call++];
+			},
+			editor: async () => VALID_PLAN,
+			input: async () => "tighten the verification steps",
+			notify: (text: string, level: string = "info") => notices.push({ text, level }),
+			setStatus: () => {},
+			setWidget: () => {},
+			theme: { fg: (_name: string, text: string) => text },
+		},
+	};
+	return { ctx, selects, notices };
+}
+
+async function wireForApproval() {
+	const { fake, seams } = await wire("default");
+	// Enter plan mode via the real shortcut handler, then write a real plan
+	// file through the real plan_write tool.
+	const { ctx } = makeCtx();
+	await fake.shortcuts.get("shift+tab")!.handler(ctx); // default -> acceptEdits
+	await fake.shortcuts.get("shift+tab")!.handler(ctx); // acceptEdits -> plan
+	const planWrite = fake.piTools.get("plan_write")!;
+	await planWrite.execute("t1", { content: VALID_PLAN }, undefined, undefined, ctx);
+	return { fake, seams };
+}
+
+describe("the plan approval gate (exit_plan_mode dialog)", () => {
+	test("routes by exact option match: auto-accept -> acceptEdits, manual -> default", async () => {
+		for (const [choice, expectedMode] of [
+			["Execute \u2014 auto-accept edits", "acceptEdits"],
+			["Execute \u2014 approve each edit", "default"],
+		] as const) {
+			const { fake, seams } = await wireForApproval(); // fresh episode per lane
+			const exit = fake.piTools.get("exit_plan_mode")!;
+			seams.setCalls.length = 0;
+			const ui = makeApprovalCtx([choice]);
+			const result = await exit.execute("t2", {}, undefined, undefined, ui.ctx);
+			const text = JSON.stringify(result);
+			expect(text).toContain("approved your plan");
+			expect(seams.setCalls).toEqual([expectedMode]);
+			expect(fake.getActiveTools()).toContain("edit"); // toolset restored
+		}
+	});
+
+	test("an unknown choice string falls through to stayed (label drift can never mis-approve)", async () => {
+		const { fake } = await wireForApproval();
+		const exit = fake.piTools.get("exit_plan_mode")!;
+		const ui = makeApprovalCtx(["Execute \u2014 auto-accept edits (v2 cosmetic relabel)"]);
+		const result = await exit.execute("t3", {}, undefined, undefined, ui.ctx);
+		const text = JSON.stringify(result);
+		expect(text).toContain("keep planning");
+		expect(text).not.toContain("approved your plan");
+	});
+
+	test("the options are truthful: no $EDITOR promise, the edit lane is the in-TUI editor", async () => {
+		const { fake } = await wireForApproval();
+		const exit = fake.piTools.get("exit_plan_mode")!;
+		const ui = makeApprovalCtx(["Keep planning (send feedback)"]);
+		await exit.execute("t4", {}, undefined, undefined, ui.ctx);
+		expect(ui.selects).toHaveLength(1);
+		const labels = ui.selects[0]!.options.join(" | ");
+		expect(labels).toContain("Edit the plan");
+		expect(labels).not.toContain("$EDITOR");
+		expect(labels).toContain("Keep planning (send feedback)");
+	});
+
+	test("six editor rounds surface the cap notice instead of going silent", async () => {
+		const { fake } = await wireForApproval();
+		const exit = fake.piTools.get("exit_plan_mode")!;
+		const ui = makeApprovalCtx([
+			"Edit the plan",
+			"Edit the plan",
+			"Edit the plan",
+			"Edit the plan",
+			"Edit the plan",
+			"Edit the plan",
+		]);
+		const result = await exit.execute("t5", {}, undefined, undefined, ui.ctx);
+		const text = JSON.stringify(result);
+		expect(text).toContain("keep planning");
+		expect(ui.notices.some((n) => n.text.includes("capped at 6") && n.level === "warning")).toBe(true);
+		expect(ui.selects).toHaveLength(6);
 	});
 });

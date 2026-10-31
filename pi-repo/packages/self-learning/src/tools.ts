@@ -2354,8 +2354,26 @@ export function createUnownToolsExtension(opts: UnownToolsOptions) {
 			else if (mode !== "plan" && planModeEnabled) await exitPlanModeOnly(lastPlanCtx);
 		};
 
+		/** The approval options as stable constants (the keyboard round):
+		 * routing previously matched `startsWith` on the display strings, so
+		 * a cosmetic label tweak silently broke approval routing. Matching is
+		 * exact against these ids; an unknown choice (dismissed dialog) falls
+		 * through to "stayed". The edit lane opens the in-TUI editor (its own
+		 * Ctrl+G hint covers $EDITOR) — the label no longer promises an
+		 * external editor it does not open. */
+		const PLAN_APPROVAL_EXECUTE_AUTO = "Execute — auto-accept edits";
+		const PLAN_APPROVAL_EXECUTE_MANUAL = "Execute — approve each edit";
+		const PLAN_APPROVAL_EDIT = "Edit the plan";
+		const PLAN_APPROVAL_KEEP_PLANNING = "Keep planning (send feedback)";
+		const planApprovalOptions = [
+			PLAN_APPROVAL_EXECUTE_AUTO,
+			PLAN_APPROVAL_EXECUTE_MANUAL,
+			PLAN_APPROVAL_EDIT,
+			PLAN_APPROVAL_KEEP_PLANNING,
+		] as const;
+
 		/** The TUI approval dialog (gap P-04/P-13): four options, the
-		 * Claude Code "Ready to code?" mapping plus the $EDITOR lane.
+		 * Claude Code "Ready to code?" mapping plus the editor lane.
 		 * Loops on editor rounds; every exit re-scores the edited file. */
 		const runPlanApprovalDialog = async (
 			ctx: any,
@@ -2367,21 +2385,16 @@ export function createUnownToolsExtension(opts: UnownToolsOptions) {
 			let currentScore = score;
 			for (let round = 0; round < 6; round++) {
 				const title = `Plan ready — ${currentScore.summary}`;
-				const choice = await ctx.ui.select(title, [
-					"Execute — auto-accept edits",
-					"Execute — approve each edit",
-					"Edit the plan in $EDITOR",
-					"Keep planning (send feedback)",
-				]);
-				if (choice?.startsWith("Execute — auto-accept")) {
+				const choice = await ctx.ui.select(title, [...planApprovalOptions]);
+				if (choice === PLAN_APPROVAL_EXECUTE_AUTO) {
 					await approvePlanExecution(ctx, currentDoc, "acceptEdits");
 					return { kind: "approved", mode: "acceptEdits" };
 				}
-				if (choice?.startsWith("Execute — approve")) {
+				if (choice === PLAN_APPROVAL_EXECUTE_MANUAL) {
 					await approvePlanExecution(ctx, currentDoc, "default");
 					return { kind: "approved", mode: "default" };
 				}
-				if (choice === "Edit the plan in $EDITOR") {
+				if (choice === PLAN_APPROVAL_EDIT) {
 					const edited = await ctx.ui.editor("Edit the plan:", renderPlanMarkdown(currentDoc));
 					if (edited?.trim()) {
 						try {
@@ -2400,7 +2413,7 @@ export function createUnownToolsExtension(opts: UnownToolsOptions) {
 					}
 					continue;
 				}
-				if (choice?.startsWith("Keep planning")) {
+				if (choice === PLAN_APPROVAL_KEEP_PLANNING) {
 					const feedback = await ctx.ui.input("What should change? (empty = just stay in plan mode)");
 					if (feedback?.trim()) {
 						return { kind: "rejected", feedback: feedback.trim() };
@@ -2408,6 +2421,14 @@ export function createUnownToolsExtension(opts: UnownToolsOptions) {
 					return { kind: "stayed" };
 				}
 				return { kind: "stayed" }; // dialog dismissed
+			}
+			// The 6-round editor cap was previously silent — the dialog just
+			// stopped re-asking. Say what happened and where to go next.
+			if (ctx?.hasUI) {
+				ctx.ui.notify(
+					"Plan editor rounds capped at 6 — staying in plan mode. Edit the plan file directly or approve via exit_plan_mode.",
+					"warning",
+				);
 			}
 			return { kind: "stayed" };
 		};

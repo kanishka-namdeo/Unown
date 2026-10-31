@@ -26,6 +26,13 @@ export class ExtensionEditorComponent extends Container implements Focusable {
 	private tui: TUI;
 	private keybindings: KeybindingsManager;
 	private externalEditorCommand: string;
+	/** Content as last loaded (prefill or external-editor round trip).
+	 * Escaping with edits on top of this requires a second cancel key. */
+	private savedText: string;
+	/** True between the first cancel key on a dirty editor and the next
+	 * non-cancel keypress — the "press Esc again to discard" arm state. */
+	private discardArmed = false;
+	private hintText: Text;
 
 	private _focused = false;
 	get focused(): boolean {
@@ -71,23 +78,19 @@ export class ExtensionEditorComponent extends Container implements Focusable {
 		if (prefill) {
 			this.editor.setText(prefill);
 		}
+		this.savedText = this.editor.getText();
 		// Wire up Enter to submit (Shift+Enter for newlines, like the main editor)
 		this.editor.onSubmit = (text: string) => {
+			this.savedText = text;
 			this.onSubmitCallback(text);
 		};
 		this.addChild(this.editor);
 
 		this.addChild(new Spacer(1));
 
-		// Add hint
-		const hint =
-			keyHint("tui.select.confirm", "submit") +
-			"  " +
-			keyHint("tui.input.newLine", "newline") +
-			"  " +
-			keyHint("tui.select.cancel", "cancel") +
-			`  ${keyHint("app.editor.external", "external editor")}`;
-		this.addChild(new Text(hint, 1, 0));
+		// Add hint (rebuilt in place when the discard guard arms)
+		this.hintText = new Text(this.buildHint(false), 1, 0);
+		this.addChild(this.hintText);
 
 		this.addChild(new Spacer(1));
 
@@ -95,12 +98,53 @@ export class ExtensionEditorComponent extends Container implements Focusable {
 		this.addChild(new DynamicBorder());
 	}
 
+	private buildHint(discardArmed: boolean): string {
+		const base =
+			keyHint("tui.select.confirm", "submit") +
+			"  " +
+			keyHint("tui.input.newLine", "newline") +
+			"  " +
+			keyHint("tui.select.cancel", discardArmed ? "again to discard" : "cancel") +
+			`  ${keyHint("app.editor.external", "external editor")}`;
+		return discardArmed ? `${base}  — unsaved edits` : base;
+	}
+
+	private isDirty(): boolean {
+		return this.editor.getText() !== this.savedText;
+	}
+
 	handleInput(keyData: string): void {
 		const kb = getKeybindings();
-		// Escape or Ctrl+C to cancel
+		// Escape or Ctrl+C to cancel — three cases, most specific first:
 		if (kb.matches(keyData, "tui.select.cancel")) {
+			// 1. The inner editor's autocomplete is open: this key closes the
+			//    autocomplete (the main editor's own pattern) instead of
+			//    killing the whole dialog.
+			if (this.editor.isShowingAutocomplete()) {
+				this.editor.handleInput(keyData);
+				return;
+			}
+			// 2. Unsaved edits: a stray cancel key must not silently discard
+			//    minutes of plan editing. The first press arms (hint flips to
+			//    "Esc again to discard"); any other keypress disarms; the
+			//    second consecutive press discards. No timer — deterministic.
+			if (this.isDirty()) {
+				if (this.discardArmed) {
+					this.onCancelCallback();
+					return;
+				}
+				this.discardArmed = true;
+				this.hintText.setText(this.buildHint(true));
+				return;
+			}
+			// 3. Clean editor: cancel immediately, as before.
 			this.onCancelCallback();
 			return;
+		}
+
+		if (this.discardArmed) {
+			this.discardArmed = false;
+			this.hintText.setText(this.buildHint(false));
 		}
 
 		// External editor (app keybinding)
@@ -123,6 +167,7 @@ export class ExtensionEditorComponent extends Container implements Focusable {
 			});
 			if (result.status === "complete") {
 				this.editor.setText(result.content);
+				this.savedText = result.content;
 			}
 		} finally {
 			this.tui.start();
