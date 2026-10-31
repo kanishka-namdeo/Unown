@@ -49,6 +49,11 @@ describe("isSafeCommand — accepts read-only commands (POSIX + PowerShell)", ()
                 "echo hi",
                 "cat README.md",
                 "ls -la",
+                // Read-only curl stays allowed (plan-mode fetch lane)
+                "curl -s https://api.example.com/health",
+                "curl -I https://example.com",
+                'curl -H "Authorization: Bearer tok" https://example.com/api',
+                "curl -L https://example.com/page",
         ])("%s", (command: string) => {
                 expect(isSafeCommand(command)).toBe(true);
         });
@@ -77,6 +82,16 @@ describe("isSafeCommand — rejects mutating/catastrophic commands", () => {
                 "Get-ChildItem | Remove-Item", // chained backstop: safe start, destructive tail
                 "cat x; del /s y", // chained backstop, POSIX verb
                 "cat x; rm -rf /", // chained backstop (pre-existing rm rule)
+                // curl write primitives: read-only plan mode must not gain a
+                // file-write lane through curl's output flags
+                "curl -o /tmp/x https://example.com", // spaced value
+                "curl -oout.txt https://example.com", // attached value
+                "curl --output out.json https://example.com",
+                "curl -O https://example.com", // remote filename
+                "curl -sO https://example.com", // short-flag cluster carrying O
+                "curl -Lo file https://example.com", // cluster carrying o
+                "curl --remote-name-all https://example.com",
+                "curl -D headers.txt https://example.com", // header dump to file
         ])("%s", (command: string) => {
                 expect(isSafeCommand(command)).toBe(false);
         });

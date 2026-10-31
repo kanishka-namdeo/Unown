@@ -1364,6 +1364,16 @@ const DESTRUCTIVE_PATTERNS = [
 	/\bset-executionpolicy\b/i,
 	/\bstop-process\b/i,
 	/\btaskkill\s[^\n]*\/f\b/i,
+	// curl write primitives (the plan-mode keyboard round's hardening): the
+	// SAFE allowlist admits bare read-only curl, so every file-writing flag
+	// form must sit on the destructive side — -o (spaced or attached
+	// value), --output, -O/--remote-name (remote filename), -D/--dump-header
+	// (header dump to file), and short-flag clusters carrying any of those
+	// letters (-sO, -Lo…). Deliberately not a curl argument parser —
+	// the straightforward forms, same spirit as the rest of this table.
+	/\bcurl\b[^\n]*\s-{1,2}o/i,
+	/\bcurl\b[^\n]*\s-[a-z]*[OD](?![a-z])/i,
+	/\bcurl\b[^\n]*\s--(remote-name|dump-header)/i,
 ];
 
 const SAFE_PATTERNS = [
