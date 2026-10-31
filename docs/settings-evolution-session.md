@@ -348,26 +348,74 @@ unexplained, recorded as an open question, not a claim).
 10); full engine unit suite 5,298 pass / 0 fail / 101 skip; typecheck
 clean; BM-8 4/4 with receipts; the promotion receipted on disk + ledger.
 
-### The plan (M7 → M8)
+### M7 — the paper trail (DONE 2026-10-31, e8f096b5)
 
-- **M7** — docs/DOX/README/landing sync + the round's CHANGELOG entry.
-- **M8** — version bump + tag + release builds (the release workflow).
+configuration.md gains **The settings hub** chapter (the hub-as-lens
+contract — the owning surfaces, the hub prefs, the change ledger) and the
+declared-defaults-are-contracts rule the M6 find established; usage.md's
+Goals section gains the M4 extras (goal-history.jsonl + `/goal history`,
+`/goal verify <command>`, the replace confirm, the age nudge) with the
+command table row carrying them; README's configuration row names the
+control centre. The CHANGELOG's **0.0.52** entry records the round in
+full — including the honest note that M3–M5 rode the v0.0.51 tag's code
+tree (the keyboard round's release carried it; this is its first
+changelog record). The rail regenerated to 50 stops / 495 entries in the
+SAME commit; the blog post
+(`content/blog/2026-10-31-the-settings-round.md`) tells the
+phantom-drift story + the nine dead lanes + the inbox overflow; blog
+regenerated to 34 posts / 78 tags.
+
+**The eleventh budget amendment** (3,880 → 3,920, both twins together
+per the 0.0.48 no-divergence lesson): the tenth left 17 words of
+headroom and the 0.0.51 stop consumed it EXACTLY (3,880/3,880 at this
+round's opening audit); the 0.0.52 stop measured +20 (3,900). Compressed
+FIRST per the contract: the round's own listed rail title ("The
+Interface section — the S2-1 repair" → "The Interface section", −4w; no
+generated number or gated literal touched). Post-compression 3,896 —
+still 16 over, all undeletable stop chrome, so the ceiling carries it
+plus one more stop's headroom per the 0.0.44 rule (3,900 would have
+left 4). The amendment ledger in the landing AGENTS.md records it; the
+spec's tenth-amendment comment was demoted, not deleted. Gates at the
+commit: check:docs 122 ok · check:changelog 50/495/50 · check:blog
+34/78 · check:claims 62 · check:benchmarks 6 · landing unit 2,063/2,063
+· typecheck clean · e2e twin 15/15 · audit:landing --budget PASS
+(15.4vh / 3,896w ≤ 3,920).
+
+### M8 — the release (DONE 2026-10-31; v0.0.52 published 15:01:14Z)
+
+Pre-release matrix on the tree: engine unit 5,298/0/101 skip +
+integration 13/13, bridge 248/0, landing unit 2,063/2,063, typecheck
+clean, biome zero findings on every changed file, all landing gates
+green, `unown --version` prints 0.0.52 after the bump. The release
+commit `7aeaf1ec`, the tag pushed 14:41Z. Outcome: **CI on the tagged
+commit green, the Release workflow's full matrix green — draft promoted
+to published 2026-10-31T15:01:14Z with all 13 assets** (six per-OS
+binaries, both installers, the update manifest, version.txt,
+sha256sums, the SPDX SBOM, the checklist); CodeQL + Scorecard green on
+the same commit. (A CI failure appeared on main at 15:18Z — the parallel
+session's f1be8569 "quiet footer round" commit at 15:06Z, not this
+round's; every workflow on 7aeaf1ec completed success.)
 
 ## Resume-from-here
 
-Round 2, M6 done — the Phase-10 artifacts are all in (BM-8 4/4, the
-dream v4, the promoted skill, the learning report; three product finds
-fixed + pinned: phantom drift, the nine dead action lanes, the inbox
-overflow). Next: **M7 — the sync:** docs (configuration.md's settings
-section gains the corrected defaults + the goal extras; usage.md's /goal
-row; the DOX tree + the learning report's index entry), README, the
-landing rail (regen + word budget in the SAME commit as the CHANGELOG
-entry — the F39 lesson; the budget sat at EXACTLY 3,880/3,880 at the
-v0.0.51 release, so the new stop must pay for itself — compress first,
-the sanctioned order), the blog post. Then **M8 — the release:** version
-bump, tag, release builds per the release workflow (the next free version
-— v0.0.52 as of this writing, 0.0.51 went live 12:40Z; check git tag
-before bumping; the round's story ships through the changelog rail).
+**Round 2 is complete** — M0 through M8, all receipts committed: the
+Interface repair (S2-1 closed: 0 unreachable, coverage 11.2% → 34.2%),
+the trust batch (S2-13 + S2-19), the settings-ux suite (BM-1..7 + the
+DELTA), the Phase-10 minting (BM-8 4/4, the dream v4, the promoted
+`pin-settings-defaults` skill, the learning report), the paper trail
+(M7), and the release (v0.0.52, 13 assets). Three product finds were
+caught by the minting work and shipped fixed + pinned: phantom drift,
+the nine dead action lanes, the inbox overflow.
+
+Follow-ups worth a session (recorded, not owed): the S2 ledger's honest
+remainder — S2-7 (elicitation matrix), S2-8 (undo badge), S2-9 (skill
+health), S2-11 (spend meter, one of the two pinned search misses),
+S2-4 (memory health card, the other) — plus S2-3/S2-16 (the hoist
+toggle + safe env write, the L pair), S2-22 (mem0 reconcile
+review/approve), and the digit-quick-select observation from the
+learning report (the inbox dialog rendered options unnumbered where the
+plan gate renders them numbered — unexplained, a keyboard-lane
+question). The benchmark is the regression net for all of them.
 
 ## Environment notes for a resuming session
 
