@@ -2,10 +2,21 @@ import { isAbsolute, relative, resolve, sep } from "node:path";
 import { type Component, truncateToWidth, visibleWidth, viewportTier } from "@earendil-works/pi-tui";
 import type { AgentSession } from "../../../core/agent-session.ts";
 import { areExperimentalFeaturesEnabled } from "../../../core/experimental.ts";
-import type { ReadonlyFooterDataProvider } from "../../../core/footer-data-provider.ts";
+import type { FooterStatusEntry, ReadonlyFooterDataProvider } from "../../../core/footer-data-provider.ts";
 import { addUsageToTotals, createUsageTotals } from "../../../core/usage-totals.ts";
 import { theme } from "../theme/theme.ts";
 import type { DiffLineCounts, ReadonlySessionDiffStats } from "./session-diff-stats.ts";
+
+/** The footer quiet round (unown fork, 2026-10-31): `UNOWN_FOOTER_CLASSIC=1`
+ *  restores the pre-round four-line footer (location on its own row, every
+ *  extension chip joined alphabetically). Default (unset / any other value)
+ *  is the quiet layout: one merged status line (location + meter + chips,
+ *  model right) plus an attention-only extension row. Read per render so
+ *  tests and embedders can flip it without a rebuild — the same env-override
+ *  pattern as `terminal.clearOnShrink`/`PI_CLEAR_ON_SHRINK`. */
+export function isFooterClassicMode(env: Record<string, string | undefined> = process.env): boolean {
+        return (env.UNOWN_FOOTER_CLASSIC ?? "") === "1";
+}
 
 /**
  * Sanitize text for display in a single-line status.
@@ -59,12 +70,25 @@ function stripAnsiCodes(text: string): string {
  * stats drop by ascending information value (cost, cache, tokens), the
  * meter sheds its bar at the `narrow` tier, and the model sheds its provider
  * prefix and thinking suffix before ever being truncated.
+ *
+ * Footer quiet round (2026-10-31, docs/footer-quiet-round-session.md): the
+ * default render is TWO rows at rest — one merged status line (location ·
+ * meter · usage chips on the left, model identity on the right) plus the
+ * contextual hint line — and the extension row becomes an attention line:
+ * chips render priority-first (failures before healthy-ambient state) and
+ * degrade by dropping WHOLE chips with a dim `+N` counter, never a mid-chip
+ * truncation. The session cost chip leaves the stats queue (the turn chip
+ * owns cost in the quiet layout — one fact, one home). Classic mode
+ * (`UNOWN_FOOTER_CLASSIC=1`) keeps the exact pre-round render path.
  */
 export class FooterComponent implements Component {
         private autoCompactEnabled = true;
         private session: AgentSession;
         private footerData: ReadonlyFooterDataProvider;
         private diffStats?: ReadonlySessionDiffStats;
+        /** The un-dimmed left side of the last assembled status line (the dim
+         *  split point — ANSI included; set by the assemble* helpers). */
+        private lastStatsLeft = "";
         /**
          * Round 5 (I3): contextual hint line — evaluated at render time so it
          * always reflects live state. Rendered as the footer's last line,
@@ -161,6 +185,7 @@ export class FooterComponent implements Component {
         render(width: number): string[] {
                 const state = this.session.state;
                 const tier = viewportTier(width);
+                const classic = isFooterClassicMode();
 
                 // Calculate cumulative usage from ALL session entries (not just post-compaction messages)
                 const usageTotals = createUsageTotals();
@@ -194,26 +219,22 @@ export class FooterComponent implements Component {
                 const contextUsage = this.session.getContextUsage();
                 const contextWindow = contextUsage?.contextWindow ?? state.model?.contextWindow ?? 0;
 
-                // Line 1 — where we are. Responsive: the location line sheds
+                // Location — where we are. Responsive: the location sheds
                 // decorations by tier instead of truncating the composed string —
-                // session name first (narrow), then the branch (narrow), and only
+                // session name first (narrow, and — in the quiet layout — anything
+                // under the `wide` tier, where the merged line spends its room on
+                // the meter and the model), then the branch (narrow), and only
                 // then folds the cwd itself.
                 let pwd = formatCwdForFooter(this.session.sessionManager.getCwd(), process.env.HOME || process.env.USERPROFILE);
                 const branch = this.footerData.getGitBranch();
                 const sessionName = this.session.sessionManager.getSessionName();
-                if (tier === "narrow") {
-                        if (branch) {
-                                pwd = `${pwd} (${branch})`;
-                        }
-                } else {
-                        if (branch) {
-                                pwd = `${pwd} (${branch})`;
-                        }
-                        if (sessionName) {
-                                pwd = `${pwd} • ${sessionName}`;
-                        }
+                const sessionEligible = classic ? tier !== "narrow" : tier === "wide" || tier === "ultra";
+                if (branch) {
+                        pwd = `${pwd} (${branch})`;
                 }
-                const locationLine = truncateToWidth(theme.fg("dim", pwd), width, theme.fg("dim", "..."));
+                if (sessionEligible && sessionName) {
+                        pwd = `${pwd} • ${sessionName}`;
+                }
 
                 // Line 2, left — the context meter plus usage stats, dimmed one step below
                 // the location line so the meter's stateful color is the only loud thing.
@@ -222,11 +243,15 @@ export class FooterComponent implements Component {
 
                 // Optional stats, ordered by DESCENDING information value — the
                 // fit loop below admits segments in this order, so the earliest
-                // entries are kept most strongly and the latest (cost) drop
-                // first when room runs out. The `keep` gate hides every optional
+                // entries are kept most strongly and the latest (cache read)
+                // drop first when room runs out. The `keep` gate hides every optional
                 // stat at the `narrow` tier (they would displace the model
                 // identity); at every wider tier all of them are eligible and
                 // the ordered drop alone decides what survives.
+                //
+                // Quiet round: the session cost chip is CLASSIC-ONLY — in the quiet
+                // layout cost renders on the turn chip (one fact, one home; the
+                // stats chip was also the first to drop at narrow widths).
                 const statsEligible = tier !== "narrow";
                 const statsQueue: Array<{ text: string; keep: boolean }> = [];
                 if (areExperimentalFeaturesEnabled()) {
@@ -262,17 +287,17 @@ export class FooterComponent implements Component {
                 const usingSubscription = state.model
                         ? state.model.provider === "kimi-coding" || this.session.modelRuntime.isUsingSubscription(state.model.provider)
                         : false;
-                if (usageTotals.cost || usingSubscription) {
+                if (classic && (usageTotals.cost || usingSubscription)) {
                         statsQueue.push({
                                 text: `$${usageTotals.cost.toFixed(3)}${usingSubscription ? " (sub)" : ""}`,
                                 keep: statsEligible,
                         });
                 }
 
-                // Line 2, right — model identity + thinking level. The model is a
-                // survivor: it degrades by shedding its provider prefix and
-                // thinking suffix before ever being truncated (and then only with
-                // an ellipsis, never a hard mid-word cut).
+                // Model identity + thinking level. The model is a survivor: it
+                // degrades by shedding its provider prefix and thinking suffix
+                // before ever being truncated (and then only with an ellipsis,
+                // never a hard mid-word cut).
                 const modelName = state.model?.id || "no-model";
                 let rightSideWithSuffix = modelName;
                 if (state.model?.reasoning) {
@@ -285,9 +310,54 @@ export class FooterComponent implements Component {
                         rightSide = `(${state.model!.provider}) ${rightSideWithSuffix}`;
                 }
 
+                // ---- assemble the line(s) --------------------------------------------
+                let locationLine: string;
+                let statsLine: string;
+                if (classic) {
+                        // CLASSIC: the pre-round two-row render — location on its own
+                        // row (dim, truncated), stats underneath.
+                        locationLine = truncateToWidth(theme.fg("dim", pwd), width, theme.fg("dim", "..."));
+                        statsLine = this.assembleStatsLine(meter, statsQueue, rightSide, width);
+                } else {
+                        // QUIET: ONE merged status line. Left side = location (the
+                        // identity segment, kept — it ellipsizes rather than drops)
+                        // then the meter then the usage chips, `·`-separated; right
+                        // side = the model identity with its existing degrade ladder.
+                        // The stats fit loop gains the location as its first kept
+                        // segment; room for chips is whatever is left after
+                        // identity + meter + model.
+                        locationLine = "";
+                        statsLine = this.assembleMergedStatusLine(pwd, meter, statsQueue, rightSide, width);
+                }
+
+                // Apply dim to each side separately — the meter's color codes reset fg,
+                // which would clear an outer dim wrapper mid-line. The split point is
+                // the left side's exact string length (ANSI included), so the visible
+                // characters carry over verbatim.
+                const statsLeft = this.lastStatsLeft;
+                const dimStatsLeft = theme.fg("dim", statsLeft);
+                const remainder = statsLine.slice(statsLeft.length);
+                const dimRemainder = theme.fg("dim", remainder);
+
+                // The editor's bottom border is the top edge of the chrome band —
+                // a second hairline here would read as a doubled border.
+                const lines = locationLine ? [locationLine, dimStatsLeft + dimRemainder] : [dimStatsLeft + dimRemainder];
+
+                return this.finishRender(lines, width, classic);
+        }
+
+        /** CLASSIC: the pre-round stats line — meter + kept chips on the left,
+         *  the model on the right, the round-5 degrade ladder. Also fills
+         *  `this.lastStatsLeft` with the un-dimmed left side for the dim split. */
+        private assembleStatsLine(
+                meter: string,
+                statsQueue: Array<{ text: string; keep: boolean }>,
+                rightSide: string,
+                width: number,
+        ): string {
                 const minPadding = 2;
                 // Degrade ladder for the right side: provider → suffix → truncate.
-                const rightCandidates = [rightSide, rightSide.replace(/^\([^)]*\) /, ""), modelName];
+                const rightCandidates = [rightSide, rightSide.replace(/^\([^)]*\) /, ""), rightSide.replace(/^\([^)]*\) /, "").replace(/ • .*$/, "")];
                 let statsLine = "";
                 let statsLeft = "";
                 let assembledOk = false;
@@ -333,34 +403,86 @@ export class FooterComponent implements Component {
                         statsLine = truncateToWidth(stripAnsiCodes(statsLine), width, "…");
                         statsLeft = statsLine;
                 }
-
-                // Apply dim to each side separately — the meter's color codes reset fg,
-                // which would clear an outer dim wrapper mid-line. The split point is
-                // the left side's exact string length (ANSI included), so the visible
-                // characters carry over verbatim.
-                const dimStatsLeft = theme.fg("dim", statsLeft);
-                const remainder = statsLine.slice(statsLeft.length);
-                const dimRemainder = theme.fg("dim", remainder);
-
-                // The editor's bottom border is the top edge of the chrome band —
-                // a second hairline here would read as a doubled border.
-                const lines = [locationLine, dimStatsLeft + dimRemainder];
-
-                return this.finishRender(lines, width);
+                this.lastStatsLeft = statsLeft;
+                return statsLine;
         }
 
-        /** Shared tail of render(): extension statuses, the contextual hint
-         *  line (round 5, I3), and the chrome band. */
-        private finishRender(lines: string[], width: number): string[] {
-                // Add extension statuses on a single line, sorted by key alphabetically
+        /** QUIET: the merged status line — `location · meter chip…` left, model
+         *  right. The location is the identity segment: it is admitted first
+         *  and ellipsizes (never drops) when the terminal is too narrow; the
+         *  meter and the model are survivors; optional chips admit only into
+         *  the room that is left. Fills `this.lastStatsLeft` for the dim split. */
+        private assembleMergedStatusLine(
+                location: string,
+                meter: string,
+                statsQueue: Array<{ text: string; keep: boolean }>,
+                rightSide: string,
+                width: number,
+        ): string {
+                const minPadding = 2;
+                const rightCandidates = [rightSide, rightSide.replace(/^\([^)]*\) /, ""), rightSide.replace(/^\([^)]*\) /, "").replace(/ • .*$/, "")];
+
+                for (const candidate of rightCandidates) {
+                        const rightWidth = visibleWidth(candidate);
+                        // Left budget after the model's row share.
+                        const leftBudget = width - minPadding - rightWidth;
+                        if (leftBudget <= 0) continue;
+
+                        // Identity + meter are kept segments; their combined width
+                        // decides how much of the location survives.
+                        let left = `${theme.fg("dim", location)} · ${meter}`;
+                        let leftWidth = visibleWidth(left);
+                        if (leftWidth > leftBudget) {
+                                // Too narrow for location + meter: ellipsize the
+                                // location (identity never drops, it shrinks); if
+                                // even that cannot fit, fall back to the meter
+                                // alone — location truncation's last resort.
+                                const meterWidth = visibleWidth(meter);
+                                const roomForLocation = leftBudget - meterWidth - 3; // " · "
+                                if (roomForLocation > 4) {
+                                        left = `${theme.fg("dim", truncateToWidth(location, roomForLocation, "…"))} · ${meter}`;
+                                } else {
+                                        left = meter;
+                                }
+                                leftWidth = visibleWidth(left);
+                        }
+                        // Optional chips into the remaining room (ordered drop —
+                        // the same descending-value queue as classic).
+                        for (const seg of statsQueue) {
+                                if (!seg.keep) continue;
+                                const candidateLeft = `${left} · ${seg.text}`;
+                                if (visibleWidth(candidateLeft) > leftBudget) continue;
+                                left = candidateLeft;
+                        }
+                        leftWidth = visibleWidth(left);
+
+                        const padding = " ".repeat(Math.max(0, width - leftWidth - rightWidth));
+                        this.lastStatsLeft = left;
+                        return left + padding + candidate;
+                }
+                // Last resort (terminal narrower than the meter): truncate.
+                const statsLine = truncateToWidth(stripAnsiCodes(`${location} · ${meter}`), width, "…");
+                this.lastStatsLeft = statsLine;
+                return statsLine;
+        }
+
+        /** Shared tail of render(): the extension row, the contextual hint
+         *  line (round 5, I3), and the chrome band.
+         *
+         *  Quiet round: the extension row is the ATTENTION line — chips render
+         *  priority-first (higher first, key-alphabetical within a class) and
+         *  degrade by dropping WHOLE chips with a dim `+N` counter, never a
+         *  mid-chip cut. If even the highest-priority chip cannot fit whole,
+         *  it renders alone, truncated with an ellipsis as the last resort.
+         *  CLASSIC keeps the pre-round row: all chips joined alphabetically,
+         *  truncated mid-text at width. */
+        private finishRender(lines: string[], width: number, classic = false): string[] {
                 const extensionStatuses = this.footerData.getExtensionStatuses();
                 if (extensionStatuses.size > 0) {
-                        const sortedStatuses = Array.from(extensionStatuses.entries())
-                                .sort(([a], [b]) => a.localeCompare(b))
-                                .map(([, text]) => sanitizeStatusText(text));
-                        const statusLine = sortedStatuses.join(" ");
-                        // Truncate to terminal width with dim ellipsis for consistency with footer style
-                        lines.push(truncateToWidth(statusLine, width, theme.fg("dim", "...")));
+                        const statusLine = classic
+                                ? this.renderClassicStatusRow(extensionStatuses, width)
+                                : this.renderAttentionRow(extensionStatuses, width);
+                        if (statusLine) lines.push(statusLine);
                 }
 
                 // Contextual hint line (round 5, I3) — evaluated at render time
@@ -386,5 +508,57 @@ export class FooterComponent implements Component {
                         return theme.bg("chromeBg", line + gap);
                 });
                 return padded;
+        }
+
+        /** CLASSIC extension row: every chip joined alphabetically by key,
+         *  sanitized, truncated mid-text with a dim ellipsis (the pre-round
+         *  behavior, kept byte-compatible for the kill switch). */
+        private renderClassicStatusRow(extensionStatuses: ReadonlyMap<string, FooterStatusEntry>, width: number): string {
+                const sortedStatuses = Array.from(extensionStatuses.entries())
+                        .sort(([a], [b]) => a.localeCompare(b))
+                        .map(([, entry]) => sanitizeStatusText(entry.text));
+                const statusLine = sortedStatuses.join(" ");
+                return truncateToWidth(statusLine, width, theme.fg("dim", "..."));
+        }
+
+        /** QUIET extension row (the attention line): priority-desc, key-asc,
+         *  whole-chip admission with a dim `+N` overflow counter. Returns ""
+         *  when nothing fits at all (a zero-width terminal). */
+        private renderAttentionRow(extensionStatuses: ReadonlyMap<string, FooterStatusEntry>, width: number): string {
+                const entries = Array.from(extensionStatuses.entries())
+                        .map(([key, entry]) => ({ key, text: sanitizeStatusText(entry.text), priority: entry.priority }))
+                        .sort((a, b) => b.priority - a.priority || a.key.localeCompare(b.key));
+
+                const admitted: string[] = [];
+                let used = 0;
+                let dropped = 0;
+                for (const e of entries) {
+                        const w = visibleWidth(e.text);
+                        const sep = admitted.length > 0 ? 1 : 0;
+                        if (used + sep + w > width) {
+                                dropped = entries.length - admitted.length;
+                                break;
+                        }
+                        admitted.push(e.text);
+                        used += sep + w;
+                }
+                if (dropped > 0) {
+                        const marker = `+${dropped}`;
+                        // Make room for the marker by dropping the lowest-priority
+                        // admitted chips (the tail of the array).
+                        while (admitted.length > 0 && used + 1 + marker.length > width) {
+                                const last = admitted.pop();
+                                if (last === undefined) break;
+                                used -= 1 + visibleWidth(last);
+                                dropped++;
+                        }
+                        if (admitted.length === 0) {
+                                // Nothing fits whole: the highest-priority chip
+                                // renders alone, truncated as the last resort.
+                                return truncateToWidth(entries[0]!.text, width, theme.fg("dim", "…"));
+                        }
+                        return admitted.join(" ") + " " + theme.fg("dim", marker);
+                }
+                return admitted.join(" ");
         }
 }
