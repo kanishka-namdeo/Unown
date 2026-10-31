@@ -1,0 +1,12 @@
+{
+ "ok": true,
+ "selftest": "bisect",
+ "spans": 120,
+ "items": 120,
+ "spanCountMatches": true,
+ "drillParseOk": false,
+ "drill": {
+  "candidateItem": "agent.capabilities",
+  "probes": 8
+ }
+}

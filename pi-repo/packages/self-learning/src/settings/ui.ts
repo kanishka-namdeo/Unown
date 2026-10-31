@@ -47,6 +47,20 @@ interface HubOptions {
 
 const RISK_LABEL: Record<string, string> = { low: "● low", med: "◐ med", high: "○ HIGH" };
 
+/**
+ * The option label for an action item. EVERY action label is normalised into
+ * the `Run: …` shape because the editor's dispatch routes on the "Run"
+ * prefix (openItem's `choice.startsWith("Run")`) — the M6 find: nine action
+ * items carried labels like "opens the staged-skills list" that matched NO
+ * dispatch branch, so selecting them and pressing Enter silently did
+ * nothing (their launch lanes were dead on arrival). Exported so the
+ * settings-hub test can pin the contract for every action item.
+ */
+export function actionOptionLabel(item: SettingsItem): string {
+        if (!item.actionLabel) return "Run";
+        return `Run: ${item.actionLabel.replace(/^runs /, "").replace(/^Run: /, "")}`;
+}
+
 function shortSection(id: string): string {
         return SECTION_META.find((s) => s.id === id.split(".")[0])?.title ?? id;
 }
@@ -143,7 +157,7 @@ async function openItem(ctx: ExtensionContext, opts: HubOptions, item: SettingsI
                 if (item.kind === "select" && (item.choices || item.getChoices)) options.push("Change value…");
                 if (item.kind === "number") options.push("Change value…");
                 if (item.kind === "text") options.push("Change value…");
-                if (item.kind === "action") options.push(item.actionLabel ? item.actionLabel.replace(/^runs /, "Run: ") : "Run");
+                if (item.kind === "action") options.push(actionOptionLabel(item));
                 if (item.set && item.default !== undefined) options.push("Revert to default");
                 options.push("Help (what / where / how to revert)", "Back");
                 const choice = await ctx.ui.select(`${shortSection(item.id)} → ${item.name}\n${lines.join("\n")}`, options);
@@ -356,9 +370,17 @@ async function openDreamInbox(ctx: ExtensionContext, cwd: string): Promise<void>
                 return;
         }
         for (const dream of pending) {
-                const preview = renderPendingDiff(dream);
+                // Same screen-fit clamp as the staged-skills inbox (the M6
+                // promotion drive's catch): a 3,000-char preview pushed the
+                // options off-screen — the dialog has to fit the terminal.
+                const fullDiff = renderPendingDiff(dream);
+                const preview = fullDiff.slice(0, 600);
+                const clampNote =
+                        fullDiff.length > 600
+                                ? `\n\n(diff clamped — the full preview: /settings → Recovery → the dashboard's Memory screen)`
+                                : "";
                 const choice = await ctx.ui.select(
-                        `Pending dream — ${dream.slug} (${dream.notesIn} notes, ${new Date(dream.createdAt).toISOString().slice(0, 16)})\n${dream.summary}\n\n${preview.slice(0, 3000)}`,
+                        `Pending dream — ${dream.slug} (${dream.notesIn} notes, ${new Date(dream.createdAt).toISOString().slice(0, 16)})\n${dream.summary}\n\n${preview}${clampNote}`,
                         ["Approve — ship exactly this diff", "Discard — revert, ship nothing", "Skip (leave pending)"],
                 );
                 if (choice === undefined || choice.startsWith("Skip")) continue;
@@ -387,9 +409,19 @@ async function openStagedSkills(ctx: ExtensionContext, cwd: string): Promise<voi
                 return;
         }
         for (const skill of staged) {
-                const preview = skill.skillMd.slice(0, 2500);
+                // The preview is CLAMPED to a screen-fitting size: the M6 promotion
+                // drive caught the inbox dialog overflowing — a 2,500-char title
+                // pushed the option rows off-screen (the dialog was unusable; the
+                // options unreachable by eye). 600 chars ≈ 8-10 rows at 100 cols,
+                // leaving room for the options + hint strip; the full text stays
+                // in the staged file, one /reload away.
+                const preview = skill.skillMd.slice(0, 600);
+                const clampNote =
+                        skill.skillMd.length > 600
+                                ? `\n\n(preview clamped — full text: .unown/skills-staged/${skill.name}/SKILL.md)`
+                                : "";
                 const choice = await ctx.ui.select(
-                        `Staged skill — ${skill.name}\n\n${preview}`,
+                        `Staged skill — ${skill.name}\n\n${preview}${clampNote}`,
                         ["Promote into .unown/skills/ (loads after /reload)", "Discard (delete the staged copy)", "Skip"],
                 );
                 if (choice === undefined || choice.startsWith("Skip")) continue;

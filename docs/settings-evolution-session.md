@@ -271,31 +271,103 @@ claim went true-but-false → true-and-true; BM-4 +0.9 Downs — the
 Interface row's honest price). The two remaining BM-3 misses are the
 deferred S2-11/S2-4 — honest misses, pinned queries waiting.
 
-### The plan (M6 → M8)
+### M6 — the Phase-10 minting: BM-8, the dream, the promoted skill, the learning report (DONE 2026-10-31)
 
-- **M6** — phase 10 learning artifacts.
-- **M6** — phase 10 learning artifacts: mint tasks from the round's failures,
-  dream, staged skills, the learning report.
+**The minting produced a fourth find.** Building the three author-catches
+as pinned guards (BM-8, `receipts/run-m6-minting/`, 4/4) surfaced a real
+product defect the whole round had missed: **phantom drift** — the
+registry's declared `default` fields for 8 interface items were written
+from the pi selector's row states, not the vendored settings-manager
+getters, so `/settings diff` showed 8 phantom "drifted" rows on EVERY
+fresh install (tui-mode regular-vs-fullscreen — onboarding deliberately
+writes `fullscreen` — mermaid, image-width, editor-padding, clear-on-shrink,
+terminal-progress, copy-on-select, fullscreen-exit-output). Caught by
+reading the run-after `bm5-diff` pane while designing the no-op guard.
+Fixed (all 8, vendored provenance comments); pinned TWO ways:
+`test/settings-defaults-drift.test.ts` (the unit pin — every defaulted
+item's `get()` equals its declared default on an out-of-the-box home;
+runs in a SUBPROCESS because some getters resolve through term.ts's
+module-scope `UNOWN_HOME` snapshot — the in-process pin read an earlier
+suite file's leftovers: `agent.addon-todo-lines: get()=33`, the failure
+that found the snapshot class) and BM-8's phantom-drift guard (the
+pane-truth pin: a pristine home's diff must say "No settings differ").
+
+**BM-8 — author-catch guards** (`tasks/bm8-author-guards.json`, the lane
+row in the suite's README, RESULTS.md's M6 section): phantom-drift ✓,
+toggle-marker ✓ (the `→` marker asserted as pane-truth BEFORE matching;
+changed + disk + ledger), noop-drift ✓ (todo widget lines 12 → 14, target
+= current+offset never equal by construction; the diff names the drifted
+key), registry-parse ✓ (audit import + `bisect-registry.mjs --selftest`:
+120 spans == 120 items, the synthetic missing-paren drill named
+`agent.capabilities` in 8 probes). Plus the no-op LOAD-TIME validation:
+5 task diskChecks checked, 1 warning — BM-2's own hook-depth task is
+diff-inert (expect 3 == declared default 3), honestly kept as a warning.
+`bisect-registry.mjs` itself: the missing-paren diagnosis tool minted —
+paren-INSENSITIVE span scanning (the catch class is exactly what breaks
+paren-aware scanning), binary search over candidate temp files (the real
+file never touched), the selftest drilling a synthetic catch every run.
+
+**The dream.** The round's four learning notes (the find, the minting,
+the receipts discipline, the environment lesson) posted via the engine's
+ingestion lane; the manual trigger ran the engine dream (4 benchmark
+notes → engine-scope memory v27) and `runProjectDream()` — which first
+GATED us on a parked dream from an earlier session (the review-mode gate
+is unconditional on pending existence; resolved through the product's
+own inbox) — then consolidated the 4 notes into the dogfood project:
+`project-e02884a0`, 4 in, 2 added, 1 pruned, project memory **v3 → v4**
+(render "110/112 · 2 oldest pruned (cap 110; hard-won rules immune)").
+The dream also MINTED a skill — `pin-settings-defaults` — into
+`.unown/skills-staged/`.
+
+**The human gate, driven like a real user — and it caught two more
+product bugs.** The promotion drive (the hub → Learning → Staged skills
+inbox) was silently ignored at first: **nine action items carried
+death-lane labels** — the item editor dispatches on
+`choice.startsWith("Run")` but pushed actionLabels verbatim, so
+"opens the staged-skills list" matched NO branch. Fixed by
+`actionOptionLabel()` (every action label normalised into the `Run: …`
+shape); pinned in `settings-hub.test.ts` (the action dispatch contract,
+all action items). Then the inbox dialog itself was UNUSABLE: the
+2,500-char preview (and the pending-dreams inbox's 3,000-char diff)
+pushed the option rows off-screen. Fixed by clamping both previews to
+600 chars with a pointer to the full text. The completed drive then
+promoted `pin-settings-defaults` through the product's own UI — disk
+(`.unown/skills/pin-settings-defaults/`), ledger
+(`"via": "/settings staged-skills inbox"`), the stale `staged: true`
+frontmatter dropped — and Skipped the earlier round's
+`add-new-subproject-skeleton` (its promotion is that round's call).
+
+**The learning report** — `docs/settings-learning-report.md`: the five
+mechanisms validated on this round's receipts (the harness's honest
+quiet: 15/15 cycles already-passing, 0 improvements; the engine mint's
+honest skip; the digit-quick-select observation — the inbox dialog
+rendered options UNNUMBERED where the plan gate renders them numbered,
+unexplained, recorded as an open question, not a claim).
+
+**Verification at M6:** settings suites 42/42 (hub 30 + drift 2 + trust
+10); full engine unit suite 5,298 pass / 0 fail / 101 skip; typecheck
+clean; BM-8 4/4 with receipts; the promotion receipted on disk + ledger.
+
+### The plan (M7 → M8)
+
 - **M7** — docs/DOX/README/landing sync + the round's CHANGELOG entry.
 - **M8** — version bump + tag + release builds (the release workflow).
 
 ## Resume-from-here
 
-Round 2, M5 done — the DELTA table is committed in
-`benchmarks/settings-ux/RESULTS.md` (S2-1 closed with receipts; coverage
-11.2% → 34.2%; no regressions). Next: **M6 — the phase-10 learning
-artifacts:** mint the round's three author-catches (toggle-marker,
-no-op-drift, missing-paren) as benchmark/learning tasks, let the engine
-dream the round's notes, stage any minted skills, and write the round's
-learning report (docs/unown-learning-report.md is the round-1 precedent).
-Then **M7 — the sync:** docs (configuration.md's settings section gains
-the Interface section + goal extras; usage.md's /goal row; the DOX tree),
-README, the landing rail (regen + word budget in the SAME commit as the
-CHANGELOG entry — the F39 lesson), the blog post. Then **M8 — the
-release:** version bump, tag, release builds per the release workflow
-(the next free version — v0.0.52 as of this writing, the keyboard round took
-0.0.51; check git tag before bumping; the round's story ships through the
-changelog rail).
+Round 2, M6 done — the Phase-10 artifacts are all in (BM-8 4/4, the
+dream v4, the promoted skill, the learning report; three product finds
+fixed + pinned: phantom drift, the nine dead action lanes, the inbox
+overflow). Next: **M7 — the sync:** docs (configuration.md's settings
+section gains the corrected defaults + the goal extras; usage.md's /goal
+row; the DOX tree + the learning report's index entry), README, the
+landing rail (regen + word budget in the SAME commit as the CHANGELOG
+entry — the F39 lesson; the budget sat at EXACTLY 3,880/3,880 at the
+v0.0.51 release, so the new stop must pay for itself — compress first,
+the sanctioned order), the blog post. Then **M8 — the release:** version
+bump, tag, release builds per the release workflow (the next free version
+— v0.0.52 as of this writing, 0.0.51 went live 12:40Z; check git tag
+before bumping; the round's story ships through the changelog rail).
 
 ## Environment notes for a resuming session
 

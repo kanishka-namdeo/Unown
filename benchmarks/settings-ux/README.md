@@ -43,13 +43,15 @@ spend.
 | **BM-5** recovery paths | can a user get back | change→Recently changed→revert round-trip (value restored on disk); drift diff; kill-switch row; dream-rollback row; scoped reset with backup on disk | 5/5 paths |
 | **BM-6** six-questions coverage | the mission questions answerable from `/settings` alone | each question mapped to its section(s) with pinned anchors; covered = every anchor on the pane | 6/6 questions |
 | **BM-7** trust gates | risk badges + typed confirmation + the ledger | (a) `audit-registry.mjs`: the registry read from the real module — integrity, field completeness (name/summary/help/risk), every settable item names its persistence; the pi-selector cross-check (machine count of unreachable rows) (b) PTY probe on the one settable high-risk item: gate shown, wrong phrase cancels with nothing written, "yes" writes + ledger entry | audit ok AND gate full cycle |
+| **BM-8** author-catch guards | the Phase-10 minting (M6): the round's three authoring failures as pinned tasks + the phantom-drift find | phantom-drift (pristine home: `/settings diff` says "No settings differ"); toggle-marker (the selected row's `→` asserted as pane-truth before matching, then changed + disk + ledger); noop-drift (target = current+offset, never equal by construction; the diff must name the drifted key; a load-time validation flags task values equal to the declared default); registry-parse (audit import + `bisect-registry.mjs --selftest` — the span splitter pin and the synthetic missing-paren drill) | 4/4 guards AND 0 phantom rows on a pristine home |
 
 ### The pinned workload
 
 `tasks/bm2-find-change.json` (task values and disk expectations),
 `tasks/bm3-search-queries.json` (queries + intent targets + the honest
 `expectedAtBefore`), `tasks/bm4-bm6-map.json` (the depth sample and the
-six-question anchor map). The workload is pinned separately from the runner
+six-question anchor map), `tasks/bm8-author-guards.json` (the
+author-catch guards). The workload is pinned separately from the runner
 so an AFTER run measures the same tasks; changing a task file invalidates
 comparison and must be recorded in `RESULTS.md`.
 

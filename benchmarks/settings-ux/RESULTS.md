@@ -111,3 +111,66 @@ waiting for them.
   post-Interface-repair tree).
 - `receipts/run-after/` — **the AFTER run of record** for this DELTA
   table (the post-M4-partial tree).
+
+## M6 — the Phase-10 minting + the phantom-drift find (2026-10-31, receipts/run-m6-minting/)
+
+Minting the round's three author-catches as pinned tasks produced a fourth,
+real product find. Full circle: the benchmark's own authoring failures
+became guards, and building the guards caught a user-facing bug the whole
+round had missed.
+
+**The find (phantom drift):** the run-after `bm5-diff` pane showed 8 drift
+rows on a home nobody touched. The registry's declared `default` fields for
+the interface items had been written from the pi selector's row states, not
+the vendored manager's resolved values — so `/settings diff` showed, on
+EVERY fresh install, phantom rows for settings the user never changed:
+TUI mode (`regular` vs the deliberate out-of-box `fullscreen` term.ts
+writes), Mermaid (`final` vs `streaming`), image width (80 vs 60), editor
+padding (2 vs 0), clear-on-shrink (on vs off), terminal progress (on vs
+off), copy-on-select (off vs on — the very item that shipped the
+missing-paren catch), fullscreen exit output (`resume-hint` vs
+`transcript`). Fixed in registry.ts (all 8 defaults corrected, each with
+its vendored provenance comment); pinned two ways:
+`test/settings-defaults-drift.test.ts` (the unit pin — every defaulted
+item's `get()` must equal its declared default on an out-of-the-box home;
+runs in a subprocess because some getters resolve through term.ts's
+module-scope UNOWN_HOME snapshot, and an in-process pin would read an
+earlier suite file's leftovers) and BM-8's phantom-drift guard (the
+pane-truth pin below).
+
+**BM-8 — author-catch guards (the lane):** 4 guards, 4/4 green,
+receipts `receipts/run-m6-minting/`:
+
+| Guard | Pins | Receipt |
+|---|---|---|
+| phantom-drift | on a pristine doctor-seeded home `/settings diff` must say "No settings differ from their defaults." — any phantom row fails the guard with the pane as exhibit | `bm8-phantom-diff.pane.txt` (0 rows) |
+| toggle-marker | the editor's selected row must render the `→` marker as pane-truth BEFORE matching (the first benchmark run matched `startswith("Turn ON")` and never hit); then the change lands on disk AND in the ledger | marker `→ Turn OFF` rendered; `fullscreenCopyOnSelect: false` on disk; ledger entry present |
+| noop-drift | target = current+offset (never equal by construction — the BM-5 first-run catch set hook-depth to its own default 3 and the diff correctly said nothing); the diff must then name the drifted key | todo widget lines 12 → 14 on disk; the diff names "Todo widget lines" |
+| registry-parse | the audit's import through the real module (the missing-paren catch's net) + `bisect-registry.mjs --selftest`: the span splitter must match the real module's item count, and a synthetic missing-paren drill must be diagnosed by the bisection | audit ok; 120 spans == 120 items; the drill named `agent.capabilities` in 8 probes (~1s) |
+
+**The no-op load-time validation** (`bm8-noop-validation.json`): 5 task
+diskChecks checked against the registry's declared defaults; 1 warning —
+BM-2's own `hook-depth` task (expect 3 == declared default 3) is flagged
+diff-inert. It stays a warning, not a failure: a write-path task may
+legitimately target the default value; the flag exists so a diff-flavored
+task can never again hide in the class (the BM-5 catch was exactly that
+mislabeling).
+
+`bisect-registry.mjs` (the missing-paren diagnosis tool, minted): the
+catch shipped `},` where `}),` belonged; every parser pointed at the
+array's `];` and a hand bisection found the item in seconds. The tool
+automates the procedure — split the registry's section arrays into item
+spans (paren-insensitive on purpose: the catch class leaves braces
+balanced but parens unbalanced, which is exactly when the tool is needed),
+binary-search by writing candidate files to a temp name in the registry's
+own directory (the real file is never touched), name the minimal failing
+item. `--selftest` runs the splitter pin plus the synthetic drill every
+time so the tool cannot silently rot.
+
+### Run index (updated 2)
+
+- `receipts/run-2026-10-31T10-16-44/` — the BEFORE baseline.
+- `receipts/run-after-m3/` — the M3 verification snapshots.
+- `receipts/run-after/` — **the AFTER run of record** for the DELTA table.
+- `receipts/run-m6-minting/` — the BM-8 author-catch guards (4/4) + the
+  no-op validation + the audit/bisect selftest receipts.

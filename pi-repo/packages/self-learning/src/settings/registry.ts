@@ -369,7 +369,11 @@ const interfaceItems: SettingsItem[] = [
                 persistedIn: "~/.unown/agent/settings.json",
                 tags: ["tui", "fullscreen", "mode", "display"],
                 reloadNote: "restart the TUI to bind",
-                default: "regular",
+                // The diff view's baseline is the OUT-OF-BOX state: onboarding
+                // deliberately writes tuiMode "fullscreen" (term.ts — the split-view
+                // layout engine). Was "regular": every fresh install showed a
+                // phantom drift row (caught by the M6 phantom-drift probe).
+                default: "fullscreen",
                 choices: [
                         { label: "Regular (inline)", value: "regular" },
                         { label: "Fullscreen (transcript view)", value: "fullscreen" },
@@ -436,7 +440,9 @@ const interfaceItems: SettingsItem[] = [
                 help: "'final' renders the diagram once complete, 'streaming' renders as it draws, 'off' leaves the code block as text. Revert: pick another mode here.",
                 persistedIn: "~/.unown/agent/settings.json",
                 tags: ["mermaid", "diagram", "render", "unicode"],
-                default: "final",
+                // vendored default (settings-manager getMermaidRenderingMode):
+                // anything not off/final resolves "streaming" — was "final".
+                default: "streaming",
                 choices: [
                         { label: "Off (plain code)", value: "off" },
                         { label: "Final (render when complete)", value: "final" },
@@ -587,7 +593,8 @@ const interfaceItems: SettingsItem[] = [
                 integer: true,
                 min: 10,
                 max: 400,
-                default: 80,
+                // vendored default: getImageWidthCells ?? 60 — was 80.
+                default: 60,
                 get: () => pi().getImageWidthCells(),
                 set: (v) => pi().setImageWidthCells(Number(v)),
         },
@@ -652,13 +659,14 @@ const interfaceItems: SettingsItem[] = [
                 risk: "low",
                 advanced: true,
                 summary: "Horizontal padding around the prompt editor",
-                help: "Columns of padding either side of the input line. Revert: set back (default 2).",
+                help: "Columns of padding either side of the input line. Revert: set back (default 0).",
                 persistedIn: "~/.unown/agent/settings.json",
                 tags: ["padding", "editor", "layout", "paddings"],
                 integer: true,
                 min: 0,
                 max: 16,
-                default: 2,
+                // vendored default: getEditorPaddingX ?? 0 — was 2.
+                default: 0,
                 get: () => pi().getEditorPaddingX(),
                 set: (v) => pi().setEditorPaddingX(Number(v)),
         },
@@ -709,7 +717,8 @@ const interfaceItems: SettingsItem[] = [
                 help: "Prevents torn renders when the terminal window shrinks; a full clear costs a flicker. Revert: toggle here.",
                 persistedIn: "~/.unown/agent/settings.json",
                 tags: ["clear", "shrink", "fullscreen", "resize"],
-                default: true,
+                // vendored default: false unless settings/env say otherwise — was true.
+                default: false,
                 get: () => pi().getClearOnShrink(),
                 set: (v) => pi().setClearOnShrink(Boolean(v)),
         }),
@@ -723,7 +732,8 @@ const interfaceItems: SettingsItem[] = [
                 help: "The animated progress indicator under the editor. Off = a static status line. Revert: toggle here.",
                 persistedIn: "~/.unown/agent/settings.json",
                 tags: ["progress", "spinner", "status"],
-                default: true,
+                // vendored default: ?? false — was true.
+                default: false,
                 get: () => pi().getShowTerminalProgress(),
                 set: (v) => pi().setShowTerminalProgress(Boolean(v)),
         }),
@@ -757,7 +767,9 @@ const interfaceItems: SettingsItem[] = [
                 help: "Selections copy immediately instead of needing an explicit copy action. Revert: toggle here.",
                 persistedIn: "~/.unown/agent/settings.json",
                 tags: ["fullscreen", "copy", "clipboard", "select"],
-                default: false,
+                // vendored default: ?? true — was false (the M6 phantom-drift
+                // probe's find; the paren-catch item, corrected).
+                default: true,
                 get: () => pi().getFullscreenCopyOnSelect(),
                 set: (v) => pi().setFullscreenCopyOnSelect(Boolean(v)),
         }),
@@ -772,7 +784,9 @@ const interfaceItems: SettingsItem[] = [
                 help: "'transcript' prints the whole transcript on exit, 'resume-hint' prints a one-line pointer. Revert: pick the other value here.",
                 persistedIn: "~/.unown/agent/settings.json",
                 tags: ["fullscreen", "exit", "transcript"],
-                default: "resume-hint",
+                // vendored default: only "resume-hint" is special-cased; unset
+                // resolves "transcript" — was "resume-hint".
+                default: "transcript",
                 choices: [
                         { label: "Transcript (print everything)", value: "transcript" },
                         { label: "Resume hint (one line)", value: "resume-hint" },

@@ -1,0 +1,36 @@
+
+── Themes ──
+  unown
+
+[Extension issues]
+  <inline:unown-tools>
+    Extension command '/settings' overrides a built-in interactive command. The extension version is dispatched and listed in
+autocomplete.
+  <inline:unown-tools>
+    Extension shortcut 'shift+tab' from <inline:unown-tools> conflicts with built-in shortcut. Skipping.
+
+
+ Saved: Copy on select (fullscreen) = false
+
+ ○ no tracked steps · conf ✓ · 0m in session
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+
+ Interface → Copy on select (fullscreen)
+ ● low · toggle
+ Selecting text in fullscreen copies it to the clipboard
+ Now: off
+ Default: true
+ Lives in: ~/.unown/agent/settings.json
+
+ → Turn ON
+   Revert to default
+   Help (what / where / how to revert)
+   Back
+
+  ↑↓ navigate · Enter to select · Esc to cancel
+
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+/tmp/settings-ux-bench/bm8-cwd
+ctx ▕░░░░░░░░░░▏ 0.0%/524k (auto)                                                                                agnes-3.0-flash
+memory: up · stale (v0.0.50)
+? help · ctrl+k palette · / commands · ! bash · ctrl+o tools · esc-esc tree

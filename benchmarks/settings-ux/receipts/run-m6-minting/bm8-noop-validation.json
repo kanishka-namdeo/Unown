@@ -1,0 +1,13 @@
+{
+ "checked": 5,
+ "warnings": [
+  {
+   "task": "hook-depth",
+   "itemId": "tools.hook-depth",
+   "expect": 3,
+   "declaredDefault": 3,
+   "note": "diff-inert: lands ON the declared default \u2014 the diff view will show no drift"
+  }
+ ],
+ "writtenAt": "2026-10-31T13:26:16Z"
+}

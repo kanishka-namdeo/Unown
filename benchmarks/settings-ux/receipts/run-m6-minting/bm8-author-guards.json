@@ -1,0 +1,52 @@
+{
+ "bm": "bm8",
+ "guards": [
+  {
+   "guard": "phantom-drift",
+   "ok": true,
+   "phantomRows": []
+  },
+  {
+   "guard": "toggle-marker",
+   "ok": true,
+   "markerRendered": "\u2192 Turn OFF",
+   "outcome": "changed",
+   "valueAfter": false,
+   "diskOk": true,
+   "ledgerOk": true
+  },
+  {
+   "guard": "noop-drift",
+   "ok": true,
+   "valueBefore": 12,
+   "target": 14,
+   "valueAfter": 14,
+   "diskOk": true,
+   "diffNamesDriftedKey": true,
+   "outcome": "changed"
+  },
+  {
+   "guard": "registry-parse",
+   "ok": true,
+   "auditOk": true,
+   "bisectSelftestOk": true,
+   "bisectDetail": {
+    "spans": 120,
+    "items": 120,
+    "spanCountMatches": true,
+    "drillCandidate": "agent.capabilities",
+    "drillProbes": 8
+   }
+  }
+ ],
+ "seeded": true,
+ "noopValidation": {
+  "checked": 5,
+  "warnings": 1
+ },
+ "summary": {
+  "okGuards": "4/4",
+  "noopWarnings": 1
+ },
+ "writtenAt": "2026-10-31T13:26:43Z"
+}

@@ -27,6 +27,16 @@ Methodology (benchmarks/settings-ux/README.md is the contract):
   BM-7  trust gates — the registry audit (bun audit-registry.mjs) + the
         typed-confirmation PTY probe on the one settable high-risk item
         (wrong phrase cancels + nothing written; "yes" writes + ledger).
+  BM-8  author-catch guards — the Phase-10 minting (M6): the round's three
+        benchmark-authoring failures as pinned tasks, plus the phantom-drift
+        find the minting work produced. toggle-marker (the selected row's
+        '→' asserted as pane-truth before matching), noop-drift (target =
+        current+offset, never equal by construction; the diff must name the
+        drifted key; load-time validation flags diff-inert task values),
+        phantom-drift (pristine home: the diff must say 'No settings differ'
+        — the registry's declared defaults had drifted from the vendored pi
+        defaults), registry-parse (audit import + bisect-registry.mjs
+        --selftest: the splitter pin + the synthetic missing-paren drill).
 
 Everything writes incremental per-BM JSON receipts into the run dir; a
 final summary.json carries the headline table. Resumable: --only bm2,bm3
@@ -1166,6 +1176,280 @@ def run_bm7(run_dir: str, args) -> dict:
 
 
 # ---------------------------------------------------------------------------
+# BM-8 — author-catch guards (Phase-10 minting, M6)
+# ---------------------------------------------------------------------------
+
+
+def registry_declared_defaults() -> dict:
+    """The registry's declared defaults, read from RUNTIME TRUTH (the real
+    module) — used by the no-op validation. Cached per process."""
+    global _REGISTRY_DEFAULTS
+    if _REGISTRY_DEFAULTS is None:
+        proc = subprocess.run(
+            [
+                BUN,
+                "-e",
+                'const { SETTINGS_REGISTRY } = await import(\n'
+                '  "' + os.path.join(UNOWN_ROOT, "pi-repo/packages/self-learning/src/settings/registry.ts") + '\"\n'
+                '); console.log(JSON.stringify(Object.fromEntries(\n'
+                '  SETTINGS_REGISTRY.filter(i => i.default !== undefined).map(i => [i.id, i.default]),\n' 
+                ')));',
+            ],
+            cwd=UNOWN_ROOT,
+            capture_output=True,
+            timeout=120,
+        )
+        _REGISTRY_DEFAULTS = json.loads(proc.stdout.decode()) if proc.returncode == 0 else {}
+    return _REGISTRY_DEFAULTS
+
+
+_REGISTRY_DEFAULTS: dict | None = None
+
+
+def validate_noop_rules(run_dir: str) -> dict:
+    """The no-op-drift guard (the BM-5 first-run catch, minted as a load-time
+    rule): every task with a diskCheck.expect (not 'flipped') whose expect
+    equals the item's DECLARED registry default is flagged — the change would
+    land ON the default and the diff view would show no drift (the write is
+    real, the diff probe is not). Warnings, not failures: a write-path task
+    may legitimately target the default value; the receipt records the flag
+    so a diff-flavored task can never hide in the class again."""
+    defaults = registry_declared_defaults()
+    warnings = []
+    checked = 0
+    for name in ("bm2-find-change.json", "bm8-author-guards.json"):
+        tasks = load_tasks(name)
+        candidates = []
+        if isinstance(tasks.get("reachable"), list):
+            candidates += tasks["reachable"]
+        for key in ("toggleMarker", "noopDrift"):
+            if isinstance(tasks.get(key), dict):
+                candidates += [tasks[key]]
+        for t in candidates:
+            check = t.get("diskCheck")
+            if not isinstance(check, dict) or check.get("expect") == "flipped":
+                continue
+            if "itemId" not in t:
+                continue
+            checked += 1
+            declared = defaults.get(t["itemId"])
+            if declared is not None and check.get("expect") == declared:
+                warnings.append(
+                    {
+                        "task": t.get("task"),
+                        "itemId": t["itemId"],
+                        "expect": check.get("expect"),
+                        "declaredDefault": declared,
+                        "note": "diff-inert: lands ON the declared default — the diff view will show no drift",
+                    }
+                )
+    out = {"checked": checked, "warnings": warnings}
+    write_receipt(run_dir, "bm8-noop-validation", out)
+    return out
+
+
+def run_bm8(run_dir: str, args) -> dict:
+    receipt = {"bm": "bm8", "guards": []}
+    home = os.path.join(WORK_ROOT, "bm8-home")
+    subprocess.run(["rm", "-rf", home], check=False)
+    os.makedirs(home, exist_ok=True)
+    cwd = os.path.join(WORK_ROOT, "bm8-cwd")
+    os.makedirs(cwd, exist_ok=True)
+    seeded = seed_home(home)
+    receipt["seeded"] = seeded
+    if not seeded:
+        receipt["error"] = "doctor seeding failed"
+        write_receipt(run_dir, "bm8-author-guards", receipt)
+        return receipt
+    tasks = load_tasks("bm8-author-guards.json")
+
+    # The no-op load-time validation runs before anything is driven.
+    noop_validation = validate_noop_rules(run_dir)
+    receipt["noopValidation"] = {"checked": noop_validation["checked"], "warnings": len(noop_validation["warnings"])}
+
+    cp = boot_tui(home, cwd)
+    try:
+        # Guard 1 — phantom-drift: on the PRISTINE home the diff must be empty.
+        g = {"guard": "phantom-drift", "ok": False}
+        try:
+            cp.type_prompt("/settings diff")
+            cp.wait_for(["diff vs defaults"], timeout=20, desc="diff lane")
+            cp.pump(1.0)
+            pane = cp.pane_text()
+            save_pane(run_dir, "bm8-phantom-diff", pane)
+            g["ok"] = tasks["phantomDrift"]["expectText"] in pane
+            g["phantomRows"] = [
+                line.strip() for line in pane.splitlines() if " \u2192 " in line and "(default:" in line
+            ]
+        except Exception as exc:
+            g["error"] = repr(exc)[:300]
+            save_pane(run_dir, "bm8-phantom-error", cp.pane_text())
+        receipt["guards"].append(g)
+        close_dialogs(cp)
+        back_to_editor(cp)
+
+        # Guard 2 — toggle-marker: the selected row's '\u2192' marker asserted as
+        # pane-truth BEFORE the match (the first benchmark run's catch).
+        g = {"guard": "toggle-marker", "ok": False}
+        tm = tasks["toggleMarker"]
+        try:
+            open_hub(cp)
+            navigate_to(cp, "Search settings", desc="Search row")
+            cp.key("Enter")
+            cp.wait_for(["Search settings ("], timeout=15)
+            cp.send(tm["query"])
+            time.sleep(0.4)
+            cp.send("\r")
+            navigate_to(cp, tm["editorAnchor"], desc="the search hit")
+            cp.key("Enter")
+            cp.wait_for([tm["editorAnchor"]], timeout=15, desc="item editor")
+            # the marker-presence pin: the selected row must render the arrow marker
+            found_marker = None
+            for _ in range(40):
+                cp.pump(0.15)
+                pane = cp.pane_text()
+                for needle in tm["markerNeedles"]:
+                    if needle in pane:
+                        found_marker = needle
+                        break
+                if found_marker:
+                    break
+                cp.key("Down", delay=0.07)
+            if not found_marker:
+                g["outcome"] = "marker-missing"
+                save_pane(run_dir, "bm8-toggle-marker-missing", cp.pane_text())
+            else:
+                g["markerRendered"] = found_marker
+                cp.key("Enter")
+                cp.wait_for([tm["saveAnchor"]], timeout=15, desc="toggle save notice")
+                g["outcome"] = "changed"
+                time.sleep(0.8)
+                check = tm["diskCheck"]
+                data = read_home_json(home, check["file"]) or {}
+                got = data.get(check["key"])
+                g["valueAfter"] = got
+                g["diskOk"] = got == check["expect"]
+                g["ledgerOk"] = any(
+                    e.get("itemId") == tm["itemId"] and e.get("after") == check["expect"]
+                    for e in ledger_entries(home)
+                )
+                g["ok"] = g["diskOk"] and g["ledgerOk"]
+                save_pane(run_dir, "bm8-toggle-marker-after", cp.pane_text())
+        except Exception as exc:
+            g["error"] = repr(exc)[:300]
+            save_pane(run_dir, "bm8-toggle-marker-error", cp.pane_text())
+        receipt["guards"].append(g)
+        close_dialogs(cp)
+        back_to_editor(cp)
+
+        # Guard 3 — no-op drift: the target is current+offset (never equal by
+        # construction), then the diff MUST name the drifted key.
+        g = {"guard": "noop-drift", "ok": False}
+        nd = tasks["noopDrift"]
+        try:
+            base = read_home_json(home, nd["baseFile"]) or {}
+            current = dig(base, nd["baseKey"])
+            g["valueBefore"] = current
+            if current is None:
+                g["outcome"] = "no-current-value"
+            else:
+                target = min(current + nd["offset"], nd["cap"])
+                g["target"] = target
+                if target == current:
+                    g["outcome"] = "noop-target"  # the guard itself refuses a no-op
+                    save_pane(run_dir, "bm8-noop-refused", cp.pane_text())
+                else:
+                    open_hub(cp)
+                    navigate_to(cp, "Search settings", desc="Search row")
+                    cp.key("Enter")
+                    cp.wait_for(["Search settings ("], timeout=15)
+                    cp.send(nd["query"])
+                    time.sleep(0.4)
+                    cp.send("\r")
+                    navigate_to(cp, nd["editorAnchor"], desc="the search hit")
+                    cp.key("Enter")
+                    cp.wait_for([nd["editorAnchor"]], timeout=15, desc="item editor")
+                    navigate_to(cp, "Change value", desc="Change value")
+                    cp.key("Enter")
+                    cp.wait_for([nd["editorAnchor"], ".."], mode="all", timeout=15, desc="number input")
+                    cp.send(str(target))
+                    time.sleep(0.4)
+                    cp.send("\r")
+                    cp.wait_for([f"Saved: {nd['editorAnchor']}"], timeout=15, desc="save notice")
+                    time.sleep(0.8)
+                    after = dig(read_home_json(home, nd["baseFile"]) or {}, nd["baseKey"])
+                    g["valueAfter"] = after
+                    g["diskOk"] = after == target
+                    close_dialogs(cp)
+                    back_to_editor(cp)
+                    cp.type_prompt("/settings diff")
+                    cp.wait_for(["diff vs defaults"], timeout=20, desc="diff lane")
+                    cp.pump(1.0)
+                    pane = cp.pane_text()
+                    save_pane(run_dir, "bm8-noop-diff", pane)
+                    g["diffNamesDriftedKey"] = nd["diffAnchor"] in pane and nd["noDiffText"] not in pane
+                    g["ok"] = g["diskOk"] and g["diffNamesDriftedKey"]
+                    g["outcome"] = "changed"
+        except Exception as exc:
+            g["error"] = repr(exc)[:300]
+            save_pane(run_dir, "bm8-noop-error", cp.pane_text())
+        receipt["guards"].append(g)
+        close_dialogs(cp)
+        back_to_editor(cp)
+    finally:
+        cp.close()
+
+    # Guard 4 — registry-parse: the audit import (the parse net) + the bisect
+    # tool's selftest (the splitter pin + the synthetic missing-paren drill).
+    g = {"guard": "registry-parse", "ok": False}
+    audit_out = os.path.join(run_dir, "bm8-audit.json")
+    env = dict(os.environ)
+    env["UNOWN_HOME"] = os.path.join(WORK_ROOT, "bm8-audit-home")
+    os.makedirs(env["UNOWN_HOME"], exist_ok=True)
+    proc = subprocess.run(
+        [BUN, os.path.join(HERE, "audit-registry.mjs"), "--out", audit_out],
+        cwd=UNOWN_ROOT, env=env, capture_output=True, timeout=180,
+    )
+    bisect_out_path = os.path.join(run_dir, "bm8-bisect-selftest.json")
+    proc_bisect = subprocess.run(
+        [BUN, os.path.join(HERE, "bisect-registry.mjs"), "--selftest", "--out", bisect_out_path],
+        cwd=UNOWN_ROOT, env=env, capture_output=True, timeout=240,
+    )
+    try:
+        audit = json.load(open(audit_out, "r", encoding="utf-8")) if proc.returncode == 0 else None
+        bisect = json.loads(proc_bisect.stdout.decode()) if proc_bisect.returncode == 0 else None
+        if bisect is not None and not os.path.exists(bisect_out_path):
+            # the tool prints JSON on stdout; mirror it as a receipt file too
+            with open(bisect_out_path, "w", encoding="utf-8") as fh:
+                json.dump(bisect, fh, indent=1)
+        g["auditOk"] = bool(
+            audit and audit["registryIntegrity"]["ok"] and not audit["fieldGaps"] and not audit["settableWithoutPersistence"]
+        )
+        g["bisectSelftestOk"] = bool(bisect and bisect.get("ok"))
+        if bisect:
+            g["bisectDetail"] = {
+                "spans": bisect.get("spans"),
+                "items": bisect.get("items"),
+                "spanCountMatches": bisect.get("spanCountMatches"),
+                "drillCandidate": bisect.get("drill", {}).get("candidateItem"),
+                "drillProbes": bisect.get("drill", {}).get("probes"),
+            }
+        g["ok"] = g["auditOk"] and g["bisectSelftestOk"]
+    except Exception as exc:
+        g["error"] = repr(exc)[:300]
+        g["auditStderr"] = proc.stderr.decode()[:200]
+        g["bisectStderr"] = proc_bisect.stderr.decode()[:200]
+    receipt["guards"].append(g)
+
+    receipt["summary"] = {
+        "okGuards": f"{sum(1 for x in receipt['guards'] if x.get('ok'))}/{len(receipt['guards'])}",
+        "noopWarnings": len(noop_validation["warnings"]),
+    }
+    write_receipt(run_dir, "bm8-author-guards", receipt)
+    return receipt
+
+
+# ---------------------------------------------------------------------------
 # Summary
 # ---------------------------------------------------------------------------
 
@@ -1213,6 +1497,12 @@ def build_summary(run_dir: str) -> dict:
     if bm7:
         s["bm"]["bm7"] = bm7.get("summary")
         s["bm"]["bm7"]["auditHeadline"] = bm7.get("auditHeadline")
+    bm8 = read_receipt(run_dir, "bm8-author-guards")
+    if bm8:
+        s["bm"]["bm8"] = bm8.get("summary")
+        s["bm"]["bm8"]["guardDetail"] = [
+            {k: x.get(k) for k in ("guard", "ok", "outcome", "error")} for x in bm8.get("guards", [])
+        ]
     write_receipt(run_dir, "summary", s)
     return s
 
@@ -1225,6 +1515,7 @@ LANES = {
     "bm5": run_bm5,
     "bm6": run_bm6,
     "bm7": run_bm7,
+    "bm8": run_bm8,
 }
 
 
@@ -1243,7 +1534,7 @@ def main() -> int:
     os.makedirs(WORK_ROOT, exist_ok=True)
     log(f"run dir: {run_dir}")
 
-    order = ["bm7", "bm1", "bm2", "bm3", "bm4", "bm5", "bm6"]
+    order = ["bm7", "bm1", "bm2", "bm3", "bm4", "bm5", "bm6", "bm8"]
     # bm7 first: its audit receipt feeds bm4's coverage block on a full run.
     todo = args.only.split(",") if args.only else order
     for lane in todo:

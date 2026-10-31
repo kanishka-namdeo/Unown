@@ -359,6 +359,28 @@ describe("staged-skills inbox (SA-B2 minus the raw mv)", () => {
                 expect(promoteStagedSkill(TEST_PROJECT, "demo-skill").ok).toBe(false);
                 expect(discardStagedSkill(TEST_PROJECT, "demo-skill").ok).toBe(true);
         });
+
+        test("the action dispatch contract (the M6 find): every action item's option label routes into the Run dispatch", async () => {
+                // The M6 catch: nine action items carried actionLabels like
+                // "opens the staged-skills list" — openItem pushed them verbatim,
+                // so choice.startsWith("Run") matched NO dispatch branch and
+                // selecting the option silently did nothing (the launch lanes were
+                // dead on arrival). actionOptionLabel normalises EVERY action
+                // label into the Run: shape; this pin holds the contract for all
+                // of them, forever.
+                const { SETTINGS_REGISTRY } = await import("../src/settings/registry.ts");
+                const { actionOptionLabel } = await import("../src/settings/ui.ts");
+                const actions = SETTINGS_REGISTRY.filter((i) => i.kind === "action");
+                // the nine dead lanes at the find: capabilities, memory.search,
+                // pending-dreams, skills-staged, routines, kill-switch,
+                // recent-runs, envelope, trust — plus the ones that worked.
+                expect(actions.length).toBeGreaterThanOrEqual(9);
+                for (const item of actions) {
+                        const label = actionOptionLabel(item);
+                        expect(label.startsWith("Run")).toBe(true);
+                        expect(label.length).toBeGreaterThan(3);
+                }
+        });
 });
 
 // ---------------------------------------------------------------------------

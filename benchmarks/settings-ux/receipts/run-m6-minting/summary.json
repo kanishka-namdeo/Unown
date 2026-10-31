@@ -1,0 +1,36 @@
+{
+ "generatedAt": "2026-10-31T13:26:43Z",
+ "bm": {
+  "bm8": {
+   "okGuards": "4/4",
+   "noopWarnings": 1,
+   "guardDetail": [
+    {
+     "guard": "phantom-drift",
+     "ok": true,
+     "outcome": null,
+     "error": null
+    },
+    {
+     "guard": "toggle-marker",
+     "ok": true,
+     "outcome": "changed",
+     "error": null
+    },
+    {
+     "guard": "noop-drift",
+     "ok": true,
+     "outcome": "changed",
+     "error": null
+    },
+    {
+     "guard": "registry-parse",
+     "ok": true,
+     "outcome": null,
+     "error": null
+    }
+   ]
+  }
+ },
+ "writtenAt": "2026-10-31T13:26:43Z"
+}

@@ -1,0 +1,32 @@
+{
+  "$comment": "BM-8 author-catch guards — the Settings Evolution round's Phase-10 minting (M6): the round's three benchmark-authoring failures minted as pinned tasks, plus the phantom-drift find the minting work itself produced. Each task pins a catch class so it cannot silently recur. (1) phantomDrift: on a pristine home /settings diff must say 'No settings differ' — the registry's declared defaults had drifted from the vendored pi defaults, so every fresh install showed 8 phantom drift rows; the unit pin is test/settings-defaults-drift.test.ts, this is the pane-truth pin. (2) toggleMarker: the editor's selected row carries the '\u2192' marker ('\u2192 Turn ON'); the first benchmark run matched by prefix and never hit — this task asserts the marker renders BEFORE matching, so a product change that drops the marker turns the task red consciously. (3) noopDrift: the BM-5 first-run catch — a probe that sets a setting to its CURRENT value shows no drift; this task reads the current value and sets current+offset (never equal by construction), then the diff must name the drifted key. The runner also validates every task's diskCheck.expect against the registry's declared defaults (the diff-inert warning). (4) registry-parse: procedural (audit-registry.mjs import + bisect-registry.mjs --selftest) — the missing-paren catch's net.",
+  "phantomDrift": {
+    "expectText": "No settings differ from their defaults."
+  },
+  "toggleMarker": {
+    "task": "copy-on-select",
+    "query": "copy on select",
+    "itemId": "interface.copy-on-select",
+    "editorAnchor": "Copy on select (fullscreen)",
+    "markerNeedles": ["\u2192 Turn ON", "\u2192 Turn OFF"],
+    "toggleLabel": ["Turn ON", "Turn OFF"],
+    "saveAnchor": "Saved:",
+    "diskCheck": {
+      "file": "agent/settings.json",
+      "key": "fullscreenCopyOnSelect",
+      "expect": false
+    }
+  },
+  "noopDrift": {
+    "task": "todo-lines",
+    "query": "todo widget",
+    "itemId": "agent.addon-todo-lines",
+    "editorAnchor": "Todo widget lines",
+    "baseFile": "agent/addons.json",
+    "baseKey": "todo.maxWidgetLines",
+    "offset": 2,
+    "cap": 64,
+    "diffAnchor": "Todo widget lines",
+    "noDiffText": "No settings differ"
+  }
+}
