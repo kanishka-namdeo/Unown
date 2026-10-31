@@ -57,6 +57,7 @@ import {
 import { createTerminalDialog, maskKey, SECRET_CANCEL, type SetupDialog } from "./setup-dialog.ts";
 import { allowUnverifiedSpecs, askSpecNumbers, recordUserSpec, resolveSpecGate } from "./spec-gate.ts";
 import { bridgeKnownModels, UNOWN_AGENT_DIR } from "./term.ts";
+import { resolveUnownHome } from "./unown-home.ts";
 
 export type { ProviderPreset } from "./presets.ts";
 // ---------------------------------------------------------------------------
@@ -135,7 +136,14 @@ export function writeAgentConfig(input: WriteConfigInput & { reset?: boolean }):
 		...(input.apiKeyInAuthJson ? { apiKeyInAuthJson: input.apiKeyInAuthJson } : {}),
 		...(input.apiKeyEnvRef ? { apiKeyEnvRef: input.apiKeyEnvRef } : {}),
 	};
-	upsertProvider(UNOWN_AGENT_DIR, entry, { setDefault: true, reset: input.reset === true });
+	// Call-time resolution (unown-home.ts's documented contract: the env
+	// override is read at CALL time, not module load). term.ts's module-scope
+	// UNOWN_AGENT_DIR snapshot predates every env redirect that happens after
+	// first import — the settings round's "snapshot class": a write issued
+	// while the live env points elsewhere (tests redirect UNOWN_HOME per
+	// suite; embedded runs re-point it at launch) must land in the LIVE
+	// home's agent dir, not whichever home won the import race.
+	upsertProvider(join(resolveUnownHome(), "agent"), entry, { setDefault: true, reset: input.reset === true });
 }
 
 // ---------------------------------------------------------------------------

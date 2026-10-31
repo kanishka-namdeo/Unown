@@ -24,12 +24,17 @@
 //   M5  the fallback gate's execute instruction is display:false — the user
 //       sees the approved plan once, then the live panel
 //   RES plan steps and replayed todos reconcile in BOTH directions on resume
+//   RLD the bridges are a (re)registration-cycle contract, not a one-way
+//     latch: a /addons disable + /reload retires them and the legacy widget
+//     returns (the 0.0.53 recovery round - see resetTodoAddonBridges)
 import "./_env.ts"; // MUST be the first import: store.ts opens SQLite at module scope
-import { afterAll, describe, expect, test } from "bun:test";
-import { mkdtempSync, rmSync } from "node:fs";
+import { afterAll, beforeEach, describe, expect, test } from "bun:test";
+import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { registerTodoAddon } from "../src/addons/todo.ts";
+import { addonsConfigPath, loadAddonsConfig, saveAddonsConfig } from "../src/addons/config.ts";
+import { createUnownAddonsExtension } from "../src/addons/index.ts";
+import { isTodoOverlayAvailable, registerTodoAddon, resetTodoAddonBridges } from "../src/addons/todo.ts";
 import { createUnownToolsExtension } from "../src/tools.ts";
 
 const tmpRoot = mkdtempSync(join(tmpdir(), "unown-plan-todo-test-"));
@@ -185,6 +190,18 @@ async function todoList(fake: any, ctx: any): Promise<string> {
 }
 
 describe("the plan-mode todo unification (one list, two input paths)", () => {
+	// The bridges are MODULE state shared by every test file in this bun
+	// process: goal.test.ts (and any wrapper-wiring file) registers the todo
+	// addon BEFORE this file runs, and bun's file execution order varies by
+	// platform/runner - the 0.0.53 CI red was exactly that leak (the M1
+	// fallback test saw the addon as "available" and the legacy widget never
+	// mounted; red on all three CI OSes while the file alone passed 11/11).
+	// Every test here starts from the unregistered state and wires what it
+	// needs - order-proof by construction.
+	beforeEach(() => {
+		resetTodoAddonBridges();
+	});
+
 	test("M1 fallback: with the todo addon disabled, the legacy plan-steps widget is the execution surface", async () => {
 		// wire WITHOUT registerTodoAddon — the /addons-off configuration
 		const dir = join(tmpRoot, `noaddon-${Math.random().toString(36).slice(2)}`);
@@ -419,5 +436,57 @@ describe("the plan-mode todo unification (one list, two input paths)", () => {
 		const last = persisted[persisted.length - 1].data;
 		expect(last.steps[0].completed).toBe(true);
 		expect(last.steps[1].completed).toBe(false);
+	});
+
+	test("RELOAD: a /addons disable + /reload retires the bridges - the legacy widget returns", async () => {
+		// The 0.0.53 recovery round's production pin: the todo bridges are a
+		// (re)registration-cycle contract, not a one-way latch. Cycle 1
+		// registers the addon (bridges live); the user then disables the todo
+		// addon (the /addons toggle's durable write) and /reload re-runs BOTH
+		// factories in the SAME process. The addons factory must reset the
+		// bridges so isTodoOverlayAvailable() answers for the CURRENT cycle and
+		// the legacy plan-steps widget is the execution surface again. Before
+		// the fix the latch stayed set, the overlay could never remount, and
+		// the fallback stayed retired: NO progress surface until a full
+		// process restart.
+		const configPath = addonsConfigPath();
+		const savedConfig = existsSync(configPath) ? readFileSync(configPath, "utf8") : null;
+		try {
+			// Cycle 1 - todo enabled (the default config): the bridges go live.
+			const cycleA = makeFakePi([]);
+			createUnownAddonsExtension({ cwd: tmpRoot }).factory(cycleA.pi);
+			expect(isTodoOverlayAvailable()).toBe(true);
+
+			// The /addons toggle's durable write: todo off, everything else as-is.
+			const disabled = loadAddonsConfig();
+			disabled.todo.enabled = false;
+			saveAddonsConfig(disabled);
+
+			// Cycle 2 - /reload: fresh factories, SAME process (boot order:
+			// unown-tools first, the addons extension second).
+			const cycleB = makeFakePi([]);
+			const toolsDir = join(tmpRoot, `reload-${Math.random().toString(36).slice(2)}`);
+			createUnownToolsExtension({ cwd: toolsDir, engineUrl: "http://127.0.0.1:9" }).factory(cycleB.pi);
+			createUnownAddonsExtension({ cwd: tmpRoot }).factory(cycleB.pi);
+			expect(isTodoOverlayAvailable()).toBe(false); // the latch reset
+
+			// The legacy widget is the surface again: approving a plan mounts
+			// plan-steps, never the unown-todos overlay.
+			const cap = makeCaptureCtx(["Execute — auto-accept edits"]);
+			await cycleB.emit("session_start", {}, cap.ctx);
+			await cycleB.shortcuts.get("ctrl+alt+p")!.handler(cap.ctx); // plan mode ON
+			await cycleB.runTool("plan_write", { content: PLAN_A }, cap.ctx);
+			const result = await cycleB.runTool("exit_plan_mode", {}, cap.ctx);
+			expect(JSON.stringify(result)).toContain("approved your plan");
+			expect(cap.widgets.some((w) => w.key === "unown-todos")).toBe(false);
+			const legacy = cap.widgets.filter((w) => w.key === "plan-steps" && Array.isArray(w.value));
+			expect(legacy.length).toBeGreaterThanOrEqual(1);
+			expect(legacy[legacy.length - 1].value.join(" ")).toContain("Add the button component");
+		} finally {
+			// The shared addons.json is cross-file state - restore it byte-exactly
+			// (the models-catalog SAVED_MODELS pattern: absent stays absent).
+			if (savedConfig === null) rmSync(configPath, { force: true });
+			else writeFileSync(configPath, savedConfig, "utf8");
+		}
 	});
 });

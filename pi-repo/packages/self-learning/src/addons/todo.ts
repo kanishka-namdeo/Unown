@@ -526,6 +526,26 @@ export function isTodoOverlayAvailable(): boolean {
 	return seedForegroundTodosImpl !== null;
 }
 
+/** Restore every todo-owned bridge to its unregistered default — the
+ * (re)registration-cycle seam. The addons extension's factory calls this at
+ * the top of EVERY cycle: /reload re-runs factories in the SAME process, and
+ * without the reset the bridges an earlier cycle set would outlive a
+ * `/addons` disable — `isTodoOverlayAvailable()` would keep answering true
+ * for an overlay that can never mount again, so tools.ts would keep its
+ * legacy plan-steps fallback retired and the session would run with NO
+ * progress surface at all (the 0.0.53 recovery round's finding: a one-way
+ * latch, correct only for a process that registers exactly once). The
+ * tools-owned bridges (the plan-sync reader and the completed listener) are
+ * deliberately NOT reset here: the unown-tools extension registers before
+ * this addon in every cycle and re-arms its own pair. */
+export function resetTodoAddonBridges(): void {
+	readForegroundTodos = () => [];
+	readForegroundTodoDetails = () => [];
+	seedForegroundTodosImpl = null;
+	setForegroundTodoSuspendedImpl = null;
+	completeForegroundTodosBySubjectsImpl = null;
+}
+
 /** The todo unification round: suspend/restore the foreground overlay for
  * planning. Suspending hides the panel (data kept); restoring re-evaluates
  * and remounts whatever the store holds. No-op when the addon is off. */

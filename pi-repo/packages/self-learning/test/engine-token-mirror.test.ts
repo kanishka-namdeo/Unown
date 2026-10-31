@@ -15,6 +15,7 @@
 // invalidate, read — the engine-auth suite's existing pattern); engineFetch's
 // retry is driven against an in-process Bun.serve endpoint that demands a
 // chosen token.
+import "./_env.ts"; // MUST be the first import: term.ts snapshots UNOWN_HOME at module scope
 import { describe, expect, test, afterAll } from "bun:test";
 import { mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -26,8 +27,7 @@ import {
         invalidateEngineToken,
         sharedEngineTokenPath,
 } from "../src/engine-auth.ts";
-import { UNOWN_HOME } from "../src/term.ts";
-import "./_env.ts";
+import { resolveUnownHome } from "../src/unown-home.ts";
 
 const TOKEN_A = "a".repeat(64);
 const TOKEN_B = "b".repeat(64);
@@ -63,7 +63,7 @@ function writeShared(token: string | null) {
 
 describe("token pair resolution (H6)", () => {
         test("sharedEngineTokenPath resolves inside $UNOWN_HOME; engineTokenPath inside DATA_DIR — different install shapes agree on the shared one", () => {
-                expect(sharedEngineTokenPath()).toBe(join(UNOWN_HOME, "engine.token"));
+                expect(sharedEngineTokenPath()).toBe(join(resolveUnownHome(), "engine.token"));
                 expect(engineTokenPath()).not.toBe(sharedEngineTokenPath());
         });
 

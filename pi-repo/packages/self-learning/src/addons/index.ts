@@ -27,7 +27,7 @@ import type { ExtensionAPI, ExtensionContext } from "@earendil-works/pi-coding-a
 import { advisorStatusLine, registerAdvisorAddon } from "./advisor.ts";
 import { registerAskUserQuestionTool } from "./ask-user-question.ts";
 import { type AddonsConfig, formatKeyForDisplay, loadAddonsConfig, saveAddonsConfig } from "./config.ts";
-import { registerTodoAddon } from "./todo.ts";
+import { registerTodoAddon, resetTodoAddonBridges } from "./todo.ts";
 
 export interface UnownAddonsOptions {
 	cwd: string;
@@ -50,6 +50,16 @@ export function createUnownAddonsExtension(opts: UnownAddonsOptions) {
 
 	const factory = (pi: ExtensionAPI): void => {
 		const config: AddonsConfig = loadAddonsConfig();
+
+		// Every (re)registration cycle starts from the unregistered bridge
+		// state. /reload re-runs this factory in the SAME process: without
+		// the reset, the todo bridges a previous cycle set outlive a
+		// `/addons` disable, isTodoOverlayAvailable() keeps claiming the
+		// overlay is live, and tools.ts keeps its legacy plan-steps
+		// fallback retired — no progress surface at all until a full
+		// process restart. Enabled cycles re-register immediately below,
+		// so the reset is invisible to them.
+		resetTodoAddonBridges();
 
 		// ask_user_question + todo register in EVERY enabled session
 		// (subagents included): the questionnaire degrades to a typed decline
