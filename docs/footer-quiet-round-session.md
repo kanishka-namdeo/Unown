@@ -151,3 +151,24 @@ the chips yield to the panel.
   quiet-idle / quiet-busy / quiet-after-turn / quiet-attention-down /
   classic-idle (OUT_DIR). The before/after evidence pairs with the baseline
   captures in `download/tui-bottom-redesign/before/`. Next: M4.
+- **CP4 (M4 — docs/DOX/landing/blog)**: `.env.example` + `configuration.md`
+  carry `UNOWN_FOOTER_CLASSIC` in sync (plus the turn meter's new format and
+  the mission-panel interplay); `usage.md` gains the "bottom area" section
+  (the persistent-vs-contextual contract as a user reads it);
+  `BEHAVIOR.md`'s /engine reference names the attention-row semantics; the
+  UX card's placement law amended (healthy ambient state earns no row, the
+  dedup clause, the surface-map row); CHANGELOG's Changed entry with the
+  full evidence chain; README's docs-table row + the convergence-round
+  turn-meter format corrected; self-learning AGENTS.md carries the
+  chip-policy contract paragraph; docs/AGENTS.md indexes the round's three
+  records. The blog post (`content/blog/2026-10-31-the-footer-quiet-round.md`)
+  ships five PTY-lane stills + pane sidecars to `public/blog/<slug>/`
+  (before/after pairs + the classic kill switch — the media-reuse rules
+  honored: the tmux lane needs host binaries this machine class lacks, the
+  pane text ships beside every image, no existing media touched). Gates at
+  the landing: check:docs / check:changelog (51 stops, 498 entries) /
+  check:blog (36 posts) / check:claims (62 literals) / check:benchmarks (6
+  tracks) / audit:landing against the live dev server — all green;
+  typecheck clean; lint 0 errors (4 pre-existing warnings, none in the
+  round's files); `bun test src` 2063/0; e2e 15/15 against the production
+  build. Pushed `caa93195`. Next: M5.
