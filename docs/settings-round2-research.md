@@ -158,7 +158,7 @@ backtracks and depth-to-setting (NN/g navigation metrics + progressive
 disclosure levels); immediate-apply violations (MS rule); redundant entries
 (WCAG 3.3.7).
 
-## Recommended actions (highest leverage first)
+## Recommended actions
 
 1. Build the hub as a Textual-style mode (P12) with a fuzzy palette + token
    grammar (P3/P4) — Codex's `/config` search with restart-required flags
@@ -173,7 +173,7 @@ disclosure levels); immediate-apply violations (MS rule); redundant entries
 5. Instrument from day one with the Part 3 metric set; baseline
    time-to-find-setting and search success rate BEFORE the palette ships.
 
-## Sources (all fetched 2026-10-31)
+## Sources
 
 Part 1 — TUI apps & frameworks: S1 lazygit Config.md · S2 lazygit
 Keybindings_en.md · S3 k9s /topics/commands · S4 k9s /topics/config · S5 k9s

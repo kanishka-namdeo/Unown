@@ -10,8 +10,8 @@
 > archaeology.
 
 - [The mission phases](#the-mission-phases)
-- [Round 1 (shipped in v0.0.49)](#round-1-2026-10-31-v048--shipped-inside-v049--done)
-- [Round 2 (in flight)](#round-2-2026-10-31-post-v050--499a9412--in-flight)
+- [Round 1 shipped in v0.0.49](#round-1-shipped-in-v0049)
+- [Round 2 in flight](#round-2-in-flight)
 - [Resume-from-here](#resume-from-here)
 - [Environment notes for a resuming session](#environment-notes-for-a-resuming-session)
 - [Related pages](#related-pages)
@@ -31,7 +31,7 @@ costs visible and controllable; settings organised by intent; benchmark scores
 improve against baseline; failures become benchmark tasks; improvements survive
 future validation runs.
 
-## Round 1 (2026-10-31, v0.0.48 → shipped inside v0.0.49) — DONE
+## Round 1 shipped in v0.0.49
 
 Phases 1–8 landed: the six phase docs (`d26db1a8`, `6db2f457`) and the
 implementation (`4740224f` + the `f02e4e26` test-isolation fix): the `/settings`
@@ -47,7 +47,7 @@ PTY lane: `scripts/tui-capture/verify_settings_hub.py`. Round 1 did NOT ship:
 phase 9 (benchmarks — `benchmarks/settings-ux/` never existed), phase 10
 (learning artifacts), and a set of debts now carried below as the S2 ledger.
 
-## Round 2 (2026-10-31, post-v0.0.50 @ `499a9412`) — IN FLIGHT
+## Round 2 in flight
 
 ### M0 — setup + run (DONE 2026-10-31)
 
@@ -139,6 +139,21 @@ the `docs/AGENTS.md` ownership clause for the settings records, `.env.example`
 gains `UNOWN_HOOK_DEPTH` (the every-env-var rule), the CHANGELOG post-release
 entry for the hub (the 0.0.10 standing pattern), and the `pty-README.md`
 registration of `verify_settings_hub.py`.
+
+**F39 — the gates caught round 2's opener (CORRECTED in place).** Three
+defects in the M1 commit, all mine: (1) the session log's mini-TOC anchors were
+hand-computed instead of checker-derived — two rounds of unresolved-anchor
+failures before the headings matched GitHub's slug rule; (2) the CHANGELOG
+post-release entry was committed BEFORE the landing rail was regenerated, so
+`check:changelog` ran red on main (a stale `changelog-data.ts` against the new
+CHANGELOG) until the fix commit; (3) `audit:landing` was invoked without its
+environmental needs (Playwright chromium + the dev server on :3000) —
+environmental, not a content defect. Post-fix measurement, all green:
+`check:docs` ok; the rail 48 stops / 478 entries; **3,863 / 3,880 words**,
+**15.4 / 15.5 viewports**, max band 2.5vh (the word budget absorbs the settings
+entry without compression). Lessons: derive anchors from the checker;
+regenerate the rail in the SAME commit as any CHANGELOG edit; provision the
+audit environment before claiming a number.
 
 ### The plan (M2 → M8)
 

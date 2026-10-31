@@ -30,16 +30,16 @@ export interface ChangelogStop {
   groups: ChangelogGroup[];
 }
 
-export const CHANGELOG_TOTAL_ENTRIES = 476;
+export const CHANGELOG_TOTAL_ENTRIES = 478;
 
 export const CHANGELOG_TOTALS: Record<ChangelogBucket, number> = {
-  "Added": 224,
+  "Added": 225,
   "Changed": 28,
   "Deprecated": 0,
   "Removed": 3,
   "Fixed": 174,
   "Security": 5,
-  "Behavior": 42
+  "Behavior": 43
 };
 
 export const CHANGELOG_STOPS: ChangelogStop[] = [
@@ -141,15 +141,15 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
   {
     "label": "0.0.49",
     "date": "2026-10-31",
-    "total": 10,
+    "total": 12,
     "counts": {
-      "Added": 6,
+      "Added": 7,
       "Changed": 0,
       "Deprecated": 0,
       "Removed": 0,
       "Fixed": 3,
       "Security": 0,
-      "Behavior": 1
+      "Behavior": 2
     },
     "groups": [
       {
@@ -178,6 +178,10 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
           {
             "title": "docs/session-lifecycle.md",
             "behavior": false
+          },
+          {
+            "title": "The /settings control centre",
+            "behavior": false
           }
         ]
       },
@@ -203,6 +207,10 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
         "items": [
           {
             "title": "None",
+            "behavior": true
+          },
+          {
+            "title": "Settings round (recorded post-release)",
             "behavior": true
           }
         ]
