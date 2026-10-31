@@ -132,7 +132,7 @@ jobs:
     permissions:
       contents: read
     outputs:
-      per-os: ${{ steps.decide.outputs.per-os }}
+      matrix: ${{ steps.decide.outputs.matrix }}
       reason: ${{ steps.decide.outputs.reason }}
     steps:
       - name: Decide whether the macOS + Windows legs run
@@ -195,22 +195,37 @@ jobs:
             fi
           fi
 
-          echo "per-os=$per_os" >> "$GITHUB_OUTPUT"
+          # The matrix is the mechanism, not an `if:` on the leg: a job-level
+          # `if` has no `matrix` context (the runner rejects the expression), and
+          # shrinking the array also means the ubuntu leg always reports its
+          # required context. Invalid JSON here would break the job, so both
+          # branches are literals.
+          if [ "$per_os" = "true" ]; then
+            matrix_json='["ubuntu-latest","macos-latest","windows-latest"]'
+          else
+            matrix_json='["ubuntu-latest"]'
+          fi
+
+          echo "matrix=$matrix_json" >> "$GITHUB_OUTPUT"
           echo "reason=$reason" >> "$GITHUB_OUTPUT"
-          echo "cross-platform gate -> per-OS legs: $per_os"
+          echo "cross-platform gate -> build-test matrix: $matrix_json"
           echo "$reason"
-          echo "::notice title=Cross-platform gate::per-OS legs = $per_os - $reason"
+          echo "::notice title=Cross-platform gate::build-test matrix = $matrix_json - $reason"
 
   build-test:
     name: Build + test (${{ matrix.os }})
     needs: cross-platform-gate
-    # ubuntu always; macOS + Windows only when the gate says so. A leg whose
-    # condition is false boots no runner at all — which IS the saving.
-    if: needs.cross-platform-gate.outputs.per-os == 'true' || matrix.os == 'ubuntu-latest'
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, macos-latest, windows-latest]
+        # ubuntu on every push; macOS + Windows only when the gate says the
+        # version moved (testing-strategy.md §6 gate 22). An OS outside the
+        # array boots no runner at all, and that absence IS the saving. This
+        # cannot be done with a job-level `if`: the runner has no `matrix`
+        # context there ("Unrecognized named-value: 'matrix'", run
+        # 41241812344), and a leg skipped by a job `if` would also stop
+        # reporting its required context.
+        os: ${{ fromJSON(needs.cross-platform-gate.outputs.matrix) }}
     runs-on: ${{ matrix.os }}
     timeout-minutes: 30
     steps:
