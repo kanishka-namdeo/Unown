@@ -269,9 +269,31 @@ function extractCompleteSequences(buffer: string): { sequences: string[]; remain
 				return { sequences, remainder: remaining };
 			}
 		} else {
-			// Not an escape sequence - take a single character
-			sequences.push(remaining[0]!);
-			pos++;
+			// Not an escape sequence - take a single character. A directly typed
+			// astral character (emoji, rare CJK) is ONE code point spanning two
+			// UTF-16 units; taking remaining[0] alone would split it into two lone
+			// surrogates, which the editor then inserted as invalid text (bracketed
+			// paste and Kitty CSI-u were safe; legacy terminals were not).
+			const first = remaining[0]!;
+			const firstCode = first.charCodeAt(0);
+			const second = remaining[1];
+			const secondCode = second ? second.charCodeAt(0) : 0;
+			const isHighSurrogate = firstCode >= 0xd800 && firstCode <= 0xdbff;
+			const isLowSurrogate = secondCode >= 0xdc00 && secondCode <= 0xdfff;
+			if (isHighSurrogate && isLowSurrogate) {
+				// The full code point: emit both units as one sequence.
+				sequences.push(first + second);
+				pos += 2;
+			} else if (isHighSurrogate && remaining.length === 1) {
+				// A high surrogate at the very end of the chunk: the pair's second
+				// unit may arrive in the next data event. Hold it as a remainder
+				// (Node's utf8 string decoder already guarantees complete code
+				// points per event — this is belt-and-braces for reassembly).
+				return { sequences, remainder: remaining };
+			} else {
+				sequences.push(first);
+				pos++;
+			}
 		}
 	}
 

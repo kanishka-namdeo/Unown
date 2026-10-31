@@ -51,6 +51,29 @@ describe("StdinBuffer", () => {
 			processInput("hello 世界");
 			assert.deepStrictEqual(emittedSequences, ["h", "e", "l", "l", "o", " ", "世", "界"]);
 		});
+
+		it("emits astral characters as whole code points, never split surrogates", () => {
+			// The pre-fix bug: a directly typed astral char (emoji, rare CJK)
+			// was split per UTF-16 unit into two lone surrogates.
+			processInput("𠂋"); // rare CJK, one code point, two UTF-16 units
+			assert.deepStrictEqual(emittedSequences, ["𠂋"]);
+		});
+
+		it("mixes astral and BMP characters without corrupting either", () => {
+			processInput("👍a世"); // thumbs-up, a, CJK shi
+			assert.deepStrictEqual(emittedSequences, ["👍", "a", "世"]);
+		});
+
+		it("a lone trailing high surrogate waits for its pair (no premature emit)", async () => {
+			// A split write across data events still reassembles — the
+			// remainder mechanism must hold the half pair, not emit it. The
+			// JS-side escape spells the two UTF-16 units explicitly.
+			processInput("\ud83d");
+			assert.deepStrictEqual(emittedSequences, []);
+			processInput("\udc4d");
+			await wait(5);
+			assert.deepStrictEqual(emittedSequences, ["👍"]);
+		});
 	});
 
 	describe("Complete Escape Sequences", () => {

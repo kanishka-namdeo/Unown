@@ -352,6 +352,21 @@ function createScrollBorder(direction: "↑" | "↓", hiddenLineCount: number, w
 	return sliceByColumn(indicator, 0, indicatorWidth, true) + ellipsis;
 }
 
+/** True when any surrogate in the text is unpaired (invalid for insertion). */
+function containsUnpairedSurrogate(text: string): boolean {
+	for (let i = 0; i < text.length; i++) {
+		const code = text.charCodeAt(i);
+		if (code >= 0xd800 && code <= 0xdbff) {
+			const next = text.charCodeAt(i + 1);
+			if (!(next >= 0xdc00 && next <= 0xdfff)) return true;
+			i++;
+		} else if (code >= 0xdc00 && code <= 0xdfff) {
+			return true; // lone low surrogate
+		}
+	}
+	return false;
+}
+
 export class Editor implements Component, Focusable {
 	private state: EditorState = {
 		lines: [""],
@@ -1021,8 +1036,11 @@ export class Editor implements Component, Focusable {
 			return;
 		}
 
-		// Regular characters
-		if (data.charCodeAt(0) >= 32) {
+		// Regular characters — never an unpaired surrogate (defense in depth:
+		// StdinBuffer emits whole code points, but a lone surrogate reaching
+		// here would insert text that cannot round-trip through files or the
+		// clipboard).
+		if (data.charCodeAt(0) >= 32 && !containsUnpairedSurrogate(data)) {
 			this.insertCharacter(data);
 		}
 	}
