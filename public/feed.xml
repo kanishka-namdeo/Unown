@@ -37,6 +37,17 @@
       <category>cli</category>
     </item>
     <item>
+      <title>&quot;The settings round: when your diff view lies to every fresh install&quot;</title>
+      <link>https://unown-nine.vercel.app/blog/2026-10-31-the-settings-round</link>
+      <guid isPermaLink="true">https://unown-nine.vercel.app/blog/2026-10-31-the-settings-round</guid>
+      <pubDate>Sat, 31 Oct 2026 00:00:00 GMT</pubDate>
+      <description>&quot;Minting the round&apos;s authoring failures into guards found three real defects — including a diff view that lied on every fresh install. Measured and pinned.&quot;</description>
+      <category>settings</category>
+      <category>benchmarks</category>
+      <category>learning</category>
+      <category>release</category>
+    </item>
+    <item>
       <title>&quot;The craft axes: teaching the agent to see what elite pages never do&quot;</title>
       <link>https://unown-nine.vercel.app/blog/2026-10-30-the-craft-axes</link>
       <guid isPermaLink="true">https://unown-nine.vercel.app/blog/2026-10-30-the-craft-axes</guid>

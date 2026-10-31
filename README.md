@@ -150,7 +150,7 @@ Full usage docs live in [`docs/`](docs/):
 | [sdlc-feature-parity](docs/sdlc-feature-parity.md) | decision record: which 2026-agent SDLC features (LSP, checkpoints/receipts, MCP, /review, /goal) were adopted, which stay out, and why — plus the hardening follow-ups |
 | [sdlc-feature roadmap](docs/sdlc-feature-roadmap.md) | the 2026-10-19 forward roadmap — the reverse-engineering sweep across nine coding agents, synthesized into shipped-milestone order |
 | [agentic asset workflow](docs/agentic-asset-workflow.md) | the gated pipeline that shipped the landing page's feature creatures — the repeatable process for the next visual-asset exercise |
-| [configuration](docs/configuration.md) | every environment variable, `.env` semantics, state files layout, [production notes](docs/configuration.md#production-notes) |
+| [configuration](docs/configuration.md) | every environment variable, `.env` semantics, state files layout, the `/settings` control centre (the hub, its prefs, the declared-defaults contract), [production notes](docs/configuration.md#production-notes) |
 | [windows guide](docs/windows.md) | native Windows: install, cmd/PowerShell shims, Git Bash + the powershell tool, sandbox story, WSL2 |
 | [macos guide](docs/macos.md) | macOS: seatbelt sandbox notes, darwin prebuilds, install one-liners |
 | [troubleshooting](docs/troubleshooting.md) | symptom → cause → fix (including `unown doctor` semantics) |

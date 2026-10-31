@@ -374,6 +374,40 @@ The first run of `unown` bootstraps the same trio with bridge defaults (`zai-bri
 
 **The `BRIDGE_API_KEY` coupling.** The bridge-mode key stored in `models.json` is read from `BRIDGE_API_KEY` (falling back to the `bridge-local` placeholder) *only when the file is created*. If you later set `BRIDGE_API_KEY` in the repo's `.env`, the bridge now demands a bearer token — but the terminal agent still sends the old placeholder, and every chat dies with `unauthorized: missing or invalid bearer token (BRIDGE_API_KEY is set)`. Fix: re-run `unown setup` **from the unown repo root** (where bun loads `.env`, so the wizard sees the key), or hand-edit the `apiKey` field in `~/.unown/agent/models.json` to match. Details in [troubleshooting](troubleshooting.md).
 
+## The settings hub (`/settings`, 2026-10-31)
+
+The Settings Evolution mission shipped `/settings` as the control centre:
+eleven intent-ordered sections (Agent, Interface, Memory, Learning,
+Automation, Safety, Models & Cost, Tools & Integrations, Observability,
+Recovery, Advanced) with fuzzy search, Recently changed (one-key revert),
+a health check, a diff-vs-defaults view, export/import, scoped reset with
+on-disk backups, and per-item editors with risk badges and **typed
+confirmation** on high-risk writes. Every write lands in the change
+ledger (`~/.unown/agent/settings-history.jsonl`) — the ledger is what
+Recently changed and one-key revert read.
+
+**The hub is a lens, never a second source of truth.** Interface rows
+read and write through the vendored settings manager
+(`~/.unown/agent/settings.json`) and switch live where the TUI can
+hot-swap them (the theme changes in-session); rows that need a restart
+say so. The hub's own preferences persist in
+`~/.unown/agent/settings-hub.json` (goal budget, hook depth, review
+mode, the advanced gate) and add-on tunables in
+`~/.unown/agent/addons.json`.
+
+**Declared defaults are contracts.** Every registry item's `default`
+field must equal the value its owning getter resolves on a fresh
+install — the round's M6 caught eight interface items carrying defaults
+written from the pi selector's row states instead of the vendored
+manager's getters, so `/settings diff` showed eight phantom "drifted"
+rows on every fresh install. All eight are corrected (each with a
+vendored-provenance comment in the registry), and the invariant is
+pinned two ways: `test/settings-defaults-drift.test.ts` (the unit pin)
+and the settings-ux suite's BM-8 phantom-drift guard (a pristine home's
+diff must say "No settings differ from their defaults."). If you add or
+change a declared default: align it with the real resolver and keep both
+pins green.
+
 ## Project settings (.unown/settings.json, 2026-10-24)
 
 The per-project session defaults layer — Claude Code's committed

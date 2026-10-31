@@ -30,19 +30,85 @@ export interface ChangelogStop {
   groups: ChangelogGroup[];
 }
 
-export const CHANGELOG_TOTAL_ENTRIES = 485;
+export const CHANGELOG_TOTAL_ENTRIES = 495;
 
 export const CHANGELOG_TOTALS: Record<ChangelogBucket, number> = {
-  "Added": 225,
+  "Added": 231,
   "Changed": 28,
   "Deprecated": 0,
   "Removed": 3,
-  "Fixed": 180,
+  "Fixed": 184,
   "Security": 5,
   "Behavior": 44
 };
 
 export const CHANGELOG_STOPS: ChangelogStop[] = [
+  {
+    "label": "0.0.52",
+    "date": "2026-10-31",
+    "total": 10,
+    "counts": {
+      "Added": 6,
+      "Changed": 0,
+      "Deprecated": 0,
+      "Removed": 0,
+      "Fixed": 4,
+      "Security": 0,
+      "Behavior": 0
+    },
+    "groups": [
+      {
+        "bucket": "Added",
+        "items": [
+          {
+            "title": "The Interface section",
+            "behavior": false
+          },
+          {
+            "title": "Goal extras",
+            "behavior": false
+          },
+          {
+            "title": "The dashboard's stop and review lanes",
+            "behavior": false
+          },
+          {
+            "title": "The settings-ux benchmark suite",
+            "behavior": false
+          },
+          {
+            "title": "BM-8 — the author-catch guards",
+            "behavior": false
+          },
+          {
+            "title": "The promoted skill pin-settings-defaults",
+            "behavior": false
+          }
+        ]
+      },
+      {
+        "bucket": "Fixed",
+        "items": [
+          {
+            "title": "Phantom drift — 8 interface items",
+            "behavior": false
+          },
+          {
+            "title": "Nine dead action lanes",
+            "behavior": false
+          },
+          {
+            "title": "The inbox dialogs overflowed",
+            "behavior": false
+          },
+          {
+            "title": "The suite's own BM-2 hook-depth task is flagged diff-inert by the new load-time validation",
+            "behavior": false
+          }
+        ]
+      }
+    ]
+  },
   {
     "label": "0.0.51",
     "date": "2026-10-31",

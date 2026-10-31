@@ -113,7 +113,15 @@ const MAX_VH = 15.5;
 // restatement (-8 measured); post-compression 3,863. The e2e twin stays
 // canonical (this script's bounded replay wait can fall through and
 // under-count mid-flight).
-const MAX_WORDS = 3880;
+// 2026-10-31 (the eleventh amendment, the 0.0.52 cut): 3,880 -> 3,920 —
+// both twins together, per the same rule. The tenth left 17 words of
+// headroom; the 0.0.51 stop consumed it exactly (3,880/3,880) and the
+// 0.0.52 stop measured +20 (3,900). Compressed FIRST: the round's own
+// listed title ("The Interface section — the S2-1 repair" -> "The
+// Interface section", -4w); post-compression 3,896 — still 16 over, all
+// undeletable stop chrome, so the ceiling carries it plus one more
+// stop's headroom per the 0.0.44 rule.
+const MAX_WORDS = 3920;
 const MAX_BAND_VH = 3;
 
 let chromium = null;

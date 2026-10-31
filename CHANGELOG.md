@@ -9,6 +9,33 @@ otherwise specified; the release tag must always equal package.json's version.
 
 Repo conventions: measured claims cite their receipts (`docs/testing-strategy.md`, `benchmarks/memory-eval/*/RESULTS.md`). Changes to agent behavior — prompts, default models, routing, guard rules, hooks, memory injection — are filed under **Agent Behavior**; the policy lives in [docs/BEHAVIOR.md](docs/BEHAVIOR.md).
 
+## [0.0.52] - 2026-10-31
+
+The Settings Evolution round — round 2, measured. Round 1 (v0.0.49) shipped
+the `/settings` control centre; this round closed its dominant debts with
+receipts. The round's M3–M5 work rode the v0.0.51 tag's code tree (the
+keyboard round's release carried it); this entry is its first changelog
+record, together with the M6 minting that followed. Receipts:
+[the session log](docs/settings-evolution-session.md) ·
+[the suite's RESULTS](benchmarks/settings-ux/RESULTS.md) (BEFORE/AFTER/DELTA + BM-8) ·
+[the learning report](docs/settings-learning-report.md).
+
+### Added
+
+- **The Interface section.** The 32 pi-selector settings rows the `/settings` override stranded (theme, TUI mode, steering, follow-up, images, Mermaid, hide-thinking, scrollbar, copy-on-select, paddings, autocomplete height, clear-on-shrink, terminal progress, double-escape, tree filter) — the S2-1 repair — each gained a hub home with a REAL setter through the owning settings manager: the theme switches live in-session, and the setup wizard's "switch any time in-session: /settings" claim is true again. Measured by the audit's machine gate: 35/35 pi rows hub-mirrored with setters, **0 unreachable** (was 32); settable coverage **10/89 (11.2%) → 41/120 (34.2%)**; the advanced gate is real (14 `advanced: true` rows).
+- **Goal extras.** Replacing an ACTIVE goal asks first (`Yes` lands the old one in history as `[replaced]`); `~/.unown/agent/goal-history.jsonl` records every ended goal — replaced/cleared/complete, turns, verify gate, evidence — with `/goal history` rendering the last ten; the footer carries the age nudge past 24h and `/goal` adds the ≥3-day "still the goal you want?" line; **`/goal verify <command>`** arms a completion gate (exit 0 or the goal does NOT complete — timeout and the stderr tail land in the notice).
+- **The dashboard's stop and review lanes.** The Automations screen gains `K` — stop now, the kill switch riding the engine's stop endpoint; the Dreams screen renders parked dreams inline with `A` approve / `X` discard.
+- **The settings-ux benchmark suite** (`benchmarks/settings-ux/`, BM-1..7): a pinned PTY runner over the real TUI — pane-truth assertions, per-task resume receipts, an anti-tamper contract (the registry audited through the real vendored module; the pi cross-check machine-counts unreachable rows). The DELTA table (BEFORE `run-2026-10-31T10-16-44` → AFTER `run-after`): S2-1 probes **6/6 unreachable → 6/6 reachable+changed**; search **8/12 → 10/12**; settable coverage **11.2% → 34.2%**; pi rows unreachable **32 → 0**; no regressions (BM-4 +0.9 Downs, the honest price of the Interface menu row).
+- **BM-8 — the author-catch guards** (the Phase-10 minting): the round's three authoring failures as pinned tasks — toggle-marker (the selected row's `→` marker asserted as pane-truth BEFORE matching), noop-drift (target = current+offset, never equal by construction; the diff must name the drifted key; a load-time validation flags diff-inert task values) and registry-parse (the audit import + `bisect-registry.mjs --selftest`: the span-splitter pin and a synthetic missing-paren drill diagnosed in 8 probes) — plus the phantom-drift guard (a pristine home's diff must say "No settings differ").
+- **The promoted skill `pin-settings-defaults`** — dream-minted from the round's notes, staged inert by design, operator-verified, promoted through the hub's own inbox (ledgered `via: /settings staged-skills inbox`); the project memory consolidated the round's learnings to v4.
+
+### Fixed
+
+- **Phantom drift — 8 interface items.** The registry's declared `default` fields were written from the pi selector's row states instead of the vendored settings-manager getters, so `/settings diff` showed 8 phantom "drifted" rows on EVERY fresh install (tui-mode, mermaid, image-width, editor-padding, clear-on-shrink, terminal-progress, copy-on-select, fullscreen-exit-output). All 8 are corrected with vendored provenance comments; pinned by `test/settings-defaults-drift.test.ts` (the subprocess pin — some getters resolve through `term.ts`'s module-scope `UNOWN_HOME` snapshot, so an in-process pin reads earlier tests' leftovers: the failure that found the snapshot class) and BM-8's phantom-drift guard.
+- **Nine dead action lanes.** The hub's item editor dispatched on `choice.startsWith("Run")` but pushed actionLabels verbatim — "opens the staged-skills list", "opens the pending-diff list", "reads the engine's routine list" and six more matched NO branch; selecting them did nothing. Every action label is now normalised into the `Run: …` shape (`actionOptionLabel()`), pinned by the action-dispatch contract test over all action items.
+- **The inbox dialogs overflowed.** The staged-skills inbox passed a 2,500-char preview and the pending-dreams inbox a 3,000-char diff as the dialog title — the option rows rendered off-screen and the dialogs were unusable. Both previews are clamped to 600 chars with a pointer to the full text.
+- The suite's own BM-2 hook-depth task is flagged diff-inert by the new load-time validation (an honest warning, not a failure — a write-path task may legitimately target the default value).
+
 ## [0.0.51] - 2026-10-31
 
 The plan-mode keyboard & interactivity round — an audit of every interactive
