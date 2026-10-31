@@ -51,7 +51,16 @@ import { StringEnum } from "@earendil-works/pi-ai";
 import { type ExtensionAPI, type ExtensionUIContext, parseFrontmatter } from "@earendil-works/pi-coding-agent";
 import { Key, stableLaneIndex, Text } from "@earendil-works/pi-tui";
 import { Type } from "typebox";
-import { foregroundTodoDetails, foregroundTodosForGoalGate, seedForegroundTodos } from "./addons/todo.ts";
+import {
+	completeForegroundTodosBySubjects,
+	foregroundTodoDetails,
+	foregroundTodosForGoalGate,
+	isTodoOverlayAvailable,
+	seedForegroundTodos,
+	setForegroundTodoCompletedListener,
+	setForegroundTodoSuspended,
+	setPlanTodoSyncReader,
+} from "./addons/todo.ts";
 import { formatIdleCompactNotice, shouldIdleCompact } from "./auto-compact.ts";
 import { maybeAutoTitleSession } from "./auto-title.ts";
 import { blameFile, blameSummary, formatBlameJson, formatBlameReport } from "./blame.ts";
@@ -1527,7 +1536,6 @@ const PLAN_MODE_TOOLS = [
 	"grep",
 	"find",
 	"ls",
-	"todo",
 	"note",
 	"fetch_url",
 	"web_search",
@@ -1540,7 +1548,13 @@ const PLAN_MODE_TOOLS = [
 	"plan_write",
 	"exit_plan_mode",
 ];
-const PLAN_MODE_DISABLED_TOOLS = new Set(["edit", "write", "task"]);
+// The todo unification round (the Codex/Gemini lane): the todo tool is a
+// TODO/checklist tool and is NOT allowed while planning — the plan file is
+// the single checklist, and approved steps are seeded as todos atomically
+// at approval. Riding the plan-mode prompt only nudged the model to build a
+// SECOND list mid-planning (the reported two-lists bug's planning half;
+// openai/codex rejects update_plan in plan mode for the same reason).
+const PLAN_MODE_DISABLED_TOOLS = new Set(["edit", "write", "task", "todo"]);
 const PLAN_MANAGED_TOOLS = new Set([...PLAN_MODE_TOOLS, ...PLAN_MODE_DISABLED_TOOLS, "edit", "write"]);
 
 interface TaskRunDetails {
@@ -2266,14 +2280,23 @@ export function createUnownToolsExtension(opts: UnownToolsOptions) {
 			if (executionMode && planItems.length > 0) {
 				const completed = planItems.filter((t) => t.completed).length;
 				ctx.ui.setStatus("plan-mode", ctx.ui.theme.fg("accent", `plan ${completed}/${planItems.length}`));
-				ctx.ui.setWidget(
-					"plan-steps",
-					planItems.map((item) =>
-						item.completed
-							? ctx.ui.theme.fg("success", "[x] ") + ctx.ui.theme.fg("muted", item.text)
-							: ctx.ui.theme.fg("muted", `[ ] ${item.text}`),
-					),
-				);
+				// The todo unification round: the seeded todo overlay (unown-todos)
+				// is the ONE checklist above the editor — the legacy plan-steps
+				// widget is retired. It survives ONLY as the fallback for a todo
+				// addon disabled via /addons, where the overlay can never mount and
+				// this widget is the only execution surface left. Both can never be
+				// alive in one process: the addon registers its bridges at factory
+				// time, before any widget could mount.
+				if (!isTodoOverlayAvailable()) {
+					ctx.ui.setWidget(
+						"plan-steps",
+						planItems.map((item) =>
+							item.completed
+								? ctx.ui.theme.fg("success", "[x] ") + ctx.ui.theme.fg("muted", item.text)
+								: ctx.ui.theme.fg("muted", `[ ] ${item.text}`),
+						),
+					);
+				}
 			} else if (planModeEnabled) {
 				ctx.ui.setStatus("plan-mode", ctx.ui.theme.fg("warning", "PLAN"));
 				ctx.ui.setWidget("plan-steps", undefined);
@@ -2353,6 +2376,11 @@ export function createUnownToolsExtension(opts: UnownToolsOptions) {
 			if (seed?.trim()) planSeed = seed.trim();
 			enablePlanTools();
 			await applyPlanModel(ctx, true);
+			// The todo unification round: planning's one progress surface is
+			// the plan file + approval dialog — the todo overlay stands down
+			// (data kept) so a stale or leftover list never sits next to the
+			// plan's step checklist while the PLAN chip is on.
+			setForegroundTodoSuspended(true);
 			if (ctx?.hasUI) {
 				ctx.ui.notify(
 					`Plan mode ON — read-only exploration; plan_write is the only writable path (${planFilePath(
@@ -2372,6 +2400,10 @@ export function createUnownToolsExtension(opts: UnownToolsOptions) {
 			// Leaving plan mode without approval ends the planning
 			// episode — the next plan gets a fresh file identity.
 			clearPlanFile();
+			// The todo unification round: abandoning planning brings the session's
+			// todos back — the overlay re-evaluates and remounts whatever the
+			// store still holds (suspension never touched the data).
+			setForegroundTodoSuspended(false);
 			if (ctx?.hasUI) ctx.ui.notify("Plan mode OFF — full tool access restored.");
 			updateStatus(ctx);
 			persistPlanState();
@@ -2391,6 +2423,31 @@ export function createUnownToolsExtension(opts: UnownToolsOptions) {
 			if (mode === "plan" && !planModeEnabled) await enterPlanMode(lastPlanCtx, undefined);
 			else if (mode !== "plan" && planModeEnabled) await exitPlanModeOnly(lastPlanCtx);
 		};
+
+		// The todo unification round's sync bridges: plan steps and seeded
+		// todos are ONE list with two input paths. The reader feeds the todo
+		// addon's resume reconcile (unown-tools restores plan state first —
+		// it registers before the addons); the listener is the todo→plan
+		// flip that keeps the footer chip, mission panel and completion note
+		// in agreement when the model drives the todo tool by hand.
+		setPlanTodoSyncReader(() =>
+			planModeEnabled || executionMode
+				? {
+						planning: planModeEnabled && !executionMode,
+						executing: executionMode && planItems.length > 0,
+						steps: planItems.map((s) => ({ text: s.text, completed: s.completed })),
+					}
+				: null,
+		);
+		setForegroundTodoCompletedListener((subject, syncCtx) => {
+			if (!executionMode || planItems.length === 0) return;
+			const item = planItems.find((t) => t.text === subject && !t.completed);
+			if (!item) return;
+			item.completed = true;
+			log(`todo completion synced to plan step ${item.step}`);
+			updateStatus(syncCtx as any);
+			persistPlanState();
+		});
 
 		/** The approval options as stable constants (the keyboard round):
 		 * routing previously matched `startsWith` on the display strings, so
@@ -2478,6 +2535,11 @@ export function createUnownToolsExtension(opts: UnownToolsOptions) {
 			executionMode = true;
 			planItems = doc.steps.map((s) => ({ ...s }));
 			restoreNormalTools();
+			// The todo unification round: approval lifts the planning suspension
+			// BEFORE the caller seeds — the one handoff moment where the approved
+			// steps BECOME the todo list and the overlay mounts with them at
+			// once (never two lists, never a late pop-in).
+			setForegroundTodoSuspended(false);
 			await applyPlanModel(ctx, false);
 			try {
 				const res = opts.setPermissionMode?.(mode);
@@ -5899,7 +5961,8 @@ Workflow — follow it in order and keep moving forward:
 
 Hard rules:
 - End every turn with EITHER a clarifying question for the user OR the exit_plan_mode call — never with unfinished exploration.
-- bash is restricted to read-only commands; edit/write/task are disabled.
+- bash is restricted to read-only commands; edit/write/task/todo are disabled.
+- The todo tool is unavailable while planning: the plan file is the single checklist, and its approved steps become todo tasks automatically at approval — do not track planning work as todos.
 - Reuse existing code: prefer steps that reference existing functions and utilities, naming their files.
 - Keep the plan scannable — under ~60 lines.
 
@@ -5919,7 +5982,7 @@ The plan file survives compaction and resume; it is the single source of truth f
 Remaining steps:
 ${todoList}
 
-Execute the steps in order. After completing a step, include a [DONE:n] tag in your response. Track progress with the todo tool.`,
+Execute the steps in order. The seeded todo tasks ARE these steps — complete each with the todo tool or a [DONE:n] tag in your response; both flip the same list.`,
 							display: false,
 						},
 					};
@@ -6116,6 +6179,11 @@ Execute the steps in order. After completing a step, include a [DONE:n] tag in y
 				.map((b: any) => b.text)
 				.join("\n");
 			if (markCompletedSteps(text, planItems) > 0) {
+				// The todo unification round: the [DONE:n] tag lane and the todo
+				// tool drive ONE list — flip the seeded todos the tags completed
+				// so the overlay, chip and mission panel agree (idempotent: only
+				// pending rows matching a completed step's text flip).
+				completeForegroundTodosBySubjects(planItems.filter((t) => t.completed).map((t) => t.text));
 				updateStatus(ctx);
 				persistPlanState();
 			}
@@ -6188,7 +6256,7 @@ Execute the steps in order. After completing a step, include a [DONE:n] tag in y
 								if (ctx?.hasUI) {
 									ctx.ui.notify(
 										`Goal NOT complete — the verify gate failed: ${goal.verifyCommand} (${verdict.detail}). Fix and resend, or /goal verify to change the gate.`,
-											"warning",
+										"warning",
 									);
 								}
 								return;
@@ -6361,7 +6429,11 @@ Execute the steps in order. After completing a step, include a [DONE:n] tag in y
 					{
 						customType: "unown-plan-execute",
 						content: `Execute the approved plan.\n\nRemaining steps:\n${remainingList}\n\nStart with: ${planItems[0]?.text ?? ""}\nAfter completing a step, include a [DONE:n] tag in your response.${todos > 0 ? `\n${todos} todo tasks were created from the plan — flip each as you complete it.` : ""}`,
-						display: true,
+						// The todo unification round: the user already saw the approved
+						// plan once (the echo above) and the seeded Todos panel is the
+						// live checklist — this model-facing instruction no longer
+						// renders a THIRD checklist-shaped block.
+						display: false,
 					},
 					{ triggerTurn: true, deliverAs: "followUp" },
 				);

@@ -294,6 +294,12 @@ class TodoOverlay {
 	private hiddenCompleted = new Set<number>();
 	private lastNextId = 1;
 	private readMaxWidgetLines: () => number;
+	/** The todo unification round: while the session PLANS (plan mode on,
+	 * not executing) the overlay stands down — the plan file + approval
+	 * dialog are the one progress surface, and a stale/leftover list must
+	 * never sit next to them (the reported two-lists bug's planning half).
+	 * Data is untouched; the caller re-evaluates on un-suspend. */
+	private suspended = false;
 
 	constructor(readMaxWidgetLines: () => number) {
 		this.readMaxWidgetLines = readMaxWidgetLines;
@@ -304,6 +310,14 @@ class TodoOverlay {
 		this.uiCtx = ui;
 		this.registered = false;
 		this.tui = undefined;
+	}
+
+	setSuspended(suspended: boolean): void {
+		this.suspended = suspended;
+	}
+
+	isSuspended(): boolean {
+		return this.suspended;
 	}
 
 	isRegistered(): boolean {
@@ -354,6 +368,14 @@ class TodoOverlay {
 
 	update(store: TodoStore): void {
 		if (!this.uiCtx) return;
+		if (this.suspended) {
+			if (this.registered) {
+				this.uiCtx.setWidget(WIDGET_KEY, undefined, { placement: "aboveEditor" });
+				this.registered = false;
+				this.collapsed = false;
+			}
+			return;
+		}
 		const state = store.renderState();
 		const overlayTasks = selectOverlayTasks(state, this.hiddenCompleted);
 		if (overlayTasks.length === 0) {
@@ -497,6 +519,60 @@ export function seedForegroundTodos(subjects: string[]): number {
 	return 0;
 }
 
+/** True when the todo addon registered its bridges — the seeded overlay is
+ * the live checklist. When false (addon disabled via /addons), tools.ts keeps
+ * its legacy widget fallback so execution progress never loses its surface. */
+export function isTodoOverlayAvailable(): boolean {
+	return seedForegroundTodosImpl !== null;
+}
+
+/** The todo unification round: suspend/restore the foreground overlay for
+ * planning. Suspending hides the panel (data kept); restoring re-evaluates
+ * and remounts whatever the store holds. No-op when the addon is off. */
+let setForegroundTodoSuspendedImpl: ((suspended: boolean) => void) | null = null;
+
+export function setForegroundTodoSuspended(suspended: boolean): void {
+	if (setForegroundTodoSuspendedImpl) setForegroundTodoSuspendedImpl(suspended);
+}
+
+/** The [DONE:n] tag lane's write into the one visible list: flip matching
+ * PENDING foreground todos to completed. Returns how many flipped (0 when
+ * the addon is off or nothing matched). */
+let completeForegroundTodosBySubjectsImpl: ((subjects: string[]) => number) | null = null;
+
+export function completeForegroundTodosBySubjects(subjects: string[]): number {
+	return completeForegroundTodosBySubjectsImpl ? completeForegroundTodosBySubjectsImpl(subjects) : 0;
+}
+
+/** tools.ts's todo→plan bridge: the model completing a seeded todo (by hand)
+ * must complete the matching plan step so the footer chip, mission panel and
+ * completion note agree — one list, two input paths. */
+export type ForegroundTodoCompletedListener = (subject: string, ctx: unknown) => void;
+let foregroundTodoCompletedListener: ForegroundTodoCompletedListener | null = null;
+
+export function setForegroundTodoCompletedListener(listener: ForegroundTodoCompletedListener | null): void {
+	foregroundTodoCompletedListener = listener;
+}
+
+/** The resume reconcile's reader side: tools.ts publishes the restored plan
+ * state (planning/executing + steps). unown-tools registers BEFORE this
+ * addon and restores plan state in its own session_start, so this addon's
+ * session_start — running after — is the one point where BOTH sides are
+ * loaded and the replayed seeded list can be synced against the plan. */
+export interface PlanTodoSyncState {
+	/** Plan mode enabled and NOT executing — the overlay suspends. */
+	planning: boolean;
+	/** Execution mode with steps — the seeded list is live. */
+	executing: boolean;
+	steps: Array<{ text: string; completed: boolean }>;
+}
+
+let readPlanTodoSyncState: (() => PlanTodoSyncState | null) | null = null;
+
+export function setPlanTodoSyncReader(reader: (() => PlanTodoSyncState | null) | null): void {
+	readPlanTodoSyncState = reader;
+}
+
 export function foregroundTodosForGoalGate(): Array<{ done: boolean }> {
 	return readForegroundTodos();
 }
@@ -546,7 +622,12 @@ export function registerTodoAddon(
 		const list = subjects.map((s) => s.trim()).filter((s) => s.length > 0);
 		if (list.length === 0) return 0;
 		const sessionId = store.foregroundId();
-		let state = store.get(sessionId);
+		// Replace, never append (the todo unification round): approval means
+		// "these steps ARE the list" — an earlier plan's tasks or hand-created
+		// todos must not survive into the new execution episode (the stacked
+		// two-plans-in-one-panel defect). `clear` also rewinds nextId, so the
+		// seeded ids start at 1 again.
+		let state = applyTaskMutation(store.get(sessionId), "clear", { action: "clear" }).state;
 		let created = 0;
 		for (const subject of list) {
 			const result = applyTaskMutation(state, "create", { action: "create", subject });
@@ -557,24 +638,78 @@ export function registerTodoAddon(
 				log(`plan seed rejected '${subject.slice(0, 40)}': ${result.state.error ?? "unknown"}`);
 			}
 		}
-		if (created > 0) {
+		// Commit the replaced list even when every create was rejected — the
+		// wipe itself is the approved semantics.
+		store.commit(sessionId, state);
+		try {
+			// The replay lane's shape: the LAST state entry with valid
+			// TaskDetails wins, so ONE seeded snapshot restores on resume exactly
+			// like a hand-driven todo run — no per-step create entries to stack.
+			pi.appendEntry(STATE_ENTRY_TYPE, {
+				action: "seed",
+				params: { action: "seed", subjects: list },
+				tasks: state.tasks,
+				nextId: state.nextId,
+			} satisfies TaskDetails);
+		} catch {
+			/* persistence is best-effort */
+		}
+		if (created > 0) log(`plan seeded ${created} todo task(s) — replaced the foreground list`);
+		// Mount the panel NOW, at approval — not after the model's first todo
+		// call (the "pops in late" defect). The caller lifts the planning
+		// suspension before seeding, so this update registers the widget.
+		overlay.update(store);
+		return created;
+	};
+
+	setForegroundTodoSuspendedImpl = (suspended: boolean): void => {
+		overlay.setSuspended(suspended);
+		// Both directions re-evaluate NOW: update()'s guard unmounts on suspend
+		// (a stale list must not linger through planning) and remounts whatever
+		// the store holds on restore.
+		overlay.update(store);
+	};
+
+	completeForegroundTodosBySubjectsImpl = (subjects: string[]): number => {
+		// Count-aware: duplicate step texts (pathological, but the reducer
+		// allows them) must flip exactly as many rows as there are completed
+		// steps with that text — never more.
+		const wanted = new Map<string, number>();
+		for (const subject of subjects) wanted.set(subject, (wanted.get(subject) ?? 0) + 1);
+		const sessionId = store.foregroundId();
+		let state = store.get(sessionId);
+		let flipped = 0;
+		for (const task of state.tasks) {
+			if (task.status !== "pending") continue;
+			const remaining = wanted.get(task.subject) ?? 0;
+			if (remaining <= 0) continue;
+			const result = applyTaskMutation(state, "update", {
+				action: "update",
+				id: task.id,
+				status: "completed",
+			});
+			if (result.op.kind !== "error") {
+				state = result.state;
+				flipped++;
+				wanted.set(task.subject, remaining - 1);
+			}
+		}
+		if (flipped > 0) {
 			store.commit(sessionId, state);
 			try {
-				// The replay lane's shape: the LAST state entry with valid
-				// TaskDetails wins, so the seeded snapshot restores on resume
-				// exactly like a hand-driven todo run.
 				pi.appendEntry(STATE_ENTRY_TYPE, {
-					action: "create",
-					params: { action: "create", subject: list[list.length - 1] },
+					action: "sync",
+					params: { action: "sync", source: "done-tag" },
 					tasks: state.tasks,
 					nextId: state.nextId,
 				} satisfies TaskDetails);
 			} catch {
 				/* persistence is best-effort */
 			}
-			log(`plan seeded ${created} todo task(s)`);
+			overlay.update(store);
+			log(`[DONE:n] sync flipped ${flipped} seeded todo(s) to completed`);
 		}
-		return created;
+		return flipped;
 	};
 
 	// ---- tool ---------------------------------------------------------------
@@ -613,6 +748,22 @@ export function registerTodoAddon(
 					tasks: result.state.tasks,
 					nextId: result.state.nextId,
 				};
+				// The todo unification round: a hand-driven completion of a seeded
+				// plan step completes the plan side too — one list, two input paths,
+				// always in agreement. The listener guards execution mode itself.
+				if (
+					params.action === "update" &&
+					params.status === "completed" &&
+					result.op.kind === "update" &&
+					result.op.changed &&
+					result.op.task
+				) {
+					try {
+						foregroundTodoCompletedListener?.(result.op.task.subject, ctx);
+					} catch {
+						/* the sync bridge is best-effort — never break the tool */
+					}
+				}
 			}
 			if (changesState(result.op)) {
 				try {
@@ -754,6 +905,57 @@ export function registerTodoAddon(
 
 	// ---- lifecycle ------------------------------------------------------------
 
+	/** The todo unification round's bidirectional resume reconcile. Plan
+	 * steps may be completed ([DONE:n] tags) while the replayed todos are
+	 * pending, and vice versa when the model flipped todos only — one visible
+	 * list means they must agree before the first paint. Returns how many
+	 * todo rows were flipped (the plan side rides the completed-listener). */
+	const syncSeededTodosWithPlan = (plan: PlanTodoSyncState, ctx: ExtensionContext): number => {
+		const sessionId = store.foregroundId();
+		let state = store.get(sessionId);
+		let flipped = 0;
+		for (const step of plan.steps) {
+			if (!step.completed) continue;
+			const task = state.tasks.find(
+				(candidate) =>
+					candidate.subject === step.text && candidate.status !== "completed" && candidate.status !== "deleted",
+			);
+			if (!task) continue;
+			const result = applyTaskMutation(state, "update", { action: "update", id: task.id, status: "completed" });
+			if (result.op.kind !== "error") {
+				state = result.state;
+				flipped++;
+			}
+		}
+		if (flipped > 0) {
+			store.commit(sessionId, state);
+			try {
+				pi.appendEntry(STATE_ENTRY_TYPE, {
+					action: "sync",
+					params: { action: "sync", source: "plan-resume" },
+					tasks: state.tasks,
+					nextId: state.nextId,
+				} satisfies TaskDetails);
+			} catch {
+				/* persistence is best-effort */
+			}
+			log(`resume sync flipped ${flipped} seeded todo(s) to completed`);
+		}
+		// The reverse direction rides the same completed-listener the live
+		// lane uses — it marks the matching plan step, refreshes the footer
+		// chip and persists the plan state.
+		for (const task of state.tasks) {
+			if (task.status !== "completed") continue;
+			if (!plan.steps.some((step) => step.text === task.subject && !step.completed)) continue;
+			try {
+				foregroundTodoCompletedListener?.(task.subject, ctx);
+			} catch {
+				/* best-effort */
+			}
+		}
+		return flipped;
+	};
+
 	const replayAndRefresh = (ctx: ExtensionContext, resetDisplay: boolean): void => {
 		const sessionId = sessionIdOf(ctx);
 		try {
@@ -778,6 +980,14 @@ export function registerTodoAddon(
 			store.claimForeground(sessionId);
 			overlay.setUICtx(ctx.ui);
 			overlay.resetCompletedDisplayState();
+			// The todo unification round's resume lane: unown-tools restored the
+			// plan state first (it registers before the addons), so this is the
+			// one point where BOTH sides are loaded — sync the replayed seeded
+			// list with the restored plan steps, then apply the planning
+			// suspension before the first paint.
+			const plan = readPlanTodoSyncState?.() ?? null;
+			if (plan?.executing && plan.steps.length > 0) syncSeededTodosWithPlan(plan, ctx);
+			overlay.setSuspended(plan?.planning === true);
 			overlay.update(store);
 		}
 	});

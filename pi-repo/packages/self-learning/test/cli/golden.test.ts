@@ -539,9 +539,13 @@ describe("CLI golden — plan mode", () => {
                         expect(req.tools).not.toContain("edit");
                         expect(req.tools).not.toContain("write");
                         expect(req.tools).not.toContain("task");
-                        for (const t of ["read", "bash", "grep", "find", "ls", "todo", "note", "fetch_url"]) {
+                        for (const t of ["read", "bash", "grep", "find", "ls", "note", "fetch_url"]) {
                                 expect(req.tools).toContain(t);
                         }
+                        // The todo unification round: the todo tool is a TODO/checklist tool
+                        // and is NOT allowed while planning (the Codex/Gemini lane) — approved
+                        // steps are seeded as todos atomically at approval instead.
+                        expect(req.tools).not.toContain("todo");
                         // Plan Mode V2 (2026-10-31): the plan-file writer and the
                         // structured exit gate are plan-mode citizens.
                         expect(req.tools).toContain("plan_write");
