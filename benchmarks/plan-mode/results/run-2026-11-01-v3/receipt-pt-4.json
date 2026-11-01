@@ -1,0 +1,30 @@
+{
+  "task": "pt-4",
+  "lane": "headless print",
+  "date": "2026-11-01",
+  "model": "agnes-3.0-flash",
+  "upstream": "bundled llm-bridge :3031 -> https://apihub.agnes-ai.com/v1",
+  "command": "unown --plan -p \"Plan adding a subtract function to src/calc.ts with unit tests in test/calc.test.ts. Follow the V3 plan structure exactly.\" --max-turns 30",
+  "cwd": "scratch repo (one add() in src/calc.ts, bun test runner, no AGENTS.md/memory/skills)",
+  "exitCode": 0,
+  "scorer": "scorePlanDocV3 (the product's own deterministic rubric, pi-repo/packages/self-learning/src/plan.ts)",
+  "score": 98,
+  "threshold": 70,
+  "passes": true,
+  "dimensions": {
+    "objective": "8/8",
+    "context": "8/8",
+    "approach": "8/8",
+    "steps": "24/24",
+    "risks": "12/12",
+    "verification": "12/12",
+    "clarity": "8/8",
+    "capability-audit": "6/8 — 11 rows with reasons; the >=1 USED sub-check lost (the honest all-SKIPPED audit of an empty repo)",
+    "specialist-review": "8/8 — five justified SKIPPED verdicts + the synthesis block",
+    "learning-plan": "4/4 — a memory candidate + a benchmark row"
+  },
+  "notes": "The only deduction is the USED-row sub-check, which is the correct verdict for a capability-empty control repo — the scorer does not hand out reuse credit when nothing can be reused. The plan is archived verbatim as pt-4-plan-headless.md.",
+  "artifacts": [
+    "pt-4-plan-headless.md"
+  ]
+}

@@ -33,13 +33,13 @@ export interface ChangelogStop {
 export const CHANGELOG_TOTAL_ENTRIES = 509;
 
 export const CHANGELOG_TOTALS: Record<ChangelogBucket, number> = {
-  "Added": 231,
+  "Added": 232,
   "Changed": 32,
   "Deprecated": 0,
   "Removed": 3,
   "Fixed": 193,
   "Security": 5,
-  "Behavior": 45
+  "Behavior": 46
 };
 
 export const CHANGELOG_STOPS: ChangelogStop[] = [
@@ -48,15 +48,33 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
     "date": null,
     "total": 3,
     "counts": {
-      "Added": 0,
+      "Added": 1,
       "Changed": 0,
       "Deprecated": 0,
       "Removed": 0,
       "Fixed": 3,
       "Security": 0,
-      "Behavior": 0
+      "Behavior": 1
     },
     "groups": [
+      {
+        "bucket": "Added",
+        "items": [
+          {
+            "title": "Plan Mode V3 — the capability orchestrator + self-improvement directive",
+            "behavior": false
+          }
+        ]
+      },
+      {
+        "bucket": "Behavior",
+        "items": [
+          {
+            "title": "Plan mode's toolset changes shape in V3 (the observable difference)",
+            "behavior": true
+          }
+        ]
+      },
       {
         "bucket": "Fixed",
         "items": [

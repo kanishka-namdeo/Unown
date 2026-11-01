@@ -1,0 +1,30 @@
+{
+  "task": "pt-4i",
+  "lane": "interactive full loop (PTY-driven)",
+  "date": "2026-11-01",
+  "model": "agnes-3.0-flash",
+  "upstream": "bundled llm-bridge :3031 -> https://apihub.agnes-ai.com/v1",
+  "driver": "python pty (scripts-side driver; keys: '/plan add a multiply function...' -> Enter on the approval dialog -> wait for plan_retrospective)",
+  "stages": {
+    "1-plan": "PASS — /plan entered the V3 orchestrator; the plan file carries the capability audit, specialist review (justified skips), synthesis and learning plan sections",
+    "2-approval": "PASS — exit_plan_mode rendered the dialog; 'Execute — auto-accept edits' approved (permission mode acceptEdits)",
+    "3-execution": "PASS — real writes: multiply() appended to src/calc.ts, test/calc.test.ts created; bun test 5/5 pass",
+    "4-retrospective": "PASS — plan_retrospective called and confirmed ('Retrospective recorded'); the plan file gained the merged ## Retrospective section; the engine's note feed shows the 'plan retrospective: ... outcome delivered, plan score 100/100' note for AutoDream"
+  },
+  "retrospective": {
+    "outcome": "delivered",
+    "failureClass": "none",
+    "learnings": [
+      "memory: calc-lab test convention — bun test runner (package.json), test files at test/*.test.ts, imports use relative path with .ts extension; source uses 4-space indent. Verified against actual file contents and a passing run."
+    ],
+    "improvements": [
+      "Plan scored 100 on first write; the specialist-skip justifications kept the plan scannable without over-consultation."
+    ]
+  },
+  "artifacts": [
+    "pt-4i-plan-full-loop.md (the plan file with the merged retrospective)",
+    "pt-4i-pty-transcript.log (the verbatim terminal capture, 116,953 bytes)",
+    "pt-4i-executed-src-calc.ts (the executed source)",
+    "pt-4i-executed-test-calc.test.ts (the tests the agent wrote; 5/5 pass)"
+  ]
+}

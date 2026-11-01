@@ -124,4 +124,33 @@ Receipts: full engine suite + typecheck green (see M6).
 
 ## M8 — closeout (2026-11-01) ✅
 
-Retrospective, failure classes, improvement generation — recorded in this log's closeout section (bottom). All milestones pushed (one commit per milestone, `engine:`/`docs:`/`benchmarks:` prefixes per the git preflight).
+All milestones pushed (`engine:` / `docs:` prefixes per the git preflight; one push per milestone; the one rebase collision — a concurrent upstream AutoDream re-render of `.unown/memory/project.md` — was resolved by keeping the upstream render, the documented ownership rule).
+
+Docs + DOX shipped: usage.md §Plan mode (the V3 contract), BEHAVIOR.md §Plan Mode V3, docs/plan-mode-v3.md (the design record with the research lineage), CHANGELOG (Added + Agent Behavior), .env.example (UNOWN_PLAN_MODE_V3), the self-learning child AGENTS.md (the V3 contract paragraph), the root AGENTS.md bin/unown line, unown-overview.md (roster 12 → 20, re-stamped), README (4 surfaces), benchmarks/plan-mode (pt-4 + the V3 receipts).
+
+### The round's retrospective (dogfooding the V3 contract)
+
+- outcome: delivered
+- failure class: none
+- root cause: n/a
+- resolution: n/a
+- prevention: n/a
+- learnings:
+  - memory: the canonical plan-doc render puts a blank line after EVERY header and backticks file annotations — hand-written test fixtures must match it or the byte-identical round-trip pin fails (cost: 3 test iterations this round).
+  - benchmark: a capability-empty control repo (no memory/skills/AGENTS.md) is the honest way to measure audit quality — the correct audit there is all-SKIPPED-with-reasons, and the scorer's ≥1-USED sub-check doubling as the honesty flag is a feature, not a bug.
+  - agent-pattern: the two-subagent research split (one repo explorer with file:line receipts + one online researcher) with the orchestrator synthesizing is the right shape for design-grounding rounds; the online agent needs a hard scope cap or it times out.
+  - workflow: for behavior rounds on this repo — read the child AGENTS.md contract BEFORE designing (it names the exact seams to build on), pin both the new lane AND the kill-switch lane in the same test file, and run the affected V2 suites immediately after the toolset change.
+- improvements:
+  - plan mode: the specialist bench has no complex-plan live receipt yet — a PT-5 task over a real multi-domain change (with live specialist spawns, not skips) is the natural next benchmark lane.
+  - plan mode: `mergeRetrospectiveIntoMarkdown` matches `## Retrospective` case-insensitively but only `#{1,3}` depth — a model writing `#### Retrospective` would not have the old section stripped; harmless (the render always uses `##`) but worth a tolerant regex if it ever bites.
+  - engine: the PLM HTTP suite tests proved flaky in one full-suite run while the live engine held :3030 — worth an isolation audit of that suite's port binding.
+  - docs: the golden `--plan` pin's kill-switch lane takes ~20 s of real subprocess spawn per lane; a hermetic extension-level pin of the same contract already exists (M3), so the golden lane is belt-and-braces — fine to keep, but it is the slowest test in the plan-mode set.
+
+### Failure analysis (the classes that fired, none blocking)
+
+| Class | Event | Root cause | Prevention |
+|---|---|---|---|
+| execution | 3 test iterations lost to the V2 byte-identical fixture (blank lines, backticks) | hand-written fixture did not match the canonical render | the learning above; the round-trip pin now exists in three places |
+| context | the first PTY assertion read the wrong plan file (`plan.md` from the headless run vs the seeded `multiply-function-….md`) | the driver asserted a hard-coded path instead of the newest artifact | the driver now scans for the newest plan file; fixed in the same session |
+| external | the initial push was rejected (remote moved 2 commits ahead mid-round); one rebase collision on the engine's memory re-render | the upstream repo is actively developed concurrently | the git preflight's fetch-then-rebase flow handled it; keep per-milestone pushes small |
+

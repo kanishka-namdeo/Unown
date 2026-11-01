@@ -49,3 +49,37 @@ file/risks/verification dimensions to full marks.
 - Baseline receipts capture stdout verbatim; the baseline predates the envelope
   `plan` block (it had no plan to report), so the before/after production metric is
   the honest comparable — the score column is "not produced" vs measured.
+
+## Plan Mode V3 (2026-11-01, the capability-orchestrator round)
+
+Task set: `tasks/pt-4.md` — the capability-audit plan on a deliberately
+capability-EMPTY scratch repo (one `add()` function, bun test runner, no
+AGENTS.md, no memory, no skills), which is the control that makes the audit's
+honesty measurable: an empty repo's correct audit is all-SKIPPED-with-reasons.
+Model: agnes-3.0-flash through the bundled bridge, live Agnes upstream.
+
+| Lane | What it proves | Result |
+|---|---|---|
+| PT-4 headless (`--plan -p`, cap 30) | The V3 prompt produces the full V3 doc unprompted-by-hand: 11 audit rows with reasons, five justified specialist skips (a trivial task consulting nobody is the CORRECT outcome), synthesis (confidence 95), learning plan, verification | **98/100, passes** — the only deduction is the ≥1-USED-row sub-check, the honest verdict for a repo with nothing to reuse |
+| PT-4i interactive (PTY-driven full loop) | The complete orchestrator cycle against a real TTY: `/plan` → approval dialog → **real execution** (multiply written to `src/calc.ts`, `test/calc.test.ts` created, `bun test` 5/5) → `plan_retrospective` merged into the plan file → the `plan retrospective` engine note delivered for AutoDream | **PASS, all four stages** — the plan scored 100/100; the retrospective carried outcome `delivered`, a verified memory candidate (the calc-lab test conventions) and an improvement line |
+
+Receipts: `results/run-2026-11-01-v3/` — `receipt-pt-4.json` (scored by the
+product's own `scorePlanDocV3`), `receipt-pt-4i.json` (the four-stage verdicts),
+the verbatim plan files, the executed source + tests, and the 116,953-byte PTY
+transcript.
+
+### V3 limitations (same honesty as the V2 table)
+
+- n=1 run per lane, one model: a demonstration that the V3 mechanisms work
+  end-to-end through the live stack, not a population claim about planning
+  quality. The V3 dimensions are additionally pinned deterministically by
+  `test/plan-v3.test.ts` (24 pins) and `test/plan-mode-v3.test.ts` (9 pins),
+  which is where the scorer's behavior is actually contract-tested.
+- PT-4's empty-repo control means the specialist bench was exercised as
+  *justified skips*, not live consultations — a complex-plan lane with live
+  specialist spawns remains unmeasured (the bench's own contracts are pinned
+  by `test/subagent-builtins.test.ts`, and the read-only delegation guard by
+  `test/plan-mode-v3.test.ts`).
+- The interactive lane was driven by a scripted PTY driver (Enter on the first
+  approval option), not a human's considered choice — the approval gate's
+  semantics themselves are the V2 round's, already pinned by its own suites.
