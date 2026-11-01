@@ -1,0 +1,179 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>BrowseBench — the page that fights back</title>
+<style>
+  :root { color-scheme: light; }
+  body { font-family: system-ui, sans-serif; max-width: 720px; margin: 2rem auto; padding: 0 1rem; }
+  .hidden { display: none !important; }
+  #overlay, #cookie-banner {
+    position: fixed; inset: 0; background: rgba(0,0,0,.55); z-index: 50;
+    display: flex; align-items: center; justify-content: center;
+  }
+  #overlay .card {
+    background: #fff; padding: 1.5rem 2rem; border-radius: 12px; max-width: 420px; text-align: center;
+  }
+  #cookie-banner { inset: auto 0 0 0; background: #111; color: #eee; align-items: stretch; }
+  #cookie-banner .card { background: #111; color: #eee; border-radius: 0; max-width: none; text-align: left; display: flex; gap: 1rem; align-items: center; justify-content: space-between; }
+  button { font: inherit; padding: .5rem 1rem; border-radius: 8px; border: 1px solid #888; background: #fff; cursor: pointer; }
+  button[disabled] { opacity: .5; cursor: not-allowed; }
+  .primary { background: #1a56db; border-color: #1a56db; color: #fff; }
+  li { margin: .25rem 0; }
+  #final-status { margin-top: 1rem; padding: .75rem 1rem; border-radius: 8px; background: #f3f4f6; }
+  #final-status.done { background: #dcfce7; }
+  .cta { background: #16a34a; border-color: #16a34a; color: #fff; }
+</style>
+</head>
+<body>
+<h1>BrowseBench — the page that fights back</h1>
+<p>Complete the checkout sequence. The success marker is the element
+<code>#final-status</code> gaining <code>data-success="true"</code>.</p>
+
+<!-- F2: modal interruption — appears 1.5s after load, swallows the first click on anything under it -->
+<div id="overlay" class="hidden" role="dialog" aria-modal="true" aria-labelledby="overlay-title">
+  <div class="card">
+    <h2 id="overlay-title">Wait! Join the newsletter?</h2>
+    <p>Get 10% off if you subscribe mid-checkout.</p>
+    <button id="overlay-accept" class="primary">Subscribe &amp; continue</button>
+    <button id="overlay-dismiss">No thanks, just let me shop</button>
+  </div>
+</div>
+
+<!-- F3: overlay #2 — a cookie banner at the bottom, no auto-dismiss -->
+<div id="cookie-banner" class="hidden">
+  <div class="card">
+    <span>We use cookies. Obviously.</span>
+    <button id="cookie-accept">Accept</button>
+  </div>
+</div>
+
+<section id="product">
+  <h2>Product</h2>
+  <p>The Unown Figurine — one (1) pocket-sized glyph.</p>
+  <button id="cta-98213" class="cta">Add to cart</button><!-- F1: id drifts per load, see script -->
+  <span id="cart-count">Cart: 0</span>
+</section>
+
+<section id="options">
+  <h2>Options</h2>
+  <!-- F7: open shadow root — the variant picker lives inside it -->
+  <div id="variant-widget"></div>
+</section>
+
+<section id="shipping">
+  <h2>Shipping</h2>
+  <!-- F8: same-origin iframe — the address form lives inside it -->
+  <iframe id="address-frame" src="stress-frame.html" title="Address form" width="100%" height="150" style="border:1px solid #ccc"></iframe>
+</section>
+
+<section id="confirm">
+  <h2>Confirm</h2>
+  <!-- F4: race — looks clickable immediately, actually armed 2s after the cart has an item -->
+  <button id="checkout" class="primary" disabled>Place order</button>
+  <!-- F9: native dialog — confirm() guards the final click -->
+  <button id="final-confirm" class="hidden">Really place order</button>
+  <!-- F5/F6: dynamic + delayed content — the order summary renders 2s after checkout is clicked -->
+  <ul id="summary"><li>Loading your order summary…</li></ul>
+</section>
+
+<div id="final-status" aria-live="polite">Checkout not started.</div>
+
+<script>
+  // F1: selector drift — the CTA id changes on every load; the stable contract is data-stable-name
+  (function () {
+    var btn = document.getElementById('cta-98213');
+    btn.id = 'cta-' + Math.floor(Math.random() * 1e6);
+    btn.dataset.stableName = 'add-to-cart';
+    var cart = 0;
+    btn.addEventListener('click', function () {
+      cart += 1;
+      document.getElementById('cart-count').textContent = 'Cart: ' + cart;
+    });
+  })();
+
+  // F2 + F3: the modal and the cookie banner interrupt 1.5s in
+  setTimeout(function () {
+    document.getElementById('overlay').classList.remove('hidden');
+    document.getElementById('cookie-banner').classList.remove('hidden');
+  }, 1500);
+  document.getElementById('overlay-dismiss').addEventListener('click', function () {
+    document.getElementById('overlay').classList.add('hidden');
+  });
+  document.getElementById('overlay-accept').addEventListener('click', function () {
+    // accepting the newsletter is a trap: it re-opens the modal once more
+    document.getElementById('overlay').classList.add('hidden');
+    setTimeout(function () { document.getElementById('overlay').classList.remove('hidden'); }, 800);
+  });
+  document.getElementById('cookie-accept').addEventListener('click', function () {
+    document.getElementById('cookie-banner').classList.add('hidden');
+  });
+
+  // F7: the variant picker inside an open shadow root
+  (function () {
+    var host = document.getElementById('variant-widget');
+    var root = host.attachShadow({ mode: 'open' });
+    root.innerHTML =
+      '<label>Variant <select id="variant"><option value="alpha">Alpha</option>' +
+      '<option value="beta">Beta</option><option value="gamma">Gamma</option></select></label>' +
+      ' <button id="variant-apply">Apply variant</button>';
+    root.getElementById('variant-apply').addEventListener('click', function () {
+      window.__variant = root.getElementById('variant').value;
+      root.getElementById('variant-apply').textContent = 'Variant applied: ' + window.__variant;
+    });
+  })();
+
+  // F4 + F5 + F6: the armed-late checkout, the race window, the delayed summary
+  var armed = false, armedAt = 0;
+  var armTimer = setInterval(function () {
+    var count = parseInt((document.getElementById('cart-count').textContent.match(/\d+/) || ['0'])[0], 10);
+    if (count > 0) {
+      armed = true; armedAt = Date.now();
+      clearInterval(armTimer);
+      var c = document.getElementById('checkout');
+      c.disabled = false;
+      c.textContent = 'Place order (ready)';
+    }
+  }, 500);
+
+  document.getElementById('checkout').addEventListener('click', function () {
+    if (!armed || Date.now() - armedAt < 1500) {
+      // the race: a click inside 1.5s of arming silently resets the cart and re-arms the timer
+      document.getElementById('cart-count').textContent = 'Cart: 0';
+      document.getElementById('checkout').disabled = true;
+      document.getElementById('final-status').textContent = 'Too fast — the cart reset. Add the item again.';
+      armed = false;
+      armTimer = setInterval(function () {
+        var count = parseInt((document.getElementById('cart-count').textContent.match(/\d+/) || ['0'])[0], 10);
+        if (count > 0) {
+          armed = true; armedAt = Date.now();
+          clearInterval(armTimer);
+          var c = document.getElementById('checkout');
+          c.disabled = false;
+          c.textContent = 'Place order (ready)';
+        }
+      }, 500);
+      return;
+    }
+    document.getElementById('final-confirm').classList.remove('hidden');
+    // F5: the real summary lands 2s after checkout
+    setTimeout(function () {
+      document.getElementById('summary').innerHTML =
+        '<li>Unown Figurine × 1</li><li>Variant: ' + (window.__variant || 'none') + '</li><li>Shipping: frame-validated</li>';
+    }, 2000);
+  });
+
+  document.getElementById('final-confirm').addEventListener('click', function () {
+    // F9: native confirm() — must be answered, not just dismissed
+    var ok = window.confirm('Place the order for real?');
+    if (!ok) { document.getElementById('final-status').textContent = 'Order cancelled at the dialog.'; return; }
+    var s = document.getElementById('final-status');
+    s.textContent = 'Order placed — success.';
+    s.classList.add('done');
+    s.dataset.success = 'true'; // THE success marker
+    s.dataset.variant = window.__variant || 'none';
+  });
+</script>
+</body>
+</html>

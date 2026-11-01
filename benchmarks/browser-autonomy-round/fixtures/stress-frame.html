@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Address form (iframe)</title>
+<style>
+  body { font-family: system-ui, sans-serif; margin: .5rem; }
+  label { display: block; margin: .35rem 0; }
+  input, select { font: inherit; padding: .3rem .5rem; }
+  button { font: inherit; padding: .4rem .9rem; margin-top: .4rem; }
+</style>
+</head>
+<body>
+<form id="address-form">
+  <label>Name <input id="addr-name" name="name" autocomplete="off"></label>
+  <label>City
+    <select id="addr-city" name="city">
+      <option value="">— choose —</option>
+      <option value="dubai">Dubai</option>
+      <option value="berlin">Berlin</option>
+      <option value="tokyo">Tokyo</option>
+    </select>
+  </label>
+  <label><input type="checkbox" id="addr-gift" name="gift"> Gift wrap</label>
+  <button type="button" id="addr-save">Save address</button>
+  <span id="addr-status"></span>
+</form>
+<script>
+  document.getElementById('addr-save').addEventListener('click', function () {
+    var name = document.getElementById('addr-name').value.trim();
+    var city = document.getElementById('addr-city').value;
+    var gift = document.getElementById('addr-gift').checked;
+    var el = document.getElementById('addr-status');
+    if (!name || !city) { el.textContent = 'incomplete'; el.dataset.valid = 'false'; return; }
+    el.textContent = 'saved:' + name + '/' + city + (gift ? '/gift' : '');
+    el.dataset.valid = 'true';
+  });
+</script>
+</body>
+</html>

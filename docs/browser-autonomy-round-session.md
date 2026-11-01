@@ -12,8 +12,9 @@
 
 - Round owner: the browser autonomy session (lineage: security round → this
   round)
-- Status: **open** — CP0 intake complete, baseline green, browser runtime
-  proof in flight
+- Status: **open** — CP0-CP2 complete (browser runtime VALIDATED, stress
+  suite 3/3, F1-F3 findings ledger, memory loop closed once); next: CP3
+  self-dogfooding
 - Related pages: [browser](browser.md) · [browser research](browser-research.md)
   (the seven-product reverse-engineering the tool's shape rests on) ·
   [testing strategy](testing-strategy.md) · [the benchmarks' own
@@ -95,18 +96,91 @@ never deleted, DOX updated in the same change that moves anything it counts.
 
 ## CP1 — the browser runtime proof (first light through the tool)
 
-- [ ] `unown -p` browser smoke: navigate, read the a11y tree, screenshot —
-      the print-mode envelope's exit code and turn count recorded.
-- [ ] The stress page: shadow roots, same-origin iframes, an overlay modal,
-      delayed content, a native dialog — the v2 claims (refs through shadow
-      roots and iframes; popups tracked; dialogs answerable) read against
-      real behaviour.
-- [ ] The landing page driven as a user (local dev server) — see CP3.
+Four live runs against the real stack (receipts under
+`benchmarks/browser-autonomy-round/receipts/`):
+
+- **Smoke** (`unown -p`, example.com): title + a11y heading read back
+  correctly, screenshot saved — 10.5 s round trip, exit 0. First finding on
+  the very first shot: the screenshot is **JPEG data under a `.png` name**
+  (1280×720, `file` says JPEG) — the capture default is jpeg
+  (`tools.ts` format param) and the save path takes the model's extension
+  unchecked (`session.ts:1708`).
+- **Stress run 1 — cold, blind** (the goal stated, the trap list withheld):
+  PASSED in 33 s / 17 model calls, exit 0. Recovered in-session from the
+  newsletter modal, the cookie banner, the two-stage order button, and the
+  native `confirm()` (auto-dismissed and cancelled the order; the agent
+  explored `browser dialog list`, armed `dialog accept`, re-clicked).
+- **Stress run 2 — warm, pre-dream** (fresh session; dream v1 memory carried
+  the banner/iframe/screenshot facts, not yet the dialog lesson): PASSED in
+  79 s / 18 calls. Same dialog trap, same recovery depth.
+- **Stress run 3 — post-dream** (dream v2 carries the dialog lesson, see
+  CP5): PASSED in 47 s / 25 calls. The trap was still hit — but the recovery
+  was direct (re-arm + re-click, no `dialog list` exploration). Reactive
+  recall improved; proactive application did not happen.
+
+| Run | Label | Duration | Model calls | Exit | Success |
+|---|---|---|---|---|---|
+| 1 | cold (blind) | 33 s | 17 | 0 | yes |
+| 2 | warm (pre-dream) | 79 s | 18 | 0 | yes |
+| 3 | post-dream | 47 s | 25 | 0 | yes |
+
+Verdict: the browser tool's core loop (navigate → snapshot → refs → act →
+verify) is **VALIDATED** on a hostile page — 3/3, zero human interventions,
+and every failure class the fixture planted was detected and recovered
+in-session. Model-call count on an identical task class is noisy
+(17/18/25) — the durable signals are success rate and recovery depth.
 
 ## CP2 — the stress page and the failure ledger
 
-Planned: a local page that fights back, the eight failure classes the brief
-names, and the findings ledger with root causes.
+The fixture: `benchmarks/browser-autonomy-round/fixtures/stress.html` (+
+`stress-frame.html`, the iframe document) — nine planted failure classes:
+selector drift (the CTA id is randomized per load; the stable contract is a
+`data-stable-name`), a modal that interrupts 1.5 s in (with a re-open trap
+on "subscribe"), a cookie banner, an arm-race (the order button punishes
+Clicks within 1.5 s of arming by resetting the cart), delayed dynamic
+content (the real summary lands 2 s after checkout), an open shadow root
+(the variant picker), a same-origin iframe (the address form), and a native
+`confirm()` guarding the final click. Success marker:
+`#final-status[data-success="true"]`.
+
+The findings ledger:
+
+| # | Finding | Where | Severity | Class |
+|---|---|---|---|---|
+| F1 | screenshot capture defaults to jpeg but the save path takes any extension unchecked — JPEG data under a `.png` name | `browser/tools.ts:111`, `browser/session.ts:1708-1713` | minor (misleading artifact; downstream type-sniffing may misbehave) | defect |
+| F2 | native dialogs auto-dismiss by default — a `confirm()` flow silently cancels; docs warn, `dialog accept` arming recovers, but the memory lesson was applied reactively (faster recovery) not proactively (no pre-arm) in run 3 | `browser/session.ts` dialog handling; `docs/browser.md` CAPTCHAs/dialog section | medium (first-click data loss class) | design + memory-application gap |
+| F3 | `fill_form` in a same-origin iframe can silently lose values: the fill reports success against a doomed pre-swap document when the iframe finishes loading after the main page's readyState gate — no per-frame readiness barrier, no post-fill persistence check. Reproduced standalone (receipt `iframe-fill-race-repro.jsonl`): fill "succeeded", snapshot showed `value=""` | `browser/session.ts:876` (`waitForPageReady` gates only the top document), `browser/session.ts:1422-1459` (`fillForm` resolves through `contentDocument` recursion) | high (silent data loss in forms — the tool's flagship journey) | defect |
+| P1 | ref-based addressing neutralizes id drift by design — run 3 explicitly noticed the randomized CTA id and sailed through on refs + the stable `data-stable-name` | `browser/a11y.ts`, `browser/tools.ts` | positive | validated claim |
+| P2 | refs resolve through open shadow roots and same-origin iframes exactly as documented — the variant picker and the address form were driven by ref in all three runs | `browser/session.ts` findIn recursion | positive | validated claim |
+| P3 | modal + overlay interruption handled 3/3, including the newsletter re-open trap (avoided every time) | fixture F2/F3 vs runs 1-3 | positive | validated claim |
+
+The honest null: turn-count did not improve across cold → warm → post-dream
+(17 → 18 → 25); the improvement showed up as recovery depth on the dialog
+trap (2 exploratory actions → 1 direct action), not as prevention.
+Benchmark impact recorded in
+`benchmarks/browser-autonomy-round/receipts/stress-checkout-summary.json`.
+
+## CP2b — the memory loop on this round's own sessions (BROWSER-7, early evidence)
+
+The learning loop closed on browser work within the hour, unprompted:
+
+- The three terminal sessions delivered notes to the engine (outbox →
+  `POST /api/notes`); the engine's `auto-dream` job (10 min interval)
+  consolidated them into `.unown/memory/project.md` **v1** — five
+  browser-derived facts: the cookie banner, the newsletter dismissal path,
+  the cross-frame address form, the screenshots directory convention, and
+  the JPEG-under-`.png` quirk (it caught F1 from the transcripts alone).
+- An explicit `unown note` with the dialog lesson + `POST /api/dreams/run`
+  produced **v2**, carrying the exact procedural fix: "arm 'browser dialog
+  accept text=OK' before clicking the button that opens the confirm,
+  one-shot policy, re-armed after each use".
+- Run 3 (post-dream) then recovered from the dialog trap directly — no
+  `dialog list` exploration — but still did not pre-arm. **Recall:
+  VALIDATED. Proactive application: PARTIAL.** The gap is a real improvement
+  opportunity: browser lessons land in session-start memory, but the moment
+  they matter is the tool call itself — a tool-time procedural hint lane
+  (surface matching memory entries when the browser tool is invoked) would
+  close it. Filed with the round's improvement ledger (CP6).
 
 ## CP3 — self-dogfooding: Unown against Unown (BROWSER-9 + BROWSER-5 + BROWSER-2)
 
@@ -119,10 +193,13 @@ fixes and PRs where feasible; browser-verified fixes.
 Planned: the browser-driven sweep with citations; one docs-navigation build
 task; release-monitoring snapshots.
 
-## CP5 — the memory loop on this round's own sessions (BROWSER-7)
+## CP5 — the memory audit at close (BROWSER-7, full round)
 
-Planned: notes → AutoDream → `.unown/memory/project.md`; recall and staleness
-checks; skill candidates.
+CP2b carries the early evidence (dreams v1/v2, the recall-vs-application
+split). This checkpoint closes the loop at round end: the full memory diff
+attributed per lane (which browser-derived facts survived, which went
+stale), the recall/staleness numbers over the round's own sessions, and the
+skill candidates minted from recurring browser procedures.
 
 ## CP6 — the benchmark suite and the closeout
 

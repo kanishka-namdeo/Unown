@@ -1,0 +1,67 @@
+{
+  "suite": "browser-autonomy-round",
+  "task": "stress-checkout",
+  "fixture": "benchmarks/browser-autonomy-round/fixtures/stress.html",
+  "fixture_hash": "see git; the fixture is committed with the suite",
+  "date": "2026-11-01",
+  "model": "agnes-3.0-flash",
+  "provider": "zai-bridge (llm-bridge :3031 -> https://apihub.agnes-ai.com/v1)",
+  "engine": "v0.0.55 @ 22d3e725",
+  "harness": "unown -p (print mode), --max-turns 40, fresh session per run",
+  "scenario": "blind hostile checkout: selector drift (F1), modal interruption (F2), cookie overlay (F3), arm-race (F4), delayed content (F5), lazy summary (F6), open shadow root (F7), same-origin iframe form (F8), native confirm() (F9); success marker #final-status[data-success=true]",
+  "runs": [
+    {
+      "run": 1,
+      "label": "cold (blind, no browser memory)",
+      "session_id": "01a1972b-1123-7360-aeb0-ef3515da56eb",
+      "duration_s": 33,
+      "model_calls": 17,
+      "exit_code": 0,
+      "success": true,
+      "dialog_trap": "hit; recovered via browser dialog list exploration then accept arming (2 recovery actions)",
+      "receipts": ["stress-run-1.jsonl", "stress-run-1-session.md", "../screenshots/stress-final.png"]
+    },
+    {
+      "run": 2,
+      "label": "warm (fresh session, dream v1 memory: banners/iframe/screenshot facts, dialog lesson NOT yet consolidated)",
+      "session_id": "01a1972b-f45e-7490-b500-a2f9a23293b7",
+      "duration_s": 79,
+      "model_calls": 18,
+      "exit_code": 0,
+      "success": true,
+      "dialog_trap": "hit; recovered via dialog list then accept arming (2 recovery actions)",
+      "receipts": ["stress-run-2.jsonl", "../screenshots/stress-final-warm.png"]
+    },
+    {
+      "run": 3,
+      "label": "post-dream (memory v2 carries the dialog lesson)",
+      "session_id": "01a19730-e4cf-7fb2-bd54-3b6cd6d6b03c",
+      "duration_s": 47,
+      "model_calls": 25,
+      "exit_code": 0,
+      "success": true,
+      "dialog_trap": "hit; recovered DIRECTLY (re-arm + re-click, no dialog list exploration — 1 recovery action); pre-arm still absent (reactive recall, not proactive application)",
+      "extra_finding": "iframe fill_form transient loss: first save returned 'incomplete' (name field empty) — reproduced standalone, see iframe-fill-race-repro.jsonl",
+      "receipts": ["stress-run-3.jsonl", "../screenshots/stress-final-postdream.png"]
+    },
+    {
+      "run": 4,
+      "label": "iframe fill race repro (targeted, not a checkout run)",
+      "session_id": "01a19731-f83b-75ea-b4cc-d8669971c98b",
+      "duration_s": 60,
+      "model_calls": 16,
+      "exit_code": 0,
+      "success": true,
+      "finding": "fill_form reported success against the iframe document, values empty on re-snapshot — silent loss when the iframe finishes loading after the main page's readyState gate",
+      "receipts": ["iframe-fill-race-repro.jsonl"]
+    }
+  ],
+  "verdicts": {
+    "task_success": "VALIDATED — 3/3 checkout runs passed, 100% repeatability, zero interventions",
+    "failure_handling": "VALIDATED — every hostile fixture class was detected and recovered in-session",
+    "memory_recall": "VALIDATED — dream v1 consolidated 5 browser facts; dream v2 carried the dialog lesson",
+    "memory_proactive_application": "PARTIAL — the lesson was recalled (faster, shallower recovery) but not applied before the first click; improvement opportunity: tool-time procedural hints",
+    "fill_form_iframe": "FAILED (defect) — silent value loss reproduced; root cause: no per-frame readiness barrier (session.ts:876 gates only the top document; fillForm session.ts:1422 has no post-fill persistence check)"
+  },
+  "notes": "model_calls counted as assistant messages in the session store (a turn = one model call). Durations wall-clock from the shell. The Agnes free tier (~20 RPM) serialized through the bridge (max 3 concurrent) — durations include upstream latency variance; turn count is the stabler metric and is itself noisy (17/18/25 on an identical task class)."
+}
