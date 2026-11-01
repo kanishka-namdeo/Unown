@@ -62,6 +62,7 @@ import {
         type WebCacheHit,
 } from "./webcache.ts";
 import { annotateToolOutput, recordShieldFlag } from "./shield.ts";
+import { trimTrailingSlashes } from "./url-trim.ts";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -802,7 +803,7 @@ export function parseSearxngResponse(body: any, cap: number): WebSearchResult[] 
 }
 
 async function searxngSearch(query: string, opts: WebSearchOptions): Promise<WebSearchResult[]> {
-        const base = (process.env.UNOWN_SEARXNG_URL || "").replace(/\/+$/, "");
+        const base = trimTrailingSlashes(process.env.UNOWN_SEARXNG_URL || "");
         if (!base) throw new Error("searxng needs UNOWN_SEARXNG_URL (self-host with formats: [html, json])");
         const cap = maxResultsCap(opts.maxResults);
         const url = `${base}/search?q=${encodeURIComponent(query)}&format=json&language=en`;

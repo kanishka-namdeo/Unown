@@ -43,6 +43,7 @@ import { modelSpec } from "./model-specs.ts";
 import { STARTER_SKILLS } from "./skill-seeds.ts";
 import { UNOWN_THEME, UNOWN_THEME_NAME } from "./theme.ts";
 import { resolveUnownHome } from "./unown-home.ts";
+import { trimTrailingSlashes } from "./url-trim.ts";
 
 // `resolveUnownHome` moved to unown-home.ts (2026-10-24 session-workflow
 // round) so lightweight modules can resolve the user home without this
@@ -69,7 +70,7 @@ export const UNOWN_NOTES_DEAD_DIR = join(UNOWN_NOTES_DIR, "dead");
 // .env (and scripts/start.ts exports it to every child), where optional vars
 // ship EMPTY ("KEY=") — an empty string must mean "unset", not override the
 // default with a broken value (see resolveUnownHome above for the full story).
-export const ENGINE_URL = (process.env.UNOWN_ENGINE_URL || "http://127.0.0.1:3030").replace(/\/+$/, "");
+export const ENGINE_URL = trimTrailingSlashes(process.env.UNOWN_ENGINE_URL || "http://127.0.0.1:3030");
 export const STRICT_HOOKS = /^(1|true|yes)$/i.test(process.env.UNOWN_STRICT_HOOKS ?? "");
 
 // ---------------------------------------------------------------------------
@@ -150,7 +151,7 @@ export function writeModelsJson(agentDir: string): { path: string; fresh: boolea
         // (probeBridgeHealth, awaited by ensureUnownAgentDirInfoAsync before the
         // first seed), then the env var, then the legacy fallback.
         const modelId = bridgeHealthLite?.defaultModel || process.env.PI_MODEL_ID || "agnes-3.0-flash";
-        const baseUrl = (process.env.PI_BRIDGE_URL || "http://127.0.0.1:3031").replace(/\/+$/, "");
+        const baseUrl = trimTrailingSlashes(process.env.PI_BRIDGE_URL || "http://127.0.0.1:3031");
         if (existsSync(modelsPath)) return { path: modelsPath, fresh: false, provider, modelId }; // never clobber user edits
         // The bridge placeholder key satisfies pi auth; when the bridge itself
         // requires a shared secret (BRIDGE_API_KEY), use it so the CLI matches.

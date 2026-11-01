@@ -1,10 +1,22 @@
 import type { ColumnId, FocusLogEntry, Priority, Task } from "./types";
 import { COLUMNS, PRIORITIES } from "./types";
 
+/**
+ * Task id: `<time36>-<8 base36 chars>`.
+ *
+ * The random half is CSPRNG-sourced (crypto.getRandomValues, not
+ * Math.random): task ids are persisted and cross-referenced (focus log,
+ * focus sessions, localStorage keys, the /demo/api/tasks route), and a
+ * predictable id there is a CodeQL js/insecure-randomness finding — the
+ * same class the engine already fixed for session ids (sessions.ts's
+ * generateSessionId). getRandomValues is available in the browser, Bun
+ * and Node alike, and the id shape is unchanged.
+ */
 export function uid(): string {
-  return (
-    Date.now().toString(36) + "-" + Math.random().toString(36).slice(2, 10)
-  );
+  const bytes = new Uint8Array(6);
+  crypto.getRandomValues(bytes);
+  const rand = Array.from(bytes, (b) => b.toString(36).padStart(2, "0")).join("");
+  return Date.now().toString(36) + "-" + rand.slice(0, 8);
 }
 
 export function nowIso(): string {

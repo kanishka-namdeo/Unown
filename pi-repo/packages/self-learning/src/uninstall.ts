@@ -51,6 +51,7 @@ import { basename, join, posix, win32 } from "node:path";
 import { runGitSync } from "./gittools.ts";
 import { installMetadataPath, readInstallMetadata, canonicalPath, shimTargetsRoot, type InstallMode } from "./install-layout.ts";
 import { readRootVersion, redactUrl, resolveInstallInfo, type InstallInfo, unownHome } from "./update.ts";
+import { trimTrailingSlashes } from "./url-trim.ts";
 
 export interface UninstallFlags {
         dryRun?: boolean;
@@ -214,7 +215,7 @@ export function findShims(
 
 function samePath(a: string, b: string, platform: NodeJS.Platform = process.platform): boolean {
         const canon = (s: string) => (platform === process.platform ? canonicalPath(s) : s);
-        const norm = (s: string) => canon(s).replace(/\\/g, "/").replace(/\/+$/, "").toLowerCase();
+        const norm = (s: string) => trimTrailingSlashes(canon(s).replace(/\\/g, "/")).toLowerCase();
         return norm(a) === norm(b);
 }
 
@@ -231,9 +232,8 @@ function errMessage(err: unknown): string {
 export function pathInside(child: string, parent: string, platform: NodeJS.Platform = process.platform): boolean {
         const yours = (p: string) => (platform === process.platform ? canonicalPath(p) : p);
         const norm = (p: string): string => {
-                const n = (platform === "win32" ? win32.normalize(yours(p)) : posix.normalize(yours(p)))
-                        .replace(/\\/g, "/")
-                        .replace(/\/+$/, "");
+                const normalized = platform === "win32" ? win32.normalize(yours(p)) : posix.normalize(yours(p));
+                const n = trimTrailingSlashes(normalized.replace(/\\/g, "/"));
                 return platform === "win32" ? n.toLowerCase() : n;
         };
         const c = norm(child);

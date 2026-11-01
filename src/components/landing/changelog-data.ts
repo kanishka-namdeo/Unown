@@ -30,19 +30,57 @@ export interface ChangelogStop {
   groups: ChangelogGroup[];
 }
 
-export const CHANGELOG_TOTAL_ENTRIES = 503;
+export const CHANGELOG_TOTAL_ENTRIES = 506;
 
 export const CHANGELOG_TOTALS: Record<ChangelogBucket, number> = {
   "Added": 231,
-  "Changed": 31,
+  "Changed": 32,
   "Deprecated": 0,
   "Removed": 3,
-  "Fixed": 188,
+  "Fixed": 190,
   "Security": 5,
   "Behavior": 45
 };
 
 export const CHANGELOG_STOPS: ChangelogStop[] = [
+  {
+    "label": "Unreleased",
+    "date": null,
+    "total": 3,
+    "counts": {
+      "Added": 0,
+      "Changed": 1,
+      "Deprecated": 0,
+      "Removed": 0,
+      "Fixed": 2,
+      "Security": 0,
+      "Behavior": 0
+    },
+    "groups": [
+      {
+        "bucket": "Fixed",
+        "items": [
+          {
+            "title": "Both open Dependabot security advisories cleared in the vendored tree",
+            "behavior": false
+          },
+          {
+            "title": "All three open CodeQL findings fixed",
+            "behavior": false
+          }
+        ]
+      },
+      {
+        "bucket": "Changed",
+        "items": [
+          {
+            "title": "The rest of the Dependabot queue, applied or declined with reasons",
+            "behavior": false
+          }
+        ]
+      }
+    ]
+  },
   {
     "label": "0.0.54",
     "date": "2026-11-01",

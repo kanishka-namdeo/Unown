@@ -106,6 +106,7 @@ import { listSandboxes } from "./sandbox.ts";
 import { getSkill, listSkills, retireSkill, rollbackSkill, skillVersions } from "./skills.ts";
 import { DATA_DIR, DB_PATH, store } from "./store.ts";
 import { getTask, listTasks, seedTasks } from "./tasks.ts";
+import { trimTrailingSlashes } from "./url-trim.ts";
 import { webCacheClear, webCacheStats, webCacheSweep } from "./webcache.ts";
 
 const PORT = Number(process.env.PI_AGENT_PORT || 3030); // `||`: Number("") is 0, not the default
@@ -233,10 +234,10 @@ export function allowedCorsOrigin(req: Request): string | null {
         if (mode === "*") return "*";
         const explicit = mode
                 .split(",")
-                .map((s) => s.trim().replace(/\/+$/, ""))
+                .map((s) => trimTrailingSlashes(s.trim()))
                 .filter(Boolean);
         if (explicit.length > 0) {
-                const o = origin.replace(/\/+$/, "");
+                const o = trimTrailingSlashes(origin);
                 return explicit.includes(o) ? origin : null;
         }
         // default allow-list: loopback origins, any port, http(s) only
