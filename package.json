@@ -59,7 +59,7 @@
     "eslint": "10.13.0",
     "eslint-config-next": "^16.4.1",
     "happy-dom": "^21.0.4",
-    "marked": "^18.1.1",
+    "marked": "^18.1.2",
     "playwright": "1.64.1",
     "playwright-core": "1.64.1",
     "tailwindcss": "^4.3.3",
