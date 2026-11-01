@@ -52,11 +52,32 @@ No tracked-file changes in M1 itself (`.env` and runtime state are gitignored by
 
 ---
 
+## M1-resume — bring-up on the recycled lineage (2026-11-02)
+
+**Context**: the sandbox was recycled after M1; this session re-cloned `main` @ `5fe50ca8` into `/home/z/my-project/Unown` (the round's own M1 commit included) and repeated the full bring-up to prove the fresh-clone contract holds on a second cold machine, then opened the A1 ground truth.
+
+Receipts (all 2026-11-01T21:xxZ):
+
+- bun re-pinned to **1.4.3** (npm i -g bun@1.4.3); `UNOWN_NO_ENGINE_SERVICE=1 bun run agent:install` — **7/7 green** again.
+- `.env` from `.env.example`: Agnes upstream key set, `BRIDGE_MODEL=agnes-3.0-flash`, and `UNOWN_HOME=/home/z/my-project/unown-home` (persistent across recycles — the recovery-session convention).
+- Stack: bridge `:3031` (upstream ok **200**, 6 agnes models), engine `:3030` (phase `ready`, v0.0.55 @ 5fe50ca8).
+- `unown setup --provider bridge` ✓; `unown doctor` — **ready to chat**, 18 ✓ / 1 ⚠ (no LSP in container).
+- **Issue #30 probe: 6/6 clean headless runs** (`unown -p "Reply with exactly: UNOWN_OK"` → `UNOWN_OK`, exit 0, 1.4–3.4 s each; 6× `status:"ok"` in the bridge usage log; session JSONLs under `$UNOWN_HOME/agent/sessions/`). Sharper datum for M2: the issue's own text correlates hangs with **active engine-harness windows** — all 6 of today's runs were against an idle engine, so the repro lane below now combines `unown -p` loops with live engine churn.
+- `A2_GROUND_TRUTH.md` authored at the repo root (dated capability snapshot; 8 doc-drift flags found; the utilization audit classifies #30 as *triggered-but-unverified* — Level 4 instrumentation lane).
+
+---
+
 ## M2 — issue #30: the `unown -p` exit hang (in flight)
 
-**Observation (first run, this sandbox)**: the answer flushed to the session receipt at 17:30:09.8; the process was still alive at kill time (150 s later), matching the issue's symptom exactly (answer arrives → process never exits → survives SIGTERM; bridge clean: 0 errors, 0 in-flight during the hang).
+**Observation (first run, prior sandbox)**: the answer flushed to the session receipt at 17:30:09.8; the process was still alive at kill time (150 s later), matching the issue's symptom exactly (answer arrives → process never exits → survives SIGTERM; bridge clean: 0 errors, 0 in-flight during the hang).
 
-**Plan**: reproduce under instrumentation; capture the /proc-level evidence the issue explicitly requests (open fds, wchan, timers, socket states); read the print-mode exit paths (agent_end / stall watchdog / hard-exit) in the coding-agent CLI; classify root cause; fix in locally-owned code only (pi-repo is frozen per the upstream-sync policy — the seam, if any, is `bin/unown` → `boot()` in the self-learning package); pin with a test; receipt everything.
+**Issue #30's own requests (fetched live 2026-11-02)**: (a) a /proc-level stack capture the next time it happens live, with a watcher armed; (b) an instrumented build that logs which exit path (agent_end / stall watchdog / hard-exit / drain) is pending when the answer flushes.
+
+**Plan (refined after the 6/6 idle-engine non-repro)**:
+
+1. **Watcher lane (operator-authored harness, repo scripts/)**: a bounded loop of `unown -p` runs with an armed monitor — if a run outlives its answer by >N seconds, capture `/proc/<pid>` evidence (status, wchan, syscall, fds, net/tcp, timers) before SIGKILL. Run it twice: once against an idle engine, once with live engine churn (forced dream run / harness cycle via the engine API) — the issue's correlation window.
+2. **Ticket through A2** (headless session in this repo, evidence pack attached): read the print-mode exit paths in `pi-repo/packages/coding-agent` print mode + the `boot()` seam in self-learning; classify root cause; fix in locally-owned code only (pi-repo vendored files only with precedent-level justification); pin with a test; receipt everything.
+3. If no repro within the bounded budget: the honest receipt is the non-repro evidence + the instrumentation ticket (the issue's request (b)) shipped as the deliverable — a permanent exit-path telemetry lane, not a blind fix.
 
 ## M3 — PT-5: a live plan-mode V3 run with live specialist spawns (planned)
 

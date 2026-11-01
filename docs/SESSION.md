@@ -99,6 +99,28 @@ content lands, re-add `## [Unreleased]` to CHANGELOG.md and regenerate the
 rail in the same commit; the version bump itself is the release commit
 (package.json version + dated heading + rail + tag on the green SHA).
 
+### Environment checkpoint (2026-11-02, the fresh-clone round — resume + ground truth)
+
+- Sandbox recycled after the round's M1; re-cloned @ `5fe50ca8` into
+  `/home/z/my-project/Unown`. bun **1.4.3** re-pinned (1.4.4 still has the
+  frozen-lockfile regression). `UNOWN_NO_ENGINE_SERVICE=1 bun run agent:install`
+  7/7 green again; `.env` with the Agnes upstream +
+  `UNOWN_HOME=/home/z/my-project/unown-home` (persistent across recycles).
+- Stack re-up: bridge :3031 (upstream ok 200, 6 agnes models), engine :3030
+  (phase ready, v0.0.55). Doctor green (1 expected ⚠: no LSP).
+- **Issue #30 probe: 6/6 clean headless runs** against an idle engine — the
+  issue's correlation is active-engine-harness windows, so the M2 repro lane
+  now pairs `unown -p` loops with live engine churn plus an armed /proc
+  watcher (see the round log's refined M2 plan).
+- `A2_GROUND_TRUTH.md` opened at the repo root — the A1 operator's dated
+  capability snapshot (8 doc-drift flags recorded; the utilization audit
+  classifies #30 as triggered-but-unverified → Level 4 instrumentation
+  first).
+- Operator decisions (2026-11-02): the DRIVE app is **Coda** (local-first
+  markdown notes + task-board PWA) at `apps/coda/` in this monorepo; push
+  lane direct to `main`; this round finishes (#30 → PT-5 → closeout) before
+  the Coda round opens.
+
 ### Environment checkpoint (2026-11-01, the browser autonomy round — closeout)
 
 - Sandbox lineage `/home/z/my-project/unown`, the round's commits `e7e0a43d`

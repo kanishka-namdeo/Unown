@@ -1,8 +1,8 @@
 {
-  "version": 2,
+  "version": 1,
   "changedBy": "mem0",
-  "at": 1793549107621,
-  "sha256": "957a0e726138ed98f291411b710fc793735ba72413b60f8bd8985b41d82343d0",
+  "at": 1793568160306,
+  "sha256": "645c1b72556d6ed4566ce47ac1672ec9d06bbf5ead69dd5965efdd135a12002a",
   "manualSha256": "03e82f1fca5033b0690a2bc2ba04c99a9cafc402a0917075c517b653a125b9e2",
   "manualEdited": true
 }

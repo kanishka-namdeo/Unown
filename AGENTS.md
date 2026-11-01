@@ -162,3 +162,4 @@ When the user requests a durable behavior change, record it here or in the relev
 - `scripts/AGENTS.md` — lifecycle scripts, CI gate scripts, landing generators, the TUI capture lane, brand assets
 - `benchmarks/AGENTS.md` — the benchmark suites, methodology, receipts and the landing-page feed rules
 - `blueprint/AGENTS.md` — Unown v1 (Claude Code harness) frozen reference
+- `A2_GROUND_TRUTH.md` — the A1 operator's dated recon snapshot of the live capability surface (anti-rot trust order: live CLI output > repo docs on main > this snapshot > the operator directive); refreshed before tickets and at every round teardown
