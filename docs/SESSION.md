@@ -8,15 +8,15 @@ archaeology. When a round completes, its log graduates to a round-specific
 
 ---
 
-## ACTIVE ROUND — the dependency round (v0.0.54)
+## ACTIVE ROUND — none (the queue is prepared, not started)
 
-The 2026-11-01 round in flight: safely update every applicable package,
-prove no regression per stage, bump to v0.0.54. Log:
-`docs/dependency-round-session.md`; decisions and receipts:
-`docs/dependency-round-research.md`. The queue below is untouched by it —
-the dependency round is the first v0.0.54 content, not a queue consumer.
+The dependency round (v0.0.54, 2026-11-01) is complete and graduated to its
+own log: `docs/dependency-round-session.md` (research and decisions:
+`docs/dependency-round-research.md`) — six within-policy updates, each stage
+gated, the framer-motion bump proven by an A/B pixel diff, v0.0.54 tagged on
+green 3-OS CI and published.
 
-The last three completed rounds: the Settings Evolution round (v0.0.49 +
+The completed rounds before it: the Settings Evolution round (v0.0.49 +
 v0.0.52 — `docs/settings-evolution-session.md`), the plan-mode todo
 unification + footer quiet rounds (v0.0.53 —
 `docs/plan-mode-todo-unification-round-session.md` +
@@ -24,18 +24,17 @@ unification + footer quiet rounds (v0.0.53 —
 re-cut v0.0.53 after its first tag landed against red CI
 (`docs/release-recovery-session.md`).
 
-**The next round's queue after the dependency round (recorded, in priority
-order)**: the S2 ledger's head
+**The next round's queue (recorded, in priority order)**: the S2 ledger's head
 — S2-11 (the spend meter) and S2-4 (the memory health card), each flipping a
 pinned, waiting benchmark miss — then S2-7/S2-8/S2-9, the S2-3/S2-16 L-pair,
 S2-22 (see the settings log's "Resume-from-here"); the injection-scanner ML
 classifier (the production TODO); the delegation round's subagent-reuse axis;
 OB-7 (fleet outcomes in the brief); the landing next-round queue (cmd-K
 search, blog hover-previews); the term.ts snapshot-class follow-up
-(release-recovery CP2). The dependency round already re-added
-`## [Unreleased]` to CHANGELOG.md and regenerates the rail in its content
-commit; the version bump itself is the release commit (package.json version
-+ dated heading + rail + tag on the green SHA).
+(release-recovery CP2). When the first v0.0.55 content lands, re-add
+`## [Unreleased]` to CHANGELOG.md and regenerate the rail in the same commit;
+the version bump itself is the release commit (package.json version + dated
+heading + rail + tag on the green SHA).
 
 ### Environment checkpoint (2026-11-01, the dependency round)
 

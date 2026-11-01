@@ -7,6 +7,16 @@
     <description>How each feature and release works, what it does, and the receipts behind it — the longhand record of the self-improving terminal coding agent Unown.</description>
     <language>en</language>
     <item>
+      <title>&quot;Six updates, one pixel diff: shipping a dependency round you can trust&quot;</title>
+      <link>https://unown-nine.vercel.app/blog/2026-11-01-the-dependency-round</link>
+      <guid isPermaLink="true">https://unown-nine.vercel.app/blog/2026-11-01-the-dependency-round</guid>
+      <pubDate>Sun, 01 Nov 2026 00:00:00 GMT</pubDate>
+      <description>&quot;How Unown updates packages without regressions: staged gates, an A/B pixel diff of the landing page, and the word budget the changelog almost broke.&quot;</description>
+      <category>release</category>
+      <category>dependencies</category>
+      <category>verification</category>
+    </item>
+    <item>
       <title>&quot;The release that never was: re-cutting v0.0.53 from a red tag&quot;</title>
       <link>https://unown-nine.vercel.app/blog/2026-11-01-the-release-recovery-round</link>
       <guid isPermaLink="true">https://unown-nine.vercel.app/blog/2026-11-01-the-release-recovery-round</guid>

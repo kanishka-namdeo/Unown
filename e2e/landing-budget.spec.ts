@@ -86,18 +86,22 @@ import { expect, test } from "@playwright/test";
 const MAX_PAGE_VH = 15.5;
 /*
  * The 2026-11-01 dependency-round release amendment (the twelfth): 3,920 ->
- * 3,940 carries the rail's 52nd stop. Compressed FIRST, as the contract
- * demands: the round's own listed changelog title ("The dependency round —
- * six updates, each gated, nothing regressed" -> "The dependency round",
- * -7w; the bullet body never renders on the page — only the title does).
- * Measured at the breach: 3,930; post-compression 3,923, still 3 over, all
- * of it the stop's undeletable chrome (label + date + counts line + "+2
- * more"), so the ceiling carries it plus one more stop (~17 words) of
- * headroom so the next release does not open on a knife's edge — the 0.0.44
- * rule. The vh twin measured 15.4 against its own 15.5 ceiling and moves
- * nothing. No generated number, no gated literal touched.
+ * 3,950 carries the rail's 52nd stop. Measured at the breach: 3,930 — ten
+ * over, all of it the stop's undeletable chrome (label + date + counts
+ * line). The sanctioned first move — compressing the round's own listed
+ * changelog title — was attempted and turned out to be a PAGE-LEVEL NO-OP,
+ * and the reason is worth recording: the rail prints titles only for the
+ * Added and Behavior buckets (LISTED in changelog.tsx); a stop whose
+ * entries are Changed/Fixed spends chrome alone, so no bullet the round
+ * could shorten would ever reach the page. The measured count stayed 3,930
+ * after the compression (the CHANGELOG edit is still worth keeping — it is
+ * what GitHub and the file itself read). The ceiling carries the stop's
+ * chrome plus one more stop's (~20w) headroom per the 0.0.44 rule, so the
+ * next release does not open on a knife's edge. The vh twin measured 15.4
+ * against its own 15.5 ceiling and moves nothing. No generated number, no
+ * gated literal touched.
  */
-const MAX_WORDS = 3940;
+const MAX_WORDS = 3950;
 
 /*
  * The 2026-10-31 planning-round release amendment (the tenth): 3,860 ->

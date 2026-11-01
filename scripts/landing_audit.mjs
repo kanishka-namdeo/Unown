@@ -121,7 +121,18 @@ const MAX_VH = 15.5;
 // Interface section", -4w); post-compression 3,896 — still 16 over, all
 // undeletable stop chrome, so the ceiling carries it plus one more
 // stop's headroom per the 0.0.44 rule.
-const MAX_WORDS = 3920;
+// 2026-11-01 (the twelfth amendment, the 0.0.54 cut): 3,920 -> 3,950 —
+// both twins together, per the same rule. The rail's 52nd stop measured
+// the page at 3,930, ten over — all of it the stop's undeletable chrome
+// (label + date + counts line). The sanctioned title compression was a
+// page-level NO-OP: the rail prints titles only for the Added/Behavior
+// buckets, and this stop's entries are Changed/Fixed, so the measured
+// count stayed 3,930 (the lesson is recorded in the e2e twin's comment).
+// The ceiling carries the chrome plus one more stop's (~20w) headroom
+// per the 0.0.44 rule. The vh twin measured 15.4 against its own 15.5
+// ceiling and moves nothing. No generated number, no gated literal
+// touched.
+const MAX_WORDS = 3950;
 const MAX_BAND_VH = 3;
 
 let chromium = null;

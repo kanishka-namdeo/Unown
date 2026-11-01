@@ -1,6 +1,6 @@
 # unown, product overview (verified)
 
-Everything below was re-checked against the repository at `v0.0.53` (`main`, commit `ae1d6c0c`) on 2026-11-01, with the code as the authority wherever the README or the docs disagreed with it. Appendix A lists every claim the earlier draft got wrong, each with its file and line; Appendix B lists what it missed. Where a number could not be backed by a committed receipt or a source file, it was cut.
+Everything below was re-checked against the repository at `v0.0.54` (`main`, commit `3facce9a`) on 2026-11-01, with the code as the authority wherever the README or the docs disagreed with it. Appendix A lists every claim the earlier draft got wrong, each with its file and line; Appendix B lists what it missed. Where a number could not be backed by a committed receipt or a source file, it was cut.
 
 This file's maintenance contract lives in the root `AGENTS.md` under Root Contracts: it is refreshed in the same change that moves anything it counts, and re-stamped with the version, commit, and date it was verified against. No counted surface has moved since the stamp above.
 
@@ -128,15 +128,15 @@ This file's maintenance contract lives in the root `AGENTS.md` under Root Contra
 - A memory evaluation suite covering operation accuracy, retrieval ranking, judge calibration, and exactly 12 documented failure modes pinned as regressions (fm-01 through fm-12, currently 12/12 passing), plus four further lanes: `mpbench`, `poison-corpus`, `quality-axes`, and `recall-qa`.
 - Receipt-backed results: operation-accuracy macro `opsF1` 0.992; judge calibration 0/8 false-positive rate with perfect agreement and no positional bias; cold-start retrieval recovery from 0/6 to 6/6 at hit@5, and a repeated-task cost drop from 30 capped turns to 9.
 - Research testbenches for small local LLMs (a llama.cpp lane), zero-LLM techniques (ONNX encoders, MinHash, LexRank, BM25 with RRF fusion, ETIN), and complementary mechanisms (speculative decoding, semantic caching). Honest status: these are testbenches, mostly not shipped. The exception that lives on in the engine is the ONNX embedder lane (bge-small embeddings with a deterministic lexical fallback and loss-free backend-switch re-embedding); the zero-LLM dream lanes were retired by the 2026-10-22 Mem0 swap.
-- Verification scale at v0.0.53: the release matrix reports 5,326 engine tests passing with 0 failing, across 224 test files at the suite root plus an integration lane; 15/15 on the end-to-end lane (5 Playwright spec files: a11y, blog, dex-video, landing scroll budget, SEO); and 14/14 plus 9/9 on the live PTY lanes, which drive the real terminal and assert pane truth rather than mocking the UI.
+- Verification scale at v0.0.54: the release matrix reports 5,326 engine tests passing with 0 failing, across 224 test files at the suite root plus an integration lane; 15/15 on the end-to-end lane (5 Playwright spec files: a11y, blog, dex-video, landing scroll budget, SEO); and 14/14 plus 9/9 on the live PTY lanes, which drive the real terminal and assert pane truth rather than mocking the UI.
 
 ## Stack and project
 
-- TypeScript on Bun (floor 1.4, badge 1.4.3; `scripts/install.ts` enforces it), Next.js 16.4.1, React 19.3.1, Tailwind 4.3.3 for the landing page and blog.
+- TypeScript on Bun (floor 1.4, badge 1.4.3; `scripts/install.ts` enforces it), Next.js 16.4.3, React 19.3.1, Tailwind 4.3.3 for the landing page and blog.
 - Engine state in SQLite via better-sqlite3 (runs, cycles, dreams, memory versions, hook log, processes, delegations, webcache), Mem0 (`mem0ai` 3.3.1) as the in-process memory platform, web-tree-sitter for the repomap, and TypeBox for schemas. Both the engine and the bridge serve over bare `Bun.serve`, with no HTTP framework in the dependency tree.
 - Service map: engine `:3030` (bearer-token gated), llm-bridge `:3031`, an optional `zai-upstream` shim `:3032`, landing page `:3000`.
 - Public repo, MIT license, Code of Conduct, contributing guide, security policy, support doc, and nine CI workflows.
-- Snapshot as of 2026-11-01: 882 commits on `main`, v0.0.53 latest release, repo created 2026-08-26, 2 open issues (a headless-exit hang and engine-versus-interactive bridge contention) and 2 open dependabot PRs.
+- Snapshot as of 2026-11-01: 894 commits on `main`, v0.0.54 latest release, repo created 2026-08-26, 2 open issues (a headless-exit hang and engine-versus-interactive bridge contention) and 7 open dependabot PRs.
 
 ## Appendix A: corrections against the earlier draft
 

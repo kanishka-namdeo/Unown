@@ -7,8 +7,8 @@
 
 - Round owner: the dependency session (lineage: release-recovery round →
   this round; the first v0.0.54 content)
-- Status: **in flight** — dependency updates verified locally; release
-  phase pending (see the phase ledger)
+- Status: **complete** — updates landed and gated, v0.0.54 tagged on green
+  CI and published
 - Related pages: [the research and decision record](dependency-round-research.md) ·
   [the release-recovery round](release-recovery-session.md) ·
   [testing strategy](testing-strategy.md) · [updating](updating.md)
@@ -98,17 +98,65 @@ assert exists for; killing the stale process restored a clean pass.
 
 ## CP4 — the release
 
-- CHANGELOG: the dependency round's entry joined `## [Unreleased]`'s
-  Changed section; the rail regenerated in the same commit
-  (`bun run check:changelog` green).
-- Version bump 0.0.53 → 0.0.54 (package.json — the single source of
-  truth), `[Unreleased]` folded into `## [0.0.54] - 2026-11-01`, rail
-  regenerated, README documentation row + `unown-overview.md` re-stamped.
-- The bump commit is the release candidate: CI's `cross-platform-gate`
-  runs the macOS + Windows legs on it (the per-OS spend rule), and the
-  tag `v0.0.54` goes on the green SHA only — the release-recovery
-  round's lesson.
-- *(this section is finalized at closeout — see below)*
+- **The fold tripped the landing scroll budget on the first local cut** — the
+  52nd rail stop's chrome measured the page at 3,930 words against the 3,920
+  ceiling (the e2e budget gate caught it before the release commit left the
+  machine). The sanctioned first move — compressing the round's own listed
+  changelog title — turned out to be a **page-level no-op**: the rail prints
+  titles only for the `Added`/`Behavior` buckets (`LISTED` in
+  `changelog.tsx`), and this round's entries are all `Changed`/`Fixed`, so
+  the stop spends chrome alone (measured 3,930 before AND after; the CHANGELOG
+  title edit stays — it is what GitHub and the file read). The **twelfth
+  ceiling amendment 3,920 → 3,950** carries the stop's chrome plus one stop
+  of headroom, documented in all three surfaces the budget lives
+  (`e2e/landing-budget.spec.ts`, `scripts/landing_audit.mjs`, the landing
+  AGENTS.md ledger — the 0.0.48 no-divergence lesson applied; the first cut
+  of this record claimed "post-compression 3,923" from arithmetic instead
+  of a measurement and was corrected). Full e2e 15/15 after the fix.
+- Version bump 0.0.53 → 0.0.54, `[Unreleased]` folded into
+  `## [0.0.54] - 2026-11-01`, rail regenerated — release commit
+  `3facce9a`.
+- The bump commit triggered the full 3-OS CI matrix (the spend-gate rule):
+  **run 41287629614 green, 19/19 jobs** — cross-platform gate detected the
+  bump, macOS + Windows `Build + test` legs ran, security scan (audit
+  clean), e2e, coverage, docs, theme, palette, mermaid all green.
+- Tag `v0.0.54` cut on the green SHA `3facce9a`; release workflow run
+  `41288475612`: `ci-green` passed (the gate that failed v0.0.53's first
+  cut), then the 3-OS release assertions, the 6-binary build + SBOM, all
+  five artifact smoke legs, publish, feed verification and the 3-OS
+  install smokes — **completed success on attempt 2**.
+- **The one flake, with its receipt.** Attempt 1's Windows assertion failed
+  on a single engine test — `delegations store schema (the F34 boot pin) >
+  a FRESH database constructs and carries both delegations objects` —
+  timing out at 5,076 ms against its 5,000 ms limit. The same test on the
+  same SHA on the same `windows-latest` runner family took **220.99 ms**
+  in the push-event CI run's Windows `Build + test` leg (job `124792077390`),
+  a 23x variance — a runner-level disk hiccup on fresh-DB construction, not
+  a code change (the round touches no engine source; `pi-repo/` is
+  byte-identical). Failed jobs were rerun via the API
+  (`rerun-failed-jobs`, attempt 2); the test passed and the release
+  published. Recorded here as the borderline-timeout flake class for the
+  next Windows red.
+
+## CP5 — the closeout
+
+- Blog post `content/blog/2026-11-01-the-dependency-round.md` (release
+  type, text-only per the release-post media rule — no referenced visual
+  changed, and the pixel diff is the round's evidence) + regenerated blog
+  data and feed.
+- README documentation-table row for the round; `docs/updating.md`'s
+  Related pages gains the round's research record;
+  `unown-overview.md` re-stamped (version, commit, date, repo-stat
+  snapshot).
+- The living project memory (`.unown/memory/project.md`) rides along —
+  AutoDream re-rendered it while the stack ran this session (all lines
+  preserved, order reshuffled; the f16e8fda precedent).
+- SESSION.md's active round graduates to the completed-round pointer and
+  the next round's queue stands as recorded.
+- Post-release user-side verification: `unown update --check` →
+  `unown 0.0.54 — up to date (latest release: v0.0.54)`, exit 0; the
+  published release carries 13 assets (six per-OS binaries, installers,
+  `release.json`, SBOM, checksums), published 2026-11-01T09:51:07Z.
 
 ## Phase ledger
 
@@ -118,14 +166,15 @@ assert exists for; killing the stale process restored a clean pass.
 | 1 research + decisions | ✅ | `docs/dependency-round-research.md` |
 | 2 staged updates + gates | ✅ | CP2 above |
 | 3 visual A/B (framer-motion) | ✅ | CP3 above |
-| 4 CHANGELOG + deps commit | 🔜 | `CHANGELOG.md` [Unreleased] entry + rail |
-| 5 version bump + 3-OS CI + tag v0.0.54 | 🔜 | release commit on the green SHA |
-| 6 blog + README row + overview re-stamp + DOX closeout | 🔜 | `content/blog/2026-11-01-the-dependency-round.md` |
+| 4 CHANGELOG + deps commit | ✅ | `6a46d0ce` |
+| 5 version bump + 3-OS CI + tag v0.0.54 | ✅ | `3facce9a` + run `41287629614` (19/19) + tag on the green SHA |
+| 6 release workflow (build/publish/feed/install) | ✅ | run `41288475612` |
+| 7 blog + README row + overview re-stamp + DOX closeout | ✅ | CP5 above |
 
-**Resume-from-here:** the dependency tree is updated and verified in the
-working tree (package.json + bun.lock modified, nothing else); commit it
-with the CHANGELOG entry, then the release sequence. The engine/bridge
-services may be running from an earlier `agent:start` (`bun run
-agent:stop` cleans up); a stale `next-server` on :3111 is killed with
-`pkill -9 -f next-server` (the process renames itself — a
-`standalone/server.js` pattern misses it).
+**Resume-from-here:** the round is complete; the next round's queue is
+recorded in `docs/SESSION.md` (the S2 ledger's head, the injection-scanner
+ML classifier, the delegation round's subagent-reuse axis, OB-7, the
+landing next-round queue, the term.ts snapshot-class follow-up). The
+engine/bridge services can be stopped with `bun run agent:stop`; a stale
+`next-server` on :3111 is killed with `pkill -9 -f next-server` (the
+process renames itself — a `standalone/server.js` pattern misses it).
