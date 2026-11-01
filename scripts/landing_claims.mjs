@@ -537,11 +537,18 @@ function buildSource(name, text) {
  *      An instance-shaped paraphrase ("candidate passed") shares no 12-char
  *      window with the real line and still fails, which is the point.
  */
-function matchLiteral(literal, bundles) {
+function matchLiteral(literal, bundles, opts = {}) {
   const L = fold(collapse(literal));
   if (!L) return bundles[0] ?? null;
   for (const b of bundles) {
     if (b.compact.includes(L)) return b;
+    // EXACT routes stop at verbatim containment. The leniency below exists
+    // for INTERPOLATED engine logs (a page pinning one `${}` instance); on an
+    // authored-markdown source like the memory file, extractTemplates reads
+    // markdown code spans as bogus template segments and the shared-window
+    // rule let a fully pruned line pass on an unrelated 12-char window —
+    // the silent half of issue #46's occurrence 2. See the memory route.
+    if (opts.exact) continue;
     for (const segs of b.templates) {
       if (segs[0] && segs[0].length >= MIN_LITERAL && L.startsWith(segs[0])) return b;
       for (const seg of segs) {
@@ -609,8 +616,19 @@ function gate(pages, sources) {
     // The dream beat quotes this repository's own project memory and calls the
     // lines verbatim. AutoDream rewrites that file on a schedule, which is
     // precisely why it is gated rather than exempted: each line must appear as
-    // written, so no chaining and no prefix leniency.
-    { page: PAGES.loop, rows: parseBeats(pages[PAGES.loop], "dream"), bundles: [sources.memory] },
+    // written — EXACT matching, no chaining, no prefix or shared-window
+    // leniency. The leniency is for interpolated engine logs; on the memory
+    // file it read markdown code spans as template segments and let a pruned
+    // line pass on an unrelated 12-char window (issue #46, occurrence 2 — the
+    // silent-drift half). A failure's remedy is the Manual notes lane.
+    {
+      page: PAGES.loop,
+      rows: parseBeats(pages[PAGES.loop], "dream"),
+      bundles: [sources.memory],
+      exact: true,
+      remedy:
+        "restore the line under ## Manual notes in .unown/memory/project.md — the lane AutoDream preserves verbatim across every re-render (docs/memory.md) — quoted lines must never live only in a dream-rendered section",
+    },
     {
       page: PAGES.hero,
       rows: parseCommands(pages[PAGES.hero]).map((r) => ({ ...r, match: commandClaim(r.cmd) })),
@@ -638,10 +656,16 @@ function gate(pages, sources) {
     const bad = route.chained
       ? matchRows(route.rows, route.bundles)
       : route.rows
-          .filter((row) => !matchLiteral(literalOf(row), route.bundles))
+          .filter((row) => !matchLiteral(literalOf(row), route.bundles, { exact: route.exact }))
           .map((row) => ({ line: row.line, literal: literalOf(row) }));
     for (const f of bad) {
-      failures.push({ page: route.page, line: f.line, literal: f.literal, sources: route.bundles.map((b) => b.name) });
+      failures.push({
+        page: route.page,
+        line: f.line,
+        literal: f.literal,
+        sources: route.bundles.map((b) => b.name),
+        remedy: route.remedy,
+      });
     }
   }
   return { failures, checked };
@@ -650,9 +674,13 @@ function gate(pages, sources) {
 const clip = (s, n) => (s.length > n ? `${s.slice(0, n - 1)}…` : s);
 
 /** One line per failure, the shape CI output is read for:
- *  FAIL  <file>:<line>  "<the literal the page shows>"  not found in <source file> */
+ *  FAIL  <file>:<line>  "<the literal the page shows>"  not found in <source file>
+ *  A route may carry a remedy (the memory route does) — printed on the
+ *  follow-up line so the fix is in the failure itself, not in tribal memory. */
 const renderFailure = (f) =>
-  `FAIL  ${f.page}:${f.line}  "${clip(collapse(f.literal), 72)}"  not found in ${f.sources.join(" or ")}`;
+  `FAIL  ${f.page}:${f.line}  "${clip(collapse(f.literal), 72)}"  not found in ${f.sources.join(" or ")}${
+    f.remedy ? `\n      remedy: ${f.remedy}` : ""
+  }`;
 
 /* ------------------------------------------------------------------ */
 /* main                                                                */

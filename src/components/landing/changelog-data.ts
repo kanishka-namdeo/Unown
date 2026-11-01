@@ -30,14 +30,14 @@ export interface ChangelogStop {
   groups: ChangelogGroup[];
 }
 
-export const CHANGELOG_TOTAL_ENTRIES = 512;
+export const CHANGELOG_TOTAL_ENTRIES = 513;
 
 export const CHANGELOG_TOTALS: Record<ChangelogBucket, number> = {
   "Added": 232,
   "Changed": 32,
   "Deprecated": 0,
   "Removed": 3,
-  "Fixed": 194,
+  "Fixed": 195,
   "Security": 5,
   "Behavior": 46
 };
@@ -46,13 +46,13 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
   {
     "label": "Unreleased",
     "date": null,
-    "total": 6,
+    "total": 7,
     "counts": {
       "Added": 1,
       "Changed": 0,
       "Deprecated": 0,
       "Removed": 0,
-      "Fixed": 4,
+      "Fixed": 5,
       "Security": 0,
       "Behavior": 1
     },
@@ -78,6 +78,10 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
       {
         "bucket": "Fixed",
         "items": [
+          {
+            "title": "The dream-render/landing-quote coupling is closed on all three fronts (#46) — the memory route of the claims…",
+            "behavior": false
+          },
           {
             "title": "Screenshots no longer write JPEG bytes under a .png name — the filename's extension is honored…",
             "behavior": false

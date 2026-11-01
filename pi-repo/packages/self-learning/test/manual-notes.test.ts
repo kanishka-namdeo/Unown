@@ -165,6 +165,40 @@ describe("renderProjectMemoryMarkdown — manual-notes preservation", () => {
                 });
                 expect(out).not.toContain("## Manual notes");
         });
+
+        test("a landing-quoted line survives a render that prunes its platform-memory twin (issue #46)", () => {
+                // Occurrence 1's shape: the line the landing page's memory
+                // preview quotes exists BOTH as a platform memory (dream-rendered,
+                // subject to the render cap — the OLDEST bullets drop first) and in
+                // the Manual notes lane. The render prunes the platform twin; the
+                // Manual-notes copy must survive verbatim. The claims gate
+                // (scripts/landing_claims.mjs) holds the page to this exact line —
+                // this pin holds the renderer to preserving its durable home.
+                const quoted = "Failed cycles auto-recover — do NOT restart engine to fix them.";
+                const memories = Array.from({ length: 120 }, (_, i) => ({
+                        id: `reg-${i}`,
+                        text: `newer regular fact ${i}, filed after the quoted line`,
+                        metadata: { kind: "note" },
+                        updatedAt: new Date(1_700_000_000_000 + i * 1_000).toISOString(),
+                }));
+                memories.push({
+                        id: "quoted-twin",
+                        text: quoted,
+                        metadata: { kind: "note" },
+                        updatedAt: new Date(1_699_999_000_000).toISOString(), // the OLDEST — first against the cap
+                });
+                const previous = `# Project Memory\n\n## Manual notes\n- ${quoted} (durable home)\n`;
+                const out = renderProjectMemoryMarkdown(memories, {
+                        preserveManualNotesFrom: previous,
+                        maxBullets: 110,
+                });
+                // the Manual-notes copy is verbatim
+                expect(out).toContain(`- ${quoted} (durable home)`);
+                // the platform twin was pruned: the sentence appears exactly once
+                expect(out.split(quoted).length - 1).toBe(1);
+                // and the render says it pruned (bounded degradation, visible)
+                expect(out).toContain("oldest pruned at render");
+        });
 });
 
 // ------------------------------------------------- the import + pristine pins

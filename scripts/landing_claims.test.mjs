@@ -432,3 +432,78 @@ test("the project-memory route can say no — a dream line not in the file fails
   assert.equal(failures[0].literal, "- A rule AutoDream never wrote, paraphrased by hand.");
   assert.deepEqual(failures[0].sources, [".unown/memory/project.md"]);
 });
+
+test("the memory route is EXACT — a shared 12-char window from markdown code spans must not satisfy it (issue #46, occurrence 2)", () => {
+  // The silent-drift half of #46: the stealth line was pruned from
+  // .unown/memory/project.md and the gate stayed green. Root cause: the
+  // memory file is authored markdown, but extractTemplates read its backtick
+  // code spans as JS template literals, and the shared-window leniency
+  // (built for interpolated engine logs) passed the pruned literal because
+  // an UNRELATED entry elsewhere in the file shared the 12-char window
+  // " verificatio" with it. The exact route closes the class: verbatim
+  // containment or failure, nothing else.
+  const dreamLiteral = "- Stealth verification suite on bot.sannysoft.com: all 10 checks pass.";
+  const memoryText = [
+    "# Project Memory",
+    "",
+    "## Known pitfalls",
+    "- A rule AutoDream wrote and kept.",
+    "",
+    "## Facts",
+    // an unpaired backtick (prose like "press ` then enter") shifts the
+    // scanner's backtick pairing: the code span that follows no longer pairs
+    // with itself, and the text BETWEEN spans becomes a long bogus template
+    // segment — exactly the real file's shape (82 pseudo-templates)
+    "- press ` then enter to confirm.",
+    "- The `PI_MODEL_ID` env var pins the model; the setup step performs one verification of it.",
+    "",
+    "## Manual notes",
+    "- (the quoted line was pruned — this file does NOT contain it)",
+  ].join("\n");
+  const memory = buildSource(".unown/memory/project.md", memoryText);
+  // the shifted pairing must actually produce a segment carrying the window —
+  // " verification" with the leading space, the occurrence-2 shape — or the
+  // fixture is not reproducing the leak it exists to pin
+  const window = " verification";
+  assert.ok(
+    memory.templates.some((segs) => segs.some((s) => s.includes(window))),
+    "fixture must build a bogus template segment containing the shared window",
+  );
+  // the lenient path (what the route used to use) WOULD pass it — pin that
+  // the leak existed by proving matchLiteral without exact still resolves…
+  assert.ok(
+    matchLiteral(dreamLiteral, [memory]) !== null,
+    "fixture must reproduce the leak: the lenient matcher passes the pruned line",
+  );
+  // …and the exact path refuses it.
+  assert.equal(matchLiteral(dreamLiteral, [memory], { exact: true }), null);
+});
+
+test("an exact memory failure renders with the Manual-notes remedy on its own line", () => {
+  const pages = fixturePages({
+    hook: '  ["SessionStart", "log", "session started (memory v6)"],\n',
+    work: '  "Terminal session in /x (1 min): 2 prompt(s),",\n',
+    learn: '  "baseline passed — no improvement needed",\n',
+    dream: '  "- A rule AutoDream never wrote, paraphrased by hand.",\n',
+    commands: '  ["unown setup", "wizard"],\n',
+    slash: '<code>/plan</code>',
+  });
+  const { failures } = gate(pages, fixtureSources(FULL_HELP));
+  assert.equal(failures.length, 1);
+  assert.match(renderFailure(failures[0]), /not found in \.unown\/memory\/project\.md$/m);
+  assert.match(renderFailure(failures[0]), /^      remedy: restore the line under ## Manual notes/m);
+  // non-memory routes carry no remedy line
+  const { failures: cmdFailures } = gate(
+    fixturePages({
+      hook: '  ["SessionStart", "log", "session started (memory v6)"],\n',
+      work: '  "Terminal session in /x (1 min): 2 prompt(s),",\n',
+      learn: '  "baseline passed — no improvement needed",\n',
+      commands: '  ["unown dream", "start a dream run"],\n',
+      slash: '<code>/plan</code>',
+    }),
+    fixtureSources(FULL_HELP),
+  );
+  assert.equal(cmdFailures.length, 1);
+  assert.equal(cmdFailures[0].remedy, undefined);
+  assert.doesNotMatch(renderFailure(cmdFailures[0]), /remedy:/);
+});

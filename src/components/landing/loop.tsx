@@ -111,6 +111,14 @@ const BEATS: Beat[] = [
     title: "Then the notes become a file you can read.",
     lead: "AutoDream extracts atomic memories through the Mem0 learning core, reconciles them — newest evidence wins, hard-won rules preserved — and renders the scope into topic sections with a provenance footer. A canary gates it all, rolling back if the last-passing task stops passing.",
     filename: ".unown/memory/project.md",
+    // CONVENTION (issue #46): every line quoted below is a VERBATIM claim
+    // against .unown/memory/project.md, gated exactly by check:claims (no
+    // template leniency — a pruned line reddens CI with a remedy pointing
+    // here). AutoDream re-renders every section of that file on a schedule,
+    // so a quoted line must NEVER live only in a dream-rendered section:
+    // its durable home is the "## Manual notes" lane, which the dream
+    // renderer preserves verbatim across every re-render (docs/memory.md).
+    // Edit this body only together with the memory file's Manual notes.
     body: [
       "# Project Memory",
       "",
