@@ -12,9 +12,12 @@
 
 - Round owner: the browser autonomy session (lineage: security round → this
   round)
-- Status: **open** — CP0-CP2 complete (browser runtime VALIDATED, stress
-  suite 3/3, F1-F3 findings ledger, memory loop closed once); next: CP3
-  self-dogfooding
+- Status: **closing** — CP0-CP6 complete: the browser tool VALIDATED on a
+  hostile page (5/5), two real defects found and fixed in-round (F3 iframe
+  fill race, F4 dev-origin hydration), the memory loop receipted both ways,
+  the competitor research and the benchmark suite committed, the blog post
+  live; the remaining lane (a second docs-navigation technology for the
+  warm docs benchmark) is queued, not skipped silently
 - Related pages: [browser](browser.md) · [browser research](browser-research.md)
   (the seven-product reverse-engineering the tool's shape rests on) ·
   [testing strategy](testing-strategy.md) · [the benchmarks' own
@@ -227,19 +230,94 @@ Benchmark impact recorded in
 
 ## CP4 — the competitor research pass (BROWSER-1 + BROWSER-3 + BROWSER-6)
 
-Planned: the browser-driven sweep with citations; one docs-navigation build
-task; release-monitoring snapshots.
+Complete; the record is
+[browser-autonomy-competitor-research.md](browser-autonomy-competitor-research.md)
+(eight systems, every claim URL-cited, tiered [V]/[C]/[U], the adopt/reject
+ledger). The headline that grounds the round's own thesis: **no shipping
+browser agent persists a memory of failed actions between sessions** — the
+closest any system comes is caching successes (Stagehand) or hard-failing
+replays (Browser Use); the academic WebArena entries (Agent Workflow Memory,
+ColorBrowserAgent, AutoManual) prove double-digit gains from exactly the
+mechanism class Unown already ships. The benchmark landscape read: headline
+boards are stale/frozen; the live frontier is Online-Mind2Web (97%+ for
+specialists) and long-horizon OSWorld 2.0, where everyone is stuck ≤21%.
+
+- **BROWSER-3 (docs navigation)**: MDN `Intl.Segmenter` — a technology not
+  previously used this session — discovered, navigated (main page +
+  subpages), extracted, implemented, run and verified in 9 calls / 33.1 s
+  with zero interventions and the exact source URL cited (receipt
+  `docs-navigation-mdn.jsonl`). VALIDATED.
+- **BROWSER-6 (release monitoring)**: the browser sweep loaded all three
+  competitor releases pages anonymously (no login wall), extracted the
+  latest versions, and every version cross-validated against the research
+  subagent's independent WebSearch sweep — identical on all three (receipt
+  `release-monitoring.jsonl`). The warm lane is armed: the weekly read-only
+  routine `auto-mvxw0wne-onkwcn` (created via `unown routines create`, next
+  run 2026-11-08) diffs against this round's baseline and notes only
+  deltas. Multi-day continuity is honestly out of one session's reach —
+  this log is the resumption contract.
 
 ## CP5 — the memory audit at close (BROWSER-7, full round)
 
-CP2b carries the early evidence (dreams v1/v2, the recall-vs-application
-split). This checkpoint closes the loop at round end: the full memory diff
-attributed per lane (which browser-derived facts survived, which went
-stale), the recall/staleness numbers over the round's own sessions, and the
-skill candidates minted from recurring browser procedures.
+- **What the dreams learned from the round**: browser facts now in project
+  memory include the cookie-banner and newsletter-modal dismissal paths,
+  the cross-frame address-form handling, the screenshots-directory
+  convention, the jpeg-under-`.png` quirk (caught from transcripts alone),
+  and the exact native-dialog procedure (arm `browser dialog accept` before
+  the opening click, one-shot, re-armed after use).
+- **What the round learned about the memory**: (a) recall is real — the
+  post-dream run recovered from the dialog trap directly, without
+  exploration; (b) proactive application is not — [#45](https://github.com/kanishka-namdeo/Unown/issues/45)
+  carries the tool-time-hint proposal; (c) dreams can prune lines the
+  landing page quotes (F5) — the manual-notes lane is the durable home and
+  the round restored the pruned line there with its provenance, following
+  the parley-scrypt precedent; (d) the engine's own harness ran its
+  benchmark tasks during the round (fix-fizzbuzz passed) — the learning
+  system learning from the round that was stress-testing it.
+- **Skill candidates**: the round's browser procedures (hostile-page
+  checkout: dismiss interstitials → wait for armed controls → fill
+  frame-verified → arm dialogs before confirm-guards) are a candidate
+  `.unown/skills/` entry; deliberately NOT auto-promoted (the discovery
+  root is human `mv` per the 2026-10-22 hardening) — left as the next
+  round's decision.
 
 ## CP6 — the benchmark suite and the closeout
 
-Planned: cold/warm receipts under `benchmarks/browser-autonomy-round/`; the
-mission's table; the CHANGELOG `[Unreleased]` section; README + DOX + blog;
-the final report in the mission's format.
+- The suite: [benchmarks/browser-autonomy-round/](../benchmarks/browser-autonomy-round/)
+  — fixtures, per-run receipts (session JSONL + transcripts + screenshots),
+  the pinned summary, and [RESULTS.md](../benchmarks/browser-autonomy-round/RESULTS.md)
+  (the mission's ten benchmarks with cold/warm columns and honest nulls;
+  the stress-checkout five-run table; the nine-lane verdict table).
+- **Verification discipline for the F3 fix**: the engine suite ran the
+  full matrix — the first run showed 3 failures, which the control
+  experiments attributed to sandbox interference (the live engine +
+  concurrent agent sessions), not the diff: the same tests pass in
+  isolation on both trees, the pristine full suite is green in a quiet
+  sandbox, and the changed tree re-ran the full 5442-test suite **green
+  twice consecutively** in the quiet sandbox. The live browser suite
+  (42/42 with a real Chromium) pins the fix itself.
+- The blog post: [the browser autonomy round](../content/blog/2026-11-01-the-browser-autonomy-round.md)
+  (live at `/blog`), the CHANGELOG `[Unreleased]` section carries both
+  fixes with their receipts, and the issues [#43](https://github.com/kanishka-namdeo/Unown/issues/43) /
+  [#44](https://github.com/kanishka-namdeo/Unown/issues/44) /
+  [#45](https://github.com/kanishka-namdeo/Unown/issues/45) carry what was
+  filed rather than fixed (the F1 screenshot-extension reconciliation;
+  the F2 tool-time memory hints).
+- **The fallback ledger** (the browser-first rule, every deviation):
+  1. GitHub web login for issue creation — attempted via the browser,
+     receipted (`github-login-browser-probe.jsonl`): a PAT cannot sign the
+     web UI (username/password + 2FA only, by design). Fallback: the REST
+     API. Root cause: provider policy, not a tool limitation.
+  2. GitHub releases pages — no fallback needed (loaded anonymously).
+  3. MDN — no fallback needed.
+  4. The landing-page audit — no fallback needed (local dev server after
+     the F4 fix; the production site independently verified).
+  5. Third-party authenticated platforms (BROWSER-4's live-login lane) —
+  no real login surface existed in the sandbox; recorded as the round's
+  honest gap rather than faked.
+- Queued for the next round (recorded, not silently dropped): the warm
+  docs-navigation benchmark on a second technology; the F1 fix ([#44](https://github.com/kanishka-namdeo/Unown/issues/44));
+  the [#45](https://github.com/kanishka-namdeo/Unown/issues/45) tool-time
+  hint lane; the skill-promotion decision; the routine's first real weekly
+  run.
+

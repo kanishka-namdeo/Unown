@@ -262,7 +262,7 @@ the result names the tiers attempted and the reason each failed.
 | `start` | `headless`, `stealth`, `width`, `height` | Start (or report) the browser; `stealth` must match the whole session; auto-runs on first use anyway |
 | `stop` | — | Close the browser gracefully (also runs on session end) |
 | `status` | — | Running state, executable, profile, viewport, entry counts |
-| `navigate` | `url` | Open a URL (bare hosts get `https://`); waits for load + settle, returns a snapshot |
+| `navigate` | `url` | Open a URL (bare hosts get `https://`); waits for load + settle — including same-origin iframes (a frame still on its initial `about:blank` counts as loading) — then returns a snapshot |
 | `back` / `forward` / `reload` | — | History navigation |
 | `snapshot` | `includeBoxes` | The a11y tree with `[eN]` refs (caps: 400 elements / 60k chars, with a truncation note) |
 | `find` | `text` | Grep the current snapshot for matching elements — the cheap narrowing move on big pages |
@@ -271,7 +271,7 @@ the result names the tiers attempted and the reason each failed.
 | `hover` | `ref`/`selector` | Hover (menus that need it) |
 | `type` | `ref`/`selector`, `text`, `submit`, `clear` | Type text (cleared first with `clear`); `submit` presses Enter |
 | `press_key` | `key` | A key or combo — `Enter`, `Control+a`, `cmd+shift+p` |
-| `fill_form` | `fields: [{ref|selector, value}]` | Fill many fields in one call, then submit separately — one round-trip instead of N |
+| `fill_form` | `fields: [{ref\|selector, value}]` | Fill many fields in one call, then submit separately — one round-trip instead of N. Every text field is verified after the fill (re-resolved through shadow roots and iframes): a value that did not land — the element's document was replaced mid-fill, an iframe finishing its load — is re-filled once, and a persistent loss fails loudly with the per-field reason instead of a silent success |
 | `select_option` | `ref`/`selector`, `values` | Native select values/labels |
 | `scroll` | `direction`, `amount`, `ref`/`selector` | Scroll the page (or an element) up/down/left/right |
 | `drag` | `startRef`/`startSelector`, `endRef`/`endSelector` | Drag from one element to another |

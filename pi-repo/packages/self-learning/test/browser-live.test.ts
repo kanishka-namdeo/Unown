@@ -94,6 +94,60 @@ const POPUP_PAGE = `<!doctype html><html><head><title>Popup Child</title></head>
   <button id="approve" onclick="try { window.opener.document.getElementById('out').textContent = 'popup approved'; } catch (e) { document.title = 'no opener'; } window.close();">Approve in popup</button>
 </body></html>`;
 
+// F3 fixtures (browser autonomy round): the host page appends its iframe
+// AFTER the load event, so the top document reads complete while the frame
+// is still loading — the exact silent-loss window the round reproduced.
+const RACE_HOST_PAGE = `<!doctype html>
+<html><head><title>Race host</title></head>
+<body>
+  <h1>Race host</h1>
+  <div id="slot"></div>
+  <script>
+    window.addEventListener('load', () => {
+      const f = document.createElement('iframe');
+      f.src = '/iframe-race-inner';
+      f.title = 'race';
+      document.getElementById('slot').appendChild(f);
+    });
+  </script>
+</body></html>`;
+
+const RACE_INNER_PAGE = `<!doctype html>
+<html><head><title>Race inner</title></head>
+<body>
+  <label for="racename">Race name</label>
+  <input id="racename" type="text">
+  <button id="racesave" onclick="document.getElementById('raceout').textContent = 'saved[' + document.getElementById('racename').value + ']'">Save</button>
+  <span id="raceout"></span>
+  <script>
+    // simulates the F3 loss class deterministically: the value wipes itself
+    // ONCE, 120 ms after the first input lands — the pre-fix fill_form
+    // reported this as a silent success
+    const el = document.getElementById('racename');
+    el.addEventListener('input', () => {
+      if (!window.__wiped) {
+        window.__wiped = 1;
+        setTimeout(() => { el.value = ''; }, 120);
+      }
+    });
+  </script>
+</body></html>`;
+
+const LATE_FRAME_PAGE = `<!doctype html>
+<html><head><title>Late frame host</title></head>
+<body>
+  <h1>Late frame host</h1>
+  <div id="slot"></div>
+  <script>
+    window.addEventListener('load', () => {
+      const f = document.createElement('iframe');
+      f.src = '/slow';
+      f.title = 'late';
+      document.getElementById('slot').appendChild(f);
+    });
+  </script>
+</body></html>`;
+
 function startFixtureServer(): Promise<{ url: string; stop: () => void }> {
 	const server = Bun.serve({
 		port: 0,
@@ -104,6 +158,10 @@ function startFixtureServer(): Promise<{ url: string; stop: () => void }> {
 			if (url.pathname === "/page2") return new Response(PAGE2, { headers: { "content-type": "text/html" } });
 			if (url.pathname === "/iframe-inner")
 				return new Response(IFRAME_PAGE, { headers: { "content-type": "text/html" } });
+			if (url.pathname === "/iframe-race") return new Response(RACE_HOST_PAGE, { headers: { "content-type": "text/html" } });
+			if (url.pathname === "/iframe-race-inner")
+				return new Response(RACE_INNER_PAGE, { headers: { "content-type": "text/html" } });
+			if (url.pathname === "/late-frame") return new Response(LATE_FRAME_PAGE, { headers: { "content-type": "text/html" } });
 			if (url.pathname === "/popup-child")
 				return new Response(POPUP_PAGE, { headers: { "content-type": "text/html" } });
 			if (url.pathname === "/download") {
@@ -432,6 +490,26 @@ describe.skipIf(!LIVE || !browserAvailable)("browser live loop", () => {
 		);
 		expect(String(out.details?.[0])).toContain("shadow clicked deep");
 	}, 30_000);
+
+	test("stress: F3 — a fill that loses its value is re-filled and verified, never silent", async () => {
+		await session.navigate(fixture.url + "/iframe-race");
+		// the inner field wipes its value once, 120 ms after the first input
+		// lands — the pre-fix behavior reported this fill as a silent success
+		const report = await session.fillForm([{ selector: "#racename", value: "persisted-value" }]);
+		const out = await session.evalCode(
+			`document.querySelector('iframe').contentDocument.getElementById('racename').value`,
+		);
+		expect(String(out.details?.[0])).toBe("persisted-value");
+		// the wipe happened and was caught: the refill note is the receipt
+		expect((report.details ?? []).some((d) => String(d).includes("re-filled"))).toBe(true);
+	}, 60_000);
+
+	test("stress: F3 — navigate waits for post-load same-origin frames (the snapshot sees the frame)", async () => {
+		const report = await session.navigate(fixture.url + "/late-frame");
+		// the frame joins after the host load and its document takes 600 ms —
+		// the frame-inclusive ready gate must hold the snapshot until it lands
+		expect(report.snapshot).toContain("slow content arrived");
+	}, 60_000);
 
 	test("stress: iframe refs type, submit and read results inside the frame", async () => {
 		await session.navigate(fixture.url);

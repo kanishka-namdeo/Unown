@@ -17,6 +17,7 @@ import {
 } from "../src/browser/config.ts";
 import { formatSnapshot, snapshotRefs, SNAPSHOT_SCRIPT } from "../src/browser/a11y.ts";
 import { modifierBits, parseKeyCombo } from "../src/browser/cdp.ts";
+import { fieldChecksProbe, PAGE_READY_PROBE } from "../src/browser/probes.ts";
 
 // ---------------------------------------------------------------------------
 // discovery
@@ -269,5 +270,53 @@ describe("browserEnv: UNOWN_BROWSER_NO_SANDBOX", () => {
             if (before === undefined) delete process.env.UNOWN_BROWSER_NO_SANDBOX;
             else process.env.UNOWN_BROWSER_NO_SANDBOX = before;
         }
+    });
+});
+
+// ---------------------------------------------------------------------------
+// page probes (the F3 fix — browser autonomy round, 2026-11-01)
+// ---------------------------------------------------------------------------
+
+describe("PAGE_READY_PROBE (frame-inclusive readiness)", () => {
+    test("waits for same-origin iframes, not just the top document", () => {
+        expect(PAGE_READY_PROBE).toContain('document.querySelectorAll("iframe")');
+        expect(PAGE_READY_PROBE).toContain('f.contentDocument');
+        expect(PAGE_READY_PROBE).toContain('"frame-loading"');
+    });
+    test("cross-origin frames are exempt (the try/catch on contentDocument)", () => {
+        expect(PAGE_READY_PROBE).toContain("catch (e) {}");
+    });
+    test("a src-bearing frame still on its initial about:blank is NOT ready", () => {
+        // the initial empty document reports readyState complete before the
+        // src navigation commits — the probe must keep waiting for it
+        expect(PAGE_READY_PROBE).toContain('f.src && d.URL === "about:blank"');
+    });
+    test("ready answer is the top document's own readyState (complete/interactive pass through)", () => {
+        expect(PAGE_READY_PROBE).toContain('if (rs !== "complete" && rs !== "interactive") return rs;');
+        expect(PAGE_READY_PROBE).toContain("return rs;");
+    });
+});
+
+describe("fieldChecksProbe (post-fill persistence verification)", () => {
+    test("embeds the checks JSON-escaped", () => {
+        const src = fieldChecksProbe([{ sel: 'input[name="a"]', value: 'he said "hi"' }]);
+        expect(src).toContain(JSON.stringify([{ sel: 'input[name="a"]', value: 'he said "hi"' }]));
+    });
+    test("resolves through shadow roots and same-origin iframes like the actions do", () => {
+        const src = fieldChecksProbe([{ sel: "#x", value: "y" }]);
+        expect(src).toContain("k.shadowRoot");
+        expect(src).toContain("f.contentDocument");
+    });
+    test("verifies connection AND exact value — the silent-loss guards", () => {
+        const src = fieldChecksProbe([{ sel: "#x", value: "y" }]);
+        expect(src).toContain("el.isConnected");
+        expect(src).toContain('why: "gone"');
+        expect(src).toContain('why: "detached"');
+        expect(src).toContain('why: "mismatch"');
+        expect(src).toContain("v === c.value");
+    });
+    test("mismatch report carries a bounded got-value for the error message", () => {
+        const src = fieldChecksProbe([{ sel: "#x", value: "y" }]);
+        expect(src).toContain("got: v.slice(0, 60)");
     });
 });

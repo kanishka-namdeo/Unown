@@ -7,6 +7,16 @@
     <description>How each feature and release works, what it does, and the receipts behind it — the longhand record of the self-improving terminal coding agent Unown.</description>
     <language>en</language>
     <item>
+      <title>The browser autonomy round: dogfooding the browser until it taught us back</title>
+      <link>https://unown-nine.vercel.app/blog/2026-11-01-the-browser-autonomy-round</link>
+      <guid isPermaLink="true">https://unown-nine.vercel.app/blog/2026-11-01-the-browser-autonomy-round</guid>
+      <pubDate>Sun, 01 Nov 2026 00:00:00 GMT</pubDate>
+      <description>One hostile checkout page, five blind runs, two real defects found and fixed in-round, and the first receipts of a browser tool that remembers what broke.</description>
+      <category>browser</category>
+      <category>benchmarks</category>
+      <category>memory</category>
+    </item>
+    <item>
       <title>&quot;Six updates, one pixel diff: shipping a dependency round you can trust&quot;</title>
       <link>https://unown-nine.vercel.app/blog/2026-11-01-the-dependency-round</link>
       <guid isPermaLink="true">https://unown-nine.vercel.app/blog/2026-11-01-the-dependency-round</guid>
