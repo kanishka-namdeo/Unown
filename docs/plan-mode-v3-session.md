@@ -2,7 +2,7 @@
 
 - **Round**: plan-mode-v3 (the capability orchestrator + self-improvement directive)
 - **Started**: 2026-11-01
-- **Status**: in flight
+- **Status**: complete (M1–M8; the retrospective below closed the round)
 - **Baseline**: v0.0.55 (`e7e0a43d`), engine suite green at baseline (5326 tests per the release-recovery round's receipts)
 - **Operator directive**: clone → setup → run → implement Plan Mode V3 per the operator brief (capability orchestrator: capability audit before generation, specialist review, synthesis, dual review, mandatory retrospective + learning extraction, failure classification, improvement generation), pushing each milestone.
 

@@ -8,7 +8,16 @@ archaeology. When a round completes, its log graduates to a round-specific
 
 ---
 
-## ACTIVE ROUND — none (the browser autonomy round 2 graduated; plan mode V3 is in flight in its own lineage)
+## ACTIVE ROUND — the fresh-clone round (2026-11-01)
+
+The fresh-clone round (2026-11-01) is in flight:
+`docs/fresh-clone-round-session.md` — the operator-directed bring-up (clone →
+setup → run on a fresh Debian 13 sandbox, bun pinned 1.4.3, Agnes upstream,
+stack up, doctor green, live chat receipted) plus the two lanes the bring-up
+surfaced: issue #30 (the `unown -p` exit hang — reproduced on the first
+headless run, /proc evidence + root cause + fix in locally-owned code) and
+PT-5 (the live plan-mode V3 run with live specialist spawns — the plan-mode
+V3 round's own retrospective named it the natural next benchmark lane).
 
 The browser autonomy round 2 (2026-11-01) is complete and graduated to its
 own log: `docs/browser-autonomy-round-2-session.md` — the continuation round
@@ -44,7 +53,8 @@ the memory loop receipted both ways, a systemic dream-drift class filed
 persists failure memory — the open axis), and the ten-benchmark suite with
 honest nulls under `benchmarks/browser-autonomy-round/`. The parallel plan
 mode V3 round (`docs/plan-mode-v3-session.md`) raced this round on main
-(two rebases, zero conflicts) and is still in flight in its own lineage.
+(two rebases, zero conflicts) and has since completed (M1–M8, with the
+round retrospective) — its status line now says so.
 
 The security round (v0.0.55, 2026-11-01) is complete and graduated to its
 own log: `docs/security-round-session.md` — every open Dependabot advisory
