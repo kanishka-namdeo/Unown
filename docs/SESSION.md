@@ -8,7 +8,15 @@ archaeology. When a round completes, its log graduates to a round-specific
 
 ---
 
-## ACTIVE ROUND — none (the queue is prepared, not started)
+## ACTIVE ROUND — the browser autonomy round (2026-11-01, open)
+
+`docs/browser-autonomy-round-session.md` — the browser dogfooding &
+self-improvement mission: browser-first execution for research, PM
+operations, docs navigation, user simulation and self-dogfooding against
+Unown itself, with every fallback logged and every capability verdict
+receipted. Resume from the latest CP in that log; the stack is mortal across
+sandbox recycles (re-run `bun run agent:start`, then health-check both
+services).
 
 The security round (v0.0.55, 2026-11-01) is complete and graduated to its
 own log: `docs/security-round-session.md` — every open Dependabot advisory
@@ -43,6 +51,20 @@ search, blog hover-previews); the term.ts snapshot-class follow-up
 `## [Unreleased]` to CHANGELOG.md and regenerate the rail in the same commit;
 the version bump itself is the release commit (package.json version + dated
 heading + rail + tag on the green SHA).
+
+### Environment checkpoint (2026-11-01, the browser autonomy round)
+
+- Sandbox lineage `/home/z/my-project/unown` (fresh lineage — prior
+  workspaces reclaimed), clone @ `22d3e725` (main, v0.0.55). bun **1.4.4**
+  (upgraded in-sandbox from 1.3.14 — the 1.4 lockfileVersion-3 floor).
+- `UNOWN_NO_ENGINE_SERVICE=1 bun run agent:install` 7/7 green; `.env` with
+  the Agnes upstream (key set, `agnes-3.0-flash`); `UNOWN_HOME` at its
+  default. Stack: bridge :3031 (upstream ok 200), engine :3030 (phase
+  ready). `unown doctor` green (1 expected ⚠: no LSP in the container).
+- Baseline gates green on the pristine tree: typecheck 0, lint 0 errors,
+  unit 2067/0, all five `check:*` gates ok.
+- Playwright `chromium-1200` in the ms-playwright cache — the browser
+  tool's discovery path; headless default in the sandbox.
 
 ### Environment checkpoint (2026-11-01, the dependency round)
 
