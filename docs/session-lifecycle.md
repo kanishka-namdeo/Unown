@@ -9,6 +9,7 @@
 - [What a session is](#what-a-session-is)
 - [Abort — one matrix, every surface](#abort--one-matrix-every-surface)
 - [Resume — every spelling](#resume--every-spelling)
+- [The exit hint — the line every exit prints](#the-exit-hint--the-line-every-exit-prints)
 - [Crash recovery](#crash-recovery)
 - [What abort never does](#what-abort-never-does)
 - [Related pages](#related-pages)
@@ -54,8 +55,20 @@ is the single matrix (`pi-repo/packages/coding-agent/src/core/agent-session.ts`)
 Notes that keep the matrix honest:
 
 - **Esc vs Ctrl+C vs Ctrl+D**: Esc aborts the running work; Ctrl+C clears
-  the editor (a second press exits); Ctrl+D exits. Double-Esc with an
-  empty editor opens the tree/fork picker — that is navigation, not abort.
+  the editor (a second press within 500 ms exits — the first press on an
+  ALREADY-empty editor shows the "Press Ctrl+C again to exit" notice);
+  Ctrl+D exits. Double-Esc with an empty editor opens the tree/fork picker —
+  that is navigation, not abort.
+- **Exiting mid-turn rides the same matrix** (the exit-resume round): the
+  Ctrl+C/Ctrl+D//quit/SIGTERM exit path runs `abortActiveOperation()` and
+  awaits idle (bounded 2 s) BEFORE disposing, so an exit during a running
+  turn finalizes the partial with `stopReason: "aborted"` exactly like
+  Esc//abort — previously the fire-and-forget abort inside dispose() raced
+  `process.exit()` and a first turn with no finalized assistant message yet
+  was lost entirely (the no-assistant guard had buffered it in memory: no
+  file, no hint). The partial TEXT length is retry-luck — a stalled upstream
+  makes the provider retry replace the in-flight message with a fresh
+  zero-content attempt; `/abort` has the same property.
 - **Abort during compaction, a branch summary or a retry wait**: `/abort`
   and the unified matrix reach them (`Esc` also does, via the status
   indicator's own handler); aborts are idempotent, so a double abort is
@@ -100,6 +113,40 @@ On resume, interrupted tool calls are **not** re-run: the aborted attempt
 is already in history with `stopReason: "aborted"`, and the next prompt
 reads it like any prior turn.
 
+## The exit hint — the line every exit prints
+
+Every TUI exit (double Ctrl+C, Ctrl+D, `/quit`, extension `shutdown()`, and
+SIGTERM/SIGHUP) prints one line after the terminal is restored:
+
+```
+To resume this session: unown --resume <session-id>
+```
+
+The contract (the exit-resume round):
+
+- **It names the launcher you actually ran.** unown passes its own resume
+  grammar to pi's exit hint (`resumeCommand` on `InteractiveModeOptions`);
+  a bare `pi --session-dir …` would name a command you never typed and boot
+  a session without unown's memory/hooks/addons stack. Wrappers embedding
+  pi use the same seam (`appName`/`resumeCommand`).
+- **It pastes cleanly on Windows.** Values are quoted for the host shell —
+  double quotes on win32 (cmd.exe has no single-quote syntax; PowerShell
+  takes both), POSIX single quotes under MSYSTEM (Git Bash) and on
+  macOS/Linux. A bare session id needs no quotes at all (validated
+  `[A-Za-z0-9._-]`).
+- **It prints after the TUI stops** — the line lands in the restored screen
+  buffer, not the alt screen. Piped stdout (non-TTY) gets NO hint:
+  machine-readable consumers never see chat affordances. A dead terminal
+  surfaces as EIO on the write and takes the emergency exit — no hang.
+- **It only prints for persisted sessions** — `--no-session` (ephemeral)
+  exits silently, and a session whose first turn never produced a finalized
+  assistant message (aborted at the prompt, nothing streamed) never created
+  a file, so there is nothing honest to point at.
+
+Receipt lane: `scripts/tui-capture/verify_resume_hint.py` boots the real
+TUI, exits with the keyboard, parses the printed command and runs it
+verbatim — both an idle-session exit and a mid-stream interrupt.
+
 ## Crash recovery
 
 - **The file is the recovery.** Append-only + synchronous appends mean a
@@ -127,6 +174,9 @@ reads it like any prior turn.
 - `usage.md` — the command reference and the keybindings table
 - `sessions-competitor-research.md` — the round's research record (the
   cross-product comparison this page's contracts were checked against)
+- `exit-resume-round-research.md` + `exit-resume-round-session.md` — the
+  exit-hint lane's own research record and round log (Claude Code / Codex /
+  Gemini / aider exit UX, Windows quoting, the mid-stream exit data-loss fix)
 - `plm.md` — the engine's process lifecycle (the other state machine)
 - `memory.md` — what persists across sessions beyond the JSONL
 - `configuration.md` — the env reference

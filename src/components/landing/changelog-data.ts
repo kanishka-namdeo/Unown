@@ -30,14 +30,14 @@ export interface ChangelogStop {
   groups: ChangelogGroup[];
 }
 
-export const CHANGELOG_TOTAL_ENTRIES = 516;
+export const CHANGELOG_TOTAL_ENTRIES = 518;
 
 export const CHANGELOG_TOTALS: Record<ChangelogBucket, number> = {
-  "Added": 235,
+  "Added": 236,
   "Changed": 32,
   "Deprecated": 0,
   "Removed": 3,
-  "Fixed": 195,
+  "Fixed": 196,
   "Security": 5,
   "Behavior": 46
 };
@@ -46,13 +46,13 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
   {
     "label": "Unreleased",
     "date": null,
-    "total": 10,
+    "total": 12,
     "counts": {
-      "Added": 4,
+      "Added": 5,
       "Changed": 0,
       "Deprecated": 0,
       "Removed": 0,
-      "Fixed": 5,
+      "Fixed": 6,
       "Security": 0,
       "Behavior": 1
     },
@@ -60,6 +60,10 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
       {
         "bucket": "Added",
         "items": [
+          {
+            "title": "The exit hint lane — every TUI exit now prints a resume command you can actually paste",
+            "behavior": false
+          },
           {
             "title": "PT-5 — the complex-plan lane with live specialist spawns: the plan-mode V3 bench consulted…",
             "behavior": false
@@ -90,6 +94,10 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
       {
         "bucket": "Fixed",
         "items": [
+          {
+            "title": "A Ctrl+C exit during a running turn no longer loses the whole session",
+            "behavior": false
+          },
           {
             "title": "The dream-render/landing-quote coupling is closed on all three fronts (#46) — the memory route of the claims…",
             "behavior": false

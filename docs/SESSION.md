@@ -20,6 +20,25 @@ resumed session reads that plan + this index + the fresh-clone round's
 protocol notes (the budgeted-chunk resume recipe for A2 tickets on this
 reaping host) before any ticket.
 
+The exit-resume round (2026-11-02) is COMPLETE and graduated to its own log:
+`docs/exit-resume-round-session.md` — the Ctrl+C-exit → resume lane, opened
+by the operator's report that the exit hint printed `pi --session-dir 'C:\…'`
+on Windows: the hint now names the launcher you actually ran (`unown --resume
+<id>`), quotes for the host shell (double quotes on win32 — single quotes are
+literal characters in cmd.exe), prints on BOTH exit paths (interactive quit
+and SIGTERM/SIGHUP) after terminal restore, and the first Ctrl+C on an empty
+editor shows the "Press Ctrl+C again to exit" notice. The round's deeper fix:
+an exit DURING a running turn rode a fire-and-forget abort that raced
+`process.exit()` — a first turn with no finalized assistant message yet was
+lost entirely (the no-assistant guard buffers in memory: no file, no hint);
+the exit now runs the same cooperative abort matrix as Esc//abort and awaits
+idle (bounded 2 s) before disposing, with the aborted marker normalized at
+the agent-loop boundary. Receipt: `scripts/tui-capture/verify_resume_hint.py`
+(boot → double Ctrl+C → parse the printed command → run it VERBATIM →
+history visible; the same for a mid-stream-interrupted session), plus 50 unit
+tests across the three touched packages. Research record:
+`docs/exit-resume-round-research.md`.
+
 The fresh-clone round (2026-11-01 → 2026-11-02) is COMPLETE and graduated to
 its own log: `docs/fresh-clone-round-session.md` — the operator-directed
 bring-up (clone → setup → run, proven on two cold machines including a
