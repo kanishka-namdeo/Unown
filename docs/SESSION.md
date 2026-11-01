@@ -8,15 +8,21 @@ archaeology. When a round completes, its log graduates to a round-specific
 
 ---
 
-## ACTIVE ROUND — the browser autonomy round (2026-11-01, open)
+## ACTIVE ROUND — none (the browser autonomy round graduated; plan mode V3 is in flight in its own lineage)
 
-`docs/browser-autonomy-round-session.md` — the browser dogfooding &
-self-improvement mission: browser-first execution for research, PM
-operations, docs navigation, user simulation and self-dogfooding against
-Unown itself, with every fallback logged and every capability verdict
-receipted. Resume from the latest CP in that log; the stack is mortal across
-sandbox recycles (re-run `bun run agent:start`, then health-check both
-services).
+The browser autonomy round (2026-11-01) is complete and graduated to its
+own log: `docs/browser-autonomy-round-session.md` — the browser dogfooding
+& self-improvement mission: nine lanes receipted (research, PM ops, docs
+navigation, user simulation, long-horizon monitoring, memory, failure-driven
+improvement, self-dogfooding), two real defects found AND fixed in-round
+(the F3 iframe fill_form silent-loss race — live-pinned against a real
+Chromium; the F4 dev-server no-hydration-by-IP-literal trap — config-pinned),
+the memory loop receipted both ways, a systemic dream-drift class filed
+(#46, second occurrence), the competitor research committed (nobody
+persists failure memory — the open axis), and the ten-benchmark suite with
+honest nulls under `benchmarks/browser-autonomy-round/`. The parallel plan
+mode V3 round (`docs/plan-mode-v3-session.md`) raced this round on main
+(two rebases, zero conflicts) and is still in flight in its own lineage.
 
 The security round (v0.0.55, 2026-11-01) is complete and graduated to its
 own log: `docs/security-round-session.md` — every open Dependabot advisory
@@ -40,17 +46,47 @@ unification + footer quiet rounds (v0.0.53 —
 re-cut v0.0.53 after its first tag landed against red CI
 (`docs/release-recovery-session.md`).
 
-**The next round's queue (recorded, in priority order)**: the S2 ledger's head
-— S2-11 (the spend meter) and S2-4 (the memory health card), each flipping a
-pinned, waiting benchmark miss — then S2-7/S2-8/S2-9, the S2-3/S2-16 L-pair,
-S2-22 (see the settings log's "Resume-from-here"); the injection-scanner ML
-classifier (the production TODO); the delegation round's subagent-reuse axis;
-OB-7 (fleet outcomes in the brief); the landing next-round queue (cmd-K
-search, blog hover-previews); the term.ts snapshot-class follow-up
-(release-recovery CP2). When the first v0.0.56 content lands, re-add
-`## [Unreleased]` to CHANGELOG.md and regenerate the rail in the same commit;
-the version bump itself is the release commit (package.json version + dated
-heading + rail + tag on the green SHA).
+**The next round's queue (recorded, in priority order)**: the browser
+autonomy round's carries-overs first — #46 (the dream-render/landing-quote
+coupling: gate-side or renderer-side fix; two occurrences in one day) —
+then #45 (the tool-time browser-memory hint lane — recall works,
+proactive application doesn't), #44 (the screenshot extension/format
+reconciliation), the warm docs-navigation benchmark on a second
+technology, the skill-promotion decision for the hostile-checkout
+procedure, and the release-monitoring routine's first weekly run
+(`auto-mvxw0wne-onkwcn`, 2026-11-08); then the pre-existing queue: the S2
+ledger's head — S2-11 (the spend meter) and S2-4 (the memory health card),
+each flipping a pinned, waiting benchmark miss — then S2-7/S2-8/S2-9, the
+S2-3/S2-16 L-pair, S2-22 (see the settings log's "Resume-from-here"); the
+injection-scanner ML classifier (the production TODO); the delegation
+round's subagent-reuse axis; OB-7 (fleet outcomes in the brief); the
+landing next-round queue (cmd-K search, blog hover-previews); the term.ts
+snapshot-class follow-up (release-recovery CP2); the plan mode V3 round's
+own milestones (its session log owns that queue). When the first v0.0.56
+content lands, re-add `## [Unreleased]` to CHANGELOG.md and regenerate the
+rail in the same commit; the version bump itself is the release commit
+(package.json version + dated heading + rail + tag on the green SHA).
+
+### Environment checkpoint (2026-11-01, the browser autonomy round — closeout)
+
+- Sandbox lineage `/home/z/my-project/unown`, the round's commits `e7e0a43d`
+  (open) → `5eb1b973` (receipts) → `0e9eca7e` (F4+F5 fixes, CI green) →
+  `0d0c64ff` (F3 fix, rebased) → `7c2ae976` (the birthday-flake freeze +
+  occurrence-2 restoration, rebased).
+- **Parallel-round discipline** (new, earned the hard way): the plan mode
+  V3 round pushed twice mid-flight; both reconciled by fetch → rebase
+  (zero conflicts — disjoint surfaces) → fast gates → push. A rejected
+  push is a fetch, never a force.
+- Engine-suite sandbox honesty: full-suite runs under a live engine +
+  concurrent agent sessions flake in engine-adjacent timing tests
+  (outbox/automations/PLM) on BOTH trees — the control experiments
+  (isolation runs, pristine-tree runs, quiet-sandbox reruns) are the
+  receipts; CI is the authoritative gate.
+- The round's stack facts: bridge + engine mortal across recycles (re-run
+  `bun run agent:start`); the fixture server `python3 -m http.server 8090
+  --directory benchmarks/browser-autonomy-round/fixtures`; the release
+  monitor routine `auto-mvxw0wne-onkwcn` lives in the engine DB (weekly,
+  read-only).
 
 ### Environment checkpoint (2026-11-01, the browser autonomy round)
 

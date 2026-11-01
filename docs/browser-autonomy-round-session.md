@@ -12,12 +12,15 @@
 
 - Round owner: the browser autonomy session (lineage: security round → this
   round)
-- Status: **closing** — CP0-CP6 complete: the browser tool VALIDATED on a
+- Status: **complete** — CP0-CP6 closed: the browser tool VALIDATED on a
   hostile page (5/5), two real defects found and fixed in-round (F3 iframe
-  fill race, F4 dev-origin hydration), the memory loop receipted both ways,
-  the competitor research and the benchmark suite committed, the blog post
-  live; the remaining lane (a second docs-navigation technology for the
-  warm docs benchmark) is queued, not skipped silently
+  fill race — live-pinned; F4 dev-origin hydration — config-pinned), the
+  memory loop receipted both ways, the competitor research and the
+  ten-benchmark suite committed, the blog post live, four issues filed
+  (#43-#46), and the carries-overs recorded in SESSION.md's next-round
+  queue rather than silently dropped. The round's commits: e7e0a43d →
+  5eb1b973 → 0e9eca7e (CI green) → 0d0c64ff → 7c2ae976 (rebased twice
+  around the parallel plan-mode V3 round — zero conflicts)
 - Related pages: [browser](browser.md) · [browser research](browser-research.md)
   (the seven-product reverse-engineering the tool's shape rests on) ·
   [testing strategy](testing-strategy.md) · [the benchmarks' own
