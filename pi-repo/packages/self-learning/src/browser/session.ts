@@ -141,6 +141,50 @@ export interface ActionReport {
 }
 
 // ---------------------------------------------------------------------------
+// screenshot format resolution (pure — unit-pinned in test/browser.test.ts)
+// ---------------------------------------------------------------------------
+
+/**
+ * Map a save-path's extension onto a capture format. Recognized image
+ * extensions only (.png / .jpg / .jpeg, case-insensitive); anything else —
+ * including no extension at all — returns null ("no signal").
+ *
+ * The browser autonomy round's F1 finding: capture defaulted to jpeg while
+ * the save path took the model's extension unchecked, so `filename: "x.png""
+ * silently wrote JPEG data under a .png name (issue #44).
+ */
+export function extensionFormat(savePath: string): "png" | "jpeg" | null {
+        const m = /\.([a-z0-9]+)$/i.exec(savePath.trim());
+        if (!m) return null;
+        const ext = m[1].toLowerCase();
+        if (ext === "png") return "png";
+        if (ext === "jpg" || ext === "jpeg") return "jpeg";
+        return null;
+}
+
+/**
+ * Resolve the capture format for a screenshot:
+ *   - an explicit `format` wins, EXCEPT when the save path's recognized
+ *     image extension disagrees — that ambiguity fails loudly (a mislabeled
+ *     artifact is worse than a refused call: downstream type-sniffing and
+ *     vision tiers key off the extension);
+ *   - otherwise a recognized extension picks the format (.png → png,
+ *     .jpg/.jpeg → jpeg);
+ *   - otherwise the historical default: jpeg (smaller).
+ */
+export function resolveScreenshotFormat(opts: { format?: "png" | "jpeg"; savePath?: string }): "png" | "jpeg" {
+        const wanted = extensionFormat(opts.savePath ?? "");
+        if (opts.format && wanted && opts.format !== wanted) {
+                const base = opts.savePath!.split(/[\\/]/).pop() ?? opts.savePath!;
+                throw new Error(
+                        `screenshot: "${base}" implies ${wanted} capture but format=${opts.format} was requested — ` +
+                                `pass format: "${wanted}" or rename the file (mislabeled image bytes mislead every consumer that trusts the extension)`,
+                );
+        }
+        return opts.format ?? wanted ?? "jpeg";
+}
+
+// ---------------------------------------------------------------------------
 // session
 // ---------------------------------------------------------------------------
 
@@ -1736,6 +1780,9 @@ export class BrowserSession {
                 quality?: number;
                 savePath?: string;
         }): Promise<ActionReport & { image?: { data: string; mimeType: string } }> {
+                // Validated before any browser work: a format/extension clash is an
+                // intent error, and refusing it costs nothing (issue #44).
+                const format = resolveScreenshotFormat(opts);
                 await this.ensureStarted();
                 const conn = this.requireConn();
                 const sessionId = this.requireSessionId();
@@ -1744,7 +1791,6 @@ export class BrowserSession {
                         const loc = await this.locate(opts);
                         clip = { x: loc.box[0], y: loc.box[1], width: loc.box[2], height: loc.box[3], scale: 1 };
                 }
-                const format = opts.format ?? "jpeg";
                 const params: Record<string, unknown> = { format };
                 if (format === "jpeg") params.quality = Math.min(100, Math.max(20, opts.quality ?? 70));
                 if (clip) params.clip = clip;
@@ -1761,7 +1807,9 @@ export class BrowserSession {
                 if (opts.savePath) {
                         const { writeFileSync } = await import("node:fs");
                         writeFileSync(opts.savePath, Buffer.from(data, "base64"));
-                        details.push(`saved: ${opts.savePath}`);
+                        // The saved artifact names its own format — no more JPEG bytes
+                        // hiding under a .png name without a receipt (issue #44).
+                        details.push(`saved: ${opts.savePath} (${format})`);
                 }
                 return {
                         summary: `screenshot (${format}${clip ? ` clip ${Math.round(clip.width)}x${Math.round(clip.height)}` : ""}${opts.fullPage ? " fullPage" : ""}, ${Math.round((data.length * 3) / 4 / 1024)} KB)`,

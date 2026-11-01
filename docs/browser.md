@@ -275,7 +275,7 @@ the result names the tiers attempted and the reason each failed.
 | `select_option` | `ref`/`selector`, `values` | Native select values/labels |
 | `scroll` | `direction`, `amount`, `ref`/`selector` | Scroll the page (or an element) up/down/left/right |
 | `drag` | `startRef`/`startSelector`, `endRef`/`endSelector` | Drag from one element to another |
-| `screenshot` | `fullPage`, `ref`/`selector`, `format`, `quality`, `filename` | Capture the page — comes back as an image the model sees; `filename` also saves it |
+| `screenshot` | `fullPage`, `ref`/`selector`, `format`, `quality`, `filename` | Capture the page — comes back as an image the model sees; `filename` also saves it, honoring the extension (`.png` → png, `.jpg` → jpeg; a `format`/extension clash fails loudly — no mislabeled bytes, [#44](https://github.com/kanishka-namdeo/Unown/issues/44)) |
 | `eval` | `code`, `world` | Run JS in the page (expressions or async function bodies); `world: isolated` never touches page JS state; the result is returned |
 | `tabs` | `tabsAction`, `index`, `url` | `list` (with URLs) / `new` / `select` / `close` tabs — new tabs opened by the page (`window.open`, OAuth popups) are tracked automatically; `new` and history destinations pass the `UNOWN_BROWSER_BLOCK` gate like `navigate` |
 | `dialog` | `dialogAction`, `text` | Native-dialog policy: `list` (default) shows every dialog and how it resolved; `accept` / `dismiss` arm a ONE-SHOT policy for the next dialog (`text` answers a `prompt`) — then trigger it |
@@ -300,7 +300,15 @@ grounds `x`/`y` coordinates against the picture → a coordinate click lands
 exactly where a visual target has no a11y node. JPEG is the default format
 (smaller payloads); `format: png` when every pixel matters. When
 `filename` is passed the same bytes also land on disk (project-relative
-paths resolve against the session cwd).
+paths resolve against the session cwd) — **the filename's extension is
+honored**: `.png` captures png, `.jpg`/`.jpeg` capture jpeg, and passing an
+explicit `format` that fights the extension fails loudly with the fix in
+the message instead of writing mislabeled bytes (the round's F1 finding,
+[#44](https://github.com/kanishka-namdeo/Unown/issues/44) — historically a
+`.png` name silently got JPEG data, because capture defaulted to jpeg and
+the save path took the extension unchecked). The saved-file receipt names
+the actual format (`saved: …/shot.png (png)`), so every artifact on disk is
+self-describing.
 
 ## Launch vs attach
 

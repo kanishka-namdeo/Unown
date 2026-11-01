@@ -18,6 +18,7 @@ import {
 import { formatSnapshot, snapshotRefs, SNAPSHOT_SCRIPT } from "../src/browser/a11y.ts";
 import { modifierBits, parseKeyCombo } from "../src/browser/cdp.ts";
 import { fieldChecksProbe, PAGE_READY_PROBE } from "../src/browser/probes.ts";
+import { BrowserSession, extensionFormat, resolveScreenshotFormat } from "../src/browser/session.ts";
 
 // ---------------------------------------------------------------------------
 // discovery
@@ -318,5 +319,83 @@ describe("fieldChecksProbe (post-fill persistence verification)", () => {
     test("mismatch report carries a bounded got-value for the error message", () => {
         const src = fieldChecksProbe([{ sel: "#x", value: "y" }]);
         expect(src).toContain("got: v.slice(0, 60)");
+    });
+});
+
+// ---------------------------------------------------------------------------
+// screenshot format resolution (issue #44 — the browser autonomy round's F1)
+// ---------------------------------------------------------------------------
+
+describe("extensionFormat (save-path extension → capture format)", () => {
+    test("recognized image extensions map to their format", () => {
+        expect(extensionFormat("shot.png")).toBe("png");
+        expect(extensionFormat("shot.jpg")).toBe("jpeg");
+        expect(extensionFormat("shot.jpeg")).toBe("jpeg");
+    });
+    test("case and whitespace do not matter", () => {
+        expect(extensionFormat("Shot.PNG")).toBe("png");
+        expect(extensionFormat("shot.Jpg")).toBe("jpeg");
+        expect(extensionFormat("  shot.jpeg  ")).toBe("jpeg");
+    });
+    test("paths with directories resolve on the final segment", () => {
+        expect(extensionFormat("/tmp/receipts/final.png")).toBe("png");
+        expect(extensionFormat("benchmarks/browser-autonomy-round/screenshots/stress-final-postdream.png")).toBe("png");
+        expect(extensionFormat("C:\\Users\\u\\shot.jpg")).toBe("jpeg");
+    });
+    test("unrecognized or absent extensions are no signal", () => {
+        expect(extensionFormat("shot.webp")).toBeNull();
+        expect(extensionFormat("shot.gif")).toBeNull();
+        expect(extensionFormat("archive.tar.gz")).toBeNull();
+        expect(extensionFormat("shot")).toBeNull();
+        expect(extensionFormat("shot.")).toBeNull();
+        expect(extensionFormat("dir/")).toBeNull();
+        expect(extensionFormat("")).toBeNull();
+    });
+});
+
+describe("resolveScreenshotFormat (the #44 contract)", () => {
+    test("no format + no signal keeps the historical jpeg default", () => {
+        expect(resolveScreenshotFormat({})).toBe("jpeg");
+        expect(resolveScreenshotFormat({ savePath: "shot.webp" })).toBe("jpeg");
+        expect(resolveScreenshotFormat({ savePath: "shot" })).toBe("jpeg");
+    });
+    test("no format + recognized extension honors the extension (the F1 fix)", () => {
+        expect(resolveScreenshotFormat({ savePath: "shot.png" })).toBe("png");
+        expect(resolveScreenshotFormat({ savePath: "shot.jpg" })).toBe("jpeg");
+        expect(resolveScreenshotFormat({ savePath: "/a/b/shot.PNG" })).toBe("png");
+    });
+    test("explicit format with no competing extension wins", () => {
+        expect(resolveScreenshotFormat({ format: "png" })).toBe("png");
+        expect(resolveScreenshotFormat({ format: "jpeg", savePath: "shot" })).toBe("jpeg");
+        expect(resolveScreenshotFormat({ format: "png", savePath: "shot.webp" })).toBe("png");
+    });
+    test("explicit format + matching extension is fine", () => {
+        expect(resolveScreenshotFormat({ format: "png", savePath: "shot.png" })).toBe("png");
+        expect(resolveScreenshotFormat({ format: "jpeg", savePath: "shot.jpg" })).toBe("jpeg");
+    });
+    test("explicit format + conflicting extension fails loudly and actionably", () => {
+        expect(() => resolveScreenshotFormat({ format: "jpeg", savePath: "shot.png" })).toThrow(
+            /shot\.png.*implies png capture but format=jpeg.*pass format: "png" or rename/i,
+        );
+        expect(() => resolveScreenshotFormat({ format: "png", savePath: "/a/b/shot.jpeg" })).toThrow(
+            /shot\.jpeg.*implies jpeg capture but format=png/i,
+        );
+        const err = (() => {
+            try {
+                resolveScreenshotFormat({ format: "png", savePath: "shot.jpg" });
+            } catch (e: any) {
+                return e.message as string;
+            }
+            return "";
+        })();
+        expect(err).not.toContain("/"); // names the basename, not the whole path
+    });
+    test("the mismatch throw happens without a browser — pure, pre-launch validation", () => {
+        // resolveScreenshotFormat runs before ensureStarted, so the refusal
+        // lands on the first await tick with no Chromium launched — reachable
+        // in unit tests and in the tool layer before any expensive work.
+        const s = new BrowserSession({ cwd: "/tmp" });
+        expect(s.isRunning).toBe(false);
+        expect(s.screenshot({ format: "png", savePath: "shot.jpg" })).rejects.toThrow(/implies jpeg capture/);
     });
 });
