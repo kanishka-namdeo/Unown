@@ -30,11 +30,11 @@ export interface ChangelogStop {
   groups: ChangelogGroup[];
 }
 
-export const CHANGELOG_TOTAL_ENTRIES = 502;
+export const CHANGELOG_TOTAL_ENTRIES = 503;
 
 export const CHANGELOG_TOTALS: Record<ChangelogBucket, number> = {
   "Added": 231,
-  "Changed": 30,
+  "Changed": 31,
   "Deprecated": 0,
   "Removed": 3,
   "Fixed": 188,
@@ -46,10 +46,10 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
   {
     "label": "Unreleased",
     "date": null,
-    "total": 2,
+    "total": 3,
     "counts": {
       "Added": 0,
-      "Changed": 1,
+      "Changed": 2,
       "Deprecated": 0,
       "Removed": 0,
       "Fixed": 1,
@@ -60,6 +60,10 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
       {
         "bucket": "Changed",
         "items": [
+          {
+            "title": "The dependency round — six updates, each gated, nothing regressed",
+            "behavior": false
+          },
           {
             "title": "Per-OS CI now costs per release, not per push",
             "behavior": false
