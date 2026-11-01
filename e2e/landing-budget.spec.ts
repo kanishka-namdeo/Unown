@@ -85,20 +85,19 @@ import { expect, test } from "@playwright/test";
  */
 const MAX_PAGE_VH = 15.5;
 /*
- * The 2026-10-31 settings-round release amendment (the eleventh): 3,880 ->
- * 3,920 carries the rail's 49th stop AND the next one's headroom. The tenth
- * amendment left 17 words (one stop) of headroom; the keyboard round's 0.0.51
- * stop consumed it exactly (3,880/3,880 — the audit at this round's opener)
- * and the 0.0.52 stop then measured +20 (3,900). Compressed FIRST: the
- * round's own listed changelog title ("The Interface section — the S2-1
- * repair" -> "The Interface section", -4w). Post-compression 3,896 — still
- * 16 over, all of it the stop's undeletable chrome (label + date + tally +
- * title + "+5 more"), so the ceiling carries it plus one more stop (~20) of
- * headroom per the 0.0.44 rule ("so the next release does not open on a
- * knife's edge"); 3,900 would leave 4. Both twins move together (the 0.0.48
- * lesson); no generated number or gated literal touched.
+ * The 2026-11-01 dependency-round release amendment (the twelfth): 3,920 ->
+ * 3,940 carries the rail's 52nd stop. Compressed FIRST, as the contract
+ * demands: the round's own listed changelog title ("The dependency round —
+ * six updates, each gated, nothing regressed" -> "The dependency round",
+ * -7w; the bullet body never renders on the page — only the title does).
+ * Measured at the breach: 3,930; post-compression 3,923, still 3 over, all
+ * of it the stop's undeletable chrome (label + date + counts line + "+2
+ * more"), so the ceiling carries it plus one more stop (~17 words) of
+ * headroom so the next release does not open on a knife's edge — the 0.0.44
+ * rule. The vh twin measured 15.4 against its own 15.5 ceiling and moves
+ * nothing. No generated number, no gated literal touched.
  */
-const MAX_WORDS = 3920;
+const MAX_WORDS = 3940;
 
 /*
  * The 2026-10-31 planning-round release amendment (the tenth): 3,860 ->
