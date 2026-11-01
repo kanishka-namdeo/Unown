@@ -14,6 +14,7 @@ into). It auto-starts on first use; there is nothing to configure.
 - [Workflows for end users](#workflows-for-end-users)
 - [Action reference](#action-reference)
 - [Screenshots and vision models](#screenshots-and-vision-models)
+- [Tool-time memory hints](#tool-time-memory-hints)
 - [Launch vs attach](#launch-vs-attach)
 - [Profiles and logins](#profiles-and-logins)
 - [Downloads and uploads](#downloads-and-uploads)
@@ -310,6 +311,40 @@ the save path took the extension unchecked). The saved-file receipt names
 the actual format (`saved: …/shot.png (png)`), so every artifact on disk is
 self-describing.
 
+## Tool-time memory hints
+
+Browser procedures the learning loop has consolidated — arm `dialog
+accept` before a confirm-guarded click, the cookie-banner dismissal path,
+the screenshots-directory convention, a site's login shape — live in
+session-start memory, but the moment they matter is the tool call. The
+**tool-time hint lane** ([#45](https://github.com/kanishka-namdeo/Unown/issues/45),
+found by the browser autonomy round) closes the when-gap: the **first
+browser call of a session** returns a compact digest of the browser-relevant
+entries from your project and user memory (a `⟨browser memory hints⟩` block,
+at most 8 entries, each clipped) appended after the action's own result, and
+the **first `navigate` to a host the memory mentions** carries that host's
+slice the same way.
+
+Properties that hold by construction:
+
+- **Cheap** — two file reads (`.unown/memory/project.md` +
+  `~/.unown/memory/user.md`), a line filter, no engine, no DB; the
+  detached-engine contract is untouched.
+- **Honest origin** — repo-resident project memory is scanned by the same
+  injection guard the session-start injection uses; flagged entries are
+  annotated `[unverified — injection-guard flagged]`, never silently
+  included. Hints are framed as hints, not instructions.
+- **Once** — the general digest rides one call per session; host slices ride
+  one navigate per host. Nothing repeats, nothing displaces the fresh
+  snapshot (hints ride last).
+- **Kill-switch** — `UNOWN_BROWSER_HINTS=0` disables the lane entirely.
+
+The measured effect (the stress-checkout benchmark, runs 1-6 in
+[benchmarks/browser-autonomy-round/RESULTS.md](../benchmarks/browser-autonomy-round/RESULTS.md)):
+runs 1-3 hit the native-dialog trap and recovered (2 exploratory actions →
+1 direct); run 6, with the lane live, **pre-armed the accept policy before
+the triggering click and never hit the trap** — recall became application.
+
 ## Launch vs attach
 
 Default: launch. The tool finds a Chromium-family executable itself —
@@ -365,6 +400,7 @@ paths out of the agent's context.
 | `UNOWN_BROWSER_SNAPSHOT_MAX` | `400` | Max elements per snapshot |
 | `UNOWN_BROWSER_SNAPSHOT_MAX_CHARS` | `60000` | Max snapshot characters returned |
 | `UNOWN_BROWSER_STEALTH` | `0` | `1` starts every browser session in stealth mode |
+| `UNOWN_BROWSER_HINTS` | `1` | `0` disables the tool-time memory hint lane (the first-call digest and per-host slices) |
 | `UNOWN_BROWSER_OS` | `windows` | Claimed OS identity in stealth mode (`windows` / `macos` / `linux`) |
 | `UNOWN_BROWSER_USER_AGENT` | per identity | Explicit UA override (rest of the identity still applies) |
 | `UNOWN_BROWSER_LOCALE` | `en-US` | Locale + Accept-Language in stealth mode |

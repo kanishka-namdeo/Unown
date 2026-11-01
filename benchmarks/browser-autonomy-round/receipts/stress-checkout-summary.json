@@ -19,7 +19,11 @@
       "exit_code": 0,
       "success": true,
       "dialog_trap": "hit; recovered via browser dialog list exploration then accept arming (2 recovery actions)",
-      "receipts": ["stress-run-1.jsonl", "stress-run-1-session.md", "../screenshots/stress-final.png"]
+      "receipts": [
+        "stress-run-1.jsonl",
+        "stress-run-1-session.md",
+        "../screenshots/stress-final.png"
+      ]
     },
     {
       "run": 2,
@@ -30,7 +34,10 @@
       "exit_code": 0,
       "success": true,
       "dialog_trap": "hit; recovered via dialog list then accept arming (2 recovery actions)",
-      "receipts": ["stress-run-2.jsonl", "../screenshots/stress-final-warm.png"]
+      "receipts": [
+        "stress-run-2.jsonl",
+        "../screenshots/stress-final-warm.png"
+      ]
     },
     {
       "run": 3,
@@ -42,7 +49,10 @@
       "success": true,
       "dialog_trap": "hit; recovered DIRECTLY (re-arm + re-click, no dialog list exploration — 1 recovery action); pre-arm still absent (reactive recall, not proactive application)",
       "extra_finding": "iframe fill_form transient loss: first save returned 'incomplete' (name field empty) — reproduced standalone, see iframe-fill-race-repro.jsonl",
-      "receipts": ["stress-run-3.jsonl", "../screenshots/stress-final-postdream.png"]
+      "receipts": [
+        "stress-run-3.jsonl",
+        "../screenshots/stress-final-postdream.png"
+      ]
     },
     {
       "run": 4,
@@ -53,15 +63,33 @@
       "exit_code": 0,
       "success": true,
       "finding": "fill_form reported success against the iframe document, values empty on re-snapshot — silent loss when the iframe finishes loading after the main page's readyState gate",
-      "receipts": ["iframe-fill-race-repro.jsonl"]
+      "receipts": [
+        "iframe-fill-race-repro.jsonl"
+      ]
+    },
+    {
+      "run": 6,
+      "label": "post-hint-lane (issue #45 fixed: tool-time browser memory hints — first browser call carries the digest, memory dialog lesson surfaced at the point of action)",
+      "session_id": "01a197d3-aec1-71fe-a530-3ec2e1a9a77f",
+      "duration_s": 42,
+      "model_calls": 16,
+      "exit_code": 0,
+      "success": true,
+      "dialog_trap": "NOT HIT — the agent armed browser dialog accept text=OK BEFORE the triggering click (tool call #11 arm, #12 click), citing the learned procedure; first run of five where the trap was prevented rather than recovered from",
+      "evidence": "the first browser tool result carries the 8-entry browser memory digest (receipt stress-run-4-posthint.jsonl, line 5: role toolResult); screenshot is a true PNG (the #44 fix landed the same round)",
+      "receipts": [
+        "stress-run-4-posthint.jsonl",
+        "../screenshots/stress-final-posthint.png"
+      ],
+      "engine": "v0.0.55 @ fe8b5f9c (+ #44/#46 fixes in-tree, #45 hint lane live from source)"
     }
   ],
   "verdicts": {
     "task_success": "VALIDATED — 3/3 checkout runs passed, 100% repeatability, zero interventions",
     "failure_handling": "VALIDATED — every hostile fixture class was detected and recovered in-session",
     "memory_recall": "VALIDATED — dream v1 consolidated 5 browser facts; dream v2 carried the dialog lesson",
-    "memory_proactive_application": "PARTIAL — the lesson was recalled (faster, shallower recovery) but not applied before the first click; improvement opportunity: tool-time procedural hints",
-    "fill_form_iframe": "FAILED (defect) — silent value loss reproduced; root cause: no per-frame readiness barrier (session.ts:876 gates only the top document; fillForm session.ts:1422 has no post-fill persistence check)"
+    "memory_proactive_application": "VALIDATED (run 5) — the tool-time hint lane (issue #45) surfaced the dialog procedure at the first browser call; the agent pre-armed accept before the confirm-guarded click, preventing the trap instead of recovering from it. Runs 1-3: PARTIAL (reactive recall only).",
+    "fill_form_iframe": "FIXED (0e9eca7e / issue #43, run 5 confirms) — frame-inclusive readiness barrier + post-fill verification; run 5 saved the address form first attempt (saved:Ada Byron/dubai/gift)"
   },
   "notes": "model_calls counted as assistant messages in the session store (a turn = one model call). Durations wall-clock from the shell. The Agnes free tier (~20 RPM) serialized through the bridge (max 3 concurrent) — durations include upstream latency variance; turn count is the stabler metric and is itself noisy (17/18/25 on an identical task class)."
 }

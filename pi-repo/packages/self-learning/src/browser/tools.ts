@@ -18,6 +18,7 @@ import { Text } from "@earendil-works/pi-tui";
 import { Type } from "typebox";
 import { discoverBrowser } from "./config.ts";
 import { getBrowserSession } from "./session.ts";
+import { firstCallHintPart, hostHintPart } from "./hints.ts";
 
 const BrowserAction = StringEnum(
         [
@@ -194,6 +195,15 @@ export function registerBrowserTools(pi: ExtensionAPI, opts: BrowserToolsOptions
                 if (verbose) console.error(`[unown-browser] ${msg}`);
         };
 
+        // The tool-time memory hint lane (issue #45): browser procedures live in
+        // session-start memory but matter at the tool call. Once per session the
+        // first browser call carries a compact digest of the browser-relevant
+        // entries; once per host, the first navigate to it carries the host's
+        // slice. Closure state = per registration = per session (each subagent
+        // process registers its own tools, so each gets its one shot too).
+        let firstHintSent = false;
+        const hintedHosts = new Set<string>();
+
         // Teardown must not outlive the session (D15) — the process-wide singleton
         // has exit hooks of its own; this is the polite path for normal exits.
         pi.on("session_shutdown", () => {
@@ -222,6 +232,29 @@ export function registerBrowserTools(pi: ExtensionAPI, opts: BrowserToolsOptions
                 async execute(_toolCallId: string, params: any, signal: AbortSignal | undefined) {
                         const session = getBrowserSession(opts.cwd);
                         const started = Date.now();
+                        // Hint collection runs before dispatch so a hint can still land on a
+                        // failing first call (the model reads the digest while retrying) —
+                        // and so a dispatch throw cannot skip the once-per-session flag.
+                        const hintParts: string[] = [];
+                        if (!firstHintSent) {
+                                firstHintSent = true;
+                                const part = firstCallHintPart(opts.cwd);
+                                if (part) hintParts.push(part);
+                        }
+                        if (params.action === "navigate" && typeof params.url === "string") {
+                                try {
+                                        const host = new URL(
+                                                /^[a-z][a-z0-9+.-]*:/.test(params.url) ? params.url : `https://${params.url}`,
+                                        ).hostname;
+                                        if (host && !hintedHosts.has(host)) {
+                                                hintedHosts.add(host);
+                                                const part = hostHintPart(opts.cwd, host);
+                                                if (part) hintParts.push(part);
+                                        }
+                                } catch {
+                                        /* a malformed URL is dispatch's error to report, not the hint lane's */
+                                }
+                        }
                         try {
                                 const report = await dispatch(session, params, { cwd: opts.cwd, signal });
                                 log(`${params.action} ok in ${Date.now() - started}ms: ${report.summary}`);
@@ -243,6 +276,12 @@ export function registerBrowserTools(pi: ExtensionAPI, opts: BrowserToolsOptions
                                 if (report.snapshot) {
                                         parts.push({ type: "text", text: `\n${report.snapshot}` });
                                 }
+                                // Tool-time memory hints ride LAST — after the action's own
+                                // result — so the digest never displaces the fresh snapshot
+                                // the next decision grounds on (issue #45's lane).
+                                for (const hint of hintParts) {
+                                        parts.push({ type: "text", text: `\n${hint}` });
+                                }
                                 return {
                                         content: parts,
                                         details: { action: params.action, summary: report.summary, ms: Date.now() - started },
@@ -250,6 +289,17 @@ export function registerBrowserTools(pi: ExtensionAPI, opts: BrowserToolsOptions
                         } catch (err: any) {
                                 const msg = err instanceof Error ? err.message : String(err);
                                 log(`${params.action} failed: ${msg}`);
+                                // A failed first call still carries the hints — the digest is
+                                // exactly what a retry wants in context.
+                                if (hintParts.length) {
+                                        return {
+                                                content: [
+                                                        { type: "text", text: `browser ${params.action} failed: ${msg}` },
+                                                        ...hintParts.map((h) => ({ type: "text" as const, text: `\n${h}` })),
+                                                ],
+                                                isError: true,
+                                        };
+                                }
                                 return {
                                         content: [{ type: "text", text: `browser ${params.action} failed: ${msg}` }],
                                         isError: true,

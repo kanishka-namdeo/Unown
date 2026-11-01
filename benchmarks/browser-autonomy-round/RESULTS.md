@@ -44,14 +44,17 @@ terminal agent:
 | 3 | post-dream (memory v2) | 46.2 s | 25 | 0 | yes | hit; DIRECT recovery (re-arm + re-click, no exploration) |
 | 4 | iframe race repro (targeted) | 26.5 s | 16 | 0 | yes | — (found F3) |
 | 5 | post-fix repro | 17.8 s | 9 | 0 | yes | race prevented at the source (first-save success, no re-fill needed) |
+| 6 | post-hint-lane ([#45](https://github.com/kanishka-namdeo/Unown/issues/45) fixed) | 41.5 s | 16 | 0 | yes | **NOT HIT — pre-armed** `browser dialog accept text=OK` BEFORE the triggering click (arm = call #11, click = #12), citing the learned procedure; the first browser call carried the 8-entry memory digest (receipt `stress-run-4-posthint.jsonl`) |
 
 Honest readings: model-call count on an identical task class is noisy
-(17/18/25 — do not read a trend into three samples); the durable signals
-are **success rate (5/5)**, **recovery depth on the dialog trap (2
-exploratory actions → 1 direct)**, and **prevention after the fix**. The
-memory recall verdict (VALIDATED) and the proactive-application verdict
-(PARTIAL) are in the session log CP2b; the improvement candidate is
-[#45](https://github.com/kanishka-namdeo/Unown/issues/45).
+(17/18/25/16 — do not read a trend into four samples); the durable signals
+are **success rate (6/6)**, **recovery depth on the dialog trap (2
+exploratory actions → 1 direct → 0 — prevented)**, and **prevention after
+the fix**. The memory recall verdict (VALIDATED) and the
+proactive-application verdict — PARTIAL through run 3, **VALIDATED from run
+6** (the tool-time hint lane, [#45](https://github.com/kanishka-namdeo/Unown/issues/45)) — are
+in the session log CP2b and the round-2 session log; the screenshot from
+run 6 is also the first checkout artifact saved as a true PNG ([#44](https://github.com/kanishka-namdeo/Unown/issues/44)).
 
 ## Capability verdicts (the round's lanes)
 
@@ -63,7 +66,7 @@ memory recall verdict (VALIDATED) and the proactive-application verdict
 | BROWSER-4 authenticated platforms | PARTIAL | browser-profile + CDP-attach docs verified; GitHub's authenticated API surface used via PAT; no real third-party login surface existed in the sandbox — the honest gap, recorded |
 | BROWSER-5 user simulation | VALIDATED | the demo-app hunt found F4 (a real, fixed defect) and the visitor journey audited the page like a customer |
 | BROWSER-6 long-horizon | PARTIAL | the release-monitoring baseline is receipted and the weekly routine is armed; multi-day continuity is structurally out of one session's reach — the checkpoint log is the resumption contract |
-| BROWSER-7 memory integration | VALIDATED (recall) / PARTIAL (proactive application) | dreams v1/v2 consolidated browser facts unprompted; run 3 recalled the dialog lesson and recovered directly but did not pre-arm — [#45](https://github.com/kanishka-namdeo/Unown/issues/45) |
+| BROWSER-7 memory integration | VALIDATED (recall; proactive application from round 2, run 6) | dreams v1/v2 consolidated browser facts unprompted; run 3 recalled the dialog lesson and recovered directly; run 6 (the [#45](https://github.com/kanishka-namdeo/Unown/issues/45) tool-time hint lane) PRE-ARMED before the confirm click — the gap closed |
 | BROWSER-8 failure-driven improvement | VALIDATED | F1-F5 all root-caused with `file:line`; F3 fixed + live-pinned in-round; F4 fixed + config-pinned; every recurring failure class became a memory entry, an issue, or a fix |
 | BROWSER-9 self-dogfooding | VALIDATED | Unown's browser audited Unown's landing/docs/demo, found two real defects, both fixed and browser-verified in-round |
 
