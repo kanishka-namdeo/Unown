@@ -1,0 +1,51 @@
+{
+  "task": "pt-5",
+  "promptFile": "tasks/pt-5.md",
+  "model": "agnes-3.0-flash",
+  "cap": 10,
+  "capNote": "budgeted-chunk protocol on a host that reaps agent processes between operator calls: chunk 1 capped at 10 turns (plan drafted, score 87), chunk 2 resumed by session id and completed UNCAPPED in 7 further turns",
+  "exitCode": 0,
+  "subtype": "success",
+  "turns": 17,
+  "durationMs": 396067,
+  "specialistSpawns": [
+    "product-strategist",
+    "solution-architect",
+    "qa-architect",
+    "devils-advocate",
+    "delivery-manager",
+    "delivery-manager",
+    "devils-advocate"
+  ],
+  "specialistSpawnCount": 7,
+  "spawnAgents": [
+    "delivery-manager",
+    "devils-advocate",
+    "product-strategist",
+    "qa-architect",
+    "solution-architect"
+  ],
+  "plan": {
+    "objective": "Add apps/coda/ \u2014 local-first markdown notes + task-board PWA (offline-first, installable; Chromium-desktop verified)",
+    "steps": 9,
+    "stepsWithFiles": 8,
+    "risks": 5,
+    "hasVerification": true,
+    "score": 87,
+    "threshold": 70,
+    "passes": true,
+    "file": "/home/z/pt5/fixture/.unown/plans/plan.md"
+  },
+  "chunks": [
+    {
+      "capped": true,
+      "num_turns": 10,
+      "subtype": "success"
+    },
+    {
+      "capped": false,
+      "num_turns": 7,
+      "subtype": "success"
+    }
+  ]
+}

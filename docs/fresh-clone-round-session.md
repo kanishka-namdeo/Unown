@@ -85,9 +85,11 @@ Receipts (all 2026-11-01T21:xxZ):
 
 **The A2-session protocol this lane established (a learning for every later ticket on this host)**: the sandbox reaps agent processes between operator tool calls — both a nohup'd and a setsid'd background session died mid-turn. The working protocol is the repo's own documented one: **budgeted chunks + resume chains** (`unown --resume <id> -p "continue…" --permission-mode acceptEdits --max-turns 8` per chunk, receipts written incrementally, no `task`-tool exploration because subagents die with their parent chunk). Eleven chunks total; one operator unblock mid-flight (the session's `homedir`-from-`node:path` import was boot-breaking — fixed to `node:os`, one line, noted in the receipt and the session log). The issue #30 story stays open at the repro level (intermittent, 22/22 clean here) but is now instrumented: the next live hang anywhere records which exit path was pending, which is exactly what the issue asked for next.
 
-## M3 — PT-5: a live plan-mode V3 run with live specialist spawns (planned)
+## M3 — PT-5: a live plan-mode V3 run with live specialist spawns (COMPLETE, 2026-11-02)
 
 The plan-mode V3 round's own retrospective lists this as the natural next benchmark lane: "the specialist bench has no complex-plan live receipt yet — a PT-5 task over a real multi-domain change (with live specialist spawns, not skips)". Run `unown --plan` on a real multi-domain task through the live stack (bridge + Agnes), with the specialist bench actually spawning (product-strategist / solution-architect / delivery-manager / qa-architect / devils-advocate …), and receipt it under `benchmarks/plan-mode/`.
+
+**Result**: DONE, and the task chosen is the DRIVE track's own app — plan **Coda** (the local-first notes + task-board PWA at `apps/coda/`). Receipt `benchmarks/plan-mode/results/run-2026-11-02-pt5/` (task file `tasks/pt-5.md`): **7 live spawns across all five bench agents**, verdicts APPLIED BACK into the plan (DRIFT→cuts, GAPS→mitigated, DELIVERABLE→re-sequenced, P0s→fixed), full V3 doc (audit with real USED rows, synthesis, learning plan), **87/100 passes**, 17 turns / 396 s through the chunked-resume protocol (chunk 1 capped at 10 with the plan drafted; chunk 2 completed uncapped in 7). The committed `pt-5-plan.md` doubles as the Coda round's design doc — the Coda round opens from it, not from a blank page.
 
 ## M4 — DOX + docs closeout (planned)
 

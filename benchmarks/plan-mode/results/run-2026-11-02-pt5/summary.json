@@ -1,0 +1,18 @@
+{
+  "ranAt": "2026-11-02",
+  "tasks": 1,
+  "cap": 10,
+  "plansProduced": 1,
+  "plansPassing": 1,
+  "meanScore": 87,
+  "meanTurns": 17,
+  "receipts": [
+    {
+      "task": "pt-5",
+      "score": 87,
+      "turns": 17,
+      "produced": true
+    }
+  ],
+  "note": "PT-5 lane: live specialist spawns - 7 spawns across all five bench agents, verdicts applied back into the plan"
+}

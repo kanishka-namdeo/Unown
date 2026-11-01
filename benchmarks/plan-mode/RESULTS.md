@@ -77,9 +77,50 @@ transcript.
   which is where the scorer's behavior is actually contract-tested.
 - PT-4's empty-repo control means the specialist bench was exercised as
   *justified skips*, not live consultations — a complex-plan lane with live
-  specialist spawns remains unmeasured (the bench's own contracts are pinned
-  by `test/subagent-builtins.test.ts`, and the read-only delegation guard by
-  `test/plan-mode-v3.test.ts`).
+  specialist spawns remained unmeasured until PT-5 below (the bench's own
+  contracts are pinned by `test/subagent-builtins.test.ts`, and the
+  read-only delegation guard by `test/plan-mode-v3.test.ts`).
 - The interactive lane was driven by a scripted PTY driver (Enter on the first
   approval option), not a human's considered choice — the approval gate's
   semantics themselves are the V2 round's, already pinned by its own suites.
+
+## PT-5 — the complex-plan lane with LIVE specialist spawns (2026-11-02)
+
+The fresh-clone round's M3 lane, closing the limitation above. Task:
+`tasks/pt-5.md` — plan **Coda**, a local-first markdown notes + task-board PWA
+at `apps/coda/` (app code + tests + e2e + a11y + docs/DOX: a genuinely
+multi-domain change). Run contract as documented in the task file: scratch
+checkout fixture, agnes-3.0-flash through the live bridge, budgeted-chunk
+resume protocol on the reaping host (chunk 1 capped at 10 turns with the plan
+drafted; chunk 2 resumed by session id and completed uncapped — 17 turns,
+396 s).
+
+| Metric | Result |
+|---|---|
+| Plan produced / passing | **yes — 87/100** (threshold 70) |
+| Steps (with files) | 9 (8) — re-sequenced by the delivery-manager verdict |
+| Risks / verification | 5 / yes |
+| **Live specialist spawns** | **7 spawns, all five bench agents** (product-strategist, solution-architect, qa-architect, delivery-manager ×2, devils-advocate ×2 — the second round re-reviewing the revised plan) |
+| Verdicts applied back | yes — product-strategist **DRIFT → cuts applied**; qa-architect **GAPS → mitigated**; delivery-manager **DELIVERABLE → re-sequenced**; devils-advocate **P0s found → fixed in Approach/Steps**; solution-architect **ALIGNED** |
+| Capability audit | USED rows with reasons on the real repo (the honest counterpart to PT-4's all-SKIPPED control) |
+| Session shape | 17 turns, `plan_write` iterations, `exit_plan_mode` invoked, read-only tools only |
+
+The full V3 document structure is present in the committed plan artifact:
+Context, Capability audit, Approach, Specialist review (5 verdicts),
+Synthesis, Steps, Risks, Learning plan, Verification. The plan doubles as the
+DRIVE track's Coda app design doc (operator decision 2026-11-02).
+
+Receipts: `results/run-2026-11-02-pt5/` — `receipt-pt-5.json` (the envelope's
+`plan` block + the spawn ledger), `summary.json`, the verbatim
+`pt-5-plan.md`, and both chunk envelopes.
+
+### PT-5 limitations (same honesty)
+
+- n=1 run, one model (the metered free tier): a demonstration that the bench
+  consults and that its verdicts change the plan, not a population claim.
+- The chunked-resume protocol means the "turns 17" figure counts across two
+  process lifetimes (10 + 7); the plan converged inside the first chunk and
+  the specialists + synthesis + learning plan completed in the second.
+- The specialist consultations ran at their default low effort through the
+  metered upstream; their verdict quality is evidenced by the applied
+  changes (cuts, re-sequencing, P0 fixes), not independently scored.
