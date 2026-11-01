@@ -8,17 +8,15 @@ archaeology. When a round completes, its log graduates to a round-specific
 
 ---
 
-## ACTIVE ROUND — the security round (in flight)
+## ACTIVE ROUND — none (the queue is prepared, not started)
 
-The security round (2026-11-01, target v0.0.55): every open Dependabot
-advisory (follow-redirects 1.16.2 HIGH, minimatch 11.0.1 MEDIUM) and every
-open CodeQL finding (insecure-randomness ×1, polynomial-redos ×2) addressed
-with the dependency round's stage-gating discipline — the CodeQL fixes swept
-the whole idiom (eleven sites, not just the two flagged), the minimatch fix
-regenerated all five vendored surfaces through the repo's own lock
-generators, the coverage-v8 Dependabot PR declined on its exact-pin peer
-contract. Resumable log with every receipt:
-`docs/security-round-session.md`.
+The security round (v0.0.55, 2026-11-01) is complete and graduated to its
+own log: `docs/security-round-session.md` — every open Dependabot advisory
+(follow-redirects 1.16.2 HIGH, minimatch 11.0.1 MEDIUM, regenerated on all
+five vendored surfaces) and every open CodeQL finding (CSPRNG task ids, the
+linear trailing-slash sweep across eleven sites) addressed, the
+coverage-v8 PR declined on its exact-pin peer contract, v0.0.55 tagged on
+green 3-OS CI and published.
 
 The dependency round (v0.0.54, 2026-11-01) is complete and graduated to its
 own log: `docs/dependency-round-session.md` (research and decisions:
@@ -41,7 +39,7 @@ S2-22 (see the settings log's "Resume-from-here"); the injection-scanner ML
 classifier (the production TODO); the delegation round's subagent-reuse axis;
 OB-7 (fleet outcomes in the brief); the landing next-round queue (cmd-K
 search, blog hover-previews); the term.ts snapshot-class follow-up
-(release-recovery CP2). When the first v0.0.55 content lands, re-add
+(release-recovery CP2). When the first v0.0.56 content lands, re-add
 `## [Unreleased]` to CHANGELOG.md and regenerate the rail in the same commit;
 the version bump itself is the release commit (package.json version + dated
 heading + rail + tag on the green SHA).

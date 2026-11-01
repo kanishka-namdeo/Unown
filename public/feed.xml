@@ -27,6 +27,16 @@
       <category>testing</category>
     </item>
     <item>
+      <title>&quot;Four alerts, three findings, zero regressions: the security round&quot;</title>
+      <link>https://unown-nine.vercel.app/blog/2026-11-01-the-security-round</link>
+      <guid isPermaLink="true">https://unown-nine.vercel.app/blog/2026-11-01-the-security-round</guid>
+      <pubDate>Sun, 01 Nov 2026 00:00:00 GMT</pubDate>
+      <description>&quot;How Unown cleared every open Dependabot advisory and CodeQL finding in one gated round — including the one Dependabot&apos;s own patch would have left broken.&quot;</description>
+      <category>release</category>
+      <category>security</category>
+      <category>verification</category>
+    </item>
+    <item>
       <title>&quot;The footer quiet round: what a terminal owes you at rest&quot;</title>
       <link>https://unown-nine.vercel.app/blog/2026-10-31-the-footer-quiet-round</link>
       <guid isPermaLink="true">https://unown-nine.vercel.app/blog/2026-10-31-the-footer-quiet-round</guid>

@@ -1,6 +1,6 @@
 # unown, product overview (verified)
 
-Everything below was re-checked against the repository at `v0.0.54` (`main`, commit `3facce9a`) on 2026-11-01, with the code as the authority wherever the README or the docs disagreed with it. Appendix A lists every claim the earlier draft got wrong, each with its file and line; Appendix B lists what it missed. Where a number could not be backed by a committed receipt or a source file, it was cut.
+Everything below was re-checked against the repository at `v0.0.55` (`main`, commit `e19291cd`) on 2026-11-01, with the code as the authority wherever the README or the docs disagreed with it. Appendix A lists every claim the earlier draft got wrong, each with its file and line; Appendix B lists what it missed. Where a number could not be backed by a committed receipt or a source file, it was cut.
 
 This file's maintenance contract lives in the root `AGENTS.md` under Root Contracts: it is refreshed in the same change that moves anything it counts, and re-stamped with the version, commit, and date it was verified against. No counted surface has moved since the stamp above.
 
@@ -136,7 +136,7 @@ This file's maintenance contract lives in the root `AGENTS.md` under Root Contra
 - Engine state in SQLite via better-sqlite3 (runs, cycles, dreams, memory versions, hook log, processes, delegations, webcache), Mem0 (`mem0ai` 3.3.1) as the in-process memory platform, web-tree-sitter for the repomap, and TypeBox for schemas. Both the engine and the bridge serve over bare `Bun.serve`, with no HTTP framework in the dependency tree.
 - Service map: engine `:3030` (bearer-token gated), llm-bridge `:3031`, an optional `zai-upstream` shim `:3032`, landing page `:3000`.
 - Public repo, MIT license, Code of Conduct, contributing guide, security policy, support doc, and nine CI workflows.
-- Snapshot as of 2026-11-01: 894 commits on `main`, v0.0.54 latest release, repo created 2026-08-26, 2 open issues (a headless-exit hang and engine-versus-interactive bridge contention) and 7 open dependabot PRs.
+- Snapshot as of 2026-11-01: 900 commits on `main`, v0.0.55 latest release, repo created 2026-08-26, 2 open issues (a headless-exit hang and engine-versus-interactive bridge contention) and 0 open dependabot PRs (the security round cleared the advisory queue and closed the last seven PRs — five applied, one superseded by the five-surface regen, one declined on its peer contract).
 
 ## Appendix A: corrections against the earlier draft
 

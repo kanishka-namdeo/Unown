@@ -15,7 +15,7 @@ How `unown update` works in both install modes — source checkout and standalon
 - [Privacy](#privacy)
 - [Troubleshooting](#troubleshooting)
 
-Related pages: [install](install.md) · [usage](usage.md) · [configuration](configuration.md) · [quickstart](quickstart.md) · [troubleshooting](troubleshooting.md) · [update research and decisions](update-research.md) · [the dependency round's research](dependency-round-research.md) (the repo's own package updates — a different surface from `unown update`)
+Related pages: [install](install.md) · [usage](usage.md) · [configuration](configuration.md) · [quickstart](quickstart.md) · [troubleshooting](troubleshooting.md) · [update research and decisions](update-research.md) · [the dependency round's research](dependency-round-research.md) (the repo's own package updates — a different surface from `unown update`) · [the security round](security-round-session.md) (the advisory-and-CodeQL clearances — the same discipline applied to vulnerability debt)
 
 ## The one command
 

@@ -7,8 +7,9 @@
 > tag only on a green SHA.
 
 - Round owner: the security session (lineage: dependency round → this round)
-- Status: **in flight** — fixes landed and gated; the v0.0.55 release and
-  closeout follow (see the phase ledger)
+- Status: **complete** — both advisory classes cleared (all three CodeQL findings
+  read `state=fixed` via the API), v0.0.55 tagged on green 3-OS CI and
+  published (13 assets)
 - Related pages: [the dependency round](dependency-round-session.md) (the
   scope policy this round's declines lean on) ·
   [the release-recovery round](release-recovery-session.md) (the tag-on-green
@@ -127,7 +128,7 @@ engine suite re-run with minimatch 11 installed: **5331/0**; bridge 243/0;
 root build + 15/15 e2e (the sigil demo feeds the landing page's live-demo
 iframe — the uid change is inside it).
 
-## CP4 — the release (pending at the round's opening)
+## CP4 — the release
 
 - `## [Unreleased]` re-added to CHANGELOG.md with the round's entries (per
   the recorded v0.0.55 contract in `docs/SESSION.md`), the landing rail
@@ -140,27 +141,42 @@ iframe — the uid change is inside it).
   (the full round trip through the Agnes upstream, exercising the edited
   boot path in `term.ts`/`setup.ts`); `unown doctor` green with the two
   expected ⚠ (no LSP, no PATH shim); engine `/api/overview` → `ok:true`.
-- Version bump 0.0.54 → 0.0.55, `[Unreleased]` folded into
-  `## [0.0.55] - 2026-11-01`, rail regenerated — release commit (lands
-  after the fix commits' CI is green).
-- The bump commit triggers the full 3-OS CI matrix (the spend-gate rule);
-  tag `v0.0.55` cut on the green SHA; the release workflow's `ci-green` gate
-  then builds and publishes the six per-OS binaries + installers + SBOM.
+- The fix commits (`b97f535d` docs → `185ca86d` engine → `be3370a3` deps →
+  `48b61b82` ci) pushed as one milestone: **CI run `41296963936` green**, and
+  **CodeQL run `41296963955` green — all three findings read `state=fixed`
+  at 2026-11-01T10:26:16Z** (open code-scanning alerts: 0).
+- Version bump 0.0.54 → 0.0.55 (release commit `e19291cd`), `[Unreleased]`
+  folded into `## [0.0.55] - 2026-11-01`, rail regenerated, version
+  consistency asserted (`bun bin/unown --version` → 0.0.55).
+- The bump commit triggered the full 3-OS CI matrix (the spend-gate rule):
+  **run `41298029169` green, 19/19 jobs** — including `Build + test` on
+  ubuntu, macOS AND Windows, the `Cross-platform gate (version bump?)`
+  detecting the bump, and the Security scan (advisories clean).
+- Tag `v0.0.55` cut on the green SHA `e19291cd`; release workflow run
+  `41298931486` — ci-green passed, the 6-binary build + SBOM, publish, feed
+  verification and the 3-OS install smokes — **completed success**;
+  published 2026-11-01T10:59:23Z with 13 assets.
+- Post-release user-side verification: `unown update --check` →
+  `unown 0.0.55 — up to date (latest release: v0.0.55)`, exit 0.
 
-## CP5 — the closeout (pending at the round's opening)
+## CP5 — the closeout
 
 - Blog post `content/blog/2026-11-01-the-security-round.md` (release type,
-  text-only — no referenced visual changed).
-- README documentation-table row for the round; `docs/updating.md` related
-  pages; `unown-overview.md` re-stamped (version, commit, date, repo-stat
-  snapshot).
-- SESSION.md's active round graduates to the completed-round pointer; the
-  next round's queue stands as recorded.
-- Dependabot PRs closed with receipts pointing at the landing commits
-  (#31, #32, #34, #40, #41, #42 applied — #32's five-surface regen supersedes
-  the two-surface PR; #37 declined with the peer-contract reason). The four
-  Dependabot alerts and three CodeQL alerts verified closed via the API on
-  the post-push scan.
+  text-only — no referenced visual changed) + regenerated blog data and
+  feed (39 posts, `check:blog` ok).
+- README: the round's row in the documentation table + the security-round
+  bullet in the Security model history; `docs/updating.md`'s Related pages
+  gains the round; `unown-overview.md` re-stamped (v0.0.55, `e19291cd`,
+  2026-11-01; the snapshot line: 900 commits, 0 open dependabot PRs).
+- SESSION.md's active round graduates to the completed-round pointer and
+  the next round's queue stands as recorded.
+- Dependabot PRs closed with receipts: #34/#40/#41/#42 auto-closed by
+  Dependabot once the base branch carried the updates; #31 and #32 closed
+  with comments pointing at `be3370a3` (#32's five-surface regen explicitly
+  supersedes the two-surface PR — as-is it would have failed
+  `check:shrinkwrap`); #37 declined with the exact-pin peer-contract
+  receipt. The four Dependabot alerts close with GitHub's own manifest
+  rescan of the landed fixes.
 
 ## Phase ledger
 
@@ -171,12 +187,9 @@ iframe — the uid change is inside it).
 | 2 CodeQL fixes + pinning tests | ✅ | CP2 (uid CSPRNG, url-trim sweep ×11) |
 | 3 dependency + CI fixes | ✅ | CP3 (five-surface minimatch, follow-redirects, actions, bench, decline) |
 | 4 CHANGELOG + rail + smokes | ✅ | CP4 |
-| 5 version bump + 3-OS CI + tag v0.0.55 | ⏳ pending — the release commit |
-| 6 release workflow (build/publish/feed/install) | ⏳ pending |
-| 7 blog + README row + overview re-stamp + DOX closeout | ⏳ pending |
+| 5 version bump + 3-OS CI + tag v0.0.55 | ✅ | `e19291cd` + run `41298029169` (19/19) + tag on the green SHA |
+| 6 release workflow (build/publish/feed/install) | ✅ | run `41298931486`, published 2026-11-01T10:59:23Z, 13 assets |
+| 7 blog + README row + overview re-stamp + DOX closeout | ✅ | CP5 above |
 
-**Resume-from-here:** the fixes are landed and gated (phases 0–4); next:
-the version bump release commit, the tag on green CI, then the closeout
-(blog, README row, overview re-stamp, SESSION graduation, PR closures and
-the alert-cleared verification). The next round's queue stays recorded in
-`docs/SESSION.md`.
+**Resume-from-here:** the round is complete; the next round's queue is
+recorded in `docs/SESSION.md`.

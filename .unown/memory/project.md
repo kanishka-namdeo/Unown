@@ -122,4 +122,4 @@
 
 - Parley password hashing: scrypt N=16384 r=8 p=1 (src/lib/parley/password.ts). Restored by hand 2026-10-29 after AutoDream reconciles twice erased the fact (upstream 79->66 render, then the F1/F2 bcrypt poison round). Never let a memory answer overwrite this without reading the source.
 
-<!-- unown: rendered 110/110 memories via Mem0 (backend: lexical) at 2026-11-01T07:53:14.281Z -->
+<!-- unown: rendered 110/110 memories via Mem0 (backend: lexical) at 2026-11-01T10:15:49.935Z -->
