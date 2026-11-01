@@ -154,12 +154,6 @@ The findings ledger:
 | P2 | refs resolve through open shadow roots and same-origin iframes exactly as documented — the variant picker and the address form were driven by ref in all three runs | `browser/session.ts` findIn recursion | positive | validated claim |
 | P3 | modal + overlay interruption handled 3/3, including the newsletter re-open trap (avoided every time) | fixture F2/F3 vs runs 1-3 | positive | validated claim |
 
-The honest null: turn-count did not improve across cold → warm → post-dream
-(17 → 18 → 25); the improvement showed up as recovery depth on the dialog
-trap (2 exploratory actions → 1 direct action), not as prevention.
-Benchmark impact recorded in
-`benchmarks/browser-autonomy-round/receipts/stress-checkout-summary.json`.
-
 ## CP2b — the memory loop on this round's own sessions (BROWSER-7, early evidence)
 
 The learning loop closed on browser work within the hour, unprompted:
@@ -184,9 +178,52 @@ The learning loop closed on browser work within the hour, unprompted:
 
 ## CP3 — self-dogfooding: Unown against Unown (BROWSER-9 + BROWSER-5 + BROWSER-2)
 
-Planned: the landing page and `/demo` as a real user; product-claim
-validation against the engine sources; the defect ledger; issues filed;
-fixes and PRs where feasible; browser-verified fixes.
+The visitor journey (receipt `visit-landing.jsonl` + the resumed compile
+`visit-landing-2.jsonl`): hero, install command, dex search, FAQ, blog and
+console/net audit all extracted correctly — the install command matches
+`docs/install.md` exactly, the latest blog post resolves, and the only
+defects found were dev-server-class (below). The demo-app user simulation
+(`demo-user.jsonl`) burned its full 40-turn budget investigating a "dead"
+`+` button on `/demo` — which turned out to be the round's most valuable
+find:
+
+- **F4 (defect, fixed in this round)**: the dev server was silently
+  un-interactable via `127.0.0.1` — Next 16 blocks "cross-origin" dev
+  resources (fonts, the HMR socket) from unrecognized origins, hydration
+  silently never completes, every interactive element is dead with zero
+  on-page console errors. The terminal agent found the symptom; a second
+  browser stack (agent-browser, an independent CDP implementation)
+  reproduced it; `localhost` vs `127.0.0.1` isolated the cause; the dev
+  log carried the one-line fix. Shipped: `allowedDevOrigins:
+  ["127.0.0.1"]` in `next.config.ts`, pinned by `src/next-config.test.ts`
+  (2 tests), symptom row in `docs/troubleshooting.md`, CHANGELOG
+  `[Unreleased]` entry + rail regen. Verified through the browser after
+  the fix: the `/demo` composer opens via `127.0.0.1`, 1 dialog, 5
+  textboxes, zero console errors. Production was never affected (the
+  live deploy hydrated fine throughout) — and the e2e lane boots a
+  production build, which is why CI could never catch it.
+- **F5 (incident, honest receipt)**: M2 pushed **red CI** — the dream
+  render of the tracked `.unown/memory/project.md` (committed in M2)
+  pruned the "Failed cycles auto-recover" line at the 110-memory render
+  cap, and that line is quoted by the landing page's memory preview
+  (`loop.tsx:118`), reddening `check:claims`. Root cause is a fragile
+  coupling: a dream-managed volatile file is a claims-gate writing
+  source. The repo's own precedent (the parley scrypt note, restored by
+  hand 2026-10-29 after two dream erasures) names the remedy — the
+  `## Manual notes` lane survives every re-render. The line is restored
+  there with its provenance; `check:claims` green again (62/62). Process
+  debt owned: M2 should have re-run the full gate set after committing
+  dream output, not just `check:docs`. Improvement candidate: the
+  claims gate could special-case memory-file literals with a clearer
+  failure message pointing at the manual-notes lane.
+- The demo-app user simulation will be re-run against the fixed dev
+  server (the warm run doubles as the user-simulation benchmark).
+
+The honest null: turn-count did not improve across cold → warm → post-dream
+(17 → 18 → 25); the improvement showed up as recovery depth on the dialog
+trap (2 exploratory actions → 1 direct action), not as prevention.
+Benchmark impact recorded in
+`benchmarks/browser-autonomy-round/receipts/stress-checkout-summary.json`.
 
 ## CP4 — the competitor research pass (BROWSER-1 + BROWSER-3 + BROWSER-6)
 

@@ -11,6 +11,7 @@ Related pages: [usage](usage.md) · [providers](providers.md) · [Memory](memory
   - [The session surface](#the-session-surface)
   - [The CLI itself](#the-cli-itself)
   - [Windows](#windows)
+  - [The landing page (dev server)](#the-landing-page-dev-server)
 - [Where the logs are](#where-the-logs-are)
 - [Resetting cleanly](#resetting-cleanly)
 - [Getting help](#getting-help)
@@ -200,6 +201,14 @@ The Windows-specific failure modes (the general rows above still apply). Full gu
 | You want bwrap-grade sandbox isolation | Native Windows has no OS sandbox — engine runs use the in-process path jail there (the same degradation Claude Code ships on native Windows) | Use **WSL2**: install bun inside WSL2 (`curl -fsSL https://bun.sh/install | bash`), clone the repo there (keep it in the Linux filesystem, `~/…`, not `/mnt/c`) — on Linux the engine picks up the vendored bwrap automatically. Details: [windows guide § sandbox](windows.md#the-sandbox-story-on-windows) |
 
 The same logs apply as everywhere (`.run\bridge.log`, `.run\engine.log` inside the repo); `unown doctor` prints platform-aware rows (`OS sandbox (Windows)` ⚠ is *expected*, not a defect).
+
+### The landing page (dev server)
+
+The Next.js dev server (`bun run dev`, port 3000) has one silent trap worth knowing before you suspect your own code:
+
+| Symptom | Likely cause | Fix |
+|---------|--------------|-----|
+| The dev-served page renders but **every interactive element is dead** — buttons, accordions, the demo apps' controls — with no console error, and the terminal running `bun run dev` shows `⚠ Blocked cross-origin request to Next.js dev resource … from "127.0.0.1". Cross-origin access to Next.js dev resources is blocked by default for safety.` | Next 16's dev server treats an unrecognized origin (here: the IP literal `127.0.0.1`, which agents and curl reach for first because `localhost` can resolve to `::1`) as cross-origin and blocks dev resources — fonts, the HMR socket — so client **hydration silently never completes**: SSR HTML renders, nothing is clickable | `allowedDevOrigins: ["127.0.0.1"]` is already in `next.config.ts` (v0.0.56+); on older checkouts add it, or browse `http://localhost:3000` instead. Production builds are unaffected, which is why the e2e lane (a production build) never sees this |
 
 ## Where the logs are
 

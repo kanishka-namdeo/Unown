@@ -25,6 +25,18 @@ import type { NextConfig } from "next";
  */
 const nextConfig: NextConfig = {
   output: "standalone",
+  // Dev-origin allowlist (the browser autonomy round, 2026-10-31): Next 16's
+  // dev server blocks "cross-origin" dev resources — fonts, the HMR socket —
+  // when the browser reaches it by an origin it does not recognize as its
+  // own, and the block is silent on the page: the SSR HTML renders, no
+  // console error surfaces, and client hydration never completes, so every
+  // interactive element is dead. `127.0.0.1` is the canonical loopback
+  // literal (agents and curl reach for it first precisely because `localhost`
+  // can resolve to ::1), so it is allowlisted here. Production builds are
+  // unaffected (the allowlist is dev-only); the e2e lane boots a production
+  // build, which is why this could never surface in CI — pinned instead by
+  // src/next-config.test.ts and receipted in the round's session log (F4).
+  allowedDevOrigins: ["127.0.0.1"],
   typescript: {
     ignoreBuildErrors: true,
   },

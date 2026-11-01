@@ -10,15 +10,12 @@
 - Pitfall: atomic.ts:16 temp file name `${file}.tmp-${process.pid}-${Date.now()}` lacks a per-process monotonic counter; two same-process writes to the same target within one millisecond share the identical tmp path and cause a clobber race. Fix: add `let seq = 0` and append `seq++` to the temp filename.
 - Reviewer-verified regression test for atomic.ts clobber race: stub Date.now to a constant, call atomicWriteFileSync 3 times on the same target, and assert the final content equals the third call's input; old pid-Date.now naming fails this deterministically.
 - Stealth verification suite on bot.sannysoft.com: all 10 checks (webdriver, userAgent, platform, userAgentData, timezone, locale, screen, viewport, plugins, window.chrome) pass; 0 FAIL rows in Intoli tests.
-- bisect-registry.mjs automates missing-paren bisects: split section arrays into item spans paren-insensitively (the catch class leaves braces balanced but parens unbalanced), binary-search candidate files written to a temp name in the registry's own directory (never touching the real file), and name the minimal failing item; the selftest drills a synthetic catch (agent.capabilities) across 8 probes every run.
-- Use `find <dir> -name '*.ts' | wc -l` or `find <dir> -name '*.ts' -type f` for exact machine-verified file counts; avoid manual directory listing estimates which miss files.
-- In the Unown 390px covenant, the table.sr-only overflow pitfall was fixed by moving the table inside a div with className 'sr-only' because scoped global table rules override Tailwind v4's sr-only width:1px on table elements; divs carry no table width semantics so the 1px clip holds, and the table itself is class-free.
-- Unown encore component test suite (`bun test src/components/encore`) passes 55 tests with 0 failures in a single file.
 
 ## Task playbooks
 - atomic.ts same-millisecond clobber race is fixed with a module-level monotonic sequence counter appending `-${seq++}` to the temp filename pattern `${process.pid}-${Date.now()}` in atomicWriteFileSync.
 
 ## Environment
+- FAQ section in the Unown UI renders answers client-side via Radix accordion components that default to closed; opening FAQ entries requires the browser agent to explicitly expand the accordion.
 - In OB-5 live-lane, when the learning feed records a memory version advance, the footer chip counts it as an unseen learning event until /feed marks it seen; the chip contract is count, not text
 - Identify API-less sibling patterns (such as cadence's localStorage shape) when determining if a new subproject requires an `api/` directory.
 - bin: Cross-platform CLI launcher (Unix shebang, Windows cmd/ps1) [note 1].
@@ -29,6 +26,9 @@
 - The `/cadence` habit tracker uses an `embed=1` reset contract called `cadence-reset` and persists state to localStorage with a `SEED_VERSION` marker.
 
 ## Facts
+- Unown hero landing page displays H1 tagline "The terminal coding agent that remembers.", a decode strip "Open-source AI coding agent · built on pi", pitch text about session notes becoming project memory kept only after a fresh sandbox proves them twice, and beta disclaimer "Unown is in beta — expect rough edges and moving formats; report what"
+- In the Unown UI, dialog-opening buttons use onColumnClick and onNewTask handlers that should trigger setEditorOpen(true); if the dialog does not open, the suspected cause is that the hydration state has not yet loaded, even though the editor open state should be separate from hydration
+- In the Unown stress-browser workflow, dismiss the auto-opening F2 newsletter modal with "No thanks, just let me shop" to prevent it from swallowing the subsequent "Add to cart" click; verify success when #final-status has data-success="true" and the screenshot displays the green "Order placed — success" banner, saving to benchmarks/browser-autonomy-round/screenshots/stress-final-postdream.png
 - In BrowseBench stress fixtures (benchmarks/browser-autonomy-round/fixtures/stress.html), native confirm() dialogs auto-dismiss by default and cancel the flow with 'Order cancelled at the dialog'; arm 'browser dialog accept text=OK' before clicking the button that opens the confirm, using a one-shot policy that must be re-armed after each use.
 - After DOM mutations or page changes, browser snapshot refs become stale; re-snapshot the page before acting on the new state.
 - Handle address forms within cross-frame iframes (e.g., stress-frame.html) by locating and filling fields in the correct frame context.
@@ -122,6 +122,7 @@
 
 ## Manual notes
 
+- Failed cycles auto-recover — do NOT restart engine to fix them. (Restored by hand 2026-11-01 during the browser autonomy round after a dream render pruned it at the 110-memory cap; the landing page's loop.tsx memory preview quotes this line, so the claims gate reddens when it disappears. The Manual notes lane survives every re-render — this is its durable home.)
 - Parley password hashing: scrypt N=16384 r=8 p=1 (src/lib/parley/password.ts). Restored by hand 2026-10-29 after AutoDream reconciles twice erased the fact (upstream 79->66 render, then the F1/F2 bcrypt poison round). Never let a memory answer overwrite this without reading the source.
 
-<!-- unown: rendered 110/118 memories via Mem0 (backend: lexical) · 8 oldest pruned at render (cap 110; hard-won rules immune) at 2026-11-01T12:58:37.349Z -->
+<!-- unown: rendered 110/122 memories via Mem0 (backend: lexical) · 12 oldest pruned at render (cap 110; hard-won rules immune) at 2026-11-01T13:38:46.391Z -->

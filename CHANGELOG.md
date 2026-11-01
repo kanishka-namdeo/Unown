@@ -9,6 +9,15 @@ otherwise specified; the release tag must always equal package.json's version.
 
 Repo conventions: measured claims cite their receipts (`docs/testing-strategy.md`, `benchmarks/memory-eval/*/RESULTS.md`). Changes to agent behavior — prompts, default models, routing, guard rules, hooks, memory injection — are filed under **Agent Behavior**; the policy lives in [docs/BEHAVIOR.md](docs/BEHAVIOR.md).
 
+## [Unreleased]
+
+The browser autonomy round (in flight) — dogfooding the browser tool against
+Unown itself. Receipts: [session log](docs/browser-autonomy-round-session.md).
+
+### Fixed
+
+- **The dev server was silently un-interactable when browsed by IP literal.** Next 16's dev server blocks "cross-origin" dev resources when the browser reaches it by an origin it does not recognize as its own — and `127.0.0.1` (the loopback literal agents and curl reach for first, precisely because `localhost` can resolve to `::1`) was not in `next.config.ts`'s `allowedDevOrigins`. The failure mode is the nastiest kind: the SSR HTML renders normally, **no console error surfaces on the page**, and client hydration silently never completes — every interactive element (accordions, the demo apps' kanban controls, theme toggles) is dead, while the only tell is a `⚠ Blocked cross-origin request to Next.js dev resource … from "127.0.0.1"` warning in the dev-server terminal plus a failed `/_next/hmr` websocket handshake. Found by the round's own dogfooding lane (the terminal agent burned a full 40-turn session investigating the "dead" `+` button on `/demo` before the round diagnosed it), reproduced independently through a second browser stack, and root-caused to the missing allowlist entry. Fix: `allowedDevOrigins: ["127.0.0.1"]` in `next.config.ts` — production builds are unaffected (the allowlist is dev-only), which is exactly why the e2e lane (a production build on :3210) could never catch it; the contract is pinned instead by `src/next-config.test.ts` (2 tests) and a symptom row in [docs/troubleshooting.md](docs/troubleshooting.md). Verified end-to-end through the browser after the fix: the `/demo` composer opens via `127.0.0.1` with zero console errors.
+
 ## [0.0.55] - 2026-11-01
 
 The security round — every open Dependabot advisory and every open CodeQL
