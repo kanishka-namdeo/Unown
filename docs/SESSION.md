@@ -8,7 +8,29 @@ archaeology. When a round completes, its log graduates to a round-specific
 
 ---
 
-## ACTIVE ROUND — none (the browser autonomy round graduated; plan mode V3 is in flight in its own lineage)
+## ACTIVE ROUND — none (the browser autonomy round 2 graduated; plan mode V3 is in flight in its own lineage)
+
+The browser autonomy round 2 (2026-11-01) is complete and graduated to its
+own log: `docs/browser-autonomy-round-2-session.md` — the continuation round
+that closed round 1's entire carries-over queue: #46 fixed on all three
+fronts (the claims gate's memory route is now EXACT with a
+Manual-notes-remedy failure line — the silent-drift half root-caused to
+`extractTemplates` reading markdown code spans as template segments, so a
+pruned line passed on an unrelated 12-char window; the renderer's
+Manual-notes preservation pinned against cap-pruning renders; the convention
+documented in loop.tsx and docs/memory.md), #44 fixed (screenshot extension
+honored, format clashes fail loudly — pinned unit/live/e2e), **#45
+implemented and measured** (the tool-time browser-memory hint lane: the
+first browser call carries a bounded digest of browser-relevant memory, the
+first navigate to a known host carries its slice — stress-checkout run 6
+PRE-ARMED the dialog accept before the triggering click, the trap prevented
+for the first time in six runs; BROWSER-7's proactive-application verdict
+moves to VALIDATED), the warm docs-navigation benchmark run on a second
+technology (MDN Canvas roundRect: 12 calls / 39.5 s, all overloads +
+exception verified, zero interventions, plus a fresh-project control where
+the lane correctly stays silent), and the hostile-page-checkout skill
+promoted and session-verified. Commits: `6224668c` → `fe8b5f9c` →
+`c1272620` + the closeout.
 
 The browser autonomy round (2026-11-01) is complete and graduated to its
 own log: `docs/browser-autonomy-round-session.md` — the browser dogfooding
@@ -47,14 +69,14 @@ re-cut v0.0.53 after its first tag landed against red CI
 (`docs/release-recovery-session.md`).
 
 **The next round's queue (recorded, in priority order)**: the browser
-autonomy round's carries-overs first — #46 (the dream-render/landing-quote
-coupling: gate-side or renderer-side fix; two occurrences in one day) —
-then #45 (the tool-time browser-memory hint lane — recall works,
-proactive application doesn't), #44 (the screenshot extension/format
-reconciliation), the warm docs-navigation benchmark on a second
-technology, the skill-promotion decision for the hostile-checkout
-procedure, and the release-monitoring routine's first weekly run
-(`auto-mvxw0wne-onkwcn`, 2026-11-08); then the pre-existing queue: the S2
+autonomy round 2 closed its predecessor's carries-overs (#46, #45, #44, the
+warm docs-navigation benchmark, the skill promotion) — what remains of the
+browser-autonomy lineage: the release-monitoring routine's first weekly run
+(`auto-mvxw0wne-onkwcn`, 2026-11-08 — the multi-day lane's first real
+datum), and the hint-digest ranking refinement (newest facts can push
+older-but-relevant entries below the 8-entry cap after a dream — relevance
+ranking or a per-category quota; see the round-2 log's queue); then the
+pre-existing queue: the S2
 ledger's head — S2-11 (the spend meter) and S2-4 (the memory health card),
 each flipping a pinned, waiting benchmark miss — then S2-7/S2-8/S2-9, the
 S2-3/S2-16 L-pair, S2-22 (see the settings log's "Resume-from-here"); the

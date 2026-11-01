@@ -17,6 +17,16 @@
       <category>memory</category>
     </item>
     <item>
+      <title>&quot;Round 2: when the browser remembered before it clicked&quot;</title>
+      <link>https://unown-nine.vercel.app/blog/2026-11-01-the-browser-autonomy-round-2</link>
+      <guid isPermaLink="true">https://unown-nine.vercel.app/blog/2026-11-01-the-browser-autonomy-round-2</guid>
+      <pubDate>Sun, 01 Nov 2026 00:00:00 GMT</pubDate>
+      <description>Closing the recall-vs-application gap — a tool-time memory hint lane, and the run where the agent armed the dialog before the trap.</description>
+      <category>browser</category>
+      <category>memory</category>
+      <category>benchmarks</category>
+    </item>
+    <item>
       <title>&quot;Six updates, one pixel diff: shipping a dependency round you can trust&quot;</title>
       <link>https://unown-nine.vercel.app/blog/2026-11-01-the-dependency-round</link>
       <guid isPermaLink="true">https://unown-nine.vercel.app/blog/2026-11-01-the-dependency-round</guid>

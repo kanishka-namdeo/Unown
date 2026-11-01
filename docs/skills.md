@@ -37,6 +37,8 @@ On first run, unown seeds four skills into `~/.unown/agent/skills/` (existing fi
 
 This repo also carries the **Website Excellence Programme's six website skills** in `.unown/skills/` (committed, project-scoped): `landing-page-architect` (section sequencing, hero anatomy, conversion flow), `design-system-generator` (the ten enforceable rules as a generation procedure), `ux-reviewer` (the eight-pass friction review), `accessibility-auditor` (the WCAG 2.2 zero-tolerance layer), `motion-designer` (the 2026 compositing-only motion law) and `frontend-craftsman` (the pre-ship polish battery). UI-building sessions read the matching skill before the first edit; the `design-reviewer` agent runs the critique lane at checkpoints.
 
+It also carries **`hostile-page-checkout`** — the browser autonomy round's skill candidate, promoted 2026-11-01 (round 2's decision): the six-step procedure for driving a hostile page through the browser tool (interstitials first, respect arm-races, frame-verified fills, arm dialogs before guard-gated clicks, verify the success marker, re-snapshot after mutations). Validated across six receipted runs of the stress-checkout benchmark ([results](../benchmarks/browser-autonomy-round/RESULTS.md)); it complements the tool-time memory hint lane ([#45](https://github.com/kanishka-namdeo/Unown/issues/45)) — the skill is the full procedure up front, the hints are the just-in-time pointer at the tool call.
+
 ## Where skills live
 
 | Location | Scope | Notes |
