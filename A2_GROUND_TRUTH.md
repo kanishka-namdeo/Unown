@@ -111,6 +111,7 @@
 - 2026-11-02: A1 directive placeholders `[APP_NAME + VISION + REPO PATH]` resolved by operator decision → **Coda (local-first markdown notes + task-board PWA)** at **`apps/coda/`** in this monorepo; push lane **direct to `main`**; first lane **finish the fresh-clone round** (this file, then #30, then PT-5, then closeout).
 - 2026-11-02: the directive's STABLE-INTERFACE shapes all verified live today (TUI, `-p` headless, plan mode, JSON envelope, home/project separation, memory hierarchy, verify-before-done culture, fresh-context task workers, engine loopback-first).
 - 2026-11-02: docs/usage.md slash/session-tool counts stale vs observed (§7.4) — logged, queued as L1 lane.
+- 2026-11-02 (round close): the fresh-clone round is COMPLETE — M2 shipped `UNOWN_PRINT_EXIT_TRACE=1` (issue #30 request (b)) + `scripts/issue30_watcher.mjs` (request (a)); M3 receipted PT-5 (7 live specialist spawns, 87/100; the Coda design doc); M4 graduated the round (`docs/fresh-clone-round-session.md`) and opened the Coda app round (`docs/coda-app-round-session.md`, ticket queue C1–C6). CI receipts: the substantive code commits `749d94e5` and `18f80a68` fully green (CI + CodeQL + Scorecard + deploy-verify) on GitHub Actions; the trailing docs commits covered by the same content in green runs. **Next refresh due: at the Coda round's first teardown.**
 
 ---
-*No tickets before this file exists — it does now. Next: M2 (#30 evidence pack → A2 ticket).*
+*No tickets before this file exists — it does now. The fresh-clone round is closed; the next tickets are the Coda round's C1–C6 (`docs/coda-app-round-session.md`).*
