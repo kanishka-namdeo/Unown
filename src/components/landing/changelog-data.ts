@@ -30,7 +30,7 @@ export interface ChangelogStop {
   groups: ChangelogGroup[];
 }
 
-export const CHANGELOG_TOTAL_ENTRIES = 509;
+export const CHANGELOG_TOTAL_ENTRIES = 511;
 
 export const CHANGELOG_TOTALS: Record<ChangelogBucket, number> = {
   "Added": 232,
@@ -46,7 +46,7 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
   {
     "label": "Unreleased",
     "date": null,
-    "total": 3,
+    "total": 5,
     "counts": {
       "Added": 1,
       "Changed": 0,
