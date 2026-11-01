@@ -2,7 +2,7 @@
 
 - **Round**: fresh-clone (operator-directed bring-up: clone → setup → run, then the blockers it surfaces)
 - **Started**: 2026-11-01
-- **Status**: in flight
+- **Status**: COMPLETE (2026-11-02) — M1 bring-up (+ the recycled-lineage resume), M2 closed via the #30 watcher + instrumentation, M3 the PT-5 live-specialist receipt, M4 this closeout
 - **Baseline**: `d8f87131` (main, post v0.0.55)
 - **Operator directive**: clone, setup and run the repo on a fresh machine; remember and use the PAT + the Agnes AI endpoint (`https://apihub.agnes-ai.com/v1`, `agnes-3.0-flash`); operate under the Plan Mode V3 orchestrator methodology (capability audit before generation, specialist delegation, synthesis, validation, retrospective, learning extraction); document every checkpoint; push every milestone; production-quality edge-case work; extensive online research to stay grounded.
 
@@ -91,6 +91,24 @@ The plan-mode V3 round's own retrospective lists this as the natural next benchm
 
 **Result**: DONE, and the task chosen is the DRIVE track's own app — plan **Coda** (the local-first notes + task-board PWA at `apps/coda/`). Receipt `benchmarks/plan-mode/results/run-2026-11-02-pt5/` (task file `tasks/pt-5.md`): **7 live spawns across all five bench agents**, verdicts APPLIED BACK into the plan (DRIFT→cuts, GAPS→mitigated, DELIVERABLE→re-sequenced, P0s→fixed), full V3 doc (audit with real USED rows, synthesis, learning plan), **87/100 passes**, 17 turns / 396 s through the chunked-resume protocol (chunk 1 capped at 10 with the plan drafted; chunk 2 completed uncapped in 7). The committed `pt-5-plan.md` doubles as the Coda round's design doc — the Coda round opens from it, not from a blank page.
 
-## M4 — DOX + docs closeout (planned)
+## M4 — DOX + docs closeout (COMPLETE, 2026-11-02)
 
 Session log graduation, SESSION.md index, CHANGELOG if anything user-visible ships, the DOX pass over every touched subtree, and the round retrospective per the V3 contract (outcome / failure class / learnings / improvements).
+
+### Round retrospective (the V3 contract)
+
+**Outcome: DELIVERED.** Bring-up proven on two cold machines (the second one a recycled lineage, receipts in M1-resume); issue #30 advanced exactly as its own text requests (the armed /proc watcher committed, the instrumented build shipped, 22/22 non-repro recorded); PT-5 closed the plan-mode V3 retrospective's open lane with 7 live specialist spawns whose verdicts changed the plan; the DRIVE track's app (Coda) now has a specialist-reviewed, scored design doc.
+
+**Failure classes (the taxonomy, honestly):**
+- *Environment/host*: the sandbox reaps agent processes between operator tool calls — two session deaths mid-turn (one nohup, one setsid). Recovered via the repo's own documented protocol (budgeted chunks + resume chains); not eliminated, now documented for every later ticket.
+- *Verification gap (A2-side)*: one boot-breaking import (`homedir` from `node:path`) reached the tree because the session wrote code without compiling between chunks. Caught by the operator's next-session boot; prevention: compile/test the touched module before stopping a chunk (the ticket template now says so).
+
+**Learnings (extracted, tagged):**
+- memory lane: the reaping-host protocol + the chunked-resume recipe (this log + SESSION.md; AutoDream consolidates from the session notes).
+- workflow lane: the A1 ticket template (economy header + chunk protocol note + "compile before you stop") is the reusable dispatch shape — the Coda round's tickets inherit it.
+- benchmark lane: the PT-5 pattern — planning the DRIVE app through the benchmark lane yields the app's design doc as a committed by-product. Reuse for every future app round.
+- augmentation lane: the utilization audit's prediction held (#30 = triggered-but-unverified → Level 4 instrumentation first); the 8 doc-drift flags from the ground-truth audit are the queued Level 1 sweep.
+
+**Improvements (candidates):** (1) L1 doc-count drift sweep (usage.md slash/tools counts, dashboard screens, skills/subagents counts); (2) the A2 ticket template gains "compile before stopping a chunk"; (3) a future L5 candidate only if the doc sweep proves manual counts unmaintainable (generated counts, the landing-data pattern).
+
+**Capability utilization report (the A1 directive's mandatory closeout):** most-used capability — the repo's own docs/quickstart + standing orders (bring-up needed zero custom work); highest-leverage — `unown -p` headless + session resume (every ticket ran through it); most under-used — the PTY capture lanes (correctly: no TUI surface changed this round); highest-ROI augmentation — the print-exit trace (one ticket, permanent observability for the open issue); trigger failures observed — none (specialist bench fired when complexity demanded it); routing failures — none; verification failures — one (the boot-breaking import, caught at the next boot); subagent efficiency — explore-spawns died with their chunks on this host (protocol now forbids relying on them between chunks); duplication candidates — none new; retired — none; promoted — PT-5's task pattern into the app-round workflow.

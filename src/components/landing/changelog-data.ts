@@ -30,10 +30,10 @@ export interface ChangelogStop {
   groups: ChangelogGroup[];
 }
 
-export const CHANGELOG_TOTAL_ENTRIES = 515;
+export const CHANGELOG_TOTAL_ENTRIES = 516;
 
 export const CHANGELOG_TOTALS: Record<ChangelogBucket, number> = {
-  "Added": 234,
+  "Added": 235,
   "Changed": 32,
   "Deprecated": 0,
   "Removed": 3,
@@ -46,9 +46,9 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
   {
     "label": "Unreleased",
     "date": null,
-    "total": 9,
+    "total": 10,
     "counts": {
-      "Added": 3,
+      "Added": 4,
       "Changed": 0,
       "Deprecated": 0,
       "Removed": 0,
@@ -60,6 +60,10 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
       {
         "bucket": "Added",
         "items": [
+          {
+            "title": "PT-5 — the complex-plan lane with live specialist spawns: the plan-mode V3 bench consulted…",
+            "behavior": false
+          },
           {
             "title": "The print-mode exit-path trace (UNOWN_PRINT_EXIT_TRACE=1…",
             "behavior": false

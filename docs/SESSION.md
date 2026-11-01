@@ -8,16 +8,29 @@ archaeology. When a round completes, its log graduates to a round-specific
 
 ---
 
-## ACTIVE ROUND — the fresh-clone round (2026-11-01)
+## ACTIVE ROUND — the Coda app round (2026-11-02, opening)
 
-The fresh-clone round (2026-11-01) is in flight:
-`docs/fresh-clone-round-session.md` — the operator-directed bring-up (clone →
-setup → run on a fresh Debian 13 sandbox, bun pinned 1.4.3, Agnes upstream,
-stack up, doctor green, live chat receipted) plus the two lanes the bring-up
-surfaced: issue #30 (the `unown -p` exit hang — reproduced on the first
-headless run, /proc evidence + root cause + fix in locally-owned code) and
-PT-5 (the live plan-mode V3 run with live specialist spawns — the plan-mode
-V3 round's own retrospective named it the natural next benchmark lane).
+The DRIVE track's app round: ship **Coda** — a local-first markdown notes +
+task-board PWA — at `apps/coda/` in this monorepo, entirely through A2
+sessions (operator decisions 2026-11-02: Coda PWA, `apps/coda/`, push direct
+to `main`). It opens from a receipted, specialist-reviewed design doc, not a
+blank page: `benchmarks/plan-mode/results/run-2026-11-02-pt5/pt-5-plan.md`
+(the PT-5 lane — 7 live specialist spawns, verdicts applied, 87/100). A
+resumed session reads that plan + this index + the fresh-clone round's
+protocol notes (the budgeted-chunk resume recipe for A2 tickets on this
+reaping host) before any ticket.
+
+The fresh-clone round (2026-11-01 → 2026-11-02) is COMPLETE and graduated to
+its own log: `docs/fresh-clone-round-session.md` — the operator-directed
+bring-up (clone → setup → run, proven on two cold machines including a
+recycled lineage) plus both lanes it surfaced, both closed: issue #30 (the
+`unown -p` exit hang — the armed /proc watcher committed as
+`scripts/issue30_watcher.mjs` with 22/22 clean-run non-repro receipts across
+idle + dream-churn lanes, and the issue's request (b) shipped as the
+`UNOWN_PRINT_EXIT_TRACE=1` exit-path instrumentation through an eleven-chunk
+A2 ticket) and PT-5 (the live plan-mode V3 specialist-spawn receipt, above).
+Its `A2_GROUND_TRUTH.md` (the dated capability snapshot, 8 doc-drift flags)
+stays the operator's recon reference until the next teardown refresh.
 
 The browser autonomy round 2 (2026-11-01) is complete and graduated to its
 own log: `docs/browser-autonomy-round-2-session.md` — the continuation round
