@@ -30,14 +30,14 @@ export interface ChangelogStop {
   groups: ChangelogGroup[];
 }
 
-export const CHANGELOG_TOTAL_ENTRIES = 508;
+export const CHANGELOG_TOTAL_ENTRIES = 509;
 
 export const CHANGELOG_TOTALS: Record<ChangelogBucket, number> = {
   "Added": 231,
   "Changed": 32,
   "Deprecated": 0,
   "Removed": 3,
-  "Fixed": 192,
+  "Fixed": 193,
   "Security": 5,
   "Behavior": 45
 };
@@ -46,13 +46,13 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
   {
     "label": "Unreleased",
     "date": null,
-    "total": 2,
+    "total": 3,
     "counts": {
       "Added": 0,
       "Changed": 0,
       "Deprecated": 0,
       "Removed": 0,
-      "Fixed": 2,
+      "Fixed": 3,
       "Security": 0,
       "Behavior": 0
     },
@@ -60,6 +60,10 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
       {
         "bucket": "Fixed",
         "items": [
+          {
+            "title": "The bazaar order-id uniqueness test stopped being a dice roll",
+            "behavior": false
+          },
           {
             "title": "fill_form no longer reports a silent success when the values were discarded…",
             "behavior": false

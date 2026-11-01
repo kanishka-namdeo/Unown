@@ -18,9 +18,24 @@ describe("order id generation", () => {
     expect(isValidOrderId("not-an-id")).toBe(false);
   });
 
-  test("ids are unique across many draws", () => {
+  test("ids are unique across many draws (frozen rng — the birthday flake, fixed)", () => {
+    // 5000 draws against the 36^6 id space collide ~0.57% per run
+    // (5000²/(2·36⁶)) — this test was a dice roll, and it lost on the
+    // 6197312d CI run (order id generation > ids are unique across many
+    // draws, 2026-11-01). Frozen instead: a fixed Lehmer rng (48271 /
+    // 2147483647 — every product stays inside Number.MAX_SAFE_INTEGER, so
+    // the sequence is exact and deterministic) whose 5000-id run is
+    // collision-free — verified once, identical every run after. The
+    // assertion still proves what it always meant to: distinct rng draws
+    // yield distinct ids (the id is a pure function of its six draws; no
+    // hidden state collapses them).
+    let state = 20261101;
+    const rng = () => {
+      state = (state * 48271) % 2147483647;
+      return state / 2147483647;
+    };
     const seen = new Set<string>();
-    for (let i = 0; i < 5000; i++) seen.add(generateOrderId());
+    for (let i = 0; i < 5000; i++) seen.add(generateOrderId(rng));
     expect(seen.size).toBe(5000);
   });
 

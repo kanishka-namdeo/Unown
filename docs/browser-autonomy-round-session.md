@@ -271,9 +271,14 @@ specialists) and long-horizon OSWorld 2.0, where everyone is stuck ≤21%.
   carries the tool-time-hint proposal; (c) dreams can prune lines the
   landing page quotes (F5) — the manual-notes lane is the durable home and
   the round restored the pruned line there with its provenance, following
-  the parley-scrypt precedent; (d) the engine's own harness ran its
-  benchmark tasks during the round (fix-fizzbuzz passed) — the learning
-  system learning from the round that was stress-testing it.
+  the parley-scrypt precedent; **occurrence 2** (a later dream the same day
+  pruned the stealth-verification line — silently, since only a subset of
+  preview literals are gate-mapped) confirmed the class is systemic, filed
+  as [#46](https://github.com/kanishka-namdeo/Unown/issues/46) with the
+  gate-side / renderer-side / content-side fix options; the line is
+  restored to the durable lane in the same change; (d) the engine's own
+  harness ran its benchmark tasks during the round (fix-fizzbuzz passed) —
+  the learning system learning from the round that was stress-testing it.
 - **Skill candidates**: the round's browser procedures (hostile-page
   checkout: dismiss interstitials → wait for armed controls → fill
   frame-verified → arm dialogs before confirm-guards) are a candidate

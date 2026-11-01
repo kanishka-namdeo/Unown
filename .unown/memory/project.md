@@ -6,15 +6,9 @@
 ## Known pitfalls
 - To reliably spy on localStorage.setItem in component tests for this project, use Object.defineProperty on the instance prototype with the native bind; simple property assignment fails because happy-dom routes setItem calls through a different receiver
 - Environment fact: /etc/shadow is owned by root and access returns EACCES: permission denied for the current process; this is a plain OS permission error, not a policy refusal.
-- Match editor row markers by substring rather than prefix: a selected row renders the arrow marker, so startswith never matches; the BM-8 toggle-marker guard asserts the marker as pane-truth before matching so dropping it fails the task consciously.
-- Pitfall: atomic.ts:16 temp file name `${file}.tmp-${process.pid}-${Date.now()}` lacks a per-process monotonic counter; two same-process writes to the same target within one millisecond share the identical tmp path and cause a clobber race. Fix: add `let seq = 0` and append `seq++` to the temp filename.
-- Reviewer-verified regression test for atomic.ts clobber race: stub Date.now to a constant, call atomicWriteFileSync 3 times on the same target, and assert the final content equals the third call's input; old pid-Date.now naming fails this deterministically.
-- Stealth verification suite on bot.sannysoft.com: all 10 checks (webdriver, userAgent, platform, userAgentData, timezone, locale, screen, viewport, plugins, window.chrome) pass; 0 FAIL rows in Intoli tests.
-
-## Task playbooks
-- atomic.ts same-millisecond clobber race is fixed with a module-level monotonic sequence counter appending `-${seq++}` to the temp filename pattern `${process.pid}-${Date.now()}` in atomicWriteFileSync.
 
 ## Environment
+- Release-monitoring sweep of browser-use/browser-use shows latest version 0.13.14 dated October 26, 2026, with updates for Python agent and existing models plus new OpenAI browser tools
 - FAQ section in the Unown UI renders answers client-side via Radix accordion components that default to closed; opening FAQ entries requires the browser agent to explicitly expand the accordion.
 - In OB-5 live-lane, when the learning feed records a memory version advance, the footer chip counts it as an unseen learning event until /feed marks it seen; the chip contract is count, not text
 - Identify API-less sibling patterns (such as cadence's localStorage shape) when determining if a new subproject requires an `api/` directory.
@@ -23,9 +17,13 @@
 - The `src/` directory contains a Next.js marketing web app; the landing page is at `/` with UI sections in `src/components/landing/`. Auto-deploy to Vercel via GitHub integration; 'deploy.completed' events carry an 'environment' field. Development server runs on port 3000 (src/app/page.tsx). All 7 sibling routes (/demo, /bazaar, /cadence, /parley, /fugue, /aria, /nocturne) have frame-hardening headers (CSP frame-ancestors 'self' + X-Frame-Options SAMEORIGIN) in `next.config.ts` lines 28-88, superseding prior notes that /cadence was omitted from hardening. Hand-drawn Unown script SVG, generated changelog/benchmark/engine-data files, and GBA 5-bit palette are part of the landing UI structure.
 - Parley's domain layer hashes passwords with Node crypto scryptSync (N=16384, r=8, p=1, 32-byte key, salt hex-encoded), verifyPassword uses timingSafeEqual; no PARLEY_BCRYPT_COST env var exists in the repo (grep-verified)
 - Nocturne escalation engine is strictly single-step: each `tickEscalation` advances at most one tier; the wait window for the next advance is measured from `lastEscalatedAt` (or `triggeredAt` if null), and an N-tier policy requires N-1 fired ticks to reach the final tier, with each tick waiting the current tier's `waitMinutes`; test scenarios must use tier counts and waits consistent with this (a 2-tier policy reaches its last tier in one tick, not two)
-- The `/cadence` habit tracker uses an `embed=1` reset contract called `cadence-reset` and persists state to localStorage with a `SEED_VERSION` marker.
 
 ## Facts
+- After first save in the Shipping iframe form, the #addr-status element reports 'saved:Repro Bot/berlin/gift' as a new paragraph inside the form alongside still-filled Name, City, and Gift-wrap values
+- The Intl.Segmenter constructor accepts options for localeMatcher and granularity, where granularity can be 'grapheme' (default), 'word', or 'sentence'
+- MDN documentation for Intl.Segmenter's segment method confirms segment(input) returns segments, and the key facts were extracted from the constructor and segment subpages linked from the main documentation page
+- In Unown browser-automation tests, native confirm() dialogs on the BrowseBench stress page (benchmarks/browser-autonomy-round/fixtures/stress.html) auto-dismiss by default and silently cancel the flow with 'Order cancelled at the dialog', so arm 'browser dialog accept text=OK' before clicking the button
+- GitHub login form at https://github.com/login presents 'Username or email address' and 'Password' text fields, 'Forgot password?' and 'Create an account' links, and a green 'Sign in' button, with no SSO buttons, no token option, and no second-factor prompt before submission
 - Unown hero landing page displays H1 tagline "The terminal coding agent that remembers.", a decode strip "Open-source AI coding agent · built on pi", pitch text about session notes becoming project memory kept only after a fresh sandbox proves them twice, and beta disclaimer "Unown is in beta — expect rough edges and moving formats; report what"
 - In the Unown UI, dialog-opening buttons use onColumnClick and onNewTask handlers that should trigger setEditorOpen(true); if the dialog does not open, the suspected cause is that the hydration state has not yet loaded, even though the editor open state should be separate from hydration
 - In the Unown stress-browser workflow, dismiss the auto-opening F2 newsletter modal with "No thanks, just let me shop" to prevent it from swallowing the subsequent "Add to cart" click; verify success when #final-status has data-success="true" and the screenshot displays the green "Order placed — success" banner, saving to benchmarks/browser-autonomy-round/screenshots/stress-final-postdream.png
@@ -123,6 +121,7 @@
 ## Manual notes
 
 - Failed cycles auto-recover — do NOT restart engine to fix them. (Restored by hand 2026-11-01 during the browser autonomy round after a dream render pruned it at the 110-memory cap; the landing page's loop.tsx memory preview quotes this line, so the claims gate reddens when it disappears. The Manual notes lane survives every re-render — this is its durable home.)
+- Stealth verification suite on bot.sannysoft.com: all 10 checks (webdriver, userAgent, platform, userAgentData, timezone, locale, screen, viewport, plugins, window.chrome) pass; 0 FAIL rows in Intoli tests. (Restored by hand 2026-11-01 — second occurrence of the dream-render-prunes-landing-quoted-lines class, issue #46; moved here to the durable lane.)
 - Parley password hashing: scrypt N=16384 r=8 p=1 (src/lib/parley/password.ts). Restored by hand 2026-10-29 after AutoDream reconciles twice erased the fact (upstream 79->66 render, then the F1/F2 bcrypt poison round). Never let a memory answer overwrite this without reading the source.
 
-<!-- unown: rendered 110/122 memories via Mem0 (backend: lexical) · 12 oldest pruned at render (cap 110; hard-won rules immune) at 2026-11-01T13:38:46.391Z -->
+<!-- unown: rendered 110/128 memories via Mem0 (backend: lexical) · 18 oldest pruned at render (cap 110; hard-won rules immune) at 2026-11-01T13:58:01.857Z -->
