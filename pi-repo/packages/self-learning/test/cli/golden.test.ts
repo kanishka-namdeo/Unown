@@ -530,7 +530,7 @@ describe("CLI golden — custom slash commands", () => {
 // ---------------------------------------------------------------------------
 describe("CLI golden — plan mode", () => {
         test(
-                "--plan removes edit/write/task from the request toolset (read-only exploration)",
+                "--plan removes edit/write from the request toolset; V3 keeps task for the read-only specialist bench",
                 async () => {
                         const run = await unown(["--plan", "-p", "look around and plan", "--mode", "json"], base());
                         expect(run.exitCode).toBe(0);
@@ -538,7 +538,6 @@ describe("CLI golden — plan mode", () => {
                         expect(req).toBeDefined();
                         expect(req.tools).not.toContain("edit");
                         expect(req.tools).not.toContain("write");
-                        expect(req.tools).not.toContain("task");
                         for (const t of ["read", "bash", "grep", "find", "ls", "note", "fetch_url"]) {
                                 expect(req.tools).toContain(t);
                         }
@@ -548,6 +547,37 @@ describe("CLI golden — plan mode", () => {
                         expect(req.tools).not.toContain("todo");
                         // Plan Mode V2 (2026-10-31): the plan-file writer and the
                         // structured exit gate are plan-mode citizens.
+                        expect(req.tools).toContain("plan_write");
+                        expect(req.tools).toContain("exit_plan_mode");
+                        // Plan Mode V3 (2026-11-01): the specialist-review phase keeps `task`
+                        // alive while planning — the task tool's plan-mode guard admits only
+                        // read-only agents (tools ⊆ read/grep/find/ls), so the read-only
+                        // contract is enforced by toolset, not by hiding delegation entirely.
+                        expect(req.tools).toContain("task");
+                        // The retrospective is an execution-phase tool — never advertised
+                        // while planning.
+                        expect(req.tools).not.toContain("plan_retrospective");
+                },
+                LONG,
+        );
+
+        // Plan Mode V3's kill switch: UNOWN_PLAN_MODE_V3=0 restores the exact V2
+        // toolset (task disabled while planning) — the escape hatch for users who
+        // want the leaner planning loop.
+        test(
+                "--plan + UNOWN_PLAN_MODE_V3=0 (the V2 kill switch): task is disabled while planning",
+                async () => {
+                        const run = await unown(["--plan", "-p", "look around and plan", "--mode", "json"], {
+                                ...base(),
+                                env: { ...base().env, UNOWN_PLAN_MODE_V3: "0" },
+                        });
+                        expect(run.exitCode).toBe(0);
+                        const req = bridge.requests[bridge.requests.length - 1];
+                        expect(req).toBeDefined();
+                        expect(req.tools).not.toContain("edit");
+                        expect(req.tools).not.toContain("write");
+                        expect(req.tools).not.toContain("task"); // V2: no delegation while planning
+                        expect(req.tools).not.toContain("todo");
                         expect(req.tools).toContain("plan_write");
                         expect(req.tools).toContain("exit_plan_mode");
                 },

@@ -170,11 +170,14 @@ import {
         EMPTY_PLAN_DOC,
         extractPlanDoc,
         extractPlanSteps,
+        LEARNING_KINDS,
         markCompletedSteps,
+        mergeRetrospectiveIntoMarkdown,
         PLAN_SCORE_THRESHOLD_DEFAULT,
         PLANS_DIR,
         type PlanDoc,
         type PlanReport,
+        type PlanRetrospective,
         type PlanScore,
         type PlanStep,
         parsePlanMarkdown,
@@ -185,6 +188,8 @@ import {
         renderPlanMarkdown,
         rescanCompletedSteps,
         scorePlanDoc,
+        scorePlanDocV3,
+        validateRetrospective,
 } from "./plan.ts";
 import { postPrComment } from "./pr-review.ts";
 import { runPromoteCommand } from "./promote-cli.ts";
@@ -220,7 +225,7 @@ import {
 import { registerSettingsCommand } from "./settings/command.ts";
 import { annotateToolOutput } from "./shield.ts";
 import { registerStatusCommands } from "./status-card.ts";
-import { ROLE_BUILTIN_AGENTS } from "./subagent-builtins.ts";
+import { PLANNING_BUILTIN_AGENTS, ROLE_BUILTIN_AGENTS } from "./subagent-builtins.ts";
 import {
         type CatalogAgent,
         type CatalogFields,
@@ -410,6 +415,13 @@ Do not propose changes; do not edit anything. If the answer is not in the repo, 
         // discovery + override semantics apply (project .md can override any
         // of them by name).
         ...ROLE_BUILTIN_AGENTS,
+        // Plan Mode V3 (the 2026-11-01 capability-orchestrator round): the
+        // eight planning specialists — five review roles for the draft plan
+        // (product-strategist … devils-advocate) + three retrospective roles
+        // (learning-analyst, memory-auditor, skill-architect). All read-only,
+        // all unadvertised: reached by name from the V3 phase prompt, never
+        // by catalog browsing. Same override semantics as the role set.
+        ...PLANNING_BUILTIN_AGENTS,
 ];
 
 type AgentFrontmatter = {
@@ -1575,7 +1587,38 @@ const PLAN_MODE_TOOLS = [
 // SECOND list mid-planning (the reported two-lists bug's planning half;
 // openai/codex rejects update_plan in plan mode for the same reason).
 const PLAN_MODE_DISABLED_TOOLS = new Set(["edit", "write", "task", "todo"]);
-const PLAN_MANAGED_TOOLS = new Set([...PLAN_MODE_TOOLS, ...PLAN_MODE_DISABLED_TOOLS, "edit", "write"]);
+// Plan Mode V3 (the 2026-11-01 capability-orchestrator round): the V2
+// kill switch. Default ON — V3 is the plan mode; UNOWN_PLAN_MODE_V3=0
+// restores the exact V2 behavior (toolset, prompt and scorer). Resolved at
+// extension-creation time (not module load) so tests and embedders can
+// flip it per-session.
+export function resolvePlanV3Mode(env: NodeJS.ProcessEnv = process.env): boolean {
+        return env.UNOWN_PLAN_MODE_V3 !== "0";
+}
+// The plan-mode delegation guard's admitted subagent toolset: a planning-time
+// spawn must be strictly read-only. Agents with NO tools field (general,
+// worker) resolve the full toolset and are refused; the specialist bench,
+// scout, explore and read-only project agents pass.
+const PLAN_SAFE_AGENT_TOOLS = new Set(["read", "grep", "find", "ls"]);
+/** True when the agent may be spawned while plan mode is active (V3: the
+ *  specialist-review phase). Exported for the extension tests. */
+export function isPlanSafeAgent(agent: { tools?: string[] }): boolean {
+        return (
+                Array.isArray(agent.tools) &&
+                agent.tools.length > 0 &&
+                agent.tools.every((t) => PLAN_SAFE_AGENT_TOOLS.has(t))
+        );
+}
+const PLAN_MANAGED_TOOLS = new Set([
+        ...PLAN_MODE_TOOLS,
+        ...PLAN_MODE_DISABLED_TOOLS,
+        "edit",
+        "write",
+        // V3: the retrospective tool is plan-managed — activated around plan
+        // execution (registered foreground-only, execution-mode-guarded),
+        // stripped during planning so it never tempts the orchestrator early.
+        "plan_retrospective",
+]);
 
 interface TaskRunDetails {
         runs: Array<{
@@ -1888,6 +1931,13 @@ export function createUnownToolsExtension(opts: UnownToolsOptions) {
                         return Number.isFinite(raw) && raw >= 0 && raw <= 100 ? raw : PLAN_SCORE_THRESHOLD_DEFAULT;
                 })();
                 const plansDirAbs = () => join(opts.cwd, PLANS_DIR);
+                /** V3: the active scorer — scorePlanDocV3 when the orchestrator is
+                 *  on (10 dimensions incl. the capability audit, specialist
+                 *  review and learning plan), the unchanged V2 rubric when the
+                 *  kill switch is set. Every plan-path call site scores through
+                 *  here so the two modes can never drift. */
+                const scoreActivePlan = (doc: PlanDoc): PlanScore =>
+                        planV3Mode ? scorePlanDocV3(doc, planThreshold) : scorePlanDoc(doc, planThreshold);
                 const resolvePlanFile = (): string => {
                         if (planFileAbs) return planFileAbs;
                         const seed = planSeed.trim() || planDoc?.objective || "plan";
@@ -2294,8 +2344,21 @@ export function createUnownToolsExtension(opts: UnownToolsOptions) {
                 };
 
                 const uniqueTools = (names: string[]) => [...new Set(names)];
-                const planModeTools = (active: string[]) =>
-                        uniqueTools([...active.filter((n) => !PLAN_MODE_DISABLED_TOOLS.has(n)), ...PLAN_MODE_TOOLS]);
+                // Plan Mode V3: resolved per-extension (the kill switch above).
+                const planV3Mode = resolvePlanV3Mode();
+                const planModeTools = (active: string[]) => {
+                        // V3 keeps `task` available for the specialist-review phase —
+                        // but ONLY for read-only agents (the guard in the task tool
+                        // enforces that per-spawn). V2 keeps task disabled.
+                        const disabled = planV3Mode
+                                ? new Set([...PLAN_MODE_DISABLED_TOOLS].filter((n) => n !== "task"))
+                                : PLAN_MODE_DISABLED_TOOLS;
+                        const extras = planV3Mode ? [...PLAN_MODE_TOOLS, "task"] : PLAN_MODE_TOOLS;
+                        return uniqueTools([
+                                ...active.filter((n) => !disabled.has(n) && n !== "plan_retrospective"),
+                                ...extras,
+                        ]);
+                };
                 const normalTools = (active: string[]) =>
                         uniqueTools([...active.filter((n) => !PLAN_MANAGED_TOOLS.has(n)), "read", "bash", "edit", "write"]);
 
@@ -2361,6 +2424,11 @@ export function createUnownToolsExtension(opts: UnownToolsOptions) {
                                         planFile: planFileAbs,
                                         planModelId,
                                         sessionModelBeforePlan,
+                                        // V3: the orchestrator mode rides the entry for
+                                        // observability (the flag itself is env-derived, so a
+                                        // resumed session re-resolves it — this records which
+                                        // mode WROTE the plan).
+                                        v3: planV3Mode,
                                 });
                         } catch {
                                 /* persistence is best-effort */
@@ -2422,10 +2490,15 @@ export function createUnownToolsExtension(opts: UnownToolsOptions) {
                         setForegroundTodoSuspended(true);
                         if (ctx?.hasUI) {
                                 ctx.ui.notify(
-                                        `Plan mode ON — read-only exploration; plan_write is the only writable path (${planFilePath(
-                                                PLANS_DIR,
-                                                planSeed || "objective",
-                                        )}). Score ≥ ${planThreshold}, then exit_plan_mode.`,
+                                        planV3Mode
+                                                ? `Plan mode ON (V3 orchestrator) — capability audit → specialist review → scored plan; plan_write is the only writable path (${planFilePath(
+                                                          PLANS_DIR,
+                                                          planSeed || "objective",
+                                                  )}). Score ≥ ${planThreshold}, then exit_plan_mode.`
+                                                : `Plan mode ON — read-only exploration; plan_write is the only writable path (${planFilePath(
+                                                          PLANS_DIR,
+                                                          planSeed || "objective",
+                                                  )}). Score ≥ ${planThreshold}, then exit_plan_mode.`,
                                 );
                         }
                         updateStatus(ctx);
@@ -2538,7 +2611,7 @@ export function createUnownToolsExtension(opts: UnownToolsOptions) {
                                                 }
                                                 const next = parsePlanMarkdown(edited);
                                                 currentDoc = next;
-                                                currentScore = scorePlanDoc(next, planThreshold);
+                                                currentScore = scoreActivePlan(next);
                                                 planDoc = next;
                                                 planScore = currentScore;
                                                 planItems = next.steps.map((s) => ({ ...s }));
@@ -2599,18 +2672,41 @@ export function createUnownToolsExtension(opts: UnownToolsOptions) {
 
                 /** Plan lifecycle notes (gap P-11): every approval / feedback /
                  * completion lands in the engine's note stream — AutoDream
-                 * consolidates what users accept and reject. */
+                 * consolidates what users accept and reject. V3 adds the
+                 * `retrospective` kind: the close-out note carrying the run's
+                 * outcome, failure classification, learning candidates and
+                 * improvements — the Reflexion-style memory write the dream
+                 * lane consolidates. */
                 const deliverPlanNote = async (
-                        kind: "approved" | "feedback" | "completed",
+                        kind: "approved" | "feedback" | "completed" | "retrospective",
                         doc: PlanDoc,
                         score: PlanScore | null,
                         todos: number,
                         feedback?: string,
+                        retro?: PlanRetrospective,
                 ): Promise<void> => {
                         try {
-                                const head = `plan ${kind}: "${doc.objective}" — ${doc.steps.length} steps${score ? `, score ${score.score}/100` : ""}${todos > 0 ? `, ${todos} todos seeded` : ""}`;
+                                const head =
+                                        kind === "retrospective" && retro
+                                                ? `plan retrospective: "${doc.objective}" — outcome ${retro.outcome}${
+                                                          retro.failureClass && retro.failureClass !== "none" ? `, failure class ${retro.failureClass}` : ""
+                                                  }${score ? `, plan score ${score.score}/100` : ""}`
+                                                : `plan ${kind}: "${doc.objective}" — ${doc.steps.length} steps${score ? `, score ${score.score}/100` : ""}${todos > 0 ? `, ${todos} todos seeded` : ""}`;
                                 const files = [...new Set(doc.steps.flatMap((s) => s.files))].slice(0, 8).join(", ");
-                                const body = [head, files ? `files: ${files}` : "", feedback ? `user feedback: ${feedback}` : ""]
+                                const retroBlock =
+                                        kind === "retrospective" && retro
+                                                ? [
+                                                          retro.learnings.length > 0
+                                                                  ? `learnings: ${retro.learnings.map((c) => `${c.kind}: ${c.what}`).join(" | ")}`
+                                                                  : "",
+                                                          retro.improvements.length > 0
+                                                                  ? `improvements: ${retro.improvements.join(" | ")}`
+                                                                  : "",
+                                                          retro.rootCause ? `root cause: ${retro.rootCause}` : "",
+                                                          retro.prevention ? `prevention: ${retro.prevention}` : "",
+                                                  ].filter((l) => l.length > 0)
+                                                : [];
+                                const body = [head, files ? `files: ${files}` : "", ...retroBlock, feedback ? `user feedback: ${feedback}` : ""]
                                         .filter((l) => l.length > 0)
                                         .join("\n");
                                 await deliverTerminalNote({ content: body, projectPath: opts.cwd, ts: Date.now() });
@@ -2709,7 +2805,7 @@ export function createUnownToolsExtension(opts: UnownToolsOptions) {
                                                 return { content: [{ type: "text", text: "Error: empty plan" }], isError: true };
                                         }
                                         const doc = parsePlanMarkdown(content);
-                                        const score = scorePlanDoc(doc, planThreshold);
+                                        const score = scoreActivePlan(doc);
                                         const file = resolvePlanFile();
                                         try {
                                                 mkdirSync(dirname(file), { recursive: true });
@@ -2785,7 +2881,7 @@ export function createUnownToolsExtension(opts: UnownToolsOptions) {
                                                 };
                                         }
                                         const doc = parsePlanMarkdown(markdown);
-                                        const score = scorePlanDoc(doc, planThreshold);
+                                        const score = scoreActivePlan(doc);
                                         planDoc = doc;
                                         planScore = score;
                                         planItems = doc.steps.map((s) => ({ ...s }));
@@ -2851,6 +2947,119 @@ export function createUnownToolsExtension(opts: UnownToolsOptions) {
                                         return new Text(theme.fg("accent", first.slice(0, 90)), 0, 0);
                                 },
                         });
+
+                        // ---- Plan Mode V3 (the 2026-11-01 capability-orchestrator
+                        // round): the retrospective close-out tool. Registered in
+                        // every foreground session like its siblings, but only
+                        // MEANINGFUL while executing an approved plan (the guard
+                        // below answers stray calls with the Claude-Code-style
+                        // message instead of a silent no-op) and stripped from the
+                        // active set while PLANNING (PLAN_MANAGED_TOOLS) so the
+                        // orchestrator cannot close a loop it has not opened.
+                        // Semantics: validate the retrospective contract (failure
+                        // classification mandatory on non-delivered outcomes; at
+                        // least one learning candidate or improvement overall),
+                        // merge the rendered section into the plan file surgically
+                        // (the plan's original bytes stay untouched), and deliver a
+                        // `retrospective` note to the engine — the AutoDream lane
+                        // that consolidates run learnings into project memory.
+                        const planRetrospectiveParams = Type.Object({
+                                content: Type.String({
+                                        description:
+                                                "The retrospective body (WITHOUT a '## Retrospective' header — the tool adds it). Key lines: '- outcome: delivered | partial | failed', '- failure class: plan|memory|skill|delegation|context|execution|review|external | none', '- root cause: <text>', '- resolution: <text>', '- prevention: <text>', '- learnings:' followed by '  - <lane>: <what>' rows (lanes: memory, skill, workflow, routine, standing-order, benchmark, agent-pattern), '- improvements:' followed by free-text rows. Failure class + root cause + prevention are REQUIRED when the outcome is not 'delivered'; at least one learning candidate or improvement overall.",
+                                }),
+                        });
+                        pi.registerTool({
+                                name: "plan_retrospective",
+                                label: "Plan retrospective",
+                                description:
+                                        "Close the plan-mode V3 loop AFTER executing an approved plan: record the outcome, classify any failure, extract learning candidates and improvements. Merges the retrospective into the plan file and delivers it to the self-learning engine. Call ONCE before declaring the plan done — no milestone closes without its retrospective.",
+                                parameters: planRetrospectiveParams,
+                                async execute(_toolCallId, params) {
+                                        if (!executionMode || planItems.length === 0) {
+                                                return {
+                                                        content: [
+                                                                {
+                                                                        type: "text",
+                                                                        text: "Error: plan_retrospective is only available while executing an approved plan. If you are planning, keep planning (the retrospective comes after approval and execution); if the plan is done, call it then.",
+                                                                },
+                                                        ],
+                                                        isError: true,
+                                                };
+                                        }
+                                        const body = String(params.content ?? "").trim();
+                                        if (!body) {
+                                                return { content: [{ type: "text", text: "Error: empty retrospective" }], isError: true };
+                                        }
+                                        // Parse the body as a retrospective section (same parser as
+                                        // the plan doc's — reuse it by prefixing the header).
+                                        const docFromBody = parsePlanMarkdown(`## Retrospective\n\n${body}\n`);
+                                        const retro = docFromBody.retrospective ?? null;
+                                        const problems = validateRetrospective(retro);
+                                        if (problems.length > 0) {
+                                                return {
+                                                        content: [
+                                                                {
+                                                                        type: "text",
+                                                                        text: `Retrospective rejected — fix these and call again:\n${problems.map((p) => `  - ${p}`).join("\n")}`,
+                                                                },
+                                                        ],
+                                                        isError: true,
+                                                };
+                                        }
+                                        const file = planFileAbs ?? resolvePlanFile();
+                                        const markdown = readPlanFile();
+                                        if (!markdown) {
+                                                return {
+                                                        content: [
+                                                                {
+                                                                        type: "text",
+                                                                        text: `Error: the plan file is gone (${file}) — the retrospective merges into the plan it closes. Write the plan again with plan_write or restore the file, then retry.`,
+                                                                },
+                                                        ],
+                                                        isError: true,
+                                                };
+                                        }
+                                        try {
+                                                mkdirSync(dirname(file), { recursive: true });
+                                                writeFileSync(file, mergeRetrospectiveIntoMarkdown(markdown, retro!), "utf-8");
+                                        } catch (err) {
+                                                return {
+                                                        content: [{ type: "text", text: `Error: cannot write the retrospective to ${file}: ${String(err)}` }],
+                                                        isError: true,
+                                                };
+                                        }
+                                        const doc = parsePlanMarkdown(readPlanFile() ?? markdown);
+                                        void deliverPlanNote("retrospective", doc, planScore, 0, undefined, retro!);
+                                        log(
+                                                `plan_retrospective: outcome ${retro!.outcome}, ${retro!.learnings.length} learnings, ${retro!.improvements.length} improvements → ${file}`,
+                                        );
+                                        const learningLines = retro!.learnings.map((c) => `  - ${c.kind}: ${c.what}`).join("\n");
+                                        const improvementLines = retro!.improvements.map((i) => `  - ${i}`).join("\n");
+                                        return {
+                                                content: [
+                                                        {
+                                                                type: "text",
+                                                                text: `Retrospective recorded in ${file} and delivered to the self-learning engine (AutoDream will consolidate it).\n\nOutcome: ${retro!.outcome}${retro!.failureClass && retro!.failureClass !== "none" ? ` · failure class: ${retro!.failureClass}` : ""}\nLearnings:\n${learningLines || "  (none)"}\nImprovements:\n${improvementLines || "  (none)"}\n\nThe plan is closed. Summarize the delivery and the learning in your final answer.`,
+                                                        },
+                                                ],
+                                        };
+                                },
+                                renderCall(args: any, theme: any) {
+                                        return new Text(
+                                                theme.fg("toolTitle", theme.bold("plan_retrospective ")) +
+                                                        theme.fg("dim", `${String(args.content ?? "").length} chars`),
+                                                0,
+                                                0,
+                                        );
+                                },
+                                renderResult(result: any, _o: any, theme: any) {
+                                        const block = result?.content?.[0];
+                                        const text = block?.type === "text" ? block.text : "";
+                                        const first = text.split("\n")[0] ?? "";
+                                        return new Text(theme.fg("success", "✓ ") + theme.fg("muted", first.slice(0, 90)), 0, 0);
+                                },
+                        });
                 }
 
                 if (!isSubagent) {
@@ -2858,7 +3067,7 @@ export function createUnownToolsExtension(opts: UnownToolsOptions) {
                                 name: "task",
                                 label: "Task",
                                 description:
-                                        "Launch a unown subagent with a FRESH context window to work on a self-contained task (research, exploration, or implementation). The subagent does not see this conversation and cannot spawn further subagents; it returns a concise report. Write the task as a complete handoff: the objective, the context it needs (paths, symbols, error text), the boundary (what is in/out of scope), and the done-definition (what to report back). Agents: 'general' (full tools, default), 'explore' / 'scout' (read-only; scout returns a compressed handoff), 'worker' (implementation, completion-guarded), 'reviewer' (P0/P1/P2 + verdict), 'debug' (read-only hypothesis-driven root-cause diagnosis), 'test' (baseline → write → re-run tests, completion-guarded), 'security-reviewer' (read-only severity-tiered findings with exploit preconditions), 'documenter' (docs with verified file:line references), 'planner' (writes plan.md, never executes), 'browser' (interactive web automation with a real Chromium — navigate/click/type/screenshot; snapshots stay in the child, you get a verified report; do NOT use it to read public pages — webfetch is cheaper), 'background-explore' (cheap sweep) plus any defined in .unown/agents/*.md (also listed in the advertised-subagents block of your system prompt). Pass {tasks: [...]} to run up to 4 in parallel. Set async: true to spawn in the BACKGROUND fire-and-forget (immediate ack; the result arrives as a new message that WAKES YOU when it lands — do not poll task_control while waiting; steer/stop/inspect via the task_control tool; the child can ask you questions). Set why: '<one line>' on every spawn — the reason is recorded in the delegation ledger and shown to the user (context pressure / parallelism / isolation / specialization + what you expect back). Set worktree_isolation: true to give a writing subagent its own git worktree (parallel writers never collide; kept trees are reported for merge). Set output_schema to a JSON Schema the subagent's final reply must satisfy (typed fan-out: invalid replies are retried with the exact defects quoted back; sync lane only). Prefer this whenever a focused investigation would pollute this session's context.",
+                                        "Launch a unown subagent with a FRESH context window to work on a self-contained task (research, exploration, or implementation). The subagent does not see this conversation and cannot spawn further subagents; it returns a concise report. Write the task as a complete handoff: the objective, the context it needs (paths, symbols, error text), the boundary (what is in/out of scope), and the done-definition (what to report back). Agents: 'general' (full tools, default), 'explore' / 'scout' (read-only; scout returns a compressed handoff), 'worker' (implementation, completion-guarded), 'reviewer' (P0/P1/P2 + verdict), 'debug' (read-only hypothesis-driven root-cause diagnosis), 'test' (baseline → write → re-run tests, completion-guarded), 'security-reviewer' (read-only severity-tiered findings with exploit preconditions), 'documenter' (docs with verified file:line references), 'planner' (writes plan.md, never executes), 'browser' (interactive web automation with a real Chromium — navigate/click/type/screenshot; snapshots stay in the child, you get a verified report; do NOT use it to read public pages — webfetch is cheaper), 'background-explore' (cheap sweep), the Plan Mode V3 planning bench — 'product-strategist', 'solution-architect', 'delivery-manager', 'qa-architect', 'devils-advocate' (read-only plan reviewers; 'learning-analyst'/'memory-auditor'/'skill-architect' serve the retrospective) — plus any defined in .unown/agents/*.md (also listed in the advertised-subagents block of your system prompt). While plan mode is active, ONLY read-only agents may be spawned (the specialist-review phase); writing agents unlock after plan approval. Pass {tasks: [...]} to run up to 4 in parallel. Set async: true to spawn in the BACKGROUND fire-and-forget (immediate ack; the result arrives as a new message that WAKES YOU when it lands — do not poll task_control while waiting; steer/stop/inspect via the task_control tool; the child can ask you questions). Set why: '<one line>' on every spawn — the reason is recorded in the delegation ledger and shown to the user (context pressure / parallelism / isolation / specialization + what you expect back). Set worktree_isolation: true to give a writing subagent its own git worktree (parallel writers never collide; kept trees are reported for merge). Set output_schema to a JSON Schema the subagent's final reply must satisfy (typed fan-out: invalid replies are retried with the exact defects quoted back; sync lane only). Prefer this whenever a focused investigation would pollute this session's context.",
                                 parameters: TaskParams,
                                 async execute(_toolCallId, params, signal, onUpdate, executeCtx) {
                                         const agents = discoverSubagents(opts.cwd);
@@ -2935,6 +3144,40 @@ export function createUnownToolsExtension(opts: UnownToolsOptions) {
                                                                 { type: "text", text: "Error: provide task (or tasks[]) — each needs a non-empty task string" },
                                                         ],
                                                 };
+                                        }
+                                        // ------------------------------------------------------------------
+                                        // Plan Mode V3 — the planning-time delegation guard.
+                                        // While plan mode is active, `task` serves the
+                                        // specialist-review phase ONLY: every spawned agent
+                                        // must be strictly read-only (declared tools ⊆
+                                        // {read, grep, find, ls}). A writing agent in plan
+                                        // mode would break the read-only contract by
+                                        // side-channel — enforced here, before any spawn,
+                                        // covering both the sync and fleet lanes (the
+                                        // Claude Code #39713 lesson: read-only-ness is a
+                                        // toolset property, never a prompt promise).
+                                        // ------------------------------------------------------------------
+                                        if (planModeEnabled) {
+                                                const unsafe = jobs
+                                                        .map((job: any) => ({
+                                                                job,
+                                                                agent: agents.find((a) => a.name === job.agent),
+                                                        }))
+                                                        .filter(({ agent }) => agent && !isPlanSafeAgent(agent));
+                                                if (unsafe.length > 0) {
+                                                        const lines = unsafe.map(
+                                                                ({ job, agent }: any) =>
+                                                                        `  - ${job.agent}: tools = ${Array.isArray(agent.tools) ? agent.tools.join(",") || "(full set)" : "(full set — no tools declared)"}`,
+                                                        );
+                                                        return {
+                                                                content: [
+                                                                        {
+                                                                                type: "text",
+                                                                                text: `Error: plan mode may only delegate to READ-ONLY agents (tools limited to read/grep/find/ls). Not allowed while planning:\n${lines.join("\n")}\n\nThe planning bench: product-strategist, solution-architect, delivery-manager, qa-architect, devils-advocate (+ scout/explore for recon; learning-analyst, memory-auditor, skill-architect for the retrospective). Writing agents (worker, test, documenter, general) unlock after plan approval — record the delegation intent in the plan's Specialist review or Steps instead.`,
+                                                                        },
+                                                                ],
+                                                        };
+                                                }
                                         }
                                         // ------------------------------------------------------------------
                                         // Context briefs (pi-cciotti port, summary mode): a
@@ -4086,7 +4329,7 @@ export function createUnownToolsExtension(opts: UnownToolsOptions) {
                                                         mkdirSync(dirname(file), { recursive: true });
                                                         writeFileSync(file, edited.endsWith("\n") ? edited : `${edited}\n`, "utf-8");
                                                         const doc = parsePlanMarkdown(edited);
-                                                        const score = scorePlanDoc(doc, planThreshold);
+                                                        const score = scoreActivePlan(doc);
                                                         planDoc = doc;
                                                         planScore = score;
                                                         planItems = doc.steps.map((s) => ({ ...s }));
@@ -4108,7 +4351,7 @@ export function createUnownToolsExtension(opts: UnownToolsOptions) {
                                         const doc = fileText
                                                 ? parsePlanMarkdown(fileText)
                                                 : (planDoc ?? { ...EMPTY_PLAN_DOC, steps: planItems });
-                                        const score = planScore ?? scorePlanDoc(doc, planThreshold);
+                                        const score = planScore ?? scoreActivePlan(doc);
                                         const state = executionMode
                                                 ? `executing — ${planItems.filter((t) => t.completed).length}/${planItems.length} steps done`
                                                 : planModeEnabled
@@ -5989,10 +6232,68 @@ export function createUnownToolsExtension(opts: UnownToolsOptions) {
                         const base = await (async () => {
                                 if (planModeEnabled) {
                                         const file = resolvePlanFile();
-                                        return {
-                                                message: {
-                                                        customType: "unown-plan-context",
-                                                        content: `[PLAN MODE ACTIVE — read-only; the plan file is the only writable path]
+                                        // ---- Plan Mode V3 (the 2026-11-01 capability-orchestrator
+                                        // round): the orchestrator directive. Same sentinel prefix
+                                        // ([PLAN MODE ACTIVE — the context stripper matches it),
+                                        // same plan-file-only contract, same threshold gate —
+                                        // but the workflow is now phase-modelled and starts
+                                        // with the capability audit (leverage over generation)
+                                        // and ends at the retrospective. The V2 prompt below is
+                                        // the kill-switch lane (UNOWN_PLAN_MODE_V3=0).
+                                        const v3Prompt = `[PLAN MODE ACTIVE — read-only; the plan file is the only writable path; planning specialists may be consulted through task]
+
+You are Unown's Plan Mode Orchestrator. Your objective is NOT to finish as fast as possible: every plan must (1) deliver project value, (2) reuse existing capabilities, (3) set up validated execution, and (4) extract learning. Prefer leverage over generation — never create a new solution when an existing capability (memory, a skill, a workflow, a routine, a benchmark, an agent pattern) can serve.
+
+The ONLY file you may write is the plan file:
+
+  ${file}
+
+Phases — in order; keep moving forward:
+1. AUDIT CAPABILITIES (before designing anything). Evaluate, in priority order: tiered-memory (.unown/memory/), existing-skills (.unown/skills/), workflows, standing-orders, routines, repo-map, project-context (AGENTS.md/README/docs), prior-learnings, benchmarks, agent-patterns, subagent-delegation. For each: relevance, expected benefit, confidence, and the decision USED/SKIPPED with a one-line reason. Consult what you audit — read the memory file, list the skills dir — do not guess.
+2. STRATEGIZE: objectives, scope, constraints, assumptions, risks, success criteria — building on what the audit marked USED.
+3. SPECIALIST REVIEW: consult the bench through the task tool — product-strategist (requirements/scope), solution-architect (design/tradeoffs — it reads the files your plan names), delivery-manager (sequencing/dependencies), qa-architect (acceptance/failure modes), devils-advocate (assumptions/blind spots). Spawn specialists ONLY when the work is complex, uncertain, multi-domain or risky; for a small plan, record justified skips (### <name> — SKIPPED: <why>). Pass each specialist the draft plan + objective in the task text — they see nothing else.
+4. SYNTHESIZE: merge the verdicts — consensus, conflicts (with your ruling), missing considerations, and a 0-100 confidence AFTER review.
+5. DRAFT: write the complete plan with plan_write, exactly this structure:
+   # Plan: <one-line objective>
+   ## Context
+   <why — the problem or need>
+   ## Capability audit
+   - tiered-memory — USED: <reason> (relevance: high; benefit: <what>; confidence: 80)
+   - existing-skills — SKIPPED: <reason>
+   <… one row per capability, all eleven>
+   ## Approach
+   <the recommended design and why — reusing the audited capabilities>
+   ## Specialist review
+   ### product-strategist — ALIGNED
+   - <finding>
+   ### delivery-manager — SKIPPED: <reason>
+   ## Synthesis
+   - consensus: <where the reviews agree>
+   - conflicts: <disagreements + your ruling>
+   - missing: <what the reviews surfaced>
+   - confidence: <0-100>
+   ## Steps
+   1. <concrete step> (files: src/a.ts, src/b.ts) — 3-12 steps
+   ## Risks
+   - <what could break + the mitigation> (at least two)
+   ## Learning plan
+   - memory: <what this run should remember or validate>
+   - benchmark: <scenario worth measuring, when real>
+   ## Verification
+   <the exact commands that prove it works>
+   plan_write scores 0-100 and lists what is missing — fix the flagged dimensions and write again until the score is >= ${planThreshold}.
+6. EXIT: call exit_plan_mode to request approval. Do NOT call it for research tasks with nothing to implement.
+
+Hard rules:
+- End every turn with EITHER a clarifying question for the user OR the exit_plan_mode call — never with unfinished exploration.
+- bash is read-only; edit/write/todo are disabled; task admits READ-ONLY agents only (the specialist bench, scout/explore) — writing agents are refused until approval.
+- Never ask the user what you could find out by reading code, memory, or skills.
+- High-risk or architectural steps get dual review at execution time (builder + reviewer subagent) — note it in the step.
+- Keep the plan scannable — under ~90 lines.
+- After approval, execution ends with plan_retrospective (outcome, failure class if any, learning candidates, improvements) — no milestone closes without it.
+
+The plan file survives compaction and resume; it is the single source of truth for the approval gate.${planBudgetLine()}`;
+                                        const v2Prompt = `[PLAN MODE ACTIVE — read-only; the plan file is the only writable path]
 
 You are in plan mode. Produce a reviewable implementation plan — do NOT change any code. The ONLY file you may write is the plan file:
 
@@ -6024,7 +6325,11 @@ Hard rules:
 - Reuse existing code: prefer steps that reference existing functions and utilities, naming their files.
 - Keep the plan scannable — under ~60 lines.
 
-The plan file survives compaction and resume; it is the single source of truth for the approval gate.${planBudgetLine()}`,
+The plan file survives compaction and resume; it is the single source of truth for the approval gate.${planBudgetLine()}`;
+                                        return {
+                                                message: {
+                                                        customType: "unown-plan-context",
+                                                        content: planV3Mode ? v3Prompt : v2Prompt,
                                                         display: false,
                                                 },
                                         };
@@ -6032,6 +6337,17 @@ The plan file survives compaction and resume; it is the single source of truth f
                                 if (executionMode && planItems.length > 0) {
                                         const remaining = planItems.filter((t) => !t.completed);
                                         const todoList = remaining.map((t) => `${t.step}. ${t.text}`).join("\n");
+                                        // V3: the execution phase rides the same block with the
+                                        // continuous-validation + dual-review + retrospective
+                                        // directives appended (the orchestrator's Phases 6-8).
+                                        const v3ExecutionAddendum = planV3Mode
+                                                ? `
+
+Orchestrator directives (V3):
+- Validate the plan continuously: after each step ask — did assumptions change, is a dependency stale, does a risk need promoting? Significant drift means STOP and say so (the user can re-enter plan mode) — blind adherence is worse than replanning.
+- High-risk or architectural steps get dual review: implement as the builder, then spawn the reviewer subagent (task tool) on the diff and address its P0/P1 findings before moving on.
+- Before declaring the plan done, call plan_retrospective with the outcome, the failure class (when anything went wrong), the learning candidates and the improvements — software delivery is evidence, learning is the objective.`
+                                                : "";
                                         return {
                                                 message: {
                                                         customType: "unown-plan-context",
@@ -6040,7 +6356,7 @@ The plan file survives compaction and resume; it is the single source of truth f
 Remaining steps:
 ${todoList}
 
-Execute the steps in order. The seeded todo tasks ARE these steps — complete each with the todo tool or a [DONE:n] tag in your response; both flip the same list.`,
+Execute the steps in order. The seeded todo tasks ARE these steps — complete each with the todo tool or a [DONE:n] tag in your response; both flip the same list.${v3ExecutionAddendum}`,
                                                         display: false,
                                                 },
                                         };
@@ -6494,7 +6810,7 @@ Execute the steps in order. The seeded todo tasks ARE these steps — complete e
                         }
                         if (!fallbackDoc || fallbackDoc.steps.length === 0) return;
                         planDoc = fallbackDoc;
-                        planScore = scorePlanDoc(fallbackDoc, planThreshold);
+                        planScore = scoreActivePlan(fallbackDoc);
                         planItems = fallbackDoc.steps.map((s) => ({ ...s }));
                         recordPlanPrintReport(planReport(fallbackDoc, planScore, planFileAbs));
                         persistPlanState();
@@ -6690,7 +7006,7 @@ Execute the steps in order. The seeded todo tasks ARE these steps — complete e
                                                 const doc = parsePlanMarkdown(fileText);
                                                 if (doc.steps.length > 0) {
                                                         planDoc = doc;
-                                                        planScore = scorePlanDoc(doc, planThreshold);
+                                                        planScore = scoreActivePlan(doc);
                                                 }
                                         }
                                 }

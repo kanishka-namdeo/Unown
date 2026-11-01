@@ -516,7 +516,12 @@ describe("acp — integration (real CLI, mock bridge)", () => {
                                 expect(ns.error).toBeUndefined();
 
                                 // plan mode ON: the next request the bridge sees must be
-                                // read-only (no edit/write/task) and carry the plan tools.
+                                // read-only (no edit/write) and carry the plan tools.
+                                // Plan Mode V3 (2026-11-01): `task` STAYS in the plan
+                                // toolset — the specialist-review phase delegates to the
+                                // read-only planning bench (the task tool's plan-mode
+                                // guard enforces read-only per spawn); ACP clients get
+                                // the same V3 surface the TUI does.
                                 const on = await wire.request("session/setMode", { sessionId: ns.result.sessionId, modeId: "plan" });
                                 expect(on.error).toBeUndefined();
                                 expect(on.result.currentMode).toBe("plan");
@@ -529,9 +534,10 @@ describe("acp — integration (real CLI, mock bridge)", () => {
                                 expect(planReq).toBeDefined();
                                 expect(planReq.tools).not.toContain("edit");
                                 expect(planReq.tools).not.toContain("write");
-                                expect(planReq.tools).not.toContain("task");
+                                expect(planReq.tools).toContain("task"); // V3: read-only delegation lane
                                 expect(planReq.tools).toContain("plan_write");
                                 expect(planReq.tools).toContain("exit_plan_mode");
+                                expect(planReq.tools).not.toContain("plan_retrospective"); // execution-phase only
 
                                 // plan mode OFF: the write tools return.
                                 const off = await wire.request("session/setMode", { sessionId: ns.result.sessionId, modeId: "default" });
