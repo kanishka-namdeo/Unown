@@ -3653,6 +3653,15 @@ async function cmdTui(prompt: string | undefined, verbose: boolean, bootOpts: Bo
 		// Brand the interactive TUI as unown (header, terminal title); suppress pi's own update check.
 		appName: "unown",
 		appVersion: VERSION,
+		// The exit hint must spell THIS launcher's resume grammar. pi's
+		// default (`pi --session-dir <dir> --session <id>`) fails the
+		// copy-paste test three ways for an unown user: it names a command
+		// they never typed (a bare `pi` that may not be on PATH), even a
+		// present `pi` boots without unown's memory/hooks/addons stack, and
+		// POSIX single quotes are literal characters in cmd.exe. `unown
+		// --resume <id>` resolves the id in unown's own stores (both lanes)
+		// and needs no --session-dir at all.
+		resumeCommand: (sessionId: string) => `unown --resume ${sessionId}`,
 		...(prompt ? { initialMessage: prompt } : {}),
 	});
 	await mode.run(); // blocks until exit; normal exit path is process.exit(0)

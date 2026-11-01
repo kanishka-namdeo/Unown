@@ -256,6 +256,14 @@ function isCompactionCostNotice(item: RenderSessionItem): item is CompactionCost
 
 const DEAD_TERMINAL_ERROR_CODES = new Set(["EIO", "EPIPE", "ENOTCONN"]);
 
+/**
+ * Grace period for the exit-time cooperative abort to settle (persist the
+ * in-flight turn with stopReason "aborted") before the process exits. Bounded
+ * so a wedged extension listener cannot turn an exit into a hang; an idle
+ * session pays nothing (no abort is armed at all).
+ */
+const ABORT_SETTLE_TIMEOUT_MS = 2_000;
+
 function isDeadTerminalError(error: unknown): boolean {
         if (!error || typeof error !== "object" || !("code" in error)) {
                 return false;
@@ -275,25 +283,70 @@ function isUnknownModel(model: Model<any> | undefined): boolean {
         return !!model && model.provider === "unknown" && model.id === "unknown" && model.api === "unknown";
 }
 
+// The safe-character set every common shell passes through verbatim (no
+// quoting needed): POSIX-quoted AND double-quoted Windows shells agree on
+// these, and a session id / plain POSIX path never leaves it.
+const SHELL_SAFE_CHARS = /^[a-zA-Z0-9_\-./~:@]+$/;
+
+/**
+ * Quote a value for copy-paste into the user's shell.
+ *
+ * POSIX shells (and Git Bash / MSYS2 on Windows, identified by MSYSTEM):
+ * single quotes with the standard '\'' escape. Everything else on Windows
+ * (cmd.exe and PowerShell): double quotes — cmd.exe has no single-quote
+ * syntax at all (the parser's only quoting character is `"`), so a hint
+ * printed with single quotes pastes as a literal `'C:\...sessions'` argument
+ * and the resume fails with a file-not-found. Double quotes parse correctly
+ * in cmd.exe, PowerShell 5.1 and PowerShell 7+ alike.
+ */
 function quoteIfNeeded(value: string): string {
-        if (value.length > 0 && !/[^a-zA-Z0-9_\-./~:@]/.test(value)) {
+        if (value.length > 0 && SHELL_SAFE_CHARS.test(value)) {
                 return value;
         }
-        return `'${value.replace(/'/g, `'\\''`)}'`;
+        const posixQuoting = process.platform !== "win32" || !!process.env.MSYSTEM;
+        if (posixQuoting) {
+                return `'${value.replace(/'/g, `'\\''`)}'`;
+        }
+        // MSVCRT/CommandLineToArgvW rules: only `"` (and backslashes directly
+        // before it) are special, so Windows drive paths keep single backslashes.
+        return `"${value.replace(/"/g, '\\"')}"`;
 }
 
-export function formatResumeCommand(sessionManager: SessionManager): string | undefined {
+/** Options for {@link formatResumeCommand}. */
+export interface ResumeCommandOptions {
+        /** The launcher command the user actually ran (defaults to the vendored APP_NAME). Wrappers that boot pi under their own CLI (e.g. `unown`) pass their name so the printed hint names a command the user can actually run. */
+        appName?: string;
+        /**
+         * Launcher-provided resume command builder. Wrappers whose resume
+         * grammar differs from pi's own flags (`--session-dir`/`--session`)
+         * supply this — e.g. `unown --resume <id>`. Receives the session id;
+         * return the full command line, or undefined to fall back to the
+         * default builder. The builder owns its own quoting.
+         */
+        buildResumeCommand?: (sessionId: string) => string | undefined;
+}
+
+export function formatResumeCommand(sessionManager: SessionManager, options?: ResumeCommandOptions): string | undefined {
         if (!process.stdout.isTTY) return undefined;
         if (!sessionManager.isPersisted()) return undefined;
 
         const sessionFile = sessionManager.getSessionFile();
         if (!sessionFile || !fs.existsSync(sessionFile)) return undefined;
 
-        const args = [APP_NAME];
+        const sessionId = sessionManager.getSessionId();
+        if (options?.buildResumeCommand) {
+                const launcherCommand = options.buildResumeCommand(sessionId);
+                // A launcher that declines (undefined) falls through to the
+                // default builder — an ephemeral/unknown state still deserves
+                // the best pi-native hint we can print.
+                if (launcherCommand) return launcherCommand;
+        }
+
+        const args = [options?.appName ?? APP_NAME];
         if (!sessionManager.usesDefaultSessionDir()) {
                 args.push("--session-dir", quoteIfNeeded(sessionManager.getSessionDir()));
         }
-        args.push("--session", sessionManager.getSessionId());
+        args.push("--session", quoteIfNeeded(sessionId));
         return args.join(" ");
 }
 
@@ -388,6 +441,13 @@ export interface InteractiveModeOptions {
         appName?: string;
         /** Branding override for the version shown in the header (defaults to the vendored pi version). */
         appVersion?: string;
+        /**
+         * Launcher-provided resume-command builder for the exit hint. Wrappers
+         * that boot pi under their own CLI (e.g. `unown --resume <id>`) pass
+         * this so the "To resume this session:" line spells THEIR grammar —
+         * the default builder names the vendored app and pi's own flags.
+         */
+        resumeCommand?: (sessionId: string) => string | undefined;
 }
 
 interface InteractiveTuiOptions {
@@ -4086,6 +4146,13 @@ export class InteractiveMode {
                 if (now - this.lastSigintTime < 500) {
                         void this.shutdown();
                 } else {
+                        // Claude Code parity: a first Ctrl+C on an ALREADY-empty editor
+                        // is invisible without a notice (there is nothing to clear), and
+                        // the user has no way to learn that a second press exits. When the
+                        // editor held text, the clear itself is the visible feedback.
+                        if (this.editor.getText().length === 0) {
+                                this.showStatus("Press Ctrl+C again to exit");
+                        }
                         this.clearEditor();
                         this.lastSigintTime = now;
                 }
@@ -4110,6 +4177,25 @@ export class InteractiveMode {
                 // `signal-exit` checks the listener list during the same SIGTERM/SIGHUP
                 // dispatch and re-sends the signal if only its own listeners remain.
 
+                // A turn mid-flight at exit time must go through the SAME cooperative
+                // abort matrix as Esc / /abort / ctx.abort() — and be awaited to idle
+                // — BEFORE dispose() runs. dispose() aborts fire-and-forget AND
+                // synchronously disconnects the persistence listeners, so without this
+                // settle an exit during a turn dropped the in-flight exchange: the
+                // aborted assistant message (which carries the partial text, persisted
+                // with stopReason "aborted") never reached the session file, and a
+                // first turn with no finalized assistant message yet meant the file was
+                // never created at all (the no-assistant guard buffers in memory) — the
+                // user lost the whole exchange AND the exit printed no resume hint.
+                // The settle is bounded: a wedged extension listener must not turn an
+                // exit into a hang, so after the grace we proceed best-effort.
+                if (this.session.abortActiveOperation()) {
+                        await Promise.race([
+                                this.session.waitForIdle(),
+                                new Promise((resolve) => setTimeout(resolve, ABORT_SETTLE_TIMEOUT_MS)),
+                        ]);
+                }
+
                 if (options?.fromSignal) {
                         // Signal-triggered shutdown (SIGTERM/SIGHUP). Emit extension cleanup
                         // (session_shutdown) BEFORE touching the terminal. Extension teardown
@@ -4122,6 +4208,12 @@ export class InteractiveMode {
                         this.themeController.disableAutoSync();
                         await this.ui.terminal.drainInput(1000);
                         this.stop();
+                        // The session is persisted (append-only JSONL) and the terminal has
+                        // been restored by stop(), so a `kill`-ed or hung-up process deserves
+                        // the same resume affordance as an interactive quit. A dead terminal
+                        // surfaces as EIO on this write and takes the emergency exit instead —
+                        // same outcome, no hang.
+                        this.printResumeHint();
                         process.exit(0);
                 }
 
@@ -4136,12 +4228,29 @@ export class InteractiveMode {
                 this.stop();
                 await this.runtimeHost.dispose();
 
-                const resumeCommand = formatResumeCommand(this.sessionManager);
+                this.printResumeHint();
+
+                process.exit(0);
+        }
+
+        /**
+         * Print the copy-pasteable resume hint after the TUI has been stopped
+         * (terminal restored to cooked mode, alt screen exited) so the line
+         * lands in the normal screen buffer and survives into the shell. The
+         * command names the launcher the user actually ran (wrapper override
+         * or the vendored app name) and is quoted for the host shell — on
+         * Windows that means double quotes, because cmd.exe has no
+         * single-quote syntax. Non-TTY stdout (pipes) intentionally gets no
+         * hint: machine-readable consumers must not see chat affordances.
+         */
+        private printResumeHint(): void {
+                const resumeCommand = formatResumeCommand(this.sessionManager, {
+                        appName: this.options.appName,
+                        buildResumeCommand: this.options.resumeCommand,
+                });
                 if (resumeCommand) {
                         process.stdout.write(`${chalk.dim("To resume this session:")} ${resumeCommand}\n`);
                 }
-
-                process.exit(0);
         }
 
         private emergencyTerminalExit(): never {

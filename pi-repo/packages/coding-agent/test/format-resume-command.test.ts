@@ -8,12 +8,22 @@ import { formatResumeCommand } from "../src/modes/interactive/interactive-mode.t
 
 const tempDirs: string[] = [];
 const originalStdoutIsTTY = Object.getOwnPropertyDescriptor(process.stdout, "isTTY");
+const originalPlatform = Object.getOwnPropertyDescriptor(process, "platform");
+const originalMsystem = process.env.MSYSTEM;
 
 afterEach(() => {
 	if (originalStdoutIsTTY) {
 		Object.defineProperty(process.stdout, "isTTY", originalStdoutIsTTY);
 	} else {
 		Reflect.deleteProperty(process.stdout, "isTTY");
+	}
+	if (originalPlatform) {
+		Object.defineProperty(process, "platform", originalPlatform);
+	}
+	if (originalMsystem === undefined) {
+		delete process.env.MSYSTEM;
+	} else {
+		process.env.MSYSTEM = originalMsystem;
 	}
 
 	for (const dir of tempDirs.splice(0)) {
@@ -23,6 +33,11 @@ afterEach(() => {
 
 function setStdoutIsTTY(value: boolean): void {
 	Object.defineProperty(process.stdout, "isTTY", { configurable: true, value });
+}
+
+/** Simulate the host platform (the quoting decision reads it at call time). */
+function setPlatform(platform: NodeJS.Platform): void {
+	Object.defineProperty(process, "platform", { configurable: true, value: platform });
 }
 
 function createTempFile(): string {
@@ -131,5 +146,115 @@ describe("formatResumeCommand", () => {
 		const sessionManager = createSessionManager({ sessionFile: undefined });
 
 		expect(formatResumeCommand(sessionManager)).toBeUndefined();
+	});
+
+	it("names the launcher passed via appName instead of the vendored app name", () => {
+		setStdoutIsTTY(true);
+		const sessionFile = createTempFile();
+		const sessionManager = createSessionManager({ sessionFile, sessionId: "test-session" });
+
+		expect(formatResumeCommand(sessionManager, { appName: "unown" })).toBe(`unown --session test-session`);
+	});
+
+	it("uses the launcher-provided buildResumeCommand when supplied", () => {
+		setStdoutIsTTY(true);
+		const sessionFile = createTempFile();
+		const sessionManager = createSessionManager({ sessionFile, sessionId: "0197f6e4-4cf9-7f44" });
+
+		expect(
+			formatResumeCommand(sessionManager, {
+				appName: "unown",
+				buildResumeCommand: (sessionId) => `unown --resume ${sessionId}`,
+			}),
+		).toBe("unown --resume 0197f6e4-4cf9-7f44");
+	});
+
+	it("falls back to the default builder when the launcher override declines", () => {
+		setStdoutIsTTY(true);
+		const sessionFile = createTempFile();
+		const sessionManager = createSessionManager({ sessionFile, sessionId: "test-session" });
+
+		expect(
+			formatResumeCommand(sessionManager, {
+				appName: "unown",
+				buildResumeCommand: () => undefined,
+			}),
+		).toBe("unown --session test-session");
+	});
+
+	it("double-quotes Windows session dirs (cmd.exe has no single-quote syntax)", () => {
+		setStdoutIsTTY(true);
+		setPlatform("win32");
+		delete process.env.MSYSTEM;
+		const sessionFile = createTempFile();
+		const sessionManager = createSessionManager({
+			sessionFile,
+			sessionId: "test-session",
+			sessionDir: "C:\\Users\\kanis\\.unown\\agent\\sessions",
+			usesDefaultSessionDir: false,
+		});
+
+		expect(formatResumeCommand(sessionManager)).toBe(
+			`${APP_NAME} --session-dir "C:\\Users\\kanis\\.unown\\agent\\sessions" --session test-session`,
+		);
+	});
+
+	it("double-quotes Windows session dirs containing spaces", () => {
+		setStdoutIsTTY(true);
+		setPlatform("win32");
+		delete process.env.MSYSTEM;
+		const sessionFile = createTempFile();
+		const sessionManager = createSessionManager({
+			sessionFile,
+			sessionId: "test-session",
+			sessionDir: "C:\\Users\\kanis\\My Sessions",
+			usesDefaultSessionDir: false,
+		});
+
+		expect(formatResumeCommand(sessionManager)).toBe(
+			`${APP_NAME} --session-dir "C:\\Users\\kanis\\My Sessions" --session test-session`,
+		);
+	});
+
+	it("escapes embedded double quotes on Windows", () => {
+		setStdoutIsTTY(true);
+		setPlatform("win32");
+		delete process.env.MSYSTEM;
+		const sessionFile = createTempFile();
+		const sessionManager = createSessionManager({
+			sessionFile,
+			sessionId: "test-session",
+			sessionDir: 'C:\\we"ird',
+			usesDefaultSessionDir: false,
+		});
+
+		expect(formatResumeCommand(sessionManager)).toBe(
+			`${APP_NAME} --session-dir "C:\\we\\"ird" --session test-session`,
+		);
+	});
+
+	it("keeps POSIX single quotes under MSYS/Git Bash on Windows", () => {
+		setStdoutIsTTY(true);
+		setPlatform("win32");
+		process.env.MSYSTEM = "MINGW64";
+		const sessionFile = createTempFile();
+		const sessionManager = createSessionManager({
+			sessionFile,
+			sessionId: "test-session",
+			sessionDir: "/c/Users/kanis/My Sessions",
+			usesDefaultSessionDir: false,
+		});
+
+		expect(formatResumeCommand(sessionManager)).toBe(
+			`${APP_NAME} --session-dir '/c/Users/kanis/My Sessions' --session test-session`,
+		);
+	});
+
+	it("quotes session ids that contain shell metacharacters", () => {
+		setStdoutIsTTY(true);
+		const sessionFile = createTempFile();
+		const sessionManager = createSessionManager({ sessionFile, sessionId: "a b" });
+
+		expect(formatResumeCommand(sessionManager)).toBe(`${APP_NAME} --session 'a b'`);
 	});
 });

@@ -1605,3 +1605,76 @@ describe("agentLoopContinue with AgentMessage", () => {
 		expect(messages[0].role).toBe("assistant");
 	});
 });
+
+describe("abort classification at the loop boundary", () => {
+	// The ai layer classifies stream failures by signal.aborted AT CATCH TIME;
+	// retry wrappers can surface the AbortError on an inner controller a tick
+	// before the outer run signal reflects it, so a user-initiated stop can
+	// arrive at the loop with stopReason "error" ("The operation was
+	// aborted."). The loop knows whether the RUN was aborted — it must
+	// relabel, so transcripts, resume and the retry decision see the honest
+	// "aborted" marker (the same one Esc / /abort / Ctrl+C-exit persist).
+
+	function runLoopWithStreamError(signal: AbortSignal | undefined): Promise<{
+		messages: AgentMessage[];
+		events: AgentEvent[];
+	}> {
+		const context: AgentContext = {
+			systemPrompt: "You are helpful.",
+			messages: [],
+			tools: [],
+		};
+		const userPrompt: AgentMessage = createUserMessage("Hello");
+		const config: AgentLoopConfig = {
+			model: createModel(),
+			convertToLlm: identityConverter,
+		};
+
+		const streamFn = () => {
+			const stream = new MockAssistantStream();
+			queueMicrotask(() => {
+				const message = createAssistantMessage([], "error");
+				(message as { errorMessage?: string }).errorMessage = "The operation was aborted.";
+				stream.push({ type: "error", reason: "error", error: message });
+			});
+			return stream;
+		};
+
+		const events: AgentEvent[] = [];
+		const stream = agentLoop([userPrompt], context, config, signal, streamFn);
+		return (async () => {
+			for await (const event of stream) {
+				events.push(event);
+			}
+			const messages = await stream.result();
+			return { messages, events };
+		})();
+	}
+
+	it("relables an error that lands after the caller aborted into stopReason aborted", async () => {
+		const controller = new AbortController();
+		controller.abort();
+
+		const { messages, events } = await runLoopWithStreamError(controller.signal);
+
+		const last = messages[messages.length - 1] as AssistantMessage;
+		expect(last.stopReason).toBe("aborted");
+
+		const messageEnd = events.find(
+			(e) => e.type === "message_end" && (e as { message: AssistantMessage }).message.role === "assistant",
+		) as { type: "message_end"; message: AssistantMessage } | undefined;
+		expect(messageEnd?.message.stopReason).toBe("aborted");
+	});
+
+	it("keeps stopReason error for provider errors when the run was not aborted", async () => {
+		const { messages, events } = await runLoopWithStreamError(undefined);
+
+		const last = messages[messages.length - 1] as AssistantMessage;
+		expect(last.stopReason).toBe("error");
+
+		const messageEnd = events.find(
+			(e) => e.type === "message_end" && (e as { message: AssistantMessage }).message.role === "assistant",
+		) as { type: "message_end"; message: AssistantMessage } | undefined;
+		expect(messageEnd?.message.stopReason).toBe("error");
+	});
+});
