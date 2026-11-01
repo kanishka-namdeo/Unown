@@ -8,7 +8,17 @@ archaeology. When a round completes, its log graduates to a round-specific
 
 ---
 
-## ACTIVE ROUND — none (the queue is prepared, not started)
+## ACTIVE ROUND — the security round (in flight)
+
+The security round (2026-11-01, target v0.0.55): every open Dependabot
+advisory (follow-redirects 1.16.2 HIGH, minimatch 11.0.1 MEDIUM) and every
+open CodeQL finding (insecure-randomness ×1, polynomial-redos ×2) addressed
+with the dependency round's stage-gating discipline — the CodeQL fixes swept
+the whole idiom (eleven sites, not just the two flagged), the minimatch fix
+regenerated all five vendored surfaces through the repo's own lock
+generators, the coverage-v8 Dependabot PR declined on its exact-pin peer
+contract. Resumable log with every receipt:
+`docs/security-round-session.md`.
 
 The dependency round (v0.0.54, 2026-11-01) is complete and graduated to its
 own log: `docs/dependency-round-session.md` (research and decisions:
