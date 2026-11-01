@@ -67,7 +67,7 @@ Receipts (all 2026-11-01T21:xxZ):
 
 ---
 
-## M2 — issue #30: the `unown -p` exit hang (in flight)
+## M2 — issue #30: the `unown -p` exit hang (COMPLETE, 2026-11-02)
 
 **Observation (first run, prior sandbox)**: the answer flushed to the session receipt at 17:30:09.8; the process was still alive at kill time (150 s later), matching the issue's symptom exactly (answer arrives → process never exits → survives SIGTERM; bridge clean: 0 errors, 0 in-flight during the hang).
 
@@ -80,6 +80,10 @@ Receipts (all 2026-11-01T21:xxZ):
 3. If no repro within the bounded budget: the honest receipt is the non-repro evidence + the instrumentation ticket (the issue's request (b)) shipped as the deliverable — a permanent exit-path telemetry lane, not a blind fix.
 
 **Watcher probe result (2026-11-02)**: `scripts/issue30_watcher.mjs` (the armed watcher the issue requests, committed) ran the bounded budget — idle lane 8/8 clean (1.4–3.3 s each) and dream-churn lane 8/8 clean (1.4–2.4 s each; `POST /api/dreams/run` → `{"started":true,"pendingNotes":9}`, mid-loop trigger → 409 engine-busy, i.e. the loop genuinely overlapped active harness/dream LLM work). Including the six M1-resume runs: **22/22 clean headless runs on this lineage, zero hangs**. Classification stands: triggered-but-unverified — the exit-path instrumentation ticket (request (b)) is the deliverable.
+
+**Ticket M2-A through A2 (COMPLETE)**: the instrumentation shipped as `UNOWN_PRINT_EXIT_TRACE=1` (+ `UNOWN_PRINT_TRACE_DIR`) — `pi-repo/packages/self-learning/src/print-exit-trace.ts` (fail-open observation lane, 11-event vocabulary, stderr + `.run/print-exit-trace.jsonl`, Windows-safe, zero I/O when off) wired into `cli.ts` (watchdog opts, answer-watch hook, drain sentinel, exit events in both lanes), pinned by `test/print-exit-trace.test.ts` (11 tests), documented in `.env.example` + `docs/usage.md` + the package AGENTS.md + a CHANGELOG `[Unreleased]` entry. Receipt: `.unown/receipts/issue30-instrumentation.md` (gitignored) with the pasted live on/off traces; the operator independently re-verified: unit 11/0, `bun run build:offline` green (52 files / 8.5 MiB), live instrumented run (stall_armed → answer_flushed → drain_start → drain_done → exit 0) and flag-off control (zero output).
+
+**The A2-session protocol this lane established (a learning for every later ticket on this host)**: the sandbox reaps agent processes between operator tool calls — both a nohup'd and a setsid'd background session died mid-turn. The working protocol is the repo's own documented one: **budgeted chunks + resume chains** (`unown --resume <id> -p "continue…" --permission-mode acceptEdits --max-turns 8` per chunk, receipts written incrementally, no `task`-tool exploration because subagents die with their parent chunk). Eleven chunks total; one operator unblock mid-flight (the session's `homedir`-from-`node:path` import was boot-breaking — fixed to `node:os`, one line, noted in the receipt and the session log). The issue #30 story stays open at the repro level (intermittent, 22/22 clean here) but is now instrumented: the next live hang anywhere records which exit path was pending, which is exactly what the issue asked for next.
 
 ## M3 — PT-5: a live plan-mode V3 run with live specialist spawns (planned)
 

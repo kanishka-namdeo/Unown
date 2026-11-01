@@ -72,6 +72,7 @@ import { assistantTextOf } from "./messages.ts";
 import { MIGRATIONS, readMigrationState } from "./migrations.ts";
 import { loadModelHealth, modelHealthExists } from "./model-health.ts";
 import { formatSpecShort, getRecordedSpec } from "./model-spec-detect.ts";
+import { createPrintExitTrace, type PrintExitTrace } from "./print-exit-trace.ts";
 import { emitOsc9, notifyGated, notifyThresholdMs, shouldNotifyOnAnswer, truncateForNotify } from "./notify.ts";
 import {
 	assembleResultJson,
@@ -2800,8 +2801,25 @@ export function nextStallMilestone(elapsedMs: number, budgetMs: number, emitted:
 	return null;
 }
 
-export function installPrintStallWatchdog(runtime: any, lastResort?: () => void): { dispose: () => void } {
+export function installPrintStallWatchdog(
+	runtime: any,
+	lastResort?: () => void,
+	opts?: { trace?: PrintExitTrace; now?: () => number },
+): { dispose: () => void } {
 	try {
+		// M2-A (issue #30 request b): the exit-path trace lane. Opt-in
+		// (UNOWN_PRINT_EXIT_TRACE=1); when off, trace.emit is a no-op so
+		// this changes ZERO behavior. Observation only — it must never
+		// block, re-arm, or alter any net below.
+		const trace = opts?.trace;
+		const nowMs = opts?.now ?? Date.now;
+		const log = (event: Parameters<NonNullable<PrintExitTrace["emit"]>>[0], extras?: Record<string, unknown>) => {
+			try {
+				trace?.emit(event, extras);
+			} catch {
+				/* observation lane — never touch the run */
+			}
+		};
 		// F3 (2026-10-29, the parley round): every forced exit below used to
 		// call process.exit() bare — bounded, but an unattended caller's
 		// result vanished whenever post-answer teardown hung past the
@@ -2818,7 +2836,7 @@ export function installPrintStallWatchdog(runtime: any, lastResort?: () => void)
 			}
 		};
 		let timer: any = null;
-		let lastEventTs = Date.now();
+		let lastEventTs = nowMs();
 		let emitted: Record<number, boolean> = {};
 		const stallProgress = () => {
 			if (!printStallProgressEnabled()) return;
@@ -2837,17 +2855,20 @@ export function installPrintStallWatchdog(runtime: any, lastResort?: () => void)
 			emitted = {};
 			if (timer) clearTimeout(timer);
 			timer = setTimeout(() => {
+				log("stall_fired", { budgetMs: printStallMs() });
 				console.error(
 					`unown: print mode stalled — no session events for ${Math.round(printStallMs() / 1000)}s; forcing exit (tune with PI_PRINT_STALL_MS)`,
 				);
 				runLastResort();
 				process.exit(1);
 			}, printStallMs());
+			log("stall_armed", { budgetMs: printStallMs() });
 		};
 		arm();
 		let hardExit: any = null;
 		const armHardExit = () => {
 			if (hardExit) clearTimeout(hardExit);
+			log("hard_exit_armed", { graceMs: printExitGraceMs() });
 			hardExit = setTimeout(() => {
 				// Fleet guard (2026-10-26 stress round): a live
 				// async fleet holds the process open — the
@@ -2861,6 +2882,7 @@ export function installPrintStallWatchdog(runtime: any, lastResort?: () => void)
 				// completion (or the fleet timeout watchdog)
 				// ends the run instead.
 				if (isFleetBusy()) {
+					log("hard_exit_rearmed", { via: "fleet_busy" });
 					armHardExit();
 					return;
 				}
@@ -2870,11 +2892,13 @@ export function installPrintStallWatchdog(runtime: any, lastResort?: () => void)
 				// cmdPrint's continuation round is still due. Same
 				// re-arm contract as the fleet guard.
 				if (activeTerminalAutoCompact()?.compactInFlight) {
+					log("hard_exit_rearmed", { via: "auto_compact" });
 					armHardExit();
 					return;
 				}
 				// The agent finished; dispose had its grace. Leave quietly —
 				// but never silently: the caller's envelope goes first (F3).
+				log("hard_exit_fired", { via: "grace" });
 				runLastResort();
 				process.exit(0);
 			}, printExitGraceMs());
@@ -2905,6 +2929,7 @@ export function installPrintStallWatchdog(runtime: any, lastResort?: () => void)
 					typeof s.subscribe === "function"
 						? s.subscribe((event: any) => {
 								arm();
+								if (event?.type === "agent_end") log("agent_end", { willRetry: Boolean(event?.willRetry) });
 								// Final completion: an agent_end that will not retry.
 								// The answer is written; only teardown remains.
 								if (event?.type === "agent_end" && !event?.willRetry) armHardExit();
@@ -2918,6 +2943,7 @@ export function installPrintStallWatchdog(runtime: any, lastResort?: () => void)
 								if (event?.type === "agent_start" && hardExit) {
 									clearTimeout(hardExit);
 									hardExit = null;
+									log("hard_exit_cancelled", { via: "new_round" });
 								}
 							})
 						: null;
@@ -2960,7 +2986,7 @@ export function installPrintStallWatchdog(runtime: any, lastResort?: () => void)
  *  contract ("the answer produced so far still prints", max-turns.ts) is
  *  recovered from this tracker at the exit paths instead of depending on a
  *  race in pi's message bookkeeping. */
-function createAnswerWatch(): {
+function createAnswerWatch(onAnswerFlushed?: () => void): {
 	get answer(): { text: string; stopReason?: string; at: number } | null;
 	get lastCompleted(): { text: string; at: number } | null;
 	extension: { name: string; hidden: boolean; factory(pi: any): void };
@@ -2968,6 +2994,15 @@ function createAnswerWatch(): {
 	const watch = {
 		answer: null as { text: string; stopReason?: string; at: number } | null,
 		lastCompleted: null as { text: string; at: number } | null,
+	};
+	// M2-A: the answer-flush observation. The extension is a no-op without a
+	// hook (the default run), so wiring is zero-cost when the trace is off.
+	const onFlush = () => {
+		try {
+			onAnswerFlushed?.();
+		} catch {
+			/* observation lane — never touch the run */
+		}
 	};
 	return {
 		// Getters, not copied values: the extension mutates `watch` AFTER
@@ -2992,6 +3027,9 @@ function createAnswerWatch(): {
 							stopReason: typeof last.stopReason === "string" ? last.stopReason : undefined,
 							at: Date.now(),
 						};
+						if ((last as any).stopReason === "end_turn" || (last as any).stopReason === undefined) {
+							onFlush(); // M2-A: the answer settled (issue #30 trace)
+						}
 					} catch {
 						/* best effort — the ping is cosmetic */
 					}
@@ -3002,7 +3040,10 @@ function createAnswerWatch(): {
 						if (msg?.role !== "assistant") return;
 						if (msg.stopReason === "aborted" || msg.stopReason === "error") return;
 						const text = assistantTextOf(msg).trim();
-						if (text) watch.lastCompleted = { text, at: Date.now() };
+						if (text) {
+							watch.lastCompleted = { text, at: Date.now() };
+							onFlush(); // M2-A: a settled answer (issue #30 trace)
+						}
 					} catch {
 						/* best effort */
 					}
@@ -3154,7 +3195,13 @@ async function cmdPrint(prompt: string | undefined, args: CliArgs, verbose: bool
 	// stdin drain and boot are all part of the session the user waited
 	// through), while the json envelope's clock only runs when it is built.
 	const answerStartedAt = Date.now();
-	const answerWatch = createAnswerWatch();
+	// M2-A (issue #30 request b): the opt-in exit-path trace lane. Off by
+	// default — UNOWN_PRINT_EXIT_TRACE=1 arms it; the recorder is created
+	// here (the whole-run scope) and shared with the stall watchdog, the
+	// answer-watch extension and the lane exit sites. A no-op when the env
+	// var is unset, so the default run is byte-identical.
+	const trace = createPrintExitTrace();
+	const answerWatch = createAnswerWatch(trace.enabled ? () => trace.emit("answer_flushed") : undefined);
 	const { runtime } = await bootRuntime(cwd, verbose, {
 		jsonMode: args.jsonMode,
 		noSession: args.noSession,
@@ -3199,7 +3246,7 @@ async function cmdPrint(prompt: string | undefined, args: CliArgs, verbose: bool
 	// exits through the stall guard's own stderr line).
 	let envelopeWritten = false;
 	const lastResort: { current: (() => void) | null } = { current: null };
-	installPrintStallWatchdog(runtime, () => lastResort.current?.());
+	installPrintStallWatchdog(runtime, () => lastResort.current?.(), { trace });
 	// The fleet drain sentinel rides as the final message in orchestrator
 	// runs: the fleet's input handler intercepts it (never model-visible)
 	// and waits for async subagents so their steer-back results land while
@@ -3248,6 +3295,7 @@ async function cmdPrint(prompt: string | undefined, args: CliArgs, verbose: bool
 			});
 		}
 		if (drainTail.length > 0) {
+			trace.emit("drain_start");
 			if (autoCompact) await waitTerminalAutoCompactSettled(autoCompact);
 			// The sentinel goes straight to session.prompt — its input
 			// interception (fleet-runtime) fires inside prompt() and
@@ -3260,6 +3308,7 @@ async function cmdPrint(prompt: string | undefined, args: CliArgs, verbose: bool
 			} catch {
 				/* the drain is best-effort; the answer already stands */
 			}
+			trace.emit("drain_done");
 		}
 		// The caller-owned dispose (keepRuntimeAlive above): one
 		// best-effort dispose after every round + sentinel landed. The
@@ -3422,6 +3471,8 @@ async function cmdPrint(prompt: string | undefined, args: CliArgs, verbose: bool
 				process.exit(1);
 			}
 		}
+		// M2-A: the run's terminal exit-path record (issue #30).
+		trace.emit("exit", { code, lane: "json" });
 		process.exit(code);
 	}
 	let code: number;
@@ -3516,6 +3567,8 @@ async function cmdPrint(prompt: string | undefined, args: CliArgs, verbose: bool
 	// awaits flushRawStdout), so the escape lands on a quiet stream right
 	// after the answer it announces. The TUI never runs this code — see
 	// notify.ts for why that lane is skipped (user present; frame loop).
+	// M2-A: the run's terminal exit-path record (issue #30).
+	trace.emit("exit", { code, lane: args.jsonMode ? "json-stream" : "text" });
 	if (
 		!args.jsonMode &&
 		shouldNotifyOnAnswer({

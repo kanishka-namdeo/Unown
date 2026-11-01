@@ -30,10 +30,10 @@ export interface ChangelogStop {
   groups: ChangelogGroup[];
 }
 
-export const CHANGELOG_TOTAL_ENTRIES = 514;
+export const CHANGELOG_TOTAL_ENTRIES = 515;
 
 export const CHANGELOG_TOTALS: Record<ChangelogBucket, number> = {
-  "Added": 233,
+  "Added": 234,
   "Changed": 32,
   "Deprecated": 0,
   "Removed": 3,
@@ -46,9 +46,9 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
   {
     "label": "Unreleased",
     "date": null,
-    "total": 8,
+    "total": 9,
     "counts": {
-      "Added": 2,
+      "Added": 3,
       "Changed": 0,
       "Deprecated": 0,
       "Removed": 0,
@@ -60,6 +60,10 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
       {
         "bucket": "Added",
         "items": [
+          {
+            "title": "The print-mode exit-path trace (UNOWN_PRINT_EXIT_TRACE=1…",
+            "behavior": false
+          },
           {
             "title": "The tool-time browser-memory hint lane (#45) — learned browser procedures now surface at the point of action…",
             "behavior": false
