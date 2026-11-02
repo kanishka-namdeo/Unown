@@ -26,6 +26,7 @@
     --c-muted: #9a9a9a;
     --c-border: #33363d;
     --c-accent: #5b93f0;
+    --c-accent-strong: #8bb8f8;
     --c-accent-soft: #1d2c47;
     --c-danger: #ef5350;
     --c-done: #66bb6a;
@@ -234,15 +235,8 @@ body {
   display: flex;
   align-items: center;
   gap: 6px;
-  width: 100%;
-  text-align: left;
   padding: 5px 6px;
-  border: 0;
   border-radius: 4px;
-  background: transparent;
-  color: var(--c-text);
-  font: inherit;
-  cursor: pointer;
 }
 
 .coda-note-row:hover {
@@ -253,11 +247,24 @@ body {
   background: var(--c-accent-soft);
 }
 
-.coda-note-title {
+.coda-note-open {
   flex: 1;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  border: 0;
+  background: transparent;
+  color: var(--c-text);
+  font: inherit;
+  cursor: pointer;
+  padding: 2px 4px;
+  text-align: left;
+  border-radius: 3px;
+}
+
+.coda-note-open:focus-visible {
+  outline: 2px solid var(--c-accent);
+  outline-offset: 1px;
 }
 
 .coda-note-del {
@@ -265,7 +272,10 @@ body {
   font-size: 14px;
   line-height: 1;
   padding: 0 3px;
+  border: 0;
   border-radius: 3px;
+  background: transparent;
+  cursor: pointer;
 }
 
 .coda-note-del:hover {
@@ -273,7 +283,6 @@ body {
   background: rgba(198, 40, 40, 0.12);
 }
 
-.coda-note-row:focus-visible .coda-note-del,
 .coda-note-del:focus-visible {
   outline: 2px solid var(--c-accent);
   outline-offset: 1px;
@@ -457,7 +466,9 @@ body {
 }
 
 .coda-status--transient {
-  color: var(--c-accent);
+  /* #1f6feb on --c-bg is 4.32:1 (below AA 4.5:1); --c-accent-strong
+     (#104ea8) holds 5.34:1 on the light bg and passes the dark bg too. */
+  color: var(--c-accent-strong, #104ea8);
 }
 
 .coda-status--error {

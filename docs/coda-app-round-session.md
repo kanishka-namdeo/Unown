@@ -2,7 +2,7 @@
 
 - **Round**: coda-app (the DRIVE track: ship the app THROUGH A2)
 - **Started**: 2026-11-02 (round opened; implementation tickets begin in the next operator session)
-- **Status**: in flight — C1 (domain core) and C2 (UI + IDB) landed; C3 (PWA layer) is next
+- **Status**: in flight — C1 (domain core), C2 (UI + IDB), C3 (PWA layer), C4 (e2e + a11y lane) landed; C5 (docs/DOX/root wiring + CI) is next
 - **Mission**: ship **Coda** — a local-first markdown notes + task-board PWA (offline-first, installable, cross-platform) — at `apps/coda/` in this monorepo, **entirely through A2 sessions** (the operator writes no app code; every ticket goes through `unown -p`/`--plan` headless sessions and fails or succeeds on its receipts).
 - **Operator decisions (2026-11-02)**: app = Coda PWA; repo path = `apps/coda/` in the Unown monorepo; push lane = direct to `main` after gates; production quality, edge cases, full cross-platform support, docs/landing/README/blog/DOX updates per milestone; never delete media assets.
 
@@ -34,6 +34,11 @@ reasons.
    commits, pushes.
 5. The stack (bridge :3031 + engine :3030) is mortal across sandbox recycles:
    `bun run agent:start` first on any resumed session.
+6. **Receipts mirror outside the repo immediately** (recovery ×2 lesson): the
+   operator appends each chunk's receipt tail to operator-side
+   `~/my-project/tickets/receipt-mirror.md` as chunks land; the round log's
+   checkpoint entries carry anything not yet committed. The receipts inside
+   `.unown/receipts/` are mortal to clone loss AND `unown-home` loss.
 
 ## Ticket queue (from the PT-5 plan's steps, in delivery-manager sequence)
 
@@ -47,12 +52,14 @@ reasons.
    agent at the checkpoint).
 3. **C3 — PWA layer** ✅ (2026-11-02, see checkpoint log): offline-first service worker, installable manifest,
    storage persistence; cross-platform verification matrix per the plan.
-4. **C4 — e2e + a11y**: Playwright specs + axe-core checks; the repo's e2e
-   conventions (e2e/ dir).
-5. **C5 — docs/DOX/landing**: `apps/coda/AGENTS.md`, root AGENTS.md child
-   index entry, docs page, README section, CHANGELOG entry + rail, landing
-   surface if the plan's scope includes it (usage captures via the
-   scripts/tui-capture lane or browser tool, never deleting existing media).
+4. **C4 — e2e + a11y** ✅ (2026-11-02, see checkpoint log): the isolated Playwright lane (serve.mjs +
+   playwright.coda.config.ts + offline/a11y specs), axe-clean both schemes, three app a11y fixes folded in.
+5. **C5 — docs/DOX/landing + root wiring**: the plan's step 7+8 atomically — `apps/coda/AGENTS.md`, root AGENTS.md child
+   index entry + repo layout, docs page, README section, CHANGELOG entry + rail, testing-strategy gate entry,
+   tsconfig include + eslint scope + package.json coda scripts + bunfig preload scope + the CI `coda` job
+   (lockfile-unchanged assert + `bun test apps/coda` + the isolated playwright lane) — landing surface if the
+   plan's scope includes it (usage captures via the scripts/tui-capture lane or browser tool, never deleting
+   existing media). Documenter-style verified file:line refs.
 6. **C6 — round closeout**: this log's graduation, SESSION.md, retrospective
    per the V3 contract, capability-utilization report.
 
@@ -62,6 +69,53 @@ EFFORT_BUDGET / chunk protocol notes) — the shape that worked in the
 fresh-clone round's M2-A ticket.
 
 ## Checkpoint log
+
+- **2026-11-02 (C4 COMPLETE — the e2e + a11y lane, green operator-side)**: delivered through A2 in twelve
+  budgeted chunks (fresh session `01a19d4f-ea03-7bb1-ab16-bebd93927535` — the recycle-×2 restart; the original
+  attempt burned two exploration-only chunks and died with its session directory) plus ONE operator unblock.
+  On disk: `apps/coda/scripts/serve.mjs` (the transpiling static server, productionized from the operator's
+  C2-era blueprint), `playwright.coda.config.ts` (the ONLY root addition; testMatch `/coda-.*\.spec\.ts/`,
+  no config-level colorScheme — the a11y spec drives both schemes per-context; webServer = the serve.mjs),
+  `e2e/coda-offline.spec.ts` (SW-controller waitForFunction → manifest fetch assert → note+task create with
+  PRE-ARMED prompt dialogs → offline reload → data survives → offline-first second note → survives →
+  non-precached navigation offline lands on offline.html → beforeinstallprompt soft-gated), and
+  `e2e/coda-a11y.spec.ts` (axe wcag2a/2aa/21a/21aa, zero-violation, light+dark × empty+content states).
+  **The lane's findings were real**: three axe violations fixed in app code (status transient contrast
+  4.32:1 → 5.34:1 light / ~8.7:1 dark via `--c-accent-strong`; cycle-button label-in-name per WCAG 2.5.3;
+  nested-interactive — note rows restructured to flat sibling buttons) and C2's "spinbutton" debt verdicted
+  **STALE** (it's `input type="date"`, axe-clean, keyboard-operable). **The operator unblock (the
+  `transform/transformSync` class)**: A2's serve.mjs used `transpiler.transform()` (async — returns a
+  Promise) and `new Response(promise)` coerced every module URL to the literal string `[object Promise]` —
+  the app sat at "Booting…" with `Unexpected identifier 'Promise'` — one operator line to `transformSync()`
+  (the `homedir` precedent, receipted as D-operator). Gates, operator-verified end to end: lane 5/5 green
+  (8.7s operator re-run), 51/51 domain both lanes, tsc green, node --check clean, root typecheck+lint zero
+  new findings (142 warnings all pre-existing baseline), lockfile byte-identical (`b844886a…`),
+  playwright.config.ts byte-untouched, visual boot check via screenshot + VLM ("layout intact, no
+  breakage", status "Ready."). Receipt: `.unown/receipts/c4-e2e-a11y.md`, mirrored to operator-side
+  `tickets/receipt-mirror.md` per protocol law 6 (first ticket to exercise the law). C4's sharpest learning:
+  the A2 receipt-append discipline drifted for ten straight chunks (the receipt sat at its chunk-2 skeleton
+  while the lane work went on) — only the operator's chunk-11/12 "receipt is the completion gate" pressure
+  produced the full record; the ticket template's next revision moves the receipt append INSIDE the
+  per-chunk task list, not the closing instruction.
+
+- **2026-11-02 (OPERATOR RECOVERY ×2 — two sandbox recycles in one day; nothing lost on `main`)**: recycle 1 wiped the
+  working clone's contents (recovered in ~10 min: re-clone → bun 1.4.3 → install → `.env`); recycle 2 (a backend
+  outage that killed the tool gateway mid-dispatch) wiped the clone AND `unown-home/` AND the operator-side
+  `tickets/`+`scripts/`+`.secrets/` scratch. Both credentials died each time (PAT lived only in the git remote URL,
+  Agnes key only in gitignored `.env`) — the operator re-provisioned both by message; an off-repo recovery copy
+  now also lives at operator-side `.secrets/credentials.env` (gitignored), acknowledging it too is mortal to the
+  deepest recycle class. `main` never moved: `f9872c4`, CI 21/21. Full bring-back, receipted by probes: clone →
+  `bun install` (lockfile `b844886a…` byte-identical) → `agent:install` → `.env` (Agnes lane +
+  `UNOWN_HOME=/home/z/my-project/unown-home`) → **`unown setup --provider bridge --model agnes-3.0-flash`**
+  (the non-interactive provider re-registration — the lost `unown-home/agent/models.json`/`settings.json` were
+  recreated by this one command) → stack start → `AGNES_OK` through a raw bridge completion → `UNOWN_OK` through
+  a full `unown -p` probe (exit 0). C4's first dispatch (session `01a19b1c…`, recycle 1) had burned two
+  exploration-only chunks with zero file writes, and its chunk-3 dispatch never spawned (recycle 2) — so C4
+  restarts FRESH against this stack with the same ticket (the A2 sessions directory itself was wiped: all resume
+  chains from C1–C3 are gone; their receipts remain in the round log's checkpoints). LESSON (now protocol law 6):
+  receipts are mirrored outside the repo the moment they are written (operator appends each chunk's receipt tail
+  to `~/my-project/tickets/receipt-mirror.md`), and the round log's checkpoint entries are the durable surface
+  of record for anything not yet committed.
 
 - **2026-11-02 (C2 COMPLETE — UI + IndexedDB adapter)**: delivered through A2 in seven budgeted chunks
   (session `01a199b4-8be8-7b7d-af0c-33720a696345`, receipt-first discipline HELD this time) plus the operator's

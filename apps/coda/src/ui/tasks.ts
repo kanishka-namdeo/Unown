@@ -65,7 +65,9 @@ export function renderTasks(
     const cycle = document.createElement("button");
     cycle.type = "button";
     cycle.className = "coda-task-cycle";
-    cycle.setAttribute("aria-label", `Move ${t.title} to ${nextStatus(t.status)}`);
+    // aria-label must INCLUDE the visible text (label-content-name-mismatch, WCAG 2.5.3):
+    // the visible status word ("todo") is part of the accessible name.
+    cycle.setAttribute("aria-label", `${t.status}: Move ${t.title} to ${nextStatus(t.status)}`);
     cycle.title = `${t.status} → ${nextStatus(t.status)}`;
     cycle.textContent = t.status;
     cycle.onclick = () => onToggle(t);

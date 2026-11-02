@@ -4,6 +4,10 @@
  * Reads notes from the repository's readonly accessor; clicking a row
  * selects it into the editor. A delete affordance confirms before calling
  * the repository (which scrubs the id from every task).
+ *
+ * Each note row is a <div> containing two sibling <button>s (title = open,
+ * "×" = delete). No interactive element nests inside another
+ * (nested-interactive, WCAG 4.1.2).
  */
 
 import type { Note } from "../domain/types";
@@ -43,32 +47,28 @@ export function renderNotes(
   const list = document.createElement("div");
   list.className = "coda-list";
   for (const n of sorted) {
-    const row = document.createElement("button");
-    row.type = "button";
+    // Flat row: two sibling buttons (open-note, delete-note). No nesting.
+    const row = document.createElement("div");
     row.className = "coda-note-row" + (n.id === activeId ? " is-active" : "");
-    const label = document.createElement("span");
-    label.className = "coda-note-title";
-    label.textContent = n.title || "(untitled)";
-    const del = document.createElement("span");
+    row.setAttribute("data-note-id", n.id);
+    const open = document.createElement("button");
+    open.type = "button";
+    open.className = "coda-note-open";
+    open.textContent = n.title || "(untitled)";
+    open.setAttribute("aria-label", n.title || "(untitled)");
+    open.onclick = () => onSelect(n.id);
+    const del = document.createElement("button");
+    del.type = "button";
     del.className = "coda-note-del";
-    del.textContent = "×";
-    del.setAttribute("role", "button");
+    del.textContent = "\u00d7";
     del.setAttribute("aria-label", `Delete ${n.title || "untitled"}`);
-    del.tabIndex = 0;
-    del.onkeydown = (e) => {
-      if (e.key === "Enter" || e.key === " ") {
-        e.stopPropagation();
-        del.click();
-      }
-    };
     del.onclick = (e) => {
       e.stopPropagation();
-      if (confirm(`Delete note “${n.title || "(untitled)"}”? This cannot be undone.`)) {
+      if (confirm(`Delete note \u201c${n.title || "(untitled)"}\u201d? This cannot be undone.`)) {
         onDelete(n.id);
       }
     };
-    row.append(label, del);
-    row.onclick = () => onSelect(n.id);
+    row.append(open, del);
     list.append(row);
   }
   box.append(list);
