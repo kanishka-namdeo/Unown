@@ -1,5 +1,7 @@
 import { expect, test, type BrowserContext, type Page } from "@playwright/test";
 
+test.skip(!process.env.CODA_E2E, "coda lane only — run via playwright.coda.config.ts");
+
 /**
  * Coda offline-first spec (ticket C4, plan step 6).
  *

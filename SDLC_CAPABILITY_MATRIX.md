@@ -133,7 +133,7 @@ For every lifecycle activity: discover existing capability → use it → measur
 | Planning | ✅ | plan-mode V3 default; PT-5 run `benchmarks/plan-mode/results/run-2026-11-02-pt5/` |
 | Architecture | ✅ | PT-5 design doc = Coda architecture source of truth (pure-TS domain, IDB adapter, SW at app root) |
 | Engineering | ✅ | C1–C3 delivered through A2 (`e55b17e5`, `7dbabde3`, `8bd616b8`): domain 51/51, UI+IDB, PWA offline-proven |
-| Quality | ◐ | unit + landing e2e + gates green; **Coda e2e + a11y = C4 (in flight this session)** |
+| Quality | ✅ | C4 landed (dual-incarnation reconciled `b1ffac0b` + the root-lane guard): coda lane 5/5, axe zero-violation light+dark; unit 51/51 both lanes; landing 2120/0 + 15-spec e2e; all gates green |
 | Security | ✅ | doctor instruction audit clean; hooks/sandbox/jail receipts; security round (2026-11-01) |
 | Operations | ✅ | bring-up 7/7 on two cold machines + today's recycle; engine/bridge health; Vercel + deploy-verify |
 | Monitoring | ✅ | engine status/KPIs/health phases; usage log; dashboard 15 screens |
@@ -144,6 +144,7 @@ For every lifecycle activity: discover existing capability → use it → measur
 ## Utilization + benchmark hooks
 
 - **Turns-to-done trend** (budgeted chunks per ticket, from the round log): C1 = 10 chunks (+1 operator one-line unblock), C2 = 7 chunks (+operator browser boot check), C3 = 8 chunks (+2 operator interventions). Directionally improving with operator gates front-loaded — keep recording per ticket.
+- **Dual-incarnation datum (2026-11-03)**: two programme incarnations raced C4 on `main` (12 vs 15 chunks) — convergent defect discovery (the same 3 axe classes, the same transformSync bug class), one reconciliation gap (the root-lane collection guard) closed in 2 chunks through A2. Fetch-before-push enforced per-push from here; the incident is receipted in the round log.
 - **Manual intervention rate**: every intervention logged with cause in the round checkpoint (C1: 1; C2: browser-link check; C3: icon script + browser catches).
 - **Augmentation backlog** (priority order per the directive — existing mechanism first): L1 doc-count drift sweep (usage/skills/subagents/dashboard screens); L4 issue #30 exit-path instrumentation (shipped `UNOWN_PRINT_EXIT_TRACE=1` + `scripts/issue30_watcher.mjs`); L2/L3 review benches on every app milestone (design-reviewer at C2 OK-WITH-NOTES; delegate `delegation-auditor` after C4's chunk-heavy session).
 - **Known lineage limit**: full sandbox recycles reset the engine DB (dreams, sessions, PLM) — learning continuity rides the git-tracked project memory tier + committed receipts + this matrix. Teardown refreshes must re-baseline KPIs honestly (today: 0 runs / 0 dreams on a fresh DB).

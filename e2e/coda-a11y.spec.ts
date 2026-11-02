@@ -1,6 +1,8 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type BrowserContext, type Page } from "@playwright/test";
 
+test.skip(!process.env.CODA_E2E, "coda lane only — run via playwright.coda.config.ts");
+
 /**
  * Coda a11y spec (ticket C4, plan step 6).
  *

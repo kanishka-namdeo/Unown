@@ -98,6 +98,30 @@ fresh-clone round's M2-A ticket.
   produced the full record; the ticket template's next revision moves the receipt append INSIDE the
   per-chunk task list, not the closing instruction.
 
+- **2026-11-03 (C4 COLLISION RECONCILED — the dual-incarnation race on `main`, and the root-lane guard)**: a
+  SECOND incarnation of this operator programme (separate host, same lineage — its entry above) landed C4 on
+  `main` (`b1ffac0b`) while THIS incarnation's own 15-chunk C4 session (`01a19da6…`) was still in flight —
+  both spawned from the same recycle, both re-cloned fresh, both drove the same ticket; its push won the
+  race by ~11 minutes. Per the Git Preflight law: the local implementation was preserved on branch
+  `c4-a1-parallel` (never force-pushed), the remote adopted, and the adopted tree re-gated green (51/51
+  both lanes, node --check, precache 23/23, lane 5/5 in 8.8 s, tsc/lint/claims clean). The re-gate found the
+  one real gap: the landed specs had NO self-skip guard, so the ROOT config (testDir "e2e", recursive
+  collection) swept the 5 coda tests into the landing lane — `bunx playwright test` collected 20 tests and
+  CI's "E2E + a11y (landing)" job would run them against the Next server on :3210 and red (the plan's
+  step-6 invariant: "the landing lane untouched"; this incarnation's local implementation had shipped the
+  `CODA_E2E` marker for exactly this). The guard landed through a fresh two-chunk A2 session
+  (`01a19dc6…`): `test.skip(!process.env.CODA_E2E, …)` at the top of both coda specs, the marker armed
+  (`process.env.CODA_E2E = "1"`) inside `playwright.coda.config.ts`. Proof, operator-run: a root-lane run
+  against a dummy :3210 server fails the 15 landing specs against the dummy but **SKIPS all 5 coda tests**;
+  the coda lane itself stays 5/5 (8.7 s); tsc/lint/claims green. **Laws for C5+ from the collision**:
+  (1) `git fetch` before EVERY push — the preflight law is load-bearing against dual incarnations, not
+  ceremony; (2) any spec added under the root config's testDir is a ROOT-LANE contract change — it carries
+  the `CODA_E2E`-style self-skip guard (C5's ci.yml wiring inherits this invariant for the coda job);
+  (3) on a same-ticket race: adopt the remote, re-gate locally, reconcile deltas as follow-up commits —
+  never force-push over `main`; (4) both incarnations independently found and fixed the same three axe
+  defect classes and the same transform/transformSync bug class — convergent validation that the lane's
+  defects were real, not noise.
+
 - **2026-11-02 (OPERATOR RECOVERY ×2 — two sandbox recycles in one day; nothing lost on `main`)**: recycle 1 wiped the
   working clone's contents (recovered in ~10 min: re-clone → bun 1.4.3 → install → `.env`); recycle 2 (a backend
   outage that killed the tool gateway mid-dispatch) wiped the clone AND `unown-home/` AND the operator-side

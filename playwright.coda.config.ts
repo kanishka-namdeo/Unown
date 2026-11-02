@@ -15,6 +15,9 @@ import { defineConfig, devices } from "@playwright/test";
  * here would only prove ONE branch of the app's own switch; the a11y
  * spec drives BOTH schemes per-context instead.
  */
+// Marker contract: this coda config arms CODA_E2E; the root config never does, so coda specs self-skip under the root lane and the landing lane stays green and untouched.
+process.env.CODA_E2E = "1";
+
 export default defineConfig({
   testDir: "e2e",
   testMatch: /coda-.*\.spec\.ts/,
