@@ -163,3 +163,4 @@ When the user requests a durable behavior change, record it here or in the relev
 - `benchmarks/AGENTS.md` — the benchmark suites, methodology, receipts and the landing-page feed rules
 - `blueprint/AGENTS.md` — Unown v1 (Claude Code harness) frozen reference
 - `A2_GROUND_TRUTH.md` — the A1 operator's dated recon snapshot of the live capability surface (anti-rot trust order: live CLI output > repo docs on main > this snapshot > the operator directive); refreshed before tickets and at every round teardown
+- `SDLC_CAPABILITY_MATRIX.md` — the A1 operator's lane-by-lane SDLC capability inventory (planning → learning; activation, trust, limitations, evidence, verification per capability) with the DRIVE-track coverage matrix tracking receipted evidence per lifecycle lane; refreshes alongside `A2_GROUND_TRUTH.md`
