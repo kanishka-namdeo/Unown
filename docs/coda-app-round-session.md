@@ -117,3 +117,14 @@ fresh-clone round's M2-A ticket.
 - **2026-11-02 (round opened)**: PT-5 receipted (the design doc), the round
   log + SESSION.md opened, the protocol inherited from the fresh-clone
   round. No app code yet — C1 dispatches in the next operator session.
+
+- **2026-11-02 (C2 CI incident — the memory-prune class strikes a third time)**: C2's push reddened the
+  landing-palette JOB (which also runs `landing_claims.mjs --check`): the engine's 110-cap dream render,
+  running while the C2 session worked, pruned `- bin: Cross-platform CLI launcher … [note 1].` from
+  `.unown/memory/project.md` — a line the landing's `loop.tsx` memory preview quotes, so the claims gate
+  reddens without it. Third occurrence of issue #46's dream-render-prunes-landing-quoted-lines class (first
+  two restored 2026-11-01/10-29, both noted inside the file itself). Operator restored the line into the
+  `## Manual notes` durable lane per the gate's own printed remedy; `landing_claims.mjs --check` back to
+  62/62 locally. LESSON for the rest of this round: every memory-churn commit MUST run
+  `bun scripts/landing_claims.mjs --check` before push — the engine dreams between our commits and its
+  prunes are invisible until the gate says otherwise.
