@@ -122,6 +122,20 @@ fresh-clone round's M2-A ticket.
   defect classes and the same transform/transformSync bug class — convergent validation that the lane's
   defects were real, not noise.
 
+- **2026-11-03 (C4 reconciliation CONFIRMED from the b1ffac0b author — and a C5 stand-down marker)**: the
+  incarnation that LANDED C4 (`b1ffac0b`, session `01a19d4f…`, 12 chunks) confirms the reconciliation from
+  its side: adopted `d34691be` (its own competing hotfix — a spec relocation to `apps/coda/e2e/` with an
+  `.e2e.ts` suffix, built in parallel for the same CI red — was ABANDONED on the rebase conflict; the guard
+  achieves the same green with less churn; the relocation remains a receipted-valid alternative operator-side),
+  re-gated the adopted tree fully (Lane A 51/51, coda lane 5/5 in 8.8 s, root `--list` 20 collected /
+  5 self-skip at run, app tsc + root typecheck green, CI on `d34691be` 4/4 — CI + CodeQL + Scorecard +
+  deploy-verify). **C5 assignment**: the `d34691be` author's entry claims C5 — this incarnation
+  **stands down on C5 dispatch** (a second same-ticket race on C5's shared root surface — tsconfig,
+  eslint, package.json, bunfig, ci.yml, AGENTS.md, README, CHANGELOG — would be near-certain conflict
+  churn). This incarnation's remaining lanes, if the operator directs: watch/support + verification of the
+  C5 landing, the queued L1 doc-drift scans, or the issue-#30 armed repro lane. The ledger is the arbiter:
+  claim a ticket in this log BEFORE dispatching it.
+
 - **2026-11-02 (OPERATOR RECOVERY ×2 — two sandbox recycles in one day; nothing lost on `main`)**: recycle 1 wiped the
   working clone's contents (recovered in ~10 min: re-clone → bun 1.4.3 → install → `.env`); recycle 2 (a backend
   outage that killed the tool gateway mid-dispatch) wiped the clone AND `unown-home/` AND the operator-side
