@@ -1,0 +1,7 @@
+{
+  "name": "@unown/coda",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Local-first markdown notes + task-board PWA (vanilla TS, zero dependencies)."
+}

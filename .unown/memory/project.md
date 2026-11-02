@@ -1,21 +1,33 @@
 # Project Memory
 
 ## Known pitfalls
-- Environment fact: /etc/shadow is owned by root and access returns EACCES: permission denied for the current process; this is a plain OS permission error, not a policy refusal.
+- In Unown, markdown.ts round-trip grammar handles empty title and body edge cases where head is joined with newlines and skipped title lines, leaving a single blank line after the closing --- delimiter that parses to an empty body string. The tsconfig types issue must be fixed and module resolution verified before writing tests.
+- Unown Coda PWA pitfall: a minimal app-shell service worker that only precaches `/`, `index.html`, `sw.js`, manifest, icons, and `offline.html` will break offline use of `markdown.js`/`fuse.js`; the SW must precache every emitted asset and implement a network-fall-through with cache-write handler (stale-while-revalidate)
+- Unown Coda PWA pitfall: browser PWA IndexedDB data is per-browser/per-machine, so claiming 'offline-first' or 'cross-platform' without a data-location story (local-first for sync/export) is unanchored; domain layer must own the data-location decision
+- Unown Coda pitfall: `ci.yml`'s frozen-lockfile lane is unverified for `apps/coda` — it is unknown whether a new CI job + `bun test apps/coda` resolves `marked`/`fuse.js` imports through the locked root `node_modules` under frozen-lockfile constraints
+- Avoid calling createAnswerWatch() before trace is initialized in cli.ts; in Unown, the call originally at line 3198 preceded trace creation at line 3248, so createAnswerWatch() must be invoked after trace exists.
+- When applying multiple edits to Unown's `cli.ts` in a single batch, some edits may fail validation and not be applied; apply edits individually to ensure each takes effect
+
+## Task playbooks
+- Unown Coda step 6 depends on a 'tiny node http server' webServer config, but the actual webServer behavior/flags defined by step 6 are not yet verified against the repo
 
 ## Environment
+- Relocate the Unown M2-A print exit trace log by setting the `UNOWN_PRINT_TRACE_DIR` environment variable to a custom directory
+- Enable the Unown M2-A print exit trace by setting the environment variable `UNOWN_PRINT_EXIT_TRACE=1`
 - In OB-5 live-lane, when the learning feed records a memory version advance, the footer chip counts it as an unseen learning event until /feed marks it seen; the chip contract is count, not text
 - Identify API-less sibling patterns (such as cadence's localStorage shape) when determining if a new subproject requires an `api/` directory.
 - bin: Cross-platform CLI launcher (Unix shebang, Windows cmd/ps1) [note 1].
-- The `PI_MODEL_ID` environment variable pins the model ID for pi's `models.json`; `.env.example` defaults it to `agnes-3.0-flash`, with code fallbacks of `agnes-3.0-flash` (term.ts/presets.ts/llm.ts) and legacy `kimi-k2.5` (runner.ts).
-- Parley's domain layer hashes passwords with Node crypto scryptSync (N=16384, r=8, p=1, 32-byte key, salt hex-encoded), verifyPassword uses timingSafeEqual; no PARLEY_BCRYPT_COST env var exists in the repo (grep-verified)
-- The `src/` directory contains a Next.js marketing web app; the landing page is at `/` with UI sections in `src/components/landing/`. Auto-deploy to Vercel via GitHub integration; 'deploy.completed' events carry an 'environment' field. Development server runs on port 3000 (src/app/page.tsx). All 7 sibling routes (/demo, /bazaar, /cadence, /parley, /fugue, /aria, /nocturne) have frame-hardening headers (CSP frame-ancestors 'self' + X-Frame-Options SAMEORIGIN) in `next.config.ts` lines 28-88, superseding prior notes that /cadence was omitted from hardening. Hand-drawn Unown script SVG, generated changelog/benchmark/engine-data files, and GBA 5-bit palette are part of the landing UI structure.
-- Nocturne escalation engine is strictly single-step: each `tickEscalation` advances at most one tier; the wait window for the next advance is measured from `lastEscalatedAt` (or `triggeredAt` if null), and an N-tier policy requires N-1 fired ticks to reach the final tier, with each tick waiting the current tier's `waitMinutes`; test scenarios must use tier counts and waits consistent with this (a 2-tier policy reaches its last tier in one tick, not two)
 
 ## Facts
-- In the Unown stress-browser workflow, dismiss the auto-opening F2 newsletter modal with "No thanks, just let me shop" to prevent it from swallowing the subsequent "Add to cart" click; verify success when #final-status has data-success="true" and the screenshot displays the green "Order placed — success" banner, saving to benchmarks/browser-autonomy-round/screenshots/stress-final-postdream.png
+- In the Unown project, the git hook's syntax checker cannot process TypeScript files; the workaround is to use an inline Node-style script executed via bun instead, keeping it as a test file.
+- The Unown boundary-check test file intentionally uses node:fs/promises to read source files, which is a documented exception for test infrastructure; the file is excluded from its own scan.
+- When using bun:test, ensure the 'bun:test' module is available in the ambient TypeScript type definitions by adding a shim (declare module "bun:test") to a global .d.ts file if @types/bun is not installed or recognized.
+- Unown Coda (`apps/coda/`) architecture: self-contained static vanilla-TS PWA, no workspaces, zero root deps, reuses `marked`/`fuse.js`/`@playwright/test`/`@axe-core/playwright` via upward resolution from root node_modules
+- Export installPrintStallWatchdog from cli.ts and import createPrintExitTrace, printExitTraceEnabled, and resolvePrintTraceDir from print-exit-trace.ts in Unown's test suite.
+- Wire answer_flushed through the answer-watch extension, and wire drain start/done events plus final exit events into cmdPrint in Unown's cli.ts.
+- Fleet journal persists to .unown/fleet/journal.jsonl via appendFleetJournal/readFleetJournal (recordFleetChildSpawn, recordSyncSubagentSpawn, recordFleetChildFinish for finished; sweep outcomes for reaped/abandoned). FleetJournalEntry (pi-repo/packages/self-learning/src/fleet-reaper.ts:137) defines five ops: spawned (lane 'fleet' or 'sync'), worktree, finished, reaped, abandoned. Op discriminants recorded by recordFleetChildFinish (finished) and sweep outcomes (reaped/abandoned).
+- M2-A print exit trace is wired in the Unown project via `pi-repo/packages/self-learning/src/print-exit-trace.ts` and integrated into `installPrintStallWatchdog`, `cmdPrint`, and `cli.ts`, with tests importing from both `cli.ts` and `print-exit-trace.ts`
 - In BrowseBench stress fixtures (benchmarks/browser-autonomy-round/fixtures/stress.html), native confirm() dialogs auto-dismiss by default and cancel the flow with 'Order cancelled at the dialog'; arm 'browser dialog accept text=OK' before clicking the button that opens the confirm, using a one-shot policy that must be re-armed after each use.
-- In Unown browser-automation tests, native confirm() dialogs on the BrowseBench stress page (benchmarks/browser-autonomy-round/fixtures/stress.html) auto-dismiss by default and silently cancel the flow with 'Order cancelled at the dialog', so arm 'browser dialog accept text=OK' before clicking the button
 - MDN documentation for Intl.Segmenter's segment method confirms segment(input) returns segments, and the key facts were extracted from the constructor and segment subpages linked from the main documentation page
 - After first save in the Shipping iframe form, the #addr-status element reports 'saved:Repro Bot/berlin/gift' as a new paragraph inside the form alongside still-filled Name, City, and Gift-wrap values
 - The Intl.Segmenter constructor accepts options for localeMatcher and granularity, where granularity can be 'grapheme' (default), 'word', or 'sentence'
@@ -26,34 +38,25 @@
 - In the Unown UI, dialog-opening buttons use onColumnClick and onNewTask handlers that should trigger setEditorOpen(true); if the dialog does not open, the suspected cause is that the hydration state has not yet loaded, even though the editor open state should be separate from hydration
 - The engine serves routines under /api/automations (REST) in pi-repo/packages/self-learning/src/server.ts handleApi; there is no /api/routines route; CLI alias `unown routines` maps to the automations endpoints.
 - pi-repo/packages/self-learning/src/delegation.ts owns renderDelegationCard (line 170), renderDelegationChip, deriveWorthLine, and the delegation ledger; it is imported by tools.ts at lines 78 and 3736 to notify the TUI.
-- Accept the cookie banner ('We use cookies. Obviously.') before proceeding with checkout.
-- Dismiss newsletter interstitial dialogs after 'Add to cart' using the 'No thanks, just let me shop' option.
 - Screenshot files may be JPEG formatted despite having a .png extension; verify file type when necessary.
 - Save screenshots to specific benchmark directories like benchmarks/browser-autonomy-round/screenshots/ for warm-start scenarios.
 - Pin the no-phantom-drift invariant with test/settings-defaults-drift.test.ts plus the BM-8 guard on a pristine home: run the test in a subprocess because some settings getters resolve through term.ts's module-scope UNOWN_HOME snapshot and an in-process run can read earlier tests' leftovers.
 - Rule of thumb: a declared default is a contract against the real resolver; always pin it in a test or it will drift.
-- pi-repo/packages/self-learning/test/ grew from 82,204 lines across 228 .ts files to 82,746 lines across 230 .ts/.tsx files (2 new files, +542 lines), verified via `xargs cat | wc -l` and `xargs wc -l | tail -1`.
-- The `src/` directory contains 367 TypeScript files with no empty files, all regular files (no symlinks or directories).
 - Phantom settings drift (8 interface items) occurs when declared default fields are written from the pi selector's row states instead of the vendored settings-manager getters, causing /settings diff to show 8 phantom drift rows on every fresh install; the remedy is to align each declared default with the resolver's value and add provenance comments.
 - The `find` tool backend is unavailable in the Unown project; use directory listings instead to enumerate the `src/` tree. Verified via subagent session.
-- Routines endpoints include GET/POST /api/automations, /api/automations/{id}, /run, /skip, /snooze, /runs, /event-dispatch — all in server.ts; CLI `unown routines` and agent routine tools map onto these.
 - A probe that sets a setting to its current value produces no detectable drift; construct targets as current plus offset, and load-time validation flags any task whose diskCheck.expect equals the item's declared default as diff-inert (BM-2 hook-depth task is honest about this).
 - Existing test at pi-repo/packages/self-learning/test/memory.test.ts:131 asserts no .tmp leftovers after a single write, which passes against the old naming and does not cover back-to-back same-target writes.
-- The FleetJournalEntry union in fleet-reaper.ts defines five operations: spawned (optional lane 'fleet'), spawned (lane 'sync'), worktree, finished, and reaped/abandoned; journal methods recordFleetChildSpawn and recordSyncSubagentSpawn write to .unown/fleet/journal.jsonl.
 - When counting lines of specific file types in a directory tree, use `find <dir> -name '*.ts' -type f -print0 | xargs -0 cat | wc -l` to safely handle filenames with spaces or special characters.
 - To verify exact line counts, cross-check `find . -name '*.ts' -print0 | xargs -0 wc -l` against `find . -name '*.ts' -print0 | xargs -0 cat | wc -l` to rule out trailing-newline discrepancies.
 - Locate design tokens in `src/app/globals.css` by distinguishing between the `@theme inline` shadcn bridge and the non-inline `@theme` landing-palette block (GBA 5-bit grid).
 - Recorded S2-1 DELTA from receipts: probes went from 6/6 unreachable to 6/6 reachable and changed; settable coverage increased from 10/89 (11.2%) to 41/120 (34.2%); pi rows unreachable dropped from 32 to 0; BM-4 depth increased by +0.9 Downs, recorded as the honest cost of the Interface menu row.
 - The Unown subdirectory in /home/z/my-project serves as the terminal outcome, returning 'UNOWN_OK' on successful validation.
-- FleetJournalEntry op discriminants are `spawned`, `worktree`, `finished`, `reaped`, `abandoned` (5 ops); `spawned` can be either `fleet` or `sync` lane.
 - Cadence domain layer lives at `src/lib/cadence/` mirroring bazaar/sigil sibling conventions: pure domain code, bun:test for tests, localStorage shim in tests, and happy-dom preload configured via bunfig.
-- Fleet journal operations are journaled via recordFleetChildFinish (`finished`) and sweep outcomes (`reaped`/`abandoned`); the journal is stored as JSONL at .unown/fleet/journal.jsonl.
 - benchmarks/memory-eval/recall-qa: LongMemEval-adapted multi-session QA-recall benchmark [note 1].
 - benchmarks/nonllm: Local ONNX models (bge-small/MiniLM, ms-marco) and symbolic lanes [note 1].
 - The six landing-page benchmark suites are defined in the TRACKS array at scripts/landing_benchmarks.mjs:79, which writes to src/components/landing/benchmarks-data.ts; the authoritative contract is documented in benchmarks/AGENTS.md under "The landing-page feed".
 - benchmarks/nonllm/lib: LexRank, MinHash-LSH, BM25+RRF, memory activation scoring [note 1].
 - benchmarks/polyglot: Aider polyglot benchmark with 50-exercise Exercism subset [note 1].
-- FleetJournalEntry is defined at pi-repo/packages/self-learning/src/fleet-reaper.ts:137; the fleet journal persists to .unown/fleet/journal.jsonl via appendFleetJournal/readFleetJournal.
 - Frame-hardening headers (Content-Security-Policy frame-ancestors 'self' and X-Frame-Options SAMEORIGIN) were added to the `/encore/:path*` route in `next.config.ts`, matching the pattern already established for sibling routes `/nocturne`, `/cadence`, `/aria`, and others.
 - Unown project adds a habit/streak tracker at `/cadence` (Bazaar-mirrored layout: route + API under `src/app/cadence/`, UI in `src/components/cadence/`, pure domain in `src/lib/cadence/`, scoped stylesheet).
 - clippad: Note-taking domain module with Notebook, UserDirectory, search, formatting [note 1].
@@ -114,7 +117,6 @@
 - MDN documents the CanvasRenderingContext2D.roundRect signature as roundRect(x, y, width, height, radii); the radii parameter accepts a number or array.
 - An F2 newsletter modal auto-opens on the first 'Add to cart' click in Unown, swallowing the click and leaving the cart at 0; dismiss it by clicking 'No thanks, just let me shop' before continuing.
 - The Unown checkout flow is reachable at /home/z/my-project/unown and can be completed end-to-end.
-- Before performing critical UI actions (e.g., add-to-cart), always proactively dismiss cookie banners and newsletter modals to prevent event interception.
 
 ## Manual notes
 
@@ -122,4 +124,4 @@
 - Stealth verification suite on bot.sannysoft.com: all 10 checks (webdriver, userAgent, platform, userAgentData, timezone, locale, screen, viewport, plugins, window.chrome) pass; 0 FAIL rows in Intoli tests. (Restored by hand 2026-11-01 — second occurrence of the dream-render-prunes-landing-quoted-lines class, issue #46; moved here to the durable lane.)
 - Parley password hashing: scrypt N=16384 r=8 p=1 (src/lib/parley/password.ts). Restored by hand 2026-10-29 after AutoDream reconciles twice erased the fact (upstream 79->66 render, then the F1/F2 bcrypt poison round). Never let a memory answer overwrite this without reading the source.
 
-<!-- unown: rendered 110/110 memories via Mem0 (backend: lexical) at 2026-11-01T21:22:40.303Z -->
+<!-- unown: rendered 110/115 memories via Mem0 (backend: lexical) · 5 oldest pruned at render (cap 110; hard-won rules immune) at 2026-11-02T00:21:13.021Z -->

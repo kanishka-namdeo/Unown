@@ -2,7 +2,7 @@
 
 - **Round**: coda-app (the DRIVE track: ship the app THROUGH A2)
 - **Started**: 2026-11-02 (round opened; implementation tickets begin in the next operator session)
-- **Status**: in flight — design doc receipted, ticket queue defined, no app code yet
+- **Status**: in flight — C1 (scaffold + domain core) landed through ten A2 chunks + one operator unblock; C2 (UI) is next
 - **Mission**: ship **Coda** — a local-first markdown notes + task-board PWA (offline-first, installable, cross-platform) — at `apps/coda/` in this monorepo, **entirely through A2 sessions** (the operator writes no app code; every ticket goes through `unown -p`/`--plan` headless sessions and fails or succeeds on its receipts).
 - **Operator decisions (2026-11-02)**: app = Coda PWA; repo path = `apps/coda/` in the Unown monorepo; push lane = direct to `main` after gates; production quality, edge cases, full cross-platform support, docs/landing/README/blog/DOX updates per milestone; never delete media assets.
 
@@ -37,7 +37,7 @@ reasons.
 
 ## Ticket queue (from the PT-5 plan's steps, in delivery-manager sequence)
 
-1. **C1 — scaffold + domain core**: `apps/coda/` structure per the plan
+1. **C1 — scaffold + domain core** ✅ (2026-11-02, see checkpoint log): `apps/coda/` structure per the plan
    (package.json, tsconfig, the pure TypeScript domain layer: notes, tasks,
    boards, search — pure functions, no I/O), unit tests with `bun test`,
    domain README. Verification: tests green, typecheck green, zero imports
@@ -63,6 +63,37 @@ fresh-clone round's M2-A ticket.
 
 ## Checkpoint log
 
+- **2026-11-02 (C1 COMPLETE — scaffold + pure-TS domain core)**: delivered through A2 in ten
+  budgeted chunks (session `01a19949-5524-755d-9775-948ff64cfe2f`) plus one operator one-line
+  unblock (an `ImportMeta` ambient that never merged because the shim `.d.ts` is a global
+  script — `declare global` only augments from modules). On disk: `apps/coda/` scaffold
+  (zero-dep package.json, strict app-local tsconfig, bootable stub) + the six-file domain
+  layer (types/store/repository/search/markdown + README) + six test suites — **51/51 green
+  in BOTH bun lanes**, including `boundary.test.ts`, the import-boundary purity mechanism
+  the design doc's P1 fix demanded (grep alone is bypassable). Receipt:
+  `.unown/receipts/c1-scaffold-domain.md` (local, gitignored by convention). Five ticket
+  gates operator-verified before commit: both lanes, app-local tsc, root typecheck + lint
+  (zero coda findings), lockfile byte-identical (`b844886a…`), DOM-grep clean modulo the
+  scanner's own documented patterns. The domain's own tests caught a real losslessness bug
+  (9 markdown round-trip failures → writer/parser grammar misalignment → fixed 50/50) —
+  test-first earning its keep. Four deviations D1–D4 receipted (no-`types` tsconfig via a
+  local bun-test shim; the Store/Repository internal seam; purity check as a test file not
+  a scripts/ entry — the PostToolUse hook chokes on TS scripts; LEGAL_TRANSITIONS makes all
+  six directed edges legal with out-of-machine values throwing).
+- **C1's protocol learnings (binding for C2+)**: (1) the receipt-last pattern died at the
+  9.5-minute wall three times — future tickets write the receipt FIRST and append
+  incrementally, never last; (2) read-before-edit is mandatory for receipt edits — chunk 10
+  burned its whole budget on oldText mismatches reconstructed from memory; (3) issue #30
+  gained its sharpest datum yet: two fully-instrumented captures show the print run's
+  COMPLETE exit lifecycle (answer_flushed → agent_end → drain_done → exit event) finishing
+  in ~1.6–2.5 s while the caller still hangs — and one capture where the CLI exited cleanly
+  (code 1, capped lane) and the shell STILL hung — so the blockage is OUTSIDE the CLI's own
+  exit paths, in post-exit/process-tree teardown (fd inheritance by a spawned child is the
+  live suspect). The trace log now carries this; the repro lane is armed for the next hang.
+  (4) The step-0 probe's Lane A/B split is now receipted law: `cd apps/coda && bun test`
+  (no bunfig preload) ENFORCES DOM-free domain code; `bun test apps/coda` from root (the
+  future CI lane) masks it via happy-dom — CI must pair Lane A with the boundary test, which
+  it does by construction.
 - **2026-11-02 (round opened)**: PT-5 receipted (the design doc), the round
   log + SESSION.md opened, the protocol inherited from the fresh-clone
   round. No app code yet — C1 dispatches in the next operator session.
