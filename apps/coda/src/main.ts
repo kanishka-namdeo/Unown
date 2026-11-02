@@ -1,13 +1,19 @@
 /**
- * Coda — bootable stub entry (ticket C1).
+ * Coda — app entry.
  *
- * The real UI (notes list, markdown editor, task board, search, PWA
- * registration) lands in ticket C2. This stub proves the module loads
- * and the app-local typecheck passes; it must not import anything that
- * requires a build step beyond plain browser module resolution.
+ * Wires the app on DOMContentLoaded. The real service-worker
+ * registration lands in ticket C3; this entry bootstraps the UI now.
  */
 
-const root = document.querySelector("#coda-status");
-if (root) {
-  root.textContent = "Coda stub loaded — UI arrives in C2.";
+import { App } from "./app";
+
+function boot(): void {
+  const app = new App();
+  void app.boot();
+}
+
+if (document.readyState === "loading") {
+  document.addEventListener("DOMContentLoaded", boot);
+} else {
+  boot();
 }

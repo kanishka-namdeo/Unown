@@ -1,6 +1,7 @@
 # Project Memory
 
 ## Known pitfalls
+- Unown lint gate exits with LINT_EXIT=0 even when vendored files produce warnings; the gate treats warnings as non-failing, so validation requires comparing new coda-file error counts against the baseline warning count
 - In Unown, markdown.ts round-trip grammar handles empty title and body edge cases where head is joined with newlines and skipped title lines, leaving a single blank line after the closing --- delimiter that parses to an empty body string. The tsconfig types issue must be fixed and module resolution verified before writing tests.
 - Unown Coda PWA pitfall: a minimal app-shell service worker that only precaches `/`, `index.html`, `sw.js`, manifest, icons, and `offline.html` will break offline use of `markdown.js`/`fuse.js`; the SW must precache every emitted asset and implement a network-fall-through with cache-write handler (stale-while-revalidate)
 - Unown Coda PWA pitfall: browser PWA IndexedDB data is per-browser/per-machine, so claiming 'offline-first' or 'cross-platform' without a data-location story (local-first for sync/export) is unanchored; domain layer must own the data-location decision
@@ -9,17 +10,18 @@
 - When applying multiple edits to Unown's `cli.ts` in a single batch, some edits may fail validation and not be applied; apply edits individually to ensure each takes effect
 
 ## Task playbooks
+- In the Unown project, root files are off-limits for the current round because root wiring is designated as step 7 of C5 and explicitly forbidden in this phase
 - Unown Coda step 6 depends on a 'tiny node http server' webServer config, but the actual webServer behavior/flags defined by step 6 are not yet verified against the repo
 
 ## Environment
 - Relocate the Unown M2-A print exit trace log by setting the `UNOWN_PRINT_TRACE_DIR` environment variable to a custom directory
 - Enable the Unown M2-A print exit trace by setting the environment variable `UNOWN_PRINT_EXIT_TRACE=1`
 - In OB-5 live-lane, when the learning feed records a memory version advance, the footer chip counts it as an unseen learning event until /feed marks it seen; the chip contract is count, not text
-- Identify API-less sibling patterns (such as cadence's localStorage shape) when determining if a new subproject requires an `api/` directory.
-- bin: Cross-platform CLI launcher (Unix shebang, Windows cmd/ps1) [note 1].
 
 ## Facts
-- In the Unown project, the git hook's syntax checker cannot process TypeScript files; the workaround is to use an inline Node-style script executed via bun instead, keeping it as a test file.
+- The Unown syntax-checker hook cannot parse TypeScript; run an inline Node-style script via `bun` instead and keep the script as a test file for reproducibility (the hook excludes it from its own scan).
+- Unown project in /home/z/my-project/Unown has a known editor flaw where write mode body editing is not properly captured; this was identified and fixed during a session
+- Unown UI modules include a shell component, editor, and main.ts file with associated CSS and index.html body that are part of the front-end structure
 - The Unown boundary-check test file intentionally uses node:fs/promises to read source files, which is a documented exception for test infrastructure; the file is excluded from its own scan.
 - When using bun:test, ensure the 'bun:test' module is available in the ambient TypeScript type definitions by adding a shim (declare module "bun:test") to a global .d.ts file if @types/bun is not installed or recognized.
 - Unown Coda (`apps/coda/`) architecture: self-contained static vanilla-TS PWA, no workspaces, zero root deps, reuses `marked`/`fuse.js`/`@playwright/test`/`@axe-core/playwright` via upward resolution from root node_modules
@@ -115,8 +117,6 @@
 - Nocturne domain layer types use type-level refinements as single source of truth: `NocturneChecklistState.stepStates` is `Record<string, ChecklistStepState>` and `NocturneComponent.status` is `NocturneComponentStatus`, replacing inline union literals.
 - The complete Nocturne build contract is written to `benchmarks/nocturne-round/plan.md` (~52 KB, matching the aria contract's completeness) and is grounded in the explored sibling lanes.
 - MDN documents the CanvasRenderingContext2D.roundRect signature as roundRect(x, y, width, height, radii); the radii parameter accepts a number or array.
-- An F2 newsletter modal auto-opens on the first 'Add to cart' click in Unown, swallowing the click and leaving the cart at 0; dismiss it by clicking 'No thanks, just let me shop' before continuing.
-- The Unown checkout flow is reachable at /home/z/my-project/unown and can be completed end-to-end.
 
 ## Manual notes
 
@@ -124,4 +124,4 @@
 - Stealth verification suite on bot.sannysoft.com: all 10 checks (webdriver, userAgent, platform, userAgentData, timezone, locale, screen, viewport, plugins, window.chrome) pass; 0 FAIL rows in Intoli tests. (Restored by hand 2026-11-01 — second occurrence of the dream-render-prunes-landing-quoted-lines class, issue #46; moved here to the durable lane.)
 - Parley password hashing: scrypt N=16384 r=8 p=1 (src/lib/parley/password.ts). Restored by hand 2026-10-29 after AutoDream reconciles twice erased the fact (upstream 79->66 render, then the F1/F2 bcrypt poison round). Never let a memory answer overwrite this without reading the source.
 
-<!-- unown: rendered 110/115 memories via Mem0 (backend: lexical) · 5 oldest pruned at render (cap 110; hard-won rules immune) at 2026-11-02T00:21:13.021Z -->
+<!-- unown: rendered 110/119 memories via Mem0 (backend: lexical) · 9 oldest pruned at render (cap 110; hard-won rules immune) at 2026-11-02T01:39:16.146Z -->

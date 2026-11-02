@@ -2,7 +2,7 @@
 
 - **Round**: coda-app (the DRIVE track: ship the app THROUGH A2)
 - **Started**: 2026-11-02 (round opened; implementation tickets begin in the next operator session)
-- **Status**: in flight — C1 (scaffold + domain core) landed through ten A2 chunks + one operator unblock; C2 (UI) is next
+- **Status**: in flight — C1 (domain core) and C2 (UI + IDB) landed; C3 (PWA layer) is next
 - **Mission**: ship **Coda** — a local-first markdown notes + task-board PWA (offline-first, installable, cross-platform) — at `apps/coda/` in this monorepo, **entirely through A2 sessions** (the operator writes no app code; every ticket goes through `unown -p`/`--plan` headless sessions and fails or succeeds on its receipts).
 - **Operator decisions (2026-11-02)**: app = Coda PWA; repo path = `apps/coda/` in the Unown monorepo; push lane = direct to `main` after gates; production quality, edge cases, full cross-platform support, docs/landing/README/blog/DOX updates per milestone; never delete media assets.
 
@@ -42,7 +42,7 @@ reasons.
    boards, search — pure functions, no I/O), unit tests with `bun test`,
    domain README. Verification: tests green, typecheck green, zero imports
    of DOM/node APIs in the domain layer.
-2. **C2 — UI**: the plan's UI structure over the domain layer, the repo's
+2. **C2 — UI + IndexedDB** ✅ (2026-11-02, see checkpoint log): the plan's UI structure over the domain layer, the repo's
    landing conventions consulted (website-excellence skills; design-reviewer
    agent at the checkpoint).
 3. **C3 — PWA layer**: offline-first service worker, installable manifest,
@@ -63,6 +63,26 @@ fresh-clone round's M2-A ticket.
 
 ## Checkpoint log
 
+- **2026-11-02 (C2 COMPLETE — UI + IndexedDB adapter)**: delivered through A2 in seven budgeted chunks
+  (session `01a199b4-8be8-7b7d-af0c-33720a696345`, receipt-first discipline HELD this time) plus the operator's
+  browser boot check. On disk: the vendored browser-module story (fuse.js 7.5.0 + marked 18.1.2 ESM copies under
+  `public/vendor/` + a relative-path import map — zero package.json deps still holds), `src/db/idb.ts` (one db,
+  one store, the whole serialized CodaData document — no schema fork), seven UI modules (shell/status/search/
+  notes/editor/tasks/sanitize — the XSS lane is a hand-rolled allowlist pass: forbidden elements + on* handlers +
+  javascript:/data:text/html URLs), `app.ts` (write-through persistence, corrupt-state choice UI, DomainInvariantError
+  surfaced never swallowed), `main.ts`, `coda.css` (light+dark, 4/8 rhythm, single accent). The design-reviewer
+  bench agent ran WITHIN chunk 7 (13 turns): **OK-WITH-NOTES** — numeric WCAG contrast AA-clean, no FAIL-grade
+  debt; its focus-ring + sanitizer findings partially folded in, the rest recorded as C3/C4 debt (focus rings on
+  task/search controls, prompt()-based task creation, spinbutton date presentation, 4.04:1 hover near-miss).
+- **C2's sharpest learning (binding for C3+)**: `tsc`-green + `bun test`-green does NOT prove browser-link-green.
+  `tasks.ts` imported `TaskStatus` without the `type` keyword; Bun's isolated-module transpile kept it as a value
+  import; the browser's module linker rejected it; `void app.boot()` swallowed the rejection and the app sat at
+  "Booting…" with ZERO console errors. Only the operator's headless boot check caught it. RULE: every type-only
+  symbol imported across modules carries the `type` keyword, and every ticket with a UI surface gets an operator
+  (or C4-lane) browser boot check before commit. Second catch: the import map pointed at `./vendor/` while the
+  files live at `public/vendor/` — plain static servers 404'd it; fixed to `./public/vendor/`. The operator's
+  throwaway transpiling server (`Bun.serve` + `Bun.Transpiler` + extensionless-import resolution) is receipted as
+  the blueprint for C4's `serve.mjs`.
 - **2026-11-02 (C1 COMPLETE — scaffold + pure-TS domain core)**: delivered through A2 in ten
   budgeted chunks (session `01a19949-5524-755d-9775-948ff64cfe2f`) plus one operator one-line
   unblock (an `ImportMeta` ambient that never merged because the shim `.d.ts` is a global

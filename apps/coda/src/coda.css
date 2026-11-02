@@ -1,0 +1,478 @@
+/* Coda — hand-written app styles. No framework.
+ * Palette cues from the landing page (READ-ONLY): neutral canvas, one
+ * accent, muted borders. Dense-but-calm productivity tool: 13px base,
+ * 4/8px rhythm, system font stack. No hero theatrics.
+ */
+
+:root {
+  color-scheme: light dark;
+  --c-bg: #f7f7f5;
+  --c-panel: #ffffff;
+  --c-text: #1a1a1a;
+  --c-muted: #6b6b6b;
+  --c-border: #e2e2de;
+  --c-accent: #1f6feb;
+  --c-accent-soft: #e8f0fe;
+  --c-danger: #c62828;
+  --c-done: #2e7d32;
+  --radius: 6px;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --c-bg: #16181d;
+    --c-panel: #1f2229;
+    --c-text: #e6e6e6;
+    --c-muted: #9a9a9a;
+    --c-border: #33363d;
+    --c-accent: #5b93f0;
+    --c-accent-soft: #1d2c47;
+    --c-danger: #ef5350;
+    --c-done: #66bb6a;
+  }
+}
+
+body {
+  margin: 0;
+  background: var(--c-bg);
+  color: var(--c-text);
+  font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+#coda-root {
+  max-width: 64rem;
+  margin: 0 auto;
+  padding: 8px 12px 24px;
+}
+
+/* ---------- toolbar ---------- */
+
+.coda-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.coda-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  padding: 8px;
+  background: var(--c-panel);
+  border: 1px solid var(--c-border);
+  border-radius: var(--radius);
+}
+
+.coda-title {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+.coda-search {
+  flex: 1;
+  min-width: 12rem;
+  padding: 5px 8px;
+  border: 1px solid var(--c-border);
+  border-radius: var(--radius);
+  background: var(--c-bg);
+  color: var(--c-text);
+  font: inherit;
+}
+
+.coda-search:focus,
+.coda-input:focus,
+.coda-task-due:focus,
+.coda-task-link:focus {
+  outline: 2px solid var(--c-accent);
+  outline-offset: 1px;
+}
+
+.coda-btn:focus-visible {
+  outline: 2px solid var(--c-accent);
+  outline-offset: 1px;
+}
+
+.coda-import-file {
+  display: none;
+}
+
+/* ---------- buttons ---------- */
+
+.coda-btn {
+  padding: 4px 10px;
+  border: 1px solid var(--c-border);
+  border-radius: var(--radius);
+  background: var(--c-panel);
+  color: var(--c-text);
+  font: inherit;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.coda-btn:hover {
+  border-color: var(--c-accent);
+  color: var(--c-accent);
+}
+
+.coda-btn--small {
+  padding: 2px 8px;
+  font-size: 12px;
+}
+
+.coda-btn--ghost {
+  background: transparent;
+}
+
+.coda-btn--danger {
+  border-color: var(--c-danger);
+  color: var(--c-danger);
+}
+
+.coda-btn--danger:hover {
+  background: var(--c-danger);
+  color: #fff;
+}
+
+/* ---------- search results ---------- */
+
+.coda-search-results {
+  min-height: 0;
+}
+
+.coda-search-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 4px;
+  background: var(--c-panel);
+  border: 1px solid var(--c-border);
+  border-radius: var(--radius);
+}
+
+.coda-search-row {
+  text-align: left;
+  padding: 4px 8px;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--c-text);
+  font: inherit;
+  cursor: pointer;
+}
+
+.coda-search-row:hover {
+  background: var(--c-accent-soft);
+  color: var(--c-accent);
+}
+
+.coda-search-empty {
+  padding: 4px 8px;
+  color: var(--c-muted);
+}
+
+/* ---------- grid + columns ---------- */
+
+.coda-grid {
+  display: grid;
+  grid-template-columns: minmax(11rem, 1.1fr) minmax(14rem, 1.6fr) minmax(14rem, 1.3fr);
+  gap: 8px;
+  align-items: start;
+}
+
+@media (max-width: 52rem) {
+  .coda-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.coda-col {
+  background: var(--c-panel);
+  border: 1px solid var(--c-border);
+  border-radius: var(--radius);
+  padding: 8px;
+  min-height: 6rem;
+}
+
+.coda-col-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 6px;
+}
+
+.coda-col-title {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--c-muted);
+}
+
+/* ---------- notes ---------- */
+
+.coda-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.coda-note-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  text-align: left;
+  padding: 5px 6px;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--c-text);
+  font: inherit;
+  cursor: pointer;
+}
+
+.coda-note-row:hover {
+  background: var(--c-accent-soft);
+}
+
+.coda-note-row.is-active {
+  background: var(--c-accent-soft);
+}
+
+.coda-note-title {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.coda-note-del {
+  color: var(--c-muted);
+  font-size: 14px;
+  line-height: 1;
+  padding: 0 3px;
+  border-radius: 3px;
+}
+
+.coda-note-del:hover {
+  color: var(--c-danger);
+  background: rgba(198, 40, 40, 0.12);
+}
+
+.coda-note-row:focus-visible .coda-note-del,
+.coda-note-del:focus-visible {
+  outline: 2px solid var(--c-accent);
+  outline-offset: 1px;
+}
+
+/* ---------- editor ---------- */
+
+.coda-input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 5px 8px;
+  margin-bottom: 6px;
+  border: 1px solid var(--c-border);
+  border-radius: var(--radius);
+  background: var(--c-bg);
+  color: var(--c-text);
+  font: inherit;
+  resize: vertical;
+}
+
+.coda-editor-title {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.coda-editor-body {
+  min-height: 8rem;
+  font-family: ui-monospace, "SF Mono", "Cascadia Code", Menlo, Consolas, monospace;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.coda-preview {
+  padding: 8px;
+  border: 1px solid var(--c-border);
+  border-radius: var(--radius);
+  background: var(--c-bg);
+  min-height: 8rem;
+  margin-bottom: 6px;
+}
+
+.coda-preview h1,
+.coda-preview h2,
+.coda-preview h3 {
+  margin: 0.5em 0 0.3em;
+  line-height: 1.25;
+}
+
+.coda-preview h1 { font-size: 18px; }
+.coda-preview h2 { font-size: 16px; }
+.coda-preview h3 { font-size: 14px; }
+
+.coda-preview p {
+  margin: 0.4em 0;
+}
+
+.coda-preview code,
+.coda-preview pre {
+  background: var(--c-accent-soft);
+  border-radius: 3px;
+  font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  font-size: 12px;
+}
+
+.coda-preview code { padding: 1px 4px; }
+.coda-preview pre { padding: 8px; overflow-x: auto; }
+
+.coda-preview a { color: var(--c-accent); }
+.coda-preview ul, .coda-preview ol { margin: 0.4em 0; padding-left: 1.2em; }
+
+.coda-editor-actions {
+  display: flex;
+  gap: 6px;
+}
+
+/* ---------- tasks ---------- */
+
+.coda-task-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.coda-task {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px;
+  border: 1px solid var(--c-border);
+  border-radius: 4px;
+  flex-wrap: wrap;
+}
+
+.coda-task.is-active {
+  border-color: var(--c-accent);
+  box-shadow: 0 0 0 2px var(--c-accent-soft);
+}
+
+.coda-task-cycle {
+  flex: none;
+  width: 4.2rem;
+  text-align: center;
+  padding: 2px 4px;
+  border: 1px solid var(--c-border);
+  border-radius: 4px;
+  background: var(--c-bg);
+  color: var(--c-muted);
+  font: inherit;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  cursor: pointer;
+}
+
+.coda-task-cycle:hover {
+  border-color: var(--c-accent);
+  color: var(--c-accent);
+}
+
+.coda-task.is-done .coda-task-title {
+  text-decoration: line-through;
+  color: var(--c-muted);
+}
+
+.coda-task.is-done .coda-task-cycle {
+  color: var(--c-done);
+  border-color: var(--c-done);
+}
+
+.coda-task-title {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.coda-task-due {
+  width: 5rem;
+  padding: 2px 4px;
+  border: 1px solid var(--c-border);
+  border-radius: 4px;
+  background: var(--c-bg);
+  color: var(--c-text);
+  font: inherit;
+  font-size: 11px;
+}
+
+.coda-task-link {
+  width: 7rem;
+  padding: 2px 4px;
+  border: 1px solid var(--c-border);
+  border-radius: 4px;
+  background: var(--c-bg);
+  color: var(--c-text);
+  font: inherit;
+  font-size: 11px;
+}
+
+.coda-task-del {
+  flex: none;
+  width: 1.4rem;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--c-muted);
+  font-size: 15px;
+  cursor: pointer;
+}
+
+.coda-task-del:hover {
+  color: var(--c-danger);
+}
+
+/* ---------- status / empty / panel ---------- */
+
+.coda-status {
+  padding: 6px 8px;
+  color: var(--c-muted);
+  font-size: 12px;
+  min-height: 1.4em;
+}
+
+.coda-status--transient {
+  color: var(--c-accent);
+}
+
+.coda-status--error {
+  color: var(--c-danger);
+}
+
+.coda-empty {
+  color: var(--c-muted);
+  font-style: italic;
+  margin: 4px 0;
+}
+
+.coda-panel {
+  padding: 12px;
+  border: 1px solid var(--c-border);
+  border-radius: var(--radius);
+  background: var(--c-panel);
+}
+
+.coda-panel--danger {
+  border-color: var(--c-danger);
+}
+
+.coda-panel button {
+  margin-top: 8px;
+}
