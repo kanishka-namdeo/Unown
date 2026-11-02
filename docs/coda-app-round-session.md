@@ -45,7 +45,7 @@ reasons.
 2. **C2 — UI + IndexedDB** ✅ (2026-11-02, see checkpoint log): the plan's UI structure over the domain layer, the repo's
    landing conventions consulted (website-excellence skills; design-reviewer
    agent at the checkpoint).
-3. **C3 — PWA layer**: offline-first service worker, installable manifest,
+3. **C3 — PWA layer** ✅ (2026-11-02, see checkpoint log): offline-first service worker, installable manifest,
    storage persistence; cross-platform verification matrix per the plan.
 4. **C4 — e2e + a11y**: Playwright specs + axe-core checks; the repo's e2e
    conventions (e2e/ dir).
