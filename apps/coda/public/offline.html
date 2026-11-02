@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Coda — offline</title>
+  <style>
+    :root {
+      --bg: #f7f8fa;
+      --panel: #ffffff;
+      --text: #1c2330;
+      --muted: #5c6470;
+      --border: #d9dce3;
+      --accent: #1f6feb;
+      --accent-soft: #e8f0fe;
+      color-scheme: light dark;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #15181e;
+        --panel: #1d2129;
+        --text: #e6e8ec;
+        --muted: #9aa1ad;
+        --border: #323844;
+        --accent: #5b93f0;
+        --accent-soft: #1d2c47;
+      }
+    }
+    * { box-sizing: border-box; }
+    html, body { height: 100%; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font: 14px/1.6 ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+      display: grid;
+      place-items: center;
+    }
+    main {
+      width: min(26rem, 92vw);
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 24px;
+      text-align: center;
+    }
+    .mark {
+      width: 56px;
+      height: 56px;
+      margin: 0 auto 16px;
+      display: block;
+    }
+    h1 {
+      font-size: 18px;
+      font-weight: 600;
+      margin: 0 0 8px;
+      letter-spacing: -0.01em;
+    }
+    p {
+      margin: 0 0 16px;
+      color: var(--muted);
+      font-size: 13px;
+    }
+    p strong { color: var(--text); font-weight: 600; }
+    a.btn {
+      display: inline-block;
+      padding: 6px 14px;
+      border-radius: 6px;
+      background: var(--accent-soft);
+      color: var(--accent);
+      text-decoration: none;
+      font-size: 13px;
+      font-weight: 600;
+      outline: 2px solid transparent;
+    }
+    a.btn:hover { background: var(--accent); color: #fff; }
+    a.btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  </style>
+</head>
+<body>
+  <main>
+    <img class="mark" src="./icon.svg" alt="" width="56" height="56" />
+    <h1>You&rsquo;re offline</h1>
+    <p>No network connection. But Coda is <strong>local-first</strong> &mdash;
+    every note and task you&rsquo;ve saved lives in this browser, so your data
+    is safe and the app keeps working.</p>
+    <a class="btn" href="./">Back to Coda</a>
+  </main>
+</body>
+</html>

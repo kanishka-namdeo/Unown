@@ -26,6 +26,7 @@ export class App {
   private activeNoteId: string | null = null;
   private activeTaskId: string | null = null;
   private previewMode = false;
+  private persistAsked = false;
 
   constructor() {
     this.store = new Store();
@@ -83,6 +84,22 @@ export class App {
 
   private async persist(): Promise<void> {
     await saveState(this.store.toSerialized());
+    // Local-first means fighting eviction: after the first successful IDB
+    // write, ask the browser to persist this origin's storage. Feature
+    // detected, fire-and-forget, result logged — the app works regardless.
+    if (!this.persistAsked && "storage" in navigator && "persist" in navigator.storage) {
+      this.persistAsked = true;
+      void navigator.storage
+        .persist()
+        .then((granted) => {
+          // eslint-disable-next-line no-console
+          console.info(`[coda] storage.persist() ${granted ? "granted" : "not granted"}`);
+        })
+        .catch((err) => {
+          // eslint-disable-next-line no-console
+          console.warn("[coda] storage.persist() failed:", err);
+        });
+    }
   }
 
   // ---------- corrupt state ----------

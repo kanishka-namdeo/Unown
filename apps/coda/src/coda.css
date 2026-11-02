@@ -84,14 +84,19 @@ body {
   font: inherit;
 }
 
+/* Focus rings — the .coda-btn :focus-visible treatment, extended to the
+   remaining interactive controls (C2's recorded a11y debt; note rows keep
+   their own .coda-note-row:focus-visible ring below). */
 .coda-search:focus,
+.coda-search:focus-visible,
 .coda-input:focus,
 .coda-task-due:focus,
-.coda-task-link:focus {
-  outline: 2px solid var(--c-accent);
-  outline-offset: 1px;
-}
-
+.coda-task-due:focus-visible,
+.coda-task-link:focus,
+.coda-task-link:focus-visible,
+.coda-task-cycle:focus-visible,
+.coda-task-del:focus-visible,
+.coda-search-row:focus-visible,
 .coda-btn:focus-visible {
   outline: 2px solid var(--c-accent);
   outline-offset: 1px;
@@ -167,7 +172,10 @@ body {
 
 .coda-search-row:hover {
   background: var(--c-accent-soft);
-  color: var(--c-accent);
+  /* Darker hover text than --c-accent: #1f6feb on #e8f0fe measured 4.04:1
+     (C2's recorded near-miss). #104ea8 holds 6.85:1 on the light soft bg
+     and 4.62:1 on the dark one (#1d2c47) — AA in both schemes. */
+  color: var(--c-accent-strong, #104ea8);
 }
 
 .coda-search-empty {

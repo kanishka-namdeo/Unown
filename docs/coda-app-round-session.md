@@ -128,3 +128,19 @@ fresh-clone round's M2-A ticket.
   62/62 locally. LESSON for the rest of this round: every memory-churn commit MUST run
   `bun scripts/landing_claims.mjs --check` before push — the engine dreams between our commits and its
   prunes are invisible until the gate says otherwise.
+
+- **2026-11-02 (C3 COMPLETE — the PWA layer, proven offline end to end)**: delivered through A2 in eight
+  budgeted chunks (session `01a19a0f-76e8-7f1b-8df9-669452ffffc2`) plus two operator interventions (running
+  the fixed icon script; the browser checks that caught two ship-blockers). On disk: manifest (standalone,
+  relative start_url), a zero-dep hand-rolled PNG icon generator (its own CRC32 + zlib IDAT; the bug was a
+  DataView byteOffset), svg/192/512 icons, offline.html, the hand-rolled **sw.js at the APP ROOT** (the
+  plan's `public/sw.js` layout was its own P0 — scope law forbids a public/-nested worker from controlling
+  the root; caught live by the operator's browser check), versioned coda-v1 precache of all 23 browser-
+  closure URLs (domain/markdown correctly excluded — zero runtime importers), fail-soft install, SWR +
+  network-first + offline fallback + clients.claim, registration in main.ts, storage.persist() ask, and the
+  C2 a11y debt folded into coda.css. **The offline proof**: SW activated → controlled page → offline reload
+  boots the full app from cache → a note created offline SAVES → survives the return online. Screenshot
+  receipted operator-side. Gates: 51/51 both lanes, tsc green, node --check green, verify-precache 23/23,
+  lockfile byte-identical. C3's addition to round law: every non-TS artifact gets `node --check` (the dead
+  TypeScript signature that shipped inside sw.js evaluated-failed in the browser while tsc stayed green —
+  tsc never sees sw.js), and scripts cited in docstrings must exist when the docstring lands.

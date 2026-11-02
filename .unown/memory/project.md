@@ -1,6 +1,7 @@
 # Project Memory
 
 ## Known pitfalls
+- No durable engineering knowledge extracted: session contains only a status update without details on pitfalls, fixes, or workflows.
 - Unown lint gate exits with LINT_EXIT=0 even when vendored files produce warnings; the gate treats warnings as non-failing, so validation requires comparing new coda-file error counts against the baseline warning count
 - In Unown, markdown.ts round-trip grammar handles empty title and body edge cases where head is joined with newlines and skipped title lines, leaving a single blank line after the closing --- delimiter that parses to an empty body string. The tsconfig types issue must be fixed and module resolution verified before writing tests.
 - Unown Coda PWA pitfall: a minimal app-shell service worker that only precaches `/`, `index.html`, `sw.js`, manifest, icons, and `offline.html` will break offline use of `markdown.js`/`fuse.js`; the SW must precache every emitted asset and implement a network-fall-through with cache-write handler (stale-while-revalidate)
@@ -14,11 +15,13 @@
 - Unown Coda step 6 depends on a 'tiny node http server' webServer config, but the actual webServer behavior/flags defined by step 6 are not yet verified against the repo
 
 ## Environment
+- In /home/z/my-project/Unown, the receipt-completion workflow requires reading the current receipt state before updating it; session notes show the agent first read receipt state as a pre-step to any receipt completion change.
 - Relocate the Unown M2-A print exit trace log by setting the `UNOWN_PRINT_TRACE_DIR` environment variable to a custom directory
 - Enable the Unown M2-A print exit trace by setting the environment variable `UNOWN_PRINT_EXIT_TRACE=1`
-- In OB-5 live-lane, when the learning feed records a memory version advance, the footer chip counts it as an unseen learning event until /feed marks it seen; the chip contract is count, not text
 
 ## Facts
+- Service worker file `sw.js` is located at the project root, not under `public/`.
+- markdown.ts is confirmed to be outside the runtime import closure
 - The Unown syntax-checker hook cannot parse TypeScript; run an inline Node-style script via `bun` instead and keep the script as a test file for reproducibility (the hook excludes it from its own scan).
 - Unown project in /home/z/my-project/Unown has a known editor flaw where write mode body editing is not properly captured; this was identified and fixed during a session
 - Unown UI modules include a shell component, editor, and main.ts file with associated CSS and index.html body that are part of the front-end structure
@@ -114,9 +117,6 @@
 - The OB-5 PTY capture lane runs the pane-is-truth contract at terminal dimensions 128x36
 - pi-repo/packages/ai/scripts: Build-time model catalog fetchers (models.dev, OpenRouter, Vercel, NVIDIA NIM).
 - Nocturne test suite has 360 tests that all passed green in the session, followed by a typecheck verification step
-- Nocturne domain layer types use type-level refinements as single source of truth: `NocturneChecklistState.stepStates` is `Record<string, ChecklistStepState>` and `NocturneComponent.status` is `NocturneComponentStatus`, replacing inline union literals.
-- The complete Nocturne build contract is written to `benchmarks/nocturne-round/plan.md` (~52 KB, matching the aria contract's completeness) and is grounded in the explored sibling lanes.
-- MDN documents the CanvasRenderingContext2D.roundRect signature as roundRect(x, y, width, height, radii); the radii parameter accepts a number or array.
 
 ## Manual notes
 
@@ -125,4 +125,4 @@
 - Stealth verification suite on bot.sannysoft.com: all 10 checks (webdriver, userAgent, platform, userAgentData, timezone, locale, screen, viewport, plugins, window.chrome) pass; 0 FAIL rows in Intoli tests. (Restored by hand 2026-11-01 — second occurrence of the dream-render-prunes-landing-quoted-lines class, issue #46; moved here to the durable lane.)
 - Parley password hashing: scrypt N=16384 r=8 p=1 (src/lib/parley/password.ts). Restored by hand 2026-10-29 after AutoDream reconciles twice erased the fact (upstream 79->66 render, then the F1/F2 bcrypt poison round). Never let a memory answer overwrite this without reading the source.
 
-<!-- unown: rendered 110/119 memories via Mem0 (backend: lexical) · 9 oldest pruned at render (cap 110; hard-won rules immune) at 2026-11-02T01:39:16.146Z -->
+<!-- unown: rendered 110/123 memories via Mem0 (backend: lexical) · 13 oldest pruned at render (cap 110; hard-won rules immune) at 2026-11-02T03:41:48.581Z -->
