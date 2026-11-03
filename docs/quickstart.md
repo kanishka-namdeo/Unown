@@ -132,7 +132,7 @@ bun run agent:start
 | llm-bridge | 3031 | `curl localhost:3031/health` |
 | self-learning engine | 3030 | `curl localhost:3030/api/overview` |
 
-Then open mission control in your terminal: `unown dashboard` (12 screens — Overview, Memory, Dreams, Notes, Skills, Learning Lab, Hooks, Router, Recovery, Gateway, Automations, Web Cache).
+Then open mission control in your terminal: `unown dashboard` (15 screens — Overview, Memory, Dreams, Notes, Skills, Learning Lab, Hooks, Router, Recovery, Processes, Tools, Delegation, Gateway, Routines, Web Cache).
 
 If the upstream key is missing or the upstream is unhealthy, the launcher prints a loud warning instead of letting chats fail with a bare 401 later.
 

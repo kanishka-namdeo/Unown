@@ -76,4 +76,4 @@ Rejected with reasons (the full ledger in [the competitor research](observabilit
 | The turn meter | 8 | `UNOWN_TURN_METER=0` |
 | The quiet footer (status row + attention row) | 8 + the attention gate for 6/7 | `UNOWN_FOOTER_CLASSIC=1` |
 | The todo/plan/fleet widgets | 2, 3 | their own addon/config switches |
-| The dashboard (12 screens) | the deep surfaces for every level | n/a (the ambient layer points here) |
+| The dashboard (15 screens) | the deep surfaces for every level | n/a (the ambient layer points here) |

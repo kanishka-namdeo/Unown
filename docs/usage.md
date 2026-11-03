@@ -202,7 +202,7 @@ The rounds' receipts (0/2 plans produced at v0.0.48 → 3/3 at 100/100 after V2;
 | `unown models` | List configured models with each one's spec provenance (`524,288 ctx / 65,536 out (models.dev)`), plus what a local bridge serves |
 | `unown models verify` | Re-run spec detection for the registered models (`--provider P` `--model M` `--json` to scope) — records provenance, heals models.json, and exits 1 with per-model remediation when anything stays unverified |
 | `unown providers <sub>` | Manage the multi-provider registry — `list` \| `add` (preset or custom; `--key-env VAR` stores a `$VAR` reference) \| `remove` \| `key` (rotation with live verification) \| `default` (validated) \| `test` (live probe, actionable 401/404 classification) \| `refresh` (re-probe every provider). Adding KEEPS existing providers. In-session twin: `/providers`. See [providers](providers.md) |
-| `unown dashboard` | The fullscreen [TUI dashboard](tui-dashboard-plan.md) (`unown dash` works) — the engine's live feed across 12 screens (Overview, Memory, Dreams, Notes, Skills, Learning Lab, Hooks, Router incl. sandboxes, Recovery, Gateway, Automations, Web Cache), rendered on the same pi-tui stack as the agent and authenticated to :3030 with the M7 bearer token; needs an interactive terminal (non-TTY exits with guidance). In-session twin: `/dashboard` (`/dash`) |
+| `unown dashboard` | The fullscreen [TUI dashboard](tui-dashboard-plan.md) (`unown dash` works) — the engine's live feed across 15 screens (Overview, Memory, Dreams, Notes, Skills, Learning Lab, Hooks, Router incl. sandboxes, Recovery, Processes, Tools, Delegation, Gateway, Routines, Web Cache), rendered on the same pi-tui stack as the agent and authenticated to :3030 with the M7 bearer token; needs an interactive terminal (non-TTY exits with guidance). In-session twin: `/dashboard` (`/dash`) |
 | `unown init` | Scaffold `.unown/` project memory (`memory/project.md`, `memory/local.md`, `.gitignore`) |
 | `unown init-agents` | Generate or update the root `AGENTS.md` from repo forensics — language / framework / test-runner / lint / build detection. `--overwrite` writes, `--print` prints, `--json` is machine-readable; the in-session `/init-agents` previews without writing |
 | `unown memory` | Print the effective 4-tier memory stack |
@@ -265,7 +265,7 @@ unown completions powershell >> $PROFILE                                  # Powe
 
 ## Session tools
 
-Every unown session registers **seventeen** unown tools on top of pi's built-ins — `read`/`bash`/`edit`/`write` plus the **default-active search tools** `grep`/`find`/`ls` (enabled when their binaries answer on PATH; `ls` is pure JS and always on; a configured settings `defaultTools` or an explicit `--tools` list still wins; `powershell` on Windows); `todo` and `ask_user_question` ride the [addon framework](addons.md) and are user-configurable:
+Every unown session registers **twenty** unown tools on top of pi's built-ins — `read`/`bash`/`edit`/`write` plus the **default-active search tools** `grep`/`find`/`ls` (enabled when their binaries answer on PATH; `ls` is pure JS and always on; a configured settings `defaultTools` or an explicit `--tools` list still wins; `powershell` on Windows); `todo` and `ask_user_question` ride the [addon framework](addons.md) and are user-configurable:
 
 | Tool | What the agent does with it |
 |---|---|
@@ -466,7 +466,7 @@ Limits (zcode's, transliterated): 20 routines total, 2 concurrent runs (manual r
 
 ## Slash commands
 
-unown adds thirty-four commands of its own — plus the split-view display mode's eleven (`/split*` and `/files`), listed last:
+unown adds forty-seven commands of its own — plus the split-view display mode's twelve (`/split*` and `/files`), listed last:
 
 | Command | What it does |
 |---|---|
@@ -517,10 +517,10 @@ unown adds thirty-four commands of its own — plus the split-view display mode'
 | `/wiki <sub>` | Auto-generated repo docs with `file:line` cross-links: `generate [--force]` (parallel subagents per module) \| `search <q>` \| `list` \| `show <page>`. See [repo wiki](repo-wiki.md) |
 | `/edit-resend <n> <msg>` | Edit the Nth user message: revert files to the pre-message checkpoint (all-or-nothing; aborts on out-of-band edits), then resend. `/edit-resend list` shows the numbered messages |
 | `/providers` | The in-chat provider manager — the [`unown providers`](providers.md) CLI's TUI twin over the same registry: bare opens the interactive list/add/key/test/refresh/defaults flow (arrow keys + Enter, Esc backs out; RPC mode degrades to sequential prompts); `/providers list` prints the text summary; `/providers test \| refresh <id>` are headless one-shots; argument completions cover the subcommands + provider ids. See [providers](providers.md#in-the-tui) |
-| `/dashboard [screen]` | The embedded [TUI dashboard](tui-dashboard-plan.md) (`/dash` is the short alias) — the engine's live feed across 12 screens (Overview, Memory, Dreams, Notes, Skills, Learning Lab, Hooks, Router, Recovery, Gateway, Automations, Web Cache) rendered in the terminal, driven by keyboard; Esc-Esc returns to the editor. `unown dashboard` boots the same screens straight from the shell (an interactive terminal is required). `/dashboard <screen>` jumps straight to a named screen; `/memory` is the dedicated shortcut for the Memory screen (tiers, versions, version diff, rollback), `/learning` the quick stack view. |
+| `/dashboard [screen]` | The embedded [TUI dashboard](tui-dashboard-plan.md) (`/dash` is the short alias) — the engine's live feed across 15 screens (Overview, Memory, Dreams, Notes, Skills, Learning Lab, Hooks, Router, Recovery, Processes, Tools, Delegation, Gateway, Routines, Web Cache) rendered in the terminal, driven by keyboard; Esc-Esc returns to the editor. `unown dashboard` boots the same screens straight from the shell (an interactive terminal is required). `/dashboard <screen>` jumps straight to a named screen; `/memory` is the dedicated shortcut for the Memory screen (tiers, versions, version diff, rollback), `/learning` the quick stack view. |
 | `/split` family | The split-view display mode (a built-in port of pi-split-view): `/split` toggles all panels (off = bare pi layout; on = saved startup defaults), `/split-thinking` + `/split-tools` the top band's panels, `/files` the files dock (`/split-diff` its edit-diff subpanel), `/split-tools-view` compact ↔ full tool detail, `/split-height` / `/split-tools-width` / `/split-divider` the geometry, `/split-trim-response` full-transcript ↔ response-only mode, and `/split-save` persists the current layout to `~/.unown/agent/ui-panels.json` as the startup default; `--no-split` starts bare |
 
-The split-view display mode registers eleven more, in every session (the thinking/tool band, files dock and response-only transcript — full story in [split view](split-view.md)):
+The split-view display mode registers twelve more, in every session (the thinking/tool band, files dock and response-only transcript — full story in [split view](split-view.md)):
 
 | Command | What it does |
 |---|---|

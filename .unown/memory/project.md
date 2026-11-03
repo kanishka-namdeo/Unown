@@ -125,4 +125,4 @@
 - Stealth verification suite on bot.sannysoft.com: all 10 checks (webdriver, userAgent, platform, userAgentData, timezone, locale, screen, viewport, plugins, window.chrome) pass; 0 FAIL rows in Intoli tests. (Restored by hand 2026-11-01 — second occurrence of the dream-render-prunes-landing-quoted-lines class, issue #46; moved here to the durable lane.)
 - Parley password hashing: scrypt N=16384 r=8 p=1 (src/lib/parley/password.ts). Restored by hand 2026-10-29 after AutoDream reconciles twice erased the fact (upstream 79->66 render, then the F1/F2 bcrypt poison round). Never let a memory answer overwrite this without reading the source.
 
-<!-- unown: rendered 110/121 memories via Mem0 (backend: lexical) · 11 oldest pruned at render (cap 110; hard-won rules immune) at 2026-11-03T04:53:43.984Z -->
+<!-- unown: rendered 110/121 memories via Mem0 (backend: lexical) · 11 oldest pruned at render (cap 110; hard-won rules immune) at 2026-11-03T06:03:47.981Z -->
