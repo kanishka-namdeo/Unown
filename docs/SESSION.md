@@ -8,7 +8,21 @@ archaeology. When a round completes, its log graduates to a round-specific
 
 ---
 
-## ACTIVE ROUND — none open (2026-11-03); the queue below stands
+## ACTIVE ROUND — the hints-ranking round (2026-11-03, OPEN)
+
+Opened from the queue below by the lineage that receipted the fourth
+fresh-lineage bring-up (`35cc879f`): the browser-autonomy lineage's polish
+lane — the tool-time browser-memory hint digest (#45's lane) gets
+category-balanced selection, because the render is newest-first and a
+mid-round dream's burst of same-class facts pushes older-but-relevant
+entries (the dialog lesson) below the 8-entry cap. The design is the
+lexical cousin of MMR (class-diversified round-robin, file order within a
+class — the research receipt, the claim, and the ticket queue live in
+`docs/hints-ranking-round-session.md`): HR-1 the implementation (claimed,
+via A2), HR-2 the closeout (CHANGELOG `## [Unreleased]` re-added — the
+first v0.0.56 content — plus rail, README row, blog post 44th, ground
+truth drift entry, graduation). The previous round's queue section below
+still stands for everything this round does not take.
 
 The doc-truth round (2026-11-03) is COMPLETE and graduated to its own log:
 `docs/doc-truth-round-session.md` — the A1 maintenance track that closed
