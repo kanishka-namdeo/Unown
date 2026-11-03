@@ -30,7 +30,7 @@ export interface ChangelogStop {
   groups: ChangelogGroup[];
 }
 
-export const CHANGELOG_TOTAL_ENTRIES = 522;
+export const CHANGELOG_TOTAL_ENTRIES = 523;
 
 export const CHANGELOG_TOTALS: Record<ChangelogBucket, number> = {
   "Added": 240,
@@ -39,14 +39,14 @@ export const CHANGELOG_TOTALS: Record<ChangelogBucket, number> = {
   "Removed": 3,
   "Fixed": 196,
   "Security": 5,
-  "Behavior": 46
+  "Behavior": 47
 };
 
 export const CHANGELOG_STOPS: ChangelogStop[] = [
   {
     "label": "Unreleased",
     "date": null,
-    "total": 16,
+    "total": 17,
     "counts": {
       "Added": 9,
       "Changed": 0,
@@ -54,7 +54,7 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
       "Removed": 0,
       "Fixed": 6,
       "Security": 0,
-      "Behavior": 1
+      "Behavior": 2
     },
     "groups": [
       {
@@ -101,6 +101,10 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
       {
         "bucket": "Behavior",
         "items": [
+          {
+            "title": "The tool-time browser-memory hint digest is category-balanced (the hints-ranking round)",
+            "behavior": true
+          },
           {
             "title": "Plan mode's toolset changes shape in V3 (the observable difference)",
             "behavior": true

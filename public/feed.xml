@@ -28,6 +28,16 @@
       <category>hardening</category>
     </item>
     <item>
+      <title>&quot;The hints-ranking round: when six new facts shouldn&apos;t evict the one that matters&quot;</title>
+      <link>https://unown-nine.vercel.app/blog/2026-11-03-the-hints-ranking-round</link>
+      <guid isPermaLink="true">https://unown-nine.vercel.app/blog/2026-11-03-the-hints-ranking-round</guid>
+      <pubDate>Tue, 03 Nov 2026 00:00:00 GMT</pubDate>
+      <description>The browser-memory hint digest becomes category-balanced — round-robin across idiom classes so a burst of new facts cannot evict the dialog lesson.</description>
+      <category>memory</category>
+      <category>browser</category>
+      <category>learning</category>
+    </item>
+    <item>
       <title>The browser autonomy round: dogfooding the browser until it taught us back</title>
       <link>https://unown-nine.vercel.app/blog/2026-11-01-the-browser-autonomy-round</link>
       <guid isPermaLink="true">https://unown-nine.vercel.app/blog/2026-11-01-the-browser-autonomy-round</guid>

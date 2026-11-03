@@ -8,21 +8,40 @@ archaeology. When a round completes, its log graduates to a round-specific
 
 ---
 
-## ACTIVE ROUND — the hints-ranking round (2026-11-03, OPEN)
+## ACTIVE ROUND — none open (2026-11-03, late); the queue below stands
 
-Opened from the queue below by the lineage that receipted the fourth
-fresh-lineage bring-up (`35cc879f`): the browser-autonomy lineage's polish
-lane — the tool-time browser-memory hint digest (#45's lane) gets
-category-balanced selection, because the render is newest-first and a
-mid-round dream's burst of same-class facts pushes older-but-relevant
-entries (the dialog lesson) below the 8-entry cap. The design is the
-lexical cousin of MMR (class-diversified round-robin, file order within a
-class — the research receipt, the claim, and the ticket queue live in
-`docs/hints-ranking-round-session.md`): HR-1 the implementation (claimed,
-via A2), HR-2 the closeout (CHANGELOG `## [Unreleased]` re-added — the
-first v0.0.56 content — plus rail, README row, blog post 44th, ground
-truth drift entry, graduation). The previous round's queue section below
-still stands for everything this round does not take.
+The hints-ranking round (2026-11-03) is COMPLETE and graduated to its own
+log: `docs/hints-ranking-round-session.md` — the browser-autonomy
+lineage's polish lane, taken from this queue's own carry-over: the #45
+tool-time browser-memory hint digest became **category-balanced** (the
+render is newest-first and a mid-round dream's burst of same-class facts
+pushed the oldest load-bearing entry — the stress-checkout dialog lesson
+— below the 8-entry cap; the selection is now round-robin across the new
+ordered `BROWSER_HINT_CLASSES` classifier, file order within a class,
+exhausted classes drop out — the lexical cousin of MMR's diversity
+constraint, grounded by the round's research receipt: hermes-agent #677's
+composite scoring, MMR (Carbonell & Goldstein 1998), PrecisionMemBench).
+HR-1 (the implementation, via A2 in 4 budgeted chunks on a fresh session)
+shipped: the classifier + round-robin `collectHints` shared by both
+digests, 6 new pins in the browser suite (59/0; baseline 53/0), the
+`.env.example` `UNOWN_BROWSER_HINTS` doc (the recon drift-finding — the
+every-env-var-documented contract), and `docs/browser.md`'s
+Category-balanced property bullet. HR-2 (the closeout) landed the
+CHANGELOG Agent Behavior entry (`## [Unreleased]` — the first v0.0.56
+content) + the rail regenerated in the same commit (54 stops/523
+entries), the README round-table row, the round's blog post (the 44th —
+44 posts/109 tags), the `A2_GROUND_TRUTH.md` drift-log entry, and this
+rotation. Full gate set green at the close: root tsc 0, lint 0/142
+baseline, unit 2125/0, check:docs|changelog|blog|benchmarks|claims ok
+(claims 62/62), pi-repo self-learning tsc 651=651 pristine parity (zero
+new errors). The round also receipted the programme's FIFTH
+fresh-lineage bring-up: a full sandbox recycle ate the tree MID-TICKET
+(the first dispatch's chunk 4); nothing on `main` was lost because the
+round-opening commit (claim, design, research receipt) was pushed before
+dispatch — the recovery was a re-dispatch with all learnings baked in,
+not a re-plan. The queue's hint-digest ranking item is CLOSED (this
+round); the release-monitor routine's first weekly run (2026-11-08) and
+everything else below still stands.
 
 The doc-truth round (2026-11-03) is COMPLETE and graduated to its own log:
 `docs/doc-truth-round-session.md` — the A1 maintenance track that closed
@@ -192,9 +211,9 @@ browser autonomy round 2 closed its predecessor's carries-overs (#46, #45, #44, 
 warm docs-navigation benchmark, the skill promotion) — what remains of the
 browser-autonomy lineage: the release-monitoring routine's first weekly run
 (`auto-mvxw0wne-onkwcn`, 2026-11-08 — the multi-day lane's first real
-datum), and the hint-digest ranking refinement (newest facts can push
-older-but-relevant entries below the 8-entry cap after a dream — relevance
-ranking or a per-category quota; see the round-2 log's queue); then the
+datum); the hint-digest ranking refinement is CLOSED (the hints-ranking
+round, 2026-11-03 — the category-balanced round-robin selection, see the
+graduated log above); then the
 pre-existing queue: the S2
 ledger's head — S2-11 (the spend meter) and S2-4 (the memory health card),
 each flipping a pinned, waiting benchmark miss — then S2-7/S2-8/S2-9, the
