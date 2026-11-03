@@ -47,6 +47,32 @@ export const BROWSER_HINT_IDIOM =
 export const BROWSER_HINT_MAX = 8;
 export const BROWSER_HINT_CLIP = 200;
 
+/**
+ * The ordered action-class set for category-balanced selection (the
+ * hints-ranking round). First match wins. The order IS the vocabulary
+ * discipline: it aligns with BROWSER_HINT_IDIOM's alternatives so no
+ * currently-matching entry falls out of classification — an entry the idiom
+ * admits lands in exactly one class, dialog first (the action-critical
+ * family the stress-checkout's dialog lesson lives in) through the general
+ * fallback (the idiom's own first alternative, `browser`).
+ */
+export const BROWSER_HINT_CLASSES: ReadonlyArray<{ name: string; test: RegExp }> = [
+	{ name: "dialog", test: /dialog|confirm\(|alert\(|prompt\(|modal|overlay/i },
+	{ name: "banner", test: /cookie|banner|captcha/i },
+	{ name: "auth", test: /log ?in|sign ?in|checkout/i },
+	{ name: "frames", test: /iframe|shadow root|shadowroot|fill_form|selector/i },
+	{ name: "capture", test: /screenshot|snapshot/i },
+	{ name: "stealth", test: /stealth|headless|chromium|chrome\b/i },
+	{ name: "host", test: /https?:\/\/|www\.|\.(com|org|io|dev|net|ai)\b|\bref\b/i },
+	{ name: "general", test: /browser/i },
+];
+
+/** The first matching class name for a body; undefined when no class admits it. */
+export function browserHintClass(body: string): string | undefined {
+	for (const c of BROWSER_HINT_CLASSES) if (c.test.test(body)) return c.name;
+	return undefined;
+}
+
 export interface BrowserHintTier {
 	/** "project" (repo-resident — injection-guard scanned) or "user" (home-resident). */
 	tier: "project" | "user";
@@ -90,9 +116,17 @@ function collectHints(
 ): BrowserHints {
 	const max = opts.max ?? BROWSER_HINT_MAX;
 	const clipAt = opts.clip ?? BROWSER_HINT_CLIP;
+
+	// Pass 1 — collect ALL matched entries (deduped across tiers by
+	// lowercased body, guard-annotated, clipped) in the merged walk order
+	// (project tier then user tier; the render is newest-first, so this is
+	// file order).
+	interface HintEntry {
+		line: string;
+		cls: string | undefined;
+	}
 	const seen = new Set<string>();
-	const lines: string[] = [];
-	let truncated = 0;
+	const matched: HintEntry[] = [];
 	for (const { tier, content } of tiers) {
 		const flagged = flaggedLinesFor(tier, String(content ?? ""));
 		String(content ?? "").split(/\r?\n/).forEach((raw, i) => {
@@ -103,15 +137,52 @@ function collectHints(
 			const key = body.toLowerCase();
 			if (seen.has(key)) return; // same fact in both tiers: once
 			seen.add(key);
-			if (lines.length >= max) {
-				truncated++;
-				return;
-			}
 			const flagNote = flagged.has(i + 1) ? " [unverified — injection-guard flagged]" : "";
-			lines.push(`- ${clip(body, clipAt)}${flagNote}`);
+			matched.push({ line: `- ${clip(body, clipAt)}${flagNote}`, cls: browserHintClass(body) });
 		});
 	}
-	return { lines, truncated };
+
+	// Pass 2 — category-balanced selection: round-robin across the classes
+	// present, in FIRST-APPEARANCE order of the merged walk (project tier
+	// then user tier), FILE ORDER within a class. A class that runs out
+	// drops out of the cycle; stop when max slots fill or every matched
+	// entry is taken. A burst of same-class entries (a dream minting six
+	// cookie-banner facts) takes only its fair share of the slots and cannot
+	// evict the only entry of another class — the lexical cousin of MMR's
+	// diversity constraint (docs/hints-ranking-round-session.md). Single-
+	// class input degenerates to plain file order (today's behavior, pinned).
+	// matched-but-unselected entries count in truncated exactly as before.
+	const byClass: Record<string, HintEntry[]> = {};
+	const unclassified: HintEntry[] = []; // the idiom admits it, no class names it
+	const order: string[] = [];
+	for (const m of matched) {
+		if (m.cls === undefined) unclassified.push(m);
+		else {
+			(byClass[m.cls] ??= []).push(m);
+			if (!order.includes(m.cls)) order.push(m.cls); // first-appearance order
+		}
+	}
+	const cursor: Record<string, number> = {};
+	for (const c of order) cursor[c] = 0;
+	let active = order.slice();
+	const lines: string[] = [];
+	let head = 0;
+	while (lines.length < max && (active.length > 0 || unclassified.length > 0)) {
+		if (active.length > 0) {
+			head %= active.length;
+			const c = active[head];
+			const queue = byClass[c];
+			if (cursor[c] < queue.length) {
+				lines.push(queue[cursor[c]++].line);
+				head++; // next class on the next turn
+			} else {
+				active.splice(head, 1); // ran out — drop out of the cycle (head stays)
+			}
+		} else if (lines.length < max) {
+			lines.push(unclassified.shift()!.line);
+		}
+	}
+	return { lines, truncated: matched.length - lines.length };
 }
 
 /**

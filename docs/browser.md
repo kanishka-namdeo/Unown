@@ -334,6 +334,14 @@ Properties that hold by construction:
   injection guard the session-start injection uses; flagged entries are
   annotated `[unverified — injection-guard flagged]`, never silently
   included. Hints are framed as hints, not instructions.
+- **Category-balanced** — the digest is selected round-robin across the idiom
+  classes (dialog, banner, auth, frames, capture, stealth, host, general — a
+  burst of same-class facts cannot evict the only entry of another class;
+  newest first within a class). This is the lexical cousin of MMR's
+  diversity constraint: a dream minting six cookie-banner facts renders them
+  at the top of the newest-first file, but the round-robin cycle lets the
+  older load-bearing dialog lesson survive the cap. All other entries
+  unchanged; the BOUNDED cap (8) and the kill-switch are untouched.
 - **Once** — the general digest rides one call per session; host slices ride
   one navigate per host. Nothing repeats, nothing displaces the fresh
   snapshot (hints ride last).

@@ -408,7 +408,9 @@ describe("resolveScreenshotFormat (the #44 contract)", () => {
 
 import { mkdtempSync, writeFileSync, mkdirSync, rmSync } from "node:fs";
 import {
+    BROWSER_HINT_CLASSES,
     BROWSER_HINT_IDIOM,
+    browserHintClass,
     browserMemoryHints,
     firstCallHintPart,
     hostHintPart,
@@ -559,6 +561,146 @@ describe("firstCallHintPart / hostHintPart (the file-backed wiring)", () => {
         expect(part).toContain("⟨browser memory hints for app.example.com");
         expect(part).toContain("SSO button");
         expect(part).not.toContain("stress page"); // host-specific slice, not the whole digest
+    });
+});
+
+describe("browserMemoryHints: category-balanced selection (the hints-ranking round)", () => {
+    test("dream-burst pin: a burst of six same-class entries cannot evict the oldest load-bearing entry of another class", () => {
+        // the round's regression, pinned: the render is newest-first, so a
+        // dream that mints a burst of same-class facts (six cookie-banner
+        // entries) renders them at the top of the file and the OLDEST entry
+        // (the dialog lesson) sits LAST — before the fix, top-down first-8
+        // selection silently dropped it. After the fix it MUST survive.
+        // Entry layout (file order = newest first): 6 banner, then capture,
+        // stealth, auth, and the dialog lesson (the last entry — the
+        // action-critical lesson is OLDEST, at the bottom of the render).
+        const project = [
+            "# Project Memory",
+            "",
+            "## Facts",
+            // newest — the dream's burst (6 banner entries)
+            ...Array.from({ length: 6 }, (_, i) => `- Cookie-banner variant ${i} on the marketing site must be dismissed before the search box becomes usable.`),
+            "- Save screenshots to the run's receipts directory so later runs can diff warm-start state.",
+            "- Headless chromium is the default browser on the CI hosts.",
+            "- The login flow on the marketing site redirects to the SSO host.",
+            // oldest — the load-bearing dialog lesson, at the bottom of the render
+            "- arm `dialog accept` BEFORE the confirm-guarded click on checkout pages — the native dialog blocks automation",
+        ].join("\n");
+        const { lines, truncated } = browserMemoryHints([{ tier: "project", content: project }]);
+        expect(lines.length).toBe(8); // the cap held
+        expect(lines.some((l) => l.includes("arm `dialog accept`"))).toBe(true); // the lesson survived
+        const bannerSlots = lines.filter((l) => l.includes("Cookie-banner variant")).length;
+        expect(bannerSlots).toBeLessThan(6); // the burst did NOT fill 6 of the 8 slots
+        // exhaustion rule, stated: the fair-share constraint (no class takes a
+        // slot while another class with unselected entries has taken fewer)
+        // binds ONLY while >=2 classes still have unselected entries. Once the
+        // 4 singleton classes (capture/stealth/auth/dialog) each exhaust after
+        // one turn, banner is the sole survivor and fills the remaining slots
+        // — that is the invariant, not "banner always capped at ceil(8/5)".
+        // Trace over 8 slots: banner0, capture, stealth, auth, dialog, banner1,
+        // banner2, banner3 → banner=4, and the lesson (dialog) survived, which
+        // is the round's regression (pre-fix it was silently dropped).
+        expect(bannerSlots).toBe(4);
+        // the other three classes each take their single entry
+        expect(lines.some((l) => l.includes("Save screenshots"))).toBe(true);
+        expect(lines.some((l) => l.includes("Headless chromium"))).toBe(true);
+        expect(lines.some((l) => l.includes("The login flow"))).toBe(true);
+        expect(truncated).toBe(2); // 10 matched, 8 taken — exactly as before
+    });
+
+    test("degenerate pin: all entries one class -> selection equals file order", () => {
+        // same-class input must behave exactly like today's top-down
+        // keep-first-max walk (the pre-round-robin behavior, pinned)
+        const project = Array.from({ length: 10 }, (_, i) => `- dismiss the confirm dialog on step ${i} of the stress flow`).join("\n");
+        const { lines, truncated } = browserMemoryHints([{ tier: "project", content: project }]);
+        expect(lines).toEqual(Array.from({ length: 8 }, (_, i) => `- dismiss the confirm dialog on step ${i} of the stress flow`));
+        expect(truncated).toBe(2);
+    });
+
+    test("determinism pin: same input twice -> identical {lines, truncated}", () => {
+        const project = [
+            "- arm `dialog accept` BEFORE the confirm-guarded click on checkout pages — the native dialog blocks automation",
+            "- Cookie-banner variant 0 on the marketing site must be dismissed before the search box becomes usable.",
+            "- Cookie-banner variant 1 on the marketing site must be dismissed before the search box becomes usable.",
+            "- Save screenshots to the run's receipts directory so later runs can diff warm-start state.",
+            "- Take a snapshot after every navigate before acting on refs.",
+            "- The login form at app.example.com requires SSO via the browser.",
+            "- Headless chromium is the default on CI hosts.",
+            "- The ref from the last snapshot is stale after a navigate.",
+            "- The browser session reuses its profile directory.",
+        ].join("\n");
+        const a = browserMemoryHints([{ tier: "project", content: project }]);
+        const b = browserMemoryHints([{ tier: "project", content: project }]);
+        expect(a.lines).toEqual(b.lines);
+        expect(a.truncated).toBe(b.truncated);
+    });
+
+    test("fair-share pin: three classes with >=3 entries each, max 8 -> no class exceeds ceil(8/3)=3 while another still has unselected entries", () => {
+        const project = [
+            "- dialog entry 0 from the stress-checkout runs",
+            "- dialog entry 1 from the stress-checkout runs",
+            "- dialog entry 2 from the stress-checkout runs",
+            "- cookie entry 0: the banner on the marketing site must be dismissed",
+            "- cookie entry 1: the banner on the marketing site must be dismissed",
+            "- cookie entry 2: the banner on the marketing site must be dismissed",
+            "- login entry 0: the form at the staging host requires SSO",
+            "- login entry 1: the form at the staging host requires SSO",
+            "- login entry 2: the form at the staging host requires SSO",
+        ].join("\n");
+        const { lines, truncated } = browserMemoryHints([{ tier: "project", content: project }]);
+        expect(lines.length).toBe(8);
+        expect(truncated).toBe(1);
+        const count = (needle: string) => lines.filter((l) => l.includes(needle)).length;
+        const dialog = count("dialog entry");
+        const banner = count("cookie entry");
+        const auth = count("login entry");
+        // round-robin dialog->banner->auth: 3+3+3 would be 9 > 8 slots, so the
+        // cycle stops on slot 8 mid-class — no class exceeds ceil(8/3)=3 while
+        // another class still has an unselected entry
+        expect(dialog).toBeLessThanOrEqual(3);
+        expect(banner).toBeLessThanOrEqual(3);
+        expect(auth).toBeLessThanOrEqual(3);
+        expect(dialog + banner + auth).toBe(8);
+        // exactly one class takes 2 of its 3 (the class where the cycle
+        // stopped) and the other two are fully taken
+        expect([dialog, banner, auth].filter((n) => n === 2).length).toBe(1);
+        expect([dialog, banner, auth].filter((n) => n === 3).length).toBe(2);
+    });
+
+    test("classifier pin: one representative body per each of the 8 class names", () => {
+        const representatives: Array<[string, string]> = [
+            ["arm `dialog accept` before clicking the confirm-guarded button", "dialog"],
+            ["the cookie banner must be dismissed before the form is reachable", "banner"],
+            ["the login page routes SSO users to the idp host", "auth"],
+            ["the address form lives in a same-origin iframe — fill it in-frame", "frames"],
+            ["save the screenshot to the receipts directory after each step", "capture"],
+            ["stealth mode disables the CDP signal on hostile pages", "stealth"],
+            ["the https://docs.example.com help page is the authoritative one", "host"],
+            ["the browser tool is the only way to reach the rendered page", "general"],
+        ];
+        for (const [body, expected] of representatives) {
+            expect(browserHintClass(body)).toBe(expected);
+            expect(BROWSER_HINT_IDIOM.test(body)).toBe(true); // every class's representative is idiom-admitted
+        }
+    });
+
+    test("host-slice pin: entries spanning classes select round-robin (the shared-path proof)", () => {
+        // hostMemoryHints rides the SAME collectHints selection as the general
+        // digest — entries spanning classes must round-robin here too
+        const project = [
+            "- app.example.com serves a cookie banner on every first visit that must be dismissed before the search box is usable.",
+            "- The second cookie banner variant on app.example.com appears after the consent card closes.",
+            "- app.example.com login requires SSO via the browser, not the API.",
+            "- Take a screenshot of app.example.com after the navigate and save it to the receipts.",
+        ].join("\n");
+        const { lines } = hostMemoryHints([{ tier: "project", content: project }], "app.example.com");
+        expect(lines.length).toBe(4); // under the cap: everything matched rides
+        // round-robin in first-appearance order (banner, auth, capture):
+        // banner 0, auth 0, capture 0, then the cycle returns — banner 1
+        expect(lines[0].includes("cookie banner on every first visit")).toBe(true);
+        expect(lines[1].includes("login requires SSO")).toBe(true);
+        expect(lines[2].includes("Take a screenshot")).toBe(true);
+        expect(lines[3].includes("consent card closes")).toBe(true);
     });
 });
 
