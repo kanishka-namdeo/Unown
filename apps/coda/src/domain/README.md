@@ -116,7 +116,7 @@ rejected with `MarkdownParseError` (never silently lossy).
 
 ## Tests
 
-`bun test` from `apps/coda/` (Lane B — no happy-dom preload, DOM-free
-proof) and `bun test apps/coda` from the repo root (Lane A — the future
+`bun test` from `apps/coda/` (Lane A — no happy-dom preload, DOM-free
+proof) and `bun test apps/coda` from the repo root (Lane B — the future
 CI lane, where the happy-dom preload applies and would MASK purity
 violations, so the boundary check + grep are the real guards).
