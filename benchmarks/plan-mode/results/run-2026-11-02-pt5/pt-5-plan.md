@@ -80,3 +80,18 @@ Self-contained static app at `apps/coda/` — **vanilla TS + hand-rolled service
 - Frozen lockfile: CI `coda` job's `bun install` assert shows the root lockfile hash unchanged.
 - Docs gate: `bun run check:docs`.
 - Closeout: two commits (app = steps 1–6, wiring+docs = steps 7–8) so `git revert` is clean; CHANGELOG entry; execution ends with `plan_retrospective`.
+
+## Retrospective
+
+- outcome: delivered
+- failure class: none
+- resolution: all nine steps shipped through the Coda round's tickets C1-C5 and verified: C1 the pure-TS domain core (51 tests green in both lanes), C2 the UI + IndexedDB adapter, C3 the PWA layer proven offline end to end, C4 the isolated Playwright e2e + axe lane (5 of 5 green), C5 the root wiring + CI coda job + full DOX surface (CI, CodeQL, Scorecard and deploy-verify all green on main). The one carried-forward app-doc fix (the domain README's swapped lane labels) lands in the C6 closeout.
+- learnings:
+  - workflow: budgeted-chunk resume chains are the only dispatch lane that survives a host which reaps agent processes between operator tool calls - 8-turn caps, receipt-first incremental appends, and compile-before-stop; the receipt-last pattern died at the 9.5-minute wall three times.
+  - agent-pattern: dual-incarnation races on a shared main are operational reality, not theory - claim every ticket in the round-log ledger before dispatch, fetch before every push, adopt-then-re-gate on collision, never force-push (the C4 race was decided by 11 minutes; C5 transferred on a 6.5-hour stale claim).
+  - memory: receipts must mirror outside the repo the moment they are written - the working clone and the unown home were both lost mid-round; the round log's checkpoint entries are the durable surface of record.
+  - skill: tsc-green plus bun-test-green does not prove browser-link-green - every type-only import needs the type keyword, and every UI surface needs a real browser boot check before commit (the Booting-forever ship-blocker class).
+  - benchmark: the PWA installability and offline-load figures stay not-measured until a receipted run lands under benchmarks - honest nulls, per the landing honesty rules.
+- improvements:
+  - The instruction-set write gate is final for AGENTS.md surfaces, so instruction DOX flows draft-and-operator-land - a future round could add an operator-review PR lane so agent sessions can propose instruction-surface edits as pull requests.
+  - The next ticket template moves the receipt append inside the per-chunk task list (the C4 ten-chunk receipt drift), and a Coda usage capture for the landing page is queued for the capture lane.
