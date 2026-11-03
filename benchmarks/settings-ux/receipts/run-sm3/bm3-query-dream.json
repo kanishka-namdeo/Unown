@@ -1,0 +1,19 @@
+{
+ "q": "dream",
+ "targetId": "learning.pending-dreams",
+ "expectedAtBefore": "hit",
+ "topResults": [
+  "Learning \u2192 Dream canary gate \u25cbHIGH",
+  "Learning \u2192 Dream review mode",
+  "Learning \u2192 Dream review inbox",
+  "adv.local-ml \u2192 Local-ML dream lanes",
+  "rec.dream-rollback \u2192 Roll back learned memory",
+  "Learning \u2192 Learning feed",
+  "Learning \u2192 Canary sample size",
+  "adv.bridge \u2192 Bridge concurrency & upstream",
+  "Memory \u2192 Manual notes protection",
+  "Interface \u2192 Dark theme (auto mode)"
+ ],
+ "hit": true,
+ "rank": 3
+}

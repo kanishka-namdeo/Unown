@@ -1,0 +1,17 @@
+{
+ "q": "memory health",
+ "targetId": "memory.health",
+ "expectedAtBefore": "miss",
+ "topResults": [
+  "1. Memory \u2192 Memory health card",
+  "2. Agent \u2192 Capability map",
+  "3. Tools & Integrations \u2192 Hook loop breaker (max depth)",
+  "4. Memory \u2192 Project identity",
+  "5. rec.reset \u2192 Reset settings (scoped) \u25cbHIGH",
+  "6. Learning \u2192 Dream review mode",
+  "7. Interface \u2192 Light theme (auto mode)",
+  "8. Automation \u2192 Automation spend meter"
+ ],
+ "hit": true,
+ "rank": 1
+}

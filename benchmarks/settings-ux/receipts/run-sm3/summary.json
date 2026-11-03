@@ -1,0 +1,85 @@
+{
+ "generatedAt": "2026-11-03T20:40:37Z",
+ "bm": {
+  "bm3": {
+   "hitRate": "12/12",
+   "hitRatePct": 100.0,
+   "expectedHitsMade": "8/8",
+   "detail": [
+    {
+     "q": "budget",
+     "hit": true,
+     "rank": 2,
+     "expectedAtBefore": "hit"
+    },
+    {
+     "q": "kill switch",
+     "hit": true,
+     "rank": 1,
+     "expectedAtBefore": "hit"
+    },
+    {
+     "q": "undo",
+     "hit": true,
+     "rank": 1,
+     "expectedAtBefore": "hit"
+    },
+    {
+     "q": "rollback",
+     "hit": true,
+     "rank": 1,
+     "expectedAtBefore": "hit"
+    },
+    {
+     "q": "permissions",
+     "hit": true,
+     "rank": 2,
+     "expectedAtBefore": "hit"
+    },
+    {
+     "q": "hook",
+     "hit": true,
+     "rank": 2,
+     "expectedAtBefore": "hit"
+    },
+    {
+     "q": "dream",
+     "hit": true,
+     "rank": 3,
+     "expectedAtBefore": "hit"
+    },
+    {
+     "q": "cost",
+     "hit": true,
+     "rank": 1,
+     "expectedAtBefore": "hit"
+    },
+    {
+     "q": "theme",
+     "hit": true,
+     "rank": 1,
+     "expectedAtBefore": "miss"
+    },
+    {
+     "q": "dark mode",
+     "hit": true,
+     "rank": 1,
+     "expectedAtBefore": "miss"
+    },
+    {
+     "q": "spend",
+     "hit": true,
+     "rank": 2,
+     "expectedAtBefore": "miss"
+    },
+    {
+     "q": "memory health",
+     "hit": true,
+     "rank": 1,
+     "expectedAtBefore": "miss"
+    }
+   ]
+  }
+ },
+ "writtenAt": "2026-11-03T20:40:37Z"
+}

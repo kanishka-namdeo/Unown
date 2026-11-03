@@ -1,0 +1,19 @@
+{
+ "q": "cost",
+ "targetId": "models.usage",
+ "expectedAtBefore": "hit",
+ "topResults": [
+  "Models & Cost \u2192 Usage & cost",
+  "Interface \u2192 Cache miss notices",
+  "Automation \u2192 Run history & spend",
+  "Models & Cost \u2192 Default model",
+  "Models & Cost \u2192 Governor ceilings (engine jobs) \u25cbHIGH",
+  "Models & Cost \u2192 Model spec verification",
+  "Models & Cost \u2192 Providers \u25cbHIGH",
+  "Models & Cost \u2192 Thinking level",
+  "Models & Cost \u2192 Update channel \u25cbHIGH",
+  "Memory \u2192 Cross-project hoist"
+ ],
+ "hit": true,
+ "rank": 1
+}

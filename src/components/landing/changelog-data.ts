@@ -30,10 +30,10 @@ export interface ChangelogStop {
   groups: ChangelogGroup[];
 }
 
-export const CHANGELOG_TOTAL_ENTRIES = 523;
+export const CHANGELOG_TOTAL_ENTRIES = 525;
 
 export const CHANGELOG_TOTALS: Record<ChangelogBucket, number> = {
-  "Added": 240,
+  "Added": 242,
   "Changed": 32,
   "Deprecated": 0,
   "Removed": 3,
@@ -46,9 +46,9 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
   {
     "label": "Unreleased",
     "date": null,
-    "total": 17,
+    "total": 19,
     "counts": {
-      "Added": 9,
+      "Added": 11,
       "Changed": 0,
       "Deprecated": 0,
       "Removed": 0,
@@ -60,6 +60,14 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
       {
         "bucket": "Added",
         "items": [
+          {
+            "title": "The automation spend meter + ceilings under governance (S2-11, the spend-and-memory-health round)",
+            "behavior": false
+          },
+          {
+            "title": "The memory health card (S2-4, the spend-and-memory-health round)",
+            "behavior": false
+          },
           {
             "title": "The instruction-set PR lane, priced and documented (T4, the doc-truth round)",
             "behavior": false

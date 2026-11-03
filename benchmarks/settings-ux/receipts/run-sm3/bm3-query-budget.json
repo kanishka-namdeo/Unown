@@ -1,0 +1,19 @@
+{
+ "q": "budget",
+ "targetId": "agent.goal-budget",
+ "expectedAtBefore": "hit",
+ "topResults": [
+  "Memory \u2192 Injection budget",
+  "Agent \u2192 Goal budget (turns)",
+  "Memory \u2192 Memory stack (4 tiers)",
+  "Interface \u2192 Output padding",
+  "Tools & Integrations \u2192 Hook loop breaker (max depth)",
+  "Models & Cost \u2192 Thinking level",
+  "Memory \u2192 Per-tier write cap",
+  "Learning \u2192 Standing orders",
+  "rec.transfer \u2192 Export / import settings",
+  "Interface \u2192 Default thinking level"
+ ],
+ "hit": true,
+ "rank": 2
+}

@@ -8,28 +8,38 @@ archaeology. When a round completes, its log graduates to a round-specific
 
 ---
 
-## ACTIVE ROUND — spend-and-memory-health (2026-11-04, OPEN — `docs/spend-and-memory-health-round-session.md`)
+## ACTIVE ROUND — none open (2026-11-04, late); the queue below stands
 
-The settings-evolution lineage's S2-ledger head, taken per the queue's priority
-order: **S2-11** (the automation spend meter + ceilings under governance) and
-**S2-4** (the memory health card) — each flipping one of the settings-ux
-suite's two pinned BM-3 search misses (`spend`, `memory health`; 10/12 → the
-12/12 target). The round opened 2026-11-04 by the SIXTH fresh lineage (full
-sandbox recycle post-hints-ranking; nothing on `main` at risk — that round
-closed green at `ee5ec5c9`), with the research receipt (OpenAI's
-alerts-vs-hard-limits layering; the AWS Well-Architected Agentic AI Lens's
-multi-layer budgets + graduated throttling over binary shutdown; the
-runaway-agent-loop failure class; Claude's windowed budgets with visible
-resets; mem0 #4896's exact-hash dedup blind spot + accumulated-state memory
-bugs) and the pinned design live in the round log before any dispatch. Ticket
-queue: SM-1 (S2-11 via A2, budgeted chunks), SM-2 (S2-4 via A2), SM-3 (the
-closeout: BM-3 re-run receipt, CHANGELOG `## [Unreleased]` append + rail,
-README row, blog post 45th, ground-truth drift entry, graduation +
-capability report). The default-ceiling ruling: both ceilings ship default
-OFF (per-routine `spend_cap` NULL, global `PI_AUTOMATION_MAX_TOKENS_DAY=0`)
-— the governor's principled asymmetry: self-initiated engine learning spend
-is bounded by default, user-created routine spend is visible by default and
-bounded on request.
+The spend-and-memory-health round (2026-11-04) is COMPLETE and graduated to
+its own log: `docs/spend-and-memory-health-round-session.md` — the
+settings-evolution lineage's S2-ledger head, both pinned BM-3 search misses
+flipped to **12/12, 100%** (receipted): **S2-11** the automation spend
+meter + ceilings (the governor's ledger covers engine learning jobs only —
+routine spend is now metered per-routine + globally over rolling 24h/7d
+windows through `GET /api/automations/spend`, `unown routines spend`, and
+the hub's Automation spend meter card; boundable via per-routine
+`--spend-cap` + the global `PI_AUTOMATION_MAX_TOKENS_DAY`, both default OFF
+by the governor-asymmetry ruling; enforcement graduated with recorded
+`spend_ceiling` skips, never a lifecycle change; manual run-now bypasses
+but counts) and **S2-4** the memory health card (the fail-open reconcile
+pass gained a durable failure record that survives restarts; duplicate
+count over normalized text, conflict count over supersede links; warnings
+reconcile-failing/tier-at-cap/reconcile-stale; `GET /api/memory/health` +
+the hub card). 31 new pins (10 + 21); full package 5454/0/105-skip;
+package tsc parity 77=77 both tickets; root tsc 0 / lint 0-142 / unit
+2125/0 / check:* all ok at the close (the rail regenerated at 54 stops/525
+entries + the blog at 45 posts/112 tags in the same commit). The round's
+A2 lane: 16 budgeted chunks across two sessions, with the operator's
+completions receipted in each ticket's DECISIONS — including the at-cap
+tick-loop deadlock the gate test caught (fixed with the `held` exclusion
+set) and the schema layer the chunk-3 receipt had overclaimed (tsc cannot
+see SQL strings; the tests exposed it). The round also receipted the
+programme's first DUAL-INCARNATION event of this shape: a seventh parallel
+lineage brought itself up mid-round (`a380ff19`) and both claimed SM-1 per
+the ledger law — the sixth landed first (`061384bb`), the rebase was clean,
+and the seventh's in-flight dispatch reconciles on its next fetch. The
+S2-11 and S2-4 rows are CLOSED; the release-monitor routine's first weekly
+run (2026-11-08) and everything else below still stands.
 
 The hints-ranking round (2026-11-03) is COMPLETE and graduated to its own
 log: `docs/hints-ranking-round-session.md` — the browser-autonomy
@@ -234,10 +244,10 @@ browser-autonomy lineage: the release-monitoring routine's first weekly run
 (`auto-mvxw0wne-onkwcn`, 2026-11-08 — the multi-day lane's first real
 datum); the hint-digest ranking refinement is CLOSED (the hints-ranking
 round, 2026-11-03 — the category-balanced round-robin selection, see the
-graduated log above); then the
-pre-existing queue: the S2
-ledger's head — S2-11 (the spend meter) and S2-4 (the memory health card),
-each flipping a pinned, waiting benchmark miss — then S2-7/S2-8/S2-9, the
+graduated log above); the S2 ledger's head — S2-11 (the spend meter) and
+S2-4 (the memory health card) — is CLOSED (the spend-and-memory-health
+round, 2026-11-04, both misses flipped 12/12 — see the graduated log
+above); then the pre-existing queue: S2-7/S2-8/S2-9, the
 S2-3/S2-16 L-pair, S2-22 (see the settings log's "Resume-from-here"); the
 injection-scanner ML classifier (the production TODO); the delegation
 round's subagent-reuse axis; OB-7 (fleet outcomes in the brief); the
