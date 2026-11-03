@@ -32,7 +32,7 @@
 
 ## Ticket queue (in delivery-manager sequence)
 
-1. **T1 — L1 doc-drift sweep (the §7.4 flags)** 🔲: re-derive and correct every
+1. **T1 — L1 doc-drift sweep (the §7.4 flags)** ✅ (2026-11-03, `e894ccf2`): re-derive and correct every
    drifted count: `docs/usage.md` (slash-commands "thirty-four" vs 48 observed;
    session tools "seventeen" vs 21+3 plan tools), `docs/skills.md` (7 project
    skills vs 13 observed in `.unown/skills/`), `docs/subagents.md` (built-ins
@@ -97,6 +97,33 @@ chunk protocol notes) — the shape that worked since the fresh-clone round.
 
 ## Checkpoint log
 
+- **2026-11-03 (T1 COMPLETE — the L1 doc-drift sweep, 8 chunks in one session
+  chain `01a19ffd…`)**: every §7.4 flag closed with TODAY re-derivations
+  (source:line in the receipt, mirrored operator-side): usage.md
+  "thirty-four"→**forty-seven** commands (the registry grep, 47 = the doc's
+  own table), split "eleven"→**twelve**, session tools "seventeen"→**twenty**
+  (20 unown registrations excluding the 3 plan-mode-conditional tools — the
+  audit's "21+3" reconciled), dashboard "12"→**15 screens** in FOUR docs
+  (usage.md ×2, quickstart.md, unown-ux-principles.md;
+  `SCREEN_SPECS`@dashboard-app.ts:55-71), skills.md "six website skills"→
+  **thirteen project skills** (all 13 named: 6 programme +
+  hostile-page-checkout + 6 round-minted), subagents.md duplicate `browser`
+  row removed + the **20-builtin breakdown** footnote (2 core@tools.ts:370 +
+  1 background@subagent-routing.ts:511 + 9 role + 8 planning@subagent-builtins)
+  + project agents "four"→**six** (delegation-auditor, benchmark-curator
+  named). **Four receipt-only pin decisions** (no pin tests): every surface
+  is legitimately-growing registered content — a count assertion would
+  false-positive on each future add; the receipt records the derivation path
+  instead. Operator gates: check:docs green on ALL docs, claims 62/62,
+  spot-checks reconciled (61 raw registerCommand matches = 47 after
+  test/split/pi exclusions; 17 `name:` lines + 2 core + 1 background = 20).
+  Deviations receipted: the incremental-receipts law took three chunks to
+  engage (chunks 1–2 produced no receipt; fixed from chunk 3); chunks 4–5
+  stalled on one-name-per-call enumeration (the metered-tier budget can't
+  afford it — the chunk-6 script-first directive unlocked the work); one
+  bash call tripped the injection shield on a grep pattern (recovered). The
+  8-chunk, 64-turn total is the EFFORT_BUDGET lesson: registry-derivation
+  tickets pre-split at ~4 chunks, not ~2.
 - **2026-11-03 (ROUND OPENED — the claim, before any dispatch)**: the ledger
   is the arbiter: fetch immediately before this entry showed `main` at
   `16c7bf42` (the Coda round's graduation commit, CI green), no other lineage
