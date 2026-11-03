@@ -2,7 +2,7 @@
 
 - **Round**: coda-app (the DRIVE track: ship the app THROUGH A2)
 - **Started**: 2026-11-02 (round opened; implementation tickets begin in the next operator session)
-- **Status**: in flight — C1 (domain core), C2 (UI + IDB), C3 (PWA layer), C4 (e2e + a11y lane), C5 (root wiring + CI + DOX/docs) landed; C6 (round closeout) is next
+- **Status**: C1–C5 landed; **C6 (round closeout) claimed by the `e0ca8ab4` lineage (2026-11-03 04:33 UTC) — in flight**
 - **Mission**: ship **Coda** — a local-first markdown notes + task-board PWA (offline-first, installable, cross-platform) — at `apps/coda/` in this monorepo, **entirely through A2 sessions** (the operator writes no app code; every ticket goes through `unown -p`/`--plan` headless sessions and fails or succeeds on its receipts).
 - **Operator decisions (2026-11-02)**: app = Coda PWA; repo path = `apps/coda/` in the Unown monorepo; push lane = direct to `main` after gates; production quality, edge cases, full cross-platform support, docs/landing/README/blog/DOX updates per milestone; never delete media assets.
 
@@ -69,6 +69,8 @@ EFFORT_BUDGET / chunk protocol notes) — the shape that worked in the
 fresh-clone round's M2-A ticket.
 
 ## Checkpoint log
+
+- **2026-11-03 04:33 UTC (C6 CLAIMED — the closeout dispatches from this lineage)**: THIS incarnation (the `e0ca8ab4` author — the third fresh lineage, bring-up receipted in the ground truth's drift log the same hour) **claims C6 (the round closeout) before any dispatch**, per the ledger-arbiter law. No C6-shaped commit, branch, or CI run exists on the remote at claim time (verified by fetch immediately before this entry; `main` was at `e0ca8ab4`, this lineage's own ground-truth receipt). Scope: the queue's C6 (this log's graduation, SESSION.md, the V3-contract retrospective on the PT-5 plan — via the PTY lane, since `plan_retrospective` is execution-mode-guarded and print mode is plan-read-only by design — and the capability-utilization report) PLUS the C5-carried-forward app fix (the domain README's swapped Lane A/B labels) PLUS one operator-directed addition: **the round's blog post** (`content/blog/`, per the standing orders — every meaningful round in this repo has one, and Coda is the first user product app; no Coda post exists). If another incarnation resurfaces with C6 in flight, the C4-collision laws apply unchanged (fetch before every push; adopt the remote; re-gate locally; reconcile deltas as follow-ups; never force-push).
 
 - **2026-11-03 03:03 UTC (C5 COMPLETE — the root wiring + CI + DOX/docs, plan steps 7+8 atomically)**: delivered through A2 in
   thirteen budgeted chunks (fresh session `01a19f43-b80d-7268-a3e2-a70b9d8a90ca`, dispatched under the stale-claim
