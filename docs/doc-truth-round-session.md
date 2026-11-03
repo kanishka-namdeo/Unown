@@ -45,7 +45,7 @@
    corrected + a pinning test per the `built-improved` authored-data pattern,
    vs generated data per the landing's `landing_benchmarks.mjs` pattern) is
    answered per surface in the ticket, honestly minimal.
-2. **T2 — the PWA installability/offline-load benchmark (flip the honest null)** 🔲:
+2. **T2 — the PWA installability/offline-load benchmark (flip the honest null)** ✅ (2026-11-03, `fa31cdf3`):
    the PT-5 plan's own contract (step "benchmark: when real, receipt a PWA
    installable/offline-load measurement under `benchmarks/` wired to
    `check:benchmarks`; otherwise the figure stays 'not measured'"). Build the
@@ -97,6 +97,36 @@ chunk protocol notes) — the shape that worked since the fresh-clone round.
 
 ## Checkpoint log
 
+- **2026-11-03 (T2 COMPLETE — the PWA benchmark, 6 chunks, session chain
+  `01a1a009…`)**: the PT-5 plan's honest null is measured. The lane
+  `benchmarks/coda-pwa/` (`run-pwa-bench.mjs` — 304 lines, zero model
+  traffic, boots the app's own dev server on a scratch port, drives
+  headless chromium): **installability PASS** (manifest 200, all 4
+  required fields, 3/3 icons fetched, SW controller active via
+  `waitForFunction`, display=standalone, the `beforeinstallprompt` probe
+  record-only per the plan's P1 pitfall) and **offline boot-from-cache
+  91 ms median vs online 175 ms median (N=5)** — the 84 ms delta
+  (~48% faster) is the precache's measured effect, the honest framing the
+  receipt caveats carry (headless chromium in the operator's container,
+  dev-server transpile — the DELTA is the signal, absolute ms are the
+  environment's). Flips: `docs/coda.md` §PWA/offline story (the measured
+  paragraph + lane links), `benchmarks/RESULTS.md` master index, CHANGELOG
+  `## [Unreleased]` + rail regen (54 stops, 520 entries). NOT flipped (the
+  historical artifacts — the PT-5 plan, past round logs, the blog — keep
+  their honest-null phrasing as the pre-measure record; T5 retires them
+  against the receipt). NO landing figure (the six-track feed contract
+  stands — no TRACKS entry; `check:benchmarks` green by not needing a
+  change, not by a flip). **The one guard event of the round**: the
+  instruction-set write gate REFUSED the in-session `benchmarks/AGENTS.md`
+  ownership-list edit — the T4 subject observed in vivo; the edit landed
+  operator-side from the receipt's draft-and-land record. Operator gates:
+  the lane re-run green on demand (operator receipt
+  `run-2026-11-03T06-21-18-517Z`, 194/101 ms medians N=3 — host noise,
+  both PASS), check:benchmarks/changelog/docs/claims all rc=0. The
+  receipt-first law engaged from chunk 2 (the T1 lesson held); chunks
+  5–6 capped on status-block bookkeeping, not work — 6 chunks vs the ~4
+  pre-split: measurement tickets carry a +2 chunk overhead for
+  run-fix-rerun loops.
 - **2026-11-03 (T1 COMPLETE — the L1 doc-drift sweep, 8 chunks in one session
   chain `01a19ffd…`)**: every §7.4 flag closed with TODAY re-derivations
   (source:line in the receipt, mirrored operator-side): usage.md
