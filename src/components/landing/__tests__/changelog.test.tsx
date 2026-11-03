@@ -138,8 +138,17 @@ describe("landing changelog rail", () => {
 
   test("counts and links the entries a tile does not print", () => {
     const { container } = rail();
-    const overflow = CHANGELOG_STOPS.map(listedCount).filter((n) => n > MAX_LISTED);
-    expect(overflow.length).toBeGreaterThan(0); // at least one stop exceeds MAX_LISTED
+    // CUT stops only — the rail renders dated stops and an uncut [Unreleased]
+    // tile never reaches the page (the assertion above), so its overflow
+    // cannot be expected in the text. Before this filter the test passed only
+    // while the Unreleased stop's "+N more" string happened to collide with a
+    // rendered stop's (found red when a legitimate Unreleased entry pushed its
+    // count past every collision — the pin was passing on coincidence, not on
+    // its invariant).
+    const overflow = CHANGELOG_STOPS.filter((s) => s.date)
+      .map(listedCount)
+      .filter((n) => n > MAX_LISTED);
+    expect(overflow.length).toBeGreaterThan(0); // at least one cut stop exceeds MAX_LISTED
     const text = container.textContent ?? "";
     for (const n of overflow) expect(text).toContain(`+${n - MAX_LISTED} more`);
 
