@@ -58,7 +58,7 @@
    printed flips to the receipted number (grep first, cite where); the
    drift-gate wiring follows the repo's conventions (a surface that cites the
    figure gets a pin; `check:benchmarks` stays green).
-3. **T3 — the Coda landing usage capture (browser lane)** 🔲: productize the
+3. **T3 — the Coda landing usage capture (browser lane)** ✅ (2026-11-03, `fe5986eb`): productize the
    capture lane in-repo (the operator's blog-capture script is the precedent:
    serve the real app, drive the same interactions the e2e spec drives, 2× DPI
    stills through the real UI) and land the Coda presence on the landing page.
@@ -97,6 +97,36 @@ chunk protocol notes) — the shape that worked since the fresh-clone round.
 
 ## Checkpoint log
 
+- **2026-11-03 (T3 COMPLETE — the landing usage capture, 12 chunks, session
+  chain `01a1a014…` + operator gate)**: the first user-product band is live.
+  The committed capture lane `apps/coda/scripts/capture-usage.mjs` (153
+  lines) drives the SAME interactions the e2e spec drives (note saved, task
+  created via the pre-armed dialog) against the real served app and writes
+  byte-stable 2× stills (`public/landing/coda/` + PROVENANCE.md —
+  60,413/95,673 B, re-runnable on demand, `--port` fallback receipted).
+  The surface decision (receipted with source evidence): the live-demo
+  gallery is the DISHONEST home — every `LiveDemoApp` iframes a landing
+  route, Coda is not one; built-improved is the wrong shape — so a NEW band
+  `CodaSection` (aqua, `#coda`, after `LiveDemoSection`), the
+  landing-page-architect skill's product-tile home, with drift-pinned
+  authored data (`__tests__/coda.test.tsx` 5/5 — the pin CAUGHT the
+  accidental magenta hue mid-flight). **The THIRTEENTH scroll-budget
+  amendment** (15.5 → 16.5vh, 3,950 → 4,060w): compressed first
+  (16.4 → 16.3vh; only visible copy — the FAQ-collapsed/dex-hidden lessons
+  applied), the canonical e2e twin measured 16.3vh / 4,033w, both gate
+  files moved together, the OG shots regenerated (canvas assert held), and
+  the amendment-ledger entry landed OPERATOR-SIDE — **the round's second
+  instruction-guard event** (the session's AGENTS.md edit refused; T4's
+  evidence set grows). Operator gates: e2e battery **15 passed / 5 skipped
+  (the CODA_E2E marker, by design) / 0 failed**, typecheck rc=0, lint
+  0/142, capture green-on-demand (port-fallback proved), check:changelog
+  green after the CHANGELOG Unreleased entry + rail. Deviations: the
+  receipt status block went unmaintained past part 2 (the operator-close
+  block finished it — the round's most consistent deviation class, T5
+  carries the protocol lesson); 12 chunks vs the ~5-6 pre-split —
+  landing-class tickets with budget amendments run ~2× the estimate;
+  one operator unblock (the amendment ruling) + one one-line hue revert
+  operator-side.
 - **2026-11-03 (T2 COMPLETE — the PWA benchmark, 6 chunks, session chain
   `01a1a009…`)**: the PT-5 plan's honest null is measured. The lane
   `benchmarks/coda-pwa/` (`run-pwa-bench.mjs` — 304 lines, zero model
