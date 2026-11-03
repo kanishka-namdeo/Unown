@@ -30,10 +30,10 @@ export interface ChangelogStop {
   groups: ChangelogGroup[];
 }
 
-export const CHANGELOG_TOTAL_ENTRIES = 518;
+export const CHANGELOG_TOTAL_ENTRIES = 519;
 
 export const CHANGELOG_TOTALS: Record<ChangelogBucket, number> = {
-  "Added": 236,
+  "Added": 237,
   "Changed": 32,
   "Deprecated": 0,
   "Removed": 3,
@@ -46,9 +46,9 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
   {
     "label": "Unreleased",
     "date": null,
-    "total": 12,
+    "total": 13,
     "counts": {
-      "Added": 5,
+      "Added": 6,
       "Changed": 0,
       "Deprecated": 0,
       "Removed": 0,
@@ -60,6 +60,10 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
       {
         "bucket": "Added",
         "items": [
+          {
+            "title": "C5 — root wiring + CI + DOX/docs for the Coda app (plan steps 7+8 atomically; the round's final CODE ticket)",
+            "behavior": false
+          },
           {
             "title": "The exit hint lane — every TUI exit now prints a resume command you can actually paste",
             "behavior": false

@@ -2,7 +2,7 @@
 
 - **Round**: coda-app (the DRIVE track: ship the app THROUGH A2)
 - **Started**: 2026-11-02 (round opened; implementation tickets begin in the next operator session)
-- **Status**: in flight — C1 (domain core), C2 (UI + IDB), C3 (PWA layer), C4 (e2e + a11y lane) landed; C5 (docs/DOX/root wiring + CI) is next
+- **Status**: in flight — C1 (domain core), C2 (UI + IDB), C3 (PWA layer), C4 (e2e + a11y lane), C5 (root wiring + CI + DOX/docs) landed; C6 (round closeout) is next
 - **Mission**: ship **Coda** — a local-first markdown notes + task-board PWA (offline-first, installable, cross-platform) — at `apps/coda/` in this monorepo, **entirely through A2 sessions** (the operator writes no app code; every ticket goes through `unown -p`/`--plan` headless sessions and fails or succeeds on its receipts).
 - **Operator decisions (2026-11-02)**: app = Coda PWA; repo path = `apps/coda/` in the Unown monorepo; push lane = direct to `main` after gates; production quality, edge cases, full cross-platform support, docs/landing/README/blog/DOX updates per milestone; never delete media assets.
 
@@ -54,7 +54,7 @@ reasons.
    storage persistence; cross-platform verification matrix per the plan.
 4. **C4 — e2e + a11y** ✅ (2026-11-02, see checkpoint log): the isolated Playwright lane (serve.mjs +
    playwright.coda.config.ts + offline/a11y specs), axe-clean both schemes, three app a11y fixes folded in.
-5. **C5 — docs/DOX/landing + root wiring**: the plan's step 7+8 atomically — `apps/coda/AGENTS.md`, root AGENTS.md child
+5. **C5 — docs/DOX/landing + root wiring** ✅ (2026-11-03, see checkpoint log): the plan's step 7+8 atomically — `apps/coda/AGENTS.md`, root AGENTS.md child
    index entry + repo layout, docs page, README section, CHANGELOG entry + rail, testing-strategy gate entry,
    tsconfig include + eslint scope + package.json coda scripts + bunfig preload scope + the CI `coda` job
    (lockfile-unchanged assert + `bun test apps/coda` + the isolated playwright lane) — landing surface if the
@@ -69,6 +69,41 @@ EFFORT_BUDGET / chunk protocol notes) — the shape that worked in the
 fresh-clone round's M2-A ticket.
 
 ## Checkpoint log
+
+- **2026-11-03 03:03 UTC (C5 COMPLETE — the root wiring + CI + DOX/docs, plan steps 7+8 atomically)**: delivered through A2 in
+  thirteen budgeted chunks (fresh session `01a19f43-b80d-7268-a3e2-a70b9d8a90ca`, dispatched under the stale-claim
+  takeover above) plus four operator landings. The wiring: root `tsconfig.json` covers `apps/coda/**/*.ts` (root
+  typecheck green with the app in scope); `eslint.config.mjs` gains the **domain-purity scope** — `no-restricted-globals`
+  (DOM + Node) on `apps/coda/src/domain/*.ts` with a `*.test.ts` twin (DOM-as-mock allowed, Node forbidden) — the
+  global-reference half of the design doc's P1 pair (`boundary.test.ts` is the import half); `bunfig.toml` UNTOUCHED by
+  a receipted decision (bun's `[test] preload` cannot be path-scoped; Lane A stays preload-free by cwd — no
+  `apps/coda/bunfig.toml` exists, verified — and CI pairs Lane B with the boundary test by construction); root
+  `package.json` gains `coda:dev`/`coda:test`/`coda:e2e`; `.github/workflows/ci.yml` gains the **`coda` job** (74 added
+  lines, ZERO deletions — existing jobs byte-untouched): frozen-lockfile install, a git-HEAD-based lockfile-drift
+  assert (`sha256sum bun.lock` vs `git show HEAD:bun.lock` — self-maintaining, no hardcoded hash to bump), Lane A +
+  Lane B unit runs, chromium, the isolated self-skip-guarded Playwright lane, the `playwright-report-coda` artifact.
+  The docs: `docs/coda.md` (user/developer page), `docs/AGENTS.md` + README (section + docs-table row), CHANGELOG
+  `### Added` entry + the GENERATED landing rail (`landing_changelog.mjs` regeneration — hand-edits would red
+  `check:changelog`), testing-strategy §6 **gate 23**, and the two AGENTS.md surfaces the operator landed VERBATIM
+  from the session's verified drafts (`.unown/receipts/c5-agents-drafts.md`) — `apps/coda/AGENTS.md` (the child DOX:
+  zero-dep law, lane semantics, the domain-purity pair, the type-keyword law, node --check law, the CODA_E2E guards,
+  the SW scope law, the IDB data story, Chromium-desktop-only scope) + root `AGENTS.md` (repo-layout bullet + Child
+  DOX Index entry). **The sharp finding of the ticket**: the **instruction-set write gate is FINAL** — the session's
+  writes to `AGENTS.md` at any depth are hard-denied with no permission-mode unlock (docs/permissions.md's
+  hard-coded layer), so instruction-surface DOX flows draft-and-operator-land — receipted as the D-operator class.
+  Four deviations receipted: the chunk-2 cap-cut (a stray `}]` + dead config objects, repaired by chunk 3's rewrite —
+  compile-before-stop is LOAD-BEARING), the AGENTS.md draft-and-land protocol, the engine's mid-session dream churn
+  on `.unown/memory/project.md` (benign, claims gate 62/62 held, rides this commit receipted), and the 7-lines
+  correction (the drafts said "5 lines" for a 7-line package.json; fixed in the landed DOX + docs/coda.md).
+  Carried forward to C6: `apps/coda/src/domain/README.md`'s lane-A/lane-B labels are SWAPPED vs the round's law
+  (frozen app file this ticket; fix in an app-code follow-up). **Operator gates, all green**: Lane A 51/51, Lane B
+  51/51, app tsc, root typecheck, lint 142-warning baseline unchanged, the purity rule FIRES on a `document` probe,
+  `check:docs`/`changelog` (54 stops, 519 entries)/`blog`/`benchmarks`/`claims` (62/62), YAML parse (18 jobs),
+  `node --check` + instruction-chars (61 files, 0 findings — the operator-landed AGENTS.md included), the coda
+  playwright lane 5/5 (8.7s), `playwright.config.ts` byte-untouched, `bun.lock` byte-identical (`b844886a…`).
+  Receipt: `.unown/receipts/c5-root-wiring.md`, mirrored operator-side per protocol law 6. **C5 closes the round's
+  code tickets; C6 (this log's graduation, SESSION.md, the V3-contract retrospective, the capability-utilization
+  report) is all that remains.**
 
 - **2026-11-03 02:33 UTC (C5 CLAIM TRANSFER — the stale-claim takeover, ledger-arbiter rule exercised)**: the C5
   claimant (the `d34691be` author, per the stand-down marker below) has been silent for **6.5 hours** at the

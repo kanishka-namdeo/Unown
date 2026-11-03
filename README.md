@@ -162,6 +162,7 @@ Full usage docs live in [`docs/`](docs/):
 | [troubleshooting](docs/troubleshooting.md) | symptom → cause → fix (including `unown doctor` semantics) |
 | [TUI capture workflow](docs/tui-capture-workflow.md) | how the landing page's terminal screenshots/video are captured from real sessions — the harness contract, geometry rules, audit gates |
 | [blog](docs/blog.md) | the Unown blog at `/blog` — writing posts in `content/blog/`, the frontmatter reference, the media checklist per post type, the generator + RSS pipeline |
+| [Coda](docs/coda.md) | the repo's first self-contained user app (`apps/coda/`): the local-first markdown notes + task-board PWA — run it (`coda:dev`), test it (both lanes + the isolated e2e lane), the PWA/offline story, the zero-dep vendoring law, and the CI `coda` gate |
 | [landing research](docs/landing-research.md) | the landing page's design rationale and claim-sourcing rules — why the page looks the way it does, and what keeps every number on it defensible |
 | [landing effects research](docs/landing-effects-research.md) | the presence round's effect research — what the best dev-tool pages ship, what the UX research says works, and what this page rejected on contract grounds |
 | [presence round session](docs/presence-round-session.md) | the presence round's resumable checkpoint log — setup, research, implementation, verification, release |
@@ -423,6 +424,18 @@ The dashboard is a live window onto the engine — every number below is real da
 The twelve screens: **Overview** (KPI band, benchmark task table, live activity rail) · **Memory** (the four tiers + project tiers, budget meter, version history, rollback) · **Learning Lab** (harness cycles, improvements, runs and transcripts) · **Dreams** (AutoDream sessions and pending notes) · **Notes** (the session-note inbox) · **Skills** (the self-minted library) · **Hooks** (the guardrail decision log) · **Router** (background jobs + sandboxes) · **Recovery** (the observability round's triage: failed jobs, failed runs and recent denials, worst-first with drill-ins) · **Gateway** (bridge health and upstream) · **Routines** (scheduled recurring runs) · **Web Cache** (the persistent web results store). Provider management is one screen away too — `/providers` in a live session, `unown providers` on the CLI ([docs/providers.md](docs/providers.md)).
 
 Stills are PTY captures of real `unown dashboard` sessions (pane-audited; the capture lane is [scripts/tui-capture/](scripts/tui-capture/)).
+
+## Coda — the local-first notes & tasks PWA
+
+The repo's first self-contained user app: **Coda**, a local-first markdown notes + task-board PWA at `apps/coda/` — vanilla TypeScript, offline-first, installable, **zero package dependencies** (its two pure libraries are vendored browser-ESM copies, wired by an import map, so root `bun install` never grows on its behalf; the CI `coda` job asserts the lockfile stays byte-identical). All data stays in the browser (one IndexedDB, one store, the whole serialized document); the round's honest scope is Chromium-desktop-only. Three commands:
+
+```sh
+bun run coda:dev      # transpiling static server → http://127.0.0.1:4012 (CODA_PORT to override)
+bun run coda:test     # 51 domain tests, Lane A (DOM-free enforcement lane)
+bun run coda:e2e      # 5 isolated Playwright specs: offline persistence + axe a11y (both color schemes)
+```
+
+The full story — the PWA/offline layer, the two test lanes (A = DOM-free enforcement, B = masked-by-design, paired by the boundary test), the vendoring law, and the CI gate — is in [docs/coda.md](docs/coda.md); the app's own contracts live in `apps/coda/AGENTS.md`, and the round's receipted record in [docs/coda-app-round-session.md](docs/coda-app-round-session.md).
 
 ## Configuration
 

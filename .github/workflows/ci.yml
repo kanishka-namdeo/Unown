@@ -820,6 +820,80 @@ jobs:
           if-no-files-found: ignore
           retention-days: 7
 
+  coda:
+    name: Coda app (unit + e2e + a11y)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
+        with:
+          bun-version: "1.4.3"
+      - name: Install dependencies (frozen lockfile)
+        # Coda is the repo's zero-dependency app (apps/coda/package.json declares
+        # NO dependencies/devDependencies). `--frozen-lockfile` + the assert
+        # below make that a contract, not a hope: any dep a future Coda change
+        # adds must show up in the root lockfile, and this step is where it
+        # would red rather than silently growing the install surface.
+        run: bun install --frozen-lockfile
+      - name: Lockfile unchanged assert (Coda's zero-dep invariant)
+        # The design doc's P0 dep-resolution guard. `--frozen-lockfile` makes
+        # drift impossible in practice, but the assert is the documented
+        # contract: capture sha256 before install, compare after, fail loudly
+        # with the expected hash if it moved. The expected hash is read from
+        # the git checkout (what this commit shipped) — not a hardcoded
+        # constant that would need a manual bump every lockfile change.
+        shell: bash
+        run: |
+          set -euo pipefail
+          expected=$(git show HEAD:bun.lock | sha256sum | cut -d' ' -f1)
+          actual=$(sha256sum bun.lock | cut -d' ' -f1)
+          echo "bun.lock: expected=$expected actual=$actual"
+          if [ "$expected" != "$actual" ]; then
+            echo "::error::bun.lock drifted after a --frozen-lockfile install: Coda added a dependency? (apps/coda must stay zero-dep; record a new root dep in the lockfile instead)"
+            exit 1
+          fi
+          echo "lockfile byte-identical: Coda's zero-dep invariant holds"
+      - name: Coda unit tests — Lane A (app-dir, DOM-free enforcement)
+        # `cd apps/coda && bun test`: no bunfig preload applies (bun's config
+        # resolution is cwd-bounded — no apps/coda/bunfig.toml exists), so the
+        # happy-dom DOM globals are ABSENT and the domain-purity boundary
+        # (src/domain/boundary.test.ts + the eslint no-restricted-globals scope)
+        # is enforced against a genuinely DOM-free runtime. 51 tests.
+        run: cd apps/coda && bun test
+      - name: Coda unit tests — Lane B (root form, preload active, masked by design)
+        # `bun test apps/coda` from the repo root: the root bunfig.toml's
+        # happy-dom preload IS active here, so DOM-globally-dependent domain
+        # code would be MASKED — which is why Lane A is the enforcement lane
+        # and this lane is the compatibility lane (the form a developer will
+        # actually type). boundary.test.ts still runs in this lane and still
+        # enforces the import boundary, so the purity contract holds even
+        # under the masked runtime. 51 tests.
+        run: bun test apps/coda
+      - name: Chromium for Playwright
+        run: bunx playwright install chromium --with-deps
+      - name: "Coda e2e + a11y lane (isolated, self-skip-guarded)"
+        # testing-strategy.md §6 coda gate: the isolated Coda lane. The config
+        # (playwright.coda.config.ts) boots Coda's own transpiling dev server
+        # (bun apps/coda/scripts/serve.mjs) as its webServer — in CI the
+        # `reuseExistingServer` flag is !process.env.CI, so the server always
+        # starts fresh; no port collision with the landing lane. The 5 specs
+        # are self-skip-guarded (CODA_E2E marker armed in the coda config, NOT
+        # in the root config) so the root lane's `bunx playwright test` still
+        # collects them but skips them at run-time — the landing lane stays
+        # green and untouched by construction.
+        run: bunx playwright test -c playwright.coda.config.ts
+      - name: Upload Coda report + traces
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: playwright-report-coda
+          path: |
+            download/playwright-report-coda
+            download/test-results-coda
+          if-no-files-found: ignore
+          retention-days: 7
+
 # NOT in CI yet, on purpose:
 # - Lighthouse (testing-strategy.md §12 criterion 6's second half) — needs a
 #   LHCI collect run against the same standalone + mock-engine pair the e2e

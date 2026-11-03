@@ -36,6 +36,7 @@ Repo layout:
 - `blueprint/` — frozen Unown v1 (Claude Code harness) reference material
 - `.unown/` — per-project agent surface (memory, skills, receipts, repomap cache)
 - `e2e/` — Playwright specs (landing a11y, scroll budget, dex video, SEO)
+- `apps/` — self-contained user products; `apps/coda/` is Coda, a local-first markdown notes + task-board PWA (vanilla TS, zero deps, offline-first, installable; DOX at `apps/coda/AGENTS.md`)
 
 ## Root Contracts
 
@@ -162,5 +163,6 @@ When the user requests a durable behavior change, record it here or in the relev
 - `scripts/AGENTS.md` — lifecycle scripts, CI gate scripts, landing generators, the TUI capture lane, brand assets
 - `benchmarks/AGENTS.md` — the benchmark suites, methodology, receipts and the landing-page feed rules
 - `blueprint/AGENTS.md` — Unown v1 (Claude Code harness) frozen reference
+- `apps/coda/AGENTS.md` — Coda, the local-first markdown notes + task-board PWA: the zero-dep law (vendored marked/fuse, the CI lockfile-drift assert), the Lane A/Lane B test semantics (DOM-free enforcement vs masked-by-design), the domain-purity pair (boundary.test.ts + the eslint no-restricted-globals scope), the type-keyword import law, and the CODA_E2E self-skip guards
 - `A2_GROUND_TRUTH.md` — the A1 operator's dated recon snapshot of the live capability surface (anti-rot trust order: live CLI output > repo docs on main > this snapshot > the operator directive); refreshed before tickets and at every round teardown
 - `SDLC_CAPABILITY_MATRIX.md` — the A1 operator's lane-by-lane SDLC capability inventory (planning → learning; activation, trust, limitations, evidence, verification per capability) with the DRIVE-track coverage matrix tracking receipted evidence per lifecycle lane; refreshes alongside `A2_GROUND_TRUTH.md`
