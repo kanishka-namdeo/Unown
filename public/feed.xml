@@ -7,6 +7,17 @@
     <description>How each feature and release works, what it does, and the receipts behind it — the longhand record of the self-improving terminal coding agent Unown.</description>
     <language>en</language>
     <item>
+      <title>Coda: the round where unown shipped its first user product</title>
+      <link>https://unown-nine.vercel.app/blog/2026-11-03-the-coda-round</link>
+      <guid isPermaLink="true">https://unown-nine.vercel.app/blog/2026-11-03-the-coda-round</guid>
+      <pubDate>Tue, 03 Nov 2026 00:00:00 GMT</pubDate>
+      <description>The Coda round shipped the repo&apos;s first installable app - a local-first markdown notes and task-board PWA built entirely by agent tickets.</description>
+      <category>pwa</category>
+      <category>local-first</category>
+      <category>agent-driven</category>
+      <category>testing</category>
+    </item>
+    <item>
       <title>The browser autonomy round: dogfooding the browser until it taught us back</title>
       <link>https://unown-nine.vercel.app/blog/2026-11-01-the-browser-autonomy-round</link>
       <guid isPermaLink="true">https://unown-nine.vercel.app/blog/2026-11-01-the-browser-autonomy-round</guid>
