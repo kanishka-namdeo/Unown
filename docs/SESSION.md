@@ -8,7 +8,28 @@ archaeology. When a round completes, its log graduates to a round-specific
 
 ---
 
-## ACTIVE ROUND — none open (2026-11-03, late); the queue below stands
+## ACTIVE ROUND — spend-and-memory-health (2026-11-04, OPEN — `docs/spend-and-memory-health-round-session.md`)
+
+The settings-evolution lineage's S2-ledger head, taken per the queue's priority
+order: **S2-11** (the automation spend meter + ceilings under governance) and
+**S2-4** (the memory health card) — each flipping one of the settings-ux
+suite's two pinned BM-3 search misses (`spend`, `memory health`; 10/12 → the
+12/12 target). The round opened 2026-11-04 by the SIXTH fresh lineage (full
+sandbox recycle post-hints-ranking; nothing on `main` at risk — that round
+closed green at `ee5ec5c9`), with the research receipt (OpenAI's
+alerts-vs-hard-limits layering; the AWS Well-Architected Agentic AI Lens's
+multi-layer budgets + graduated throttling over binary shutdown; the
+runaway-agent-loop failure class; Claude's windowed budgets with visible
+resets; mem0 #4896's exact-hash dedup blind spot + accumulated-state memory
+bugs) and the pinned design live in the round log before any dispatch. Ticket
+queue: SM-1 (S2-11 via A2, budgeted chunks), SM-2 (S2-4 via A2), SM-3 (the
+closeout: BM-3 re-run receipt, CHANGELOG `## [Unreleased]` append + rail,
+README row, blog post 45th, ground-truth drift entry, graduation +
+capability report). The default-ceiling ruling: both ceilings ship default
+OFF (per-routine `spend_cap` NULL, global `PI_AUTOMATION_MAX_TOKENS_DAY=0`)
+— the governor's principled asymmetry: self-initiated engine learning spend
+is bounded by default, user-created routine spend is visible by default and
+bounded on request.
 
 The hints-ranking round (2026-11-03) is COMPLETE and graduated to its own
 log: `docs/hints-ranking-round-session.md` — the browser-autonomy
