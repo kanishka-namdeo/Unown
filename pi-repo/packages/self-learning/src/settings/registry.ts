@@ -1066,7 +1066,7 @@ const automationItems: SettingsItem[] = [
                 name: "Run history & spend",
                 risk: "low",
                 summary: "Recent runs with turns, tokens and outcome — the cost view",
-                help: "Automation runs record tokens_in/tokens_out per run. Note: this spend is NOT inside the engine governor's ledger (known gap — the governor covers engine learning jobs only), so this view is where unattended cost is actually visible.",
+                help: "Automation runs record tokens_in/tokens_out per run. The governor's ledger bounds engine learning jobs only — automation spend is bounded by the spend meter instead (see the 'Automation spend meter' card), which the dispatcher enforces with recorded spend_ceiling skips when a ceiling is at/over.",
                 actionLabel: "reads recent runs with their token spend",
         }),
         readonly({
@@ -1096,6 +1096,18 @@ const automationItems: SettingsItem[] = [
                 summary: "routine.finished events chain routines, capped at 3 hops",
                 help: "Recursive workflows are bounded by MAX_CHAIN_DEPTH=3; the internal event namespace is reserved so webhook senders cannot forge engine events.",
                 get: () => "3 hops (hardcoded, visible in history rows)",
+        }),
+        action({
+                id: "automation.spend",
+                section: "automation",
+                name: "Automation spend meter",
+                risk: "low",
+                summary:
+                        "Tokens per routine + total, rolling 24h + 7d windows, with the spend ceilings in effect",
+                help:
+                        "The governor's ledger bounds engine learning jobs only — automation-run spend is bounded here. Each routine carries a NULLable spend_cap (tokens per rolling 24h) and the env knob PI_AUTOMATION_MAX_TOKENS_DAY caps all routines combined. Both ship OFF by default (visible by default, bounded on request — the governor's self-initiated-vs-user-initiated asymmetry). When at/over, the dispatcher records a spend_ceiling skip instead of spawning (never a lifecycle change); the routine resumes on its own schedule as the window drains. Manual `routines run` BYPASSES the gate but its tokens still count toward the windows; pausing the routine remains the hard stop. Ceilings are set per-routine with `unown routines edit <id> --spend-cap <n>|off` (create: same flag).",
+                related: ["unown routines spend"],
+                actionLabel: "reads the automation spend meter",
         }),
 ];
 

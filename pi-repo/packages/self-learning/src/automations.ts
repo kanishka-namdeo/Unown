@@ -54,6 +54,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { type ActiveHoursWindow, isWithinActiveHours, parseActiveHours } from "./active-hours.ts";
 import { emit } from "./bus.ts";
+import { spendGate } from "./automation-spend.ts";
 import { type ParsedCron, parseCron } from "./cron.ts";
 import { reloadEnvIfChanged } from "./engine-supervisor.ts";
 import { evalHookFilter, parseHookFilter } from "./hook-filter.ts";
@@ -278,6 +279,8 @@ export interface AutomationRow {
         mode: "read-only" | "standard";
         model: string | null;
         max_runs: number | null;
+        /** S2-11: per-routine spend ceiling (tokens per rolling 24h; NULL = off). */
+        spend_cap: number | null;
         run_count: number;
         scheduled_run_count: number;
         lifecycle: "active" | "paused" | "completed" | "failed";
@@ -348,6 +351,7 @@ CREATE TABLE IF NOT EXISTS automations (
   retry_next_at INTEGER,                 -- M6: armed retry chain (NULL = none)
   retry_attempt INTEGER,                 -- M6: the pending attempt's number (2+)
   retry_of_run TEXT,                     -- M6: the original failed run this chain recovers
+  spend_cap INTEGER,                     -- S2-11: per-routine spend ceiling (tokens per rolling 24h, NULL = off)
   workspace TEXT NOT NULL,
   mode TEXT NOT NULL DEFAULT 'read-only',
   model TEXT,
@@ -440,6 +444,12 @@ const ROUTINES_V5_COLUMNS: Array<[table: string, name: string, ddl: string]> = [
         ["automation_runs", "retry_of", "TEXT"],
 ];
 
+/** S2-11 (the spend-and-memory-health round): the per-routine spend ceiling
+ *  column — same pragma-guarded ALTER pattern, per-table guard. */
+const SPEND_CAP_COLUMNS: Array<[table: string, name: string, ddl: string]> = [
+        ["automations", "spend_cap", "INTEGER"],
+];
+
 /** Install the automations schema (idempotent; migrates pre-v2 tables).
  *  Called at engine boot. NOTE: split per-statement — Store.run uses
  *  prepare(), which accepts exactly one statement. */
@@ -465,6 +475,11 @@ export function ensureAutomationsSchema(): void {
         }
         // M6: routines-v5 (failed-run retries) — same per-table guards.
         for (const [table, name, ddl] of ROUTINES_V5_COLUMNS) {
+                const cols = new Set(store.query<{ name: string }>(`PRAGMA table_info(${table})`).map((c) => c.name));
+                if (!cols.has(name)) store.run(`ALTER TABLE ${table} ADD COLUMN ${name} ${ddl}`, []);
+        }
+        // S2-11: the spend ceiling column — same per-table pragma guard.
+        for (const [table, name, ddl] of SPEND_CAP_COLUMNS) {
                 const cols = new Set(store.query<{ name: string }>(`PRAGMA table_info(${table})`).map((c) => c.name));
                 if (!cols.has(name)) store.run(`ALTER TABLE ${table} ADD COLUMN ${name} ${ddl}`, []);
         }
@@ -581,6 +596,11 @@ export type CreateAutomationInput = {
         /** Backoff before the first retry, 30..3600 seconds (default 300);
          *  later attempts double it, capped at 3600. */
         retryBackoffSecs?: number | null;
+        /** S2-11: the per-routine spend ceiling — max tokens per rolling
+         *  24h (positive integer; null/0 = no ceiling, the default).
+         *  Both ceilings ship default OFF (the operator's pinned ruling);
+         *  global ceiling: PI_AUTOMATION_MAX_TOKENS_DAY (env, 0 = unlimited). */
+        spendCap?: number | null;
 };
 
 export type CreateResult = { ok: true; automation: AutomationRow } | { ok: false; error: string; status?: number };
@@ -659,6 +679,13 @@ export function createAutomation(input: CreateAutomationInput, now: Date = new D
                         status: 400,
                 };
         }
+        // S2-11: the per-routine spend ceiling (positive integer tokens per
+        // rolling 24h; 0/null = no ceiling, the default — 0 normalizes to
+        // null here so "off"/0/null are one semantic, per the ticket).
+        const spendCap = input.spendCap == null || input.spendCap === 0 ? null : input.spendCap;
+        if (spendCap !== null && (!Number.isInteger(spendCap) || spendCap < 1)) {
+                return { ok: false, error: "spend-cap must be a positive integer (tokens per rolling 24h) or off/null", status: 400 };
+        }
         const idleOnly = input.idleOnly === true ? 1 : 0;
         if (eventKind === null && eventFilter !== null) {
                 return { ok: false, error: "a filter needs an event routine — pass the event name too", status: 400 };
@@ -735,8 +762,8 @@ export function createAutomation(input: CreateAutomationInput, now: Date = new D
         const ts = now.getTime();
         const timed = plan !== null && plan.ok ? plan : null; // the event branch leaves this null
         store.run(
-                `INSERT INTO automations (id, title, prompt, cron_expr, delay_ms, schedule_kind, interval_n, interval_unit, interval_at, timezone, until_ms, misfire, event_kind, event_filter, active_hours, idle_only, deliver_url, jitter_secs, retry_max, retry_backoff_secs, workspace, mode, model, max_runs, lifecycle, next_run_at, dispatch_status, created_at, updated_at)
-                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'active', ?, 'idle', ?, ?)`,
+                `INSERT INTO automations (id, title, prompt, cron_expr, delay_ms, schedule_kind, interval_n, interval_unit, interval_at, timezone, until_ms, misfire, event_kind, event_filter, active_hours, idle_only, deliver_url, jitter_secs, retry_max, retry_backoff_secs, spend_cap, workspace, mode, model, max_runs, lifecycle, next_run_at, dispatch_status, created_at, updated_at)
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'idle', ?, ?)`,
                 [
                         id,
                         title,
@@ -758,10 +785,12 @@ export function createAutomation(input: CreateAutomationInput, now: Date = new D
                         jitterSecs,
                         retryMax === 0 ? null : retryMax, // 0 and NULL are both "off" — store the normalized shape
                         retryBackoffSecs,
+                        spendCap, // 0 normalized above to null ("off")
                         input.workspace,
                         mode,
                         input.model ?? null,
                         input.maxRuns ?? null,
+                        "active", // lifecycle — a new routine always starts active
                         timed ? timed.nextRunAt : null, // event rows: NULL forever
                         ts,
                         ts,
@@ -807,6 +836,9 @@ export type UpdatePatch = Partial<
          *  also clears and DISARMS any pending retry chain). */
         retryMax?: number | null;
         retryBackoffSecs?: number | null;
+        /** S2-11: the per-routine spend ceiling (tokens per rolling 24h;
+         *  0/null clears — "off". A positive integer arms it). */
+        spend_cap?: number | null;
 };
 
 export function updateAutomation(id: string, patch: UpdatePatch, now: Date = new Date()): CreateResult {
@@ -837,6 +869,13 @@ export function updateAutomation(id: string, patch: UpdatePatch, now: Date = new
         if (patch.max_runs !== undefined) {
                 sets.push("max_runs = ?");
                 params.push(patch.max_runs ?? null);
+        }
+        if (patch.spend_cap !== undefined) {
+                const cap = patch.spend_cap === 0 ? null : patch.spend_cap ?? null;
+                if (cap !== null && (!Number.isInteger(cap) || cap < 1))
+                        return { ok: false, error: "spend-cap must be a positive integer (tokens per rolling 24h) or off/null", status: 400 };
+                sets.push("spend_cap = ?");
+                params.push(cap);
         }
         if (patch.timezone !== undefined) {
                 const tz = patch.timezone?.trim() || null;
@@ -1485,6 +1524,19 @@ export class AutomationsScheduler {
                                         continue; // held until the human is done (misfire bounds it)
                                 }
                         }
+                        // ---- S2-11: the spend ceiling gate (both ceilings ship
+                        // default OFF; a set cap is the operator's explicit bound).
+                        // Graduated, never a lifecycle change: at/over the cap the
+                        // run is RECORDED (a skipped row with the cap + drain time)
+                        // and the pending slot is left in place — the window drains
+                        // and the routine resumes on its own schedule. Manual runs
+                        // bypass the gate; their tokens still count toward windows.
+                        const gate = spendGate(due.id, ts);
+                        if (!gate.allow) {
+                                recordSpendCeilingSkip(due, ts, gate.reason!);
+                                held.add(due.id); // exclude from THIS tick's loop — the slot is untouched and the NEXT tick re-evaluates (without this, the while-loop re-picks the same due row forever: the at-cap skip is an infinite loop, caught by the gate test)
+                                continue;
+                        }
                         const claimed = claim(due.id, ts);
                         if (!claimed) continue; // raced with another claim — next tick
                         if (misfired && !catchUp) {
@@ -1850,6 +1902,15 @@ export class AutomationsScheduler {
                                 record("max-runs"); // budget exhausted (resume race) — nothing to do
                                 continue;
                         }
+                        // S2-11: the spend ceiling gate (event lane). Same graduated
+                        // semantics: recorded skip, never a lifecycle change.
+                        const gate = spendGate(row.id, nowMs);
+                        if (!gate.allow) {
+                                recordSpendCeilingSkip(row, nowMs, gate.reason!, "event");
+                                result.dropped++;
+                                record("spend-ceiling");
+                                continue;
+                        }
                         if (!this.eventRateAllowed(row.id, nowMs)) {
                                 // Flood guard: RECORDED, not spawned — the storm stays
                                 // visible in history exactly like a misfire skip.
@@ -1930,6 +1991,20 @@ function recordEventSkip(automation: AutomationRow, ts: number, reason: string):
         emit("automation:skipped", { id: automation.id, reason });
 }
 
+/** A skipped SCHEDULED slot whose spend ceiling was reached (S2-11): a
+ * skipped run row (never spawned) with the cap + drain time in the reason —
+ * visible in history exactly like a misfire skip. The routine's slot is
+ * untouched by the caller: when the rolling 24h window drains below the cap
+ * the routine resumes on its own schedule. `kind` picks the run row shape
+ * (scheduled slots vs event moments). */
+function recordSpendCeilingSkip(automation: AutomationRow, ts: number, reason: string, kind: "schedule" | "event" = "schedule"): void {
+        if (kind === "event") {
+                recordEventSkip(automation, ts, reason);
+                return;
+        }
+        recordSkip(automation, ts, reason);
+}
+
 /** A skipped RETRY (M6): a chain whose backoff elapsed past the catch-up
  *  horizon (engine down or paused long) — recorded as a skipped attempt on
  *  the routine, then the chain clears. */
@@ -1995,7 +2070,8 @@ export type EventTriggerOutcome =
         | "dropped-busy"
         | "dropped-chain-depth"
         | "filter-rejected"
-        | "max-runs";
+        | "max-runs"
+        | "spend-ceiling";
 
 export interface EventDispatchResult {
         event: string;

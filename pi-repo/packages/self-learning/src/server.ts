@@ -100,6 +100,7 @@ import {
 import { recoveryAnalytics } from "./plm/recovery-engine.ts";
 import { jobTimeoutMs, listJobs, router, setJobEnabled } from "./router.ts";
 import { describeRoutineSchedule } from "./routine-schedule.ts";
+import { automationSpendReport } from "./automation-spend.ts";
 import { getLiveRun, listLiveRuns } from "./run-progress.ts";
 import { ensureAgentDir, getRun, listRuns, MODEL_ID, PROVIDER, runAgent } from "./runner.ts";
 import { listSandboxes } from "./sandbox.ts";
@@ -302,9 +303,36 @@ export async function handleApi(req: ApiRequest): Promise<Response> {
                                 }));
                                 return json({ automations: rows });
                         }
+                }
+
+                // ------------------------------------------------------------------
+                // S2-11: the automation spend meter + ceilings. Read-only, the
+                // same bearer gate as the rest of the /api/automations lane.
+                // Per-routine rows (id, title, spend_cap, 24h + 7d windows:
+                // tokens/runs/turns, throttledNow + drainMs) + the global
+                // totals + the global ceiling in effect.
+                // ------------------------------------------------------------------
+                if (path === "/api/automations/spend" && method === "GET") {
+                        const report = automationSpendReport();
+                        const now = report.now;
+                        return json({
+                                now,
+                                routines: report.routines.map((r) => ({
+                                        id: r.automationId,
+                                        title: r.title,
+                                        spend_cap: r.cap,
+                                        day: r.day,
+                                        week: r.week,
+                                        effective_cap: r.effectiveCap,
+                                        throttled: r.throttledNow,
+                                        drain_ms: r.drainAt,
+                                })),
+                                total: report.total,
+                        });
+                }
+
+                if (path === "/api/automations") {
                         if (method === "POST") {
-                                // `until` accepts epoch ms or an ISO string (the
-                                // CLI/tools normalize; both are unambiguous).
                                 const untilRaw = body?.until ?? body?.untilMs;
                                 const untilMs =
                                         untilRaw === undefined || untilRaw === null

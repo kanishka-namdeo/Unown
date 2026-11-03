@@ -56,13 +56,13 @@ Usage:
                         [--timezone <IANA>] [--until <date>] [--misfire skip|catch-up]
                         [--mode read-only|standard] [--model <id>] [--max-runs <n>] [--workspace <path>]
                         [--active-hours "09:00-18:00"] [--idle-only] [--deliver <url>] [--jitter <sec>]
-                        [--retry-max <n>] [--retry-backoff <sec>]
+                        [--retry-max <n>] [--retry-backoff <sec>] [--spend-cap <n>|off]
   unown routines edit <id> [--title <t>] [--prompt <p>] [--cron <e> | --every <s> | --after <s>]
                        [--timezone <tz>] [--until <date> | --clear-until] [--misfire skip|catch-up|default]
                        [--mode <m>] [--model <id>] [--max-runs <n>]
                        [--active-hours <win> | --clear-active-hours] [--idle-only | --no-idle-only]
                        [--deliver <url> | --clear-deliver] [--jitter <sec> | --clear-jitter]
-                       [--retry-max <n> | --clear-retry] [--retry-backoff <sec>]
+                       [--retry-max <n> | --clear-retry] [--retry-backoff <sec>] [--spend-cap <n>|off]
   unown routines pause <id> | resume <id>
   unown routines run <id>          run now (manual; never consumes maxRuns)
   unown routines skip <id>         skip the next occurrence (recorded in history)
@@ -70,6 +70,7 @@ Usage:
   unown routines history <id> [--limit <n>] [--json]
   unown routines trigger <event> [--payload '<json>']   dispatch an event locally (same path as a webhook)
   unown routines hook-url          print the inbound webhook URL (its secret IS the auth)
+  unown routines spend            the spend meter: per-routine + total, 24h + 7d, ceilings + throttle state
   unown routines delete <id>
 
 Schedule kinds:
@@ -118,6 +119,11 @@ Reliability (M6, works for every kind — events included):
                             routine.* namespace cannot arrive from outside
 Default mode is read-only: the unattended run reports on the repo without shell
 or write access. "standard" grants the full toolset — choose it deliberately.
+Spend ceilings (S2-11): --spend-cap <n> caps this routine's tokens per rolling
+24h (n tokens; "off"/0 = no ceiling, the default). The global ceiling is the
+env knob PI_AUTOMATION_MAX_TOKENS_DAY (tokens across ALL routines per 24h;
+0/unset = unlimited). When at/over, the dispatcher records a spend_ceiling
+skip (not a lifecycle change) and the routine resumes as the window drains.
 Docs: docs/routines.md.`;
 
 async function api(method: string, path: string, body?: unknown): Promise<{ ok: boolean; status: number; data: any }> {
@@ -155,6 +161,20 @@ function flagNumber(argv: string[], name: string): number | undefined {
 
 function hasFlag(argv: string[], name: string): boolean {
 	return argv.includes(name);
+}
+
+/** S2-11: --spend-cap <n>|off — a positive integer (max tokens per rolling
+ *  24h) or "off"/"0"/empty -> null (no ceiling, the default). Invalid ->
+ *  an error message. The parse is pure, so tests pin it directly (no CLI
+ *  seam needed). */
+function parseSpendCap(raw: string | undefined): { value: number | null } | { error: string } {
+	if (raw === undefined) return { value: null };
+	if (raw === "off" || raw === "0" || raw === "") return { value: null };
+	const n = Number(raw);
+	if (!Number.isFinite(n) || n < 1 || !Number.isInteger(n)) {
+		return { error: `--spend-cap must be a positive integer (tokens per rolling 24h) or off (got "${raw}")` };
+	}
+	return { value: n };
 }
 
 /** `--until` accepts a date (YYYY-MM-DD[ HH:MM[:SS]]) or epoch ms. */
@@ -314,6 +334,13 @@ export async function runAutomationsCommand(argv: string[], opts: { cwd: string 
 		if (retryMax !== undefined) body.retryMax = retryMax;
 		const retryBackoff = flagNumber(argv, "--retry-backoff");
 		if (retryBackoff !== undefined) body.retryBackoffSecs = retryBackoff;
+		// S2-11: the per-routine spend ceiling (--spend-cap <n>|off).
+		const spendCapRaw = flagValue(argv, "--spend-cap");
+		if (spendCapRaw !== undefined) {
+			const cap = parseSpendCap(spendCapRaw);
+			if ("error" in cap) return { stderr: cap.error, exitCode: 1 };
+			body.spendCap = cap.value; // null = off (no ceiling)
+		}
 		const res = await api("POST", "/api/automations", body);
 		if (!res.ok) return { stderr: String(res.data?.error ?? "create failed"), exitCode: 1 };
 		const a = res.data.automation;
@@ -330,6 +357,7 @@ export async function runAutomationsCommand(argv: string[], opts: { cwd: string 
 				(a.idle_only ? `  idle-only: yields the slot while a human works\n` : "") +
 				(a.deliver_url ? `  deliver: ${a.deliver_url}\n` : "") +
 				(a.jitter_secs ? `  jitter: 0..${a.jitter_secs}s on computed slots\n` : "") +
+				(a.spend_cap ? `  spend cap: ${a.spend_cap} tokens / 24h\n` : "") +
 				(a.retry_max
 					? `  retries: up to ${a.retry_max} on failure (first backoff ${a.retry_backoff_secs ?? 300}s, doubling, cap 1h)\n`
 					: "") +
@@ -385,6 +413,14 @@ export async function runAutomationsCommand(argv: string[], opts: { cwd: string 
 		if (hasFlag(argv, "--clear-retry")) patch.retryMax = null;
 		const retryBackoff = flagNumber(argv, "--retry-backoff");
 		if (retryBackoff !== undefined) patch.retryBackoffSecs = retryBackoff;
+		// S2-11: set/clear the per-routine spend ceiling ("off"/0 clears; a
+		// positive integer sets the 24h token cap; absent = leave unchanged).
+		const spendCapRaw = flagValue(argv, "--spend-cap");
+		if (spendCapRaw !== undefined) {
+			const cap = parseSpendCap(spendCapRaw);
+			if ("error" in cap) return { stderr: cap.error, exitCode: 1 };
+			patch.spend_cap = cap.value; // null = off (clears)
+		}
 		if (Object.keys(patch).length === 0)
 			return { stderr: `edit needs at least one field flag\n\n${AUTOMATIONS_USAGE}`, exitCode: 1 };
 		const res = await api("PATCH", `/api/automations/${encodeURIComponent(id)}`, patch);
@@ -416,6 +452,46 @@ export async function runAutomationsCommand(argv: string[], opts: { cwd: string 
 		const res = await api("POST", `/api/automations/${encodeURIComponent(id)}/run`);
 		if (!res.ok) return { stderr: String(res.data?.error ?? "run failed"), exitCode: 1 };
 		return { stdout: `Run started for ${id} — check progress: unown routines history ${id}`, exitCode: 0 };
+	}
+
+	if (sub === "spend") {
+		// S2-11: the spend meter — per-routine + global, rolling 24h + 7d,
+		// ceilings in effect, throttle state + drain time. USD is out of
+		// scope (prices are model-dependent — never invent one).
+		const res = await api("GET", "/api/automations/spend");
+		if (!res.ok) return { stderr: String(res.data?.error ?? "engine unreachable"), exitCode: 1 };
+		const d = res.data;
+		const fmt = (n: number | null | undefined) => (n == null ? "—" : String(n));
+		const drainLabel = (ms: number | null | undefined) =>
+			ms == null ? "" : ` · drains ~${new Date(ms).toLocaleString()}`;
+		const lines: string[] = [];
+		const routines: any[] = d.routines ?? [];
+		if (routines.length === 0) {
+			lines.push("No routines configured (nothing to meter).");
+		} else {
+			lines.push(
+				`per-routine (rolling 24h / 7d; cap = tokens per 24h):`,
+			);
+			for (const r of routines) {
+				const cap = r.spend_cap != null ? `${r.spend_cap}` : "off";
+				const throttled = r.throttled ? `THROTTLED${drainLabel(r.drain_ms)}` : "";
+				lines.push(
+					`  ${r.id}  ${r.title}\n` +
+					`      24h: ${fmt(r.day?.tokens)} tok · ${fmt(r.day?.runs)} runs · ${fmt(r.day?.turns)} turns${throttled ? `  [${throttled}]` : ""}\n` +
+					`      7d:  ${fmt(r.week?.tokens)} tok · ${fmt(r.week?.runs)} runs\n` +
+					`      cap: ${cap}${r.effective_cap ? ` · effective ${r.effective_cap}` : ""}${r.effective_cap ? drainLabel(r.drain_ms) : ""}`,
+				);
+			}
+		}
+		const total = d.total ?? {};
+		const gCap = total.cap ? `${total.cap}` : "off";
+		const gThrottled = total.throttledNow ? `THROTTLED${drainLabel(total.drainAt)}` : "";
+		lines.push(
+			`total (across all routines): 24h ${fmt(total.day?.tokens)} tok · ${fmt(total.day?.runs)} runs · 7d ${fmt(total.week?.tokens)} tok`,
+			`global cap (PI_AUTOMATION_MAX_TOKENS_DAY): ${gCap}${gThrottled ? `  [${gThrottled}]` : ""}`,
+		);
+		lines.push("\nCeilings are OFF by default; set one with: unown routines edit <id> --spend-cap <n>  |  unown routines create --spend-cap <n>");
+		return { stdout: `${lines.join("\n")}\n`, exitCode: 0 };
 	}
 
 	if (sub === "skip") {

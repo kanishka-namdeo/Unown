@@ -270,6 +270,7 @@ export function spawnRalphRun(args: {
 		model: args.model,
 		max_runs: null,
 		run_count: 0,
+		spend_cap: null, // S2-11: synthetic rows carry no ceiling
 		scheduled_run_count: 0,
 		lifecycle: "active",
 		next_run_at: null,
