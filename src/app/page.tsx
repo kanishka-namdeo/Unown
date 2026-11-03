@@ -126,8 +126,8 @@ export default function LandingPage() {
             <DexSection />
             <ShowcaseSection />
             <LiveDemoSection />
-            <CodaSection />
             <BuiltImprovedSection />
+            <CodaSection />
             <ProofSection />
             <AlphabetSection />
             <FaqSection />

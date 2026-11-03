@@ -18,6 +18,16 @@
       <category>testing</category>
     </item>
     <item>
+      <title>&quot;The doc-truth round: the maintenance pass that made every documented number true&quot;</title>
+      <link>https://unown-nine.vercel.app/blog/2026-11-03-the-doc-truth-round</link>
+      <guid isPermaLink="true">https://unown-nine.vercel.app/blog/2026-11-03-the-doc-truth-round</guid>
+      <pubDate>Tue, 03 Nov 2026 00:00:00 GMT</pubDate>
+      <description>The doc-truth round re-derived and corrected every drifted count, measured the Coda PWA null with a receipt, and priced the instruction-surface PR lane.</description>
+      <category>benchmark</category>
+      <category>verification</category>
+      <category>hardening</category>
+    </item>
+    <item>
       <title>The browser autonomy round: dogfooding the browser until it taught us back</title>
       <link>https://unown-nine.vercel.app/blog/2026-11-01-the-browser-autonomy-round</link>
       <guid isPermaLink="true">https://unown-nine.vercel.app/blog/2026-11-01-the-browser-autonomy-round</guid>

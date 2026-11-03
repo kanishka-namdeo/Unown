@@ -30,10 +30,10 @@ export interface ChangelogStop {
   groups: ChangelogGroup[];
 }
 
-export const CHANGELOG_TOTAL_ENTRIES = 521;
+export const CHANGELOG_TOTAL_ENTRIES = 522;
 
 export const CHANGELOG_TOTALS: Record<ChangelogBucket, number> = {
-  "Added": 239,
+  "Added": 240,
   "Changed": 32,
   "Deprecated": 0,
   "Removed": 3,
@@ -46,9 +46,9 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
   {
     "label": "Unreleased",
     "date": null,
-    "total": 15,
+    "total": 16,
     "counts": {
-      "Added": 8,
+      "Added": 9,
       "Changed": 0,
       "Deprecated": 0,
       "Removed": 0,
@@ -60,6 +60,10 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
       {
         "bucket": "Added",
         "items": [
+          {
+            "title": "The instruction-set PR lane, priced and documented (T4, the doc-truth round)",
+            "behavior": false
+          },
           {
             "title": "The Coda landing band + the committed usage-capture lane (T3, the doc-truth round)",
             "behavior": false

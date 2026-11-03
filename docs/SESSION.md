@@ -8,19 +8,59 @@ archaeology. When a round completes, its log graduates to a round-specific
 
 ---
 
-## ACTIVE ROUND — the doc-truth round (2026-11-03, OPEN; log:
-`docs/doc-truth-round-session.md`)
+## ACTIVE ROUND — none open (2026-11-03); the queue below stands
 
-The A1 maintenance track: every documented claim true, every honest null
-either measured or still honestly null. Tickets T1–T5 (claimed before
-dispatch, in the round log): the L1 doc-drift sweep (the ground truth §7.4's
-eight flags, every count re-derived from its live source), the PWA
-installability/offline-load benchmark (the PT-5 plan's "not measured"
-flipped by a real measurement under `benchmarks/`), the Coda landing usage
-capture (browser-lane stills through the real UI + the landing's honest Coda
-presence), the instruction-surface PR-lane candidate (a decision doc —
-evaluation only, the write gate stays final), and the closeout. The
-operator decisions and the binding A2 protocol live in the round log.
+The doc-truth round (2026-11-03) is COMPLETE and graduated to its own log:
+`docs/doc-truth-round-session.md` — the A1 maintenance track that closed
+every honest null and every documented drift the Coda round's graduation
+carried forward: (T1) the L1 doc-drift sweep — every §7.4 flag re-derived
+from its live source and corrected (the four receipt-only pin decisions,
+no pin tests added this round); (T2) the PWA installability/offline-load
+benchmark — the PT-5 plan's honest "not measured" null flipped by a real
+receipted measurement under `benchmarks/coda-pwa/` (offline boot-from-cache
+91 ms median vs online 175 ms median, N=5, the 84 ms delta is the
+precache's measured effect; re-runnable on demand, zero model traffic);
+(T3) the Coda landing usage capture — the first user-product band on the
+landing page (`CodaSection` after `LiveDemoSection`, aqua, `#coda`),
+framing the two stills from the new committed in-repo capture lane
+(`apps/coda/scripts/capture-usage.mjs` → `public/landing/coda/`, the
+e2e spec's own interactions, 1280×800 @2×, PROVENANCE.md sidecar),
+plus the thirteenth scroll-budget amendment (15.5 → 16.5vh,
+3,950 → 4,060 words — compressed first, canonical e2e twin measured
+16.3vh / 4,033w, both gate files moved together, OG shots regenerated);
+(T4) the instruction-surface PR-lane candidate — a decision doc
+(`docs/instruction-pr-lane-research.md`, evaluation only) that prices
+the three live guard events of the round (E1 T2's `benchmarks/AGENTS.md`
+ownership-list edit refused and operator-landed; E2 T3's landing
+`AGENTS.md` amendment-ledger entry refused and operator-landed; E3 the
+Coda round's `apps/coda/AGENTS.md` child DOX operator-landed) and lands
+the scoped recommendation: NO-GO on a new standing session-side
+`git push` / `gh pr create` primitive, GO zero-cost on documenting the
+propose-via-PR path through tools that already exist operator-side — the
+gate stays FINAL in-session, byte-for-byte. The T5 closeout (this
+graduation) landed the round's blog post
+(`content/blog/2026-11-03-the-doc-truth-round.md` — the 43rd post,
+`check:blog` green at 43 posts / 106 tags, media reusing the two
+committed `public/landing/coda/` stills), the permissions.md's
+propose-via-PR paragraph (the Zero-Cost GO's doc edit), the CHANGELOG
+`## [Unreleased]` entries for the T4 decision doc + the T5 closeout
+content (the blog post rides the round's entries, no double-listing),
+and the `A2_GROUND_TRUTH.md` drift-log entry (§7.4's eight flags
+RETIRED with T1's receipts; §8 gains the `benchmarks/coda-pwa/` lane
++ the landing capture lane classed per the capability-attribution rule
+— both Level-3 compositions of existing mechanisms, no new class).
+36 chunks across T1–T5 (8+6+12+3+7, the pre-split law the
+round's deviation record prices: registry-derivation +4, measurement
++2, landing-amendment +6 over the authoring baseline, the closeout's
+five-file graduation surface +3); 2 operator
+unblocks (the amendment ruling + the one-line hue revert, both
+operator-side from the receipt's draft-and-land record); 2 instruction-
+guard events (the round's E1/E2, the T4 evidence set); the full gate
+set green at the gate (typecheck 0, lint 0/142 baseline,
+check:docs/changelog/blog/benchmarks/claims all rc=0, the e2e battery
+15 passed / 5 skipped (the CODA_E2E marker, by design) / 0 failed).
+The round's capability-utilization report + the queue carry-overs
+landed at the bottom of the round log.
 
 The Coda app round (2026-11-02 → 2026-11-03) is COMPLETE and graduated to its
 own log: `docs/coda-app-round-session.md` — the DRIVE track's app round: the
@@ -124,10 +164,16 @@ re-cut v0.0.53 after its first tag landed against red CI
 (`docs/release-recovery-session.md`).
 
 **The next round's queue (recorded, in priority order)**: the doc-truth round
-(2026-11-03) owns the Coda round's three carries-forwards — the landing usage
-capture, the instruction-surface PR-lane candidate, and the PWA benchmark
-receipt — plus the L1 doc-drift sweep; what IT carries forward lands here at
-its graduation; then the
+(2026-11-03) closed its whole scope — the Coda round's three carries-forwards
+(the landing usage capture, the instruction-surface PR-lane candidate, the PWA
+benchmark receipt) plus the L1 doc-drift sweep are all DONE and receipted in
+`docs/doc-truth-round-session.md`; what IT carries forward: the
+`docs/permissions.md` propose-via-PR paragraph's follow-up is a drift-trip
+trigger only (NOT a scheduled ticket — the convention works at 3-for-3 clean
+landings; the trigger is an observed receipt-drift incident tied to a
+guard-event draft, per the decision doc's §9), and the four T1 receipt-only
+pin surfaces stay a deliberate no-pin (legitimately-growing registered
+content). Then the
 browser autonomy round 2 closed its predecessor's carries-overs (#46, #45, #44, the
 warm docs-navigation benchmark, the skill promotion) — what remains of the
 browser-autonomy lineage: the release-monitoring routine's first weekly run

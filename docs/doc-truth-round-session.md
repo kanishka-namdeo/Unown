@@ -2,7 +2,7 @@
 
 - **Round**: doc-truth (the A1 maintenance track: every documented claim true, every honest null either measured or still honestly null)
 - **Started**: 2026-11-03 (opened from `docs/SESSION.md`'s queue, claimed before any dispatch)
-- **Status**: OPEN
+- **Status**: COMPLETE (2026-11-03 — the T5 closeout graduated this round; the capability-utilization report + the queue carry-overs are appended at the bottom of this log)
 - **Mission**: the Coda round's graduation carried three honest gaps forward, and the A2 ground truth's §7.4 carries eight doc-drift flags. This round closes ALL of them **through A2 tickets** (the operator writes no content code): (T1) the L1 doc-drift sweep — every drifted count re-derived from its live source and corrected, with the drift-pinned-where-authored question answered per the repo's own patterns; (T2) the PWA installability/offline-load benchmark — the PT-5 plan's honest "not measured" flipped by a REAL measurement under `benchmarks/`, wired to the repo's drift-gate conventions; (T3) the Coda landing usage capture — browser-lane stills through the real UI (the blog capture is the operator-side precedent; this round productizes the lane in-repo) plus the landing's honest Coda presence; (T4) the instruction-surface PR-lane candidate — the Coda retrospective's improvement, evaluated as a decision doc (the write gate stays FINAL; no implementation without an explicit operator decision); (T5) the round closeout per the standing orders.
 - **Operator decisions (2026-11-03)**: round scope = T1–T5 above, nothing else (the release-monitor routine's first weekly run is 2026-11-08 and stays the engine's own lane; the hint-digest ranking refinement and the S2 ledger stay queued); push lane = direct to `main` after the full gate set; A2 rides the budgeted-chunk headless protocol (inherited, binding); T4 is EVALUATION-ONLY — the instruction-set write gate is a trust boundary, and weakening it is an operator decision that this round may only PROPOSE.
 
@@ -196,3 +196,130 @@ chunk protocol notes) — the shape that worked since the fresh-clone round.
   datum for §7.1). Scope fixed by the operator decisions above; T4's
   evaluation-only law recorded. Dispatch order T1 → T5, one ticket at a time
   (metered tier: batching over parallel).
+
+## The capability-utilization report (T5 graduation, the A1 8-question frame)
+
+- **Most-used capability**: budgeted-chunk headless resume chains
+  (`unown -p` + `unown --resume` — the inherited protocol from the Coda
+  round; every ticket T1–T5 rode this lane, 8+6+12+3+7 = 36 chunks
+  total across the round) — the only dispatch lane that survives a host
+  that reaps agent processes between tool calls; receipted per-ticket in
+  `.unown/receipts/t1-doc-drift.md` / `t2-pwa-benchmark.md` /
+  `t3-landing-capture.md` / `t4-pr-lane.md` / `t5-closeout.md`.
+- **Highest-leverage capability**: the instruction-set write guard
+  (`instruction-guard.ts`, FINAL verdict — the T4 evidence set is three
+  live guard events, T2's + T3's + the Coda round's, all observed in
+  vivo across two rounds; the round's second-largest deviation class
+  (receipt status-block discipline) is itself a lesson the guard's
+  draft-and-operator-land convention made visible — the guard is the
+  mechanism that surfaced the round's own deviation class).
+- **Most under-used capability**: the `benchmarks/` drift-pin
+  convention — the T2 lane registered itself in `benchmarks/RESULTS.md`
+  master index (non-gated surface) instead of `benchmarks/AGENTS.md`
+  ownership list (gated surface — the T4 subject), but the round's
+  deviation record shows the drift-pin pattern (receipt-only vs
+  generated-data) was answered per-surface in T1 with no pin tests
+  landed — the convention is used correctly but the round did not
+  exercise the "generated data vs receipt-only" decision surface more
+  than once (the T2 lane is the second data point; T1's four surfaces
+  all chose receipt-only). The under-use is the pin-test lane — no
+  pin tests were added in this round; the next round's queue carries
+  the decision of whether the four T1 receipt-only surfaces warrant
+  pin tests now that the counts are stable.
+- **Highest-ROI augmentation**: the T2 PWA benchmark lane
+  (`benchmarks/coda-pwa/`, 304-line zero-model-traffic runner — the
+  84 ms median delta between offline and online boot is the precache's
+  measured effect, receipted and re-runnable on demand; the lane's
+  ROI is that it flipped a documented "not measured" null into a
+  receipted figure with zero endpoint spend and no engine change) —
+  the measurement-class ticket's +2 chunk overhead (run-fix-rerun
+  loops, receipted in T2's deviation record) is the honest cost; the
+  lane's ROI is that the next round's PWA figure is now the lane's
+  receipt, not a promise.
+- **Trigger failures**: none observed this round (the round's tickets
+  all dispatched on schedule; the >120 s stall on the round's first
+  `unown -p` probe is the metered-queue class against a busy engine
+  window — the #30 exit-hang signature's known non-repro, not a
+  trigger failure; the armed watcher then ran 4/4 clean in 2.4–3.4 s
+  as the round log's checkpoint record).
+- **Routing failures**: none observed this round (every ticket
+  completed within its own session chain; no ticket needed an operator
+  unblock mid-tick — the two operator unblocks of the round, the
+  amendment ruling and the one-line hue revert, both landed
+  operator-side from the receipt's draft-and-land record, the
+  instruction-guard's documented remediation path, NOT a routing
+  failure).
+- **Deviation classes receipted (the round's most consistent lesson)**:
+  (a) the receipt status-block discipline — T1's receipt went
+  unmaintained across chunks 1–2 before the incremental-receipts law
+  engaged in chunk 3; T3's status block went unmaintained past part 2
+  (the operator-close block finished it); T4's receipt kept the
+  incremental-receipts law from chunk 1 (the first ticket in the round
+  to do so); the round's most consistent deviation class is the
+  receipt-discipline itself — the protocol lesson T5 carries: the
+  incremental-receipts law works when it engages from chunk 1 (T4),
+  not when it engages mid-ticket (T1, T3).
+  (b) the EFFORT_BUDGET pre-split — T1's registry-derivation ticket
+  ran 8 chunks vs the ~4 pre-split (the receipt-only pin decisions
+  add a +4 chunk bookkeeping overhead that the pre-split did not
+  price); T2's measurement ticket ran 6 chunks vs the ~4 pre-split
+  (the run-fix-rerun loops add a +2 chunk overhead); T3's landing-
+  ticket ran 12 chunks vs the ~5–6 pre-split (the thirteenth
+  amendment's compression loop + the operator-gate full battery add
+  a +6 chunk overhead). The pre-split law holds for authoring-class
+  tickets (T4: 3 chunks, on estimate) and fails for registry-
+  derivation (T1) and measurement (T2) and landing-amendment (T3)
+  tickets — the next round's pre-splits should price those three
+  classes at +4, +2, +6 chunks respectively over the authoring
+  baseline.
+
+## The queue carry-overs (what the next round opens from)
+
+- The release-monitor routine's first weekly run (`auto-mvxw0wne-`
+  `onkwcn`, 2026-11-08 — the multi-day lane's first real datum; stays
+  the engine's own lane, not the next round's queue).
+- The hint-digest ranking refinement (newest facts can push older-
+  but-relevant entries below the 8-entry cap after a dream —
+  relevance ranking or a per-category quota; see the browser
+  autonomy round 2 log's queue).
+- The S2 ledger's head — S2-11 (the spend meter) and S2-4 (the
+  memory health card), each flipping a pinned, waiting benchmark
+  miss — then S2-7/S2-8/S2-9, the S2-3/S2-16 L-pair, S2-22 (see
+  the settings log's "Resume-from-here").
+- The injection-scanner ML classifier (the production TODO), the
+  delegation round's subagent-reuse axis, OB-7 (fleet outcomes in
+  the brief), the landing next-round queue (cmd-K search, blog
+  hover-previews), the term.ts snapshot-class follow-up (release-
+  recovery CP2), the plan mode V3 round's own milestones (its
+  session log owns that queue).
+- **New from this round**: the `docs/permissions.md` propose-via-PR
+  paragraph's follow-up — the convention's drift-trip trigger (the
+  decision doc's §9: a future guard event where the operator's own
+  shell typing `git push` + `gh pr create` is itself the friction,
+  not the session's lack of a `gh` tool, raises C1-full's priority —
+  the in-tree `gh pr create` shim + a session-side PAT-scope grant,
+  both gated on the operator's infra decision; a receipt-drift
+  incident specifically tied to a guard-event draft raises C1-full's
+  priority by the lane's value argument). The follow-up is queued,
+  not dispatched — the convention works at 3-for-3 clean landings
+  this round; the trigger is an observed drift, not a schedule.
+- **The round's open items unchanged** (per the ground truth's §7
+  ledger): §7.1 issue #30 (armed, non-repro on idle; the live-hang
+  capture remains pending — the >120 s stall on the round's first
+  probe is the metered-queue class, not the #30 signature); §7.2
+  Agnes metering (~20 RPM, batching over parallel); §7.3 container
+  LSP + mortal stack (re-run `bun run agent:start` after a sandbox
+  recycle); §7.5 deploy-in-parallel exposure (Vercel auto-deploys
+  on push to `main` in parallel with CI — a red commit can reach
+  production; the deploy-verify lane detects, does not prevent);
+  §7.6 unsigned binaries (Gatekeeper/SmartScreen friction,
+  documented in `docs/install.md`); PR #47 (dependabot `diff` 9.0.0
+  in /pi-repo, unmerged, governed by the dependency-round policy).
+- **The §7.4 eight flags are RETIRED** (the L1 sweep's T1 closed
+  every flag with a receipted source:line derivation; the next round
+  opens with a clean §7.4 — the ground truth's drift-log entry for
+  this round's graduation records the retirement).
+- **When the first v0.0.56 content lands**: re-add `## [Unreleased]`
+  to `CHANGELOG.md` and regenerate the rail in the same commit; the
+  version bump itself is the release commit (`package.json` version
+  + dated heading + rail + tag on the green SHA).

@@ -81,6 +81,30 @@ Behavioral contract:
   PR — it is per-machine state): `memory is engine-written — add Manual
   notes by editing the file outside a session; dreams preserve them
   verbatim`.
+- **The PR lane is a zero-cost documented path, not a new session
+  capability** (the [instruction-set PR lane decision doc](instruction-pr-lane-research.md)'s scoped
+  GO, landed here 2026-11-03): after a guard refusal, the session drafts the
+  change in its receipt (the draft-and-operator-land convention — the
+  durable record of what the session wanted and why). The operator then lands
+  it through the tools that already exist in the operator's shell: a `git
+  branch` for the draft, `git push` to a namespaced ref, and `gh pr create`
+  — the operator reviews the diff against the deny-table shapes above and
+  merges in the GitHub UI (branch-protection-on-`main` + the operator's
+  merge click are the final gate; the session's PAT carries no merge
+  scope). **The gate stays FINAL in-session, byte-for-byte**: no `allow`
+  rule, `bypassPermissions` mode, `UNOWN_PERMISSIONS=0`, or permissions-layer
+  change unlocks these paths; the proposed PR is EXTERNAL to the session
+  (a push to a remote branch, not a write-tool call on the working tree),
+  and the merge act is the operator's. A NO-GO in the decision doc: any
+  in-session `git push` / `gh pr create` grant, a dedicated branch-write
+  path, or a permissions-layer knob that flips the deny set off — the
+  C2/C3 shapes that would weaken the gate by another name. This paragraph
+  is the ZERO-COST GO: the lane's safety is GitHub's existing branch-
+  protection-on-`main` + the operator's merge click, both of which the
+  convention already assumes; nothing new is granted to the session, only
+  the documented path for the operator's act is named. The memory lane's
+  remedy (hand-edits outside the session) is the same shape, applied to
+  per-machine state.
 - **Redirects are covered**: the terminal's redirect checker
   (`bashRedirectEscape`) applies the same matcher to `> target` operands,
   so `echo x > .unown/hooks.json` cannot sidestep the write-tool gate. The

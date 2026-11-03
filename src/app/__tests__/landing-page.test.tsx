@@ -45,7 +45,7 @@ const LandingPage = (await import("../page")).default;
 // only inside its own render container, so a tree left mounted cannot make
 // another test's anchor check pass on a borrowed id.
 
-const SECTION_COUNT = 11;
+const SECTION_COUNT = 12;
 
 describe("landing composition root", () => {
   test(`renders ${SECTION_COUNT} bands with the rail between the FAQ and the finale`, () => {
@@ -68,8 +68,13 @@ describe("landing composition root", () => {
     expect(at("showcase")).toBe(3);
     expect(at("live-demo")).toBe(4);
     expect(at("built-improved")).toBe(5);
-    expect(at("proof")).toBe(6);
-    expect(at("alphabet")).toBe(7);
+    expect(at("coda")).toBe(6); // the Coda band (2026-11-03) — between built-improved and proof
+    expect(at("proof")).toBe(7);
+    expect(at("alphabet")).toBe(8);
+    expect(at("faq")).toBeGreaterThan(8);
+    expect(at("changelog")).toBe(SECTION_COUNT - 2); // finale is the last band
+    expect(rail).toBe(faq + 1);
+    expect(rail).toBe(SECTION_COUNT - 2);
     // The capture band is gone as a band of its own — its media lives in the
     // dex's panes now, and an orphan #features would fail the anchor test.
     expect(at("features")).toBe(-1);
@@ -88,8 +93,12 @@ describe("landing composition root", () => {
     // own magma. The live-demo band (2026-10-28) joins between the gold
     // showcase and the magma proof — aqua keeps its neighbours honest there
     // (the changelog's aqua is far away, the finale's leaf follows psychic).
-    // The proof band's three panes carry their own data-hue wrappers (leaf,
-    // magma, aqua) inside the magma section — the walk below is the top level.
+    // The Coda band (2026-11-03) joins between the gold built-improved and
+    // the magma proof — aqua keeps its neighbours honest there (gold before,
+    // magma after). The Coda band is the repo's first user-product band;
+    // its position in the narrative: the apps it built, the receipts, and the
+    // first real product. (The Coda band's own pin test carries the aqua hue.
+    // )
     expect(hues).toEqual([
       "psychic", // hero
       "leaf", // loop — how it learns
@@ -97,6 +106,7 @@ describe("landing composition root", () => {
       "gold", // showcase — mission control
       "aqua", // live demo — the agent-built app, running
       "gold", // built & improved — the measured improvement receipts
+      "aqua", // Coda — the first user product (the Coda round's artifact)
       "magma", // proof — benchmarks | integrity | models
       "psychic", // alphabet — the identity (+ field notes)
       "gold", // faq
