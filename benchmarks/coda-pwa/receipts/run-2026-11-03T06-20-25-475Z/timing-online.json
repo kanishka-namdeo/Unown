@@ -1,0 +1,115 @@
+{
+  "online": {
+    "label": "online baseline boot (fresh context)",
+    "mode": "online",
+    "n": 5,
+    "medianMs": 193,
+    "minMs": 164,
+    "maxMs": 215,
+    "samples": [
+      {
+        "run": 1,
+        "phase": "online",
+        "wallMs": 193,
+        "navigation": {
+          "domContentLoadedMs": 59.70000000111759,
+          "loadEventMs": 60.5
+        }
+      },
+      {
+        "run": 2,
+        "phase": "online",
+        "wallMs": 164,
+        "navigation": {
+          "domContentLoadedMs": 56.09999999962747,
+          "loadEventMs": 56.79999999888241
+        }
+      },
+      {
+        "run": 3,
+        "phase": "online",
+        "wallMs": 215,
+        "navigation": {
+          "domContentLoadedMs": 73.79999999888241,
+          "loadEventMs": 74.5
+        }
+      },
+      {
+        "run": 4,
+        "phase": "online",
+        "wallMs": 183,
+        "navigation": {
+          "domContentLoadedMs": 64.5,
+          "loadEventMs": 65.19999999925494
+        }
+      },
+      {
+        "run": 5,
+        "phase": "online",
+        "wallMs": 199,
+        "navigation": {
+          "domContentLoadedMs": 62.79999999888241,
+          "loadEventMs": 63.29999999888241
+        }
+      }
+    ],
+    "method": "fresh context → goto / → wait #coda-status 'Ready.' → wait SW controller; wall-clock from navigation trigger to Ready"
+  },
+  "offline": {
+    "label": "offline boot-from-cache (SW-controlled, setOffline + reload)",
+    "mode": "offline",
+    "n": 5,
+    "medianMs": 104,
+    "minMs": 94,
+    "maxMs": 107,
+    "samples": [
+      {
+        "run": 1,
+        "phase": "offline",
+        "wallMs": 95,
+        "navigation": {
+          "domContentLoadedMs": 45.40000000037253,
+          "loadEventMs": 47.70000000111759
+        }
+      },
+      {
+        "run": 2,
+        "phase": "offline",
+        "wallMs": 107,
+        "navigation": {
+          "domContentLoadedMs": 44.40000000037253,
+          "loadEventMs": 44.90000000037253
+        }
+      },
+      {
+        "run": 3,
+        "phase": "offline",
+        "wallMs": 104,
+        "navigation": {
+          "domContentLoadedMs": 61.20000000111759,
+          "loadEventMs": 61.600000001490116
+        }
+      },
+      {
+        "run": 4,
+        "phase": "offline",
+        "wallMs": 105,
+        "navigation": {
+          "domContentLoadedMs": 63.19999999925494,
+          "loadEventMs": 65.80000000074506
+        }
+      },
+      {
+        "run": 5,
+        "phase": "offline",
+        "wallMs": 94,
+        "navigation": {
+          "domContentLoadedMs": 53.600000001490116,
+          "loadEventMs": 54
+        }
+      }
+    ],
+    "method": "fresh context → goto / online (SW install + claim) → context.setOffline(true) → reload → wait 'Ready.'; wall-clock from reload trigger to Ready"
+  },
+  "deltaMs": -89
+}

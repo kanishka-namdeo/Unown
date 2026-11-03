@@ -30,10 +30,10 @@ export interface ChangelogStop {
   groups: ChangelogGroup[];
 }
 
-export const CHANGELOG_TOTAL_ENTRIES = 519;
+export const CHANGELOG_TOTAL_ENTRIES = 520;
 
 export const CHANGELOG_TOTALS: Record<ChangelogBucket, number> = {
-  "Added": 237,
+  "Added": 238,
   "Changed": 32,
   "Deprecated": 0,
   "Removed": 3,
@@ -46,9 +46,9 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
   {
     "label": "Unreleased",
     "date": null,
-    "total": 13,
+    "total": 14,
     "counts": {
-      "Added": 6,
+      "Added": 7,
       "Changed": 0,
       "Deprecated": 0,
       "Removed": 0,
@@ -60,6 +60,10 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
       {
         "bucket": "Added",
         "items": [
+          {
+            "title": "The Coda PWA benchmark lane (benchmarks/coda-pwa/) — the PT-5 plan's honest \"not measured\" PWA null is now a…",
+            "behavior": false
+          },
           {
             "title": "C5 — root wiring + CI + DOX/docs for the Coda app (plan steps 7+8 atomically; the round's final CODE ticket)",
             "behavior": false

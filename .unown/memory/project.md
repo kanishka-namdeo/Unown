@@ -13,6 +13,11 @@
 - In Unown's apps/coda, tsc-green and bun-test-green do not guarantee browser-link-green; every type-only import requires the `type` keyword, and every UI surface requires a real browser boot check before commit to prevent 'Booting-forever' ship blockers.
 
 ## Facts
+- After implementing a new benchmark lane, register it in both `benchmarks/AGENTS.md` and the master index to maintain documentation consistency.
+- When timing Playwright benchmark lanes, ensure offline-mode wall-clock measurements start at `page.reload()` and do not include the online boot phase, while online-mode measurements start at `page.goto()`.
+- Documentation updates should reflect accurate counts: e.g., 47 unown commands, 12 split commands, 20 session tools, and 15 screens (including the full 15-screen name list).
+- In subagents.md, remove duplicate `browser` rows and ensure the project-agents count is consistent with the actual agent registrations.
+- When updating documentation counts (e.g., in docs/usage.md), verify against actual source code (e.g., `registerCommand` calls, splitview.ts) rather than relying on stated totals, as discrepancies often exist between claimed and actual count
 - The Unown project implemented a 'draft-and-operator-land' workflow for AGENTS.md surfaces because the instruction-set write gate is final; agent sessions are expected to propose instruction-surface edits as pull requests for operator review.
 - The Unown project's plan-mode V3 loop was closed on 2026-11-02 by merging the retrospective into benchmarks/plan-mode/results/run-2026-11-02-pt5/pt-5-plan.md and delivering it to the self-learning engine.
 - In Unown, receipts must be mirrored outside the repository immediately when written because working clones and the unown home directory can be lost mid-round; the round log's checkpoint entries serve as the durable surface of record.
@@ -92,7 +97,6 @@
 - The `find` tool backend is unavailable in the Unown project; use directory listings instead to enumerate the `src/` tree. Verified via subagent session.
 - A probe that sets a setting to its current value produces no detectable drift; construct targets as current plus offset, and load-time validation flags any task whose diskCheck.expect equals the item's declared default as diff-inert (BM-2 hook-depth task is honest about this).
 - Cadence domain layer lives at `src/lib/cadence/` mirroring bazaar/sigil sibling conventions: pure domain code, bun:test for tests, localStorage shim in tests, and happy-dom preload configured via bunfig.
-- After first save in the Shipping iframe form, the #addr-status element reports 'saved:Repro Bot/berlin/gift' as a new paragraph inside the form alongside still-filled Name, City, and Gift-wrap values
 - Recorded S2-1 DELTA from receipts: probes went from 6/6 unreachable to 6/6 reachable and changed; settable coverage increased from 10/89 (11.2%) to 41/120 (34.2%); pi rows unreachable dropped from 32 to 0; BM-4 depth increased by +0.9 Downs, recorded as the honest cost of the Interface menu row.
 - Pin the no-phantom-drift invariant with test/settings-defaults-drift.test.ts plus the BM-8 guard on a pristine home: run the test in a subprocess because some settings getters resolve through term.ts's module-scope UNOWN_HOME snapshot and an in-process run can read earlier tests' leftovers.
 - Rule of thumb: a declared default is a contract against the real resolver; always pin it in a test or it will drift.
@@ -109,14 +113,10 @@
 - Unown Coda (`apps/coda/`) architecture: self-contained static vanilla-TS PWA, no workspaces, zero root deps, reuses `marked`/`fuse.js`/`@playwright/test`/`@axe-core/playwright` via upward resolution from root node_modules
 - Export installPrintStallWatchdog from cli.ts and import createPrintExitTrace, printExitTraceEnabled, and resolvePrintTraceDir from print-exit-trace.ts in Unown's test suite.
 - Wire answer_flushed through the answer-watch extension, and wire drain start/done events plus final exit events into cmdPrint in Unown's cli.ts.
-- In /home/z/my-project/Unown, when a file is mangled by a cap-cut edit, the cleanest repair is to rewrite the whole file fresh with the correct structure rather than patching it.
 - Unown project in /home/z/my-project/Unown has a known editor flaw where write mode body editing is not properly captured; this was identified and fixed during a session
 - Unown UI modules include a shell component, editor, and main.ts file with associated CSS and index.html body that are part of the front-end structure
 - The Unown boundary-check test file intentionally uses node:fs/promises to read source files, which is a documented exception for test infrastructure; the file is excluded from its own scan.
 - When using bun:test, ensure the 'bun:test' module is available in the ambient TypeScript type definitions by adding a shim (declare module "bun:test") to a global .d.ts file if @types/bun is not installed or recognized.
-- Service worker file `sw.js` is located at the project root, not under `public/`.
-- Unown's documentation table in README.md includes a Coda row and navigation link; docs/AGENTS.md's index includes a Coda entry for `docs/coda.md`
-- Unown's CHANGELOG.md `### Added` entries under `## [Unreleased]` are not strictly newest-first; the C5 entry (dated 2026-11-03, Coda round wiring) belongs under `## [Unreleased]` → `### Added` after the exit-hint lane and PT-5 entries
 
 ## Manual notes
 
@@ -125,4 +125,4 @@
 - Stealth verification suite on bot.sannysoft.com: all 10 checks (webdriver, userAgent, platform, userAgentData, timezone, locale, screen, viewport, plugins, window.chrome) pass; 0 FAIL rows in Intoli tests. (Restored by hand 2026-11-01 — second occurrence of the dream-render-prunes-landing-quoted-lines class, issue #46; moved here to the durable lane.)
 - Parley password hashing: scrypt N=16384 r=8 p=1 (src/lib/parley/password.ts). Restored by hand 2026-10-29 after AutoDream reconciles twice erased the fact (upstream 79->66 render, then the F1/F2 bcrypt poison round). Never let a memory answer overwrite this without reading the source.
 
-<!-- unown: rendered 110/121 memories via Mem0 (backend: lexical) · 11 oldest pruned at render (cap 110; hard-won rules immune) at 2026-11-03T06:03:47.981Z -->
+<!-- unown: rendered 110/124 memories via Mem0 (backend: lexical) · 14 oldest pruned at render (cap 110; hard-won rules immune) at 2026-11-03T06:22:53.688Z -->

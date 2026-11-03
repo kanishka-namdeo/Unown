@@ -1,0 +1,201 @@
+{
+  "lane": "coda-pwa",
+  "receipt": "benchmarks/coda-pwa/receipts/run-2026-11-03T06-14-57-955Z",
+  "generatedAt": "2026-11-03T06:14:57.955Z",
+  "environment": {
+    "server": "bun apps/coda/scripts/serve.mjs (the app's own transpiling dev server)",
+    "browser": "headless chromium (Playwright)",
+    "base": "http://127.0.0.1:4099",
+    "node": "v26.3.0",
+    "platform": "linux",
+    "os": "x64",
+    "runs": 5,
+    "caveats": [
+      "Headless chromium in the operator's container — timings are machine-dependent and comparable run-to-run on the same host only.",
+      "The dev server transpiles .ts on the fly (Bun.Transpiler); a production minified build would be faster — the offline/online DELTA is the signal, the absolute ms are the environment's.",
+      "IndexedDB is fresh per context; no warm-start between timing runs."
+    ]
+  },
+  "hardFails": [],
+  "installability": {
+    "pass": true,
+    "checks": {
+      "manifestFetch": {
+        "status": 200,
+        "ok": true
+      },
+      "requiredFields": {
+        "fields": [
+          "name",
+          "icons",
+          "start_url",
+          "display"
+        ],
+        "missing": [],
+        "ok": true
+      },
+      "display": "standalone",
+      "startUrl": "./",
+      "scope": "./",
+      "icons": {
+        "count": 3,
+        "sizes": [
+          "any",
+          "192x192",
+          "512x512"
+        ],
+        "allFetched": true
+      },
+      "serviceWorker": {
+        "controllerActive": true,
+        "registration": {
+          "scope": "http://127.0.0.1:4099/",
+          "url": "http://127.0.0.1:4099/sw.js"
+        }
+      },
+      "beforeinstallprompt": {
+        "observed": false,
+        "note": "record-only; soft-gated per the plan's P1 pitfall (headless chromium)"
+      }
+    },
+    "iconInventory": [
+      {
+        "src": "./icon.svg",
+        "sizes": "any",
+        "type": "image/svg+xml",
+        "purpose": "any",
+        "fetchStatus": 200
+      },
+      {
+        "src": "./icon-192.png",
+        "sizes": "192x192",
+        "type": "image/png",
+        "purpose": "any",
+        "fetchStatus": 200
+      },
+      {
+        "src": "./icon-512.png",
+        "sizes": "512x512",
+        "type": "image/png",
+        "purpose": "any maskable",
+        "fetchStatus": 200
+      }
+    ]
+  },
+  "timing": {
+    "online": {
+      "label": "online baseline boot (fresh context)",
+      "mode": "online",
+      "n": 5,
+      "medianMs": 175,
+      "minMs": 169,
+      "maxMs": 212,
+      "samples": [
+        {
+          "run": 1,
+          "phase": "online",
+          "wallMs": 172,
+          "navigation": {
+            "domContentLoadedMs": 57.90000000037253,
+            "loadEventMs": 60.09999999962747
+          }
+        },
+        {
+          "run": 2,
+          "phase": "online",
+          "wallMs": 175,
+          "navigation": {
+            "domContentLoadedMs": 53.19999999925494,
+            "loadEventMs": 53.79999999888241
+          }
+        },
+        {
+          "run": 3,
+          "phase": "online",
+          "wallMs": 212,
+          "navigation": {
+            "domContentLoadedMs": 73.5,
+            "loadEventMs": 74.09999999962747
+          }
+        },
+        {
+          "run": 4,
+          "phase": "online",
+          "wallMs": 169,
+          "navigation": {
+            "domContentLoadedMs": 52.600000001490116,
+            "loadEventMs": 53.20000000111759
+          }
+        },
+        {
+          "run": 5,
+          "phase": "online",
+          "wallMs": 181,
+          "navigation": {
+            "domContentLoadedMs": 65.59999999962747,
+            "loadEventMs": 66.19999999925494
+          }
+        }
+      ],
+      "method": "fresh context → goto / → wait #coda-status 'Ready.' → wait SW controller; wall-clock from navigation trigger to Ready"
+    },
+    "offline": {
+      "label": "offline boot-from-cache (SW-controlled, setOffline + reload)",
+      "mode": "offline",
+      "n": 5,
+      "medianMs": 91,
+      "minMs": 87,
+      "maxMs": 110,
+      "samples": [
+        {
+          "run": 1,
+          "phase": "offline",
+          "wallMs": 110,
+          "navigation": {
+            "domContentLoadedMs": 51.80000000074506,
+            "loadEventMs": 54.90000000037253
+          }
+        },
+        {
+          "run": 2,
+          "phase": "offline",
+          "wallMs": 87,
+          "navigation": {
+            "domContentLoadedMs": 44.399999998509884,
+            "loadEventMs": 44.79999999888241
+          }
+        },
+        {
+          "run": 3,
+          "phase": "offline",
+          "wallMs": 107,
+          "navigation": {
+            "domContentLoadedMs": 43.899999998509884,
+            "loadEventMs": 44.399999998509884
+          }
+        },
+        {
+          "run": 4,
+          "phase": "offline",
+          "wallMs": 91,
+          "navigation": {
+            "domContentLoadedMs": 52.30000000074506,
+            "loadEventMs": 52.80000000074506
+          }
+        },
+        {
+          "run": 5,
+          "phase": "offline",
+          "wallMs": 90,
+          "navigation": {
+            "domContentLoadedMs": 51,
+            "loadEventMs": 52.5
+          }
+        }
+      ],
+      "method": "fresh context → goto / online (SW install + claim) → context.setOffline(true) → reload → wait 'Ready.'; wall-clock from reload trigger to Ready"
+    },
+    "deltaMs": -84
+  },
+  "verdict": "PASS"
+}

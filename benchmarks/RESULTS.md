@@ -354,3 +354,24 @@ binding: machine timings compare BEFORE/AFTER, never human labs).
   **10/89 (11.2%)**, browse depth mean 9.6 Downs.
 - The AFTER run (M5) re-measures the identical pinned workload on the
   round's build; the DELTA table lands in `settings-ux/RESULTS.md`.
+
+## The 2026-11-03 doc-truth round — Coda PWA lane (T2)
+
+The doc-truth round's T2 measurement: the PT-5 plan's honest "not measured"
+PWA null, flipped with a real receipted run. The lane
+(`coda-pwa/README.md` is the method contract; `run-pwa-bench.mjs` the
+runner, headless chromium, zero model traffic, zero endpoint spend —
+boots the app's own dev server on a scratch port):
+
+- **Installability: PASS** (manifest 200, all 4 required fields,
+  3/3 icons fetched 200, SW controller active, display=standalone,
+  `beforeinstallprompt` recorded-not-fired in headless — soft-gated,
+  record-only per the plan's P1 pitfall).
+- **Offline boot-from-cache: 91 ms median** (min 87 / max 110, N=5) vs
+  the **online baseline 175 ms median** (min 169 / max 212, N=5) —
+  the 84 ms median delta (offline ~48% faster) is the PWA precache's
+  measured effect on boot time.
+
+Full caveats + reproduction: `coda-pwa/RESULTS.md` (receipt
+`receipts/run-2026-11-03T06-14-57-955Z/`). No landing-figure feed —
+the six-track contract stands.

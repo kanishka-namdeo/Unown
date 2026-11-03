@@ -1,0 +1,79 @@
+{
+  "online": {
+    "label": "online baseline boot (fresh context)",
+    "mode": "online",
+    "n": 3,
+    "medianMs": 194,
+    "minMs": 182,
+    "maxMs": 196,
+    "samples": [
+      {
+        "run": 1,
+        "phase": "online",
+        "wallMs": 196,
+        "navigation": {
+          "domContentLoadedMs": 72.80000000074506,
+          "loadEventMs": 73.5
+        }
+      },
+      {
+        "run": 2,
+        "phase": "online",
+        "wallMs": 182,
+        "navigation": {
+          "domContentLoadedMs": 65.69999999925494,
+          "loadEventMs": 66.39999999850988
+        }
+      },
+      {
+        "run": 3,
+        "phase": "online",
+        "wallMs": 194,
+        "navigation": {
+          "domContentLoadedMs": 50.29999999888241,
+          "loadEventMs": 50.79999999888241
+        }
+      }
+    ],
+    "method": "fresh context → goto / → wait #coda-status 'Ready.' → wait SW controller; wall-clock from navigation trigger to Ready"
+  },
+  "offline": {
+    "label": "offline boot-from-cache (SW-controlled, setOffline + reload)",
+    "mode": "offline",
+    "n": 3,
+    "medianMs": 101,
+    "minMs": 95,
+    "maxMs": 103,
+    "samples": [
+      {
+        "run": 1,
+        "phase": "offline",
+        "wallMs": 101,
+        "navigation": {
+          "domContentLoadedMs": 42.40000000037253,
+          "loadEventMs": 45
+        }
+      },
+      {
+        "run": 2,
+        "phase": "offline",
+        "wallMs": 103,
+        "navigation": {
+          "domContentLoadedMs": 45.600000001490116,
+          "loadEventMs": 47.20000000111759
+        }
+      },
+      {
+        "run": 3,
+        "phase": "offline",
+        "wallMs": 95,
+        "navigation": {
+          "domContentLoadedMs": 40.09999999962747,
+          "loadEventMs": 40.69999999925494
+        }
+      }
+    ],
+    "method": "fresh context → goto / online (SW install + claim) → context.setOffline(true) → reload → wait 'Ready.'; wall-clock from reload trigger to Ready"
+  },
+  "deltaMs": -93
+}
