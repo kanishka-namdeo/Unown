@@ -8,7 +8,19 @@ archaeology. When a round completes, its log graduates to a round-specific
 
 ---
 
-## ACTIVE ROUND — none open (2026-11-03); the queue below stands
+## ACTIVE ROUND — the doc-truth round (2026-11-03, OPEN; log:
+`docs/doc-truth-round-session.md`)
+
+The A1 maintenance track: every documented claim true, every honest null
+either measured or still honestly null. Tickets T1–T5 (claimed before
+dispatch, in the round log): the L1 doc-drift sweep (the ground truth §7.4's
+eight flags, every count re-derived from its live source), the PWA
+installability/offline-load benchmark (the PT-5 plan's "not measured"
+flipped by a real measurement under `benchmarks/`), the Coda landing usage
+capture (browser-lane stills through the real UI + the landing's honest Coda
+presence), the instruction-surface PR-lane candidate (a decision doc —
+evaluation only, the write gate stays final), and the closeout. The
+operator decisions and the binding A2 protocol live in the round log.
 
 The Coda app round (2026-11-02 → 2026-11-03) is COMPLETE and graduated to its
 own log: `docs/coda-app-round-session.md` — the DRIVE track's app round: the
@@ -111,15 +123,11 @@ unification + footer quiet rounds (v0.0.53 —
 re-cut v0.0.53 after its first tag landed against red CI
 (`docs/release-recovery-session.md`).
 
-**The next round's queue (recorded, in priority order)**: the Coda round
-(2026-11-02 → 2026-11-03) closed its C1–C6 tickets; what it carries forward —
-(a) the Coda landing-page usage capture (the tui-capture lane owns TUI media;
-a Coda web-app capture rides the browser lane — the blog's capture script is
-the operator-side precedent), (b) the instruction-surface PR lane candidate
-(from the retrospective's improvements: the instruction-set write gate forces
-draft-and-operator-land, so an operator-review PR lane would let agent
-sessions propose AGENTS.md edits as PRs), (c) the PWA installability/
-offline-load benchmark receipt (currently an honest "not measured"); then the
+**The next round's queue (recorded, in priority order)**: the doc-truth round
+(2026-11-03) owns the Coda round's three carries-forwards — the landing usage
+capture, the instruction-surface PR-lane candidate, and the PWA benchmark
+receipt — plus the L1 doc-drift sweep; what IT carries forward lands here at
+its graduation; then the
 browser autonomy round 2 closed its predecessor's carries-overs (#46, #45, #44, the
 warm docs-navigation benchmark, the skill promotion) — what remains of the
 browser-autonomy lineage: the release-monitoring routine's first weekly run
