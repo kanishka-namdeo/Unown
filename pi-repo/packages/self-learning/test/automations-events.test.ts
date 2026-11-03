@@ -47,6 +47,8 @@ import {
         skipNextOccurrence,
         snoozeNextOccurrence,
         spawnAutomationRun,
+        SPEND_SKIP_REASON,
+        SPEND_SKIP_REASON_GLOBAL,
         updateAutomation,
         type AutomationRow,
 } from "../src/automations.ts";
@@ -533,6 +535,86 @@ describe("AutomationsScheduler (event triggers)", () => {
                 const row = eventRoutine("m2.delete.row");
                 expect(deleteAutomation(row.id)).toBe(true);
                 expect(getAutomation(row.id)).toBeNull(); // store.get's not-found shape
+                drop(row.id);
+        });
+
+        // S2-11 (SM-1): the spend gate on the event lane — a capped event moment
+        // is RECORDED (the storm-visible recorded-skip precedent), never spawned.
+        test("the event lane PASSES the spend gate: a capped event records a 'spend_ceiling' skip; an uncapped one dispatches", async () => {
+                const capped = track(
+                        createAutomation({
+                                title: "evt-cap",
+                                prompt: "p",
+                                workspace: WORKSPACE,
+                                schedule: {},
+                                eventKind: `evt-cap-${Math.random().toString(36).slice(2, 6)}`,
+                                spendCap: 10,
+                        }),
+                );
+                const open = track(
+                        createAutomation({
+                                title: "evt-open",
+                                prompt: "p",
+                                workspace: WORKSPACE,
+                                schedule: {},
+                                eventKind: `evt-open-${Math.random().toString(36).slice(2, 6)}`,
+                                spendCap: null,
+                        }),
+                );
+                // Seed both routines' day windows at their caps so only the gate decides.
+                store.run(
+                        `INSERT INTO automation_runs (id, automation_id, trigger_kind, scheduled_at, status, started_at, turns, tokens_in, tokens_out) VALUES (?, ?, 'event', NULL, 'succeeded', ?, 1, 5, 5)`,
+                        ["ev-1", capped.id, Date.now() - 5_000],
+                );
+                store.run(
+                        `INSERT INTO automation_runs (id, automation_id, trigger_kind, scheduled_at, status, started_at, turns, tokens_in, tokens_out) VALUES (?, ?, 'event', NULL, 'succeeded', ?, 1, 1, 1)`,
+                        ["ev-2", open.id, Date.now() - 5_000],
+                );
+                const { dispatch, seen } = instantDispatcher();
+                const sched = new AutomationsScheduler(dispatch);
+                // The capped routine: NOT spawned, recorded as 'spend-capped' + a skip row.
+                const res = await sched.dispatchEvent(capped.event_kind!, {});
+                expect(seen).not.toContain(capped.id);
+                expect(res.results.find((x) => x.id === capped.id)!.outcome).toBe("spend-capped");
+                expect(
+                        listRuns(capped.id).some(
+                                (x) => x.trigger_kind === "event" && x.status === "skipped" && x.error === SPEND_SKIP_REASON,
+                        ),
+                ).toBe(true);
+                // The open routine (spendCap null): the same gate passes, it dispatches.
+                const res2 = await sched.dispatchEvent(open.event_kind!, {});
+                expect(seen).toContain(open.id);
+                expect(res2.results.find((x) => x.id === open.id)!.outcome).toBe("dispatched");
+                await settle();
+                drop(capped.id);
+                drop(open.id);
+        });
+
+        test("the event lane respects the GLOBAL knob: PI_AUTOMATION_MAX_TOKENS_DAY hit records 'spend_ceiling_global'", async () => {
+                const prev = process.env.PI_AUTOMATION_MAX_TOKENS_DAY;
+                const row = eventRoutine(`evt-glob-${Math.random().toString(36).slice(2, 6)}`);
+                // Seed the global window over a small global cap (120 >= 100).
+                store.run(
+                        `INSERT INTO automation_runs (id, automation_id, trigger_kind, scheduled_at, status, started_at, turns, tokens_in, tokens_out) VALUES (?, ?, 'event', NULL, 'succeeded', ?, 1, 60, 60)`,
+                        ["ev-g", row.id, Date.now() - 5_000],
+                );
+                process.env.PI_AUTOMATION_MAX_TOKENS_DAY = "100";
+                const { dispatch, seen } = instantDispatcher();
+                const sched = new AutomationsScheduler(dispatch);
+                const res = await sched.dispatchEvent(row.event_kind!, {});
+                try {
+                        expect(seen).not.toContain(row.id);
+                        expect(res.results.find((x) => x.id === row.id)!.outcome).toBe("spend-capped");
+                        expect(
+                                listRuns(row.id).some(
+                                        (x) => x.trigger_kind === "event" && x.status === "skipped" && x.error === SPEND_SKIP_REASON_GLOBAL,
+                                ),
+                        ).toBe(true);
+                } finally {
+                        if (prev === undefined) delete process.env.PI_AUTOMATION_MAX_TOKENS_DAY;
+                        else process.env.PI_AUTOMATION_MAX_TOKENS_DAY = prev;
+                }
+                await settle();
                 drop(row.id);
         });
 });

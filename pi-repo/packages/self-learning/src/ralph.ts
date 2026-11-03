@@ -258,6 +258,8 @@ export function spawnRalphRun(args: {
 		idle_only: 0,
 		deliver_url: null,
 		jitter_secs: null,
+		// S2-11: synthetic ralph rows carry no spend ceiling (user-initiated)
+		spend_cap: null,
 		// M6: no failed-run retry policy on synthetic ralph rows (the
 		// loop is the retry — the next iteration re-plans the work).
 		retry_max: null,

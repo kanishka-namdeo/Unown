@@ -622,6 +622,8 @@ export function spawnWatchRunViaAutomations(args: {
 		idle_only: 0,
 		deliver_url: null,
 		jitter_secs: null,
+		// S2-11: synthetic watch rows carry no spend ceiling (user-initiated)
+		spend_cap: null,
 		// M6: no failed-run retry policy on synthetic watch rows (the
 		// scan loop IS the retry — the next change re-triggers).
 		retry_max: null,

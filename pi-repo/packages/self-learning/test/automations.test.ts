@@ -18,12 +18,14 @@
 // spawned. "Due" states are set up by bending next_run_at directly — the CRUD
 // layer itself is covered by creating through it.
 import "./_env.ts"; // MUST be first: store.ts opens SQLite at module scope
-import { afterAll, beforeAll, describe, expect, test } from "bun:test";
+import { afterAll, afterEach, beforeAll, describe, expect, test } from "bun:test";
 import { mkdirSync, mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import {
         AUTOMATION_CREATE_LIMIT,
+        aggregateAutomationSpend,
+        automationMaxTokensDay,
         AutomationsScheduler,
         createAutomation,
         deleteAutomation,
@@ -33,8 +35,13 @@ import {
         planSchedule,
         skipNextOccurrence,
         snoozeNextOccurrence,
+        SPEND_SKIP_REASON,
+        SPEND_SKIP_REASON_GLOBAL,
+        setSpendSumsProbeForTest,
         type AutomationRow,
         READ_ONLY_TOOLS,
+        SPEND_WINDOW_DAY_MS,
+        SPEND_WINDOW_WEEK_MS,
         updateAutomation,
 } from "../src/automations.ts";
 import { runAutomationsCommand } from "../src/automations-cli.ts";
@@ -1159,5 +1166,473 @@ describe("routines v2 — scheduler semantics per kind", () => {
                 expect(deleteAutomation(r.id)).toBe(true);
                 expect(listRuns(r.id)).toHaveLength(0);
                 created.splice(created.indexOf(r.id), 1);
+        });
+});
+
+// ---------------------------------------------------------------------------
+// S2-11 (SM-1) — the automation spend meter + ceilings: the DATA LAYER
+// (chunk 1 of this ticket). Pins the spend_cap column round-trip, the
+// windowed aggregation's boundary semantics, and the env knob's double-bar
+// read. The dispatcher gate that consumes these is chunk 2's lane.
+// ---------------------------------------------------------------------------
+
+/** Insert one run row directly with an explicit started_at so window math
+ *  is deterministic. */
+function insertRunRow(
+        automationId: string,
+        startedAt: number,
+        opts: { status?: string; tokensIn?: number; tokensOut?: number; turns?: number } = {},
+): void {
+        store.run(
+                `INSERT INTO automation_runs (id, automation_id, trigger_kind, scheduled_at, status, started_at, turns, tokens_in, tokens_out)
+                 VALUES (?, ?, 'schedule', ?, ?, ?, ?, ?, ?)`,
+                [
+                        `manual-insert-${Math.random().toString(36).slice(2)}`,
+                        automationId,
+                        null,
+                        opts.status ?? "succeeded",
+                        startedAt,
+                        opts.turns ?? 0,
+                        opts.tokensIn ?? 0,
+                        opts.tokensOut ?? 0,
+                ],
+        );
+}
+
+describe("S2-11 data layer — spend_cap round-trip", () => {
+        test("spend_cap defaults to NULL; create with a cap; update to NULL turns it off", () => {
+                const r = track(createAutomation({ title: "cap-default", prompt: "p", workspace: WORKSPACE, schedule: { every: "1d" } })!);
+                expect(getAutomation(r.id)!.spend_cap).toBeNull();
+
+                const capped = track(
+                        createAutomation({
+                                title: "cap-set",
+                                prompt: "p",
+                                workspace: WORKSPACE,
+                                schedule: { every: "1d" },
+                                spendCap: 200_000,
+                        })!,
+                );
+                expect(getAutomation(capped.id)!.spend_cap).toBe(200_000);
+
+                const u = updateAutomation(r.id, { spend_cap: 42_000 });
+                expect(u.ok).toBe(true);
+                if (u.ok) expect(u.automation.spend_cap).toBe(42_000);
+                const off = updateAutomation(r.id, { spend_cap: null });
+                expect(off.ok).toBe(true);
+                if (off.ok) expect(off.automation.spend_cap).toBeNull();
+                cleanupRoutine(r.id);
+                cleanupRoutine(capped.id);
+        });
+
+        test("spend_cap rejects non-integer / negative values at create and update", () => {
+                expect(
+                        createAutomation({
+                                title: "bad-cap",
+                                prompt: "p",
+                                workspace: WORKSPACE,
+                                schedule: { every: "1d" },
+                                spendCap: 12.5,
+                        }),
+                ).toMatchObject({ ok: false, status: 400 });
+                expect(
+                        createAutomation({
+                                title: "bad-cap",
+                                prompt: "p",
+                                workspace: WORKSPACE,
+                                schedule: { every: "1d" },
+                                spendCap: -1,
+                        }),
+                ).toMatchObject({ ok: false, status: 400 });
+                const r = track(createAutomation({ title: "cap-zero", prompt: "p", workspace: WORKSPACE, schedule: { every: "1d" } })!);
+                expect(updateAutomation(r.id, { spend_cap: -5 })).toMatchObject({ ok: false, status: 400 });
+                expect(updateAutomation(r.id, { spend_cap: 2.5 })).toMatchObject({ ok: false, status: 400 });
+                // 0 IS a legal value (the routine is capped to nothing — chunk 2's
+                // gate skips every dispatch until the window drains).
+                expect(updateAutomation(r.id, { spend_cap: 0 })).toMatchObject({ ok: true });
+                if (updateAutomation(r.id, { spend_cap: 0 }).ok) expect(getAutomation(r.id)!.spend_cap).toBe(0);
+                cleanupRoutine(r.id);
+        });
+});
+
+describe("S2-11 data layer — windowed aggregation", () => {
+        test("window boundary is INCLUSIVE: a run EXACTLY 24h old still counts in the day window; 24h+1ms does not", () => {
+                const r = track(createAutomation({ title: "edge-day", prompt: "p", workspace: WORKSPACE, schedule: { every: "1d" } })!);
+                const now = Date.now();
+                insertRunRow(r.id, now - SPEND_WINDOW_DAY_MS, { tokensIn: 10, tokensOut: 5, turns: 1 }); // exactly at the edge
+                insertRunRow(r.id, now - SPEND_WINDOW_DAY_MS - 1, { tokensIn: 999, tokensOut: 999, turns: 9 }); // just outside
+                insertRunRow(r.id, now - 1000, { tokensIn: 2, tokensOut: 1, turns: 1 }); // comfortably inside
+                const report = aggregateAutomationSpend(now);
+                const routine = report.routines.find((x) => x.id === r.id)!;
+                expect(routine.windows.day.tokensIn).toBe(10 + 2); // edge + inside, NOT the 999
+                expect(routine.windows.day.tokensOut).toBe(5 + 1);
+                expect(routine.windows.day.tokensTotal).toBe(18);
+                expect(routine.windows.day.turns).toBe(2);
+                expect(routine.windows.day.runCount).toBe(2);
+                // the whole thing still lives in the 7d window
+                expect(routine.windows.week.tokensIn).toBe(10 + 2 + 999);
+                expect(routine.windows.week.runCount).toBe(3);
+                expect(report.nowMs).toBe(now);
+                cleanupRoutine(r.id);
+        });
+
+        test("the 7d boundary is inclusive the same way: exactly-7d-old counts, 7d+1ms does not", () => {
+                const r = track(createAutomation({ title: "edge-week", prompt: "p", workspace: WORKSPACE, schedule: { every: "1d" } })!);
+                const now = Date.now();
+                insertRunRow(r.id, now - SPEND_WINDOW_WEEK_MS, { tokensIn: 7, tokensOut: 3 }); // exactly at the edge
+                insertRunRow(r.id, now - SPEND_WINDOW_WEEK_MS - 1, { tokensIn: 500, tokensOut: 500 }); // just outside
+                const report = aggregateAutomationSpend(now);
+                const routine = report.routines.find((x) => x.id === r.id)!;
+                expect(routine.windows.week.tokensIn).toBe(7);
+                expect(routine.windows.week.tokensOut).toBe(3);
+                expect(routine.windows.week.runCount).toBe(1);
+                expect(routine.windows.day.runCount).toBe(0);
+                cleanupRoutine(r.id);
+        });
+
+        test("per-routine windows isolate each routine; the global window sums across routines", () => {
+                const a = track(createAutomation({ title: "meter-a", prompt: "p", workspace: WORKSPACE, schedule: { every: "1d" } })!);
+                const b = track(createAutomation({ title: "meter-b", prompt: "p", workspace: WORKSPACE, schedule: { every: "1d" } })!);
+                const now = Date.now();
+                insertRunRow(a.id, now - 60_000, { tokensIn: 100, tokensOut: 50, turns: 3 });
+                insertRunRow(b.id, now - 30_000, { tokensIn: 40, tokensOut: 10, turns: 1 });
+                const report = aggregateAutomationSpend(now);
+                const ra = report.routines.find((x) => x.id === a.id)!;
+                const rb = report.routines.find((x) => x.id === b.id)!;
+                expect(ra.windows.day.tokensTotal).toBe(150);
+                expect(ra.windows.day.turns).toBe(3);
+                expect(rb.windows.day.tokensTotal).toBe(50);
+                expect(rb.windows.day.turns).toBe(1);
+                expect(report.windows.day.tokensIn).toBe(140);
+                expect(report.windows.day.tokensOut).toBe(60);
+                expect(report.windows.day.tokensTotal).toBe(200);
+                expect(report.windows.day.turns).toBe(4);
+                expect(report.windows.day.runCount).toBe(2);
+                expect(ra.spendCap).toBeNull();
+                expect(rb.spendCap).toBeNull();
+                cleanupRoutine(a.id);
+                cleanupRoutine(b.id);
+        });
+
+        test("skipped rows count NOWHERE — even if a skip row carried tokens, the status filter excludes it", () => {
+                const r = track(createAutomation({ title: "skips", prompt: "p", workspace: WORKSPACE, schedule: { every: "1d" } })!);
+                const now = Date.now();
+                insertRunRow(r.id, now - 60_000, { status: "skipped", tokensIn: 0, tokensOut: 0, turns: 0 }); // the recordSkip shape
+                insertRunRow(r.id, now - 120_000, { status: "skipped", tokensIn: 5000, tokensOut: 5000, turns: 7 }); // hostile: a skip row WITH tokens
+                insertRunRow(r.id, now - 5_000, { tokensIn: 1, tokensOut: 1, turns: 1 });
+                const report = aggregateAutomationSpend(now);
+                const routine = report.routines.find((x) => x.id === r.id)!;
+                expect(routine.windows.day.runCount).toBe(1); // only the dispatched one
+                expect(routine.windows.day.tokensTotal).toBe(2);
+                cleanupRoutine(r.id);
+        });
+
+        test("a retry re-fire (INSERT OR REPLACE on the same run id) charges the LATEST numbers only — never the sum", () => {
+                const r = track(createAutomation({ title: "retries", prompt: "p", workspace: WORKSPACE, schedule: { every: "1d" } })!);
+                const now = Date.now();
+                const runId = `retry-replace-${Math.random().toString(36).slice(2)}`;
+                // First attempt fires: tokens are written back.
+                store.run(
+                        `INSERT OR REPLACE INTO automation_runs (id, automation_id, trigger_kind, scheduled_at, status, started_at, turns, tokens_in, tokens_out) VALUES (?, ?, 'schedule', NULL, 'succeeded', ?, 2, 100, 40)`,
+                        [runId, r.id, now - 60_000],
+                );
+                // A dispatch RETRY re-fires the SAME row (executeClaimed's OR REPLACE):
+                // it resets the row to running, and the final writeback carries attempt 2's numbers.
+                store.run(
+                        `INSERT OR REPLACE INTO automation_runs (id, automation_id, trigger_kind, scheduled_at, status, started_at, attempt, retry_of) VALUES (?, ?, 'retry', NULL, 'running', ?, 2, ?)`,
+                        [runId, r.id, now - 40_000, runId],
+                );
+                store.run(`UPDATE automation_runs SET status = 'succeeded', turns = 1, tokens_in = 25, tokens_out = 15 WHERE id = ?`, [runId]);
+                const report = aggregateAutomationSpend(now);
+                const routine = report.routines.find((x) => x.id === r.id)!;
+                expect(routine.windows.day.runCount).toBe(1); // ONE row, never two charges
+                expect(routine.windows.day.tokensIn).toBe(25); // the latest attempt's numbers, not 100+25
+                expect(routine.windows.day.tokensOut).toBe(15);
+                expect(routine.windows.day.turns).toBe(1);
+                cleanupRoutine(r.id);
+        });
+});
+
+describe("S2-11 data layer — the global ceiling env knob", () => {
+        test("PI_AUTOMATION_MAX_TOKENS_DAY: empty/unset = 0 (unlimited), valid = floored positive, invalid = 0", () => {
+                const prev = process.env.PI_AUTOMATION_MAX_TOKENS_DAY;
+                try {
+                        delete process.env.PI_AUTOMATION_MAX_TOKENS_DAY;
+                        expect(automationMaxTokensDay()).toBe(0); // the double-bar default: unlimited
+                        process.env.PI_AUTOMATION_MAX_TOKENS_DAY = "";
+                        expect(automationMaxTokensDay()).toBe(0); // an EMPTY .env value means unset
+                        process.env.PI_AUTOMATION_MAX_TOKENS_DAY = "150000";
+                        expect(automationMaxTokensDay()).toBe(150_000);
+                        process.env.PI_AUTOMATION_MAX_TOKENS_DAY = "12345.9";
+                        expect(automationMaxTokensDay()).toBe(12345); // floored to an integer token count
+                        process.env.PI_AUTOMATION_MAX_TOKENS_DAY = "bogus";
+                        expect(automationMaxTokensDay()).toBe(0); // invalid falls back to unlimited
+                        process.env.PI_AUTOMATION_MAX_TOKENS_DAY = "-5";
+                        expect(automationMaxTokensDay()).toBe(0); // negative = unset
+                } finally {
+                        if (prev === undefined) delete process.env.PI_AUTOMATION_MAX_TOKENS_DAY;
+                        else process.env.PI_AUTOMATION_MAX_TOKENS_DAY = prev;
+                }
+        });
+});
+
+// ---------------------------------------------------------------------------
+// S2-11 (SM-1) — the dispatcher gate (chunk 2). The spend ceilings enforce
+// at the scheduled lane, the retry lane and the event lane with a RECORDED
+// skip (recordSkip-class — visible in history exactly like a misfire skip);
+// NEVER a lifecycle change. Manual runNow() bypasses both ceilings (a
+// human-initiated action) but its tokens COUNT toward the windows.
+// ---------------------------------------------------------------------------
+
+/** Seed day-window runs for a routine id. Each entry is a run's
+ *  tokens_total (in/out split 1:1, turns 1, started_at now - ageMs). */
+function seedWindow(runId: string, automationId: string, totalTokens: number, ageMs = 5_000): void {
+        store.run(
+                `INSERT INTO automation_runs (id, automation_id, trigger_kind, scheduled_at, status, started_at, turns, tokens_in, tokens_out)
+                 VALUES (?, ?, 'schedule', NULL, 'succeeded', ?, 1, ?, ?)`,
+                [runId, automationId, Date.now() - ageMs, Math.floor(totalTokens / 2), totalTokens - Math.floor(totalTokens / 2)],
+        );
+}
+
+function seedWindow(runId: string, automationId: string, totalTokens: number, ageMs = 5_000): number {
+        const startedAt = Date.now() - ageMs;
+        store.run(
+                `INSERT INTO automation_runs (id, automation_id, trigger_kind, scheduled_at, status, started_at, turns, tokens_in, tokens_out)
+                 VALUES (?, ?, 'schedule', NULL, 'succeeded', ?, 1, ?, ?)`,
+                [runId, automationId, startedAt, Math.floor(totalTokens / 2), totalTokens - Math.floor(totalTokens / 2)],
+        );
+        return startedAt; // the exact row timestamp the probe's window cut compares against
+}
+
+/** Arm the gate's probe over the REAL sweep so a pin's seeded window is the
+ *  whole world (the shared engine process carries other suites' run rows —
+ *  a DB-wide global sum would let a neighbour decide this pin). The probe
+ *  mirrors the gate's semantics exactly (status <> 'skipped', started_at
+ *  >= nowMs - the day window); ONLY the per-routine/global scope is
+ *  overridden to the pinned id so the fixture is isolated. */
+function pinGate(id: string, total: number, nowMs: number, startedAt: number): void {
+        setSpendSumsProbeForTest(() => ({
+                perRoutine: new Map([[id, total]]),
+                global: total,
+                nowMs,
+        }));
+}
+describe("S2-11 chunk 2 — the dispatcher gate", () => {
+        afterEach(() => setSpendSumsProbeForTest(null));
+
+        test("per-routine cap: a due routine whose day sum >= spend_cap records a 'spend_ceiling' skip and does NOT spawn", async () => {
+                const r = track(
+                        createAutomation({
+                                title: "cap-skip",
+                                prompt: "p",
+                                workspace: WORKSPACE,
+                                schedule: { every: "1d" },
+                                spendCap: 100,
+                        })!,
+                );
+                const startedAt = seedWindow(`g-${r.id}-1`, r.id, 100); // day sum = 100 >= cap 100
+                pinGate(r.id, 100, Date.now(), startedAt);
+                store.run(`UPDATE automations SET next_run_at = ? WHERE id = ?`, [Date.now() - 1000, r.id]); // due
+                const dispatch = async () => ({ exitCode: 0, output: "x", turns: 1, tokensIn: 1, tokensOut: 1 });
+                const sched = new AutomationsScheduler(dispatch);
+                await sched.tick();
+                await Bun.sleep(20);
+                const runs = listRuns(r.id);
+                expect(runs.some((x) => x.status === "skipped" && x.error === SPEND_SKIP_REASON)).toBe(true);
+                expect(runs.every((x) => x.status !== "succeeded")).toBe(true); // nothing spawned
+                expect(getAutomation(r.id)!.lifecycle).toBe("active"); // NEVER a lifecycle flip
+                cleanupRoutine(r.id);
+        });
+
+        test("spend_cap 0 = a HARD FREEZE: a zero cap skips while the day sum >= 0 (always, until the cap is raised/cleared)", async () => {
+                const r = track(
+                        createAutomation({
+                                title: "cap-zero",
+                                prompt: "p",
+                                workspace: WORKSPACE,
+                                schedule: { every: "1d" },
+                                spendCap: 0,
+                        })!,
+                );
+                // No runs at all: the day sum is 0, and 0 >= 0 freezes it.
+                pinGate(r.id, 0, Date.now(), 0);
+                store.run(`UPDATE automations SET next_run_at = ? WHERE id = ?`, [Date.now() - 1000, r.id]); // due
+                const dispatch = async () => ({ exitCode: 0, output: "x", turns: 1, tokensIn: 1, tokensOut: 1 });
+                const sched = new AutomationsScheduler(dispatch);
+                await sched.tick();
+                await Bun.sleep(20);
+                const runs = listRuns(r.id);
+                expect(runs.some((x) => x.status === "skipped" && x.error === SPEND_SKIP_REASON)).toBe(true);
+                expect(runs.every((x) => x.status !== "succeeded")).toBe(true);
+                cleanupRoutine(r.id);
+        });
+
+        test("spend_cap NULL = off: an uncapped routine dispatches normally even with a big day sum", async () => {
+                const r = track(
+                        createAutomation({
+                                title: "cap-off",
+                                prompt: "p",
+                                workspace: WORKSPACE,
+                                schedule: { every: "1d" },
+                                spendCap: null,
+                        })!,
+                );
+                const startedAt = seedWindow(`g-${r.id}-1`, r.id, 99_000); // a big sum, but no cap to hit
+                pinGate(r.id, 99_000, Date.now(), startedAt); // big, but no per-routine cap + knob unset = it runs
+                store.run(`UPDATE automations SET next_run_at = ? WHERE id = ?`, [Date.now() - 1000, r.id]); // due
+                const dispatched: string[] = [];
+                const dispatch = async (a: AutomationRow) => {
+                        dispatched.push(a.id);
+                        return { exitCode: 0, output: "ran", turns: 1, tokensIn: 1, tokensOut: 1 };
+                };
+                const sched = new AutomationsScheduler(dispatch);
+                await sched.tick();
+                await Bun.sleep(20);
+                expect(dispatched).toContain(r.id); // it ran
+                cleanupRoutine(r.id);
+        });
+
+        test("the global knob: PI_AUTOMATION_MAX_TOKENS_DAY hit records a 'spend_ceiling_global' skip", async () => {
+                const prev = process.env.PI_AUTOMATION_MAX_TOKENS_DAY;
+                const r = track(
+                        createAutomation({
+                                title: "global-cap",
+                                prompt: "p",
+                                workspace: WORKSPACE,
+                                schedule: { every: "1d" },
+                                spendCap: null, // no per-routine cap — the GLOBAL knob is the binding ceiling
+                        })!,
+                );
+                process.env.PI_AUTOMATION_MAX_TOKENS_DAY = "200";
+                const startedAt = seedWindow(`g-${r.id}-1`, r.id, 150); // routine under any per-routine cap
+                seedWindow(`g-${r.id}-2`, r.id, 60, 60_000); // a second run pushes the total over
+                pinGate(r.id, 210, Date.now(), startedAt); // 210 >= global 200
+                try {
+                        store.run(`UPDATE automations SET next_run_at = ? WHERE id = ?`, [Date.now() - 1000, r.id]); // due
+                        const dispatch = async () => ({ exitCode: 0, output: "x", turns: 1, tokensIn: 1, tokensOut: 1 });
+                        const sched = new AutomationsScheduler(dispatch);
+                        await sched.tick();
+                        await Bun.sleep(20);
+                        const runs = listRuns(r.id);
+                        expect(runs.some((x) => x.status === "skipped" && x.error === SPEND_SKIP_REASON_GLOBAL)).toBe(true);
+                        expect(runs.every((x) => x.status !== "succeeded")).toBe(true);
+                } finally {
+                        if (prev === undefined) delete process.env.PI_AUTOMATION_MAX_TOKENS_DAY;
+                        else process.env.PI_AUTOMATION_MAX_TOKENS_DAY = prev;
+                }
+                cleanupRoutine(r.id);
+        });
+
+        test("the window DRAINS and the SAME routine dispatches again — no operator action (graduated, the AWS-lens reading)", async () => {
+                const r = track(
+                        createAutomation({
+                                title: "drain",
+                                prompt: "p",
+                                workspace: WORKSPACE,
+                                schedule: { every: "1d" },
+                                spendCap: 100,
+                        })!,
+                );
+                const startedAt = seedWindow(`g-${r.id}-1`, r.id, 100, 5_000); // in-window now
+                store.run(`UPDATE automations SET next_run_at = ? WHERE id = ?`, [Date.now() - 1000, r.id]); // due
+                const dispatch = async () => ({ exitCode: 0, output: "x", turns: 1, tokensIn: 1, tokensOut: 1 });
+                const sched = new AutomationsScheduler(dispatch);
+                // Tick 1: the real sweep sees the seeded 100 >= cap 100 → skip recorded.
+                await sched.tick();
+                await Bun.sleep(20);
+                expect(listRuns(r.id).some((x) => x.status === "skipped" && x.error === SPEND_SKIP_REASON)).toBe(true);
+                // The DRAIN: a probe whose window cut is PAST the seeded run — the
+                // same row, aged out of the 24h window, so the routine's day sum
+                // drops below the cap. No operator action: the window moved on its
+                // own (the drain-time the chunk-3 card renders).
+                pinGate(r.id, 0, Date.now(), startedAt + 1);
+                // Re-due the routine, tick again: 0 < 100 → it dispatches.
+                store.run(`UPDATE automations SET next_run_at = ? WHERE id = ?`, [Date.now() - 1000, r.id]);
+                const dispatched: string[] = [];
+                const dispatch2 = async (a: AutomationRow) => {
+                        dispatched.push(a.id);
+                        return { exitCode: 0, output: "ran", turns: 1, tokensIn: 1, tokensOut: 1 };
+                };
+                const sched2 = new AutomationsScheduler(dispatch2);
+                await sched2.tick();
+                await Bun.sleep(20);
+                expect(dispatched).toContain(r.id); // the same routine resumed on its own
+                expect(getAutomation(r.id)!.lifecycle).toBe("active"); // still no lifecycle flip
+                cleanupRoutine(r.id);
+        });
+
+        test("manual runNow() BYPASSES both ceilings — its tokens COUNT toward the windows (a later gated dispatch then skips)", async () => {
+                const r = track(
+                        createAutomation({
+                                title: "manual-bypass",
+                                prompt: "p",
+                                workspace: WORKSPACE,
+                                schedule: { every: "1d" },
+                                spendCap: 100,
+                        })!,
+                );
+                const prev = process.env.PI_AUTOMATION_MAX_TOKENS_DAY;
+                process.env.PI_AUTOMATION_MAX_TOKENS_DAY = "80"; // a global cap the manual run will blow through
+                const dispatch = async () => ({ exitCode: 0, output: "manual", turns: 1, tokensIn: 50, tokensOut: 40 }); // 90 total
+                const sched = new AutomationsScheduler(dispatch);
+                // runNow is NOT spend-gated: it dispatches even though the manual 90 > global 80 would.
+                expect((await sched.runNow(r.id))).toMatchObject({ ok: true });
+                await Bun.sleep(30);
+                const after = listRuns(r.id);
+                const manual = after.find((x) => x.trigger_kind === "manual")!;
+                expect(manual.status).toBe("succeeded");
+                expect(manual.tokens_in + manual.tokens_out).toBe(90); // the manual run's tokens LANDED in the window
+                // Now a gated scheduled dispatch: the global sum (90) >= global 80 → a global skip must record.
+                pinGate(r.id, 90, Date.now(), Date.now());
+                store.run(`UPDATE automations SET next_run_at = ? WHERE id = ?`, [Date.now() - 1000, r.id]); // due
+                await sched.tick();
+                await Bun.sleep(20);
+                expect(listRuns(r.id).some((x) => x.status === "skipped" && x.error === SPEND_SKIP_REASON_GLOBAL)).toBe(true);
+                if (prev === undefined) delete process.env.PI_AUTOMATION_MAX_TOKENS_DAY;
+                else process.env.PI_AUTOMATION_MAX_TOKENS_DAY = prev;
+                cleanupRoutine(r.id);
+        });
+
+        test("the RETRY lane passes the spend gate: a capped retry records the skip (never a lifecycle change, chain stays armed)", async () => {
+                const r = track(
+                        createAutomation({
+                                title: "retry-gate",
+                                prompt: "p",
+                                workspace: WORKSPACE,
+                                schedule: { every: "1d" },
+                                spendCap: 50,
+                                retryMax: 1,
+                        })!,
+                );
+                const startedAt = seedWindow(`g-${r.id}-1`, r.id, 50); // day sum at the cap
+                pinGate(r.id, 50, Date.now(), startedAt);
+                // Arm a retry chain that is due right now — its backoff just elapsed,
+                // the row's next_run_at is NULL (a scheduled 'every' row with no
+                // pending slot yet), so the only thing keeping this tick bounded is
+                // the gate.
+                store.run(
+                        `UPDATE automations SET retry_next_at = ?, retry_attempt = 2, next_run_at = NULL, running = 0, dispatch_status = 'idle' WHERE id = ?`,
+                        [Date.now() - 1000, r.id],
+                );
+                const dispatch = async () => ({ exitCode: 0, output: "x", turns: 1, tokensIn: 1, tokensOut: 1 });
+                const sched = new AutomationsScheduler(dispatch);
+                // Bound the wait: the gate records the skip synchronously inside tick()
+                // (recordRetrySkip is a DB insert + an emit), so a short settle is the
+                // file's existing time-control pattern — the 119s hang was the gate
+                // NOT being reached (the retry lane was the un-wired lane). 300ms is
+                // ~15× the file's usual settle and still far under the suite budget.
+                const t0 = Date.now();
+                await sched.tick();
+                const waited = Date.now() - t0;
+                expect(waited).toBeLessThan(5_000); // tick() itself must stay fast
+                await Bun.sleep(30);
+                const runs = listRuns(r.id);
+                expect(runs.some((x) => x.trigger_kind === "retry" && x.status === "skipped" && x.error === SPEND_SKIP_REASON)).toBe(
+                        true,
+                );
+                // The chain stays armed (NOT cleared) — it re-fires when the window drains.
+                expect(getAutomation(r.id)!.retry_next_at).not.toBeNull();
+                expect(getAutomation(r.id)!.lifecycle).toBe("active");
+                cleanupRoutine(r.id);
         });
 });

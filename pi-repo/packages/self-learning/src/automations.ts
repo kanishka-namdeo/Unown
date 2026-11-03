@@ -232,6 +232,19 @@ export function misfireCatchupEnabled(): boolean {
         return (process.env.UNOWN_AUTOMATION_MISFIRE_CATCHUP || "") === "1";
 }
 
+/** The global daily spend ceiling for automation runs, in tokens (the
+ *  governor's env-knob convention, read at call time so the per-tick hot
+ *  reload retunes it live). PI_AUTOMATION_MAX_TOKENS_DAY; 0/empty/invalid
+ *  = unlimited — the default (user-created routine spend is VISIBLE by
+ *  default and BOUNDED on request; a default-on ceiling that stops a
+ *  routine mid-workflow is itself a surprise). */
+export function automationMaxTokensDay(): number {
+        const raw = process.env.PI_AUTOMATION_MAX_TOKENS_DAY || "";
+        if (raw === "") return 0;
+        const n = Number(raw);
+        return Number.isFinite(n) && n > 0 ? Math.floor(n) : 0;
+}
+
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
@@ -261,6 +274,14 @@ export interface AutomationRow {
         idle_only: number; // 1 = yield the slot while a human works (bridge interactive presence / engine live runs)
         deliver_url: string | null; // POST the result JSON here after each run
         jitter_secs: number | null; // 1..600: randomize computed slots (cron/every) up to this much
+        /** S2-11 (SM-1) — the per-routine spend ceiling: max total
+         *  tokens_total a routine's dispatched runs may carry inside the
+         *  rolling 24h window before the dispatcher skips with a recorded
+         *  `spend_ceiling` skip (graduated: the window drains and the
+         *  routine resumes on its own). NULL = unlimited (the default;
+         *  the global knob automationMaxTokensDay() is the other ceiling,
+         *  also default-unlimited). */
+        spend_cap: number | null;
         /** Routines v5 (M6) — the failed-run retry policy: up to retry_max
          *  re-runs of a failed occurrence (0/NULL = off, the default), first
          *  retry after retry_backoff_secs, doubling per attempt. */
@@ -343,6 +364,7 @@ CREATE TABLE IF NOT EXISTS automations (
   idle_only INTEGER NOT NULL DEFAULT 0,  -- M5: yield while a human works
   deliver_url TEXT,                      -- M5: POST the result JSON here
   jitter_secs INTEGER,                   -- M5: randomize computed slots (cron/every)
+  spend_cap INTEGER,                    -- S2-11: per-routine 24h token ceiling (NULL = unlimited)
   retry_max INTEGER,                     -- M6: failed-run retries after N failures (0/NULL = off)
   retry_backoff_secs INTEGER,            -- M6: backoff base secs (default 300, cap 3600)
   retry_next_at INTEGER,                 -- M6: armed retry chain (NULL = none)
@@ -431,6 +453,7 @@ const ROUTINES_V4_COLUMNS: Array<[table: string, name: string, ddl: string]> = [
  *  backoff, the armed-chain bookkeeping on automations, and the attempt /
  *  chain-link columns on automation_runs. Same pragma-guarded ALTER pattern. */
 const ROUTINES_V5_COLUMNS: Array<[table: string, name: string, ddl: string]> = [
+        ["automations", "spend_cap", "INTEGER"], // S2-11: per-routine 24h token ceiling (NULL = unlimited)
         ["automations", "retry_max", "INTEGER"],
         ["automations", "retry_backoff_secs", "INTEGER"],
         ["automations", "retry_next_at", "INTEGER"],
@@ -574,6 +597,13 @@ export type CreateAutomationInput = {
         /** Randomize computed slots (cron/every) by 0..N seconds (1..600) —
          *  de-herd the top-of-hour crons. */
         jitterSecs?: number | null;
+        /** S2-11 (SM-1): ceiling on the routine's total tokens_total inside
+         *  the rolling 24h window (non-negative integer, e.g. 200000; 0 =
+         *  every dispatch skips until the window drains). Null/omitted =
+         *  unlimited — the shipped default; spend is always VISIBLE, the
+         *  ceiling is enforced only on request (the governor asymmetry:
+         *  engine learning jobs bounded by default, user routines on request). */
+        spendCap?: number | null;
         /** Routines v5 (M6): retry a failed occurrence up to N more times
          *  (0..10; 0/null = off, the default). Works for every kind — a
          *  retry is a recovery of the occurrence, not a new slot. */
@@ -609,6 +639,13 @@ export function createAutomation(input: CreateAutomationInput, now: Date = new D
                 (!Number.isFinite(input.untilMs) || input.untilMs <= 0)
         ) {
                 return { ok: false, error: "until must be a positive epoch-ms timestamp", status: 400 };
+        }
+        // S2-11 (SM-1): the per-routine spend ceiling. A non-negative integer
+        // token count (0 is legal — the routine is capped to nothing and
+        // only resumes as the 24h window drains); null/omitted = unlimited.
+        const spendCap = input.spendCap ?? null;
+        if (spendCap !== null && (!Number.isInteger(spendCap) || spendCap < 0)) {
+                return { ok: false, error: "spend-cap must be a non-negative integer (or null for unlimited)", status: 400 };
         }
         // ---- the event branch (M2, routines v3) ----------------------------
         // An event routine has NO slot math: no first occurrence, no until
@@ -735,8 +772,8 @@ export function createAutomation(input: CreateAutomationInput, now: Date = new D
         const ts = now.getTime();
         const timed = plan !== null && plan.ok ? plan : null; // the event branch leaves this null
         store.run(
-                `INSERT INTO automations (id, title, prompt, cron_expr, delay_ms, schedule_kind, interval_n, interval_unit, interval_at, timezone, until_ms, misfire, event_kind, event_filter, active_hours, idle_only, deliver_url, jitter_secs, retry_max, retry_backoff_secs, workspace, mode, model, max_runs, lifecycle, next_run_at, dispatch_status, created_at, updated_at)
-                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'active', ?, 'idle', ?, ?)`,
+                `INSERT INTO automations (id, title, prompt, cron_expr, delay_ms, schedule_kind, interval_n, interval_unit, interval_at, timezone, until_ms, misfire, event_kind, event_filter, active_hours, idle_only, deliver_url, jitter_secs, spend_cap, retry_max, retry_backoff_secs, workspace, mode, model, max_runs, lifecycle, next_run_at, dispatch_status, created_at, updated_at)
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'active', ?, 'idle', ?, ?)`,
                 [
                         id,
                         title,
@@ -756,6 +793,7 @@ export function createAutomation(input: CreateAutomationInput, now: Date = new D
                         idleOnly,
                         deliverUrl,
                         jitterSecs,
+                        spendCap,
                         retryMax === 0 ? null : retryMax, // 0 and NULL are both "off" — store the normalized shape
                         retryBackoffSecs,
                         input.workspace,
@@ -791,7 +829,7 @@ export function listRuns(automationId: string, limit = 20): AutomationRunRow[] {
 export type UpdatePatch = Partial<
         Pick<
                 AutomationRow,
-                "title" | "prompt" | "mode" | "model" | "max_runs" | "lifecycle" | "timezone" | "until_ms" | "misfire"
+                "title" | "prompt" | "mode" | "model" | "max_runs" | "lifecycle" | "timezone" | "until_ms" | "misfire" | "spend_cap"
         >
 > & {
         cron?: string;
@@ -837,6 +875,14 @@ export function updateAutomation(id: string, patch: UpdatePatch, now: Date = new
         if (patch.max_runs !== undefined) {
                 sets.push("max_runs = ?");
                 params.push(patch.max_runs ?? null);
+        }
+        if (patch.spend_cap !== undefined) {
+                // S2-11 (SM-1): the per-routine 24h token ceiling (null = off).
+                if (patch.spend_cap !== null && (!Number.isInteger(patch.spend_cap) || patch.spend_cap < 0)) {
+                        return { ok: false, error: "spend-cap must be a non-negative integer (or null for unlimited)", status: 400 };
+                }
+                sets.push("spend_cap = ?");
+                params.push(patch.spend_cap ?? null);
         }
         if (patch.timezone !== undefined) {
                 const tz = patch.timezone?.trim() || null;
@@ -1163,6 +1209,233 @@ export type RunDispatcher = (
         ctx?: { eventPayload?: string },
 ) => Promise<{ exitCode: number; output: string; turns: number; tokensIn: number; tokensOut: number }>;
 
+/** One dispatched run's spend, summed over a window. Skipped rows are
+ *  excluded everywhere (they carry no tokens); a dispatch RETRY reuses one
+ *  run row (INSERT OR REPLACE keyed by id in executeClaimed — the token
+ *  writeback on the final UPDATE is the single charge point), so retries
+ *  can never double-charge: the latest attempt's numbers are the ones the
+ *  window reports. */
+export interface AutomationSpendWindow {
+        tokensIn: number;
+        tokensOut: number;
+        tokensTotal: number; // tokensIn + tokensOut, per the meter's pricing unit
+        turns: number;
+        /** Dispatched runs only (status <> 'skipped'). */
+        runCount: number;
+}
+
+/** Per-routine slice of the meter: the two rolling windows plus this
+ *  routine's own ceiling (NULL = unlimited). */
+export interface AutomationSpendRoutineSums {
+        id: string;
+        title: string;
+        /** The per-routine ceiling — NULL = unlimited (the shipped default). */
+        spendCap: number | null;
+        windows: { day: AutomationSpendWindow; week: AutomationSpendWindow };
+}
+
+/** The full spend report the chunk-2 gate, chunk-3 API route, CLI lane and
+ *  hub card all read from this one shape. `nowMs` is returned so a caller
+ *  that pairs it with a drain-time render (chunk 3) computes the drain
+ *  exactly as the meter's window does.
+ *
+ *  Window semantics (the pinned boundary, reused by the gate so meter and
+ *  enforcement drain identically): a rolling window counts every run row
+ *  with `started_at >= nowMs - windowMs` — INCLUSIVE at the edge: a run that
+ *  started EXACTLY 24h ago is still in the 24h window (and drains out at
+ *  the next instant). The day and week windows are computed in one sweep
+ *  against idx_automation_runs_started (one scan covers both cuts).
+ *
+ *  Retry double-charge: a dispatch retry re-fires the SAME run id through
+ *  INSERT OR REPLACE and the single token writeback is the final UPDATE,
+ *  so one occurrence owns exactly one row and its LATEST numbers — the
+ *  aggregation never adds the pre-retry attempt's tokens on top. */
+export interface AutomationSpendReport {
+        /** Global (all routines) window sums. */
+        windows: { day: AutomationSpendWindow; week: AutomationSpendWindow };
+        /** One entry per routine with at least one run row in any window. */
+        routines: AutomationSpendRoutineSums[];
+        nowMs: number;
+}
+
+/** The meter itself — the windowed spend aggregation over automation_runs
+ *  (the data layer of S2-11; the enforcement gate is the chunk-2 lane). */
+export function aggregateAutomationSpend(nowMs: number = Date.now()): AutomationSpendReport {
+        ensureAutomationsSchema();
+        const dayAgo = nowMs - SPEND_WINDOW_DAY_MS;
+        const weekAgo = nowMs - SPEND_WINDOW_WEEK_MS;
+        // One swept pass over the global window for the global sums.
+        // EVERY metric is status-filtered (`status <> 'skipped'`), not just
+        // runCount: skip rows are supposed to carry no tokens, but a hostile
+        // or bug-written skip row with numbers must not pollute the meter —
+        // dispatched runs are the only thing this report prices.
+        const globalRow = store.get<{ tin: number; tout: number; turns: number; runs: number; tin_d: number; tout_d: number; turns_d: number; runs_d: number }>(
+                `SELECT
+                     COALESCE(SUM(CASE WHEN status <> 'skipped' AND started_at >= ? THEN tokens_in ELSE 0 END), 0) AS tin,
+                     COALESCE(SUM(CASE WHEN status <> 'skipped' AND started_at >= ? THEN tokens_out ELSE 0 END), 0) AS tout,
+                     COALESCE(SUM(CASE WHEN status <> 'skipped' AND started_at >= ? THEN turns ELSE 0 END), 0) AS turns,
+                     SUM(CASE WHEN status <> 'skipped' AND started_at >= ? THEN 1 ELSE 0 END) AS runs,
+                     COALESCE(SUM(CASE WHEN status <> 'skipped' AND started_at >= ? THEN tokens_in ELSE 0 END), 0) AS tin_d,
+                     COALESCE(SUM(CASE WHEN status <> 'skipped' AND started_at >= ? THEN tokens_out ELSE 0 END), 0) AS tout_d,
+                     COALESCE(SUM(CASE WHEN status <> 'skipped' AND started_at >= ? THEN turns ELSE 0 END), 0) AS turns_d,
+                     SUM(CASE WHEN status <> 'skipped' AND started_at >= ? THEN 1 ELSE 0 END) AS runs_d
+                   FROM automation_runs
+                   WHERE started_at >= ?`,
+                [weekAgo, weekAgo, weekAgo, weekAgo, dayAgo, dayAgo, dayAgo, dayAgo, weekAgo],
+        );
+        const week: AutomationSpendWindow = {
+                tokensIn: globalRow?.tin ?? 0,
+                tokensOut: globalRow?.tout ?? 0,
+                tokensTotal: (globalRow?.tin ?? 0) + (globalRow?.tout ?? 0),
+                turns: globalRow?.turns ?? 0,
+                runCount: globalRow?.runs ?? 0,
+        };
+        const day: AutomationSpendWindow = {
+                tokensIn: globalRow?.tin_d ?? 0,
+                tokensOut: globalRow?.tout_d ?? 0,
+                tokensTotal: (globalRow?.tin_d ?? 0) + (globalRow?.tout_d ?? 0),
+                turns: globalRow?.turns_d ?? 0,
+                runCount: globalRow?.runs_d ?? 0,
+        };
+        // Per-routine sums against idx_automation_runs (automation_id, started_at).
+        // Status-filtered for EVERY metric, same rule as the global sweep above.
+        const routineRows = store.query<{ automation_id: string; tin: number; tout: number; turns: number; runs: number; tin_d: number; tout_d: number; turns_d: number; runs_d: number }>(
+                `SELECT automation_id,
+                       COALESCE(SUM(CASE WHEN status <> 'skipped' AND started_at >= ? THEN tokens_in ELSE 0 END), 0) AS tin,
+                       COALESCE(SUM(CASE WHEN status <> 'skipped' AND started_at >= ? THEN tokens_out ELSE 0 END), 0) AS tout,
+                       COALESCE(SUM(CASE WHEN status <> 'skipped' AND started_at >= ? THEN turns ELSE 0 END), 0) AS turns,
+                       SUM(CASE WHEN status <> 'skipped' AND started_at >= ? THEN 1 ELSE 0 END) AS runs,
+                       COALESCE(SUM(CASE WHEN status <> 'skipped' AND started_at >= ? THEN tokens_in ELSE 0 END), 0) AS tin_d,
+                       COALESCE(SUM(CASE WHEN status <> 'skipped' AND started_at >= ? THEN tokens_out ELSE 0 END), 0) AS tout_d,
+                       COALESCE(SUM(CASE WHEN status <> 'skipped' AND started_at >= ? THEN turns ELSE 0 END), 0) AS turns_d,
+                       SUM(CASE WHEN status <> 'skipped' AND started_at >= ? THEN 1 ELSE 0 END) AS runs_d
+                   FROM automation_runs
+                   WHERE started_at >= ?
+                   GROUP BY automation_id`,
+                [weekAgo, weekAgo, weekAgo, weekAgo, dayAgo, dayAgo, dayAgo, dayAgo, weekAgo],
+        );
+        const routines: AutomationSpendRoutineSums[] = routineRows.map((r) => {
+                const row = store.get<Pick<AutomationRow, "id" | "title" | "spend_cap">>(`SELECT id, title, spend_cap FROM automations WHERE id = ?`, [
+                        r.automation_id,
+                ]);
+                return {
+                        id: r.automation_id,
+                        title: row?.title ?? "(deleted routine)",
+                        spendCap: row?.spend_cap ?? null,
+                        windows: {
+                                day: {
+                                        tokensIn: r.tin_d,
+                                        tokensOut: r.tout_d,
+                                        tokensTotal: r.tin_d + r.tout_d,
+                                        turns: r.turns_d,
+                                        runCount: r.runs_d,
+                                },
+                                week: {
+                                        tokensIn: r.tin,
+                                        tokensOut: r.tout,
+                                        tokensTotal: r.tin + r.tout,
+                                        turns: r.turns,
+                                        runCount: r.runs,
+                                },
+                        },
+                };
+        });
+        routines.sort((a, b) => b.windows.week.tokensTotal - a.windows.week.tokensTotal);
+        return { windows: { day, week }, routines, nowMs };
+}
+
+// ---------------------------------------------------------------------------
+// S2-11 (SM-1): the windowed spend meter (per-routine + global, rolling
+// 24h + 7d). The data layer — aggregation only; the dispatcher gate that
+// enforces spendCap / automationMaxTokensDay() with a recorded skip is the
+// chunk-2 lane, and the drain-time rendering is chunk 3's surface. Both
+// read from the SAME aggregate so meter and enforcement drain identically.
+// ---------------------------------------------------------------------------
+
+/** The two rolling spend windows (the meter's whole time surface). The
+ *  chunk-2 gate and chunk-3 renderers reuse these constants — they own the
+ *  window math in one place. */
+export const SPEND_WINDOW_DAY_MS = 24 * 60 * 60_000;
+export const SPEND_WINDOW_WEEK_MS = 7 * 24 * 60 * 60_000;
+
+/** The dispatcher gate's reason strings — part of the surface contract the
+ *  chunk-3 hub card, CLI and API lane render verbatim (the recordSkip-class
+ *  skip rows carry them in `automation_runs.error`). */
+export const SPEND_SKIP_REASON = "spend_ceiling"; // per-routine spend_cap hit
+export const SPEND_SKIP_REASON_GLOBAL = "spend_ceiling_global"; // the global day knob hit
+
+/** The day-window-only sums the dispatcher gate needs (per-routine +
+ *  global) — computed ONCE per tick pass / gate evaluation, never per due
+ *  automation (the full double-sweep aggregateAutomationSpend would re-run
+ *  for every row; this is the gate's fast path over the same indexes).
+ *  Every metric is status-filtered exactly like the full meter (skip rows
+ *  count nowhere), so meter and enforcement drain identically. */
+export interface AutomationSpendDaySums {
+        /** routine id → the routine's day-window tokens_total. */
+        perRoutine: Map<string, number>;
+        /** All routines' day-window tokens_total. */
+        global: number;
+        nowMs: number;
+}
+
+export function automationSpendDaySums(nowMs: number = Date.now()): AutomationSpendDaySums {
+        ensureAutomationsSchema();
+        const dayAgo = nowMs - SPEND_WINDOW_DAY_MS;
+        const rows = store.query<{ automation_id: string; total: number }>(
+                `SELECT automation_id,
+                       COALESCE(SUM(tokens_in + tokens_out), 0) AS total
+                   FROM automation_runs
+                   WHERE status <> 'skipped' AND started_at >= ?
+                   GROUP BY automation_id`,
+                [dayAgo],
+        );
+        const perRoutine = new Map<string, number>();
+        let global = 0;
+        for (const r of rows) {
+                perRoutine.set(r.automation_id, r.total);
+                global += r.total;
+        }
+        return { perRoutine, global, nowMs };
+}
+
+/** One gate evaluation: the per-routine + global spend-ceiling decision for a
+ *  candidate row (the chunk-2 enforcement). Returns the exact recorded-skip
+ *  reason string, or null when the dispatch may proceed.
+ *
+ *  The operator's rulings, pinned: per-routine `spend_cap === null` is OFF
+ *  (always may proceed on the routine's own ceiling); `spend_cap === 0` is a
+ *  HARD FREEZE — the routine's day sum is `>= 0` always, so every gated
+ *  dispatch skips until the cap is raised/cleared. The global knob's 0/
+ *  unset/invalid IS unlimited (the default), so `automationMaxTokensDay() > 0`
+ *  is the gate's trigger. Neither branch ever mutates lifecycle — the
+ *  recorded skip is graduated (the window drains and the routine resumes on
+ *  its own, exactly like a misfire skip). */
+export function spendGateReason(
+        row: Pick<AutomationRow, "id" | "spend_cap">,
+        sums: AutomationSpendDaySums,
+): string | null {
+        const dayTotal = sums.perRoutine.get(row.id) ?? 0;
+        if (row.spend_cap !== null && dayTotal >= row.spend_cap) return SPEND_SKIP_REASON;
+        const globalCap = automationMaxTokensDay();
+        if (globalCap > 0 && sums.global >= globalCap) return SPEND_SKIP_REASON_GLOBAL;
+        return null;
+}
+
+/** The gate's own day sums, injectable for tests (the shared engine process
+ *  can carry other suites' automation_runs rows — the global sum is
+ *  DB-wide; a pin that seeds its own window must not be decided by a
+ *  neighbour's rows). Production never calls this; the gate path uses
+ *  automationSpendDaySums directly, once per tick pass. */
+let spendSumsProbe: (() => AutomationSpendDaySums) | null = null;
+export function setSpendSumsProbeForTest(fn: (() => AutomationSpendDaySums) | null): void {
+        spendSumsProbe = fn;
+}
+
+/** The gate's spend sums — the probe when set (tests), else the real sweep. */
+function spendSumsForGate(nowMs: number): AutomationSpendDaySums {
+        return spendSumsProbe ? spendSumsProbe() : automationSpendDaySums(nowMs);
+}
+
 /** The unattended-run prompt — pure and exported for tests (the framing is a
  *  security contract, it gets pinned). Event payloads ride the prompt as ONE
  *  pre-serialized JSON line framed as DATA: the webhook lane authenticates by
@@ -1388,6 +1661,15 @@ export class AutomationsScheduler {
                 // hot — they live in the DB; this covers the env lane).
                 reloadEnvIfChanged();
                 const ts = now.getTime();
+                // S2-11 (SM-1): the spend gate's day-window sums — computed ONCE
+                // per tick pass (not per due automation) and shared by the
+                // retry lane, the due-slot lane and the event lane below.
+                // reloadEnvIfChanged just ran, so automationMaxTokensDay() (read
+                // at call time inside spendGateReason) picks up a live retune
+                // without a restart — the knob drains the same way the window
+                // does. tick() takes its sums from the real sweep; the probe
+                // overrides them when a test sets one (isolated fixtures).
+                const spendSums = spendSumsForGate(ts);
                 // 1) Retries whose backoff elapsed go back to due.
                 store.run(
                         `UPDATE automations SET dispatch_status = 'idle', retry_at = NULL
@@ -1415,6 +1697,16 @@ export class AutomationsScheduler {
                         if (ts - dueAt > MISFIRE_CATCHUP_MAX_LAG_MS) {
                                 clearRetryChain(row.id);
                                 recordRetrySkip(row, ts, "retry_stale");
+                                continue;
+                        }
+                        // S2-11 (SM-1): a retry re-fire is an AUTOMATED dispatch —
+                        // spend is spend, it passes the same spend gate as a slot.
+                        // NEVER a lifecycle flip: a gated retry leaves the chain
+                        // armed; the next tick re-evaluates and it fires once the
+                        // window drains (graduated, like a misfire skip).
+                        const spendReason = spendGateReason(row, spendSums);
+                        if (spendReason !== null) {
+                                recordRetrySkip(row, ts, spendReason);
                                 continue;
                         }
                         const claimed = claim(row.id, ts);
@@ -1484,6 +1776,25 @@ export class AutomationsScheduler {
                                         held.add(due.id);
                                         continue; // held until the human is done (misfire bounds it)
                                 }
+                        }
+                        // S2-11 (SM-1): the spend ceiling gates — beside max_runs
+                        // and the M5 policy gates, BEFORE the claim (a capped slot
+                        // never spawns). Recorded skip, never a lifecycle change:
+                        // the 24h window drains and the routine resumes on its own
+                        // (graduated throttling, the AWS-lens reading). Momentary
+                        // kinds (cron/every) skip + advance like every other skip;
+                        // once/after HOLD (slot untouched) so the pending one-shot
+                        // fires as soon as the cap is lifted or the window drains.
+                        const spendReason = spendGateReason(due, spendSums);
+                        if (spendReason !== null) {
+                                const kind = due.schedule_kind ?? inferLegacyKind(due);
+                                if (kind === "cron" || kind === "every") {
+                                        recordSkip(due, ts, spendReason);
+                                        reschedule(due, { trigger: "schedule", slotMs: dueAt, fromMs: ts });
+                                        continue;
+                                }
+                                held.add(due.id);
+                                continue; // held: the cap or the window drains first
                         }
                         const claimed = claim(due.id, ts);
                         if (!claimed) continue; // raced with another claim — next tick
@@ -1850,6 +2161,19 @@ export class AutomationsScheduler {
                                 record("max-runs"); // budget exhausted (resume race) — nothing to do
                                 continue;
                         }
+                        // S2-11 (SM-1): the spend ceiling gates on the EVENT lane
+                        // too — a webhook moment is an automated dispatch, and its
+                        // tokens count just like a slot's. A capped event moment is
+                        // RECORDED (the storm-visible recorded-skip precedent): the
+                        // arrival is a moment, never replayed — the next event
+                        // re-evaluates the gate (the window drains or the cap lifts).
+                        const spendReason = spendGateReason(row, spendSumsForGate(nowMs));
+                        if (spendReason !== null) {
+                                recordEventSkip(row, nowMs, spendReason);
+                                result.dropped++;
+                                record("spend-capped");
+                                continue;
+                        }
                         if (!this.eventRateAllowed(row.id, nowMs)) {
                                 // Flood guard: RECORDED, not spawned — the storm stays
                                 // visible in history exactly like a misfire skip.
@@ -1995,7 +2319,8 @@ export type EventTriggerOutcome =
         | "dropped-busy"
         | "dropped-chain-depth"
         | "filter-rejected"
-        | "max-runs";
+        | "max-runs"
+        | "spend-capped";
 
 export interface EventDispatchResult {
         event: string;
