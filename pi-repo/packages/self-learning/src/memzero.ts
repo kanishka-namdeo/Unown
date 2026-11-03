@@ -70,6 +70,7 @@ import { emit } from "./bus.ts";
 import { recordLlmCall, recordLlmFailure, recordLlmSuccess } from "./governor.ts";
 import { chatJson, modelFor } from "./llm.ts";
 import { localmlConfig } from "./localml.ts";
+import { clearReconcileRecord, recordReconcileFailure, recordReconcileSuccess } from "./memory-health.ts";
 import { DATA_DIR, store } from "./store.ts";
 
 // ---------------------------------------------------------------- config
@@ -1232,11 +1233,20 @@ export async function reconcileMemories(
                 model?: string;
                 /** Test seam: inject the LLM verdict without a real call. */
                 llmFn?: (memories: PlatformMemory[]) => Promise<{ ops: ReconcileOp[] }>;
+                /** The dir the persistent health record (memory-health.ts)
+                 * lives in — tests point it at a sandbox dir; production
+                 * omits it and the record lands in the platform data dir. */
+                recordDir?: string;
         },
 ): Promise<ReconcileResult> {
         const platform = opts?.platform ?? (await getMemoryPlatform());
         const memories = await platform.getAll(scope);
         if (memories.length === 0 || !mem0ReconcileEnabled()) {
+                // The persistent record's lane (SM-2): a disabled/empty pass is
+                // a healthy outcome for the health card (nothing to reconcile,
+                // or reconciling is off) — clear any live failure record so the
+                // warning lane stays true, and stamp the success marker.
+                clearHealthReconcileFailure(opts?.recordDir);
                 return { ops: [], events: [], merged: 0, pruned: 0, updated: 0 };
         }
         const listing = memories
@@ -1267,6 +1277,10 @@ export async function reconcileMemories(
                 console.warn(
                         `[mem0] reconcile pass failed twice (${reconcileError}) — continuing additive-only this round; the next dream reconciles the backlog`,
                 );
+                // The persistent warning lane (SM-2): the fail-open branch's
+                // ephemeral bus event gains a durable record the health card /
+                // API / doctor can render until a pass succeeds.
+                recordHealthReconcileFailure(reconcileError ?? "unknown reconcile error", opts?.recordDir);
                 return { ops: [], events: [], merged: 0, pruned: 0, updated: 0 };
         }
         const events: MemoryPlatformEvent[] = [];
@@ -1321,6 +1335,11 @@ export async function reconcileMemories(
                         updated++;
                 }
         }
+        // Success (including the zero-op "nothing to reconcile" verdict) clears
+        // the failure lane and stamps the last-success marker — the health
+        // card's `lastReconcile` is this timestamp, honest about WHICH pass
+        // succeeded (the dreams table carries no reconcile outcome).
+        clearHealthReconcileFailure(opts?.recordDir);
         return { ops: verdict.ops, events, merged, pruned, updated };
 }
 
@@ -1361,6 +1380,19 @@ async function defaultReconcileLlm(memories: PlatformMemory[]): Promise<{ ops: R
                 },
         );
         return { ops: Array.isArray(result?.ops) ? result.ops : [] };
+}
+
+/** Clear the failure lane + stamp the success marker (a successful pass,
+ * incl. the no-op early return) — the health card's `lastReconcile` is this
+ * timestamp, honest about WHICH pass succeeded (the dreams table carries
+ * no reconcile outcome). */
+export function clearHealthReconcileFailure(dir?: string): void {
+                recordReconcileSuccess(Date.now(), dir);
+}
+
+/** Record a fail-open reconcile failure (the health card's warning lane). */
+export function recordHealthReconcileFailure(error: string, dir?: string): void {
+                recordReconcileFailure(error, Date.now(), dir);
 }
 
 // ---------------------------------------------------------------- ship

@@ -101,6 +101,7 @@ import { recoveryAnalytics } from "./plm/recovery-engine.ts";
 import { jobTimeoutMs, listJobs, router, setJobEnabled } from "./router.ts";
 import { describeRoutineSchedule } from "./routine-schedule.ts";
 import { automationSpendReport } from "./automation-spend.ts";
+import { engineMemoryHealth } from "./memory-health.ts";
 import { getLiveRun, listLiveRuns } from "./run-progress.ts";
 import { ensureAgentDir, getRun, listRuns, MODEL_ID, PROVIDER, runAgent } from "./runner.ts";
 import { listSandboxes } from "./sandbox.ts";
@@ -961,6 +962,23 @@ export async function handleApi(req: ApiRequest): Promise<Response> {
                         } catch (err: any) {
                                 console.error("[agent-service] memory search failed:", err);
                                 return json({ error: `memory platform unavailable: ${apiErrorMessage(err)}` }, 503);
+                        }
+                }
+
+                // ------------------------------------------------------------------
+                // Memory platform health (S2-4, SM-2): the engine scope's
+                // memory health card — last successful reconcile, duplicate
+                // + conflict counters, live warnings (the persistent
+                // reconcile-failure lane, tier cap, reconcile staleness).
+                // Read-only; same lane as /api/memories (the /api gate above).
+                // ------------------------------------------------------------------
+                if (method === "GET" && path === "/api/memory/health") {
+                        try {
+                                const health = await engineMemoryHealth();
+                                return json({ health, platform: memoryPlatformStatus() });
+                        } catch (err: any) {
+                                console.error("[agent-service] memory health failed:", err);
+                                return json({ error: `memory health unavailable: ${apiErrorMessage(err)}` }, 503);
                         }
                 }
 

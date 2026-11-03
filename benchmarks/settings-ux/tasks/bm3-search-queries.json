@@ -1,5 +1,5 @@
 {
-  "$comment": "BM-3 search success — 12 pinned queries. targetId = the item a user looking for this thing needs (the intent target, not any fuzzy false-positive). hit = target appears among the TOP-3 rendered results of the hub Search row (a user scans the first rows; the list renders up to 10). expectedAtBefore documents the honest BEFORE state: 'hit' for the 8 catalogued targets, 'miss' for the 4 known gaps (2× S2-1 pi rows, S2-11 spend meter, S2-4 memory health card) — AFTER runs should flip the misses to hits as M3/M4 land, and the receipt records whatever actually happens. S2-11 now lands via SM-1: the 'spend' query's targetId is the real item 'automation.spend' (the Automation spend meter card, added this round).",
+  "$comment": "BM-3 search success — 12 pinned queries. targetId = the item a user looking for this thing needs (the intent target, not any fuzzy false-positive). hit = target appears among the TOP-3 rendered results of the hub Search row (a user scans the first rows; the list renders up to 10). expectedAtBefore documents the honest BEFORE state: 'hit' for the 8 catalogued targets, 'miss' for the 4 known gaps (2× S2-1 pi rows, S2-11 spend meter, S2-4 memory health card) — AFTER runs should flip the misses to hits as M3/M4 land, and the receipt records whatever actually happens. S2-11 now lands via SM-1: the 'spend' query's targetId is the real item 'automation.spend' (the Automation spend meter card, added this round). S2-4 now lands via SM-2: the 'memory health' query's targetId is the real item 'memory.health' (the Memory health card — last reconcile, duplicate + conflict counters, live warnings; GET /api/memory/health).",
   "queries": [
     { "q": "budget", "targetId": "agent.goal-budget", "targetLabel": "Goal budget (turns)", "expectedAtBefore": "hit" },
     { "q": "kill switch", "targetId": "automation.stop", "targetLabel": "Stop a running routine (kill switch)", "expectedAtBefore": "hit" },
@@ -12,6 +12,6 @@
     { "q": "theme", "targetId": "(pi selector: theme)", "targetLabel": "theme", "expectedAtBefore": "miss", "gapRef": "S2-1" },
     { "q": "dark mode", "targetId": "(pi selector: theme)", "targetLabel": "theme", "expectedAtBefore": "miss", "gapRef": "S2-1" },
     { "q": "spend", "targetId": "automation.spend", "targetLabel": "Automation spend meter", "expectedAtBefore": "miss", "gapRef": "S2-11", "landedBy": "SM-1 (2026-11-04)" },
-    { "q": "memory health", "targetId": "(missing: memory health card)", "targetLabel": "memory health", "expectedAtBefore": "miss", "gapRef": "S2-4" }
+    { "q": "memory health", "targetId": "memory.health", "targetLabel": "Memory health card", "expectedAtBefore": "miss", "gapRef": "S2-4", "landedBy": "SM-2 (2026-11-04)" }
   ]
 }

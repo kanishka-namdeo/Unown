@@ -178,6 +178,17 @@ What a teammate gets when they clone the repo: the shared project memory and the
 - `unown dashboard` → **Memory** screen — the engine's four tiers with contents, full version history and one-key rollback, plus every skill AutoDream minted into your projects (skills rollback and retire write back to your project's files). The engine's platform state (backend, model, dir, cap) rides `/api/overview`'s `memoryPlatform` block, and `GET /api/memories?q=…` searches the platform's memories per scope.
 - `/memory search <query>` — cross-project semantic search over every scope that has dreamed (see [shared memory](#shared-memory-across-sessions-and-projects)); `GET /api/memories?across=1&q=…` is the HTTP form.
 
+## The memory health card (S2-4)
+
+The memory platform's maintenance pass — the reconcile step that dedupes, retires stale rules and resolves contradictions — is **fail-open**: when its LLM call fails, the dream continues additive-only and the failure used to be ephemeral (a bus event + a console line, nothing queryable after the fact). The health card makes the accumulated state of a memory scope observable, deterministically and without an LLM call:
+
+- **Last reconcile** — when the last *successful* reconcile pass ran. A failed pass is not a timestamp: the card's **reconcile-failing** warning carries the since-time and the error's own words, and it is **persistent** — a small record beside the mem0 data dir (`DATA_DIR/mem0`), cleared only when a pass succeeds. A failure you ignore shows up here forever, not just in a log you never opened.
+- **Duplicates** — memories sharing the same *normalized* text (case, whitespace and punctuation folded). Exact-hash dedup misses near-duplicates; this counter is the v1 near-dupe class — a group of three counts three.
+- **Conflicts** — supersede links (a newer memory `linked_memory_ids`-pointing at an older one) whose OLD memory is still alive: the contradiction the reconciler exists to retire, counted while it is unresolved.
+- **Warnings** — `reconcile-failing` (additive-only backlog is growing), `tier-at-cap` (the project tier has reached its write cap and dreams stop shipping), `reconcile-stale` (no successful reconcile in >7 days *and* notes are still undreamed — the backlog will keep piling).
+
+Surfaces: `GET /api/memory/health` (the engine scope's card, same gate as the memory lanes) and the settings hub's **Memory health card** item (`memory.health`). Remedies: edit/rollback from the dashboard's Memory screen, and let a dream run the reconcile (the engine settings' dream lane). Nothing in the card auto-deletes — it observes; the reconcile pass is the only thing that changes memory.
+
 ## Learning integrity (how the system polices itself)
 
 Self-modification without gates degenerates fast, so every memory write is controlled:

@@ -926,6 +926,18 @@ const memoryItems: SettingsItem[] = [
                 related: ["unown dashboard memory"],
                 actionLabel: "runs /dashboard memory",
         }),
+        action({
+                id: "memory.health",
+                section: "memory",
+                name: "Memory health card",
+                risk: "low",
+                summary: "Last reconcile, duplicate + conflict counters, and live memory warnings",
+                help:
+                        "The maintenance view of the memory platform. Last reconcile: when the last SUCCESSFUL reconcile pass ran (a failed one is not counted — the card's persistent reconcile-failing warning carries since + error until a pass succeeds). Duplicates: memories sharing the same normalized text (case/whitespace/punctuation folded — the near-dupe class an exact-hash dedup misses; a group of 3 counts 3). Conflicts: supersede links whose OLD memory is still alive — the contradiction class the reconciler exists to resolve. Warnings: reconcile-failing (the fail-open pass is running additive-only, the backlog is growing), tier-at-cap (dreams stop shipping at the write cap), reconcile-stale (no reconcile in >7d with notes still pending). Remedies: edit/rollback in the dashboard Memory screen; a dream runs the reconcile pass (the engine settings' dream lane). Nothing here auto-deletes — the card only observes.",
+                related: ["unown dashboard memory", "GET /api/memory/health"],
+                tags: ["health", "reconcile", "duplicates", "conflicts", "warning"],
+                actionLabel: "reads the memory health",
+        }),
 ];
 
 // ---------------------------------------------------------------------------
