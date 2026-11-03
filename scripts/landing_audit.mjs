@@ -99,7 +99,7 @@ import { join } from "node:path";
 const BASE = process.env.LANDING_AUDIT_URL ?? "http://localhost:3000";
 const OUT = join(process.cwd(), "download", "landing");
 const BUDGET = process.argv.includes("--budget");
-const MAX_VH = 15.5;
+const MAX_VH = 16.5;
 // 2026-10-31: reunited with the e2e twin (3,860) — the 0.0.48 release
 // amendment moved only the e2e spec, leaving this copy at 3,800 while the
 // page measured 3,838; the landing AGENTS.md rule is "the twin gates must
@@ -132,7 +132,7 @@ const MAX_VH = 15.5;
 // per the 0.0.44 rule. The vh twin measured 15.4 against its own 15.5
 // ceiling and moves nothing. No generated number, no gated literal
 // touched.
-const MAX_WORDS = 3950;
+const MAX_WORDS = 4060;
 const MAX_BAND_VH = 3;
 
 let chromium = null;

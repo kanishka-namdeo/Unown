@@ -83,7 +83,21 @@ import { expect, test } from "@playwright/test";
  * the one listed title) plus the same 4-word headroom the delegation
  * amendment argued for. No gated literal, no generated number touched.
  */
-const MAX_PAGE_VH = 15.5;
+/*
+ * The 2026-11-03 thirteenth amendment (the doc-truth round's T3): 15.5 ->
+ * 16.5vh carries the Coda band — the repo's first user-product band, a new
+ * top-level section (0.9vh measured: the kicker+lead, two 2x product
+ * stills framed in the shared TerminalWindow chrome, the receipt exits)
+ * plus one band's headroom per the 0.0.44 rule. Compressed FIRST, per the
+ * contract: the band's own lede cut from three clauses to two, the figure
+ * line dropped from the page (its caveats now live in the receipt lane,
+ * not the page — the honesty rule), measured 16.3vh / 4,033w at the
+ * breach (the e2e twin's canonical finished-state count). No generated
+ * number, no gated literal touched. Both twins move together (the 0.0.48
+ * no-divergence lesson); the words twin moves 3,950 -> 4,060 with it
+ * (measured + one rail-stop's ~20w headroom).
+ */
+const MAX_PAGE_VH = 16.5;
 /*
  * The 2026-11-01 dependency-round release amendment (the twelfth): 3,920 ->
  * 3,950 carries the rail's 52nd stop. Measured at the breach: 3,930 — ten
@@ -101,7 +115,17 @@ const MAX_PAGE_VH = 15.5;
  * against its own 15.5 ceiling and moves nothing. No generated number, no
  * gated literal touched.
  */
-const MAX_WORDS = 3950;
+/*
+ * The 2026-11-03 thirteenth amendment (the doc-truth round's T3): 3,950 ->
+ * 4,060 words — both twins together (the 0.0.48 no-divergence lesson).
+ * The Coda band's own footprint (~90w of lede + caption + receipt exits)
+ * plus one rail-stop's headroom per the 0.0.44 rule. Compressed FIRST:
+ * the band's lede shortened and its figure line moved to the receipt lane
+ * (measured 4,033w at the breach, 83w over the old ceiling; the ceiling
+ * carries that plus the next stop's chrome so it does not open on a
+ * knife's edge). No generated number, no gated literal touched.
+ */
+const MAX_WORDS = 4060;
 
 /*
  * The 2026-10-31 planning-round release amendment (the tenth): 3,860 ->

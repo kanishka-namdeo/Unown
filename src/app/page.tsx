@@ -13,6 +13,7 @@ import { FaqSection } from "@/components/landing/faq";
 import { FinaleSection } from "@/components/landing/finale";
 import { Hero } from "@/components/landing/hero";
 import { BuiltImprovedSection } from "@/components/landing/built-improved";
+import { CodaSection } from "@/components/landing/coda";
 import { LiveDemoSection } from "@/components/landing/live-demo";
 import { LoopSection } from "@/components/landing/loop";
 import { ProofSection } from "@/components/landing/proof";
@@ -125,6 +126,7 @@ export default function LandingPage() {
             <DexSection />
             <ShowcaseSection />
             <LiveDemoSection />
+            <CodaSection />
             <BuiltImprovedSection />
             <ProofSection />
             <AlphabetSection />

@@ -1,6 +1,8 @@
 # Project Memory
 
 ## Known pitfalls
+- The Unown spawn mechanism incorrectly resolved the `serve.mjs` script path, causing `bun` to interpret it as a URL and throw a `Module not found` error; the fix is to ensure `resolve(SCRIPT_DIR, "serve.mjs")` is used within the spawn call
+- The Unown project's drift-pin pattern falsely flags the digit "2" in the product-lane name "e2e"; the pitfall was resolved by keeping "2" in the expected digit set and adding a comment to prevent false positives
 - In Unown, the C4 ten-chunk receipt drift issue is being addressed by moving receipt appends inside the per-chunk task list in the next ticket template, and a Coda usage capture for the landing page is queued for the capture lane.
 - In the Unown project, budgeted-chunk resume chains are the only dispatch lane that survives a host reaping agent processes between tool calls; this workflow enforces 8-turn caps, receipt-first incremental appends, and compile-before-stop, whereas the receipt-last pattern failed at the 9.5-minute wall.
 
@@ -13,6 +15,7 @@
 - In Unown's apps/coda, tsc-green and bun-test-green do not guarantee browser-link-green; every type-only import requires the `type` keyword, and every UI surface requires a real browser boot check before commit to prevent 'Booting-forever' ship blockers.
 
 ## Facts
+- In Unown, when a new band causes a metric (e.g., viewport count) to exceed a ceiling, the sanctioned move per landing AGENTS.md is to amend the ceiling, but only after first attempting to compress the band copy further.
 - After implementing a new benchmark lane, register it in both `benchmarks/AGENTS.md` and the master index to maintain documentation consistency.
 - When timing Playwright benchmark lanes, ensure offline-mode wall-clock measurements start at `page.reload()` and do not include the online boot phase, while online-mode measurements start at `page.goto()`.
 - Documentation updates should reflect accurate counts: e.g., 47 unown commands, 12 split commands, 20 session tools, and 15 screens (including the full 15-screen name list).
@@ -114,9 +117,6 @@
 - Export installPrintStallWatchdog from cli.ts and import createPrintExitTrace, printExitTraceEnabled, and resolvePrintTraceDir from print-exit-trace.ts in Unown's test suite.
 - Wire answer_flushed through the answer-watch extension, and wire drain start/done events plus final exit events into cmdPrint in Unown's cli.ts.
 - Unown project in /home/z/my-project/Unown has a known editor flaw where write mode body editing is not properly captured; this was identified and fixed during a session
-- Unown UI modules include a shell component, editor, and main.ts file with associated CSS and index.html body that are part of the front-end structure
-- The Unown boundary-check test file intentionally uses node:fs/promises to read source files, which is a documented exception for test infrastructure; the file is excluded from its own scan.
-- When using bun:test, ensure the 'bun:test' module is available in the ambient TypeScript type definitions by adding a shim (declare module "bun:test") to a global .d.ts file if @types/bun is not installed or recognized.
 
 ## Manual notes
 
@@ -125,4 +125,4 @@
 - Stealth verification suite on bot.sannysoft.com: all 10 checks (webdriver, userAgent, platform, userAgentData, timezone, locale, screen, viewport, plugins, window.chrome) pass; 0 FAIL rows in Intoli tests. (Restored by hand 2026-11-01 — second occurrence of the dream-render-prunes-landing-quoted-lines class, issue #46; moved here to the durable lane.)
 - Parley password hashing: scrypt N=16384 r=8 p=1 (src/lib/parley/password.ts). Restored by hand 2026-10-29 after AutoDream reconciles twice erased the fact (upstream 79->66 render, then the F1/F2 bcrypt poison round). Never let a memory answer overwrite this without reading the source.
 
-<!-- unown: rendered 110/124 memories via Mem0 (backend: lexical) · 14 oldest pruned at render (cap 110; hard-won rules immune) at 2026-11-03T06:22:53.688Z -->
+<!-- unown: rendered 110/127 memories via Mem0 (backend: lexical) · 17 oldest pruned at render (cap 110; hard-won rules immune) at 2026-11-03T06:43:16.996Z -->
