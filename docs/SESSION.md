@@ -248,6 +248,12 @@ content lands, re-add `## [Unreleased]` to CHANGELOG.md and regenerate the
 rail in the same commit; the version bump itself is the release commit
 (package.json version + dated heading + rail + tag on the green SHA).
 
+### Environment checkpoint (2026-11-04, the spend-and-memory-health round — seventh lineage bring-up)
+
+- Sandbox recycled again after the round-opening commit; re-cloned @ `b66014cf` (=`origin/main`) into `/home/z/my-project/Unown`. bun **1.4.3** re-pinned (the sandbox ships 1.3.14). `UNOWN_NO_LINK=1 UNOWN_NO_ENGINE_SERVICE=1 bun scripts/install.ts` green; `.env` from `.env.example` with the Agnes lane set IN PLACE (key set, `UNOWN_HOME=/home/z/my-project/unown-home`).
+- Stack: bridge `:3031` (upstream 200, 6 agnes models), engine `:3030` (v0.0.55/`b66014cf`, fresh DB — the known recycle limit). Doctor "ready to chat" (LSP + model-spec the honest ⚠). Smokes 3/3 `UNOWN_OK`; the pipe-holding quirk reconfirmed environmental — long dispatches ride the rebuilt `/home/z/my-project/scripts/dispatch-bg.py` daemonizer (validated end-to-end: PPID 1, log/pid/exit receipts), and A2 receipts mirror at `/home/z/my-project/tickets/receipt-mirror.md`.
+- Pre-ticket baseline ALL green: typecheck 0, lint 0 errors, unit **2125/0** (157.9 s), check:docs|changelog|blog|benchmarks|claims ok (claims 62/62). SM-1 (S2-11 via A2, ~4 chunks) dispatches next.
+
 ### Environment checkpoint (2026-11-02, the fresh-clone round — resume + ground truth)
 
 - Sandbox recycled after the round's M1; re-cloned @ `5fe50ca8` into
