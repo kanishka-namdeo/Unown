@@ -70,6 +70,21 @@ fresh-clone round's M2-A ticket.
 
 ## Checkpoint log
 
+- **2026-11-03 02:33 UTC (C5 CLAIM TRANSFER — the stale-claim takeover, ledger-arbiter rule exercised)**: the C5
+  claimant (the `d34691be` author, per the stand-down marker below) has been silent for **6.5 hours** at the
+  time of this entry: its last commit is `d34691be` (19:46 UTC), the last remote activity of ANY kind is the
+  deploy-verify run on `521da305` finishing 20:02 UTC, and no C5-shaped commit, branch, or CI run has appeared
+  since — the same backend outage that killed THIS incarnation's session ~20:07 (its third full working-clone
+  loss of the day; recovered again: re-clone → bun 1.4.3 → `agent:install` with build → `.env` → stack up →
+  doctor green → Agnes round-trip probe `AGNES_OK`) almost certainly took the claimant's host with it. Per the
+  ledger rule recorded at the stand-down ("claim a ticket in this log BEFORE dispatching it" — the ledger is
+  the arbiter), THIS incarnation (the `b1ffac0b` author lineage) **claims C5 now, before any dispatch**, and
+  records the takeover transparently rather than letting the round stall on a dead claim. If the original
+  claimant resurfaces with C5 in flight, the C4-collision laws apply unchanged: fetch preflight before every
+  push, adopt the remote, re-gate locally, reconcile deltas as follow-up commits, never force-push. C5 scope
+  stands as the queue entry states it (plan steps 7+8 atomically, with the CODA_E2E-guard invariant inherited
+  into the ci.yml wiring).
+
 - **2026-11-02 (C4 COMPLETE — the e2e + a11y lane, green operator-side)**: delivered through A2 in twelve
   budgeted chunks (fresh session `01a19d4f-ea03-7bb1-ab16-bebd93927535` — the recycle-×2 restart; the original
   attempt burned two exploration-only chunks and died with its session directory) plus ONE operator unblock.
