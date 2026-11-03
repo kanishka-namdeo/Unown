@@ -8,17 +8,18 @@ archaeology. When a round completes, its log graduates to a round-specific
 
 ---
 
-## ACTIVE ROUND — the Coda app round (2026-11-02, opening)
+## ACTIVE ROUND — none open (2026-11-03); the queue below stands
 
-The DRIVE track's app round: ship **Coda** — a local-first markdown notes +
-task-board PWA — at `apps/coda/` in this monorepo, entirely through A2
-sessions (operator decisions 2026-11-02: Coda PWA, `apps/coda/`, push direct
-to `main`). It opens from a receipted, specialist-reviewed design doc, not a
-blank page: `benchmarks/plan-mode/results/run-2026-11-02-pt5/pt-5-plan.md`
-(the PT-5 lane — 7 live specialist spawns, verdicts applied, 87/100). A
-resumed session reads that plan + this index + the fresh-clone round's
-protocol notes (the budgeted-chunk resume recipe for A2 tickets on this
-reaping host) before any ticket.
+The Coda app round (2026-11-02 → 2026-11-03) is COMPLETE and graduated to its
+own log: `docs/coda-app-round-session.md` — the DRIVE track's app round: the
+repo's first user product, **Coda** — a local-first markdown notes + task-board
+PWA (offline-first, installable, cross-platform) at `apps/coda/`, planned by
+the PT-5 lane (7 live specialist spawns, verdicts applied, 87/100) and
+delivered through C1–C5 agent ticket sessions plus the C6 closeout. Receipts:
+51/51 domain tests in both bun lanes, 5/5 isolated e2e (the CODA_E2E-guarded
+Playwright lane), the offline proof end to end, the CI `coda` job green,
+the C6-3a blog post, and the V3-contract retrospective merged into the PT-5
+plan via the PTY lane. The next round opens from the queue below.
 
 The exit-resume round (2026-11-02) is COMPLETE and graduated to its own log:
 `docs/exit-resume-round-session.md` — the Ctrl+C-exit → resume lane, opened
@@ -110,8 +111,16 @@ unification + footer quiet rounds (v0.0.53 —
 re-cut v0.0.53 after its first tag landed against red CI
 (`docs/release-recovery-session.md`).
 
-**The next round's queue (recorded, in priority order)**: the browser
-autonomy round 2 closed its predecessor's carries-overs (#46, #45, #44, the
+**The next round's queue (recorded, in priority order)**: the Coda round
+(2026-11-02 → 2026-11-03) closed its C1–C6 tickets; what it carries forward —
+(a) the Coda landing-page usage capture (the tui-capture lane owns TUI media;
+a Coda web-app capture rides the browser lane — the blog's capture script is
+the operator-side precedent), (b) the instruction-surface PR lane candidate
+(from the retrospective's improvements: the instruction-set write gate forces
+draft-and-operator-land, so an operator-review PR lane would let agent
+sessions propose AGENTS.md edits as PRs), (c) the PWA installability/
+offline-load benchmark receipt (currently an honest "not measured"); then the
+browser autonomy round 2 closed its predecessor's carries-overs (#46, #45, #44, the
 warm docs-navigation benchmark, the skill promotion) — what remains of the
 browser-autonomy lineage: the release-monitoring routine's first weekly run
 (`auto-mvxw0wne-onkwcn`, 2026-11-08 — the multi-day lane's first real

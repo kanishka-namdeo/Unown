@@ -1,7 +1,7 @@
 # SDLC Capability Matrix — Unown (A1 operator recon)
 
-- **Produced**: 2026-11-03, by A1 during the Coda-round resume (full sandbox recycle; every live datum below re-verified same day — bring-up receipts in `A2_GROUND_TRUTH.md` §10 drift log).
-- **Snapshot of**: `main` @ `f9872c4e` (v0.0.55).
+- **Produced**: 2026-11-03, by A1 during the Coda-round resume; **refreshed at the round's teardown (the C6 close) the same day** — every live datum below re-verified same day (bring-up + teardown receipts in `A2_GROUND_TRUTH.md` §10 drift log).
+- **Snapshot of**: `main` through the Coda round's close (v0.0.55; the C6 closeout commits land on `e0ca8ab4`'s lineage).
 - **Companion to**: `A2_GROUND_TRUTH.md` — same trust order (live executable output > runtime introspection > repo main docs > ground truth > directive) and the same refresh rule: re-verify before any ticket; full refresh at every teardown cycle.
 - **Purpose**: the A1 directive's SDLC Capability Inventory. Every capability carries the directive's required fields — activation, trust requirements, limitations, evidence source, verification method — and the coverage matrix tracks which lifecycle lanes have **receipted** evidence from the DRIVE track (the Coda app round).
 
@@ -132,18 +132,19 @@ For every lifecycle activity: discover existing capability → use it → measur
 | Discovery | ✅ | PT-5 specialist-reviewed design doc (87/100, 7 live spawns); round session logs |
 | Planning | ✅ | plan-mode V3 default; PT-5 run `benchmarks/plan-mode/results/run-2026-11-02-pt5/` |
 | Architecture | ✅ | PT-5 design doc = Coda architecture source of truth (pure-TS domain, IDB adapter, SW at app root) |
-| Engineering | ✅ | C1–C3 delivered through A2 (`e55b17e5`, `7dbabde3`, `8bd616b8`): domain 51/51, UI+IDB, PWA offline-proven |
-| Quality | ✅ | C4 landed (dual-incarnation reconciled `b1ffac0b` + the root-lane guard): coda lane 5/5, axe zero-violation light+dark; unit 51/51 both lanes; landing 2120/0 + 15-spec e2e; all gates green |
+| Engineering | ✅ | C1–C3 delivered through A2 (`e55b17e5`, `7dbabde3`, `8bd616b8`): domain 51/51, UI+IDB, PWA offline-proven; C6-1 the domain-README lane-label fix (51/51 both lanes re-verified) |
+| Quality | ✅ | C4 landed (dual-incarnation reconciled `b1ffac0b` + the root-lane guard): coda lane 5/5, axe zero-violation light+dark; unit 51/51 both lanes; landing 2120/0 + 15-spec e2e; all gates green — re-verified live on a third lineage at the C6 teardown (5/5 in 8.9 s) |
 | Security | ✅ | doctor instruction audit clean; hooks/sandbox/jail receipts; security round (2026-11-01) |
 | Operations | ✅ | bring-up 7/7 on two cold machines + today's recycle; engine/bridge health; Vercel + deploy-verify |
 | Monitoring | ✅ | engine status/KPIs/health phases; usage log; dashboard 15 screens |
-| Documentation | ◐ | DOX current through C3; **Coda docs/README/CHANGELOG/landing = C5 (queued)** |
+| Documentation | ✅ | C5 landed: `apps/coda/AGENTS.md` + root child index, `docs/coda.md`, README section, CHANGELOG + rail, testing-strategy gate 23; C6: the round's blog post (`content/blog/2026-11-03-the-coda-round.md`, check:blog ok 42 posts) + the graduation (SESSION.md + round log) |
 | Collaboration | ✅ | git preflight law; receipts-first protocol; session resume chains |
-| Learning | ✅ | AutoDream consolidation live (project.md 129 lines); skills promoted; memory-eval receipts; retention accumulates across rounds |
+| Learning | ✅ | AutoDream consolidation live (project.md, tracked tier); skills promoted; memory-eval receipts; **the V3-contract retrospective closed on the PT-5 plan at C6** (`## Retrospective` merged via `scripts/tui-capture/verify_plan_retrospective.py`, engine note delivered) |
 
 ## Utilization + benchmark hooks
 
-- **Turns-to-done trend** (budgeted chunks per ticket, from the round log): C1 = 10 chunks (+1 operator one-line unblock), C2 = 7 chunks (+operator browser boot check), C3 = 8 chunks (+2 operator interventions). Directionally improving with operator gates front-loaded — keep recording per ticket.
+- **Turns-to-done trend** (budgeted chunks per ticket, from the round log): C1 = 10 chunks (+1 operator one-line unblock), C2 = 7 chunks (+operator browser boot check), C3 = 8 chunks (+2 operator interventions), C4 = 12, C5 = 13 (+4 operator landings), **C6 = 7 headless chunks + 1 PTY session (+0 unblocks — the round's first zero-unblock ticket set)**. Directionally improving with operator gates front-loaded — keep recording per ticket.
+- **C6 utilization headline** (the full report: the round log's closeout section): most-used = the budgeted-chunk headless lane; highest-ROI augmentation = the plan-retrospective PTY lane (a Level-3 composition of two existing mechanisms — session crafting + the PTY capture lane — zero engine changes); most under-used = recipes (authoring-class tickets are their exact use case — a Level-5 candidate only after the L1 doc-drift sweep).
 - **Dual-incarnation datum (2026-11-03)**: two programme incarnations raced C4 on `main` (12 vs 15 chunks) — convergent defect discovery (the same 3 axe classes, the same transformSync bug class), one reconciliation gap (the root-lane collection guard) closed in 2 chunks through A2. Fetch-before-push enforced per-push from here; the incident is receipted in the round log.
 - **Manual intervention rate**: every intervention logged with cause in the round checkpoint (C1: 1; C2: browser-link check; C3: icon script + browser catches).
 - **Augmentation backlog** (priority order per the directive — existing mechanism first): L1 doc-count drift sweep (usage/skills/subagents/dashboard screens); L4 issue #30 exit-path instrumentation (shipped `UNOWN_PRINT_EXIT_TRACE=1` + `scripts/issue30_watcher.mjs`); L2/L3 review benches on every app milestone (design-reviewer at C2 OK-WITH-NOTES; delegate `delegation-auditor` after C4's chunk-heavy session).
