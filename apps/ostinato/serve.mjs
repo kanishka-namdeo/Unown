@@ -61,6 +61,10 @@ Bun.serve({
     let res = await tryFile(resolve(ROOT, p));
     if (!res) res = await tryFile(resolve(ROOT, p + ".ts"));
     if (!res) res = await tryFile(resolve(ROOT, p + ".js"));
+    // TS-in-browser dev-server rule: compiled module graphs keep the
+    // `./x.js` specifier convention; map it back to the `x.ts` source
+    // (tryFile transpiles it).
+    if (!res && p.endsWith(".js")) res = await tryFile(resolve(ROOT, p.slice(0, -3) + ".ts"));
     return res ?? new Response("not found", { status: 404 });
   },
 });

@@ -20,3 +20,13 @@ export type {
 } from "./types.js";
 export { DomainInvariantError } from "./types.js";
 export type { StoragePort, StorageLike } from "./storage.js";
+
+/**
+ * The clock seam (O-3, P0 #3/#6 + the PRD's hardening table "no
+ * Date.now() inside domain-facing logic"): Ostinato's runner-side
+ * time source. An ISO-8601 instant as a plain string — the same
+ * discipline as the Scheduler port's injected `now`, never a wall
+ * clock read. Tests inject a fixed string; the browser edge passes
+ * `new Date().toISOString()`.
+ */
+export type Clock = () => string;

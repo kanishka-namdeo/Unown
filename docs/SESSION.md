@@ -40,8 +40,12 @@ determinism insurance); standing lanes green on the fixed harness;
 the registry's SECOND PROMOTED row (H-4). **A2H-3 LANDED** — V-18's
 durable fix: the unit lane anchored
 (`--path-ignore-patterns=data/self-learning/**`), operator-reverified
-with a live fixture (2152/0/154).
-Next in the queue: O-3 (the review runner + keyboard surface).
+with a live fixture (2152/0/154). **O-3 LANDED** — the review runner
++ keyboard surface complete; the e2e lane LIVE at **3/3
+keyboard-only** (its first execution caught 5 real defects — the
+operator's live-gate chain receipted); app suite 72/0, unit family
+2197/0.
+Next in the queue: O-4 (the hardening e2e battery).
 
 The spend-and-memory-health round (2026-11-04) is COMPLETE and graduated to
 its own log: `docs/spend-and-memory-health-round-session.md` — the

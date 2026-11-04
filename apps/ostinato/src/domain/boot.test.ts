@@ -29,10 +29,10 @@ function mkCard(id: string, deckId = "d1"): Card {
   };
 }
 
-function mkDeck(id: string, names: string[], cardOrder: string[]): Deck {
+function mkDeck(id: string, name: string, cardOrder: string[]): Deck {
   return {
     id,
-    name: `deck-${id}`,
+    name,
     cardOrder,
     createdAt: "2026-11-04T00:00:00Z",
     updatedAt: "2026-11-04T00:00:00Z",

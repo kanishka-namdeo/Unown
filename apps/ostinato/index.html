@@ -14,7 +14,10 @@
     <main id="ostinato-root">
       <p id="ostinato-status">Booting…</p>
     </main>
-    <!-- O-3 lands the UI shell + service-worker registration; the skeleton ships a
-         static boot shell only (no <script> yet — no runtime closure to precache). -->
+    <!-- O-3 lands the UI shell + service-worker registration; the module
+         entry boots the app (the review runner + the keyboard surface).
+         O-4's PWA lane adds the SW precache; the skeleton has no
+         runtime closure to precache yet. -->
+    <script type="module" src="/src/ui/app.ts"></script>
   </body>
 </html>

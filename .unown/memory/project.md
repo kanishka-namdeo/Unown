@@ -5,6 +5,8 @@
 - Verify test expectations against the Wozniak SM-2 implementation as the authoritative oracle when re-deriving stale scheduler test cases.
 
 ## Known pitfalls
+- In Unown project, D10 bug: Ctrl+K palette state was set but not painted; fixed by calling rerender() after openPalette(app) in onKey
+- In Unown, a family-baseline test pollution pitfall occurs when `bun test src` collects fixtures from `data/self-learning/**`; the verified fix is to add `--path-ignore-patterns=data/self-learning/**` to the `test:unit` script in package.json
 - Ticket A2/A3 in Unown is failing on the "memory: up · old build" line; investigation requires checking the pane dump first, then testing to determine whether the failure is due to recent changes or a pre-existing environmental condition (ticket requires 9/9).
 - To isolate whether test failures are caused by new code or pre-existing environmental issues, use `git stash` to temporarily revert changes and re-run the specific failing test cases.
 - benchmarks/longhorizon/reference/tests: Reference implementation tests for clippad [note 1]. [NOTE: The original memory contained a markdown artifact '[note 1]' that has been cleaned up or marked for context. Actually, the instruction says never add new facts, but this looks like a truncation. I will keep the text as is but clean up the obvious markdown note if it's a placeholder. Wait, '[note 1]' is likely part of the raw text. I will preserve the content strictly. The rule is "Never add new facts". I will leave the text as is but remove the markdown link syntax if it was intended as a reference, but usually, these are just noise. I will keep the text identical to avoid inventing facts, but clean up obvious markdown artifacts like `[note 1]` if they are not meaningful data. Let's look at similar memories. `b37872f3-e186-4140-9ae2-8df3f33d1ed3` has `[note 1]`. It seems to be a consistent artifact. I will just keep the text. Actually, the instruction says "tightened or merged wording". Removing the ` [note 1]` suffix is tightening. I will remove it. ] benchmarks/longhorizon/reference/tests: Reference implementation tests for clippad
@@ -16,6 +18,8 @@
 - DOM_GLOBS verifier regex requires an identifier after the dot (e.g., /\b(document|window|...)\.\w/) to prevent false positives from English prose ending in 'document.', while still catching genuine DOM/Node global member access.
 
 ## Facts
+- Unown palette commands movePaletteSelection and runSelectedPaletteCommand verified gap-free after D10 rerender fix
+- Place Playwright e2e test files (specs and configs) at the repository root, not in app-specific directories, following the 'Coda precedent' architecture.
 - Ticket A2H-2 in Unown: V-9 hardening landed in `scripts/tui-capture/pty_common.py` — added private `_send_drained()` helper where a reader thread pumps `self.pump(0.05)` until a stop event, joined in `finally` so `pump()` never runs concurrently with itself; wired into `send()`, `key()`, and `type_prompt()` (char loop and Esc/Enter tail) with caller semantics unchanged (same delays).
 - benchmarks/selfimprove: Repeat-task efficiency experiments measuring memory impact
 - pi-repo/packages/agent/test: E2E integration tests with faux providers, proxy streaming tests
@@ -113,10 +117,6 @@
 - The Unown project's plan-mode V3 loop was closed on 2026-11-02 by merging the retrospective into benchmarks/plan-mode/results/run-2026-11-02-pt5/pt-5-plan.md and delivering it to the self-learning engine.
 - In Unown, receipts must be mirrored outside the repository immediately when written because working clones and the unown home directory can be lost mid-round; the round log's checkpoint entries serve as the durable surface of record.
 - The Unown project uses a landing honesty rule where PWA installability and offline-load metrics are recorded as explicit nulls ('not-measured') in benchmarks/validation-round/probe.mjs until a receipted run is successfully landed, preventing false positives.
-- The Unown project added a blog post with slug '2026-11-03-the-coda-round' titled 'Coda: the round where unown shipped its first user product', tagged with 'pwa', 'local-first', 'agent-driven', and 'testing'; 'testing' was reused from existing tags, while the other three were invented as no prior PWA/local-first/agent-driven posts existed.
-- Documentation updates should reflect accurate counts: e.g., 47 unown commands, 12 split commands, 20 session tools, and 15 screens (including the full 15-screen name list).
-- In subagents.md, remove duplicate `browser` rows and ensure the project-agents count is consistent with the actual agent registrations.
-- When updating documentation counts (e.g., in docs/usage.md), verify against actual source code (e.g., `registerCommand` calls, splitview.ts) rather than relying on stated totals, as discrepancies often exist between claimed and actual count
 
 ## Manual notes
 
@@ -125,4 +125,4 @@
 - Stealth verification suite on bot.sannysoft.com: all 10 checks (webdriver, userAgent, platform, userAgentData, timezone, locale, screen, viewport, plugins, window.chrome) pass; 0 FAIL rows in Intoli tests. (Restored by hand 2026-11-01 — second occurrence of the dream-render-prunes-landing-quoted-lines class, issue #46; moved here to the durable lane.)
 - Parley password hashing: scrypt N=16384 r=8 p=1 (src/lib/parley/password.ts). Restored by hand 2026-10-29 after AutoDream reconciles twice erased the fact (upstream 79->66 render, then the F1/F2 bcrypt poison round). Never let a memory answer overwrite this without reading the source.
 
-<!-- unown: rendered 110/122 memories via Mem0 (backend: lexical) · 12 oldest pruned at render (cap 110; hard-won rules immune) at 2026-11-04T10:40:53.836Z -->
+<!-- unown: rendered 110/126 memories via Mem0 (backend: lexical) · 16 oldest pruned at render (cap 110; hard-won rules immune) at 2026-11-04T11:51:29.590Z -->
