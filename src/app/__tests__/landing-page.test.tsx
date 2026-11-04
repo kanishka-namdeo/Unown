@@ -45,7 +45,7 @@ const LandingPage = (await import("../page")).default;
 // only inside its own render container, so a tree left mounted cannot make
 // another test's anchor check pass on a borrowed id.
 
-const SECTION_COUNT = 12;
+const SECTION_COUNT = 13;
 
 describe("landing composition root", () => {
   test(`renders ${SECTION_COUNT} bands with the rail between the FAQ and the finale`, () => {
@@ -68,10 +68,11 @@ describe("landing composition root", () => {
     expect(at("showcase")).toBe(3);
     expect(at("live-demo")).toBe(4);
     expect(at("built-improved")).toBe(5);
-    expect(at("coda")).toBe(6); // the Coda band (2026-11-03) — between built-improved and proof
-    expect(at("proof")).toBe(7);
-    expect(at("alphabet")).toBe(8);
-    expect(at("faq")).toBeGreaterThan(8);
+    expect(at("coda")).toBe(6); // the Coda band (2026-11-03) — between built-improved and ostinato
+    expect(at("ostinato")).toBe(7); // the Ostinato band (2026-11-04) — between coda and proof
+    expect(at("proof")).toBe(8);
+    expect(at("alphabet")).toBe(9);
+    expect(at("faq")).toBeGreaterThan(9);
     expect(at("changelog")).toBe(SECTION_COUNT - 2); // finale is the last band
     expect(rail).toBe(faq + 1);
     expect(rail).toBe(SECTION_COUNT - 2);
@@ -99,6 +100,11 @@ describe("landing composition root", () => {
     // its position in the narrative: the apps it built, the receipts, and the
     // first real product. (The Coda band's own pin test carries the aqua hue.
     // )
+    // The Ostinato band (2026-11-04) joins between the aqua Coda and the
+    // magma proof — leaf keeps its neighbours honest there (aqua before,
+    // magma after; leaf is the learning-loop family, and spaced
+    // repetition is literally a returning loop). (The Ostinato band's own
+    // pin test carries the leaf hue.)
     expect(hues).toEqual([
       "psychic", // hero
       "leaf", // loop — how it learns
@@ -107,6 +113,7 @@ describe("landing composition root", () => {
       "aqua", // live demo — the agent-built app, running
       "gold", // built & improved — the measured improvement receipts
       "aqua", // Coda — the first user product (the Coda round's artifact)
+      "leaf", // Ostinato — the second user product (the Ostinato round's artifact)
       "magma", // proof — benchmarks | integrity | models
       "psychic", // alphabet — the identity (+ field notes)
       "gold", // faq

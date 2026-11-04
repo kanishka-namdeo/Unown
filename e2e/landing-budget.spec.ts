@@ -97,7 +97,7 @@ import { expect, test } from "@playwright/test";
  * no-divergence lesson); the words twin moves 3,950 -> 4,060 with it
  * (measured + one rail-stop's ~20w headroom).
  */
-const MAX_PAGE_VH = 16.5;
+const MAX_PAGE_VH = 17.5;
 /*
  * The 2026-11-01 dependency-round release amendment (the twelfth): 3,920 ->
  * 3,950 carries the rail's 52nd stop. Measured at the breach: 3,930 — ten
@@ -125,7 +125,24 @@ const MAX_PAGE_VH = 16.5;
  * carries that plus the next stop's chrome so it does not open on a
  * knife's edge). No generated number, no gated literal touched.
  */
-const MAX_WORDS = 4060;
+/*
+ * The 2026-11-04 fourteenth amendment (the Ostinato round's O-6 closeout):
+ * 16.5 -> 17.5vh and 4,060 -> 4,170w — both twins together (the 0.0.48
+ * no-divergence lesson). The Ostinato band (the page's SECOND user-product
+ * band, after Coda's thirteenth amendment) measured 17.3vh / 4,145w at the
+ * bounded replay-wait state, the band itself 0.98vh / 104w (the identity
+ * pair the operator picked — the palette + the revealed markdown back —
+ * one row of two stills; the 2x2 four-still grid measured 17.8vh / 4,175w
+ * and was compressed down to the pair per the round's 13th-amendment
+ * +1.0vh precedent). The ceiling carries the band's measured growth plus
+ * one rail-stop's (~20w) headroom per the 0.0.44 rule. Compressed FIRST:
+ * no further authored prose in the band was cut (the lede is already
+ * minimal, the captions are one-liners); no generated number, no gated
+ * literal touched. DRAFT ledger entry for the operator to land in
+ * src/components/landing/AGENTS.md (O-6 chunk 1 carries the draft; the
+ * spec's comment records the measurement until it lands).
+ */
+const MAX_WORDS = 4170;
 
 /*
  * The 2026-10-31 planning-round release amendment (the tenth): 3,860 ->

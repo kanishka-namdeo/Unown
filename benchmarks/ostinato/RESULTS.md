@@ -22,12 +22,20 @@ already shows turn-cap overflow under its own verifier (C2-B) — the exact
 failure class the round's chunk economics exist to manage; the debug lane
 landed every variant well under the cap.
 
-## App lanes (armed as the app lands)
+## App lanes (the O-4/O-5 hardening battery; re-run at the O-6 closeout)
 
 | Lane | What it measures | Last run | Result |
 |---|---|---|---|
-| K-1 | keyboard-only e2e (zero pointer events) | — | `null` (runner lands with O-3/O-4) |
-| A-1 | axe wcag2a/2aa + focus-order pins | — | `null` |
-| O-1 | PWA installability + offline/online boot timing | — | `null` (skeleton landed 2026-11-04; capture lane is O-5) |
-| R-1 | crash-resume (SIGKILL mid-review → restored invariants) | — | `null` |
-| I-1 | import/export round-trip (byte-stable) | — | `null` |
+| K-1 | keyboard-only e2e (zero pointer events) | 2026-11-04 | **PASS 4/4** — the create → review → export → import flow (keyboard events only, the download + filechooser riding `waitForEvent`), the review loop, the empty state, the corrupt-session recovery · [receipt](receipts/run-20261104T181704Z/) |
+| A-1 | axe wcag2a/2aa + focus-order pins | 2026-11-04 | **PASS 4/4** — axe `wcag2a`+`wcag2aa` zero violations in light AND dark, the tab-order pin, the Esc focus-return pin · [receipt](receipts/run-20261104T181704Z/) |
+| O-1 | PWA installability + offline/online boot timing | 2026-11-04 | **PASS 2/2 + the derivation proof 18/0** — SW-controlled first load, offline reload from cache with the loop completing offline, the non-precached-URL fallback page; `verify-precache.ts` resolves every precache URL to disk (18 entries, 0 missing) · [receipt](receipts/run-20261104T181704Z/) |
+| R-1 | crash-resume (SIGKILL mid-review → restored invariants) | 2026-11-04 | **PASS 2/2** — the reveal-phase restore, the due-queue recompute with the graded card dropping, the cursor advancing, the loop completing across two crashes; + resize (375/1280, overflow discipline, two-pane) · [receipt](receipts/run-20261104T181704Z/) |
+| I-1 | import/export round-trip (byte-stable) | 2026-11-04 | **PASS** (rides inside K-1's flow test) — the export structurally byte-verified incl. the canonical-separators pin, the import round-trip closing the loop · [receipt](receipts/run-20261104T181704Z/) |
+
+The battery whole: **12 pass / 0 fail** (8.5 s first run, 7.2 s re-run,
+headless chromium-1248, tree `8103d739`, external Playwright verifier —
+no self-grading). Unit lanes the same hour: Lane A 93/0, Lane B 93/0 —
+[the same receipt run](receipts/run-20261104T181704Z/). The O-4/O-5
+receipts in `.unown/receipts/` (working-tree-only) recorded the same
+battery at 7.2 s / 7.4 s on the authoring lineage; this row is the
+committed re-run on a fresh clone.

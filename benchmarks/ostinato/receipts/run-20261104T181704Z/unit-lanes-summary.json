@@ -1,0 +1,18 @@
+{
+  "run": "run-20261104T181704Z",
+  "lane": "Lane A / Lane B (the Coda pair)",
+  "lane_a": {
+    "cmd": "cd apps/ostinato && bun test",
+    "pass": 93,
+    "fail": 0
+  },
+  "lane_b": {
+    "cmd": "bun test apps/ostinato",
+    "pass": 93,
+    "fail": 0
+  },
+  "verdict": "PASS \u2014 the same 93 in both forms",
+  "tree": "8103d739",
+  "unown_version": "0.0.56",
+  "date": "2026-11-04T18:17:04.300320+00:00"
+}

@@ -11,7 +11,7 @@ augmentation this engagement proposes, canaries, gates and promotes — or
 retires.
 
 - Owner: the A1 operator (authored outside A2 sessions)
-- Status: OPENED 2026-11-04 (Phase 0) — promoted rows: 0
+- Status: OPENED 2026-11-04; **the Ostinato round closed 2026-11-04** — promoted rows: 2 (H-6, H-4); H-1/H-2/H-3 carry live records at PROPOSE; the round's validation log lives in [the round log](ostinato-round-session.md)
 
 **Mini-TOC**
 
@@ -64,7 +64,14 @@ PROPOSE-stage candidates (none canaried, none promoted):
   chunk-loss into a fast, cheap, classified failure. Spawning evidence:
   the seventh lineage's smoke-1 receipt pattern; this lineage's 3.7 s
   smoke (2026-11-04). Canary: armed for every O-ticket dispatch this
-  round. Metric: catch rate vs overhead.
+  round. Metric: catch rate vs overhead. **Live record at the closeout
+  (2026-11-04)**: armed before every dispatch of the O-6 lane (11 chunks)
+  at ~4–7 s each — catch rate **0** (the null result is the receipt:
+  nothing was stale, and the whole closeout ran without a single lost
+  chunk — the lane converts silent chunk-loss into a classified failure,
+  which is exactly what did NOT happen) with overhead ≈ 0.4% of the
+  round's turns. Stays PROPOSE: a zero-catch round is not a promotion
+  receipt; it is one clean data point.
 - **H-2 — tree-verify FILE claims at the operator gate (operator lane).**
   Standing practice from the spend round's receipt-overclaim lesson,
   formalized into this round's gate: the receipt's FILES list is
@@ -72,7 +79,13 @@ PROPOSE-stage candidates (none canaried, none promoted):
   surviving gate = 0. **Live record 2026-11-04**: O-1's receipt caught
   the 12-vs-13 prose slip (V-11); O-2's receipt verified clean — 10/10
   files on the tree, zero extras (the strongest form: nothing claimed
-  that does not exist, nothing existing that goes unclaimed).
+  that does not exist, nothing existing that goes unclaimed). **At the
+  closeout (2026-11-04)**: the O-6 receipt's FILES re-verified against
+  the tree (the band's four files + the two twins + the three doc
+  surfaces + the blog post), zero overclaims, zero extras — and H-2's
+  law extended to operator-authored receipts: the O-6 receipt was
+  operator-written from run evidence after three cap-fell-off A2 writes,
+  and it was tree-verified like any other.
 - **H-3 — PTY keyboard/TUI audit as a pre-ticket ritual (operator lane).**
   The standing PTY lanes (25 scenario specs, ~30 scripts under
   `scripts/tui-capture/`) re-run on each fresh lineage before the first

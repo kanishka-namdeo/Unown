@@ -1,0 +1,25 @@
+{
+  "run": "run-20261104T181704Z",
+  "suite": "ostinato app lanes (the O-4/O-5 hardening battery, re-run at the O-6 closeout)",
+  "verifier": "bunx playwright test -c playwright.ostinato.config.ts",
+  "pass": 12,
+  "fail": 0,
+  "wall_s_first": 8.5,
+  "wall_s_second": 7.2,
+  "lane_pass_counts": {
+    "A-1": 4,
+    "K-1": 4,
+    "O-1": 2,
+    "R-1": 2
+  },
+  "lane_notes": {
+    "K-1": "4 tests: the zero-mouse flow (export/import round-trip byte-verified inside), the review loop, the empty state, the corrupt-session recovery \u2014 zero pointer events in every spec",
+    "A-1": "4 tests: axe wcag2 A/AA light + dark (zero violations), the tab-order pin, the Esc focus-return pin",
+    "O-1": "2 tests: SW-controlled boot + offline reload from cache + the loop completing offline; the non-precached URL offline fallback page",
+    "R-1": "2 tests: crash-resume (reveal-phase restore, graded-card drop, cursor advance, loop completion) + resize (375/1280 overflow discipline, two-pane)",
+    "I-1": "rides inside K-1's flow test: the export structurally byte-verified + the import round-trip closing the loop"
+  },
+  "tree": "8103d739",
+  "unown_version": "0.0.56",
+  "date": "2026-11-04T18:17:04.300320+00:00"
+}

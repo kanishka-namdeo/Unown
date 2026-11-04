@@ -36,7 +36,7 @@ Repo layout:
 - `blueprint/` — frozen Unown v1 (Claude Code harness) reference material
 - `.unown/` — per-project agent surface (memory, skills, receipts, repomap cache)
 - `e2e/` — Playwright specs (landing a11y, scroll budget, dex video, SEO)
-- `apps/` — self-contained user products; `apps/coda/` is Coda, a local-first markdown notes + task-board PWA (vanilla TS, zero deps, offline-first, installable; DOX at `apps/coda/AGENTS.md`)
+- `apps/` — self-contained user products; `apps/coda/` is Coda, a local-first markdown notes + task-board PWA (vanilla TS, zero deps, offline-first, installable; DOX at `apps/coda/AGENTS.md`); `apps/ostinato/` is Ostinato, a keyboard-first, offline-first spaced-repetition flashcard PWA (SM-2 scheduling, markdown decks, zero deps, crash-safe mid-review resume; DOX at `apps/ostinato/AGENTS.md`)
 
 ## Root Contracts
 
@@ -164,5 +164,6 @@ When the user requests a durable behavior change, record it here or in the relev
 - `benchmarks/AGENTS.md` — the benchmark suites, methodology, receipts and the landing-page feed rules
 - `blueprint/AGENTS.md` — Unown v1 (Claude Code harness) frozen reference
 - `apps/coda/AGENTS.md` — Coda, the local-first markdown notes + task-board PWA: the zero-dep law (vendored marked/fuse, the CI lockfile-drift assert), the Lane A/Lane B test semantics (DOM-free enforcement vs masked-by-design), the domain-purity pair (boundary.test.ts + the eslint no-restricted-globals scope), the type-keyword import law, and the CODA_E2E self-skip guards
+- `apps/ostinato/AGENTS.md` — Ostinato, the keyboard-first, offline-first spaced-repetition flashcard PWA: the zero-dep law (nothing vendored — the CI lockfile-drift assert), the Lane A/Lane B pair, the domain-purity boundary test (DOM_GLOBS), the injected-clock SM-2 scheduler seam, the byte-stable canonical-JSON import/export, the localStorage atomic-writes StoragePort adapter, the every-transition persistence (crash-safe resume by construction), the PRECACHE_LIST derivation proof + the keyboard-only usage-capture lane, and the 12-spec self-skip-guarded e2e battery
 - `A2_GROUND_TRUTH.md` — the A1 operator's dated recon snapshot of the live capability surface (anti-rot trust order: live CLI output > repo docs on main > this snapshot > the operator directive); refreshed before tickets and at every round teardown
 - `SDLC_CAPABILITY_MATRIX.md` — the A1 operator's lane-by-lane SDLC capability inventory (planning → learning; activation, trust, limitations, evidence, verification per capability) with the DRIVE-track coverage matrix tracking receipted evidence per lifecycle lane; refreshes alongside `A2_GROUND_TRUTH.md`

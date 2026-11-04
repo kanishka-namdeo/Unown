@@ -1,12 +1,16 @@
 # The Ostinato round — session log
 
-> **Status: OPEN** — opened 2026-11-04 by the eighth lineage. The
-> DRIVE-track app round of the 2026-11-04 A1 engagement: **Ostinato**, a
+> **Status: CLOSED 2026-11-04** — opened by the eighth lineage, closed by
+> the thirteenth (the re-clone recovery lineage, V-25). The DRIVE-track
+> app round of the 2026-11-04 A1 engagement: **Ostinato**, a
 > keyboard-first, offline-first spaced-repetition flashcard PWA at
 > `apps/ostinato/`, planned by [the PRD](ostinato-prd.md), gated by [the
 > reliability coverage matrix](reliability-coverage-matrix.md), measured
 > by [the benchmark suite](../benchmarks/ostinato/README.md), augmented
-> only through [the registry](a1-augmentation-registry.md).
+> only through [the registry](a1-augmentation-registry.md). O-1..O-6
+> LANDED; A2H-1..A2H-3 LANDED; the round's closeout receipt
+> `.unown/receipts/o6.md` (working-tree) + the committed re-run receipts
+> under `benchmarks/ostinato/receipts/run-20261104T181704Z/`.
 
 One-line purpose: the round's resumable checkpoint log — mission, operator
 decisions, validation log, ticket queue, gate receipts.
@@ -21,6 +25,7 @@ decisions, validation log, ticket queue, gate receipts.
 - [Ticket queue](#ticket-queue)
 - [O-1 dispatch brief](#o-1-dispatch-brief)
 - [Gate run](#gate-run)
+- [Capability utilization report](#capability-utilization-report)
 - [Resume instructions](#resume-instructions)
 - [Related pages](#related-pages)
 
@@ -205,6 +210,7 @@ checkpoint):
 | V-22 | **The grid intrinsic-min-width overflow** (O-4's resize lane): after boot-wide → resize-narrow, `scrollWidth` = 394 — a computed-style probe pinned the implicit grid column at 377.5 px: the search input's size-20 INTRINSIC width (grid items' `min-width: auto` never shrinks below content minimums; `width: 100%` resolves against the track, but the track sizes from the item's min-content first) | genuine product defect (B-11; CSS layout law) | `.ostinato-review > * { min-width: 0 }` — the classic grid/flex shrink discipline; the resize lane re-ran green (375 and 1280, zero overflow, the two-pane geometry verified). |
 | V-23 | **The receipted-but-unwired design** (B-3): O-3's receipt D2 claimed "the render's persistAll writes both lanes — the every-transition rule"; the CALL never existed (`renderBoot` received `persistAll` and passed it onward, never invoked it) — reveal/grade/nav transitions never persisted, and the crash-resume lane's first live run caught it (a mid-reveal reload lost the phase) | genuine product defect + receipt-overclaim class (H-2's tree-verify law extends to call-sites, not just files) | The `persistAll()` call landed in renderBoot's ready path; the crash-resume + offline lanes green. Standing lesson: a receipt's behavioral CLAIM is verified only by a live lane that exercises it — units pinned the seam (saveSession/readSession), not the wiring. |
 | V-24 | **The re-clone law** (the twelfth lineage's bring-up): the session began by `rm -rf`-ing the live checkout and re-cloning from origin — destroying the gitignored runtime state the stack was still running on (engine DBs, `.run/`, the receipts dir; the O-4 receipt's file lost — its essence lives in the round log's O-4 row, the gitignored-receipts contract's designed containment) while the engine and bridge processes held their now-unlinked inodes open | operator-lane infra hazard (V-1's class, operator-caused this time) | Recovered BEFORE the stop: the engine's SQLite stores copied out of `/proc/10101/fd/{6,8,10,11,13}` (selflearning.db + WAL, mem0 history/vector stores), placed back after the reinstall, stack re-booted — `/api/overview` receipts **111 runs / 79 dreams / 66 memory versions intact**, engine aligned at `v0.0.56 · e1822465` (V-6's alignment by construction), H-1 smoke 2.1 s. Standing laws: (1) NEVER `rm -rf` a live checkout — the resume protocol is `git fetch && git pull --ff-only`; (2) when a process holds unlinked DB files, recover via `/proc/<pid>/fd` BEFORE killing it (SQLite WAL recovery makes the snapshot crash-safe); (3) off-repo mirrors (`tickets/`, `.creds/`, `.tools/`) are the recycle hedge — keep them current. |
+| V-25 | **The committed-artifact survival law** (the thirteenth lineage's bring-up, O-6): the sandbox recycle reclaimed EVERYTHING outside the standard kept set — the checkout, `.tools/`, `scripts/`, `tickets/` (the receipt mirror), `.run/`, the engine DBs, AND the gitignored `.unown/receipts/` of O-1..O-5 (their essence survives in this log's rows + the commit messages — the designed containment V-24 receipted); the standing-lane receipts and the operator tooling were rebuilt byte-fresh (2026-11-04) | infra-flake (environmental; V-1/V-24's class, full-extent this time) | Standing laws: (1) the ONLY receipts that survive a recycle are COMMITTED ones — `benchmarks/**/receipts/` is the durable lane and the closeout re-ran the app lanes into it (`run-20261104T181704Z/`) rather than citing lost working-tree receipts; (2) the sanctioned fresh-clone bring-up is `bun run agent:install` (bun-floor check, root + pi-repo installs, model-data hydration, `build:offline`, the mini-service .env symlinks, the PATH link) — a bare `bun install` leaves the engine dead on `pi-coding-agent/dist` (the V-16 src-vs-dist law at checkout scale); (3) `pyte` re-install for the PTY lanes (V-7's law); (4) the receipt mirror must live INSIDE the kept set or be committed — `tickets/receipt-mirror.md` died outside it. |
 
 Bug register (user-visible findings, the failure→benchmark reflex's
 input):
@@ -264,7 +270,7 @@ input):
 | O-3 | Review runner + keyboard surface (palette, search, j/k, selection, states) | unit lanes + keyboard-focused e2e stub | **LANDED 2026-11-04** — the review stack at src/ui/ (runner-core, queue-nav, palette, app wiring); app suite 72/0 (+45), unit family 2197/0; the e2e lane LIVE: **3/3 keyboard-only in 1.5 s** after the operator's execution chain caught 5 defects (serve.mjs js→ts swap, the main() bootstrap, the palette render gap, the focus-before-attach order, the spec's init-script closure bug — Playwright serializes init functions, module constants ride as arguments); receipt tree-verified; 17 dispatches across two sessions (V-13 applied) |
 | O-4 | Hardening e2e battery: zero-mouse flow, axe both schemes, offline, crash-resume, resize | the e2e battery green | **LANDED 2026-11-04** — the battery **12/12 in 7.2 s** across five specs: K-1 flow (create → review → export → import, keyboard-only, the download + filechooser via `waitForEvent`), A-1 axe `wcag2a`/`wcag2aa` both schemes × empty/content/palette-open (six zero-violation scans) + the tab-order + Esc focus-return pins, O-1 offline (SW-controlled first load, the 17-entry install precache, offline reload + the loop completing offline, the offline fallback page), R-1 crash-resume (reveal-phase restore + queue recompute + cursor advance, honestly asserted) + resize (375/1280, overflow discipline, two-pane geometry); the app-side work the battery demanded: the 454-line token stylesheet (light/dark, focus rings, two-pane grid, reduced-motion), the SW registration (never landed despite index.html's claim), the install precache, the create surface (17-command palette + the modal form), `app.notice`, `palette.test.ts` (closing O-3's never-landed count pin); **four live rounds harvested NINE defects (B-3..B-11)**, each operator-root-caused (DOM/computed-style probes, a localStorage instrumentation spec, a domain reproduction) and fixed via byte-exact briefs; 13 dispatches across five sessions; app suite 93/0 (+21), unit family 2218/0; receipt `.unown/receipts/o4.md` COMPLETE |
 | O-5 | PWA + capture lane + root wiring + CI job (the Coda C5 pattern) | CI coda-style job + capture receipts | **LANDED 2026-11-04** — `apps/ostinato/scripts/` (new dir): `verify-precache.ts` (the Coda C3 derivation proof — the three-way disk ladder + three honesty pins; first run caught the 17→18 count drift, the three spec comments fixed comment-only, `18/0 PASS`) + `capture-usage.mjs` (the Coda T3 lane — the KEYBOARD-ONLY law extended from the flow spec, four stills 01-fresh-boot/02-palette/03-review/04-revealed + PROVENANCE at `public/landing/ostinato/`); root wiring: `ostinato:dev/test/e2e` in package.json + the **`ostinato` CI job** (the coda job's structure — SHA pins byte-copied, frozen-lockfile + zero-dep assert, Lane A/B 93/93, Chromium, the self-skip-guarded battery, artifacts — PLUS the `Precache derivation proof` step, an improvement over the coda job); the operator's first live capture run **rc 0, ZERO defects** (the interaction contract byte-copied from the proven flow spec — V-17 applied to a greenfield lane); gates: e2e battery **12/12 in 7.4 s** regression-free, app lanes 93/0 both forms, unit family 2218/0/157, tsc 0, lint 0/143, check:changelog 56→55 stops/534; 3 dispatches on one pinned session (8 + 8 capped + 6 finalization); V-24 receipted (the lineage's re-clone recovery); receipt `.unown/receipts/o5.md` COMPLETE, tree-verified 10/10 |
-| O-6 | Closeout: landing band, usage captures, blog post, README/DOX, graduation | full gate set + check:blog | queued |
+| O-6 | Closeout: landing band, usage captures, blog post, README/DOX, graduation | full gate set + check:blog | **LANDED 2026-11-04** — the closeout complete on the thirteenth lineage (the re-clone recovery, V-25): the bring-up receipts first (bun 1.4.3 re-pinned at `.tools/` the V-2 way, `agent:install` the sanctioned fresh-clone path — root + pi-repo installs, the model-data hydration, `build:offline`, the PATH link; H-1 smoke 7.1 s; the H-3 standing PTY lanes green pre-dispatch: footer **9/9**, picker **PASS**, resume-hint **ALL HELD**; the app lanes re-run fresh and RECEIPTED under `benchmarks/ostinato/receipts/run-20261104T181704Z/` — battery **12/12** (8.5 s / 7.2 s re-run), precache **18/0**, Lane A/B **93/0** — RESULTS.md's app rows de-nulled from receipts, never hand-written); the A2 lane (three ticket classes, fresh sessions, 11 dispatch chunks): **the landing band** (ostinato.tsx + ostinato-data.ts + the drift-pin suite + the page mount + the composition pins) + the **FOURTEENTH scroll-budget amendment** (16.5→17.5vh / 4,060→4,170w, both twins together; the 2×2 four-still grid measured 17.8vh/4,175w — the operator's two-still ground-truth call compressed the band to the identity pair, measured **17.3vh / 4,145w** post; one operator-priced fix: the drift pin's own token set listed "8"/"5" where the extractor reads "8.5"/"7.2" — the pin was red on its own figure until the set matched the extractor's tokens); **the doc surfaces** (docs/ostinato.md the coda.md pattern, the README round-table row + app section + docs index row, the CHANGELOG [Unreleased] Added entry + rail regen 55 stops/535 entries) + **the blog post** (`content/blog/2026-11-04-the-ostinato-round.md`, 732-word body, tags [pwa, keyboard, hardening, agent-driven], all four audited stills embedded per the media-reuse rule, check:blog **46 posts / 116 tags** green); the operator DOX lane (apps/ostinato/AGENTS.md landed from the O-1 draft — the instruction-set gate; root AGENTS.md repo-layout + child-index rows; the landing AGENTS.md fourteenth-amendment ledger + the stale header refreshed; docs/AGENTS.md owns-list; the OG shots regenerated against the shipped palette — canvas assert held); the graduation (this row, SESSION.md, the registry's H-1/H-2 live records, the matrix's headline lanes receipted, the capability report below); receipt `.unown/receipts/o6.md` three chunks COMPLETE, operator-authored from run evidence after three cap-fell-off receipt writes (the V-17 economics applied to the operator's own lane) |
 | A2H-1 | Fix B-1: the `/abort` notice must survive the first-flight settle tip (status-line collision guard — notify dedup keyed by source, tip deferral, or notice-as-message-note) | the abort PTY lane under a fresh isolated UNOWN_HOME, 3/3 runs with the notify visible | **LANDED 2026-11-04 (v0.0.56)** — showStatus dedup keyed on identical text (refresh-only); BEFORE receipt 2/3 defect → AFTER **3/3 both lines persist**; standing lanes footer 9/9 · picker PASS · resume-hint ALL HELD (zero regressions); unit: status 34/34 · self-learning 5561/0 · root 2152/0; the 17 vitest package failures verified PRE-EXISTING via stash; receipt tree-verified 5/5; 8 chunks (V-17's thrash receipted) |
 | A2H-2 | Fix B-2: `pty_common.send/type_prompt` pump-while-typing (harness law V-9) + a product-side investigation of input preservation while output writes block | X/Y differential re-run: keystroke loss 0/4 without read-while-typing | **LANDED 2026-11-04** — `_send_drained` (reader-thread concurrent drain) on send/key/type_prompt; footer 9/9 · resume-hint ALL HELD · resume-picker PASS with the fixed harness; the investigation's finding: input preservation HOLDS on v0.0.56 across the volume ladder (3/15/45s undrained, 49–146KB; /abort-no-drain 2/2 executes) — the law is condition-dependent, the fix is determinism insurance; receipt tree-verified; 2 chunks (the single-action receipt brief landed in 17 s) |
 | A2H-3 | Anchor the `test:unit` filter (V-18: `bun test src` substring-matches the engine's sandbox `workspace/src/*.test.mjs` fixtures — the repo lane executed a learning-job fixture and red) | `bun run test:unit` stays 2152/0 with a fresh `mint-assert-rejects-*` sandbox present | **LANDED 2026-11-04** — `bun test src --path-ignore-patterns=data/self-learning/**` (bun 1.4.3 flag, Windows-safe, one line); A2 reproduced the pollution (2153/1 fail with its fixture), fixed, verified 2152/0/154 with the fixture present; the OPERATOR re-verified with its own fixture (2152/0/154, rc 0); CI checked — the workflows run literal `bun test src` on runners with no data trees, no workflow edit needed; 1 chunk (under cap, receipt-first); receipt tree-verified |
@@ -297,6 +303,44 @@ dispatch (fresh session per ticket; incremental receipt from chunk 1):
   no scheduling logic (O-2 — stubs only).
 
 ## Gate run
+
+The O-6 closeout battery (thirteenth lineage, run on the tree before the
+push — the hints-round lesson honored, the unit suite after the rail
+regen):
+
+- `bun run typecheck` — **rc 0** (the band + the twins + the app doc's
+  code fences all ride the root tsc).
+- `bun run lint` — **rc 0** (0 errors; the warning count receipted at the
+  push below).
+- `bun run check:docs` — **rc 0** (docs/ostinato.md passes its first
+  gate).
+- `bun run check:changelog` — **rc 0**, 55 stops / 535 entries (the O-6
+  entry rides [Unreleased]; Unreleased undated, v0.0.56 latest dated).
+- `bun run check:blog` — **rc 0**, 46 posts / 116 tags (the round's post
+  the 46th).
+- `bun run check:benchmarks` — **rc 0**, 6 tracks, 6 resolved.
+- `bun run check:claims` — **rc 0** (the page literals resolve).
+- `bun run test:unit` — **rc 0, 2223 pass / 0 fail** across 158 files
+  (the 2218 family + the band suite's 5 tests).
+- The scroll budget — `node scripts/landing_audit.mjs --budget` —
+  **PASS: 17.3vh ≤ 17.5, 4,145w ≤ 4,170**, every band ≤ 3vh (the
+  fourteenth amendment's own arithmetic; both twins carry the ceilings).
+- App lanes: `cd apps/ostinato && bun test` **93/0**; `bun test
+  apps/ostinato` **93/0**; `bun apps/ostinato/scripts/verify-precache.ts`
+  **18/0 PASS**; the e2e battery `bunx playwright test -c
+  playwright.ostinato.config.ts` — **12 pass / 0 fail** (8.5 s first run,
+  7.2 s re-run) — the committed re-run receipt
+  `benchmarks/ostinato/receipts/run-20261104T181704Z/`.
+- The OG shots regenerated (`bun scripts/landing_og_shots.mjs`) against
+  the production build — canvas assert held (#102039, the palette
+  unchanged); the full-page shot now carries the Ostinato band.
+- The AutoDream churn does NOT ride this commit: the closeout sessions'
+  consolidation output arrived claims-DIRTY (one entry carrying leaked
+  model meta-commentary — the F2 extraction-poisoning class — plus a
+  provenance version regression 24→3 from the fresh engine's mem0 store,
+  the V-25 consequence) — `.unown/memory/project.md` + the provenance
+  sidecar reverted to HEAD at the operator gate; the round log carries
+  the durable knowledge.
 
 The O-4 push battery (eleventh lineage, run on the tree before the
 push — the hints-round lesson honored, unit suite after the rail
@@ -366,6 +410,57 @@ regen):
   calls across 150 files, 158.68 s — the family baseline exactly.
 
 A red gate blocks the push; none red.
+
+## Capability utilization report
+
+(The round closeout's §7 report, per the A1 directive.)
+
+- **Most used capability**: the budgeted-chunk headless lane (`unown -p` +
+  `--resume <id>` + `--max-turns 8`) — every O-6 ticket class rode it
+  (11 chunks across 3 fresh sessions: the band 6 chunks on one pinned
+  session, the docs 4, the blog 2 — V-12's pin law held every
+  continuation); no alternative dispatch lane survives this host's
+  reaping.
+- **Highest leverage capability**: the operator gate set + committed
+  receipts — the drift pin caught its own token-set defect (the pin red
+  on "8.5"), the scroll-budget audit caught the 17.8vh overshoot BEFORE
+  it shipped, check:docs gated the new doc, and the fresh-clone re-run
+  receipts replaced receipts a recycle had eaten. No catch was luck.
+- **Most under-used capability**: recipes — same verdict as the Coda
+  closeout (the graduation + blog tickets are parameterizable work); the
+  L1–L4 sweep still precedes any Level-5 candidacy.
+- **Highest-ROI augmentation**: H-1 (the pre-dispatch smoke canary) —
+  armed before every dispatch this closeout at ~4–7 s each; catch rate 0
+  (nothing was stale — the null result is the receipt: the lane converts
+  SILENT chunk-loss into a classified failure, and the whole closeout
+  ran without a single lost chunk) with overhead ≈ 0.4% of the round's
+  turns. H-2 (tree-verify) applied at every operator gate: the O-6
+  receipt's FILES re-verified against the tree, zero overclaims.
+- **Trigger failures observed**: none — the instruction-set guard fired
+  zero times (A2 drafted, the operator landed: the draft-and-land
+  protocol is learned behavior on both sides now).
+- **Routing failures observed**: none — but authoring-class tickets again
+  cap at 8 turns mid-work (7 of 11 chunks capped; the reading-heavy first
+  chunk of each fresh session consistently spends its whole budget on
+  ALLOWED_INPUTS). The economics that work: the operator's byte-exact
+  continuation briefs (V-17) turned every capped resume into a
+  completing chunk.
+- **Verification failures observed**: one, environmental — the operator's
+  own 600 s Bash timeout killed a live audit mid-run (the agent's dev
+  server compile churn); re-run clean. The drift pin's token set
+  (operator-priced fix) is the round's last receipted verifier defect.
+- **Subagent efficiency**: zero spawns — correct (sequential doc/band
+  work; the spawn rule forbids sequential-execution spawns).
+- **Capabilities promoted**: none this closeout (H-1/H-2/H-3 remain
+  PROPOSE-with-live-record; the registry's promoted rows stay 2 — the
+  honest state, not a graduation gift).
+- **Capabilities retired**: none.
+- **Turns-to-done (O-6)**: the band 6 chunks; the docs 4; the blog 2;
+  the operator's own lane (receipts, RESULTS.md, the DOX landings, the
+  graduation, this report). **Operator unblocks: 2** — the two-still
+  ground-truth call (the scroll-budget law forced a design decision A2
+  could not make alone) and the drift-pin token fix; both operator-priced
+  per V-17.
 
 ## Resume instructions
 

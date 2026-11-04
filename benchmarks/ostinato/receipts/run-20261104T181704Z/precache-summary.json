@@ -1,0 +1,11 @@
+{
+  "run": "run-20261104T181704Z",
+  "lane": "the offline lane's static derivation proof (apps/ostinato/scripts/verify-precache.ts)",
+  "precache_urls": 18,
+  "missing": 0,
+  "verdict": "PASS",
+  "verifier": "bun apps/ostinato/scripts/verify-precache.ts",
+  "tree": "8103d739",
+  "unown_version": "0.0.56",
+  "date": "2026-11-04T18:17:04.300320+00:00"
+}

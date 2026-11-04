@@ -13,7 +13,7 @@ engagement — current coverage, planned coverage, gaps.
 
 - Owner: the A1 operator (operator-authored, refreshed alongside
   [`A2_GROUND_TRUTH.md`](../A2_GROUND_TRUTH.md))
-- Status: opened 2026-11-04 (Phase 0); refreshed at every teardown
+- Status: opened 2026-11-04; **refreshed at the Ostinato round's teardown (2026-11-04, the closeout commit)** — the round's headline lanes are receipted below; the freeze rule held (no P1 feature work before every lane carried a receipt produced or re-validated this engagement)
 
 **Mini-TOC**
 
@@ -32,15 +32,15 @@ or `[U]`).
 |---|---|---|---|---|
 | Planning | plan quality, specialist review, scored plans | R: plan-mode suite 3/3 @ 100/100 ([receipts](../benchmarks/plan-mode/RESULTS.md)); PT-5 complex-plan 87/100 with 7 live specialist spawns | P: O-0 round plan = this PRD + specialist-bench consultation ticket if the round opens a second plan | G: none named |
 | Architecture | engine/agent/bridge contracts, DOX | R: [`docs/detached-engine-architecture.md`](detached-engine-architecture.md) + 12 failure modes; engine suite 5454/0/105-skip (SM round close) | P: O-2 storage-choice design gate (the PRD's `[U]`) | G: none named |
-| Engineering | code lanes, unit coverage, type/lint parity | R: root tsc 0 / lint 0-142 / unit 2125/0; package tsc parity 77=77 (SM round); Coda Lane A/B 51/51 | P: O-2/O-3 both unit lanes + app tsc per ticket | G: none named |
+| Engineering | code lanes, unit coverage, type/lint parity | R: root tsc 0 / lint 0-142 / unit 2125/0; package tsc parity 77=77 (SM round); Coda Lane A/B 51/51 | **R (this round)**: Ostinato Lane A/B 93/93 (both forms), unit family 2223/0/158, tsc 0, lint 0-143 — [receipt](../benchmarks/ostinato/receipts/run-20261104T181704Z/) | G: none named |
 | Operations | supervision, spend, budgets, autostart | R: `unown engine status` lanes; S2-11 spend meter + graduated ceilings (`GET /api/automations/spend`, skip rows); governor 60 calls/h breaker closed (live 2026-11-04) | P: routine-driven release-monitor first run 2026-11-08 observed from this engagement | G: none named |
 | Quality | verifier gates, check:* culture | R: `check:docs|changelog|blog|benchmarks|claims` + claims 62/62 (SM round close) | P: per-ticket gate battery incl. root gates | G: none named |
 | Collaboration | subagents, delegation audit | R: 20 built-in subagents + `delegation-auditor`; delegation bench 76/100 baseline → round receipts | P: delegation-auditor spawn after delegation-heavy O-tickets | G: subagent-reuse axis (queued upstream) |
 | Learning | memory reuse, harness, skill lifecycle | R: selfimprove cold/warm receipts; 6 integrity gates; 13 `.unown/skills/` observed; AutoDream 10-min cycle | P: the round's tickets deliver notes → dreams; benchmark minting from round failures | G: none named |
-| Reliability | known-bug burn-down, regression pins | R: 6 open issues all with lanes filed (#29/#30/#43/#44/#45/#46); regression sweeps in harness ship gate; 31 pins added by the SM round | P: bug register in the round log; every finding → benchmark lane | G: #30 live-hang capture still pending (armed, non-repro on idle) |
-| Keyboard Accessibility | keyboard-only operation, focus, a11y | R: v0.0.51 keyboard round (Shift+Tab cycle, SS3 arrows, astral input, approval-gate keys); settings-ux BM-1..BM-7 (12/12 at SM-3); Coda axe wcag2a/2aa lanes | P: **Ostinato zero-mouse e2e + axe both schemes + focus-order pins** — the round's headline lane | G: WebKit/Firefox/mobile `[U]` |
+| Reliability | known-bug burn-down, regression pins | R: 6 open issues all with lanes filed (#29/#30/#43/#44/#45/#46); regression sweeps in harness ship gate; 31 pins added by the SM round | **R (this round)**: the round's bug register B-1..B-11 ALL FIXED and pinned (nine app defects harvested by live execution rounds + two harness/product fixes as A2H-1/A2H-2 tickets, both registry promotions) — the round log's bug register is the receipt | G: #30 live-hang capture still pending (armed, non-repro on idle) |
+| Keyboard Accessibility | keyboard-only operation, focus, a11y | R: v0.0.51 keyboard round (Shift+Tab cycle, SS3 arrows, astral input, approval-gate keys); settings-ux BM-1..BM-7 (12/12 at SM-3); Coda axe wcag2a/2aa lanes | **R (this round)**: Ostinato A-1 + K-1 — axe `wcag2a`/`wcag2aa` zero violations light AND dark, the tab-order pin, the Esc focus-return pin, the zero-mouse create→review→export→import flow — 4/4 + 4/4 battery tests, [receipt](../benchmarks/ostinato/receipts/run-20261104T181704Z/) | G: WebKit/Firefox/mobile `[U]` |
 | TUI Consistency | rendering coherence, one-list truths, footer discipline | R: todo-unification + footer-quiet rounds (v0.0.53); tui-observability 22-flag ledger closed; PTY pane-truth lanes (25 specs, ~30 scripts) | P: PTY re-verification of standing lanes on this lineage before O-1 dispatch | G: none named |
-| Recovery & Resilience | crash/resume/persistence | R: longrun crash-consistency (SIGKILL torture + torn tails); exit-resume PTY lane (verbatim resume receipt); Coda offline boot 91 ms vs 175 ms median (N=5) | P: **Ostinato crash-resume + atomic-save + offline lanes** | G: none named |
+| Recovery & Resilience | crash/resume/persistence | R: longrun crash-consistency (SIGKILL torture + torn tails); exit-resume PTY lane (verbatim resume receipt); Coda offline boot 91 ms vs 175 ms median (N=5) | **R (this round)**: Ostinato R-1 + O-1 — crash-resume (reveal-phase restore, due-queue recompute, cursor advance, loop completing across crashes), atomic writes (temp-key + commit-swap), offline boot-from-cache + the loop completing offline, the 18/0 precache derivation proof — [receipt](../benchmarks/ostinato/receipts/run-20261104T181704Z/) | G: none named |
 
 ## Lane notes
 
@@ -51,6 +51,11 @@ or `[U]`).
   **Recovery & Resilience** applied to the app lane — the directive's
   hardening-first requirement is exactly there (see
   [the PRD's mapping table](ostinato-prd.md#hardening-first-requirement)).
+  **At the round's teardown (2026-11-04): both lanes carry their receipts**
+  (the committed closeout re-run,
+  `benchmarks/ostinato/receipts/run-20261104T181704Z/`) — the freeze's own
+  condition is met for the round's P0 set; the honest `[U]`s
+  (WebKit/Firefox/mobile) stand recorded, not claimed.
 - The gap column is deliberately short because prior rounds closed the
   backlog; the two standing gaps (#30 capture, subagent-reuse) are queued
   in [SESSION.md](SESSION.md), not forgotten.

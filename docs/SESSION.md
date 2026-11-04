@@ -8,76 +8,43 @@ archaeology. When a round completes, its log graduates to a round-specific
 
 ---
 
-## ACTIVE ROUND — the Ostinato round (2026-11-04, opened by the eighth lineage)
+## COMPLETED ROUND — the Ostinato round (2026-11-04, CLOSED by the thirteenth lineage)
 
-The DRIVE-track app round of the new A1 engagement (STABILISE × HARDEN ×
-PROVE, opened 2026-11-04): **Ostinato** — a keyboard-first, offline-first
-spaced-repetition flashcard PWA at `apps/ostinato/` (the Coda pattern),
-planned by `docs/ostinato-prd.md`, gated by the eleven-lane
-`docs/reliability-coverage-matrix.md`, measured by `benchmarks/ostinato/`
-(the C1–C3 calibration canaries armed, honest nulls), augmented only
-through `docs/a1-augmentation-registry.md` (opened empty per Phase 0).
-The round log `docs/ostinato-round-session.md` owns the mission, the
-validation log, the ticket queue (O-1..O-6) and the resume state. Push
-lane direct to `main`; hardening-first; Unown's version bumps only on
-Unown changes (app-round commits ride `## [Unreleased]`).
+The DRIVE-track app round of the A1 engagement (STABILISE × HARDEN ×
+PROVE) is **COMPLETE and graduated to its own log**:
+`docs/ostinato-round-session.md` — the full record (the mission, the
+validation log V-1..V-25, the bug register B-1..B-11 all FIXED, the
+ticket queue, the gate receipts, the §7 capability report). The summary:
+**Ostinato**, a keyboard-first, offline-first spaced-repetition flashcard
+PWA at `apps/ostinato/` (the repo's second user product, after Coda) —
+vanilla TS, zero deps, SM-2 scheduling (the Wozniak 1990 line, injected
+clock), markdown decks, a 17-command palette, crash-safe mid-review
+resume (every-transition persistence + atomic writes), byte-stable JSON
+import/export, an 18-entry precache with a static derivation proof —
+landed through six drive tickets O-1..O-6 plus three hardening tickets
+A2H-1..A2H-3 (two registry promotions: H-6 the status-line collision
+guard, H-4 pump-while-typing), with the hardening battery **12/12**
+(keyboard-only flow, axe wcag2a/2aa both schemes + focus pins, offline,
+crash-resume, resize), four live execution rounds harvesting **nine
+defects (B-3..B-11)** the unit lanes could not see, the calibration
+canaries C1–C3 baselined (C2's cap-overflow honestly receipted), the
+closeout landing band + fourteenth scroll-budget amendment (17.3vh /
+4,145w measured), docs/ostinato.md + the README surface, the round's
+blog post (46th), the committed closeout re-run receipts
+(`benchmarks/ostinato/receipts/run-20261104T181704Z/`), and the
+graduation (the round log, this index, the registry's live records, the
+matrix's headline lanes receipted, the §7 capability report). Honest
+scope: **Chromium-desktop-only** — WebKit/Firefox/mobile remain `[U]`s
+recorded in the PRD and the matrix. No version bump: an app-round
+commit, riding `## [Unreleased]` per the deployment contract.
 
-Progress: **O-1 LANDED** (`03541d34` — the skeleton + the C1–C3
-calibration baselines + the B-1/B-2 bug-register harvest; CI success)
-and **O-2 LANDED** (2026-11-04 — the domain core: the Wozniak SM-2
-scheduler, the deck/card model, byte-stable import/export, the storage
-[U] gate decided localStorage + atomic-writes; 27/27 both lanes, unit
-family 2152/0; V-12/V-13/V-14 receipted; receipt tree-verified 10/10).
-**A2H-1 LANDED (v0.0.56)** — B-1 fixed: showStatus dedup keyed on
-identical text; BEFORE 2/3 defect → AFTER 3/3 both lines persist;
-footer 9/9 · picker PASS · resume-hint ALL HELD (zero regressions);
-the registry's FIRST PROMOTED row (H-6); V-15/V-16/V-17 receipted.
-**A2H-2 LANDED** — B-2/V-9's harness half: `_send_drained`
-pump-while-typing on send/key/type_prompt; the product-side
-investigation receipted input preservation HOLDING on v0.0.56 across
-the volume ladder (the law is condition-dependent; the fix is
-determinism insurance); standing lanes green on the fixed harness;
-the registry's SECOND PROMOTED row (H-4). **A2H-3 LANDED** — V-18's
-durable fix: the unit lane anchored
-(`--path-ignore-patterns=data/self-learning/**`), operator-reverified
-with a live fixture (2152/0/154). **O-3 LANDED** — the review runner
-+ keyboard surface complete; the e2e lane LIVE at **3/3
-keyboard-only** (its first execution caught 5 real defects — the
-operator's live-gate chain receipted); app suite 72/0, unit family
-2197/0. **O-4 LANDED** — the hardening e2e battery **12/12 in 7.2 s**
-across five specs: the K-1 zero-mouse flow (create → review → export →
-import, the download + filechooser via `waitForEvent`), the A-1 axe
-battery (`wcag2a`/`wcag2aa`, both schemes, six zero-violation scans +
-the tab-order + Esc focus-return pins), the O-1 offline lanes (the
-17-entry install precache, offline reload + the loop completing
-offline, the fallback page), and R-1 crash-resume + resize; the
-app-side work the battery demanded (the 454-line token stylesheet,
-the SW registration, the create surface — 17 commands + the modal
-form, `app.notice`, `palette.test.ts`); **four live rounds harvested
-NINE defects (B-3..B-11)** — the receipted-but-unwired every-transition
-persist, the overlays' review-screen-only paint, `el()`'s aria-* junk
-props, the stale import session, the synchronous blob revoke, the
-nameless listbox, the opacity-dimmed contrast, the full-root-rerender
-focus destruction, the grid intrinsic-min-width overflow — each
-operator-root-caused and fixed via byte-exact briefs; app suite 93/0,
-unit family 2218/0; V-19..V-23 receipted.
-**O-5 LANDED** — the PWA tooling + capture lane + root wiring + CI
-job (the Coda C5 pattern): `apps/ostinato/scripts/verify-precache.ts`
-(the derivation proof — first run caught the 17→18 count drift,
-`18/0 PASS`, the three stale spec comments fixed) +
-`capture-usage.mjs` (the keyboard-only capture lane — four honest
-stills + PROVENANCE committed at `public/landing/ostinato/`, the
-operator's first live run **rc 0, ZERO defects** — V-17's law applied
-to a greenfield lane); root `ostinato:dev/test/e2e` scripts + the
-**`ostinato` CI job** (the coda job's pattern + the verify-precache
-step, an improvement over its template); e2e battery 12/12 in 7.4 s
-regression-free, app lanes 93/0, unit family 2218/0, tsc 0, lint
-0/143; V-24 receipted (the twelfth lineage's re-clone recovery — the
-engine DBs saved through `/proc/<pid>/fd` before the stop, 111
-runs/79 dreams intact); 3 dispatches on one pinned session (8 + 8
-capped + 6).
-Next in the queue: O-6 (the closeout: landing band, usage captures
-consumed, blog post, README/DOX, graduation).
+Carry-overs (the next round's queue, if the engagement continues): the
+PRD's P1 backlog (stats heatmap, deck-level review settings, CSV import,
+the `?` shortcut sheet), the #30 live-hang capture (armed upstream), the
+subagent-reuse axis (queued upstream), and the browser-lane candidates
+the matrix still gaps (`[U]` lanes above).
+
+---
 
 The spend-and-memory-health round (2026-11-04) is COMPLETE and graduated to
 its own log: `docs/spend-and-memory-health-round-session.md` — the

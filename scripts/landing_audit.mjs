@@ -99,7 +99,7 @@ import { join } from "node:path";
 const BASE = process.env.LANDING_AUDIT_URL ?? "http://localhost:3000";
 const OUT = join(process.cwd(), "download", "landing");
 const BUDGET = process.argv.includes("--budget");
-const MAX_VH = 16.5;
+const MAX_VH = 17.5;
 // 2026-10-31: reunited with the e2e twin (3,860) — the 0.0.48 release
 // amendment moved only the e2e spec, leaving this copy at 3,800 while the
 // page measured 3,838; the landing AGENTS.md rule is "the twin gates must
@@ -132,7 +132,28 @@ const MAX_VH = 16.5;
 // per the 0.0.44 rule. The vh twin measured 15.4 against its own 15.5
 // ceiling and moves nothing. No generated number, no gated literal
 // touched.
-const MAX_WORDS = 4060;
+/*
+ * 2026-11-04 (the fourteenth amendment, the Ostinato round's O-6 closeout):
+ * 16.5 -> 17.5vh and 4060 -> 4170w — both twins together (the 0.0.48
+ * no-divergence lesson). The Ostinato band (the page's SECOND user-product
+ * band, after Coda's thirteenth amendment) measured 17.3vh / 4,145w at
+ * the bounded replay-wait state, the band itself 0.98vh / 104w (the
+ * identity-pair stills the operator picked — the palette + the revealed
+ * markdown back — one row of two stills + kicker + lede + the one
+ * receipted battery figure + the two receipt links; the 2x2 four-still
+ * grid measured 17.8vh / 4,175w and was compressed down to the pair
+ * per the round's 13th-amendment +1.0vh precedent). The ceiling carries
+ * the band's measured growth plus one rail-stop's (~20w) headroom per
+ * the 0.0.44 rule (the 13th amendment's arithmetic: measured 16.3 ->
+ * ceiling 16.5; measured 4,033 -> ceiling 4,060). Compressed FIRST, as
+ * the contract demands: no further authored prose in the band was cut —
+ * the lede is already minimal and the captions are one-liners; no
+ * generated number, no gated literal touched. DRAFT ledger entry for
+ * the operator to land in src/components/landing/AGENTS.md (chunk 1 of
+ * O-6 carries the draft; this script's comment records the measurement
+ * until it lands).
+ */
+const MAX_WORDS = 4170;
 const MAX_BAND_VH = 3;
 
 let chromium = null;

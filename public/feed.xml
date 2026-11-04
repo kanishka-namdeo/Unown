@@ -7,6 +7,17 @@
     <description>How each feature and release works, what it does, and the receipts behind it — the longhand record of the self-improving terminal coding agent Unown.</description>
     <language>en</language>
     <item>
+      <title>Ostinato: the round where the hardening came first</title>
+      <link>https://unown-nine.vercel.app/blog/2026-11-04-the-ostinato-round</link>
+      <guid isPermaLink="true">https://unown-nine.vercel.app/blog/2026-11-04-the-ostinato-round</guid>
+      <pubDate>Wed, 04 Nov 2026 00:00:00 GMT</pubDate>
+      <description>The repo&apos;s second user product - a keyboard-first, offline-first spaced-repetition PWA shipped under a harden-first programme, with receipts.</description>
+      <category>pwa</category>
+      <category>keyboard</category>
+      <category>hardening</category>
+      <category>agent-driven</category>
+    </item>
+    <item>
       <title>&quot;The spend-and-memory-health round: two honest misses become two honest cards&quot;</title>
       <link>https://unown-nine.vercel.app/blog/2026-11-04-the-spend-and-memory-health-round</link>
       <guid isPermaLink="true">https://unown-nine.vercel.app/blog/2026-11-04-the-spend-and-memory-health-round</guid>
