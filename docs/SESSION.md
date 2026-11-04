@@ -8,7 +8,19 @@ archaeology. When a round completes, its log graduates to a round-specific
 
 ---
 
-## ACTIVE ROUND — none open (2026-11-04, late); the queue below stands
+## ACTIVE ROUND — the Ostinato round (2026-11-04, opened by the eighth lineage)
+
+The DRIVE-track app round of the new A1 engagement (STABILISE × HARDEN ×
+PROVE, opened 2026-11-04): **Ostinato** — a keyboard-first, offline-first
+spaced-repetition flashcard PWA at `apps/ostinato/` (the Coda pattern),
+planned by `docs/ostinato-prd.md`, gated by the eleven-lane
+`docs/reliability-coverage-matrix.md`, measured by `benchmarks/ostinato/`
+(the C1–C3 calibration canaries armed, honest nulls), augmented only
+through `docs/a1-augmentation-registry.md` (opened empty per Phase 0).
+The round log `docs/ostinato-round-session.md` owns the mission, the
+validation log, the ticket queue (O-1..O-6) and the resume state. Push
+lane direct to `main`; hardening-first; Unown's version bumps only on
+Unown changes (app-round commits ride `## [Unreleased]`).
 
 The spend-and-memory-health round (2026-11-04) is COMPLETE and graduated to
 its own log: `docs/spend-and-memory-health-round-session.md` — the
@@ -257,6 +269,37 @@ own milestones (its session log owns that queue). When the first v0.0.56
 content lands, re-add `## [Unreleased]` to CHANGELOG.md and regenerate the
 rail in the same commit; the version bump itself is the release commit
 (package.json version + dated heading + rail + tag on the green SHA).
+
+### Environment checkpoint (2026-11-04, the Ostinato round — eighth lineage bring-up)
+
+- Sandbox recycled again; re-cloned @ `189fa033` (=`origin/main`) into
+  `/home/z/my-project/Unown`; PAT rewired into the remote + the off-repo
+  credential store (`/home/z/my-project/.creds`, exposed as
+  `/home/z/my-project/.secrets` per the survival convention). bun **1.4.3**
+  re-pinned **project-locally** at `/home/z/my-project/.tools/bun-linux-x64`
+  (a new pattern — prior lineages' global upgrades died with recycles; a
+  project-local binary survives). `UNOWN_NO_LINK=1
+  UNOWN_NO_ENGINE_SERVICE=1 bun scripts/install.ts` green; `.env` authored
+  minimal + duplicate-free (the Agnes lane: upstream URL, key,
+  `BRIDGE_KNOWN_MODELS`, `PI_MODEL_ID=agnes-3.0-flash`,
+  `UNOWN_HOME=/home/z/my-project/unown-home`).
+- Stack: bridge `:3031` (upstream 200, 6 agnes models), engine `:3030`
+  (v0.0.55/`189fa033`, fresh DB). Doctor "ready to chat" (20✓/2⚠:
+  model-spec + LSP — the honest first-session pair). Smoke 1/1 `UNOWN_OK`
+  exit 0 in 3.7 s, dispatched through the REBUILT daemonizer (the recycle
+  had reclaimed `scripts/dispatch-bg.py` + `tickets/`; rebuilt and
+  re-validated: PPID-1 supervisor, log/pid/exit receipts, mirror
+  re-staged).
+- The round-opening commit (this one) lands the Phase 0 artefact set: the
+  PRD, the reliability coverage matrix, the augmentation registry (empty
+  per Phase 0), the benchmark scaffold (canaries armed, honest nulls), the
+  ground-truth refresh, this rotation, the CHANGELOG entry + the
+  regenerated rail. O-1 (canaries + the app skeleton) dispatches next,
+  after the H-1 smoke and the H-3 PTY-audit pre-checks.
+- Operator tools that must survive recycles:
+  `/home/z/my-project/scripts/dispatch-bg.py` +
+  `/home/z/my-project/tickets/` + `/home/z/my-project/.secrets` + the
+  project-local bun at `/home/z/my-project/.tools/`.
 
 ### Environment checkpoint (2026-11-04, the spend-and-memory-health round — seventh lineage bring-up)
 

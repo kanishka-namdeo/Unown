@@ -375,3 +375,19 @@ boots the app's own dev server on a scratch port):
 Full caveats + reproduction: `coda-pwa/RESULTS.md` (receipt
 `receipts/run-2026-11-03T06-14-57-955Z/`). No landing-figure feed —
 the six-track contract stands.
+
+## The 2026-11-04 Ostinato round — suite scaffold (opened)
+
+The DRIVE app round of the new A1 engagement opens its measurement lane
+(`ostinato/README.md` is the method contract): the **C1–C3 calibration
+canaries** (A2-lane baselines — trivial print-mode round trip,
+small-code authoring, seeded-debug red→green; N=3 trials, rotating
+prompt variants as a cheap holdout, external verifiers only) are
+defined and armed, and the app lanes (**K-1** keyboard-only e2e,
+**A-1** axe + focus pins, **O-1** offline boot, **R-1** crash-resume,
+**I-1** import/export round-trip) are named for the surfaces the PRD's
+hardening-first table requires. Every lane reads `null` ("not
+measured") in `ostinato/RESULTS.md` until a per-run receipt exists —
+the first scored runs land with the round's O-1 dispatch, baselines
+recorded BEFORE any augmentation is canaried against them. No
+landing-figure feed; the suite registers here only.
