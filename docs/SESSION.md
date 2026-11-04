@@ -20,12 +20,15 @@ round opened on the receipted tree at `a83336f4` + the teardown-refresh
 commit `6688a9c0` (the fourteenth lineage's ground-truth + capability-
 matrix refresh); the pre-ticket baseline is ALL GREEN (unit 2223/0,
 rail 55/535, blog 46/116, claims 62/62). The queue and the per-ticket
-verifiers live in the round log. R-1's code lane is LANDED (the
-fourteenth lineage, V-2's operator-gate catch receipted); the
-**fifteenth lineage** reconciled mid-flight (the round's second
-bring-up — the V-3/V-4/V-5 harvest → A2H-4 queued, registry H-8 at
-PROPOSE) and dispatches R-1's remaining e2e heatmap spec next, after
-the H-1 smoke canary.
+verifiers live in the round log. **R-1 is CLOSED 2026-11-05** — the
+fourteenth lineage landed the code lane (V-2's operator-gate catch
+receipted); the fifteenth lineage landed the e2e heatmap spec + the
+B-12 harvest (the el() tabindex junk-expando fix — the stats overlay's
+keyboard surface was dead; the battery now 14 tests / 6 spec files,
+Lane A 101+1skip / Lane B 105, tsc 0, proof 19/0, receipt COMPLETE).
+**Next: R-2 (deck-level review settings) after the H-1 smoke canary**;
+A2H-4 (the picker-lane harness hardening, H-8 at PROPOSE) queued behind
+the P1 lane.
 
 ---
 

@@ -116,13 +116,16 @@ function el<K extends keyof HTMLElementTagNameMap>(
   if (className !== undefined) e.className = className;
   for (const [k, v] of Object.entries(rest)) {
     if (v === undefined) continue;
-    if (k.startsWith("data-") || k.startsWith("aria-")) {
+    if (k === "tabindex" || k.startsWith("data-") || k.startsWith("aria-")) {
       // data-* attrs must land as real attributes (dataset property
       // assignment sets the camelCase property, not the hyphenated
       // attribute the CSS/queries key on). aria-* attrs must land as
       // real attributes too — the hyphenated name is not a reflected
       // DOM property (the reflected property is ariaLabel, not
       // aria-label), so property assignment sets a junk expando.
+      // tabindex is hyphenless but NOT a reflected DOM property name
+      // either (the reflection is tabIndex), so property assignment
+      // sets a junk expando — the attribute is the truth.
       e.setAttribute(k, v as string);
     } else {
       (e as any)[k] = v;
@@ -149,6 +152,8 @@ function renderMarkdown(src: string): string {
 }
 
 // ─── The main entry (the index.html's module script) ─────────────────────────
+
+export { el };
 
 export async function main(): Promise<void> {
   const storage = createLocalStorageAdapter(window.localStorage);
@@ -804,6 +809,7 @@ function renderStats(app: AppState, _rerender: () => void): void {
       const cell = el("div", {
         class: "stats-cell",
         role: "gridcell",
+        tabindex: "-1",
         "data-count": String(day.count),
         "aria-label":
           day.count === 0

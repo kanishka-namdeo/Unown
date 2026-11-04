@@ -4,6 +4,7 @@
 - Verify test expectations against the Wozniak SM-2 implementation as the authoritative oracle when re-deriving stale scheduler test cases.
 
 ## Known pitfalls
+- Lane B test suite for Unown (bun test apps/ostinato) now reports 105 pass, 0 fail with 411 expectations; the el pin's 4 tests run here under the root happy-dom preload
 - benchmarks/longhorizon/reference/tests: Reference implementation tests for clippad [note 1]. [NOTE: The original memory contained a markdown artifact '[note 1]' that has been cleaned up or marked for context. Actually, the instruction says never add new facts, but this looks like a truncation. I will keep the text as is but clean up the obvious markdown note if it's a placeholder. Wait, '[note 1]' is likely part of the raw text. I will preserve the content strictly. The rule is "Never add new facts". I will leave the text as is but remove the markdown link syntax if it was intended as a reference, but usually, these are just noise. I will keep the text identical to avoid inventing facts, but clean up obvious markdown artifacts like `[note 1]` if they are not meaningful data. Let's look at similar memories. `b37872f3-e186-4140-9ae2-8df3f33d1ed3` has `[note 1]`. It seems to be a consistent artifact. I will just keep the text. Actually, the instruction says "tightened or merged wording". Removing the ` [note 1]` suffix is tightening. I will remove it. ] benchmarks/longhorizon/reference/tests: Reference implementation tests for clippad
 - In Unown, a family-baseline test pollution pitfall occurs when `bun test src` collects fixtures from `data/self-learning/**`; the verified fix is to add `--path-ignore-patterns=data/self-learning/**` to the `test:unit` script in package.json
 - To isolate whether test failures are caused by new code or pre-existing environmental issues, use `git stash` to temporarily revert changes and re-run the specific failing test cases.
@@ -18,6 +19,9 @@
 - In /home/z/my-project/Unown, the `renderBoot` restructure in `apps/ostinato/src/ui/app.ts` (B-3 + B-4) involved moving top-of-ready-path `persistAll` logic, verified byte-exact before and after editing.
 
 ## Facts
+- The Unown verify-precache.ts proof check now reports 19 precache URLs, 0 missing + PASS (previously 18 URLs)
+- Unown has 13 spec files containing 14 tests that are all green as part of spec corrections
+- In /home/z/my-project/Unown, UI tests (e.g., `palette.test.ts`) are domain-based with no DOM; when pinning the unexported `el()` function, test its behavior through an observable surface or use happy-dom in a new test file
 - The new `src/lib/nocturne/format.ts` module includes a local `CheckoffDate` alias, cadence-verbatim date helpers (`weekdayShort`, `monthShort`, `formatLongDate`, `todayKey`, `dayKeyOf`), and parley-shaped `formatCountdown`/`formatDurationMs` functions (ms <= 0 → "0m", "45m", "2h 14m"). The module is pure with no use of `Date.now()`, DOM, or random functions.
 - The `src/lib/nocturne/types.ts` file in the worktree contains the full data model from `benchmarks/nocturne-round/plan.md` §1, defining 17 entity interfaces including NocturneTenant, NocturneUser, NocturneService, NocturneAlert, NocturneIncident, NocturneTimelineEvent, NocturneRunbook, and NocturneNote.
 - pi-repo/packages/ai: Unified LLM API with automatic model discovery, provider abstraction.
@@ -66,7 +70,6 @@
 - Fleet journal persists to .unown/fleet/journal.jsonl via appendFleetJournal/readFleetJournal (recordFleetChildSpawn, recordSyncSubagentSpawn, recordFleetChildFinish for finished; sweep outcomes for reaped/abandoned). FleetJournalEntry (pi-repo/packages/self-learning/src/fleet-reaper.ts:137) defines five ops: spawned (lane 'fleet' or 'sync'), worktree, finished, reaped, abandoned. Op discriminants recorded by recordFleetChildFinish (finished) and sweep outcomes (reaped/abandoned).
 - When editing `src/domain/*.ts` files, natural prose containing words like 'document.' is permitted because the DOM global verifier only bans actual global object member access, not incidental text matches.
 - Unown's SM-2 scheduler in scheduler.ts had an inverted Wozniak formula; the correct interval computation is EF' = EF + (0.1 - (5-q) * (0.08 + (5-q) * 0.02)) with q mapped as g-1
-- Project 'Unown' is located at /home/z/my-project/Unown.
 - In /home/z/my-project/Unown, a successful terminal operation is indicated by the output 'UNOWN_OK'.
 - llm-bridge: OpenAI-compatible gateway proxying to Dashscope with model allow-list
 - blueprint/router: GitHub event dispatcher with headless Claude sessions, tightly controlled tool allowlist
@@ -119,4 +122,5 @@
 - Stealth verification suite on bot.sannysoft.com: all 10 checks (webdriver, userAgent, platform, userAgentData, timezone, locale, screen, viewport, plugins, window.chrome) pass; 0 FAIL rows in Intoli tests. (Restored by hand 2026-11-01 — second occurrence of the dream-render-prunes-landing-quoted-lines class, issue #46; moved here to the durable lane.)
 - Parley password hashing: scrypt N=16384 r=8 p=1 (src/lib/parley/password.ts). Restored by hand 2026-10-29 after AutoDream reconciles twice erased the fact (upstream 79->66 render, then the F1/F2 bcrypt poison round). Never let a memory answer overwrite this without reading the source.
 
-<!-- unown: rendered 104/104 memories via Mem0 (backend: lexical) at 2026-11-04T20:55:31.503Z -->
+<!-- unown: rendered 108/108 memories via Mem0 (backend: lexical) at 2026-11-04T21:43:04.871Z -->
+
