@@ -257,6 +257,19 @@ def render_png(screen: pyte.Screen, path: str, title: str) -> tuple[int, int]:
 
 # ---------------------------------------------------------------------------
 # PTY session
+#
+# Backpressure law V-9 (receipted 2026-11-04): keystrokes sent to a
+# streaming TUI without concurrent draining were silently dropped
+# (X/Y differential 2/2 lost vs 2/2 landed; the /abort race matrix
+# lost 8/8). The fix here interleaves output draining with every send
+# so the pty write window never stays undrained — determinism
+# insurance per H-5. Re-verification on v0.0.56 (same evening):
+# the failure did NOT reproduce at any tested volume — probe chars
+# landed in 3s/15s/45s undrained windows (49–146KB accumulated, the
+# stream still completes, no deadlock), and /abort typed WITHOUT
+# draining executed 2/2. Condition-dependent, not unconditional;
+# the morning receipts stand as the law's evidence. See
+# .unown/receipts/a2h2.md.
 # ---------------------------------------------------------------------------
 
 KEYS = {
@@ -403,13 +416,41 @@ class UnownPty:
         return "\n".join(self.pane())
 
     # -- input ---------------------------------------------------------------
+    #
+    # V-9 backpressure law: pump output concurrently while keystrokes go
+    # out, so the pty write window never stays undrained. The helper runs
+    # a reader thread that pumps self.pump(0.05) in a loop until the
+    # stop event is set, then joins it before returning — pump() is
+    # therefore never concurrent with itself (the caller's main thread
+    # does no pumping during the send window).
+
+    def _send_drained(self, data: bytes, pump_interval: float = 0.05):
+        import threading
+
+        stop = threading.Event()
+        pumped: list[int] = []
+
+        def _pump_loop():
+            while not stop.is_set():
+                try:
+                    pumped.append(self.pump(pump_interval))
+                except Exception:
+                    break
+
+        t = threading.Thread(target=_pump_loop, daemon=True)
+        t.start()
+        try:
+            self.child.send(data)
+        finally:
+            stop.set()
+            t.join()
 
     def send(self, text: str, delay=0.05):
-        self.child.send(text.encode("utf-8"))
+        self._send_drained(text.encode("utf-8"))
         time.sleep(delay)
 
     def key(self, name: str, delay=0.12):
-        self.child.send(KEYS[name])
+        self._send_drained(KEYS[name])
         time.sleep(delay)
 
     def type_prompt(self, text: str, cps=60):
@@ -425,12 +466,12 @@ class UnownPty:
         popup mid-text.
         """
         for ch in text:
-            self.child.send(ch.encode("utf-8"))
+            self._send_drained(ch.encode("utf-8"))
             time.sleep(1.0 / cps)
         time.sleep(0.3)
-        self.child.send(b"\x1b")  # close autocomplete popup if open
+        self._send_drained(b"\x1b")  # close autocomplete popup if open
         time.sleep(0.18)
-        self.child.send(b"\r")  # submit raw buffer
+        self._send_drained(b"\r")  # submit raw buffer
 
     # -- waits ---------------------------------------------------------------
 

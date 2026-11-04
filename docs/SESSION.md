@@ -32,8 +32,13 @@ family 2152/0; V-12/V-13/V-14 receipted; receipt tree-verified 10/10).
 identical text; BEFORE 2/3 defect → AFTER 3/3 both lines persist;
 footer 9/9 · picker PASS · resume-hint ALL HELD (zero regressions);
 the registry's FIRST PROMOTED row (H-6); V-15/V-16/V-17 receipted.
-Next in the queue: A2H-2 (the pty_common pump-while-typing harness
-fix, B-2/V-9), then O-3 (the review runner + keyboard surface).
+**A2H-2 LANDED** — B-2/V-9's harness half: `_send_drained`
+pump-while-typing on send/key/type_prompt; the product-side
+investigation receipted input preservation HOLDING on v0.0.56 across
+the volume ladder (the law is condition-dependent; the fix is
+determinism insurance); standing lanes green on the fixed harness;
+the registry's SECOND PROMOTED row (H-4).
+Next in the queue: O-3 (the review runner + keyboard surface).
 
 The spend-and-memory-health round (2026-11-04) is COMPLETE and graduated to
 its own log: `docs/spend-and-memory-health-round-session.md` — the

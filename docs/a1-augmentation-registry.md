@@ -52,6 +52,7 @@ improvement survives a session boundary (memory or skill lane receipt).
 | ID | Stage | Lane | Hypothesis | Metric | Evidence | Status |
 |---|---|---|---|---|---|---|
 | H-6 | PROMOTED 2026-11-04 | A2-side code fix (ticket A2H-1, v0.0.56) | The status-line collision guard: `showStatus`'s dedup must never clobber a DIFFERENT notify's text — reuse only for identical-text refreshes | The abort PTY lane under a fresh isolated UNOWN_HOME: notify visible 3/3; zero TUI-consistency regressions in the standing lanes | BEFORE 2/3 defect vs AFTER **3/3 both-lines-persist** (`scripts/repro_abort_notice.py`, B-1 receipted); footer 9/9 · picker PASS · resume-hint ALL HELD; unit: status 34/34 · self-learning 5561/0 · root 2152/0; the fix is durable code + the rewritten coalescing test pins the semantics; receipt `.unown/receipts/a2h1.md` tree-verified 5/5 | **LANDED** — the registry's first promotion |
+| H-4 | PROMOTED 2026-11-04 | operator-lane harness fix (ticket A2H-2, in-repo `scripts/tui-capture/`) | Pump-while-typing in the PTY harness: every keystroke send drains output concurrently, so the pty write window never stays undrained | Keystroke-loss incidents in PTY lanes → 0 across the round; lane determinism across re-runs | The morning receipts (X/Y 2/2 loss; the /abort matrix 8/8) as spawning evidence; the landed `_send_drained` (reader-thread drain on `send`/`key`/`type_prompt`); the standing lanes re-ran green on the fixed harness (footer 9/9 · resume-hint ALL HELD · picker PASS); the product-side investigation's volume ladder receipted (input preservation holds on v0.0.56 at every tested volume — the fix is determinism insurance); receipt `.unown/receipts/a2h2.md` | **LANDED** — the second promotion |
 
 ## Queued hypotheses
 
@@ -87,7 +88,11 @@ PROPOSE-stage candidates (none canaried, none promoted):
   undrained output silently drops typed input). Evidence: the X/Y
   differential (2/2 loss without reads vs 2/2 landing with reads) plus 8/8
   corroborating race/matrix runs, 2026-11-04. Metric: keystroke-loss
-  incidents in PTY lanes → 0 across the round.
+  incidents in PTY lanes → 0 across the round. **PROMOTED 2026-11-04**
+  (see the registry table): A2H-2 landed `_send_drained` on
+  send/key/type_prompt; the product-side investigation receipted input
+  preservation holding on v0.0.56 across the volume ladder — the law is
+  condition-dependent, the promotion is determinism insurance.
 - **H-5 — isolated UNOWN_HOME per PTY lane (operator lane).** Lanes boot
   with an isolated home (`env_extra` UNOWN_HOME) and dismiss the
   first-flights catalog before typing; lane verdicts must not depend on

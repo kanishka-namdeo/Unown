@@ -149,6 +149,7 @@ checkpoint):
 | V-15 | The `check:claims` lane failed once inside the O-2→A2H-1 gate battery run (rc 1) then passed 3/3 standalone seconds later, same tree (2026-11-04) | infra-flake (gate-battery context; the standalone lane is deterministic green) | Receipted as flake; the battery re-run at the A2H-1 push passed all lanes. If it recurs inside batteries only, suspect cross-lane load (the unit suite runs adjacent), not the claims data. |
 | V-16 | **The src-vs-dist law**: A2H-1's unit lanes ran green against SOURCE (vitest imports `src/`) while the LIVE repro still showed B-1 0/3 — the TUI boots the coding-agent from the built `dist/`, so pi-repo changes need `bun run build:unbundled` before live PTY verification (2026-11-04) | stale-assumption (environmental; the unit-green/live-red gap) | Rebuilt the package → the same repro flipped to FIXED 3/3 immediately. Standing law: any ticket touching `pi-repo/**` adds "rebuild the package, then re-verify live" to the operator gate; the engine restart (V-6) rides the same window. |
 | V-17 | **The A2H-1 dispatch thrash**: 4 chunks (32 turns) of pure exploration — 25 tool calls (15 bash + 10 read), ZERO edits; chunk 4 obeyed the edit-first directive but its edit failed on an old_str mismatch and re-orientation burned the rest; chunk 7 burned 662 s of turns running the heavy package gates (the operator's job) | prompt-brittleness (operator-side brief design + A2 turn granularity at the 8-turn cap) | Cured in one chunk by the operator-supplied BYTE-EXACT region text + a single-action brief. Standing laws: (1) located-defect briefs embed the exact current source region (sed-verified) so the first edit cannot miss; (2) the first instructed action is the edit; (3) A2 receipts never gate on lanes the operator re-runs anyway — the receipt records "operator gate re-runs"; (4) the fresh-context economics of V-13 apply at ~4 chunks of session fatness. |
+| V-18 | **The unit-lane sandbox pollution**: `bun test src` is a SUBSTRING path filter — it matched the engine's freshly minted self-learning sandbox at `data/self-learning/sandboxes/mint-assert-rejects-*/workspace/src/assertUtils.test.mjs` (a learning-job fixture whose asserts deliberately fail), redding the repo lane with a non-repo test (2026-11-04, at the A2H-2 push gate; the sandboxes are gitignored runtime data) | genuine-gap (gate hygiene: the lane's filter is not root-anchored) | Immediate: the two polluted sandboxes removed (runtime artifacts, housekeeping) → the lane re-ran **2152/0 across 154 files**, the family baseline exactly. Durable fix QUEUED as ticket A2H-3 (anchor the `test:unit` filter so `data/**` can never match; the engine mints `*.test.mjs` fixtures continuously). |
 
 Bug register (user-visible findings, the failure→benchmark reflex's
 input):
@@ -180,7 +181,15 @@ input):
   a paused terminal (flow control / scroll lock) could lose keystrokes
   the same way. Fix ticket A2H-2 (harness: pump-while-typing in
   `pty_common`; product: investigate input preservation while writes
-  block).
+  block). **FIXED 2026-11-04 (A2H-2)**: the harness side landed
+  (`_send_drained` on send/key/type_prompt — the standing lanes re-ran
+  green on the fixed harness); the product-side investigation RECEIPTED
+  A FAVORABLE FINDING — on v0.0.56, input preservation holds across the
+  tested volume ladder (probes land at 3s/15s/45s undrained windows,
+  49–146KB accumulated, the stream completes, no deadlock; /abort typed
+  without draining executes 2/2). The morning's V-9 receipts stand — the
+  failure mode is condition-dependent, not unconditional; no product
+  defect reproducible tonight, no product change made.
 
 ## Ticket queue
 
@@ -193,7 +202,8 @@ input):
 | O-5 | PWA + capture lane + root wiring + CI job (the Coda C5 pattern) | CI coda-style job + capture receipts | queued |
 | O-6 | Closeout: landing band, usage captures, blog post, README/DOX, graduation | full gate set + check:blog | queued |
 | A2H-1 | Fix B-1: the `/abort` notice must survive the first-flight settle tip (status-line collision guard — notify dedup keyed by source, tip deferral, or notice-as-message-note) | the abort PTY lane under a fresh isolated UNOWN_HOME, 3/3 runs with the notify visible | **LANDED 2026-11-04 (v0.0.56)** — showStatus dedup keyed on identical text (refresh-only); BEFORE receipt 2/3 defect → AFTER **3/3 both lines persist**; standing lanes footer 9/9 · picker PASS · resume-hint ALL HELD (zero regressions); unit: status 34/34 · self-learning 5561/0 · root 2152/0; the 17 vitest package failures verified PRE-EXISTING via stash; receipt tree-verified 5/5; 8 chunks (V-17's thrash receipted) |
-| A2H-2 | Fix B-2: `pty_common.send/type_prompt` pump-while-typing (harness law V-9) + a product-side investigation of input preservation while output writes block | X/Y differential re-run: keystroke loss 0/4 without read-while-typing | queued (A2-hardening) |
+| A2H-2 | Fix B-2: `pty_common.send/type_prompt` pump-while-typing (harness law V-9) + a product-side investigation of input preservation while output writes block | X/Y differential re-run: keystroke loss 0/4 without read-while-typing | **LANDED 2026-11-04** — `_send_drained` (reader-thread concurrent drain) on send/key/type_prompt; footer 9/9 · resume-hint ALL HELD · resume-picker PASS with the fixed harness; the investigation's finding: input preservation HOLDS on v0.0.56 across the volume ladder (3/15/45s undrained, 49–146KB; /abort-no-drain 2/2 executes) — the law is condition-dependent, the fix is determinism insurance; receipt tree-verified; 2 chunks (the single-action receipt brief landed in 17 s) |
+| A2H-3 | Anchor the `test:unit` filter (V-18: `bun test src` substring-matches the engine's sandbox `workspace/src/*.test.mjs` fixtures — the repo lane executed a learning-job fixture and red) | `bun run test:unit` stays 2152/0 with a fresh `mint-assert-rejects-*` sandbox present | queued (A2-hardening, tiny) |
 
 Pre-ticket PTY audit (H-3): re-run the standing `scripts/tui-capture/`
 verify lanes on this lineage before O-1 dispatch.
