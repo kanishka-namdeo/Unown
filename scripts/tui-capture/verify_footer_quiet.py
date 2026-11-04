@@ -33,9 +33,8 @@ import sys
 import time
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from pty_common import UnownPty, dismiss_first_flights, make_logger  # noqa: E402
+from pty_common import UNOWN_ROOT, UnownPty, dismiss_first_flights, make_logger  # noqa: E402
 
-UNOWN_ROOT = os.environ.get("UNOWN_ROOT", "/home/z/my-project/Unown")
 OUT = os.environ.get("OUT", "/tmp/unown-footer-verify-out")
 os.makedirs(OUT, exist_ok=True)
 log = make_logger("verify-footer-quiet")

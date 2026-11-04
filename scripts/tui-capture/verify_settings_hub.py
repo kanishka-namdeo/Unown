@@ -27,9 +27,8 @@ import sys
 import time
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from pty_common import UnownPty, make_logger  # noqa: E402
+from pty_common import UNOWN_ROOT, UnownPty, make_logger  # noqa: E402
 
-UNOWN_ROOT = os.environ.get("UNOWN_ROOT", "/home/z/my-project/Unown")
 WORK_DIR = "/tmp/unown-settings-verify"
 OUT = os.environ.get("OUT", "/tmp/unown-settings-verify-out")
 

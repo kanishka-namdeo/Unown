@@ -27,8 +27,9 @@ B-12 harvest (the el() tabindex junk-expando fix — the stats overlay's
 keyboard surface was dead; the battery now 14 tests / 6 spec files,
 Lane A 101+1skip / Lane B 105, tsc 0, proof 19/0, receipt COMPLETE).
 **Next: R-2 (deck-level review settings) after the H-1 smoke canary**;
-A2H-4 (the picker-lane harness hardening, H-8 at PROPOSE) queued behind
-the P1 lane.
+A2H-4 LANDED 2026-11-05 (registry H-8 PROMOTED — the PTY harness's
+fresh-install hardening: the picker lane 3/3 PASS with zero operator
+cures, the standing lanes green with zero env overrides).
 
 ---
 

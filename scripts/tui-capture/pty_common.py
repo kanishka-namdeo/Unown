@@ -53,7 +53,11 @@ CELL_W = int(os.environ.get("PTY_CELL_W", 14))
 CELL_H = int(os.environ.get("PTY_CELL_H", 28))
 TITLE_H = int(os.environ.get("PTY_TITLE_H", 34))
 
-UNOWN_ROOT = os.environ.get("UNOWN_ROOT", "/home/z/my-project/Unown")
+# V-5: the lanes must run from ANY checkout — a hard-coded prior path is the
+# V-5 class; resolve script-relatively (env override preserved).
+_SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+_REPO_ROOT = os.path.dirname(os.path.dirname(_SCRIPT_DIR))  # scripts/tui-capture/ → the repo root
+UNOWN_ROOT = os.environ.get("UNOWN_ROOT", _REPO_ROOT)
 UNOWN_BIN = os.path.join(UNOWN_ROOT, "bin", "unown")
 OUT_DIR = os.environ.get(
     "OUT", "/home/z/my-project/download/unown-addon-captures/stills"
@@ -359,6 +363,11 @@ class UnownPty:
         # tmux lane's driver.js).
         for k in ("NO_COLOR", "CLICOLOR", "CLICOLOR_FORCE", "COLORTERM"):
             env.pop(k, None)
+        # V-4: the PTY lanes isolate state via HOME + cwd; an ambient
+        # UNOWN_HOME leaks the caller's state dir into the lane and breaks
+        # session discovery. The lane's isolation must not depend on the
+        # caller's shell.
+        env.pop("UNOWN_HOME", None)
         env.update(env_extra or {})
         args = ["bun", UNOWN_BIN] + self.extra_args
         self.log(f"spawn: {' '.join(args)} (cwd={cwd})")

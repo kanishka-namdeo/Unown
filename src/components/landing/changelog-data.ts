@@ -30,10 +30,10 @@ export interface ChangelogStop {
   groups: ChangelogGroup[];
 }
 
-export const CHANGELOG_TOTAL_ENTRIES = 538;
+export const CHANGELOG_TOTAL_ENTRIES = 539;
 
 export const CHANGELOG_TOTALS: Record<ChangelogBucket, number> = {
-  "Added": 254,
+  "Added": 255,
   "Changed": 32,
   "Deprecated": 0,
   "Removed": 3,
@@ -46,9 +46,9 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
   {
     "label": "Unreleased",
     "date": null,
-    "total": 31,
+    "total": 32,
     "counts": {
-      "Added": 23,
+      "Added": 24,
       "Changed": 0,
       "Deprecated": 0,
       "Removed": 0,
@@ -60,6 +60,10 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
       {
         "bucket": "Added",
         "items": [
+          {
+            "title": "A2H-4 lands — the PTY harness's fresh-install hardening (registry H-8 PROMOTED, the V-3/V-4/V-5 durable fix…",
+            "behavior": false
+          },
           {
             "title": "R-1 CLOSES — the e2e heatmap spec lands and harvests B-12: the el() tabindex junk-expando defect that left the…",
             "behavior": false

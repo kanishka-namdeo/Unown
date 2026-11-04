@@ -22,12 +22,11 @@ import sys
 import time
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from pty_common import UnownPty, make_logger  # noqa: E402
+from pty_common import UNOWN_ROOT, UnownPty, make_logger  # noqa: E402
 
 import glob
 import subprocess
 
-UNOWN_ROOT = os.environ.get("UNOWN_ROOT", "/home/z/my-project/Unown")
 WORK_DIR = "/tmp/unown-abort-verify"
 OUT = os.environ.get("OUT", "/tmp/unown-abort-verify-out")
 

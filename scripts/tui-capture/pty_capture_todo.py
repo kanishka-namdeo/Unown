@@ -37,6 +37,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from pty_common import (  # noqa: E402
     OUT_DIR,
+    UNOWN_ROOT,
     UnownPty,
     craft_todo_session,
     exit_code,
@@ -84,7 +85,7 @@ NEXT_ID = 5
 def main() -> int:
     log = make_logger(SCRIPT)
     records = []
-    cwd = os.environ.get("PTY_CWD", "/home/z/my-project/Unown")
+    cwd = os.environ.get("PTY_CWD", UNOWN_ROOT)
     craft_todo_session(SESSION_FILE, [TASKS], NEXT_ID, cwd=cwd)
     log(f"crafted session: {SESSION_FILE} (4 tasks, nextId={NEXT_ID})")
 

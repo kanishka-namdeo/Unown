@@ -1,10 +1,13 @@
 #!/usr/bin/env python3
 """
-verify_resume_picker.py — the sessions round's /resume picker verification
-(PTY lane): the in-session /resume picker must show BOTH stores — the user
-lane (~/.unown/agent/sessions) AND this project's import lane
-(<cwd>/.unown/sessions) — exactly like the launch picker, `--continue`,
-`--resume <query>` and `sessions list` already do.
+verify_resume_picker.py — the sessions round's /resume picker verification.
+The in-session /resume picker must show BOTH stores — the user lane
+(~/.unown/agent/sessions) AND this project's import lane (<cwd>/.unown/sessions) —
+exactly like the launch picker, `--continue`, `--resume <query>` and
+`sessions list` already do. The lane drives the REAL `unown` TUI through a
+fresh-install truth: isolated HOME (VERIFY_HOME, no caller's onboarding
+history), the first-flights catalog dismissed before typing, and
+repo-relative paths — no operator cures required on any checkout.
 
 Flow:
   1. PTY boot in a fresh cwd, one short turn, /quit  → user-lane session A
@@ -25,10 +28,12 @@ import sys
 import time
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from pty_common import UnownPty, make_logger  # noqa: E402
+from pty_common import UnownPty, dismiss_first_flights, make_logger, UNOWN_BIN  # noqa: E402
 
-UNOWN_BIN = os.environ.get("UNOWN_BIN", "/home/z/my-project/Unown/bin/unown")
+HOME = os.environ.get("VERIFY_HOME", "/tmp/unown-picker-home")
 WORK_DIR = "/tmp/unown-picker-verify"
+
+os.makedirs(HOME, exist_ok=True)
 
 log = make_logger("verify-resume-picker")
 
@@ -48,7 +53,7 @@ def fail(msg: str, pane: list[str]) -> None:
 def sessions_for_cwd(cwd: str, store: str) -> list[dict]:
     out = []
     if store == "user":
-        d = os.path.expanduser("~/.unown/agent/sessions")
+        d = os.path.join(HOME, ".unown", "agent", "sessions")
     else:
         d = os.path.join(cwd, ".unown", "sessions")
     for f in sorted(glob.glob(os.path.join(d, "*.jsonl")), key=os.path.getmtime):
@@ -74,8 +79,9 @@ def main() -> None:
 
     # 1 — make a real user-lane session
     say("step 1: create a user-lane session (short turn + /quit)")
-    s = UnownPty(log, cwd=WORK_DIR, extra_args=[])
+    s = UnownPty(log, cwd=WORK_DIR, extra_args=[], env_extra={"HOME": HOME})
     s.wait_ready(timeout=90)
+    dismiss_first_flights(s, log)
     s.type_prompt("Say the word pineapple and nothing else.")
     s.send("\r")
     try:
@@ -98,7 +104,11 @@ def main() -> None:
     r = subprocess.run(
         ["bun", UNOWN_BIN, "sessions", "export", sid, "--out", export_path],
         cwd=WORK_DIR, capture_output=True, text=True, timeout=120,
-        env={**os.environ, "PATH": os.environ.get("PATH", "")},
+        env={
+            **{k: v for k, v in os.environ.items() if k != "UNOWN_HOME"},
+            "HOME": HOME,
+            "PATH": os.environ.get("PATH", ""),
+        },
     )
     say(f"  export rc={r.returncode} {' '.join(r.stdout.split()[:14])}")
     if r.returncode != 0 or not os.path.exists(export_path):
@@ -106,7 +116,11 @@ def main() -> None:
     r = subprocess.run(
         ["bun", UNOWN_BIN, "sessions", "import", export_path],
         cwd=WORK_DIR, capture_output=True, text=True, timeout=120,
-        env={**os.environ, "PATH": os.environ.get("PATH", "")},
+        env={
+            **{k: v for k, v in os.environ.items() if k != "UNOWN_HOME"},
+            "HOME": HOME,
+            "PATH": os.environ.get("PATH", ""),
+        },
     )
     say(f"  import rc={r.returncode} {' '.join(r.stdout.split()[:14])}")
     import_sessions = sessions_for_cwd(WORK_DIR, "import")
@@ -116,8 +130,9 @@ def main() -> None:
 
     # 3 — boot the TUI again and open /resume: BOTH must be listed
     say("step 3: boot TUI, open /resume, assert BOTH stores are listed")
-    s2 = UnownPty(log, cwd=WORK_DIR, extra_args=[])
+    s2 = UnownPty(log, cwd=WORK_DIR, extra_args=[], env_extra={"HOME": HOME})
     s2.wait_ready(timeout=90)
+    dismiss_first_flights(s2, log)
     time.sleep(1)
     s2.send("/resume")
     time.sleep(0.4)

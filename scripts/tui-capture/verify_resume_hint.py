@@ -32,10 +32,8 @@ import sys
 import time
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from pty_common import UnownPty, dismiss_first_flights, make_logger  # noqa: E402
+from pty_common import UNOWN_BIN, UNOWN_ROOT, UnownPty, dismiss_first_flights, make_logger  # noqa: E402
 
-UNOWN_ROOT = os.environ.get("UNOWN_ROOT", "/home/z/my-project/Unown")
-UNOWN_BIN = os.path.join(UNOWN_ROOT, "bin", "unown")
 HOME = os.environ.get("VERIFY_HOME", "/tmp/unown-resume-hint-home")
 WORK_DIR = "/tmp/unown-resume-hint-work"
 OUT = os.environ.get("OUT", "/home/z/my-project/download/resume-hint-round")

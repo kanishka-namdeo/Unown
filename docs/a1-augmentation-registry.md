@@ -11,7 +11,7 @@ augmentation this engagement proposes, canaries, gates and promotes — or
 retires.
 
 - Owner: the A1 operator (authored outside A2 sessions)
-- Status: OPENED 2026-11-04; the Ostinato round closed 2026-11-04 — promoted rows: 2 (H-6, H-4); the **Reprise round opened 2026-11-05** — H-1/H-2/H-3 carry live records at PROPOSE; **H-8 opened at PROPOSE** (the fifteenth lineage's V-3 harvest, 2026-11-05 late); the round's validation log lives in [the round log](reprise-round-session.md)
+- Status: OPENED 2026-11-04; the Ostinato round closed 2026-11-04 — promoted rows: 2 (H-6, H-4); the **Reprise round opened 2026-11-05** — **promoted rows: 3 (+H-8, A2H-4, 2026-11-05)**; H-1/H-2/H-3 carry live records at PROPOSE; the round's validation log lives in [the round log](reprise-round-session.md)
 
 **Mini-TOC**
 
@@ -53,6 +53,7 @@ improvement survives a session boundary (memory or skill lane receipt).
 |---|---|---|---|---|---|---|
 | H-6 | PROMOTED 2026-11-04 | A2-side code fix (ticket A2H-1, v0.0.56) | The status-line collision guard: `showStatus`'s dedup must never clobber a DIFFERENT notify's text — reuse only for identical-text refreshes | The abort PTY lane under a fresh isolated UNOWN_HOME: notify visible 3/3; zero TUI-consistency regressions in the standing lanes | BEFORE 2/3 defect vs AFTER **3/3 both-lines-persist** (`scripts/repro_abort_notice.py`, B-1 receipted); footer 9/9 · picker PASS · resume-hint ALL HELD; unit: status 34/34 · self-learning 5561/0 · root 2152/0; the fix is durable code + the rewritten coalescing test pins the semantics; receipt `.unown/receipts/a2h1.md` tree-verified 5/5 | **LANDED** — the registry's first promotion |
 | H-4 | PROMOTED 2026-11-04 | operator-lane harness fix (ticket A2H-2, in-repo `scripts/tui-capture/`) | Pump-while-typing in the PTY harness: every keystroke send drains output concurrently, so the pty write window never stays undrained | Keystroke-loss incidents in PTY lanes → 0 across the round; lane determinism across re-runs | The morning receipts (X/Y 2/2 loss; the /abort matrix 8/8) as spawning evidence; the landed `_send_drained` (reader-thread drain on `send`/`key`/`type_prompt`); the standing lanes re-ran green on the fixed harness (footer 9/9 · resume-hint ALL HELD · picker PASS); the product-side investigation's volume ladder receipted (input preservation holds on v0.0.56 at every tested volume — the fix is determinism insurance); receipt `.unown/receipts/a2h2.md` | **LANDED** — the second promotion |
+| H-8 | PROMOTED 2026-11-05 | operator-lane harness fix (ticket A2H-4, in-repo `scripts/tui-capture/`) | The PTY harness's fresh-install hardening: `pty_common.py` the single source of truth for `UNOWN_ROOT`/`UNOWN_BIN` (script-relative, env-overridable — no lane carries a checkout-path default); `UnownPty` strips an ambient `UNOWN_HOME` from every spawn; the picker lane runs a true fresh-install truth (isolated `VERIFY_HOME` + `dismiss_first_flights` after both boots + the lane's-own-HOME discovery + the subprocess env filter) | The picker lane passes on a fresh container with ZERO operator cures, 3 consecutive runs | BEFORE 3/3 FAIL on the fifteenth lineage's fresh bring-up (V-3/V-4/V-5: the catalog eating keystrokes, the ambient `UNOWN_HOME` leak, the hard-coded prior-checkout path — three operator cures needed just to run it) → AFTER **3/3 consecutive PASS with the ambient `UNOWN_HOME` deliberately set**; the scoped fix's own standing-lane regression (the eight scripts' local defaults) caught by the operator's ritual and cured in-ticket (`rg -l "my-project/Unown" scripts/tui-capture/` → empty); `verify_resume_hint` ALL HELD with zero env overrides; the fix is durable shared-harness code + the receipt (retention by construction); cost: 5 budgeted chunks, $0 metered | **LANDED** — the third promotion (the Reprise round's first) |
 
 ## Queued hypotheses
 
@@ -155,6 +156,12 @@ PROPOSE-stage candidates (none canaried, none promoted):
   the lane passes on a fresh container with ZERO operator cures, 3
   consecutive runs. Stage: **PROPOSE** (opened at the Reprise round's
   second bring-up; the A2H-4 dispatch is a round-operator decision).
+  **PROMOTED 2026-11-05** (see the registry table): A2H-4 landed the fix
+  across the whole harness (five chunks; the scoped fix's standing-lane
+  regression caught by the operator's ritual and cured in-ticket); the
+  gate receipts — BEFORE 3/3 FAIL on a fresh install → AFTER 3/3 PASS
+  with the ambient `UNOWN_HOME` deliberately set, the standing lanes
+  green with zero env overrides, the durable-code retention.
 
 A2-side candidates (skills, subagents, hooks, review checks) enter at
 PROPOSE only from receipted failures observed during O-ticket driving —

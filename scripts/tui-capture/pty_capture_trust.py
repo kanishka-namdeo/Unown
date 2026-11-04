@@ -24,12 +24,10 @@ import time
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-from pty_common import UnownPty, exit_code, make_logger, print_summary  # noqa: E402
+from pty_common import UNOWN_ROOT, UnownPty, exit_code, make_logger, print_summary  # noqa: E402
 from pty_common import StillRecord  # noqa: E402
 
 SCRIPT = "pty_capture_trust"
-
-UNOWN_ROOT = os.environ.get("UNOWN_ROOT", "/home/z/my-project/Unown")
 
 
 def main() -> int:

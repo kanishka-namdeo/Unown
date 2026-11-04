@@ -29,7 +29,6 @@ from pty_common import UnownPty, exit_code, make_logger, print_summary  # noqa: 
 from pty_common import StillRecord  # noqa: E402
 
 SCRIPT = "pty_capture_flow"
-UNOWN_ROOT = os.environ.get("UNOWN_ROOT", "/home/z/my-project/Unown")
 
 
 def main() -> int:

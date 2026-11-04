@@ -20,7 +20,7 @@ import sys
 import time
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from pty_common import UnownPty, make_logger, render_png  # noqa: E402
+from pty_common import UNOWN_BIN, UNOWN_ROOT, UnownPty, make_logger, render_png  # noqa: E402
 
 from PIL import Image  # noqa: E402
 
@@ -105,14 +105,14 @@ def main() -> None:
             continue
     if sid:
         r = subprocess.run(
-            ["bun", "/home/z/my-project/Unown/bin/unown", "sessions", "export", sid, "--out", "/tmp/film-export.json"],
+            ["bun", UNOWN_BIN, "sessions", "export", sid, "--out", "/tmp/film-export.json"],
             cwd=WORK_DIR, capture_output=True, text=True, timeout=120,
             env={**os.environ, "PATH": os.environ.get("PATH", "")},
         )
         log(f"export rc={r.returncode}")
         if r.returncode == 0:
             r2 = subprocess.run(
-                ["bun", "/home/z/my-project/Unown/bin/unown", "sessions", "import", "/tmp/film-export.json"],
+                ["bun", UNOWN_BIN, "sessions", "import", "/tmp/film-export.json"],
                 cwd=WORK_DIR, capture_output=True, text=True, timeout=120,
                 env={**os.environ, "PATH": os.environ.get("PATH", "")},
             )
