@@ -296,6 +296,16 @@ rail in the same commit; the version bump itself is the release commit
   ground-truth refresh, this rotation, the CHANGELOG entry + the
   regenerated rail. O-1 (canaries + the app skeleton) dispatches next,
   after the H-1 smoke and the H-3 PTY-audit pre-checks.
+- **O-1 LANDED 2026-11-04 (the ninth lineage's first push)**: canaries
+  C1 3/3 · C2 2/3 (variant B's cap-overflow receipted — the honest
+  baseline spread) · C3 3/3; the skeleton at `apps/ostinato/` (13 files,
+  Lane A 5/5, Lane B 5/5, receipt tree-verified). The H-3 pre-dispatch
+  audit harvested bug-register B-1 (the first-flight tip overwrites the
+  `/abort` notice) + B-2/V-9 (the PTY backpressure law) — fix tickets
+  **A2H-1/A2H-2** join the queue after O-2. The registry's PROPOSE rows:
+  H-4 (pump-while-typing), H-5 (isolated UNOWN_HOME per lane), H-6 (the
+  status-line collision guard). Next: O-2 (the domain core), then the
+  A2H pair.
 - Operator tools that must survive recycles:
   `/home/z/my-project/scripts/dispatch-bg.py` +
   `/home/z/my-project/tickets/` + `/home/z/my-project/.secrets` + the

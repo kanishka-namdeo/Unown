@@ -1,0 +1,20 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Ostinato — flashcards that stick</title>
+    <meta name="theme-color" media="(prefers-color-scheme: light)" content="#ffffff" />
+    <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#15181e" />
+    <meta name="description" content="Keyboard-first, offline-first spaced-repetition flashcards. Your data stays in this browser; it works offline." />
+    <link rel="manifest" href="./public/manifest.webmanifest" />
+    <link rel="icon" type="image/svg+xml" href="./public/icon.svg" />
+  </head>
+  <body>
+    <main id="ostinato-root">
+      <p id="ostinato-status">Booting…</p>
+    </main>
+    <!-- O-3 lands the UI shell + service-worker registration; the skeleton ships a
+         static boot shell only (no <script> yet — no runtime closure to precache). -->
+  </body>
+</html>

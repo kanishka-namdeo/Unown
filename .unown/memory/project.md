@@ -3,7 +3,6 @@
 ## Known pitfalls
 - In Unown, the C4 ten-chunk receipt drift issue is being addressed by moving receipt appends inside the per-chunk task list in the next ticket template, and a Coda usage capture for the landing page is queued for the capture lane.
 - In the Unown project, budgeted-chunk resume chains are the only dispatch lane that survives a host reaping agent processes between tool calls; this workflow enforces 8-turn caps, receipt-first incremental appends, and compile-before-stop, whereas the receipt-last pattern failed at the 9.5-minute wall.
-- The Unown project's drift-pin pattern falsely flags the digit "2" in the product-lane name "e2e"; the pitfall was resolved by keeping "2" in the expected digit set and adding a comment to prevent false positives
 
 ## Task playbooks
 - Verify domain code purity by grepping for runtime DOM/Node globals, ensuring matches are restricted to documentation recipes and test comments/regexes (accept `grep_rc=0`).
@@ -14,6 +13,7 @@
 - In Unown's apps/coda, tsc-green and bun-test-green do not guarantee browser-link-green; every type-only import requires the `type` keyword, and every UI surface requires a real browser boot check before commit to prevent 'Booting-forever' ship blockers.
 
 ## Facts
+- Project 'Unown' is located at /home/z/my-project/Unown.
 - In /home/z/my-project/Unown, a successful terminal operation is indicated by the output 'UNOWN_OK'.
 - markdown.ts is confirmed to be outside the runtime import closure
 - After DOM mutations or page changes, browser snapshot refs become stale; re-snapshot the page before acting on the new state.
@@ -125,4 +125,4 @@
 - Stealth verification suite on bot.sannysoft.com: all 10 checks (webdriver, userAgent, platform, userAgentData, timezone, locale, screen, viewport, plugins, window.chrome) pass; 0 FAIL rows in Intoli tests. (Restored by hand 2026-11-01 — second occurrence of the dream-render-prunes-landing-quoted-lines class, issue #46; moved here to the durable lane.)
 - Parley password hashing: scrypt N=16384 r=8 p=1 (src/lib/parley/password.ts). Restored by hand 2026-10-29 after AutoDream reconciles twice erased the fact (upstream 79->66 render, then the F1/F2 bcrypt poison round). Never let a memory answer overwrite this without reading the source.
 
-<!-- unown: rendered 110/111 memories via Mem0 (backend: lexical) · 1 oldest pruned at render (cap 110; hard-won rules immune) at 2026-11-04T06:25:36.144Z -->
+<!-- unown: rendered 110/112 memories via Mem0 (backend: lexical) · 2 oldest pruned at render (cap 110; hard-won rules immune) at 2026-11-04T07:30:33.482Z -->

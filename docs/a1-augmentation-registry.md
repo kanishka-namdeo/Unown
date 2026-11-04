@@ -74,7 +74,33 @@ PROPOSE-stage candidates (none canaried, none promoted):
   `scripts/tui-capture/`) re-run on each fresh lineage before the first
   dispatch — the directive's first keyboard/TUI audit brief. Metric: lanes
   green on a fresh lineage with zero fixes, or findings filed to the bug
-  register.
+  register. **First live harvest 2026-11-04** (ninth-lineage resume): footer
+  9/9, resume-hint pass, resume-picker pass-on-rerun (V-8 flake), abort
+  lane flake root-caused into B-1 + V-9 — the audit paid for itself before
+  the first dispatch.
+- **H-4 — pump-while-typing in the PTY harness (operator lane / repo
+  harness).** `pty_common.send`/`type_prompt` must interleave output
+  draining while sending keystrokes during active streams (V-9's law —
+  undrained output silently drops typed input). Evidence: the X/Y
+  differential (2/2 loss without reads vs 2/2 landing with reads) plus 8/8
+  corroborating race/matrix runs, 2026-11-04. Metric: keystroke-loss
+  incidents in PTY lanes → 0 across the round.
+- **H-5 — isolated UNOWN_HOME per PTY lane (operator lane).** Lanes boot
+  with an isolated home (`env_extra` UNOWN_HOME) and dismiss the
+  first-flights catalog before typing; lane verdicts must not depend on
+  the developer home's onboarding history (the abort lane's 07:07 vs
+  07:21 flip was home-state: the flying tip armed in a fresh ~/.unown,
+  latched in the real one). Metric: lane re-run determinism — same verdict
+  across 3 consecutive runs of every standing lane.
+- **H-6 — status-line collision guard (A2-side, spawns ticket A2H-1).**
+  pi's `showStatus` dedup-reuse lets a later notify replace an earlier
+  one's text; the `/abort` feedback is silently overwritten by the
+  first-flight tip exactly when a new user aborts their first turn (B-1).
+  Candidate lanes: notify dedup keyed by source, `agent_settled` tip
+  deferral past user-command notices, or the abort notice rendered as a
+  message-level note. Metric: the abort PTY lane under a fresh isolated
+  home shows the notify 3/3; zero new TUI-consistency regressions in the
+  standing lanes.
 
 A2-side candidates (skills, subagents, hooks, review checks) enter at
 PROPOSE only from receipted failures observed during O-ticket driving —

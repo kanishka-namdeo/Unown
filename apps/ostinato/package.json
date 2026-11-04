@@ -1,0 +1,7 @@
+{
+  "name": "@unown/ostinato",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Keyboard-first, offline-first spaced-repetition flashcard PWA (vanilla TS, zero dependencies)."
+}

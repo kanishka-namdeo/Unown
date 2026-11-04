@@ -118,20 +118,51 @@ lineage checkpoints — [SESSION.md](SESSION.md) keeps the index):
 | V-3 | Print-mode pipe-hold quirk (the issue #30 class): the outer tool call stalls after the answer flushes | infra-flake (environmental; #30 upstream OPEN) | Avoided by construction — every `-p` dispatch rides the daemonizer; the #30 live-hang capture remains pending upstream (armed watcher + `UNOWN_PRINT_EXIT_TRACE=1` stand). |
 | V-4 | doctor's 2 ⚠ (model-spec unverified, no LSP) | honest first-session state, not a failure | No action; both documented doctor lanes. |
 | V-5 | The docs gate caught the round log's three parenthetical headings hashing to unguessable anchors (2026-11-04, at the round-opening gate) | prompt-brittleness (operator-side authoring) | Headings simplified to bare names; the gate's catch IS the receipt — the check:docs lane holds operator-authored docs to the same anchor law. |
+| V-6 | The quiet-footer lane failed A2/A3 ("two rows at rest", "ambient silence") because the engine build drift (engine @`189fa033` vs agent @`15430eb5`) surfaces as the `memory: up · old build` ambient warning chip at rest (2026-11-04, ninth-lineage resume) | state-desync (environmental) | Waited for an idle router window, `unown engine restart` → build aligned; lane re-run 9/9. The lane doubled as a build-drift detector — receipted as a standing use. |
+| V-7 | The recycle reclaimed pip state (`pyte` gone) — the PTY lanes cannot even import (2026-11-04) | infra-flake (environmental, the V-1 class) | `pip install pyte` + recorded in the operator bootstrap: the lane bring-up now installs pyte explicitly. |
+| V-8 | The resume-picker lane's step-1 boot timed out at 90 s waiting for the TUI header (07:05:30); green on re-run at 07:20 with themes at t+5 s in the same cwd | infra-flake (momentary; likely bridge slowness in the engine-restart window) | Receipted as flake; if it recurs, arm a boot-timing watcher before filing. |
+| V-9 | **The PTY backpressure law**: keystrokes sent to a streaming TUI are silently dropped unless the parent concurrently drains PTY output. Differential receipt: X1/X2 (no-read-while-typing) lost the probe chars 2/2; Y1/Y2 (read-while-typing) landed them 2/2; the six-run race matrix and the two-run determinism matrix lost `/abort` 8/8 the same way (2026-11-04, `/tmp/repro-abort/`) | infra-flake (harness law; product-robustness note B-2) | Operator harness rule: pump while typing during active streams. `pty_common.send` fix queued as A2H-2/H-4. |
+| V-10 | The C2 canary's variant B run: A2 authored the module + tests but hit the 8-turn cap with 2 of 8 authored tests still red (`bun test` rc 1 at scoring) — the first A2-lane measured failure of the baseline (2026-11-04, receipt `run-20261104T*/c2.jsonl`) | genuine-gap (A2 capacity on small-code tickets at the chunk cap) | Receipted as the baseline's honest spread (C2 2/3); no fix ticket — the measurement IS the artefact; the round's chunk economics exist to manage this class. |
+| V-11 | The O-1 receipt's closing prose said "exactly the 12 files above" while listing 13 — the operator tree-verify (H-2) caught the count slip; all 13 listed files exist, nothing extra on the tree | prompt-brittleness (A2 receipt prose; no overclaim — every named file verified) | The catch receipted here; H-2's first live catch of the round. |
 
 Bug register (user-visible findings, the failure→benchmark reflex's
-input): empty at Phase 0 — no app exists yet and no A2 dispatch has run.
+input):
+
+- **B-1 — the first-flight settle tip overwrites the `/abort` notify**
+  (2026-11-04, genuine product defect). When a brand-new user aborts
+  their first-ever turn, `agent_settled` fires the flights extension's
+  "You're flying" tip through the same `ctx.ui.notify` → `showStatus`
+  path the `/abort` command's notice just used; `showStatus`'s dedup
+  branch reuses the last status line and `setText`-replaces the abort
+  feedback with the onboarding tip. Evidence: the abort lane's 07:07 run —
+  `firstTaskAt` latched at 07:07:13.090Z (the lane's own prompt submit),
+  "You're flying" on the pane, pi's message-level "Operation aborted"
+  present, the unown notify absent; source trace: `flights.ts` agent_settled
+  handler vs `tools.ts` /abort handler vs `interactive-mode.ts` showStatus
+  dedup. Repro family: `/home/z/my-project/scripts/repro_abort_*.py`,
+  `diag_abort_keys.py` (the healthy path shows both lines painting and
+  persisting). Fix ticket A2H-1; regression lane: the abort lane re-run
+  under a fresh isolated UNOWN_HOME must show the notify 100%.
+- **B-2 — keystroke loss under output backpressure** (2026-11-04,
+  harness-first with a product-robustness edge). V-9's law: a TUI whose
+  output writes block (undrained PTY) drops typed input. A real user with
+  a paused terminal (flow control / scroll lock) could lose keystrokes
+  the same way. Fix ticket A2H-2 (harness: pump-while-typing in
+  `pty_common`; product: investigate input preservation while writes
+  block).
 
 ## Ticket queue
 
 | Ticket | Scope | Verifier | Status |
 |---|---|---|---|
-| O-1 | Calibration canaries C1–C3 (baseline turns-to-done/cost) + the app skeleton at `apps/ostinato/` (zero-dep PWA scaffold + AGENTS.md draft) | canary receipts + both unit lanes boot | queued (first dispatch) |
+| O-1 | Calibration canaries C1–C3 (baseline turns-to-done/cost) + the app skeleton at `apps/ostinato/` (zero-dep PWA scaffold + AGENTS.md draft) | canary receipts + both unit lanes boot | **LANDED 2026-11-04** — canaries C1 3/3 · C2 2/3 (B cap-overflow receipted) · C3 3/3; skeleton 13 files, Lane A 5/5, Lane B 5/5, receipt tree-verified |
 | O-2 | Domain core: deck/card model, SM-2 scheduler, import/export + Lane A/B tests | both unit lanes + app tsc + invariants pins | queued |
 | O-3 | Review runner + keyboard surface (palette, search, j/k, selection, states) | unit lanes + keyboard-focused e2e stub | queued |
 | O-4 | Hardening e2e battery: zero-mouse flow, axe both schemes, offline, crash-resume, resize | the e2e battery green | queued |
 | O-5 | PWA + capture lane + root wiring + CI job (the Coda C5 pattern) | CI coda-style job + capture receipts | queued |
 | O-6 | Closeout: landing band, usage captures, blog post, README/DOX, graduation | full gate set + check:blog | queued |
+| A2H-1 | Fix B-1: the `/abort` notice must survive the first-flight settle tip (status-line collision guard — notify dedup keyed by source, tip deferral, or notice-as-message-note) | the abort PTY lane under a fresh isolated UNOWN_HOME, 3/3 runs with the notify visible | queued (A2-hardening) |
+| A2H-2 | Fix B-2: `pty_common.send/type_prompt` pump-while-typing (harness law V-9) + a product-side investigation of input preservation while output writes block | X/Y differential re-run: keystroke loss 0/4 without read-while-typing | queued (A2-hardening) |
 
 Pre-ticket PTY audit (H-3): re-run the standing `scripts/tui-capture/`
 verify lanes on this lineage before O-1 dispatch.

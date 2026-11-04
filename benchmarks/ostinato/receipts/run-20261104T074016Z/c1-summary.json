@@ -1,0 +1,10 @@
+{
+  "canary": "C1",
+  "trials": 3,
+  "pass": 3,
+  "duration_ms_mean": 1038.6666666666667,
+  "duration_ms_min": 920,
+  "duration_ms_max": 1162,
+  "turns_mean": 1.0,
+  "date": "2026-11-04T07:40:18.640984+00:00"
+}
