@@ -1,7 +1,7 @@
 # SDLC Capability Matrix — Unown (A1 operator recon)
 
-- **Produced**: 2026-11-03, by A1 during the Coda-round resume; refreshed at the Coda round's teardown the same day; **refreshed 2026-11-05 by the fourteenth lineage at the Ostinato round's teardown** — every live datum re-verified same day (bring-up + teardown receipts in `A2_GROUND_TRUTH.md` §10 drift log).
-- **Snapshot of**: `main` through the Ostinato round's close (`a83336f4`, v0.0.56 — the repo's second user product, the Ostinato flashcard PWA, landed O-1..O-6 + A2H-1..A2H-3).
+- **Produced**: 2026-11-03, by A1 during the Coda-round resume; refreshed at the Coda round's teardown the same day; refreshed 2026-11-05 by the fourteenth lineage at the Ostinato round's teardown; **re-stamped 2026-11-05 (late) by the fifteenth lineage at the Reprise round's second bring-up** — every live datum re-verified same day (bring-up + teardown receipts in `A2_GROUND_TRUTH.md` §10 drift log).
+- **Snapshot of**: `main` through the Reprise round's R-1 code lane (`7bcc901d`, v0.0.56 — the Ostinato PWA's P1 continuation open: R-1's domain + surface landed, the e2e heatmap spec remaining).
 - **Companion to**: `A2_GROUND_TRUTH.md` — same trust order (live executable output > runtime introspection > repo main docs > ground truth > directive) and the same refresh rule: re-verify before any ticket; full refresh at every teardown cycle.
 - **Purpose**: the A1 directive's SDLC Capability Inventory. Every capability carries the directive's required fields — activation, trust requirements, limitations, evidence source, verification method — and the coverage matrix tracks which lifecycle lanes have **receipted** evidence from the DRIVE track (the Coda app round).
 

@@ -104,18 +104,55 @@ The fourteenth lineage (this round's opening lineage), 2026-11-05:
   demands `chromium_headless_shell-1248` — `bunx playwright install
   chromium` is a required step before any e2e lane on a fresh lineage.
 
+The fifteenth lineage (the round's second bring-up, 2026-11-05 late):
+
+- Fresh re-clone @ `6688a9c0` (the teardown-refresh commit) into
+  `/home/z/my-project/unown` — **lowercase path**, a deliberate drift;
+  every hard-coded `/home/z/my-project/Unown` default needs the env
+  override (V-5). The clone arrived shallow (depth 50); `--unshallow`
+  + the tag fetch repaired it (54 tags, 977 commits). A parallel
+  lineage opened THIS round and landed R-1's code lane mid-bring-up —
+  reconciled by the git preflight (ff-only pull + DOX re-read), no
+  conflict.
+- bun **1.4.4** npm-global (`/home/z/.npm-global/bin/bun`) — the
+  `.tools/` 1.4.3 pin was reclaimed a third time; 1.4.4 honored the
+  ≥1.4 floor (install 7/7; unit 2223/0/158 in 159.7 s — the family
+  baseline exact). `fd` 10.2.0 installed to the same bin dir (the
+  `ensureTool("fd")` boot download 403s on the rate-limited anonymous
+  GitHub API — V-5).
+- Stack: bridge `:3031` upstream 200 with **6 agnes models** (the
+  catalog SHRANK from 9 — the pro-alphas are gone upstream); engine
+  `:3030` ready @ v0.0.56/`7bcc901d` post-pull. Doctor "ready to
+  chat" 19✓/2⚠ → the spec ⚠ self-heals after the first session
+  (receipted). Smoke `UNOWN_OK` exit 0 (`subtype:"success"`, 2.5 s).
+- The H-3 PTY audit: **footer-quiet 9/9 · resume-hint ALL HELD ·
+  resume-picker PASS after the V-3/V-4/V-5 cures** (the picker's
+  fresh-install gap is this lineage's harvest — see the validation
+  log). Pre-ticket gates at `7bcc901d`: tsc 0 · lint 0/143 · unit
+  2223/0 · rail 55/537 · blog 46/116 · benchmarks 6/6 · claims 62/62.
+- chromium-1248 re-installed (the standing environment fact held — the
+  first background install died silently; the foreground re-run landed
+  both `chromium-1248` and `chromium_headless_shell-1248`).
+- The operator's off-repo tools rebuilt at `/home/z/my-project/.a1/`
+  (`credentials.env` + `receipts/` + `logs/` + `scripts/dispatch-file.py`
+  + `dispatch-bg.py` + `tickets/`) — the credential store's third
+  layout (`.secrets` → `.creds` → `.a1/`).
+
 ## Validation log
 
 | # | Finding | Class | Disposition |
 |---|---|---|---|
 | V-1 | The round-opening receipts: the fourteenth lineage's bring-up + the teardown refresh landed clean (see the environment checkpoint + `A2_GROUND_TRUTH.md` §10, 2026-11-05) | receipt | The round opens on a green, receipted tree — the P1 lane's entry condition (the freeze held) is met by the committed re-run receipts `benchmarks/ostinato/receipts/run-20261104T181704Z/` |
 | V-2 | **The R-1 operator-gate catch — the runner's append bypass (the B-3 class, again)**: applyEvent's grade branch threaded `reviews: ctx.data.reviews` WITHOUT appending — the real keyboard path (every grade routes through applyEvent) would never write a log entry, exactly the receipted-but-unwired-rule defect class the O-4 round priced as B-3. The runner tests had only fixture-updated (`reviews: []`) — no append pin — so both lanes passed green while the log stayed empty. The catch: the operator's tree-verification after chunk 3 (the SM-1 lesson: tests can mask what fixtures never pin) | genuine-gap (A2's chunked edit left the threading half-done; the tests it updated could not see the gap) | Cured in chunk 4 (byte-exact brief): the append now rides the same transition, pinned two ways (`appends exactly one ReviewEvent` + `out-of-order grade appends NOTHING`). The class is standing curriculum — the next round's pre-splits price it |
+| V-3 | **The picker lane's fresh-install gap**: `verify_resume_picker.py` never dismisses the first-flights catalog — a FOCUSED boot component that eats keystrokes (pty_common's own documented mandate: every lane dismisses before typing; `verify_resume_hint.py` does) — and defaults `UNOWN_BIN` to the prior checkout path. On any fresh install (a real `~/.unown` without the `flightsDismissed` latch) the first turn's prompt is eaten and the export step dies on the module path | genuine-gap (harness; the lane cannot pass on a fresh install — it passed historically only on the operator's latched home) | Operator cures receipted (the one-time user latch `~/.unown/onboarding.json` + the `UNOWN_BIN` env override); the durable fix queued as **A2H-4** (registry H-8 at PROPOSE) |
+| V-4 | **Ambient `UNOWN_HOME` leaks through the PTY lanes' HOME isolation**: the lanes isolate via `HOME` only; an exported `UNOWN_HOME` overrides the default resolution, so sessions land outside the lane's expected store and session discovery breaks (resume-hint chunk A red until `env -u UNOWN_HOME`) | stale-assumption / environment (operator-side) | Standing rule: run every lane with `env -u UNOWN_HOME`; the durable lane fix (env-clear in the lane env) rides A2H-4; H-5's isolated-home hypothesis corroborated by a second live receipt |
+| V-5 | **The `ensureTool("fd")` boot download 403s** on the rate-limited anonymous GitHub API (fresh homes attempt the download at TUI boot and stall first paint — the picker lane's 90 s header timeout); `UNOWN_BIN`'s hard-coded prior-checkout default is the same environment-portability class | environmental (upstream-shaped: `tools-manager.ts` has no download timeout/fallback — an upstream note, not a local patch; the vendored agent is §6b territory) | Cured environmentally: `fd` 10.2.0 on PATH (`/home/z/.npm-global/bin`); lanes take env overrides; the upstream limitation recorded in the ground truth §7 |
 
 ## Ticket queue
 
 | Ticket | Scope | Verifier (external, named) | State |
 |---|---|---|---|
-| R-1 | **The review log + stats heatmap**: the append-only `ReviewEvent` log added to `OstinatoData` (backward-compatible import — a store without `reviews` imports clean; the canonical JSON export gains the field), the pure per-day aggregation module (window + counts, injected clock), the stats surface with the heatmap render (keyboard-navigable, the design-token stylesheet) | Lane A/B unit pins (the aggregation windows/boundaries, the backward-compat import, the invariants — the cardOrder-style integrity law extended to the log); e2e: seeded reviews render the heatmap, the cells carry accessible names; the battery stays 12/12 | **CODE LANE LANDED 2026-11-05** — the domain layer complete (ReviewEvent + the append riding every grade transition, the invariant checks, the backward-compat import, the pure `reviewsPerDay` with six pins); the runner's append-defect caught at the operator gate (V-2, the B-3 class) and fixed + pinned two ways; the palette's 18th command (`t`/`T`) + the 18-count pins; the stats overlay (role=dialog + the 12×7 grid + per-cell aria-labels + Esc/focus-return + the arrow navigation); the CSS (15 rules, tokens only); the precache closure 18→19 (proof 19/0). Lane A/B **101/0** (+8 pins), tsc 0 (one operator-priced narrowing), the derivation proof 19/0, the e2e battery **12/12 in 8.4 s regression-free** (chromium-1248 re-installed this lineage). A2: 8 chunks across two sessions (01a1a847… the first six — fat at the end; 01a1a85a… the fresh-context finalization, V-13's remedy applied); operator-priced: the queue-head pin correction (c1 not c2) + the `instanceof HTMLElement` narrowing. REMAINING: the e2e heatmap spec (the seeded-reviews render + the cell-name pin) — the ticket closes on it |
+| R-1 | **The review log + stats heatmap**: the append-only `ReviewEvent` log added to `OstinatoData` (backward-compatible import — a store without `reviews` imports clean; the canonical JSON export gains the field), the pure per-day aggregation module (window + counts, injected clock), the stats surface with the heatmap render (keyboard-navigable, the design-token stylesheet) | Lane A/B unit pins (the aggregation windows/boundaries, the backward-compat import, the invariants — the cardOrder-style integrity law extended to the log); e2e: seeded reviews render the heatmap, the cells carry accessible names; the battery stays 12/12 | **CODE LANE LANDED 2026-11-05** — the domain layer complete (ReviewEvent + the append riding every grade transition, the invariant checks, the backward-compat import, the pure `reviewsPerDay` with six pins); the runner's append-defect caught at the operator gate (V-2, the B-3 class) and fixed + pinned two ways; the palette's 18th command (`t`/`T`) + the 18-count pins; the stats overlay (role=dialog + the 12×7 grid + per-cell aria-labels + Esc/focus-return + the arrow navigation); the CSS (15 rules, tokens only); the precache closure 18→19 (proof 19/0). Lane A/B **101/0** (+8 pins), tsc 0 (one operator-priced narrowing), the derivation proof 19/0, the e2e battery **12/12 in 8.4 s regression-free** (chromium-1248 re-installed this lineage). A2: 8 chunks across two sessions (01a1a847… the first six — fat at the end; 01a1a85a… the fresh-context finalization, V-13's remedy applied); operator-priced: the queue-head pin correction (c1 not c2) + the `instanceof HTMLElement` narrowing. REMAINING: the e2e heatmap spec (the seeded-reviews render + the cell-name pin) — the ticket closes on it; the fifteenth lineage dispatches it next (after the H-1 smoke canary) |
 | R-2 | **Deck-level review settings**: an optional per-deck `settings` block (the new-cards-per-session cap first), the queue build resolving deck override > app default, the deck settings surface (the create-form's modal pattern reused) | Lane A/B unit pins (the override resolution, the queue slicing under a cap, the default-untouched path); e2e: setting a deck's cap changes the next session's queue, keyboard-driven | **OPEN** |
 | R-3 | **CSV (Anki-style) import**: the pure CSV parser (front,back rows; RFC-4180 quoting; a quoted header row tolerated; per-row error collection, never a silent skip), the palette command + the file-picker lane (the JSON import's `filechooser` pattern), deck-target selection | Lane A/B unit pins (the parser table: plain/quoted/embedded-newline/embedded-quote/malformed-row cases + the error ledger); e2e: a keyboard-driven CSV import lands the cards, the JSON export byte-stable; the battery stays green | **OPEN** |
 | R-4 | **The `?` shortcut sheet**: the 19th palette command (the 18th went to R-1's stats) + the overlay (the create-form's modal contract: `role=dialog` + `aria-modal` + Esc-close + focus return + attach-before-focus), the sheet's content derived from the palette's own command table (single source — no drift) | e2e: `?` opens the sheet, Esc closes + focus returns, the sheet's rows match the command table (a derived-content pin); axe clean on the open state; the battery stays green | **OPEN** |

@@ -11,7 +11,7 @@ augmentation this engagement proposes, canaries, gates and promotes — or
 retires.
 
 - Owner: the A1 operator (authored outside A2 sessions)
-- Status: OPENED 2026-11-04; **the Ostinato round closed 2026-11-04** — promoted rows: 2 (H-6, H-4); H-1/H-2/H-3 carry live records at PROPOSE; the round's validation log lives in [the round log](ostinato-round-session.md)
+- Status: OPENED 2026-11-04; the Ostinato round closed 2026-11-04 — promoted rows: 2 (H-6, H-4); the **Reprise round opened 2026-11-05** — H-1/H-2/H-3 carry live records at PROPOSE; **H-8 opened at PROPOSE** (the fifteenth lineage's V-3 harvest, 2026-11-05 late); the round's validation log lives in [the round log](reprise-round-session.md)
 
 **Mini-TOC**
 
@@ -112,7 +112,12 @@ PROPOSE-stage candidates (none canaried, none promoted):
   the developer home's onboarding history (the abort lane's 07:07 vs
   07:21 flip was home-state: the flying tip armed in a fresh ~/.unown,
   latched in the real one). Metric: lane re-run determinism — same verdict
-  across 3 consecutive runs of every standing lane.
+  across 3 consecutive runs of every standing lane. **Second live receipt
+  2026-11-05 (the fifteenth lineage)**: the picker lane red-on-fresh-install
+  exactly this class — the unlatched real ~/.unown showed the first-flights
+  catalog (keys eaten) while a latched home passes; plus the ambient-
+  `UNOWN_HOME` leak (V-4) breaking the isolation from the other side. The
+  A2H-4 fix candidate is the durable form.
 - **H-6 — status-line collision guard (A2-side, spawns ticket A2H-1).**
   pi's `showStatus` dedup-reuse lets a later notify replace an earlier
   one's text; the `/abort` feedback is silently overwritten by the
@@ -137,6 +142,19 @@ PROPOSE-stage candidates (none canaried, none promoted):
   requires an identifier after the dot; the belt: no global literal in
   domain comments). Metric: verifier false-positives filed as code
   defects = 0 for the rest of the round.
+- **H-8 — the picker lane's fresh-install hardening (operator lane /
+  repo harness, spawns ticket A2H-4).** `verify_resume_picker.py` must
+  dismiss the first-flights catalog before typing (pty_common's mandate —
+  the catalog is focused and eats keystrokes), clear `UNOWN_HOME` in its
+  spawn env (the HOME isolation must not depend on the caller's shell),
+  and resolve `UNOWN_BIN` from `UNOWN_ROOT` (no hard-coded checkout
+  path). Spawning evidence: V-3/V-4/V-5 (2026-11-05, the fifteenth
+  lineage — the lane failed 3 consecutive runs on a fresh install, then
+  passed with the operator cures: the one-time `flightsDismissed` latch,
+  `env -u UNOWN_HOME`, the `UNOWN_BIN` override, `fd` on PATH). Metric:
+  the lane passes on a fresh container with ZERO operator cures, 3
+  consecutive runs. Stage: **PROPOSE** (opened at the Reprise round's
+  second bring-up; the A2H-4 dispatch is a round-operator decision).
 
 A2-side candidates (skills, subagents, hooks, review checks) enter at
 PROPOSE only from receipted failures observed during O-ticket driving —
