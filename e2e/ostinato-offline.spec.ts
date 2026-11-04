@@ -14,7 +14,7 @@
  *   activate handler claims the current client immediately, so
  *   `navigator.serviceWorker.controller !== null` by the time
  *   the card front is visible.
- * - The 17-entry `PRECACHE_LIST` (chunk 3) covers the full
+ * - The 18-entry `PRECACHE_LIST` (chunk 3) covers the full
  *   module graph (the 5 shell assets + the entry + the 11
  *   `.js`-convention module forms), so an offline reload serves
  *   every subresource from cache — the review loop never touches
@@ -80,7 +80,7 @@ const SEED_DATA = JSON.stringify({
  * module script runs, navigate, wait for the card front + the
  * queue progress, then wait for the service worker to claim this
  * client. The chunk-1 registration + sw.js's `clients.claim()`
- * make the FIRST load controlled; the 17-entry install precache
+ * make the FIRST load controlled; the 18-entry install precache
  * covers the full module graph.
  */
 async function bootControlled(page: Page): Promise<void> {
@@ -119,7 +119,7 @@ test("boots controlled, offline reload boots from cache, the review loop complet
   const page = await ctx.newPage();
 
   // Fresh context: no SW, no localStorage. Boot to a controlled
-  // page (the 17-entry precache installed at SW install).
+  // page (the 18-entry precache installed at SW install).
   await bootControlled(page);
 
   // P0 installability inventory: the manifest must fetch (the

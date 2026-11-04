@@ -894,6 +894,73 @@ jobs:
           if-no-files-found: ignore
           retention-days: 7
 
+  ostinato:
+    name: Ostinato app (unit + e2e + a11y)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
+        with:
+          bun-version: "1.4.3"
+      - name: Install dependencies (frozen lockfile)
+        # Ostinato is the repo's second zero-dependency app (apps/ostinato/
+        # package.json declares NO dependencies/devDependencies) — the same
+        # frozen-lockfile + hash-assert contract the coda job pins for Coda.
+        run: bun install --frozen-lockfile
+      - name: Lockfile unchanged assert (Ostinato's zero-dep invariant)
+        shell: bash
+        run: |
+          set -euo pipefail
+          expected=$(git show HEAD:bun.lock | sha256sum | cut -d' ' -f1)
+          actual=$(sha256sum bun.lock | cut -d' ' -f1)
+          echo "bun.lock: expected=$expected actual=$actual"
+          if [ "$expected" != "$actual" ]; then
+            echo "::error::bun.lock drifted after a --frozen-lockfile install: Ostinato added a dependency? (apps/ostinato must stay zero-dep; record a new root dep in the lockfile instead)"
+            exit 1
+          fi
+          echo "lockfile byte-identical: Ostinato's zero-dep invariant holds"
+      - name: Ostinato unit tests — Lane A (app-dir, DOM-free enforcement)
+        # `cd apps/ostinato && bun test`: no bunfig preload applies (bun's
+        # config resolution is cwd-bounded — no apps/ostinato/bunfig.toml
+        # exists), so the happy-dom DOM globals are ABSENT and the
+        # domain-purity boundary (src/domain/boundary.test.ts) is enforced
+        # against a genuinely DOM-free runtime. 93 tests.
+        run: cd apps/ostinato && bun test
+      - name: Ostinato unit tests — Lane B (root form, preload active, masked by design)
+        # `bun test apps/ostinato` from the repo root: the root bunfig.toml's
+        # happy-dom preload IS active here, so DOM-globally-dependent domain
+        # code would be MASKED — which is why Lane A is the enforcement lane
+        # and this lane is the compatibility lane. 93 tests.
+        run: bun test apps/ostinato
+      - name: Precache derivation proof (verify-precache)
+        # The offline lane's static half: every PRECACHE_LIST URL in sw.js
+        # must map to a real on-disk file (the Coda C3 pattern — an
+        # improvement over the coda CI job, which runs verify-precache only
+        # in the operator lane; the script is a sub-second fs walk).
+        run: bun apps/ostinato/scripts/verify-precache.ts
+      - name: Chromium for Playwright
+        run: bunx playwright install chromium --with-deps
+      - name: "Ostinato e2e battery (isolated, self-skip-guarded)"
+        # The O-4 hardening battery: 12 tests across 5 specs (K-1 zero-mouse
+        # flow, A-1 axe wcag2a/2aa both schemes, O-1 offline lanes, R-1
+        # crash-resume + resize). playwright.ostinato.config.ts boots
+        # Ostinato's own transpiling dev server (bun apps/ostinato/serve.mjs)
+        # as its webServer on 127.0.0.1:4013; the OSTINATO_E2E marker arms in
+        # the ostinato config ONLY, so the specs self-skip under the root
+        # landing lane — it stays green and untouched by construction.
+        run: bunx playwright test -c playwright.ostinato.config.ts
+      - name: Upload Ostinato report + traces
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: playwright-report-ostinato
+          path: |
+            download/playwright-report-ostinato
+            download/test-results-ostinato
+          if-no-files-found: ignore
+          retention-days: 7
+
 # NOT in CI yet, on purpose:
 # - Lighthouse (testing-strategy.md §12 criterion 6's second half) — needs a
 #   LHCI collect run against the same standalone + mock-engine pair the e2e

@@ -61,8 +61,23 @@ nameless listbox, the opacity-dimmed contrast, the full-root-rerender
 focus destruction, the grid intrinsic-min-width overflow — each
 operator-root-caused and fixed via byte-exact briefs; app suite 93/0,
 unit family 2218/0; V-19..V-23 receipted.
-Next in the queue: O-5 (PWA + capture lane + root wiring + CI — the
-Coda C5 pattern), then O-6 (the closeout).
+**O-5 LANDED** — the PWA tooling + capture lane + root wiring + CI
+job (the Coda C5 pattern): `apps/ostinato/scripts/verify-precache.ts`
+(the derivation proof — first run caught the 17→18 count drift,
+`18/0 PASS`, the three stale spec comments fixed) +
+`capture-usage.mjs` (the keyboard-only capture lane — four honest
+stills + PROVENANCE committed at `public/landing/ostinato/`, the
+operator's first live run **rc 0, ZERO defects** — V-17's law applied
+to a greenfield lane); root `ostinato:dev/test/e2e` scripts + the
+**`ostinato` CI job** (the coda job's pattern + the verify-precache
+step, an improvement over its template); e2e battery 12/12 in 7.4 s
+regression-free, app lanes 93/0, unit family 2218/0, tsc 0, lint
+0/143; V-24 receipted (the twelfth lineage's re-clone recovery — the
+engine DBs saved through `/proc/<pid>/fd` before the stop, 111
+runs/79 dreams intact); 3 dispatches on one pinned session (8 + 8
+capped + 6).
+Next in the queue: O-6 (the closeout: landing band, usage captures
+consumed, blog post, README/DOX, graduation).
 
 The spend-and-memory-health round (2026-11-04) is COMPLETE and graduated to
 its own log: `docs/spend-and-memory-health-round-session.md` — the

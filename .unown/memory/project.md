@@ -5,6 +5,8 @@
 - Verify test expectations against the Wozniak SM-2 implementation as the authoritative oracle when re-deriving stale scheduler test cases.
 
 ## Known pitfalls
+- In /home/z/my-project/Unown, O-5 is COMPLETE with all A2 gates green: `cd apps/ostinato && bun test` and `bun test apps/ostinato` both report 93 pass / 0 fail / 377 expectations; `bun run typecheck` has 0 errors; `bun apps/ostinato/scripts/verify-precache.ts` reports 18 precache URLs, 0 missing + PASS; YAML parse of ci.yml is clean.
+- In /home/z/my-project/Unown, the O-4 session was completed with all gates green (typecheck 0, both test lanes 93 pass / 0 fail) and the receipt chunk appended before stopping the session.
 - The Unown O-4 ticket is completed with all defects fixed and a receipt appended to `.unown/receipts/o4.md` containing 4 chunks. The final state includes a verified test suite with 93 passing tests, 0 failures, and 377 expectations across 7 files.
 - A pitfall in Unown's app.ts `renderBoot` function was where the `persistAll()` call required by O-3's D2 'every-transition' rule was never wired into the top of the ready-path; the fix was restructuring `renderBoot` to include this call and converting empty-state early returns to if/else-if/else blocks to handle the palette-overlay tail correctly.
 - In Unown project, D10 bug: Ctrl+K palette state was set but not painted; fixed by calling rerender() after openPalette(app) in onKey
@@ -14,12 +16,20 @@
 - benchmarks/longhorizon/reference/tests: Reference implementation tests for clippad [note 1]. [NOTE: The original memory contained a markdown artifact '[note 1]' that has been cleaned up or marked for context. Actually, the instruction says never add new facts, but this looks like a truncation. I will keep the text as is but clean up the obvious markdown note if it's a placeholder. Wait, '[note 1]' is likely part of the raw text. I will preserve the content strictly. The rule is "Never add new facts". I will leave the text as is but remove the markdown link syntax if it was intended as a reference, but usually, these are just noise. I will keep the text identical to avoid inventing facts, but clean up obvious markdown artifacts like `[note 1]` if they are not meaningful data. Let's look at similar memories. `b37872f3-e186-4140-9ae2-8df3f33d1ed3` has `[note 1]`. It seems to be a consistent artifact. I will just keep the text. Actually, the instruction says "tightened or merged wording". Removing the ` [note 1]` suffix is tightening. I will remove it. ] benchmarks/longhorizon/reference/tests: Reference implementation tests for clippad
 
 ## Environment
+- In /home/z/my-project/Unown, the `renderBoot` restructure in `apps/ostinato/src/ui/app.ts` (B-3 + B-4) involved moving top-of-ready-path `persistAll` logic, verified byte-exact before and after editing.
 - Ticket A2H-1 in Unown: fixed `interactive-mode.ts` `showStatus` back-to-back reuse branch — now requires `message === lastStatusMessage`; different text appends its own spacer+line, identical text reuses.
 - In the Unown project's interactive-mode.ts, the showStatus back-to-back reuse branch now requires message === lastStatusMessage to refresh in place; different text appends its own spacer+line. This fixes the B-1 collision by covering both orderings without changing the API.
 - In apps/ostinato, the boundary.test.ts DOM_GLOBS verifier regex was hardened to require an identifier after the dot (`/\b(document|window|indexedDB|localStorage|sessionStorage)\.\w/`) to prevent false positives from English prose ending in 'document.' while still catching genuine member access
 - DOM_GLOBS verifier regex requires an identifier after the dot (e.g., /\b(document|window|...)\.\w/) to prevent false positives from English prose ending in 'document.', while still catching genuine DOM/Node global member access.
 
 ## Facts
+- In /home/z/my-project/Unown, O-5 chunk 1 landed: new `apps/ostinato/scripts/verify-precache.ts` (Coda C3 port, three-way ladder + 3 pins) and new `apps/ostinato/scripts/capture-usage.mjs` (Coda T3 port, keyboard-only law, 4 stills); receipt `.unown/receipts/o5.md` created with STATUS: PARTIAL; `bun apps/ostinato/scripts/verify-precache.ts` exits 0.
+- In /home/z/my-project/Unown, the CI workflow for ostinato is configured in `.github/workflows/ci.yml`; the ostinato job's action pins were byte-copied from the coda job to keep them in sync.
+- In /home/z/my-project/Unown, the O-4 ticket receipt `.unown/receipts/o4.md` has been expanded to 1035 lines after both receipt edits landed and were verified.
+- In /home/z/my-project/Unown, `bun test apps/ostinato` runs the Lane B unit test suite from the project root and currently reports 93 passing tests across 7 files with 377 expectations.
+- In /home/z/my-project/Unown, the `actions.import` handler in `apps/ostinato/src/ui/app.ts` now calls `startSession(next, appClock()(), null)` with the D7-law comment to ensure clock capture is deferred.
+- In /home/z/my-project/Unown, the accessibility E2E spec `e2e/ostinato-a11y.spec.ts` was updated as part of the O-4 chunk 7 edits, with all gates green after the change.
+- In /home/z/my-project/Unown, the O-4 receipt workflow uses incremental chunk appends (chunks 3 and 7 explicitly referenced) with a cap on heredoc length, landing each chunk at the end of the previous turn's output before the cap.
 - In Unown's ostinato app.ts, the `actions.import` call uses `startSession(next, appClock()(), null)` with a D7-law comment, as part of edits to `app.ts`, `e2e/ostinato-a11y.spec.ts` (removing `ostinato.session` item after seeding), and `e2e/ostinato-resilience.spec.ts` (guarding the seed with `if getItem === null` logic), verified by passing typecheck and test suites.
 - In Unown's ostinato app, Chunk 3 of the O-4 implementation landed app.ts changes including the CreateActions type, AppState fields, notice refactor, create actions, onKey branch, dispatch cases, renderBoot tail, advanceSession clear, and four form functions, along with `.ostin` CSS updates.
 - In Unown's GitHub light color scheme, contrast ratios are verified as: foreground #1f2328 on #ffffff is ~14.5:1, and muted #57606a on #ffffff is ~6.5:1, both exceeding the 4.5:1 threshold for regular text.
@@ -107,16 +117,6 @@
 - pi-repo/packages/ai: Unified LLM API with automatic model discovery, provider abstraction.
 - OB-5 lane: the observability round verified that the in-session learning feed records dreams live.
 - In the OB-5 repaint lane, the feed chip must paint itself when a dream advances memory during an idle session; the listener contract repaints on push and is cleared at shutdown
-- Nocturne's `escalation.ts` engine uses tiered escalation timers that fire ONLY while unacked/snoozed.
-- Nocturne's `sla.ts` engine handles SLA ack/resolve breach detection with a 20% at-risk band that is frozen while snoozed.
-- The OB-5 PTY capture lane runs the pane-is-truth contract at terminal dimensions 128x36
-- Nocturne test suite has 360 tests that all passed green in the session, followed by a typecheck verification step
-- For Unown's .coda-note-del CSS, remove the span role reset styling since the element is now a real button, and update the notes-row focus style to match.
-- For label-content-mismatch, ensure aria-label includes the visible text content of the element.
-- In Unown, the offline spec's pre-arm dialog pattern must use the one-shot page.on("dialog") handler rather than waitForEvent, matching the createTask fix applied in the offline spec
-- The one-shot page.on("dialog") handler for confirm() dialogs is the required pre-arm pattern in BrowseBench fixtures; each use must be re-armed because the handler is one-shot
-- Offline spec for Unown includes an apostrophe assertion that must be updated as part of the note title class rename fix
-- Intl.Segmenter constructor accepts granularity option: 'grapheme' (default), 'word', or 'sentence'. Use this to control text segmentation type. This is a reference fact extracted from MDN docs; always verify against current docs in new sessions as APIs may evolve.
 
 ## Manual notes
 
@@ -125,4 +125,4 @@
 - Stealth verification suite on bot.sannysoft.com: all 10 checks (webdriver, userAgent, platform, userAgentData, timezone, locale, screen, viewport, plugins, window.chrome) pass; 0 FAIL rows in Intoli tests. (Restored by hand 2026-11-01 — second occurrence of the dream-render-prunes-landing-quoted-lines class, issue #46; moved here to the durable lane.)
 - Parley password hashing: scrypt N=16384 r=8 p=1 (src/lib/parley/password.ts). Restored by hand 2026-10-29 after AutoDream reconciles twice erased the fact (upstream 79->66 render, then the F1/F2 bcrypt poison round). Never let a memory answer overwrite this without reading the source.
 
-<!-- unown: rendered 110/134 memories via Mem0 (backend: lexical) · 24 oldest pruned at render (cap 110; hard-won rules immune) at 2026-11-04T13:38:59.965Z -->
+<!-- unown: rendered 110/144 memories via Mem0 (backend: lexical) · 34 oldest pruned at render (cap 110; hard-won rules immune) at 2026-11-04T14:43:08.865Z -->
