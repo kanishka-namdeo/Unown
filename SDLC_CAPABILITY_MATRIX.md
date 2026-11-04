@@ -1,7 +1,7 @@
 # SDLC Capability Matrix — Unown (A1 operator recon)
 
-- **Produced**: 2026-11-03, by A1 during the Coda-round resume; **refreshed at the round's teardown (the C6 close) the same day** — every live datum below re-verified same day (bring-up + teardown receipts in `A2_GROUND_TRUTH.md` §10 drift log).
-- **Snapshot of**: `main` through the Coda round's close (v0.0.55; the C6 closeout commits land on `e0ca8ab4`'s lineage).
+- **Produced**: 2026-11-03, by A1 during the Coda-round resume; refreshed at the Coda round's teardown the same day; **refreshed 2026-11-05 by the fourteenth lineage at the Ostinato round's teardown** — every live datum re-verified same day (bring-up + teardown receipts in `A2_GROUND_TRUTH.md` §10 drift log).
+- **Snapshot of**: `main` through the Ostinato round's close (`a83336f4`, v0.0.56 — the repo's second user product, the Ostinato flashcard PWA, landed O-1..O-6 + A2H-1..A2H-3).
 - **Companion to**: `A2_GROUND_TRUTH.md` — same trust order (live executable output > runtime introspection > repo main docs > ground truth > directive) and the same refresh rule: re-verify before any ticket; full refresh at every teardown cycle.
 - **Purpose**: the A1 directive's SDLC Capability Inventory. Every capability carries the directive's required fields — activation, trust requirements, limitations, evidence source, verification method — and the coverage matrix tracks which lifecycle lanes have **receipted** evidence from the DRIVE track (the Coda app round).
 
@@ -125,7 +125,9 @@ For every lifecycle activity: discover existing capability → use it → measur
 | Benchmark programme | `benchmarks/` suites + committed receipts; landing figures receipt-gated | never invent a number | — | benchmarks/AGENTS.md | check:benchmarks |
 | Learning validation reports | `docs/learning-system-validation-report.md`, `benchmark-improvement-report.md`, `memory-effectiveness-report.md` | evidence-based | — | docs/ | cited in reports |
 
-## Coverage matrix — the DRIVE track (Coda round), receipted lanes
+## Coverage matrix — the DRIVE track, receipted lanes
+
+### The Coda round (2026-11-02 → 2026-11-03, the first user product)
 
 | SDLC lane | Status | Receipts (2026-11-03) |
 |---|---|---|
@@ -141,11 +143,27 @@ For every lifecycle activity: discover existing capability → use it → measur
 | Collaboration | ✅ | git preflight law; receipts-first protocol; session resume chains |
 | Learning | ✅ | AutoDream consolidation live (project.md, tracked tier); skills promoted; memory-eval receipts; **the V3-contract retrospective closed on the PT-5 plan at C6** (`## Retrospective` merged via `scripts/tui-capture/verify_plan_retrospective.py`, engine note delivered) |
 
+### The Ostinato round (2026-11-04, the second user product — the hardening-first round)
+
+| SDLC lane | Receipts (2026-11-04, `docs/ostinato-round-session.md`) |
+|---|---|
+| Discovery | ✅ The PRD authored BEFORE the app existed (`docs/ostinato-prd.md` — keyboard-first, offline-first, zero-dep, SM-2 with the honest scope: Chromium-desktop-only, the P1 backlog carried) + the eleven-lane Reliability Coverage Matrix (`docs/reliability-coverage-matrix.md`) opening the round with `[U]` lanes named |
+| Planning | ✅ The PRD's ticket queue O-1..O-6 pre-split with `EFFORT_BUDGET ≤ 4 chunks × ≤ 8 turns`; the pre-split amendment law priced live (V-13's fat-session +4; V-17's byte-exact-brief economics; the operator's first-poll EXISTENCE check standing) |
+| Architecture | ✅ The PRD's architecture receipted through D1/D2 (localStorage + atomic-writes StoragePort adapter DECIDED; SM-2 = Wozniak 1990 pinned, the injected-clock seam) + the byte-stable canonical-JSON import/export + the `PRECACHE_LIST` static derivation proof (`verify-precache.ts`, 18/0) |
+| Engineering | ✅ O-1..O-3 delivered through A2: domain core 27/27 BOTH lanes (unit family 2152→2197/0), the review stack (runner-core, queue-nav, palette, app wiring), the e2e lane LIVE 3/3 keyboard-only in 1.5 s after the operator's execution chain caught 5 defects |
+| Quality | ✅ O-4: the hardening battery **12/12** (K-1 zero-mouse flow, A-1 axe wcag2a/2aa both schemes × six scans + focus pins, O-1 offline, R-1 crash-resume + resize) with FOUR live execution rounds harvesting **NINE defects (B-3..B-11)** the unit lanes could not see; A2H-1..A2H-3 (B-1, B-2 harness law, the unit-lane pollution anchor); committed re-run receipts `benchmarks/ostinato/receipts/run-20261104T181704Z/`; app lanes 93/0 both forms; unit family 2223/0 at the close |
+| Security | ✅ Instruction-set audit clean at every bring-up (doctor); the zero-dep law asserted by the CI ostinato job's lockfile-hash step; the sandboxed fresh-clone bring-up receipts (fourteenth lineage 2026-11-05) |
+| Operations | ✅ The dedicated **`ostinato` CI job** (frozen lockfile + zero-dep hash assert, Lane A/B, Chromium, self-skip-guarded battery, artifacts + the precache derivation-proof step — an improvement over its coda template); `ostinato:dev/test/e2e` root scripts; the standing bring-up receipts |
+| Monitoring | ✅ The calibration canaries C1–C3 baselined (C1 3/3, C2 2/3 with the cap-overflow honestly receipted, C3 3/3); the validation log V-1..V-25 + the bug register B-1..B-11 in the round log — the round's own observability discipline |
+| Documentation | ✅ O-6: `docs/ostinato.md` (the coda.md pattern), the README app section + round-table row + docs index, the CHANGELOG [Unreleased] entries + rail 55/535, the landing band (the page's 13th section, the fourteenth scroll-budget amendment 17.5vh/4,170w), the round's blog post (46th — 46 posts/116 tags) |
+| Collaboration | ✅ Git preflight + fetch-before-push held; the receipts-first protocol (only committed receipts survive recycles — V-25's law, the closeout re-ran the app lanes into `benchmarks/`); zero instruction-guard events (the draft-and-land protocol learned on both sides) |
+| Learning | ✅ The round log's capability-utilization report (most-used: the budgeted-chunk headless lane; highest-ROI augmentation: H-1 the pre-dispatch smoke canary, catch rate 0 with the null result receipted); two registry promotions (H-6, H-4); the deviation lessons receipted per ticket |
+
 ## Utilization + benchmark hooks
 
-- **Turns-to-done trend** (budgeted chunks per ticket, from the round log): C1 = 10 chunks (+1 operator one-line unblock), C2 = 7 chunks (+operator browser boot check), C3 = 8 chunks (+2 operator interventions), C4 = 12, C5 = 13 (+4 operator landings), **C6 = 7 headless chunks + 1 PTY session (+0 unblocks — the round's first zero-unblock ticket set)**. Directionally improving with operator gates front-loaded — keep recording per ticket.
+- **Turns-to-done trend** (budgeted chunks per ticket, from the round logs): Coda — C1 = 10 chunks (+1 operator one-line unblock), C2 = 7 chunks (+operator browser boot check), C3 = 8 chunks (+2 operator interventions), C4 = 12, C5 = 13 (+4 operator landings), C6 = 7 headless chunks + 1 PTY session (+0 unblocks). Ostinato — O-2 = 7 dispatches (4 fat-session + 3 fresh-context finalization, V-13), O-3 = 17 dispatches across two sessions, O-4 = 13 dispatches across five sessions (the nine-defect harvest), O-5 = 3 dispatches on one pinned session, O-6 = 11 chunks across 3 fresh sessions (band 6 / docs 4 / blog 2, +2 operator-priced fixes), A2H-1 = 8 chunks (V-17's thrash receipted), A2H-2 = 2 chunks (the single-action brief landed in 17 s), A2H-3 = 1 chunk (under cap, receipt-first). Direction: fresh-session-per-ticket-chunk-class is now the standing economics; byte-exact continuation briefs convert every capped resume into a completing chunk.
 - **C6 utilization headline** (the full report: the round log's closeout section): most-used = the budgeted-chunk headless lane; highest-ROI augmentation = the plan-retrospective PTY lane (a Level-3 composition of two existing mechanisms — session crafting + the PTY capture lane — zero engine changes); most under-used = recipes (authoring-class tickets are their exact use case — a Level-5 candidate only after the L1 doc-drift sweep).
 - **Dual-incarnation datum (2026-11-03)**: two programme incarnations raced C4 on `main` (12 vs 15 chunks) — convergent defect discovery (the same 3 axe classes, the same transformSync bug class), one reconciliation gap (the root-lane collection guard) closed in 2 chunks through A2. Fetch-before-push enforced per-push from here; the incident is receipted in the round log.
 - **Manual intervention rate**: every intervention logged with cause in the round checkpoint (C1: 1; C2: browser-link check; C3: icon script + browser catches).
 - **Augmentation backlog** (priority order per the directive — existing mechanism first): L1 doc-count drift sweep (usage/skills/subagents/dashboard screens); L4 issue #30 exit-path instrumentation (shipped `UNOWN_PRINT_EXIT_TRACE=1` + `scripts/issue30_watcher.mjs`); L2/L3 review benches on every app milestone (design-reviewer at C2 OK-WITH-NOTES; delegate `delegation-auditor` after C4's chunk-heavy session).
-- **Known lineage limit**: full sandbox recycles reset the engine DB (dreams, sessions, PLM) — learning continuity rides the git-tracked project memory tier + committed receipts + this matrix. Teardown refreshes must re-baseline KPIs honestly (today: 0 runs / 0 dreams on a fresh DB).
+- **Known lineage limit**: full sandbox recycles reset the engine DB (dreams, sessions, PLM) — learning continuity rides the git-tracked project memory tier + committed receipts + this matrix. Teardown refreshes must re-baseline KPIs honestly (fourteenth lineage, 2026-11-05: 0 runs / 0 dreams on a fresh DB; unit 2223/0 / 158 files the family baseline).
