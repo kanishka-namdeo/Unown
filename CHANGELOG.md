@@ -66,6 +66,19 @@ riding the round entries, no double-listing). Receipts:
 
 - **The dev server was silently un-interactable when browsed by IP literal.** Next 16's dev server blocks "cross-origin" dev resources when the browser reaches it by an origin it does not recognize as its own — and `127.0.0.1` (the loopback literal agents and curl reach for first, precisely because `localhost` can resolve to `::1`) was not in `next.config.ts`'s `allowedDevOrigins`. The failure mode is the nastiest kind: the SSR HTML renders normally, **no console error surfaces on the page**, and client hydration silently never completes — every interactive element (accordions, the demo apps' kanban controls, theme toggles) is dead, while the only tell is a `⚠ Blocked cross-origin request to Next.js dev resource … from "127.0.0.1"` warning in the dev-server terminal plus a failed `/_next/hmr` websocket handshake. Found by the round's own dogfooding lane (the terminal agent burned a full 40-turn session investigating the "dead" `+` button on `/demo` before the round diagnosed it), reproduced independently through a second browser stack, and root-caused to the missing allowlist entry. Fix: `allowedDevOrigins: ["127.0.0.1"]` in `next.config.ts` — production builds are unaffected (the allowlist is dev-only), which is exactly why the e2e lane (a production build on :3210) could never catch it; the contract is pinned instead by `src/next-config.test.ts` (2 tests) and a symptom row in [docs/troubleshooting.md](docs/troubleshooting.md). Verified end-to-end through the browser after the fix: the `/demo` composer opens via `127.0.0.1` with zero console errors.
 
+## [0.0.56] - 2026-11-04
+
+The A2-hardening first flight — B-1 (the O-1 pre-dispatch PTY audit's
+defect): when a brand-new user aborts their first-ever turn, the `/abort`
+command's notice was silently REPLACED by the first-flights "You're flying"
+onboarding tip, because both render through the same status-line dedup.
+Receipts: [the round log](docs/ostinato-round-session.md) (B-1) ·
+[the A2H-1 receipt](.unown/receipts/a2h1.md).
+
+### Fixed
+
+- **The `/abort` notice survives the first-flight settle tip (B-1 — the fresh-user first-turn abort path lost all user-visible feedback).** The abort command (`tools.ts`) and the `agent_settled` flying tip (`flights.ts`) both call `ctx.ui.notify(msg, "info")`, which lands in pi's `showStatus` — and that method's back-to-back coalescing rule reused the PREVIOUS status line for ANY new message, so the second notify rewrote the first: the abort notice was clobbered by the tip in the exact ordering B-1's repro caught (the tip mirrors the defect the other way: tip first, notice second, the tip dies). The fix retires that coalescing-in-favor-of-information rule: `showStatus` now reuses the previous status line ONLY for an identical-text refresh (the original feature — repeated "Working"-style updates still collapse to one line), and appends a fresh spacer+line for any DIFFERENT message, so two consecutive notifies from different sources persist side by side in either ordering. `showWarning`/`showError` were checked and need no change (they always append their own line — the dedup is `showStatus`-only). Pinned at the dedup level (`interactive-mode-status.test.ts`: the old coalescing test retargeted to the refresh semantics, plus a different-text-append case in both orderings) and at the flights seam (`flights-tips.test.ts`: the tip still fires on first-task settle and lands as its own separate notify behind an abort-style notice; returning users with a pre-existing `firstTaskAt` see zero change — no tip, no clobber). The PTY verifier (the operator's `repro_abort_notice.py`, fresh isolated `UNOWN_HOME`) flips from the receipted 2/3 (the notice replaced) to 3/3 showing both lines; the standing PTY lanes (footer, resume-hint, resume-picker) re-run green.
+
 ## [0.0.55] - 2026-11-01
 
 The security round — every open Dependabot advisory and every open CodeQL

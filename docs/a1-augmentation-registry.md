@@ -51,7 +51,7 @@ improvement survives a session boundary (memory or skill lane receipt).
 
 | ID | Stage | Lane | Hypothesis | Metric | Evidence | Status |
 |---|---|---|---|---|---|---|
-| — | — | — | — | — | — | **empty** — opened 2026-11-04; first rows enter at PROPOSE with the round's first receipted findings |
+| H-6 | PROMOTED 2026-11-04 | A2-side code fix (ticket A2H-1, v0.0.56) | The status-line collision guard: `showStatus`'s dedup must never clobber a DIFFERENT notify's text — reuse only for identical-text refreshes | The abort PTY lane under a fresh isolated UNOWN_HOME: notify visible 3/3; zero TUI-consistency regressions in the standing lanes | BEFORE 2/3 defect vs AFTER **3/3 both-lines-persist** (`scripts/repro_abort_notice.py`, B-1 receipted); footer 9/9 · picker PASS · resume-hint ALL HELD; unit: status 34/34 · self-learning 5561/0 · root 2152/0; the fix is durable code + the rewritten coalescing test pins the semantics; receipt `.unown/receipts/a2h1.md` tree-verified 5/5 | **LANDED** — the registry's first promotion |
 
 ## Queued hypotheses
 
@@ -103,7 +103,11 @@ PROPOSE-stage candidates (none canaried, none promoted):
   deferral past user-command notices, or the abort notice rendered as a
   message-level note. Metric: the abort PTY lane under a fresh isolated
   home shows the notify 3/3; zero new TUI-consistency regressions in the
-  standing lanes.
+  standing lanes. **PROMOTED 2026-11-04** (see the registry table): the
+  landed lane was the operator-decided variant — dedup keyed on
+  identical text (refresh-only), covering every ordering and every
+  notify source with no API change; the retiring of the coalescing
+  feature is receipted in the CHANGELOG's [0.0.56] entry.
 - **H-7 — verifier-first diagnosis (operator lane).** When an external
   verifier reds against prose-clean code, diagnose the VERIFIER before
   the code it reds on — regex/source scanners match prose as readily as

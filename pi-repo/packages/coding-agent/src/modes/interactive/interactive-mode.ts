@@ -573,6 +573,7 @@ export class InteractiveMode {
         // Status line tracking (for mutating immediately-sequential status updates)
         private lastStatusSpacer: Spacer | undefined = undefined;
         private lastStatusText: Text | undefined = undefined;
+        private lastStatusMessage: string | undefined = undefined;
         private managedToolStatusStarted = false;
 
         // Streaming message tracking
@@ -3779,8 +3780,19 @@ export class InteractiveMode {
                 const last = children.length > 0 ? children[children.length - 1] : undefined;
                 const secondLast = children.length > 1 ? children[children.length - 2] : undefined;
 
-                if (last && secondLast && last === this.lastStatusText && secondLast === this.lastStatusSpacer) {
+                // Reuse the previous status line only for an IDENTICAL-text
+                // refresh: a different back-to-back message (e.g. an extension
+                // notify following a /abort notice) appends its own line instead
+                // of clobbering the previous one (A2H-1).
+                if (
+                        last &&
+                        secondLast &&
+                        last === this.lastStatusText &&
+                        secondLast === this.lastStatusSpacer &&
+                        message === this.lastStatusMessage
+                ) {
                         this.lastStatusText.setText(theme.fg("dim", message));
+                        this.lastStatusMessage = message;
                         this.ui.requestRender();
                         return;
                 }
@@ -3791,6 +3803,7 @@ export class InteractiveMode {
                 this.chatContainer.addChild(text);
                 this.lastStatusSpacer = spacer;
                 this.lastStatusText = text;
+                this.lastStatusMessage = message;
                 this.ui.requestRender();
         }
 

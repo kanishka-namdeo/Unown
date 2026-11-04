@@ -28,9 +28,12 @@ and **O-2 LANDED** (2026-11-04 — the domain core: the Wozniak SM-2
 scheduler, the deck/card model, byte-stable import/export, the storage
 [U] gate decided localStorage + atomic-writes; 27/27 both lanes, unit
 family 2152/0; V-12/V-13/V-14 receipted; receipt tree-verified 10/10).
-Next in the queue: the A2H pair (A2H-1 the abort-notify collision fix,
-A2H-2 the pty_common pump-while-typing harness fix), then O-3 (the
-review runner + keyboard surface).
+**A2H-1 LANDED (v0.0.56)** — B-1 fixed: showStatus dedup keyed on
+identical text; BEFORE 2/3 defect → AFTER 3/3 both lines persist;
+footer 9/9 · picker PASS · resume-hint ALL HELD (zero regressions);
+the registry's FIRST PROMOTED row (H-6); V-15/V-16/V-17 receipted.
+Next in the queue: A2H-2 (the pty_common pump-while-typing harness
+fix, B-2/V-9), then O-3 (the review runner + keyboard surface).
 
 The spend-and-memory-health round (2026-11-04) is COMPLETE and graduated to
 its own log: `docs/spend-and-memory-health-round-session.md` — the

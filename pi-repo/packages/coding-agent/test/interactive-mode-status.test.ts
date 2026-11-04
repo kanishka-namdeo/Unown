@@ -77,23 +77,68 @@ describe("InteractiveMode.showStatus", () => {
 		initTheme("dark");
 	});
 
-	test("coalesces immediately-sequential status messages", () => {
+	test("coalesces immediately-sequential identical status messages (refresh)", () => {
 		const fakeThis: any = {
 			chatContainer: new Container(),
 			ui: { requestRender: vi.fn() },
 			lastStatusSpacer: undefined,
 			lastStatusText: undefined,
+			lastStatusMessage: undefined,
 		};
 
 		(InteractiveMode as any).prototype.showStatus.call(fakeThis, "STATUS_ONE");
 		expect(fakeThis.chatContainer.children).toHaveLength(2);
 		expect(renderLastLine(fakeThis.chatContainer)).toContain("STATUS_ONE");
 
-		(InteractiveMode as any).prototype.showStatus.call(fakeThis, "STATUS_TWO");
-		// second status updates the previous line instead of appending
+		// Identical back-to-back text reuses the previous line (pure refresh).
+		(InteractiveMode as any).prototype.showStatus.call(fakeThis, "STATUS_ONE");
 		expect(fakeThis.chatContainer.children).toHaveLength(2);
-		expect(renderLastLine(fakeThis.chatContainer)).toContain("STATUS_TWO");
-		expect(renderLastLine(fakeThis.chatContainer)).not.toContain("STATUS_ONE");
+		expect(renderLastLine(fakeThis.chatContainer)).toContain("STATUS_ONE");
+	});
+
+	test("appends a new status line for a DIFFERENT back-to-back message (no clobber)", () => {
+		// A2H-1: the /abort command notice and the first-flight settle tip are
+		// two different notifies on consecutive turns — both must persist in
+		// either ordering (identical-text refresh still coalesces).
+		const makeThis = () => ({
+			chatContainer: new Container(),
+			ui: { requestRender: vi.fn() },
+			lastStatusSpacer: undefined,
+			lastStatusText: undefined,
+			lastStatusMessage: undefined,
+		});
+		const showStatus = (fakeThis: any, message: string) =>
+			(InteractiveMode as any).prototype.showStatus.call(fakeThis, message);
+
+		// notice first, tip second
+		{
+			const fakeThis: any = makeThis();
+			showStatus(fakeThis, "Aborted the running turn");
+			showStatus(fakeThis, "You're flying — the first task is done.");
+			expect(fakeThis.chatContainer.children).toHaveLength(4);
+			expect(normalizeRenderedOutput(fakeThis.chatContainer)).toBe(
+				"Aborted the running turn\n\n You're flying — the first task is done.",
+				);
+		}
+		// mirror: tip first, notice second
+		{
+			const fakeThis: any = makeThis();
+			showStatus(fakeThis, "You're flying — the first task is done.");
+			showStatus(fakeThis, "Aborted the running turn");
+			expect(fakeThis.chatContainer.children).toHaveLength(4);
+			expect(normalizeRenderedOutput(fakeThis.chatContainer)).toBe(
+				"You're flying — the first task is done.\n\n Aborted the running turn",
+				);
+		}
+		// the first notice still survives after the second one lands
+		{
+			const fakeThis: any = makeThis();
+			showStatus(fakeThis, "Aborted the running turn");
+			showStatus(fakeThis, "You're flying — the first task is done.");
+			const out = normalizeRenderedOutput(fakeThis.chatContainer);
+			expect(out).toContain("Aborted the running turn");
+			expect(out).toContain("You're flying");
+		}
 	});
 
 	test("appends a new status line if something else was added in between", () => {
@@ -102,6 +147,7 @@ describe("InteractiveMode.showStatus", () => {
 			ui: { requestRender: vi.fn() },
 			lastStatusSpacer: undefined,
 			lastStatusText: undefined,
+			lastStatusMessage: undefined,
 		};
 
 		(InteractiveMode as any).prototype.showStatus.call(fakeThis, "STATUS_ONE");
@@ -128,6 +174,7 @@ describe("InteractiveMode.showManagedToolStatus", () => {
 			managedToolStatusStarted: false,
 			lastStatusSpacer: undefined,
 			lastStatusText: undefined,
+			lastStatusMessage: undefined,
 		};
 		const showManagedToolStatus = (InteractiveMode as any).prototype.showManagedToolStatus;
 

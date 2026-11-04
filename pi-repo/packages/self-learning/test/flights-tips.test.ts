@@ -229,6 +229,53 @@ describe("createFirstFlightsExtension — onboarding tips", () => {
                 expect(readOnboardingState(home).tipsSeen).toEqual([FLYING_TIP_ID]);
         });
 
+        test("A2H-1: first-task settle still fires the flying tip; both-notify persistence holds at the flights seam", async () => {
+                // The fix lives in interactive-mode.ts's showStatus dedup (identical-text
+                // refresh vs different-text append) — pinned at that level in
+                // coding-agent/test/interactive-mode-status.test.ts. Here the flights
+                // invariant is what the seam OBSERVES: when a fresh user aborts their
+                // first turn, the /abort notice (tools.ts) lands first, then
+                // agent_settled fires and the flying tip must be its OWN notify — a
+                // different text that stacks behind the notice, never a refresh that
+                // clobbers it.
+                const { home, fake } = fresh();
+                const ui = makeFakeCtx();
+                // 1. The first real task latches firstTaskAt in THIS process.
+                await fake.emit("input", INPUT("hello"), ui.ctx);
+                expect(typeof readOnboardingState(home).firstTaskAt).toBe("string");
+                // 2. The /abort command's notice renders (the tools.ts call, replayed
+                //    at the seam as the first notify of the settling turn).
+                ui.ctx.ui.notify(
+                        "Aborted the running turn — what finished is kept in the session; queued messages are back in the editor (`unown -c` resumes)",
+                        "info",
+                );
+                // 3. agent_settled → the tip must land as a SEPARATE notify.
+                await fake.emit("agent_settled", { type: "agent_settled" }, ui.ctx);
+                expect(ui.notifications).toHaveLength(2);
+                expect(ui.notifications[0]!.text).toContain("Aborted the running turn");
+                expect(ui.notifications[1]!.text).toBe(flyingTipText());
+                expect(ui.notifications[0]!.text).not.toBe(ui.notifications[1]!.text);
+                // The tip fired and latched — the feature survives the fix.
+                expect(readOnboardingState(home).tipsSeen).toEqual([FLYING_TIP_ID]);
+        });
+
+        test("A2H-1: returning users (firstTaskAt already set) see zero change — no tip on settle", async () => {
+                // The fix must not perturb the returning-user path: firstTaskAt
+                // pre-exists, so the agent_settled handler is a no-op and no
+                // flying notify ever lands — whatever status lines the abort
+                // notice paints stay untouched by the flights extension.
+                const home = freshHome();
+                writeOnboardingState(
+                        { ...defaultOnboardingState(), firstTaskAt: "2026-01-01T00:00:00.000Z" },
+                        home,
+                );
+                const { fake, ui } = boot(home);
+                // No input this process: the latch never happened here.
+                await fake.emit("agent_settled", { type: "agent_settled" }, ui.ctx);
+                expect(ui.notifications.length).toBe(0);
+                expect(readOnboardingState(home).tipsSeen).toEqual([]);
+        });
+
         test("non-tui or UI-less contexts never see tips of any kind", async () => {
                 // mode "cli": catalog, session tip and flying tip are all TUI-only.
                 {

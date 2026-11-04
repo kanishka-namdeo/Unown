@@ -30,14 +30,14 @@ export interface ChangelogStop {
   groups: ChangelogGroup[];
 }
 
-export const CHANGELOG_TOTAL_ENTRIES = 528;
+export const CHANGELOG_TOTAL_ENTRIES = 529;
 
 export const CHANGELOG_TOTALS: Record<ChangelogBucket, number> = {
   "Added": 245,
   "Changed": 32,
   "Deprecated": 0,
   "Removed": 3,
-  "Fixed": 196,
+  "Fixed": 197,
   "Security": 5,
   "Behavior": 47
 };
@@ -156,6 +156,31 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
           },
           {
             "title": "The dev server was silently un-interactable when browsed by IP literal",
+            "behavior": false
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "label": "0.0.56",
+    "date": "2026-11-04",
+    "total": 1,
+    "counts": {
+      "Added": 0,
+      "Changed": 0,
+      "Deprecated": 0,
+      "Removed": 0,
+      "Fixed": 1,
+      "Security": 0,
+      "Behavior": 0
+    },
+    "groups": [
+      {
+        "bucket": "Fixed",
+        "items": [
+          {
+            "title": "The /abort notice survives the first-flight settle tip (B-1 — the fresh-user first-turn abort path lost all…",
             "behavior": false
           }
         ]
