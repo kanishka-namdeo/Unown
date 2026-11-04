@@ -1,0 +1,577 @@
+/*
+ * Ostinato — the app stylesheet (ticket O-4, the hardening e2e battery).
+ *
+ * Hand-authored, plain CSS, no build step, no dependencies (the
+ * zero-dep law: linked from index.html as ./src/ui/ostinato.css — the
+ * Coda precedent, apps/coda/src/coda.css).
+ *
+ * Design tokens: :root (light) + @media (prefers-color-scheme: dark)
+ * overrides, `color-scheme: light dark` so form controls + scrollbars
+ * follow the scheme. Contrast arithmetic (relative luminance, WCAG 2.x):
+ *
+ *   light: fg  #1f2328 on bg #ffffff  ≈ 14.5:1  (≥ 4.5 body text ✓)
+ *          muted #57606a on bg #ffffff ≈  6.5:1  (≥ 4.5 ✓)
+ *          accent #0a5dc2 on bg #ffffff ≈  5.6:1  (≥ 4.5 text / ≥ 3 UI ✓)
+ *          border #d0d7de on bg #ffffff ≈  1.43:1 … non-text UI only,
+ *                so 3:1 is demanded — see note: border sits on surface
+ *                #f6f8fa (cards) and is a non-essential cue (never the
+ *                only selection cue, P0 #9's no-color-only rule).
+ *          focus  = accent (5.6:1 on bg ✓)
+ *
+ *   dark:  fg  #e6edf3 on bg #0d1117  ≈ 15.7:1  (✓)
+ *          muted #8b949e on bg #0d1117 ≈  6.6:1  (✓)
+ *          accent #58a6ff on bg #0d1117 ≈ 7.4:1  (✓)
+ *          surface #161b22 / border #30363d / focus = accent
+ *
+ * The two schemes pin GitHub-pair-calibre values; the focus token is
+ * the accent (highest-contrast interactive color), so the :focus-visible
+ * ring clears 3:1 against both backgrounds without its own value.
+ */
+
+:root {
+  color-scheme: light dark;
+
+  /* ── Design tokens (light scheme) ─────────────────────────────────── */
+  --bg: #ffffff;
+  --fg: #1f2328;
+  --muted: #57606a;
+  --border: #d0d7de;
+  --accent: #0a5dc2;
+  --focus: #0a5dc2;
+  --surface: #f6f8fa;
+  --surface-raised: #ffffff;
+  --accent-contrast: #ffffff;
+
+  --radius: 8px;
+  --radius-sm: 6px;
+  --shadow-overlay: 0 12px 32px rgba(31, 35, 40, 0.18);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    /* ── Design tokens (dark scheme) ────────────────────────────────── */
+    --bg: #0d1117;
+    --fg: #e6edf3;
+    --muted: #8b949e;
+    --border: #30363d;
+    --accent: #58a6ff;
+    --focus: #58a6ff;
+    --surface: #161b22;
+    --surface-raised: #161b22;
+    --accent-contrast: #0d1117;
+    --shadow-overlay: 0 12px 32px rgba(0, 0, 0, 0.5);
+  }
+}
+
+/* ── Reset + base ─────────────────────────────────────────────────────────── */
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--fg);
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  font-size: 16px;
+  line-height: 1.5;
+}
+
+/* ── The visible focus contract (P0 #9): every interactive element gets a
+       2px solid ring + offset. `outline: none` never appears in this file. */
+
+button:focus-visible,
+input:focus-visible,
+[tabindex="0"]:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+
+/* ── The app root + the pre-boot placeholder ─────────────────────────────── */
+
+#ostinato-root {
+  max-width: 48rem;
+  margin: 0 auto;
+  padding: 1rem;
+}
+
+@media (min-width: 900px) {
+  #ostinato-root {
+    padding: 2rem;
+  }
+}
+
+#ostinato-status {
+  color: var(--muted);
+  font-style: italic;
+}
+
+/* ── Header ───────────────────────────────────────────────────────────────── */
+
+.ostinato-header {
+  display: flex;
+  align-items: baseline;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  padding: 0.5rem 0 1rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.ostinato-title {
+  margin: 0;
+  font-size: 1.5rem;
+  line-height: 1.2;
+}
+
+.ostinato-palette-hint {
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+/* The kbd variant (the palette row hint) is scoped under the palette —
+   the header hint span above shares the class name. */
+#ostinato-palette kbd.ostinato-palette-hint {
+  color: var(--muted);
+  font-family: ui-monospace, monospace;
+  font-size: 0.75rem;
+  padding: 0.1rem 0.4rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  margin-left: auto;
+  white-space: nowrap;
+}
+
+/* ── States (loading / empty / error / done) ─────────────────────────────── */
+
+.ostinato-state {
+  padding: 2rem 0;
+  color: var(--muted);
+}
+
+.ostinato-state-copy {
+  margin: 0.5rem 0;
+}
+
+.ostinato-state-title {
+  margin: 0;
+  font-size: 1.25rem;
+  color: var(--fg);
+}
+
+/* The error panel: distinct by SHAPE + border, not by color alone (P0 #9).
+   The DOM already renders a title; the visual treatment never relies on
+   hue as the only cue. */
+.ostinato-error {
+  border: 2px solid var(--accent);
+  border-radius: var(--radius);
+  padding: 1rem;
+  background: var(--surface);
+  color: var(--fg);
+}
+
+.ostinato-error .ostinato-state-copy {
+  color: var(--fg);
+}
+
+.ostinato-action {
+  margin-top: 0.75rem;
+}
+
+/* ── Buttons (the grade keys + the error action) ─────────────────────────── */
+
+button {
+  font: inherit;
+  color: var(--fg);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 0.4rem 0.75rem;
+  cursor: pointer;
+}
+
+button:hover {
+  background: var(--surface-raised);
+  border-color: var(--accent);
+}
+
+button:active {
+  background: var(--accent);
+  color: var(--accent-contrast);
+}
+
+.ostinato-grade-key {
+  min-width: 6.5rem;
+}
+
+/* ── The review screen ────────────────────────────────────────────────────── */
+
+.ostinato-review {
+  display: grid;
+  gap: 1.5rem;
+  margin-top: 1rem;
+}
+
+/* B-11's fix: grid items shrink below their intrinsic minimums. The
+   search input's size-20 intrinsic width (~378px) held the implicit
+   narrow column open past a 375px viewport — a 19px horizontal
+   overflow after a wide→narrow resize (live-receipted by the resize
+   lane; a computed-style probe pinned the 377.5px track). */
+.ostinato-review > * {
+  min-width: 0;
+}
+
+/* ≥900 px: two panes — the card article left, the search + card list
+   (the right rail). Sub-900: a single stacked column (mobile). */
+@media (min-width: 900px) {
+  .ostinato-review {
+    grid-template-columns: 1fr minmax(260px, 30rem);
+    align-items: start;
+  }
+
+  .ostinato-card {
+    grid-column: 1;
+    grid-row: 1 / span 3;
+  }
+
+  .ostinato-search {
+    grid-column: 2;
+    grid-row: 1;
+  }
+
+  .ostinato-card-list {
+    grid-column: 2;
+    grid-row: 2;
+    grid-area: auto;
+  }
+}
+
+.ostinato-progress {
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.ostinato-card {
+  max-width: 42rem;
+  padding: 1.5rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface-raised);
+}
+
+/* The reveal swap must not jump the layout: front and back share a
+   min-height. */
+.ostinato-card-front,
+.ostinato-card-back {
+  min-height: 6rem;
+  padding: 0.5rem;
+}
+
+.ostinato-card-back {
+  margin-top: 1rem;
+  border-top: 1px solid var(--border);
+  padding-top: 1rem;
+}
+
+.ostinato-card-hint {
+  margin-top: 1rem;
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+.ostinato-grade-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 1.5rem;
+}
+
+/* ── The card list (the j/k/g/G + / surface) ─────────────────────────────── */
+
+.ostinato-card-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.ostinato-card-row {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  padding: 0.4rem 0.5rem;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  font-size: 0.9rem;
+}
+
+/* Long fronts truncate with ellipsis — no horizontal overflow at 375 px. */
+.ostinato-card-row-front {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ostinato-card-row-deck {
+  color: var(--muted);
+  font-size: 0.75rem;
+  white-space: nowrap;
+}
+
+.ostinato-card-empty {
+  color: var(--muted);
+  font-style: italic;
+}
+
+/* The visible selection ring: outline + weight + border (the DOM already
+   rides aria-current + tabindex — the visual cue is NOT color-only, P0 #9). */
+.ostinato-card-selected {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+  border-color: var(--border);
+  background: var(--surface);
+  font-weight: 600;
+}
+
+/* ── The search input ─────────────────────────────────────────────────────── */
+
+.ostinato-search {
+  width: 100%;
+  max-width: 34rem;
+  padding: 0.45rem 0.75rem;
+  font: inherit;
+  color: var(--fg);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+}
+
+/* ── The command palette overlay ─────────────────────────────────────────── */
+
+#ostinato-palette {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  padding: 0 1rem;
+  background: rgba(31, 35, 40, 0.45);
+}
+
+@media (prefers-color-scheme: dark) {
+  #ostinato-palette {
+    background: rgba(1, 4, 9, 0.6);
+  }
+}
+
+/* The dialog box: centered near the top third, max-width ~34rem, elevation. */
+#ostinato-palette {
+  align-items: flex-start;
+}
+
+.ostinato-palette-list,
+.ostinato-palette-input {
+  width: 100%;
+  max-width: 34rem;
+  margin-top: 15vh;
+}
+
+.ostinato-palette-input {
+  padding: 0.6rem 0.75rem;
+  font: inherit;
+  color: var(--fg);
+  background: var(--surface-raised);
+  border: 1px solid var(--border);
+  border-radius: var(--radius) var(--radius) 0 0;
+}
+
+.ostinato-palette-list {
+  list-style: none;
+  margin: 0;
+  padding: 0.5rem;
+  max-height: 60vh;
+  overflow-y: auto;
+  background: var(--surface-raised);
+  border: 1px solid var(--border);
+  border-radius: 0 0 var(--radius) var(--radius);
+  box-shadow: var(--shadow-overlay);
+}
+
+.ostinato-palette-group {
+  padding: 0.75rem 0.5rem 0.25rem;
+  color: var(--muted);
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+/* Comfortable flex rows; the kbd hint right-aligned. */
+.ostinato-palette-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.4rem 0.5rem;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+
+.ostinato-palette-label {
+  flex: 1;
+  min-width: 0;
+}
+
+/* The active row: ring + background + weight (the DOM already carries
+   aria-selected — the visual must not ride hue alone). */
+.ostinato-selected {
+  background: var(--accent);
+  font-weight: 600;
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+
+.ostinato-selected .ostinato-palette-label {
+  color: var(--accent-contrast);
+}
+
+.ostinato-selected .ostinato-palette-hint {
+  color: var(--accent-contrast);
+  border-color: transparent;
+  background: transparent;
+}
+
+/* Disabled commands render dimmed but stay legible — dimmed by
+   COLOR (the muted token, ≥4.5:1 at full opacity in both schemes),
+   never by opacity: opacity blends toward the background and the
+   effective contrast sinks below 4.5:1 (B-9's live axe receipt). */
+.ostinato-disabled .ostinato-palette-label,
+.ostinato-disabled .ostinato-palette-hint,
+.ostinato-disabled kbd {
+  color: var(--muted);
+}
+
+/* ── Reduced motion (P0 #9's pin): any transition is disabled here.
+       This file adds none by design — the rule is the pin, not a
+       precaution. */
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    transition: none !important;
+    animation: none !important;
+  }
+}
+
+/* ── The create form (the N/C commands' modal — ticket O-4 chunk 3) ─────── */
+
+/* The overlay: fixed full-inset backdrop, the palette overlay's pattern
+   (dark-scheme-aware), the dialog centered near the top third. */
+.ostinato-create-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  padding: 0 1rem;
+  background: rgba(31, 35, 40, 0.45);
+}
+
+@media (prefers-color-scheme: dark) {
+  .ostinato-create-overlay {
+    background: rgba(1, 4, 9, 0.6);
+  }
+}
+
+/* The dialog box: the surface token, max-width ~30rem, elevation shadow. */
+.ostinato-create-form {
+  width: 100%;
+  max-width: 30rem;
+  margin-top: 15vh;
+  padding: 1.25rem;
+  background: var(--surface-raised);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-overlay);
+}
+
+.ostinato-create-form h2 {
+  margin: 0 0 0.75rem;
+  font-size: 1.25rem;
+  color: var(--fg);
+}
+
+/* The labels: block, small top margin, weight (the DOM carries the
+   labelled inputs — the visual cue is the association, not color). */
+.ostinato-create-label {
+  display: block;
+  margin-top: 0.75rem;
+  font-weight: 600;
+  font-size: 0.9rem;
+  color: var(--fg);
+}
+
+/* The inputs (text / select / textarea): the scheme tokens, full width;
+   the textarea resizes vertically only. */
+.ostinato-create-input {
+  display: block;
+  width: 100%;
+  margin-top: 0.3rem;
+  padding: 0.45rem 0.6rem;
+  font: inherit;
+  color: var(--fg);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+}
+
+textarea.ostinato-create-input {
+  resize: vertical;
+}
+
+/* The unsaved-changes guard line: muted, min-height so arming it does
+   not jump the layout. */
+.ostinato-create-guard {
+  min-height: 1.5em;
+  margin: 0.75rem 0 0;
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+/* The submit-failure lane: NOT color-only — the border-left + padding
+   make the alert legible without hue (P0 #9's no-color-only rule). */
+.ostinato-create-error {
+  min-height: 1.5em;
+  margin: 0.5rem 0 0;
+  padding: 0.5rem 0.75rem;
+  border-left: 3px solid var(--accent);
+  background: var(--surface);
+  color: var(--fg);
+  font-size: 0.85rem;
+}
+
+/* The submit row: flex, end-aligned, the hint muted. */
+.ostinato-create-row {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.75rem;
+  margin-top: 1rem;
+}
+
+.ostinato-create-hint {
+  color: var(--muted);
+  font-size: 0.8rem;
+}
+
+/* The session notice (rendered under the header; role=status in the DOM). */
+.ostinato-notice {
+  margin: 0.75rem 0 0;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--fg);
+  font-size: 0.9rem;
+}

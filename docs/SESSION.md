@@ -44,8 +44,25 @@ with a live fixture (2152/0/154). **O-3 LANDED** — the review runner
 + keyboard surface complete; the e2e lane LIVE at **3/3
 keyboard-only** (its first execution caught 5 real defects — the
 operator's live-gate chain receipted); app suite 72/0, unit family
-2197/0.
-Next in the queue: O-4 (the hardening e2e battery).
+2197/0. **O-4 LANDED** — the hardening e2e battery **12/12 in 7.2 s**
+across five specs: the K-1 zero-mouse flow (create → review → export →
+import, the download + filechooser via `waitForEvent`), the A-1 axe
+battery (`wcag2a`/`wcag2aa`, both schemes, six zero-violation scans +
+the tab-order + Esc focus-return pins), the O-1 offline lanes (the
+17-entry install precache, offline reload + the loop completing
+offline, the fallback page), and R-1 crash-resume + resize; the
+app-side work the battery demanded (the 454-line token stylesheet,
+the SW registration, the create surface — 17 commands + the modal
+form, `app.notice`, `palette.test.ts`); **four live rounds harvested
+NINE defects (B-3..B-11)** — the receipted-but-unwired every-transition
+persist, the overlays' review-screen-only paint, `el()`'s aria-* junk
+props, the stale import session, the synchronous blob revoke, the
+nameless listbox, the opacity-dimmed contrast, the full-root-rerender
+focus destruction, the grid intrinsic-min-width overflow — each
+operator-root-caused and fixed via byte-exact briefs; app suite 93/0,
+unit family 2218/0; V-19..V-23 receipted.
+Next in the queue: O-5 (PWA + capture lane + root wiring + CI — the
+Coda C5 pattern), then O-6 (the closeout).
 
 The spend-and-memory-health round (2026-11-04) is COMPLETE and graduated to
 its own log: `docs/spend-and-memory-health-round-session.md` — the

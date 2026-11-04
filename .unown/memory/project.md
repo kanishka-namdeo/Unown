@@ -5,6 +5,8 @@
 - Verify test expectations against the Wozniak SM-2 implementation as the authoritative oracle when re-deriving stale scheduler test cases.
 
 ## Known pitfalls
+- The Unown O-4 ticket is completed with all defects fixed and a receipt appended to `.unown/receipts/o4.md` containing 4 chunks. The final state includes a verified test suite with 93 passing tests, 0 failures, and 377 expectations across 7 files.
+- A pitfall in Unown's app.ts `renderBoot` function was where the `persistAll()` call required by O-3's D2 'every-transition' rule was never wired into the top of the ready-path; the fix was restructuring `renderBoot` to include this call and converting empty-state early returns to if/else-if/else blocks to handle the palette-overlay tail correctly.
 - In Unown project, D10 bug: Ctrl+K palette state was set but not painted; fixed by calling rerender() after openPalette(app) in onKey
 - In Unown, a family-baseline test pollution pitfall occurs when `bun test src` collects fixtures from `data/self-learning/**`; the verified fix is to add `--path-ignore-patterns=data/self-learning/**` to the `test:unit` script in package.json
 - Ticket A2/A3 in Unown is failing on the "memory: up · old build" line; investigation requires checking the pane dump first, then testing to determine whether the failure is due to recent changes or a pre-existing environmental condition (ticket requires 9/9).
@@ -18,6 +20,12 @@
 - DOM_GLOBS verifier regex requires an identifier after the dot (e.g., /\b(document|window|...)\.\w/) to prevent false positives from English prose ending in 'document.', while still catching genuine DOM/Node global member access.
 
 ## Facts
+- In Unown's ostinato app.ts, the `actions.import` call uses `startSession(next, appClock()(), null)` with a D7-law comment, as part of edits to `app.ts`, `e2e/ostinato-a11y.spec.ts` (removing `ostinato.session` item after seeding), and `e2e/ostinato-resilience.spec.ts` (guarding the seed with `if getItem === null` logic), verified by passing typecheck and test suites.
+- In Unown's ostinato app, Chunk 3 of the O-4 implementation landed app.ts changes including the CreateActions type, AppState fields, notice refactor, create actions, onKey branch, dispatch cases, renderBoot tail, advanceSession clear, and four form functions, along with `.ostin` CSS updates.
+- In Unown's GitHub light color scheme, contrast ratios are verified as: foreground #1f2328 on #ffffff is ~14.5:1, and muted #57606a on #ffffff is ~6.5:1, both exceeding the 4.5:1 threshold for regular text.
+- Unown ticket O-4 chunk 1: `apps/ostinato/sw.js` updated to bump CACHE_NAME from v0 to v1, define a module-level PRECACHE_LIST with 15 entries, and rewrite the install handler to loop that list via Promise.all; activate/fetch handlers remain unchanged.
+- Unown ticket O-4 chunk 2: `palette.ts` updated with a 17-row table plus dispatch and doc-comment updates, and a new `palette.test.ts` file containing 21 tests was added; operator gate re-runs verified Lane A 93/0, Lane B 93/0, and typecheck 0.
+- In Unown's runner-core, the phase type for test verification accepts values 'front', 'revealed', and 'done'.
 - Unown palette commands movePaletteSelection and runSelectedPaletteCommand verified gap-free after D10 rerender fix
 - Place Playwright e2e test files (specs and configs) at the repository root, not in app-specific directories, following the 'Coda precedent' architecture.
 - Ticket A2H-2 in Unown: V-9 hardening landed in `scripts/tui-capture/pty_common.py` — added private `_send_drained()` helper where a reader thread pumps `self.pump(0.05)` until a stop event, joined in `finally` so `pump()` never runs concurrently with itself; wired into `send()`, `key()`, and `type_prompt()` (char loop and Esc/Enter tail) with caller semantics unchanged (same delays).
@@ -109,14 +117,6 @@
 - The one-shot page.on("dialog") handler for confirm() dialogs is the required pre-arm pattern in BrowseBench fixtures; each use must be re-armed because the handler is one-shot
 - Offline spec for Unown includes an apostrophe assertion that must be updated as part of the note title class rename fix
 - Intl.Segmenter constructor accepts granularity option: 'grapheme' (default), 'word', or 'sentence'. Use this to control text segmentation type. This is a reference fact extracted from MDN docs; always verify against current docs in new sessions as APIs may evolve.
-- All three Nocturne domain layer files (`types.ts`, `ids.ts`, `clock.ts`) under `src/lib/nocturne/` follow parley conventions and satisfy the task specification in the plan document.
-- In Unown, page.on("dialog") is preferred over waitForEvent for handling native confirm() dialogs because it is a one-shot handler that fires immediately upon dialog appearance
-- In src/app/nocturne/api/_state.ts:loginSession, allocate the session ID using the nextId helper to ensure unique, deterministic session identifiers per the project's ID conventions.
-- In Unown's offline spec, update the apostrophe assertion and note title class selector to use `.coda-note-open` instead of `.coda-note-title`
-- Unown's CSS class for the note title/heading element was renamed from `.coda-note-title` to `.coda-note-open`
-- The Unown project's plan-mode V3 loop was closed on 2026-11-02 by merging the retrospective into benchmarks/plan-mode/results/run-2026-11-02-pt5/pt-5-plan.md and delivering it to the self-learning engine.
-- In Unown, receipts must be mirrored outside the repository immediately when written because working clones and the unown home directory can be lost mid-round; the round log's checkpoint entries serve as the durable surface of record.
-- The Unown project uses a landing honesty rule where PWA installability and offline-load metrics are recorded as explicit nulls ('not-measured') in benchmarks/validation-round/probe.mjs until a receipted run is successfully landed, preventing false positives.
 
 ## Manual notes
 
@@ -125,4 +125,4 @@
 - Stealth verification suite on bot.sannysoft.com: all 10 checks (webdriver, userAgent, platform, userAgentData, timezone, locale, screen, viewport, plugins, window.chrome) pass; 0 FAIL rows in Intoli tests. (Restored by hand 2026-11-01 — second occurrence of the dream-render-prunes-landing-quoted-lines class, issue #46; moved here to the durable lane.)
 - Parley password hashing: scrypt N=16384 r=8 p=1 (src/lib/parley/password.ts). Restored by hand 2026-10-29 after AutoDream reconciles twice erased the fact (upstream 79->66 render, then the F1/F2 bcrypt poison round). Never let a memory answer overwrite this without reading the source.
 
-<!-- unown: rendered 110/126 memories via Mem0 (backend: lexical) · 16 oldest pruned at render (cap 110; hard-won rules immune) at 2026-11-04T11:51:29.590Z -->
+<!-- unown: rendered 110/134 memories via Mem0 (backend: lexical) · 24 oldest pruned at render (cap 110; hard-won rules immune) at 2026-11-04T13:38:59.965Z -->

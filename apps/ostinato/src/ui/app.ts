@@ -28,6 +28,7 @@
 import type { OstinatoData, Clock, Grade } from "../domain/ports.js";
 import { DomainInvariantError } from "../domain/ports.js";
 import { createImportExport } from "../domain/io.js";
+import { createDeck, addCard } from "../domain/model.js";
 import { createLocalStorageAdapter } from "../storage/local-storage.js";
 import {
   startSession,
@@ -69,6 +70,12 @@ type BootState =
   | { kind: "error"; message: string }
   | { kind: "ready"; data: OstinatoData; session: ReviewSession };
 
+/** The create surface's actions (main()'s closures, passed to the form renderer). */
+type CreateActions = {
+  createDeck: (name: string) => string | null;
+  createCard: (deckId: string, front: string, back: string) => string | null;
+};
+
 type AppState = {
   boot: BootState;
   /** The card/deck filter (the `/` search's query). */
@@ -85,6 +92,12 @@ type AppState = {
   invokingEl: HTMLElement | null;
   /** Whether we're on the list surface (vs the review screen). The / command only applies on the list surface. */
   onListSurface: boolean;
+  /** The open create form (null = closed). kind picks the form; discardArmed is the unsaved-changes guard. */
+  createForm: { kind: "deck" | "card"; discardArmed: boolean } | null;
+  /** The create actions (set once in main; the form's submit calls them). */
+  createActions: CreateActions | null;
+  /** The session notice (rendered under the header; cleared when the session advances). */
+  notice: string | null;
 };
 
 // ─── The DOM helpers ──────────────────────────────────────────────────────────
@@ -100,10 +113,13 @@ function el<K extends keyof HTMLElementTagNameMap>(
   if (className !== undefined) e.className = className;
   for (const [k, v] of Object.entries(rest)) {
     if (v === undefined) continue;
-    if (k.startsWith("data-")) {
+    if (k.startsWith("data-") || k.startsWith("aria-")) {
       // data-* attrs must land as real attributes (dataset property
       // assignment sets the camelCase property, not the hyphenated
-      // attribute the CSS/queries key on).
+      // attribute the CSS/queries key on). aria-* attrs must land as
+      // real attributes too — the hyphenated name is not a reflected
+      // DOM property (the reflected property is ariaLabel, not
+      // aria-label), so property assignment sets a junk expando.
       e.setAttribute(k, v as string);
     } else {
       (e as any)[k] = v;
@@ -147,8 +163,10 @@ export async function main(): Promise<void> {
     paletteSelection: 0,
     invokingEl: null,
     onListSurface: false,
+    createForm: null,
+    createActions: null,
+    notice: null,
   };
-  let sessionNotice: string | null = null;
 
   const io = createImportExport();
   let data: OstinatoData;
@@ -180,7 +198,7 @@ export async function main(): Promise<void> {
       session = startSession(data, appClock()(), deserializePersistedSession(sessionRaw));
     } catch {
       session = startSession(data, appClock()(), null);
-      sessionNotice = "Stored review session was corrupt; started a fresh one.";
+      app.notice = "Stored review session was corrupt; started a fresh one.";
     }
   }
   app.boot = { kind: "ready", data, session };
@@ -197,16 +215,26 @@ export async function main(): Promise<void> {
       if (app.boot.kind !== "ready") return;
       const json = io.exportData(app.boot.data);
       const blob = new Blob([json], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
-      a.href = URL.createObjectURL(blob);
+      a.href = url;
       a.download = "ostinato-export.json";
+      // Attach before click: a detached anchor's programmatic click
+      // does not reliably dispatch the download (B-7's live receipt —
+      // the flow lane's waitForEvent("download") never fired).
+      document.body.append(a);
       a.click();
-      URL.revokeObjectURL(a.href);
+      a.remove();
+      // Revoke LATE: the synchronous revoke cancels the download the
+      // click just scheduled (the blob URL must outlive the fetch).
+      setTimeout(() => URL.revokeObjectURL(url), 30_000);
     },
     import: () => {
       const input = document.createElement("input");
       input.type = "file";
       input.accept = "application/json,.json";
+      input.style.display = "none";
+      document.body.append(input); // attached: the file chooser fires reliably (B-7's class)
       input.onchange = async () => {
         const file = input.files?.[0];
         if (!file) return;
@@ -215,14 +243,20 @@ export async function main(): Promise<void> {
           app.boot = {
             kind: "ready",
             data: next,
-            session: startSession(next, appClock()(), app.boot.kind === "ready" ? app.boot.session : null),
+            // The D7 session-restart law applies to import too: the
+            // data set changed wholesale — a fresh session over the
+            // imported queue. (A stale done phase over just-imported
+            // cards reads "all reviewed" for data never reviewed in
+            // any session — the operator's flow-lane diagnosis.)
+            session: startSession(next, appClock()(), null),
           };
           persistAll();
           rerender();
         } catch (e) {
-          sessionNotice = `Import failed: ${(e as Error).message}`;
+          app.notice = `Import failed: ${(e as Error).message}`;
           rerender();
         }
+        input.remove(); // the attached input cleans itself up after the change
       };
       input.click();
     },
@@ -233,7 +267,32 @@ export async function main(): Promise<void> {
       persistAll();
       rerender();
     },
+    createDeck: (name: string): string | null => {
+      if (app.boot.kind !== "ready") return "Not ready.";
+      try {
+        const next = createDeck(app.boot.data, name, appClock()());
+        app.boot = { kind: "ready", data: next, session: startSession(next, appClock()(), null) };
+        app.notice = `Deck "${name}" created.`;
+        persistAll();
+        return null;
+      } catch (e) {
+        return e instanceof DomainInvariantError ? e.message : String(e);
+      }
+    },
+    createCard: (deckId: string, front: string, back: string): string | null => {
+      if (app.boot.kind !== "ready") return "Not ready.";
+      try {
+        const { data: next } = addCard(app.boot.data, deckId, front, back, appClock()());
+        app.boot = { kind: "ready", data: next, session: startSession(next, appClock()(), null) };
+        app.notice = "Card created.";
+        persistAll();
+        return null;
+      } catch (e) {
+        return e instanceof DomainInvariantError ? e.message : String(e);
+      }
+    },
   };
+  app.createActions = actions;
 
   function rerender() {
     renderBoot(app, persistAll);
@@ -255,6 +314,19 @@ function onKey(
   actions: { export: () => void; import: () => void; clearSession: () => void },
   rerender: () => void,
 ) {
+  // The create form's own keys (when open, the form owns the event).
+  // ONLY Escape is intercepted; everything else flows naturally so the
+  // form's inputs receive typing, Tab moves focus, and Enter submits
+  // the native <form>. No global shortcuts while a modal is open.
+  if (app.createForm) {
+    if (e.key === "Escape") {
+      e.preventDefault();
+      handleCreateFormEscape(app);
+      return;
+    }
+    return;
+  }
+
   // The palette's own keys (when open, the palette owns the event).
   if (app.paletteOpen) {
     if (e.key === "Escape") {
@@ -265,6 +337,7 @@ function onKey(
     if (e.key === "ArrowDown" || e.key === "ArrowUp") {
       e.preventDefault();
       movePaletteSelection(app, e.key === "ArrowDown" ? 1 : -1);
+      renderPalette(app);
       return;
     }
     if (e.key === "Enter") {
@@ -276,14 +349,14 @@ function onKey(
       e.preventDefault();
       app.paletteQuery = app.paletteQuery.slice(0, -1);
       app.paletteSelection = 0;
-      rerender();
+      renderPalette(app);
       return;
     }
     if (e.key.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey) {
       e.preventDefault();
       app.paletteQuery += e.key;
       app.paletteSelection = 0;
-      rerender();
+      renderPalette(app);
       return;
     }
     return; // a modal surface: the palette swallows other keys
@@ -294,8 +367,12 @@ function onKey(
     const k = e.key.toLowerCase();
     if (k === "k") {
       e.preventDefault();
+      // B-10: the overlay paints ITSELF (renderPalette appends to
+      // document.body) — never through renderBoot's full-root
+      // rerender, which would destroy the invoking element the
+      // focus-return lane (P0 #9) just captured.
       openPalette(app);
-      rerender();
+      renderPalette(app);
       return;
     }
     if (k === "e") {
@@ -384,6 +461,13 @@ function dispatchCommand(
     case "clear-session":
       actions.clearSession();
       return;
+    case "create-deck":
+    case "create-card":
+      openCreateForm(app, id === "create-deck" ? "deck" : "card");
+      // B-10: the form paints itself — no full-root rerender (the
+      // invoking element must stay alive for the close-focus lane).
+      if (app.createActions) renderCreateForm(app, app.createActions, rerender);
+      return;
   }
 }
 
@@ -403,6 +487,7 @@ function idToEvent(id: string): Parameters<typeof applyEvent>[1] {
 // session are written through their storage lanes NOW.
 function advanceSession(app: AppState, event: Parameters<typeof applyEvent>[1], rerender: () => void) {
   if (app.boot.kind !== "ready") return;
+  app.notice = null; // the session advances: a new action supersedes the notice
   const { data, session } = app.boot;
   const result = applyEvent(session, event, { data, clock: appClock() });
   app.boot = { ...app.boot, session: result.session, data: result.data };
@@ -479,6 +564,159 @@ function movePaletteSelection(app: AppState, dir: 1 | -1) {
   app.paletteSelection = (((app.paletteSelection + dir) % cmds.length) + cmds.length) % cmds.length;
 }
 
+// ─── The create form (the N/C commands' modal; D8's modal semantics) ───────
+
+function openCreateForm(app: AppState, kind: "deck" | "card") {
+  // Close any open palette first (the form and the palette never coexist).
+  app.paletteOpen = false;
+  document.getElementById("ostinato-palette")?.remove();
+  app.createForm = { kind, discardArmed: false };
+  app.invokingEl = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+}
+
+function closeCreateForm(app: AppState) {
+  app.createForm = null;
+  document.getElementById("ostinato-create-form")?.remove();
+  // D8: focus returns to the invoking control (closePalette's pattern).
+  (app.invokingEl ?? document.body).focus();
+  app.invokingEl = null;
+}
+
+/** The Esc lane (D8's unsaved-changes guard, keyboard-clean — no native
+ *  dialogs): with unsaved input and no armed guard, arm it + paint the
+ *  message; the second Esc discards. */
+function handleCreateFormEscape(app: AppState) {
+  const form = document.getElementById("ostinato-create-form");
+  const cf = app.createForm;
+  if (form && cf && !cf.discardArmed) {
+    const hasInput = Array.from(form.querySelectorAll<HTMLInputElement>("input, textarea")).some(
+      (i) => i.value.trim() !== "",
+    );
+    if (hasInput) {
+      cf.discardArmed = true;
+      const guard = form.querySelector<HTMLParagraphElement>(".ostinato-create-guard");
+      if (guard) guard.textContent = "You have unsaved input — press Esc again to discard.";
+      return;
+    }
+  }
+  closeCreateForm(app);
+}
+
+function renderCreateForm(app: AppState, actions: CreateActions, rerender: () => void) {
+  const kind = app.createForm!.kind;
+  const data = app.boot.kind === "ready" ? app.boot.data : { decks: [], cards: [] };
+  let overlay = document.getElementById("ostinato-create-form");
+  if (!overlay) {
+    overlay = el("div", { id: "ostinato-create-form", class: "ostinato-create-overlay" });
+    document.body.append(overlay);
+  }
+  const form = el(
+    "form",
+    {
+      class: "ostinato-create-form",
+      role: "dialog",
+      "aria-modal": "true",
+      "aria-labelledby": "ostinato-create-title",
+    },
+  );
+  form.append(el("h2", { id: "ostinato-create-title", text: kind === "deck" ? "Create deck" : "Create card" }));
+  let nameInput: HTMLInputElement | null = null;
+  let deckSelect: HTMLSelectElement | null = null;
+  let frontInput: HTMLInputElement | null = null;
+  let backInput: HTMLTextAreaElement | null = null;
+  if (kind === "deck") {
+    const label = el("label", { text: "Deck name", class: "ostinato-create-label" });
+    label.setAttribute("for", "ostinato-create-name");
+    nameInput = el("input", {
+      id: "ostinato-create-name",
+      class: "ostinato-create-input",
+      autocomplete: "off",
+    }) as HTMLInputElement;
+    form.append(label, nameInput);
+  } else {
+    const deckLabel = el("label", { text: "Deck", class: "ostinato-create-label" });
+    deckLabel.setAttribute("for", "ostinato-create-deck");
+    deckSelect = el("select", { id: "ostinato-create-deck", class: "ostinato-create-input" }) as HTMLSelectElement;
+    for (const d of data.decks) {
+      deckSelect.append(el("option", { text: d.name, value: d.id }) as HTMLOptionElement);
+    }
+    if (data.decks.length > 0) deckSelect.selectedIndex = 0; // the first deck preselected
+    frontInput = el("input", {
+      id: "ostinato-create-front",
+      class: "ostinato-create-input",
+      autocomplete: "off",
+    }) as HTMLInputElement;
+    const frontLabel = el("label", { text: "Card front", class: "ostinato-create-label" });
+    frontLabel.setAttribute("for", "ostinato-create-front");
+    backInput = el("textarea", { id: "ostinato-create-back", class: "ostinato-create-input", rows: 3 }) as HTMLTextAreaElement;
+    const backLabel = el("label", { text: "Card back (markdown)", class: "ostinato-create-label" });
+    backLabel.setAttribute("for", "ostinato-create-back");
+    form.append(deckLabel, deckSelect, frontLabel, frontInput, backLabel, backInput);
+  }
+  const guard = el("p", { class: "ostinato-create-guard", role: "status" });
+  const error = el("p", { class: "ostinato-create-error", role: "alert" });
+  const submitRow = el("div", { class: "ostinato-create-row" });
+  submitRow.append(
+    el("button", {
+      type: "submit",
+      text: kind === "deck" ? "Create deck" : "Create card",
+      class: "ostinato-action",
+    }),
+    el("span", { text: "Esc cancels", class: "ostinato-create-hint" }),
+  );
+  form.append(guard, error, submitRow);
+  overlay.replaceChildren(form);
+  // The honest empty state (the zero-deck card form: never a dead end).
+  if (kind === "card" && data.decks.length === 0) {
+    error.textContent = "No decks yet — create a deck first (N).";
+  }
+  // The submit lane: read + trim + validate; failures keep the form open
+  // (the error <p> shows the message, focus returns to the first empty
+  // field); success closes the form + rerenders (the notice + the queue
+  // recompute land through the same lane).
+  form.addEventListener("submit", (e) => {
+    e.preventDefault();
+    let err: string | null = null;
+    let firstEmpty: HTMLElement | null = null;
+    if (kind === "deck") {
+      const name = nameInput!.value.trim();
+      if (name === "") {
+        err = "Deck name is required.";
+        firstEmpty = nameInput!;
+      } else {
+        err = actions.createDeck(name);
+      }
+    } else {
+      const deckId = deckSelect!.value;
+      const front = frontInput!.value.trim();
+      const back = backInput!.value.trim();
+      if (deckId === "") {
+        err = "No decks yet — create a deck first (N).";
+        firstEmpty = deckSelect!;
+      } else if (front === "") {
+        err = "Card front is required.";
+        firstEmpty = frontInput!;
+      } else if (back === "") {
+        err = "Card back is required.";
+        firstEmpty = backInput!;
+      } else {
+        err = actions.createCard(deckId, front, back);
+      }
+    }
+    if (err !== null) {
+      error.textContent = err;
+      if (firstEmpty) firstEmpty.focus();
+      return; // the form stays open
+    }
+    closeCreateForm(app);
+    rerender();
+  });
+  // D11: attach-before-focus — the form is in the DOM before the first
+  // field receives focus.
+  const firstField = kind === "deck" ? nameInput : data.decks.length > 0 ? deckSelect : frontInput;
+  firstField?.focus();
+}
+
 function runSelectedPaletteCommand(
   app: AppState,
   actions: { export: () => void; import: () => void; clearSession: () => void },
@@ -504,6 +742,10 @@ function renderBoot(app: AppState, persistAll: () => void) {
   );
   root.append(header);
 
+  if (app.notice) {
+    root.append(el("p", { class: "ostinato-notice", role: "status", text: app.notice }));
+  }
+
   if (app.boot.kind === "loading") {
     root.append(renderLoading());
     return;
@@ -514,18 +756,25 @@ function renderBoot(app: AppState, persistAll: () => void) {
   }
 
   const { data, session } = app.boot;
+  // The every-transition rule (P0 #6, B-3's fix): every render of a
+  // ready state rewrites both storage lanes — the session and the data
+  // set persist on every state change, so a killed-mid-review session
+  // restores by construction. (The rule was receipted in O-3's D2 but
+  // the call was never wired; the crash-resume lane caught it.)
+  persistAll();
   if (data.decks.length === 0) {
     root.append(renderEmpty("No decks yet. Create one to start reviewing."));
-    return;
-  }
-  if (data.cards.length === 0) {
+  } else if (data.cards.length === 0) {
     root.append(renderEmpty("No cards yet. Add one to start reviewing."));
-    return;
+  } else {
+    root.append(renderReviewScreen(data, session, app, persistAll));
   }
 
-  root.append(renderReviewScreen(data, session, app, persistAll));
-
-  if (app.paletteOpen) renderPalette(app);
+  // (B-10: the overlays — the palette + the create form — own their
+  // paint: they render via their own functions from the open-paths,
+  // never through renderBoot. A full-root rerender here would destroy
+  // the invoking element the focus-return lane captured, and would
+  // reset the create form's fields mid-typing.)
 }
 
 function renderLoading(): HTMLElement {
@@ -705,7 +954,16 @@ function renderPalette(app: AppState) {
     document.body.append(overlay);
   }
   const cmds = filterCommands(app.paletteQuery);
-  const list = el("ul", { class: "ostinato-palette-list", role: "listbox" });
+  // B-8: the listbox carries an accessible name (axe
+  // aria-input-field-name — a role=listbox is an ARIA input field)
+  // and tabindex=0 (axe scrollable-region-focusable — the
+  // max-height/overflow list must be keyboard-scrollable).
+  const list = el("ul", {
+    class: "ostinato-palette-list",
+    role: "listbox",
+    "aria-label": "Commands",
+  });
+  list.setAttribute("tabindex", "0");
   let group: string | null = null;
   cmds.forEach((cmd, i) => {
     if (cmd.group !== group) {
@@ -740,6 +998,20 @@ function renderPalette(app: AppState) {
   overlay.replaceChildren(input, list);
   input.focus();
 }
+
+// ─── The service-worker registration (P0 #8's offline lane; the Coda
+// main.ts pattern — fail-soft, relative scope, never a boot dependency) ──
+function registerServiceWorker(): void {
+  if (!("serviceWorker" in navigator)) return;
+  window.addEventListener("load", () => {
+    navigator.serviceWorker
+      .register("./sw.js", { scope: "./" })
+      .catch((err) => {
+        console.warn("[ostinato] service worker registration failed:", err);
+      });
+  });
+}
+registerServiceWorker();
 
 // ─── The bootstrap (the module's own start — P0 #5's boot lane) ──────────
 // index.html loads this module as `<script type="module" src="/src/

@@ -30,10 +30,10 @@ export interface ChangelogStop {
   groups: ChangelogGroup[];
 }
 
-export const CHANGELOG_TOTAL_ENTRIES = 532;
+export const CHANGELOG_TOTAL_ENTRIES = 533;
 
 export const CHANGELOG_TOTALS: Record<ChangelogBucket, number> = {
-  "Added": 248,
+  "Added": 249,
   "Changed": 32,
   "Deprecated": 0,
   "Removed": 3,
@@ -46,9 +46,9 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
   {
     "label": "Unreleased",
     "date": null,
-    "total": 25,
+    "total": 26,
     "counts": {
-      "Added": 17,
+      "Added": 18,
       "Changed": 0,
       "Deprecated": 0,
       "Removed": 0,
@@ -60,6 +60,10 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
       {
         "bucket": "Added",
         "items": [
+          {
+            "title": "The Ostinato round's fourth drive milestone — O-4 lands: the hardening e2e battery…",
+            "behavior": false
+          },
           {
             "title": "The Ostinato round's third drive milestone — O-3 lands: the review runner + the keyboard surface…",
             "behavior": false

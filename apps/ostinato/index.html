@@ -9,15 +9,17 @@
     <meta name="description" content="Keyboard-first, offline-first spaced-repetition flashcards. Your data stays in this browser; it works offline." />
     <link rel="manifest" href="./public/manifest.webmanifest" />
     <link rel="icon" type="image/svg+xml" href="./public/icon.svg" />
+    <link rel="stylesheet" href="./src/ui/ostinato.css" />
   </head>
   <body>
     <main id="ostinato-root">
       <p id="ostinato-status">Booting…</p>
     </main>
-    <!-- O-3 lands the UI shell + service-worker registration; the module
-         entry boots the app (the review runner + the keyboard surface).
-         O-4's PWA lane adds the SW precache; the skeleton has no
-         runtime closure to precache yet. -->
+    <!-- O-3 lands the UI shell; the module entry boots the app (the
+         review runner + the keyboard surface). O-4 registers the
+         service worker (the fail-soft pattern in app.ts) and precaches
+         the enumerated runtime closure at install (sw.js's O-4 list);
+         O-5 keeps the versioned-cache tooling + the capture lane. -->
     <script type="module" src="/src/ui/app.ts"></script>
   </body>
 </html>

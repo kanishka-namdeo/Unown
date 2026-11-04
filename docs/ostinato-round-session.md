@@ -83,8 +83,26 @@ All landed in the round-opening commit:
 
 ## Environment checkpoint
 
-The tenth lineage's resume state, 2026-11-04 (the newest — the O-2
-session; [SESSION.md](SESSION.md) keeps the index):
+The eleventh lineage's resume state, 2026-11-04 (the O-4 session — the
+hardening e2e battery; [SESSION.md](SESSION.md) keeps the index):
+
+- **No recycle**: the tenth lineage's filesystem survived intact
+  (repo at `d5c853f4` clean, `.tools/`, `.creds/`, `tickets/`, the
+  stack up). The engine build-drift was restart-aligned onto
+  `d5c853f4` at resume (V-6's idle-window law, the lane's fourth
+  live catch); the H-1 smoke re-armed in a scratch cwd (`UNOWN_OK`,
+  exit 0, 2.1 s).
+- **The O-4 economics**: 13 dispatches across five sessions (the
+  fresh-session-per-chunk-class discipline — no session exceeded ~2
+  chunks of fatness; every continuation PINNED `--session <id>`,
+  V-12's law); four operator live-run rounds (5/3/4 → 5/3/4 → 9/3/0 →
+  **12/12**) with every defect root-caused operator-side (DOM probes,
+  computed-style probes, a localStorage instrumentation spec, a
+  domain-level reproduction) and fixed through byte-exact briefs
+  (V-17's law — no fix round exceeded 6 turns).
+
+The tenth lineage's resume state, 2026-11-04 (the O-2
+session; the prior lineage checkpoint):
 
 - **No recycle this time**: the ninth lineage's filesystem SURVIVED
   (repo at `03541d34` clean, `.creds`, `tickets/`, `download/`,
@@ -150,6 +168,11 @@ checkpoint):
 | V-16 | **The src-vs-dist law**: A2H-1's unit lanes ran green against SOURCE (vitest imports `src/`) while the LIVE repro still showed B-1 0/3 — the TUI boots the coding-agent from the built `dist/`, so pi-repo changes need `bun run build:unbundled` before live PTY verification (2026-11-04) | stale-assumption (environmental; the unit-green/live-red gap) | Rebuilt the package → the same repro flipped to FIXED 3/3 immediately. Standing law: any ticket touching `pi-repo/**` adds "rebuild the package, then re-verify live" to the operator gate; the engine restart (V-6) rides the same window. |
 | V-17 | **The A2H-1 dispatch thrash**: 4 chunks (32 turns) of pure exploration — 25 tool calls (15 bash + 10 read), ZERO edits; chunk 4 obeyed the edit-first directive but its edit failed on an old_str mismatch and re-orientation burned the rest; chunk 7 burned 662 s of turns running the heavy package gates (the operator's job) | prompt-brittleness (operator-side brief design + A2 turn granularity at the 8-turn cap) | Cured in one chunk by the operator-supplied BYTE-EXACT region text + a single-action brief. Standing laws: (1) located-defect briefs embed the exact current source region (sed-verified) so the first edit cannot miss; (2) the first instructed action is the edit; (3) A2 receipts never gate on lanes the operator re-runs anyway — the receipt records "operator gate re-runs"; (4) the fresh-context economics of V-13 apply at ~4 chunks of session fatness. |
 | V-18 | **The unit-lane sandbox pollution**: `bun test src` is a SUBSTRING path filter — it matched the engine's freshly minted self-learning sandbox at `data/self-learning/sandboxes/mint-assert-rejects-*/workspace/src/assertUtils.test.mjs` (a learning-job fixture whose asserts deliberately fail), redding the repo lane with a non-repo test (2026-11-04, at the A2H-2 push gate; the sandboxes are gitignored runtime data) | genuine-gap (gate hygiene: the lane's filter is not root-anchored) | Immediate: the two polluted sandboxes removed (runtime artifacts, housekeeping) → the lane re-ran **2152/0 across 154 files**, the family baseline exactly. Durable fix QUEUED as ticket A2H-3 (anchor the `test:unit` filter so `data/**` can never match; the engine mints `*.test.mjs` fixtures continuously). |
+| V-19 | **The init-script re-seed clobber + the stale-session poison** (O-4's first live rounds): `page.addInitScript` re-runs on EVERY navigation — the crash-resume spec's unguarded `setItem("ostinato.data", SEED)` re-seeded the sm2-less seed over the app's own persisted graded data at every reload (a live localStorage instrumentation spec proved the app's write path CORRECT — the data key held the sm2 between grade and reload); the twin: the a11y spec's empty-state boot persisted a done session (via B-3's every-transition fix) that then restored over the re-seeded data ("All cards reviewed" on a fresh content boot) | prompt-brittleness (spec-side harness law) | Standing laws: seeding specs GUARD the seed (`if (getItem === null) setItem`) whenever a reload can follow; a re-seed must ALSO clear `ostinato.session` (the app's own boot persists it). Both landed in the specs; the diagnosis receipts live in o4.md's chunk 7. |
+| V-20 | **The blob-download law + the armed-wait law** (O-4's flow lane): the export's `URL.revokeObjectURL(a.href)` ran SYNCHRONOUSLY after `a.click()` — cancelling the download the click had just scheduled (and a DETACHED anchor never dispatched it) → `waitForEvent("download")` never fired; the spec-side twin: `const dl = await armDownload(page)` AWAITS the event before its trigger exists — a self-deadlock (the 30 s test timeout kills the run) | genuine product defect (B-7) + spec-side harness law | Product: attach → click → remove → revoke LATE (30 s timeout). Spec: ARM (create the promise) → trigger → await. Both landed; a live probe proved the fixed export fires (`FIRED:ostinato-export.json`). |
+| V-21 | **The overlay-owns-its-paint law** (O-4's Esc lane): `closePalette` focused `app.invokingEl` — but the Ctrl+K branch had called `rerender()`, whose `root.replaceChildren()` DESTROYED the captured element (focusing a detached node is a no-op → "inactive"); reading the same code found the palette's ArrowDown/ArrowUp branches mutating the selection WITHOUT any repaint (a latent D10-class bug no spec had driven) | genuine product defect (B-10; the D10 class recurring) | Standing law: body-level overlays (palette, create form) render via their OWN functions from the open-paths — never through a full-root rerender (which also resets form fields mid-typing). Landed across five sites; the arrow repaint came free. |
+| V-22 | **The grid intrinsic-min-width overflow** (O-4's resize lane): after boot-wide → resize-narrow, `scrollWidth` = 394 — a computed-style probe pinned the implicit grid column at 377.5 px: the search input's size-20 INTRINSIC width (grid items' `min-width: auto` never shrinks below content minimums; `width: 100%` resolves against the track, but the track sizes from the item's min-content first) | genuine product defect (B-11; CSS layout law) | `.ostinato-review > * { min-width: 0 }` — the classic grid/flex shrink discipline; the resize lane re-ran green (375 and 1280, zero overflow, the two-pane geometry verified). |
+| V-23 | **The receipted-but-unwired design** (B-3): O-3's receipt D2 claimed "the render's persistAll writes both lanes — the every-transition rule"; the CALL never existed (`renderBoot` received `persistAll` and passed it onward, never invoked it) — reveal/grade/nav transitions never persisted, and the crash-resume lane's first live run caught it (a mid-reveal reload lost the phase) | genuine product defect + receipt-overclaim class (H-2's tree-verify law extends to call-sites, not just files) | The `persistAll()` call landed in renderBoot's ready path; the crash-resume + offline lanes green. Standing lesson: a receipt's behavioral CLAIM is verified only by a live lane that exercises it — units pinned the seam (saveSession/readSession), not the wiring. |
 
 Bug register (user-visible findings, the failure→benchmark reflex's
 input):
@@ -190,6 +213,15 @@ input):
   without draining executes 2/2). The morning's V-9 receipts stand — the
   failure mode is condition-dependent, not unconditional; no product
   defect reproducible tonight, no product change made.
+- **B-3 — the every-transition persistence rule was receipted but never wired** (2026-11-04, O-4's first live battery run; genuine product defect). `renderBoot` received `persistAll` and passed it onward to the grade-button closures — but never CALLED it: reveal/grade/skip/navigate/restart transitions rerendered without persisting, so a killed-mid-review session lost its phase and the graded card's sm2 state. Evidence: the crash-resume lane's first live run — a mid-reveal reload rendered the FRONT (the "revealed" phase lost). **FIXED 2026-11-04 (O-4)**: `persistAll()` now runs in renderBoot's ready path — every ready render rewrites both storage lanes, exactly as O-3's D2 receipt claimed (V-23).
+- **B-4 — the overlays painted only on the review-screen path** (2026-11-04, the flow lane's step-2 red). The palette/create-form render tails lived AFTER the empty-state early returns — on a fresh boot ("No decks yet"), Ctrl+K set state and rerendered, but renderBoot returned early and the overlay never painted (`#ostinato-palette` absent — the K-1 create flow begins from the empty state by design). **FIXED 2026-11-04 (O-4)**: the early returns became if/else-if/else; then B-10's durable cure moved the overlay paint to the open-paths entirely.
+- **B-5 — `el()` dropped `aria-*` attributes on the floor** (2026-11-04, the axe palette-open scan). The DOM helper's property loop assigned `e["aria-label"] = …` — a junk expando (the reflected property is `ariaLabel`); the ATTRIBUTE never landed. The palette input (no placeholder) was nameless under axe; the search input survived only via its placeholder; the grade row's `aria-label` and every `aria-selected`/`aria-current`/`aria-controls` prop were equally silent. **FIXED 2026-11-04 (O-4)**: the attribute lane now routes `aria-*` (the law: hyphenated ARIA names are not DOM properties).
+- **B-6 — the import restored a stale done session over just-imported cards** (2026-11-04, the flow lane's step-7 diagnosis). `startSession(next, now, app.boot.session)` with a done session kept the done phase — "All cards reviewed" for data never reviewed in any session. **FIXED 2026-11-04 (O-4)**: the D7 session-restart law applied to import — `startSession(next, now, null)`.
+- **B-7 — the export's synchronous blob-URL revoke cancelled the download** (2026-11-04, the flow lane's 30 s `waitForEvent("download")` timeout). `URL.revokeObjectURL(a.href)` ran immediately after `a.click()` on a DETACHED anchor — the revoke killed the not-yet-started download; the detached click never dispatched. **FIXED 2026-11-04 (O-4)**: attach → click → remove → revoke LATE (30 s); a live probe receipted `FIRED:ostinato-export.json`.
+- **B-8 — the palette listbox lacked an accessible name and keyboard-scroll** (2026-11-04, axe `aria-input-field-name` + `scrollable-region-focusable`, both serious, on the same `ul[role=listbox]`). A live DOM probe proved the palette INPUT's label had landed (B-5's fix works) — the flagged element was the LIST. **FIXED 2026-11-04 (O-4)**: `aria-label="Commands"` + `tabindex="0"` (the max-height/overflow list is keyboard-scrollable).
+- **B-9 — the disabled command rows were dimmed by opacity below contrast** (2026-11-04, axe `color-contrast` on the four disabled grade-* labels). `.ostinato-disabled { opacity: 0.55 }` blended the muted color toward the background below 4.5:1. **FIXED 2026-11-04 (O-4)**: dimmed by COLOR (the muted token at full opacity, ≥4.5:1 in both schemes) — never by opacity.
+- **B-10 — the overlays painted through full-root rerenders, destroying the focus-return target** (2026-11-04, the Esc lane's "inactive"). `closePalette` focused `app.invokingEl` — a reference into a DOM the intervening `rerender()` had torn down (`root.replaceChildren()`). **FIXED 2026-11-04 (O-4)**: the overlays own their paint — `renderPalette`/`renderCreateForm` called directly from the open-paths, never via renderBoot (which also stops resetting the create form's fields mid-typing); the arrow-branch repaint came free (V-21).
+- **B-11 — the review grid's implicit column was held open by the search input's intrinsic width** (2026-11-04, the resize lane's 19 px overflow at 375). A computed-style probe pinned the track at 377.5 px (the size-20 input's min-content; grid items' `min-width: auto` never shrinks below it). **FIXED 2026-11-04 (O-4)**: `.ostinato-review > * { min-width: 0 }`.
 
 ## Ticket queue
 
@@ -198,7 +230,7 @@ input):
 | O-1 | Calibration canaries C1–C3 (baseline turns-to-done/cost) + the app skeleton at `apps/ostinato/` (zero-dep PWA scaffold + AGENTS.md draft) | canary receipts + both unit lanes boot | **LANDED 2026-11-04** — canaries C1 3/3 · C2 2/3 (B cap-overflow receipted) · C3 3/3; skeleton 13 files, Lane A 5/5, Lane B 5/5, receipt tree-verified |
 | O-2 | Domain core: deck/card model, SM-2 scheduler, import/export + Lane A/B tests | both unit lanes + app tsc + invariants pins | **LANDED 2026-11-04** — 27/27 both lanes (unit family 2152/0 = 2130 + 22); receipt tree-verified 10/10 FILES, no extras; storage [U] DECIDED (localStorage + atomic-writes, D1); SM-2 = Wozniak 1990 pinned (D2); V-12/V-13/V-14 receipted; 7 dispatches (4 on the original session + 3 fresh-context finalization, one hijacked chunk operator-priced) |
 | O-3 | Review runner + keyboard surface (palette, search, j/k, selection, states) | unit lanes + keyboard-focused e2e stub | **LANDED 2026-11-04** — the review stack at src/ui/ (runner-core, queue-nav, palette, app wiring); app suite 72/0 (+45), unit family 2197/0; the e2e lane LIVE: **3/3 keyboard-only in 1.5 s** after the operator's execution chain caught 5 defects (serve.mjs js→ts swap, the main() bootstrap, the palette render gap, the focus-before-attach order, the spec's init-script closure bug — Playwright serializes init functions, module constants ride as arguments); receipt tree-verified; 17 dispatches across two sessions (V-13 applied) |
-| O-4 | Hardening e2e battery: zero-mouse flow, axe both schemes, offline, crash-resume, resize | the e2e battery green | queued |
+| O-4 | Hardening e2e battery: zero-mouse flow, axe both schemes, offline, crash-resume, resize | the e2e battery green | **LANDED 2026-11-04** — the battery **12/12 in 7.2 s** across five specs: K-1 flow (create → review → export → import, keyboard-only, the download + filechooser via `waitForEvent`), A-1 axe `wcag2a`/`wcag2aa` both schemes × empty/content/palette-open (six zero-violation scans) + the tab-order + Esc focus-return pins, O-1 offline (SW-controlled first load, the 17-entry install precache, offline reload + the loop completing offline, the offline fallback page), R-1 crash-resume (reveal-phase restore + queue recompute + cursor advance, honestly asserted) + resize (375/1280, overflow discipline, two-pane geometry); the app-side work the battery demanded: the 454-line token stylesheet (light/dark, focus rings, two-pane grid, reduced-motion), the SW registration (never landed despite index.html's claim), the install precache, the create surface (17-command palette + the modal form), `app.notice`, `palette.test.ts` (closing O-3's never-landed count pin); **four live rounds harvested NINE defects (B-3..B-11)**, each operator-root-caused (DOM/computed-style probes, a localStorage instrumentation spec, a domain reproduction) and fixed via byte-exact briefs; 13 dispatches across five sessions; app suite 93/0 (+21), unit family 2218/0; receipt `.unown/receipts/o4.md` COMPLETE |
 | O-5 | PWA + capture lane + root wiring + CI job (the Coda C5 pattern) | CI coda-style job + capture receipts | queued |
 | O-6 | Closeout: landing band, usage captures, blog post, README/DOX, graduation | full gate set + check:blog | queued |
 | A2H-1 | Fix B-1: the `/abort` notice must survive the first-flight settle tip (status-line collision guard — notify dedup keyed by source, tip deferral, or notice-as-message-note) | the abort PTY lane under a fresh isolated UNOWN_HOME, 3/3 runs with the notify visible | **LANDED 2026-11-04 (v0.0.56)** — showStatus dedup keyed on identical text (refresh-only); BEFORE receipt 2/3 defect → AFTER **3/3 both lines persist**; standing lanes footer 9/9 · picker PASS · resume-hint ALL HELD (zero regressions); unit: status 34/34 · self-learning 5561/0 · root 2152/0; the 17 vitest package failures verified PRE-EXISTING via stash; receipt tree-verified 5/5; 8 chunks (V-17's thrash receipted) |
@@ -233,6 +265,29 @@ dispatch (fresh session per ticket; incremental receipt from chunk 1):
   no scheduling logic (O-2 — stubs only).
 
 ## Gate run
+
+The O-4 push battery (eleventh lineage, run on the tree before the
+push — the hints-round lesson honored, unit suite after the rail
+regen):
+
+- `bun run typecheck` — **rc 0** (root tsc covers the app + the e2e
+  specs — `e2e/**/*.ts` rides the root include).
+- `bun run lint` — **rc 0**, 0 errors / 143 warnings (the vendored
+  baseline, unchanged).
+- `bun run check:docs` — **rc 0**.
+- `bun run check:changelog` — **rc 0**, 55 stops / 533 entries (the
+  O-4 entry is the 533rd; Unreleased undated, v0.0.56 latest dated).
+- `bun run check:blog` — **rc 0**, 45 posts / 112 tags.
+- `bun run check:benchmarks` — **rc 0**, 6 tracks, 6 resolved.
+- `bun run check:claims` — **rc 0**, 62 page literals resolve.
+- `bun run test:unit` — **rc 0, 2218 pass / 0 fail** across 157 files
+  (the 2197 family + 21 new palette pins).
+- The e2e battery — **12 pass / 0 fail in 7.2 s** (`bunx playwright
+  test --config=playwright.ostinato.config.ts`; chromium-1248): the
+  four axe scans, the tab-order + Esc pins, the K-1 flow, both
+  offline lanes, crash-resume, resize, and the O-3 trio.
+- App lanes: `cd apps/ostinato && bun test` **93/0**; `bun test
+  apps/ostinato` **93/0** — the same 93 in both forms.
 
 The O-2 push battery (tenth lineage, run on the tree before the push —
 the hints-round lesson honored, unit suite after the rail regen):
