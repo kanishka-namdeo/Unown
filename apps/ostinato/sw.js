@@ -50,6 +50,7 @@ const PRECACHE_LIST = [
   "src/storage/local-storage.js",
   "src/domain/model.js",
   "src/domain/ids.js",
+  "src/domain/stats.js",
 ];
 
 self.addEventListener("install", (event) => {

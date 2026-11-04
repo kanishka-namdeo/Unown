@@ -49,10 +49,12 @@ import type {
   Grade,
   Scheduler,
   Clock,
+  ReviewEvent,
 } from "../domain/ports.js";
 import { DomainInvariantError } from "../domain/ports.js";
 import type { StorageLike } from "../domain/storage.js";
 import { createScheduler } from "../domain/scheduler.js";
+import { newUniqueId } from "../domain/ids.js";
 
 // ─── The grading key map ──────────────────────────────────────────────────────
 
@@ -326,9 +328,26 @@ export function applyEvent(
       const scheduler = ctx.scheduler ?? defaultScheduler();
       const now = ctx.clock();
       const gradedCard = scheduler.grade(current, event.grade, now);
+      // R-1: the review-log append rides the SAME transition as the
+      // grade (the every-transition persistence law). The operator gate
+      // caught the chunk-3 tree threading reviews WITHOUT appending —
+      // the exact B-3 class; this construction is the cure.
+      const taken = new Set<string>([
+        ...ctx.data.reviews.map((r) => r.id),
+        ...ctx.data.cards.map((c) => c.id),
+        ...ctx.data.decks.map((d) => d.id),
+      ]);
+      const reviewEvent: ReviewEvent = {
+        id: newUniqueId("review", taken),
+        cardId: current.id,
+        deckId: current.deckId,
+        grade: event.grade,
+        reviewedAt: now,
+      };
       const data: OstinatoData = {
         decks: ctx.data.decks,
         cards: ctx.data.cards.map((c) => (c.id === gradedCard.id ? gradedCard : c)),
+        reviews: [...ctx.data.reviews, reviewEvent],
       };
       return { session: advanceIndex(session, data), data };
     }

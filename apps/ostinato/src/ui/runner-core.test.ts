@@ -82,7 +82,7 @@ function mkData(): OstinatoData {
     mkCard("c2", "d1", sm2State(2, 2.5, 6, 1)), // not due: 1 day < 6-day interval
     mkCard("c3", "d2"), // due: never graded
   ];
-  return { decks, cards };
+  return { decks, cards, reviews: [] };
 }
 
 const clock: Clock = () => NOW;
@@ -177,12 +177,13 @@ test("computeDueQueue: DECISION D1 — nothing due → all cards (the pinned fal
       mkCard("b", "d1", sm2State(2, 2.5, 30, 1)),
       mkCard("c", "d2", sm2State(2, 2.5, 30, 1)),
     ],
+    reviews: [],
   };
   expect(computeDueQueue(data, NOW).map((c) => c.id)).toEqual(["a", "b", "c"]);
 });
 
 test("computeDueQueue: an empty data set → an empty queue (no invented cards)", () => {
-  expect(computeDueQueue({ decks: [], cards: [] }, NOW)).toEqual([]);
+  expect(computeDueQueue({ decks: [], cards: [], reviews: [] }, NOW)).toEqual([]);
 });
 
 test("computeReviewQueue: identical to computeDueQueue (named intent split)", () => {
@@ -210,7 +211,7 @@ test("startSession: fresh boot positions the cursor at 0, phase front", () => {
 });
 
 test("startSession: an empty data set → the empty session", () => {
-  const s = startSession({ decks: [], cards: [] }, NOW, null);
+  const s = startSession({ decks: [], cards: [], reviews: [] }, NOW, null);
   expect(s).toEqual(emptySession());
 });
 
@@ -221,6 +222,34 @@ test("applyEvent: a grade before reveal is a no-op (total function)", () => {
   expect(r.session).toBe(s); // no new state
   expect(r.data).toBe(data); // the data set is untouched (identity)
   expect((r.data.cards.find((c) => c.id === "c1") as Card).sm2).toBeDefined(); // the fixture's own state, not a new one
+});
+
+test("applyEvent grade: appends exactly one ReviewEvent to the log (R-1)", () => {
+  const data = mkData();
+  const s = startSession(data, NOW, null);
+  const r1 = applyEvent(s, { type: "reveal" }, ctxFor(data));
+  const r2 = applyEvent(r1.session, { type: "grade", grade: 3 }, ctxFor(r1.data));
+  expect(r2.data.reviews).toHaveLength(1);
+  const ev = r2.data.reviews[0];
+  // The cursor starts at 0: the due queue's head is c1 (the due set is
+  // c1 — 7 days ≥ its 1-day interval — and c3, never graded; c2 is
+  // not due at 1 day < its 6-day interval; the queue is store order).
+  expect(ev.cardId).toBe("c1");
+  expect(ev.deckId).toBe("d1");
+  expect(ev.grade).toBe(3);
+  expect(ev.reviewedAt).toBe(NOW); // the injected clock, never a wall read
+  expect(ev.id.startsWith("review_")).toBe(true);
+  // The append rode the same transition: the log is part of the new
+  // data set; the previous one is untouched.
+  expect(r1.data.reviews).toHaveLength(0);
+});
+
+test("applyEvent out-of-order grade (before reveal): appends NOTHING", () => {
+  const data = mkData();
+  const s = startSession(data, NOW, null);
+  const r = applyEvent(s, { type: "grade", grade: 3 }, ctxFor(data));
+  expect(r.data).toBe(data); // total no-op — identity, no new object
+  expect(r.data.reviews).toHaveLength(0);
 });
 
 test("applyEvent: reveal flips front → revealed (data untouched)", () => {

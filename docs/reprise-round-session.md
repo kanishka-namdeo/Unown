@@ -109,15 +109,16 @@ The fourteenth lineage (this round's opening lineage), 2026-11-05:
 | # | Finding | Class | Disposition |
 |---|---|---|---|
 | V-1 | The round-opening receipts: the fourteenth lineage's bring-up + the teardown refresh landed clean (see the environment checkpoint + `A2_GROUND_TRUTH.md` §10, 2026-11-05) | receipt | The round opens on a green, receipted tree — the P1 lane's entry condition (the freeze held) is met by the committed re-run receipts `benchmarks/ostinato/receipts/run-20261104T181704Z/` |
+| V-2 | **The R-1 operator-gate catch — the runner's append bypass (the B-3 class, again)**: applyEvent's grade branch threaded `reviews: ctx.data.reviews` WITHOUT appending — the real keyboard path (every grade routes through applyEvent) would never write a log entry, exactly the receipted-but-unwired-rule defect class the O-4 round priced as B-3. The runner tests had only fixture-updated (`reviews: []`) — no append pin — so both lanes passed green while the log stayed empty. The catch: the operator's tree-verification after chunk 3 (the SM-1 lesson: tests can mask what fixtures never pin) | genuine-gap (A2's chunked edit left the threading half-done; the tests it updated could not see the gap) | Cured in chunk 4 (byte-exact brief): the append now rides the same transition, pinned two ways (`appends exactly one ReviewEvent` + `out-of-order grade appends NOTHING`). The class is standing curriculum — the next round's pre-splits price it |
 
 ## Ticket queue
 
 | Ticket | Scope | Verifier (external, named) | State |
 |---|---|---|---|
-| R-1 | **The review log + stats heatmap**: the append-only `ReviewEvent` log added to `OstinatoData` (backward-compatible import — a store without `reviews` imports clean; the canonical JSON export gains the field), the pure per-day aggregation module (window + counts, injected clock), the stats surface with the heatmap render (keyboard-navigable, the design-token stylesheet) | Lane A/B unit pins (the aggregation windows/boundaries, the backward-compat import, the invariants — the cardOrder-style integrity law extended to the log); e2e: seeded reviews render the heatmap, the cells carry accessible names; the battery stays 12/12 | **OPEN** |
+| R-1 | **The review log + stats heatmap**: the append-only `ReviewEvent` log added to `OstinatoData` (backward-compatible import — a store without `reviews` imports clean; the canonical JSON export gains the field), the pure per-day aggregation module (window + counts, injected clock), the stats surface with the heatmap render (keyboard-navigable, the design-token stylesheet) | Lane A/B unit pins (the aggregation windows/boundaries, the backward-compat import, the invariants — the cardOrder-style integrity law extended to the log); e2e: seeded reviews render the heatmap, the cells carry accessible names; the battery stays 12/12 | **CODE LANE LANDED 2026-11-05** — the domain layer complete (ReviewEvent + the append riding every grade transition, the invariant checks, the backward-compat import, the pure `reviewsPerDay` with six pins); the runner's append-defect caught at the operator gate (V-2, the B-3 class) and fixed + pinned two ways; the palette's 18th command (`t`/`T`) + the 18-count pins; the stats overlay (role=dialog + the 12×7 grid + per-cell aria-labels + Esc/focus-return + the arrow navigation); the CSS (15 rules, tokens only); the precache closure 18→19 (proof 19/0). Lane A/B **101/0** (+8 pins), tsc 0 (one operator-priced narrowing), the derivation proof 19/0, the e2e battery **12/12 in 8.4 s regression-free** (chromium-1248 re-installed this lineage). A2: 8 chunks across two sessions (01a1a847… the first six — fat at the end; 01a1a85a… the fresh-context finalization, V-13's remedy applied); operator-priced: the queue-head pin correction (c1 not c2) + the `instanceof HTMLElement` narrowing. REMAINING: the e2e heatmap spec (the seeded-reviews render + the cell-name pin) — the ticket closes on it |
 | R-2 | **Deck-level review settings**: an optional per-deck `settings` block (the new-cards-per-session cap first), the queue build resolving deck override > app default, the deck settings surface (the create-form's modal pattern reused) | Lane A/B unit pins (the override resolution, the queue slicing under a cap, the default-untouched path); e2e: setting a deck's cap changes the next session's queue, keyboard-driven | **OPEN** |
 | R-3 | **CSV (Anki-style) import**: the pure CSV parser (front,back rows; RFC-4180 quoting; a quoted header row tolerated; per-row error collection, never a silent skip), the palette command + the file-picker lane (the JSON import's `filechooser` pattern), deck-target selection | Lane A/B unit pins (the parser table: plain/quoted/embedded-newline/embedded-quote/malformed-row cases + the error ledger); e2e: a keyboard-driven CSV import lands the cards, the JSON export byte-stable; the battery stays green | **OPEN** |
-| R-4 | **The `?` shortcut sheet**: the 18th palette command + the overlay (the create-form's modal contract: `role=dialog` + `aria-modal` + Esc-close + focus return + attach-before-focus), the sheet's content derived from the palette's own command table (single source — no drift) | e2e: `?` opens the sheet, Esc closes + focus returns, the sheet's rows match the command table (a derived-content pin); axe clean on the open state; the battery stays green | **OPEN** |
+| R-4 | **The `?` shortcut sheet**: the 19th palette command (the 18th went to R-1's stats) + the overlay (the create-form's modal contract: `role=dialog` + `aria-modal` + Esc-close + focus return + attach-before-focus), the sheet's content derived from the palette's own command table (single source — no drift) | e2e: `?` opens the sheet, Esc closes + focus returns, the sheet's rows match the command table (a derived-content pin); axe clean on the open state; the battery stays green | **OPEN** |
 | R-5 | **The closeout**: the battery figure refresh (12 specs → N, the fresh committed re-run receipt), the landing band's figure + drift-pin suite + `ostinato-data.ts` caveats moved together (the fourteenth-amendment precedent — scroll-budget re-measured ONLY if the band's text grows), `docs/ostinato.md` P1 sections, the README surface, the CHANGELOG entry + rail, the round's blog post, the graduation (SESSION.md rotation + the ground-truth teardown refresh + the matrix) | The full gate set + the fresh-clone re-run receipts under `benchmarks/ostinato/receipts/`; check:blog; the audit lane PASS | **OPEN** |
 
 **EFFORT_BUDGET**: R-1 ≤6 chunks · R-2 ≤4 · R-3 ≤5 · R-4 ≤3 · R-5 ≤8 —
@@ -132,7 +133,9 @@ the FIRST chunk, not mid-ticket).
 (The prompt-economy header, the O-1 pattern — the full brief is
 authored at dispatch time from this skeleton.)
 
-- **CWD**: `/home/z/my-project/Unown/apps/ostinato`
+- **CWD**: `/home/z/my-project/Unown` (the repo root — where `bin/unown`
+  and the `.unown/` state live; the app work happens under
+  `apps/ostinato/`)
 - **Contract**: read `AGENTS.md` (the app's DOX) + the PRD's P1 lane +
   `src/domain/types.ts` (the `OstinatoData` shape) BEFORE the first
   edit; the zero-dep law; the every-transition persistence law (the
@@ -144,6 +147,26 @@ authored at dispatch time from this skeleton.)
 - **Verifiers named above; the operator re-runs every lane at the gate.**
 
 ## Gate run
+
+### R-1 code lane (2026-11-05, the fourteenth lineage's operator gate)
+
+- Lane A (`cd apps/ostinato && bun test`): **101 pass / 0 fail**, 405
+  expect() calls across 8 files — the 93 baseline + 8 new pins (6 stats
+  + 2 runner-append).
+- Lane B (`bun test apps/ostinato`): **101/0**, the same count (the
+  compatibility form).
+- Root `bun run typecheck`: **rc 0** — after one operator-priced
+  narrowing (the `instanceof HTMLElement` guard on the arrow-nav's
+  `document.activeElement`, the SM-2 precedent class).
+- The derivation proof (`bun apps/ostinato/scripts/verify-precache.ts`):
+  **19 precache URLs, 0 missing — PASS** (the closure gained
+  `src/domain/stats.js`, caught by the chunk-7 landing, never a miss).
+- The e2e battery (`bun run ostinato:e2e`): **12 passed in 8.4 s** —
+  regression-free through the whole R-1 code lane (chromium-1248
+  re-installed this lineage per the standing environment fact).
+- The A2 lane: 8 chunks — six on session `01a1a847…` (fat at the end,
+  the V-13 threshold), two on the fresh `01a1a85a…`; the receipt
+  `.unown/receipts/r1.md` CODE COMPLETE (runtime state, not committed).
 
 (The round's gate receipts land here per ticket. At open: the
 fourteenth lineage's pre-ticket baseline — see the environment

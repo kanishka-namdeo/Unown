@@ -58,6 +58,7 @@ function makeSmallData(): OstinatoData {
       },
     ],
     cards: [c1, c2],
+    reviews: [],
   };
 }
 

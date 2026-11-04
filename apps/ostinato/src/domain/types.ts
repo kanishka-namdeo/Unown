@@ -56,9 +56,29 @@ export type Deck = {
  * The full Ostinato data set. Plain JSON at every level; this IS the
  * import/export wire shape (P0 #7) and the persistence shape (P0 #6).
  */
+/**
+ * One completed review of one card — the append-only activity log R-1
+ * adds. Written by `gradeCard` on every grade transition; never
+ * rewritten, never reordered in-store (export is canonical anyway).
+ */
+export type ReviewEvent = {
+  /** unique id, minted via ids.ts with the "review" prefix */
+  id: string;
+  /** the reviewed card; must resolve to a Card.id in the store */
+  cardId: string;
+  /** the deck the card belonged to at review time; must resolve and match the card's own deckId */
+  deckId: string;
+  /** the grade given: 1 (again) … 4 (easy) */
+  grade: Grade;
+  /** ISO-8601 timestamp of the review */
+  reviewedAt: string;
+};
+
 export type OstinatoData = {
   decks: Deck[];
   cards: Card[];
+  /** append-only review log (R-1); old imports back-fill to [] */
+  reviews: ReviewEvent[];
 };
 
 /**

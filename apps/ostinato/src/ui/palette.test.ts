@@ -5,7 +5,7 @@
  * count was NEVER asserted anywhere (grep: no palette.test.ts). This
  * suite pins the whole enumeration:
  *
- *   - the 17-command count (the dropped-row guard)
+ *   - the 18-command count (the dropped-row guard)
  *   - id uniqueness + PALETTE_BY_ID totality
  *   - group membership + render-order law (PALETTE_GROUPS order)
  *   - the two create rows (create-deck / create-card, group "data",
@@ -35,18 +35,18 @@ type Phase = "front" | "revealed" | "done";
 
 // ─── Enumeration shape ─────────────────────────────────────────────────
 
-test("PALETTE_COMMAND_COUNT === 17 (the dropped-row guard)", () => {
-  expect(PALETTE_COMMAND_COUNT).toBe(17);
-  expect(PALETTE_COMMANDS.length).toBe(17);
+test("PALETTE_COMMAND_COUNT === 18 (the dropped-row guard)", () => {
+  expect(PALETTE_COMMAND_COUNT).toBe(18);
+  expect(PALETTE_COMMANDS.length).toBe(18);
 });
 
-test("every command id is UNIQUE (17 rows → 17 distinct ids)", () => {
+test("every command id is UNIQUE (18 rows → 18 distinct ids)", () => {
   const ids = PALETTE_COMMANDS.map((c) => c.id);
-  expect(new Set(ids).size).toBe(17);
+  expect(new Set(ids).size).toBe(18);
 });
 
-test("PALETTE_BY_ID contains every row (17 keys, each mapping to its row)", () => {
-  expect(Object.keys(PALETTE_BY_ID).length).toBe(17);
+test("PALETTE_BY_ID contains every row (18 keys, each mapping to its row)", () => {
+  expect(Object.keys(PALETTE_BY_ID).length).toBe(18);
   for (const cmd of PALETTE_COMMANDS) {
     expect(PALETTE_BY_ID[cmd.id]).toBe(cmd);
   }
@@ -113,6 +113,7 @@ test("restart/search/export/import/clear-session + create rows: enabled everywhe
     "clear-session",
     "create-deck",
     "create-card",
+    "stats",
   ];
   for (const id of alwaysOn) {
     for (const phase of ["front", "revealed", "done"] as Phase[]) {
@@ -129,10 +130,10 @@ test("skip: disabled only in \"done\"", () => {
 
 // ─── filterCommands ─────────────────────────────────────────────────────
 
-test("filterCommands: empty/null/undefined query → the full 17", () => {
-  expect(filterCommands("")).toHaveLength(17);
-  expect(filterCommands(null)).toHaveLength(17);
-  expect(filterCommands(undefined)).toHaveLength(17);
+test("filterCommands: empty/null/undefined query → the full 18", () => {
+  expect(filterCommands("")).toHaveLength(18);
+  expect(filterCommands(null)).toHaveLength(18);
+  expect(filterCommands(undefined)).toHaveLength(18);
 });
 
 test("filterCommands: \"create\" → exactly the two create rows, in table order", () => {

@@ -13,12 +13,12 @@
  *   top-level fields, duplicate ids, …). A corrupted or foreign JSON
  *   document must NEVER pass through silently.
  */
-import type { OstinatoData, ImportExportPort } from "./types.js";
+import type { OstinatoData, ImportExportPort, ReviewEvent } from "./types.js";
 import { DomainInvariantError } from "./types.js";
 import { assertData } from "./invariants.js";
 
 /** Top-level keys that are ALLOWED in an import document. */
-const ALLOWED_TOP = new Set(["decks", "cards"]);
+const ALLOWED_TOP = new Set(["decks", "cards", "reviews"]);
 
 /**
  * Deep-clone a plain-JSON value (the data set is plain JSON at every
@@ -89,12 +89,14 @@ export function createImportExport(): ImportExportPort {
      * @throws {DomainInvariantError} on:
      *  - not valid JSON
      *  - root is not a plain object
-     *  - unknown top-level keys (ALLOWED_TOP only: `decks`, `cards`)
+     *  - unknown top-level keys (ALLOWED_TOP only: `decks`, `cards`, `reviews`)
      *  - `decks` or `cards` not an array
+     *  - `reviews` present but not an array (a pre-log document omits it and imports clean as `reviews: []`)
      *  - any `assertData` invariant breach
-     *  - duplicate card or deck ids (assertData catches this)
+     *  - duplicate card or deck or review ids (assertData catches this)
      *  - orphan card (assertData catches this)
      *  - cardOrder set-mismatch (assertData catches this)
+     *  - review log entries with unknown card/deck ids or grade outside 1..4 (assertData catches this)
      */
     importData(json: string): OstinatoData {
       let parsed: unknown;
@@ -130,7 +132,16 @@ export function createImportExport(): ImportExportPort {
         throw new DomainInvariantError("import: 'cards' must be an array");
       }
 
-      const data = parsed as OstinatoData;
+      // Backward compat (R-1): pre-log documents import clean — the
+      // absent key becomes an empty review log, never an error.
+      if (root.reviews !== undefined && !Array.isArray(root.reviews)) {
+        throw new DomainInvariantError("import: 'reviews' must be an array");
+      }
+
+      const data = {
+        ...parsed,
+        reviews: Array.isArray(root.reviews) ? (root.reviews as ReviewEvent[]) : [],
+      } as OstinatoData;
 
       // Per-card field checks: front/back must be strings.
       for (const card of data.cards) {
@@ -185,8 +196,30 @@ export function createImportExport(): ImportExportPort {
         }
       }
 
+      // Per-review field checks (R-1 review log entries).
+      for (const review of data.reviews) {
+        if (typeof review !== "object" || review === null) {
+          throw new DomainInvariantError("import: review entry must be an object");
+        }
+        if (typeof review.id !== "string") {
+          throw new DomainInvariantError(`import: review.id must be a string (got ${typeof review.id})`);
+        }
+        if (typeof review.cardId !== "string") {
+          throw new DomainInvariantError(`import: review ${review.id}: cardId must be a string`);
+        }
+        if (typeof review.deckId !== "string") {
+          throw new DomainInvariantError(`import: review ${review.id}: deckId must be a string`);
+        }
+        if (review.grade !== 1 && review.grade !== 2 && review.grade !== 3 && review.grade !== 4) {
+          throw new DomainInvariantError(`import: review ${review.id}: grade must be 1..4`);
+        }
+        if (typeof review.reviewedAt !== "string") {
+          throw new DomainInvariantError(`import: review ${review.id}: reviewedAt must be a string`);
+        }
+      }
+
       // Full shape invariants (orphan cards, cardOrder set-match,
-      // duplicate ids, …).
+      // duplicate ids, review log refs, …).
       assertData(data);
 
       return data;

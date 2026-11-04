@@ -41,7 +41,7 @@ function mkDeck(id: string, name: string, cardOrder: string[]): Deck {
 
 function validData(): OstinatoData {
   const d1 = mkDeck("d1", "alpha", ["c1", "c2"]);
-  return { decks: [d1], cards: [mkCard("c1"), mkCard("c2")] };
+  return { decks: [d1], cards: [mkCard("c1"), mkCard("c2")], reviews: [] };
 }
 
 test("assertData: valid OstinatoData passes", () => {

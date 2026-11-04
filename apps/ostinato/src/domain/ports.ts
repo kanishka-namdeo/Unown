@@ -17,6 +17,7 @@ export type {
   OstinatoData,
   Card,
   Deck,
+  ReviewEvent,
 } from "./types.js";
 export { DomainInvariantError } from "./types.js";
 export type { StoragePort, StorageLike } from "./storage.js";

@@ -19,6 +19,10 @@ import { DomainInvariantError } from "./types.js";
  *     (the Coda Board.taskOrder invariant, per-deck)
  *  - card front/back are strings (markdown source, may be empty —
  *    an empty-front card is a user's choice, not an invariant breach)
+ *  - R-1 review log (append-only activity log): every review id is
+ *    unique; every `cardId` resolves to a card; every `deckId`
+ *    resolves AND matches the card's own `deckId`; `grade` is 1..4;
+ *    `reviewedAt` is a string
  *
  * @throws {DomainInvariantError} on the first breach
  */
@@ -58,5 +62,17 @@ export function assertData(data: OstinatoData): void {
     for (const id of seenInOrder) {
       if (!owned.has(id)) throw new DomainInvariantError(`deck ${deck.id}: cardOrder lists unknown card ${id}`);
     }
+  }
+
+  // R-1 review log invariants (the append-only activity log).
+  const reviewIds = new Set<string>();
+  for (const event of data.reviews) {
+    if (reviewIds.has(event.id)) throw new DomainInvariantError(`duplicate review id: ${event.id}`);
+    reviewIds.add(event.id);
+    if (!cardIds.has(event.cardId)) throw new DomainInvariantError(`review ${event.id}: unknown card ${event.cardId}`);
+    const card = data.cards.find((c) => c.id === event.cardId)!;
+    if (event.deckId !== card.deckId) throw new DomainInvariantError(`review ${event.id}: deck ${event.deckId} does not match card's deck ${card.deckId}`);
+    if (event.grade !== 1 && event.grade !== 2 && event.grade !== 3 && event.grade !== 4) throw new DomainInvariantError(`review ${event.id}: grade must be 1..4`);
+    if (typeof event.reviewedAt !== "string") throw new DomainInvariantError(`review ${event.id}: reviewedAt must be a string`);
   }
 }

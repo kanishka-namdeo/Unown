@@ -29,6 +29,7 @@ import type { OstinatoData, Clock, Grade } from "../domain/ports.js";
 import { DomainInvariantError } from "../domain/ports.js";
 import { createImportExport } from "../domain/io.js";
 import { createDeck, addCard } from "../domain/model.js";
+import { reviewsPerDay } from "../domain/stats.js";
 import { createLocalStorageAdapter } from "../storage/local-storage.js";
 import {
   startSession,
@@ -94,6 +95,8 @@ type AppState = {
   onListSurface: boolean;
   /** The open create form (null = closed). kind picks the form; discardArmed is the unsaved-changes guard. */
   createForm: { kind: "deck" | "card"; discardArmed: boolean } | null;
+  /** The stats overlay's open state (R-1: null = closed). */
+  statsOpen: boolean;
   /** The create actions (set once in main; the form's submit calls them). */
   createActions: CreateActions | null;
   /** The session notice (rendered under the header; cleared when the session advances). */
@@ -164,6 +167,7 @@ export async function main(): Promise<void> {
     invokingEl: null,
     onListSurface: false,
     createForm: null,
+    statsOpen: false,
     createActions: null,
     notice: null,
   };
@@ -173,7 +177,7 @@ export async function main(): Promise<void> {
   try {
     const loaded = await storage.load();
     if (loaded === null) {
-      data = { decks: [], cards: [] }; // first boot: the honest empty state
+      data = { decks: [], cards: [], reviews: [] }; // first boot: the honest empty state
     } else {
       data = io.importData(JSON.stringify(loaded)); // validate the shape
     }
@@ -461,6 +465,10 @@ function dispatchCommand(
     case "clear-session":
       actions.clearSession();
       return;
+    case "stats":
+      openStats(app);
+      renderStats(app, rerender);
+      return;
     case "create-deck":
     case "create-card":
       openCreateForm(app, id === "create-deck" ? "deck" : "card");
@@ -715,6 +723,149 @@ function renderCreateForm(app: AppState, actions: CreateActions, rerender: () =>
   // field receives focus.
   const firstField = kind === "deck" ? nameInput : data.decks.length > 0 ? deckSelect : frontInput;
   firstField?.focus();
+}
+
+// ─── The stats overlay (R-1: the heatmap modal, the T command) ─────────────
+
+/**
+ * Open the stats overlay. Mirrors openPalette/openCreateForm's state
+ * flip: capture the invoking control (Esc returns focus to it), flip
+ * the app-level flag, and let the overlay own its own paint (B-10 —
+ * never through renderBoot, which would destroy the invoking
+ * element the focus-return lane captured).
+ */
+function openStats(app: AppState): void {
+  // The palette and the create form and the stats overlay never coexist.
+  app.paletteOpen = false;
+  document.getElementById("ostinato-palette")?.remove();
+  app.createForm = null;
+  document.getElementById("ostinato-create-form")?.remove();
+  app.statsOpen = true;
+  app.invokingEl = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+}
+
+/**
+ * The stats overlay's DOM (the R-1 heatmap surface): a role=dialog
+ * modal appended to document.body BEFORE focus (the attach-before-
+ * focus D11 law), a summary line computed from the domain's
+ * `reviewsPerDay` over an 84-day window (the clock is read HERE at
+ * the UI seam — the domain is clock-injected; the wall read is the
+ * edge's job), the 12-week × 7-day grid with per-cell counts, and
+ * the Esc close lane (the overlay's own keydown — the dialog is
+ * focused, so the global handler isn't needed; focus returns to the
+ * invoking control on close).
+ */
+function renderStats(app: AppState, _rerender: () => void): void {
+  let overlay = document.getElementById("ostinato-stats");
+  if (!overlay) {
+    overlay = el("div", { id: "ostinato-stats", class: "stats-overlay" });
+    document.body.append(overlay);
+  }
+  const data = app.boot.kind === "ready" ? app.boot.data : { decks: [], cards: [], reviews: [] };
+  // The clock seam: the domain aggregates pure data; "today" is read
+  // at the UI edge (the appClock() lane — ISO-8601, no Date.now in the
+  // domain). 84 days = 12 weeks (the heatmap's honest window).
+  const rows = reviewsPerDay(data.reviews, 84, new Date().toISOString().slice(0, 10));
+  const total = rows.reduce((sum, r) => sum + r.count, 0);
+
+  const dialog = el(
+    "div",
+    {
+      class: "stats-dialog",
+      role: "dialog",
+      "aria-label": "Review activity",
+      tabindex: "-1",
+    },
+  );
+  dialog.setAttribute("aria-modal", "true");
+  dialog.append(el("h2", { text: "Review activity", class: "stats-title" }));
+  dialog.append(
+    el("p", {
+      text: `${total} review${total === 1 ? "" : "s"} in the last 84 days`,
+      class: "stats-summary",
+    }),
+  );
+
+  // The heatmap: 12 week-columns × 7 day-rows (Mon..Sun). The 84-day
+  // window ends at `today`; day-of-week of index 0 is the window's
+  // start. Rows are days-of-week, columns are weeks — build in
+  // column-major order (week w, day d → date).
+  const grid = el("div", {
+    class: "stats-grid",
+    role: "grid",
+    tabindex: "0",
+    "aria-label": "Review activity heatmap, 12 weeks",
+  });
+  for (let w = 0; w < 12; w++) {
+    for (let d = 0; d < 7; d++) {
+      const idx = w * 7 + d;
+      if (idx >= rows.length) break;
+      const day = rows[idx];
+      const cell = el("div", {
+        class: "stats-cell",
+        role: "gridcell",
+        "data-count": String(day.count),
+        "aria-label":
+          day.count === 0
+            ? `no reviews on ${day.date}`
+            : `${day.count} review${day.count === 1 ? "" : "s"} on ${day.date}`,
+      });
+      if (day.count === 0) cell.setAttribute("aria-disabled", "true");
+      // Each day row's Monday (d === 1) carries the day-of-week label.
+      if (d === 1) {
+        const dow = el("span", { text: "Mon", class: "stats-cell-dow" });
+        dow.setAttribute("aria-hidden", "true");
+        cell.append(dow);
+      }
+      grid.append(cell);
+    }
+  }
+  dialog.append(grid);
+  overlay.replaceChildren(dialog);
+
+  // The Esc lane: close + focus-return (the D8 close lane, keyboard-
+  // clean; the overlay's own keydown because the dialog is focused —
+  // the global handler swallows nothing, the form's unsaved-changes
+  // guard doesn't apply to a read-only surface).
+  const close = () => {
+    app.statsOpen = false;
+    overlay?.remove();
+    (app.invokingEl ?? document.body).focus();
+    app.invokingEl = null;
+  };
+  dialog.addEventListener("keydown", (e: KeyboardEvent) => {
+    if (e.key === "Escape") {
+      e.preventDefault();
+      close();
+      return;
+    }
+    // Grid arrow navigation: move focus between cells (the grid
+    // region's own keydown; the create form has no in-dialog arrow
+    // navigation, so this is the honest addition — the e2e chunk
+    // pins what lands here).
+    const focused = document.activeElement;
+    if (!(focused instanceof HTMLElement)) return;
+    if (!focused.classList.contains("stats-cell")) return;
+    const cells = Array.from(grid.querySelectorAll<HTMLElement>(".stats-cell"));
+    const i = cells.indexOf(focused);
+    if (i === -1) return;
+    let next = -1;
+    const col = i % 12, row = Math.floor(i / 12);
+    switch (e.key) {
+      case "ArrowRight": next = row * 12 + Math.min(col + 1, 11); break;
+      case "ArrowLeft":  next = row * 12 + Math.max(col - 1, 0); break;
+      case "ArrowDown":  next = Math.min(row + 1, 6) * 12 + col; break;
+      case "ArrowUp":    next = Math.max(row - 1, 0) * 12 + col; break;
+      default: return;
+    }
+    if (next !== -1 && next < cells.length) {
+      e.preventDefault();
+      if (cells[next] instanceof HTMLElement) cells[next].focus();
+    }
+  });
+  // D11: attach-before-focus — the dialog is in the DOM before it
+  // receives focus.
+  dialog.focus();
 }
 
 function runSelectedPaletteCommand(

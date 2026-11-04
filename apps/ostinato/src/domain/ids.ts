@@ -27,15 +27,16 @@ function randomTail(): string {
 }
 
 /**
- * Generate a card or deck id that is not already present. Retry on
- * collision (max 32 attempts — enough for any realistic set size given
- * 2^21 random space per time tick; throws DomainInvariantError so the
- * caller gets a guard failure, not an infinite loop).
+ * Generate a card, deck, or review id that is not already present.
+ * Retry on collision (max 32 attempts — enough for any realistic set
+ * size given 2^21 random space per time tick; throws
+ * DomainInvariantError so the caller gets a guard failure, not an
+ * infinite loop).
  *
- * `prefix` keeps ids readable (`card_…` / `deck_…`).
+ * `prefix` keeps ids readable (`card_…` / `deck_…` / `review_…`).
  */
 export function newUniqueId(
-  prefix: "card" | "deck",
+  prefix: "card" | "deck" | "review",
   taken: ReadonlySet<string>,
 ): string {
   const base = timePrefix();

@@ -14,7 +14,7 @@
  * P0 #2 contract; a construction-time `now` is the one accepted
  * exception: the caller is the edge).
  */
-import type { Card, Deck, OstinatoData, Grade } from "./types.js";
+import type { Card, Deck, OstinatoData, Grade, ReviewEvent } from "./types.js";
 import { DomainInvariantError } from "./types.js";
 import { assertData } from "./invariants.js";
 import { newUniqueId } from "./ids.js";
@@ -29,6 +29,12 @@ function takenDeckIds(data: OstinatoData): Set<string> {
 function takenCardIds(data: OstinatoData): Set<string> {
   const s = new Set<string>();
   for (const c of data.cards) s.add(c.id);
+  return s;
+}
+
+function takenReviewIds(data: OstinatoData): Set<string> {
+  const s = new Set<string>();
+  for (const r of data.reviews) s.add(r.id);
   return s;
 }
 
@@ -56,6 +62,7 @@ export function createDeck(
   const next: OstinatoData = {
     decks: [...data.decks, deck],
     cards: data.cards,
+    reviews: data.reviews,
   };
   assertData(next);
   return next;
@@ -95,6 +102,7 @@ export function addCard(
         : d,
     ),
     cards: [...data.cards, card],
+    reviews: data.reviews,
   };
   assertData(next);
   return { data: next, card };
@@ -119,7 +127,7 @@ export function updateCard(
     };
   });
   if (!found) throw new DomainInvariantError(`unknown card: ${cardId}`);
-  const next: OstinatoData = { decks: data.decks, cards };
+  const next: OstinatoData = { decks: data.decks, cards, reviews: data.reviews };
   assertData(next);
   return next;
 }
@@ -139,6 +147,7 @@ export function removeCard(data: OstinatoData, cardId: string, now: string): Ost
         : d,
     ),
     cards: data.cards.filter((c) => c.id !== cardId),
+    reviews: data.reviews,
   };
   assertData(next);
   return next;
@@ -149,6 +158,7 @@ export function removeDeck(data: OstinatoData, deckId: string, now: string): Ost
   const next: OstinatoData = {
     decks: data.decks.filter((d) => d.id !== deckId),
     cards: data.cards.filter((c) => c.deckId !== deckId),
+    reviews: data.reviews,
   };
   assertData(next);
   return next;
@@ -177,6 +187,7 @@ export function reorderDeck(data: OstinatoData, deckId: string, order: string[],
       d.id === deckId ? { ...d, cardOrder: [...order], updatedAt: now } : d,
     ),
     cards: data.cards,
+    reviews: data.reviews,
   };
   assertData(out);
   return out;
@@ -184,8 +195,11 @@ export function reorderDeck(data: OstinatoData, deckId: string, order: string[],
 
 /**
  * Apply a grade to a card via the SM-2 scheduler. Returns the updated
- * data set with the card's `sm2` state advanced. This is the single
- * entry point from the review runner (O-3) into the scheduler.
+ * data set with the card's `sm2` state advanced AND a `ReviewEvent`
+ * appended to the review log (R-1). The append rides the same
+ * transition — every-transition persistence: a session killed here
+ * restores the log by construction. This is the single entry point
+ * from the review runner (O-3) into the scheduler.
  */
 export function gradeCard(
   data: OstinatoData,
@@ -202,12 +216,21 @@ export function gradeCard(
     return graded;
   });
   if (!found) throw new DomainInvariantError(`unknown card: ${cardId}`);
-  const next: OstinatoData = { decks: data.decks, cards };
+  const gradedCard = data.cards.find((c) => c.id === cardId)!;
+  const taken = new Set<string>([...takenReviewIds(data), ...takenCardIds(data), ...takenDeckIds(data)]);
+  const event: ReviewEvent = {
+    id: newUniqueId("review", taken),
+    cardId: gradedCard.id,
+    deckId: gradedCard.deckId,
+    grade,
+    reviewedAt: now,
+  };
+  const next: OstinatoData = { decks: data.decks, cards, reviews: [...data.reviews, event] };
   assertData(next);
   return next;
 }
 
 /** Empty data set — the starting point for a new install. */
 export function emptyData(): OstinatoData {
-  return { decks: [], cards: [] };
+  return { decks: [], cards: [], reviews: [] };
 }
