@@ -22,6 +22,16 @@ validation log, the ticket queue (O-1..O-6) and the resume state. Push
 lane direct to `main`; hardening-first; Unown's version bumps only on
 Unown changes (app-round commits ride `## [Unreleased]`).
 
+Progress: **O-1 LANDED** (`03541d34` — the skeleton + the C1–C3
+calibration baselines + the B-1/B-2 bug-register harvest; CI success)
+and **O-2 LANDED** (2026-11-04 — the domain core: the Wozniak SM-2
+scheduler, the deck/card model, byte-stable import/export, the storage
+[U] gate decided localStorage + atomic-writes; 27/27 both lanes, unit
+family 2152/0; V-12/V-13/V-14 receipted; receipt tree-verified 10/10).
+Next in the queue: the A2H pair (A2H-1 the abort-notify collision fix,
+A2H-2 the pty_common pump-while-typing harness fix), then O-3 (the
+review runner + keyboard surface).
+
 The spend-and-memory-health round (2026-11-04) is COMPLETE and graduated to
 its own log: `docs/spend-and-memory-health-round-session.md` — the
 settings-evolution lineage's S2-ledger head, both pinned BM-3 search misses

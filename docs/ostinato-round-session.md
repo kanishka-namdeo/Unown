@@ -83,8 +83,27 @@ All landed in the round-opening commit:
 
 ## Environment checkpoint
 
-The eighth lineage's bring-up state, 2026-11-04 (the newest of the
-lineage checkpoints — [SESSION.md](SESSION.md) keeps the index):
+The tenth lineage's resume state, 2026-11-04 (the newest — the O-2
+session; [SESSION.md](SESSION.md) keeps the index):
+
+- **No recycle this time**: the ninth lineage's filesystem SURVIVED
+  (repo at `03541d34` clean, `.creds`, `tickets/`, `download/`,
+  `unown-home/`, and the stack's bridge/engine processes still up —
+  engine 1h21m old). The recycle had earlier taken `.tools/`, pip's
+  `pyte`, and `/home/z/my-project/scripts/` (V-1's class, a THIRD
+  occurrence): rebuilt byte-fresh — bun 1.4.3 re-pinned, `pyte`
+  re-installed, `dispatch-bg.py` re-authored, `.env` re-staged, and the
+  `dispatch-file.py` wrapper re-authored WITH the new `--session <id>`
+  pin (V-12's cure). An accidental fresh clone nested at `Unown/unown`
+  was removed before any gate ran against it.
+- Engine build drift re-caught the V-6 way: engine @`15430eb5` vs agent
+  @`03541d34` → idle-window `unown engine restart` → aligned
+  (`v0.0.55 · 03541d34`), the receipt lane's second live use.
+- H-1 smoke re-armed: `UNOWN_OK` exit 0 in 2.7 s (the fastest yet).
+- O-2 dispatched from the surviving tree without re-cloning.
+
+The eighth lineage's bring-up state, 2026-11-04 (the prior lineage
+checkpoint):
 
 - Sandbox recycled before this session; re-cloned @ `189fa033` =
   `origin/main` into `/home/z/my-project/Unown`; PAT rewired into the git
@@ -124,6 +143,9 @@ lineage checkpoints — [SESSION.md](SESSION.md) keeps the index):
 | V-9 | **The PTY backpressure law**: keystrokes sent to a streaming TUI are silently dropped unless the parent concurrently drains PTY output. Differential receipt: X1/X2 (no-read-while-typing) lost the probe chars 2/2; Y1/Y2 (read-while-typing) landed them 2/2; the six-run race matrix and the two-run determinism matrix lost `/abort` 8/8 the same way (2026-11-04, `/tmp/repro-abort/`) | infra-flake (harness law; product-robustness note B-2) | Operator harness rule: pump while typing during active streams. `pty_common.send` fix queued as A2H-2/H-4. |
 | V-10 | The C2 canary's variant B run: A2 authored the module + tests but hit the 8-turn cap with 2 of 8 authored tests still red (`bun test` rc 1 at scoring) — the first A2-lane measured failure of the baseline (2026-11-04, receipt `run-20261104T*/c2.jsonl`) | genuine-gap (A2 capacity on small-code tickets at the chunk cap) | Receipted as the baseline's honest spread (C2 2/3); no fix ticket — the measurement IS the artefact; the round's chunk economics exist to manage this class. |
 | V-11 | The O-1 receipt's closing prose said "exactly the 12 files above" while listing 13 — the operator tree-verify (H-2) caught the count slip; all 13 listed files exist, nothing extra on the tree | prompt-brittleness (A2 receipt prose; no overclaim — every named file verified) | The catch receipted here; H-2's first live catch of the round. |
+| V-12 | **The continuation hijack**: `unown -c` ("continue this directory's latest session") attached the O-2 chunk-3 dispatch to the SMOKE canary's session (`01a1a5a9`, created 25 min earlier in the same cwd) instead of the O-2 session — 8 turns burned in the wrong context, error-during-execution at the cap (2026-11-04, tenth lineage) | operator-lane dispatch defect (prompt-brittleness class: ambient state wins over intent) | Not charged to A2 (the fairness law — operator contamination). Laws landed: continuation dispatches PIN the session (`--resume <id>`, now first-class in `dispatch-file.py`); the H-1 smoke canary runs in a scratch cwd so it can never become the repo's "latest session". |
+| V-13 | O-2's original session hit the 4-chunk ticket cap with the context at ~502k cache-read tokens — the last chunks spent turns on edit-atomicity confusion ("the whole edit call failed"), the fat-session degradation the seventh lineage priced | genuine-gap (A2 capacity; the known economics) | The fresh-context-worker remedy (same receipt lane): a NEW session took the ticket finalization self-contained (operator ground-truth brief: the exact 4 reds, the oracle formula, the missing files) and closed it in 3 chunks (8+8+7 turns, the last under cap). Operator amendment: the ticket's 5th+ chunks priced to the fat-session lesson, receipted here. |
+| V-14 | **The boundary verifier false positive**: `DOM_GLOBS` (`/\b(document|window|indexedDB|localStorage|sessionStorage)\./`) matched SENTENCE-ENDING PROSE — io.ts's comments "…an import document." / "…a JSON document." — redding the boundary lane against clean code; the earlier storage.ts catch ("window.localStorage" in a comment) was the same class | prompt-brittleness (verifier defect — the scanner was the bug, not the domain code) | Fixed at the verifier: the regex now requires an identifier after the dot (`\.\w` — genuine member access trips, prose is immune), plus the belt (no `window.`/`localStorage.` literal anywhere in `src/domain/*.ts`, comments included). A2 landed both layers + the receipt's D4 records the class. Standing lesson: when an external verifier reds against prose-clean code, diagnose the verifier FIRST (queued as H-7). |
 
 Bug register (user-visible findings, the failure→benchmark reflex's
 input):
@@ -156,7 +178,7 @@ input):
 | Ticket | Scope | Verifier | Status |
 |---|---|---|---|
 | O-1 | Calibration canaries C1–C3 (baseline turns-to-done/cost) + the app skeleton at `apps/ostinato/` (zero-dep PWA scaffold + AGENTS.md draft) | canary receipts + both unit lanes boot | **LANDED 2026-11-04** — canaries C1 3/3 · C2 2/3 (B cap-overflow receipted) · C3 3/3; skeleton 13 files, Lane A 5/5, Lane B 5/5, receipt tree-verified |
-| O-2 | Domain core: deck/card model, SM-2 scheduler, import/export + Lane A/B tests | both unit lanes + app tsc + invariants pins | queued |
+| O-2 | Domain core: deck/card model, SM-2 scheduler, import/export + Lane A/B tests | both unit lanes + app tsc + invariants pins | **LANDED 2026-11-04** — 27/27 both lanes (unit family 2152/0 = 2130 + 22); receipt tree-verified 10/10 FILES, no extras; storage [U] DECIDED (localStorage + atomic-writes, D1); SM-2 = Wozniak 1990 pinned (D2); V-12/V-13/V-14 receipted; 7 dispatches (4 on the original session + 3 fresh-context finalization, one hijacked chunk operator-priced) |
 | O-3 | Review runner + keyboard surface (palette, search, j/k, selection, states) | unit lanes + keyboard-focused e2e stub | queued |
 | O-4 | Hardening e2e battery: zero-mouse flow, axe both schemes, offline, crash-resume, resize | the e2e battery green | queued |
 | O-5 | PWA + capture lane + root wiring + CI job (the Coda C5 pattern) | CI coda-style job + capture receipts | queued |
@@ -193,6 +215,27 @@ dispatch (fresh session per ticket; incremental receipt from chunk 1):
 
 ## Gate run
 
+The O-2 push battery (tenth lineage, run on the tree before the push —
+the hints-round lesson honored, unit suite after the rail regen):
+
+- `bun run typecheck` — **rc 0**.
+- `bun run lint` — **rc 0**, 0 errors / 143 warnings (the vendored 142
+  baseline + 1 from the app's new domain files; warnings never block,
+  the count receipted honestly).
+- `bun run check:docs` — **rc 0**.
+- `bun run check:changelog` — **rc 0**, rail matches (54 stops / 528
+  entries after the O-2 entry, 53 dated).
+- `bun run check:blog` — **rc 0**, 45 posts / 112 tags.
+- `bun run check:benchmarks` — **rc 0**, 6 tracks, 6 resolved.
+- `bun run check:claims` — **rc 0**, 62 page literals resolve.
+- `bun run test:unit` — **rc 0, 2152 pass / 0 fail** (the O-1 family
+  baseline 2130 + the O-2 domain core's 22 new tests).
+- App lanes: `cd apps/ostinato && bun test` **27/0**; `bun test
+  apps/ostinato` **27/0** — the same 27 in both forms (the masked-lane
+  pair the Coda pattern pins).
+- CI on the O-1 push (`03541d34`): **state success** (Vercel ✓) —
+  checked via the API before this push.
+
 The round-opening commit's own gate battery, run on this tree before the
 push (the hints-round lesson honored — the unit suite ran AFTER the rail
 regen):
@@ -227,9 +270,12 @@ A red gate blocks the push; none red.
 3. Stack: `bun run agent:start` (bridge :3031 + engine :3030; mortal
    across recycles); health: `curl -s localhost:3031/health`.
 4. Doctor: `bun bin/unown doctor` — expect "ready to chat" (2 ⚠ honest).
-5. Dispatch: `python3 /home/z/my-project/scripts/dispatch-bg.py <name>
-   bun bin/unown -p "<brief>"` then poll
-   `/home/z/my-project/tickets/logs/<name>.exit`.
+5. Dispatch: `python3 /home/z/my-project/scripts/dispatch-file.py <name>
+   <cwd> <prompt.md> [--session <id>]` then poll
+   `/home/z/my-project/tickets/logs/<name>.exit`. **Pin the session on
+   every continuation** (`--session <id>` — V-12's law: bare `-c`
+   attaches to whatever session is "latest" in the cwd, and the smoke
+   canary's own session can win that race).
 6. Pre-dispatch: run the H-1 smoke canary + the H-3 PTY audit lanes.
 7. This log owns the round state; `A2_GROUND_TRUTH.md` owns capability
    truth; [SESSION.md](SESSION.md) owns the index.

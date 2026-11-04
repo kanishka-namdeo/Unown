@@ -17,7 +17,10 @@
  *   - "bun:test" (tests)
  *   - nothing Node-specific (fs/path/process/http/crypto/…)
  *   - no DOM/Node global reference (document./window./indexedDB/
- *    localStorage)
+ *    localStorage — the regex pins member ACCESS like
+ *    `document.getElementById` or `window.localStorage`; English
+ *    prose ending in the word "document." must not trip it, hence
+ *    the `\w` after the dot (V-14 regex hardening))
  *   - and no self-import of a sibling module by its resolved
  *     extensionless specifier — a module importing itself creates a
  *     cycle bun reports as "escapes src/domain". Domain modules
@@ -46,7 +49,14 @@ const NODE_BUILTINS = new Set([
   "node:stream", "stream", "node:net", "net", "node:url", "url",
   "node:util", "util",
 ]);
-const DOM_GLOBS = /\b(document|window|indexedDB|localStorage|sessionStorage)\./;
+/**
+ * V-14 hardening: the regex requires an identifier after the dot
+ * (`\.\w`) so it pins genuine member access (`document.getElementById`,
+ * `window.localStorage`) while sentence-ending prose ("…an import
+ * document.") stays immune. The storage.ts comment rewording is the
+ * belt; this is the braces.
+ */
+const DOM_GLOBS = /\b(document|window|indexedDB|localStorage|sessionStorage)\.\w/;
 
 async function walk(dir: string): Promise<string[]> {
   const out: string[] = [];

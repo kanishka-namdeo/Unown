@@ -6,13 +6,13 @@
 
 ## Task playbooks
 - Verify domain code purity by grepping for runtime DOM/Node globals, ensuring matches are restricted to documentation recipes and test comments/regexes (accept `grep_rc=0`).
-- In Unown's docs/SESSION.md, the graduation procedure replaces the ACTIVE ROUND section with a completed-round paragraph containing shipped items, receipts, and a graduation pointer, adds a 'no round open' heading, and prepends carry-overs to 'The next round's queue' without modifying existing items.
 
 ## Environment
 - In Unown, dual-incarnation races on a shared main branch are operational reality; the protocol requires claiming every ticket in the round-log ledger before dispatch, fetching before every push, adopting-then-re-gating on collision, and never force-pushing.
 - In Unown's apps/coda, tsc-green and bun-test-green do not guarantee browser-link-green; every type-only import requires the `type` keyword, and every UI surface requires a real browser boot check before commit to prevent 'Booting-forever' ship blockers.
 
 ## Facts
+- Unown's SM-2 scheduler in scheduler.ts had an inverted Wozniak formula; the correct interval computation is EF' = EF + (0.1 - (5-q) * (0.08 + (5-q) * 0.02)) with q mapped as g-1
 - Project 'Unown' is located at /home/z/my-project/Unown.
 - In /home/z/my-project/Unown, a successful terminal operation is indicated by the output 'UNOWN_OK'.
 - markdown.ts is confirmed to be outside the runtime import closure
@@ -125,4 +125,4 @@
 - Stealth verification suite on bot.sannysoft.com: all 10 checks (webdriver, userAgent, platform, userAgentData, timezone, locale, screen, viewport, plugins, window.chrome) pass; 0 FAIL rows in Intoli tests. (Restored by hand 2026-11-01 — second occurrence of the dream-render-prunes-landing-quoted-lines class, issue #46; moved here to the durable lane.)
 - Parley password hashing: scrypt N=16384 r=8 p=1 (src/lib/parley/password.ts). Restored by hand 2026-10-29 after AutoDream reconciles twice erased the fact (upstream 79->66 render, then the F1/F2 bcrypt poison round). Never let a memory answer overwrite this without reading the source.
 
-<!-- unown: rendered 110/112 memories via Mem0 (backend: lexical) · 2 oldest pruned at render (cap 110; hard-won rules immune) at 2026-11-04T07:30:33.482Z -->
+<!-- unown: rendered 110/113 memories via Mem0 (backend: lexical) · 3 oldest pruned at render (cap 110; hard-won rules immune) at 2026-11-04T08:06:51.746Z -->

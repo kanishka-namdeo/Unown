@@ -68,7 +68,10 @@ PROPOSE-stage candidates (none canaried, none promoted):
   Standing practice from the spend round's receipt-overclaim lesson,
   formalized into this round's gate: the receipt's FILES list is
   re-verified against the tree, never trusted. Metric: overclaims
-  surviving gate = 0.
+  surviving gate = 0. **Live record 2026-11-04**: O-1's receipt caught
+  the 12-vs-13 prose slip (V-11); O-2's receipt verified clean — 10/10
+  files on the tree, zero extras (the strongest form: nothing claimed
+  that does not exist, nothing existing that goes unclaimed).
 - **H-3 — PTY keyboard/TUI audit as a pre-ticket ritual (operator lane).**
   The standing PTY lanes (25 scenario specs, ~30 scripts under
   `scripts/tui-capture/`) re-run on each fresh lineage before the first
@@ -101,6 +104,17 @@ PROPOSE-stage candidates (none canaried, none promoted):
   message-level note. Metric: the abort PTY lane under a fresh isolated
   home shows the notify 3/3; zero new TUI-consistency regressions in the
   standing lanes.
+- **H-7 — verifier-first diagnosis (operator lane).** When an external
+  verifier reds against prose-clean code, diagnose the VERIFIER before
+  the code it reds on — regex/source scanners match prose as readily as
+  member access. Spawning evidence: V-14 (2026-11-04, O-2) — the
+  boundary lane's `DOM_GLOBS` redded `io.ts` twice over comments ending
+  sentences with the word "document."; the first catch (`storage.ts`'s
+  "window.localStorage" comment) looked like the code's fault, the
+  second proved the scanner's. Fix landed both layers (the regex now
+  requires an identifier after the dot; the belt: no global literal in
+  domain comments). Metric: verifier false-positives filed as code
+  defects = 0 for the rest of the round.
 
 A2-side candidates (skills, subagents, hooks, review checks) enter at
 PROPOSE only from receipted failures observed during O-ticket driving —
