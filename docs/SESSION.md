@@ -37,7 +37,10 @@ pump-while-typing on send/key/type_prompt; the product-side
 investigation receipted input preservation HOLDING on v0.0.56 across
 the volume ladder (the law is condition-dependent; the fix is
 determinism insurance); standing lanes green on the fixed harness;
-the registry's SECOND PROMOTED row (H-4).
+the registry's SECOND PROMOTED row (H-4). **A2H-3 LANDED** — V-18's
+durable fix: the unit lane anchored
+(`--path-ignore-patterns=data/self-learning/**`), operator-reverified
+with a live fixture (2152/0/154).
 Next in the queue: O-3 (the review runner + keyboard surface).
 
 The spend-and-memory-health round (2026-11-04) is COMPLETE and graduated to

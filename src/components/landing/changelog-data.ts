@@ -30,10 +30,10 @@ export interface ChangelogStop {
   groups: ChangelogGroup[];
 }
 
-export const CHANGELOG_TOTAL_ENTRIES = 530;
+export const CHANGELOG_TOTAL_ENTRIES = 531;
 
 export const CHANGELOG_TOTALS: Record<ChangelogBucket, number> = {
-  "Added": 246,
+  "Added": 247,
   "Changed": 32,
   "Deprecated": 0,
   "Removed": 3,
@@ -46,9 +46,9 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
   {
     "label": "Unreleased",
     "date": null,
-    "total": 23,
+    "total": 24,
     "counts": {
-      "Added": 15,
+      "Added": 16,
       "Changed": 0,
       "Deprecated": 0,
       "Removed": 0,
@@ -60,6 +60,10 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
       {
         "bucket": "Added",
         "items": [
+          {
+            "title": "A2H-3 lands: the unit lane anchored against the engine's sandbox pollution (V-18's durable fix, 2026-11-04)",
+            "behavior": false
+          },
           {
             "title": "A2H-2 lands: the PTY harness's pump-while-typing hardening (B-2/V-9's harness half)…",
             "behavior": false
