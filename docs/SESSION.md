@@ -8,6 +8,23 @@ archaeology. When a round completes, its log graduates to a round-specific
 
 ---
 
+## ACTIVE ROUND — the Reprise round (2026-11-05, OPENED by the fourteenth lineage)
+
+The Ostinato engagement's P1 continuation round is **OPEN**:
+`docs/reprise-round-session.md` — the PRD's P1 backlog (stats heatmap,
+deck-level review settings, CSV Anki-style import, the in-app `?`
+shortcut sheet) ships through A2 tickets R-1..R-5 under the inherited
+freeze law: the full e2e battery, Lane A/B, app tsc, the zero-dep hash
+and the precache derivation proof stay green through every ticket. The
+round opened on the receipted tree at `a83336f4` + the teardown-refresh
+commit `6688a9c0` (the fourteenth lineage's ground-truth + capability-
+matrix refresh); the pre-ticket baseline is ALL GREEN (unit 2223/0,
+rail 55/535, blog 46/116, claims 62/62). The queue and the per-ticket
+verifiers live in the round log. Next: R-1 (the review log + stats
+heatmap) after the H-1 smoke canary.
+
+---
+
 ## COMPLETED ROUND — the Ostinato round (2026-11-04, CLOSED by the thirteenth lineage)
 
 The DRIVE-track app round of the A1 engagement (STABILISE × HARDEN ×

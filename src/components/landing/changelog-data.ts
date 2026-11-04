@@ -30,10 +30,10 @@ export interface ChangelogStop {
   groups: ChangelogGroup[];
 }
 
-export const CHANGELOG_TOTAL_ENTRIES = 535;
+export const CHANGELOG_TOTAL_ENTRIES = 536;
 
 export const CHANGELOG_TOTALS: Record<ChangelogBucket, number> = {
-  "Added": 251,
+  "Added": 252,
   "Changed": 32,
   "Deprecated": 0,
   "Removed": 3,
@@ -46,9 +46,9 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
   {
     "label": "Unreleased",
     "date": null,
-    "total": 28,
+    "total": 29,
     "counts": {
-      "Added": 20,
+      "Added": 21,
       "Changed": 0,
       "Deprecated": 0,
       "Removed": 0,
@@ -60,6 +60,10 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
       {
         "bucket": "Added",
         "items": [
+          {
+            "title": "The Reprise round opens — the Ostinato engagement's P1 continuation (2026-11-05)…",
+            "behavior": false
+          },
           {
             "title": "The Ostinato round closes — O-6 lands: the round's closeout…",
             "behavior": false
