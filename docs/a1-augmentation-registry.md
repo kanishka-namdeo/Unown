@@ -184,13 +184,22 @@ PROPOSE-stage candidates (none canaried, none promoted):
   with the controlled `setup`-writes-`settings.json` experiment as the
   root-cause receipt). Metric: the hint and picker lanes pass WIPED
   homes ×3 consecutive, ambient `UNOWN_HOME` deliberately exported.
-  Stage: **PROPOSE — CANARY LIVE (first half green 2026-11-05)**: the
-  A2H-5 lane (the env-filter shape) closed through A2 in two chunks
-  (session `01a1aa60…`, 0 operator unblocks; wiped-home ×3 + the
-  operator's independent rerun all exit 0 — receipt
-  [a2h5.md](../benchmarks/etude-round/receipts/a2h5.md)); the A2H-6
-  lane (the picker + the pane-aware helper, the preferred shape) is the
-  remaining canary before any promotion gate.
+  Stage: **PROPOSE → CANARY COMPLETE (both halves green, 2026-11-05)**:
+  A2H-5 (the env-filter shape, hint lane) closed through A2 in two
+  chunks and A2H-6 (the preferred pane-aware-helper shape, picker lane
+  + `pty_common.py`) closed in three — sessions `01a1aa60…` and
+  `01a1aa68…`, 0 operator unblocks; wiped-home ×3 per lane + the
+  operator's independent reruns all exit 0 (receipts
+  [a2h5.md](../benchmarks/etude-round/receipts/a2h5.md) ·
+  [a2h6.md](../benchmarks/etude-round/receipts/a2h6.md)); the
+  regression bar met (footer-quiet 9/9 after the V-7 engine-drift cure,
+  resume-hint ALL HELD on a wiped home); cost $0 metered across 5 A2
+  chunks. **GATE-READY — the promotion decision is reserved to the
+  operator** (the directive's for-approval bar): measurable improvement
+  cold-home 0/2 lanes → 2/2; regression-detection neutral-or-better;
+  no keyboard/TUI regressions (the V-7 variance root-caused
+  environment-class); retention by construction (durable shared-harness
+  code, the same lane H-8 rode).
 
 A2-side candidates (skills, subagents, hooks, review checks) enter at
 PROPOSE only from receipted failures observed during O-ticket driving —

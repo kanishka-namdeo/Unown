@@ -11,6 +11,7 @@
 - In Unown, a family-baseline test pollution pitfall occurs when `bun test src` collects fixtures from `data/self-learning/**`; the verified fix is to add `--path-ignore-patterns=data/self-learning/**` to the `test:unit` script in package.json
 
 ## Environment
+- In Unown scripts/tui-capture/verify_resume_hint.py, the setup subprocess env must drop ambient UNOWN_HOME to prevent leaks; implement via H-8 filter, env_extra(), and explicit PATH.
 - Hardened DOM_GLOBS verifier regex in boundary.test.ts to require an identifier after the dot (\b(document|window|indexedDB|localStorage|sessionStorage).\w) to prevent false positives from prose while catching genuine DOM member access.
 - In the Unown project's interactive-mode.ts, the showStatus back-to-back reuse branch now requires message === lastStatusMessage to refresh in place; different text appends its own spacer+line. This fixes the B-1 collision by covering both orderings without changing the API.
 - In /home/z/my-project/Unown, the `renderBoot` restructure in `apps/ostinato/src/ui/app.ts` (B-3 + B-4) involved moving top-of-ready-path `persistAll` logic, verified byte-exact before and after editing.
@@ -117,5 +118,5 @@
 - Stealth verification suite on bot.sannysoft.com: all 10 checks (webdriver, userAgent, platform, userAgentData, timezone, locale, screen, viewport, plugins, window.chrome) pass; 0 FAIL rows in Intoli tests. (Restored by hand 2026-11-01 — second occurrence of the dream-render-prunes-landing-quoted-lines class, issue #46; moved here to the durable lane.)
 - Parley password hashing: scrypt N=16384 r=8 p=1 (src/lib/parley/password.ts). Restored by hand 2026-10-29 after AutoDream reconciles twice erased the fact (upstream 79->66 render, then the F1/F2 bcrypt poison round). Never let a memory answer overwrite this without reading the source.
 
-<!-- unown: rendered 103/103 memories via Mem0 (backend: lexical) at 2026-11-05T05:52:14.802Z -->
+<!-- unown: rendered 104/104 memories via Mem0 (backend: lexical) at 2026-11-05T06:35:52.847Z -->
 

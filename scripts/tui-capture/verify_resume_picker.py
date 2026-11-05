@@ -28,7 +28,7 @@ import sys
 import time
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from pty_common import UnownPty, dismiss_first_flights, make_logger, UNOWN_BIN  # noqa: E402
+from pty_common import UnownPty, answer_first_run_gate, dismiss_first_flights, make_logger, UNOWN_BIN  # noqa: E402
 
 HOME = os.environ.get("VERIFY_HOME", "/tmp/unown-picker-home")
 WORK_DIR = "/tmp/unown-picker-verify"
@@ -80,6 +80,7 @@ def main() -> None:
     # 1 — make a real user-lane session
     say("step 1: create a user-lane session (short turn + /quit)")
     s = UnownPty(log, cwd=WORK_DIR, extra_args=[], env_extra={"HOME": HOME})
+    answer_first_run_gate(s, log)
     s.wait_ready(timeout=90)
     dismiss_first_flights(s, log)
     s.type_prompt("Say the word pineapple and nothing else.")
@@ -131,6 +132,7 @@ def main() -> None:
     # 3 — boot the TUI again and open /resume: BOTH must be listed
     say("step 3: boot TUI, open /resume, assert BOTH stores are listed")
     s2 = UnownPty(log, cwd=WORK_DIR, extra_args=[], env_extra={"HOME": HOME})
+    answer_first_run_gate(s2, log)
     s2.wait_ready(timeout=90)
     dismiss_first_flights(s2, log)
     time.sleep(1)

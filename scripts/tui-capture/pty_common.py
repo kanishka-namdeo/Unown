@@ -329,6 +329,30 @@ def dismiss_first_flights(session, log, attempts=3):
     return True
 
 
+def answer_first_run_gate(session, log):
+    """Answer the pre-TUI first-run provider gate if it is on the pane.
+
+    On a wiped/isolated home the FIRST TUI boot blocks before the normal
+    ready anchor on: "First run — no provider connected yet... Enter = guided
+    setup / n = keep the bundled bridge for now [Y/n]". The gate is CORRECT
+    product behavior; the harness meets it: send 'n' then Enter to keep the
+    bundled bridge. A no-op on warm homes (same contract as
+    dismiss_first_flights). Returns True when a gate was answered, False
+    when not shown.
+    """
+    session.pump(1.0)
+    pane = session.pane_text()
+    if "First run" in pane and "no provider connected yet" in pane:
+        log("first-run gate observed — answering 'n' (keep the bundled bridge)")
+        session.send("n", delay=0.15)
+        session.pump(0.3)
+        session.send("\r", delay=0.3)
+        session.pump(0.8)
+        log("first-run gate answered")
+        return True
+    return False
+
+
 class PaneTimeout(Exception):
     pass
 

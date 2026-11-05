@@ -27,13 +27,15 @@ B-14 the picker lane's fresh-boot first-run-gate block) — tickets
 time-tracking + invoicing PWA at `apps/tempo/`, for approval at the E-0
 gate; the benchmark baseline + calibration canaries live at
 `benchmarks/etude-round/`; the registry re-opened EMPTY for the round
-with **H-9** (fresh-boot gate awareness) at PROPOSE for approval — **its
-first canary is GREEN 2026-11-05**: A2H-5 CLOSED through A2 in two chunks
-(the hint lane's env-filter fix; wiped-home ×3 + the operator's
-independent rerun exit 0, receipt
-`benchmarks/etude-round/receipts/a2h5.md`). **Next: A2H-6 dispatch (the
-picker lane + the pane-aware gate helper — the H-9 preferred shape),
-then the E-0 approval gate.**
+with **H-9** (fresh-boot gate awareness) **CANARY-COMPLETE and
+GATE-READY 2026-11-05 — both fix tickets CLOSED through A2**: A2H-5 (the
+hint lane's env-filter fix, 2 chunks) and A2H-6 (the pane-aware
+`answer_first_run_gate` helper in `pty_common.py` + the picker's call
+sites, 3 chunks — the H-9 preferred shape); wiped-home ×3 per lane + the
+operator's independent reruns all exit 0; B-13 and B-14 both FIXED
+(receipts `benchmarks/etude-round/receipts/a2h5.md` + `a2h6.md`); the
+H-9 PROMOTION decision reserved to the operator. **Next: the E-0
+approval gate (the Tempo PRD), then Phase 1.**
 
 ---
 
