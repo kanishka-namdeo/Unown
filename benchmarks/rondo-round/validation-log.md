@@ -60,9 +60,37 @@ surfaced the `NotSupportedError: Failed to load iframe page
 "about:blank"` stack (happy-dom iframe page loading is disabled by
 default) and traced GlobalRegistrator / DefaultBrowserSettings /
 BrowserSettingsFactory. **Class: genuine-gap (open) — a test-isolation
-defect requiring the full-set context; not a component defect.** The
-next A2H-9 chunk runs the shard-bisect protocol (`bun test --shard=N/M`)
-to find the minimal co-failing file set, then fixes at the named layer.
+defect requiring the full-set context; not a component defect.**
 The dispatch economics lesson (the cumulative `--max-turns` counter, the
 `capped:true`-with-`subtype:"success"` envelope hazard) is receipted as
 V-5 in [the round log](../../docs/rondo-round-session.md).
+
+## Update — V-4 CLOSED (2026-11-06, the convergent dual closure)
+
+**V-4 CLOSED 2026-11-06** (ticket A2H-9, through A2 — this lineage's 8
+chunks across 2 sessions, converging with the parallel lineage's
+forensics above): the root cause is a two-layer blind spot — (1)
+`bun test src` is a substring filter, so the battery silently includes
+16 `apps/*/src` test files (6 coda + 10 ostinato) that every bisection
+subset and every two-file pair above had been running WITHOUT — which is
+exactly why the defect "required the full-set context": the full set was
+not what anyone thought it was; (2) the polluter
+`apps/ostinato/src/ui/settings-modal.test.ts` (the R-2 landing) renders
+raw DOM into the shared one-process document and leaves
+`<h2>Deck settings</h2>` behind — the encore Finale test's
+`getByRole("heading", { level: 2 })` then multi-matches (the
+order-dependence measured at 3/7 and ~6/8 across lineages is the
+mechanism's signature: the pollution needs settings-modal to run before
+encore in the walk, and bun's file-discovery order varies run-to-run).
+The fix: a 13-line `afterAll` body-reset in the polluting file
+(assertions byte-identical, product code untouched). Post-fix receipts:
+the battery **2258/0 ×2 consecutive** (A2) + **the operator's
+independent 2258/0, exit 0** (159.6 s); the encore file standalone
+55/0; ostinato Lane A 119/2-skip/0. The full chain, the elimination map
+and the baseline-drift explanation (Etude 2235/0 predates R-2; Rondo
+2257/1 postdates it) live in [the receipt](receipts/a2h9.md) — which
+also folds the parallel lineage's iframe/happy-dom forensics as the
+investigated-and-excluded lane. **Standing lesson**: battery subsets
+must reproduce the battery's ACTUAL file set (substring filters
+included) — `bun run test:unit 2>&1 | rg "^apps/"` is now the
+one-command check for what the "src" battery really runs.

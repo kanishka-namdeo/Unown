@@ -27,13 +27,19 @@ Value 2; Tempo scored 1×1×2 and stays parked; §0.9.5 re-scope trigger
 armed), the PRD at `docs/chaconne-prd.md` **APPROVED**. **H-9 PROMOTED**
 (the operator decision the Etude round reserved — A2H-5/A2H-6 receipts
 stand). The registry re-opened for the round with H-10/H-11/H-12 at
-PROPOSE. **Next: C-1 (the Chaconne domain core — the first code ticket,
-building against the C-0 plan), A2H-9's shard-bisect chunk when the lane
-frees, then the C-2..C-11 drive queue.** C-0 **CLOSED 2026-11-06**
-(2 chunks, 11 turns — `apps/chaconne/PLAN.md` 489 lines, operator-gate
-verified: 7/7 P0 items and 11/11 edge cases mapped, none orphaned);
-A2H-9 **OPEN** (24 turns of forensics: full-suite-only, order-dependent,
-all pairs green — the shard-bisect protocol is the next chunk).
+PROPOSE. **C-0 CLOSED 2026-11-06** (a parallel lineage, 2 chunks, 11 turns —
+`apps/chaconne/PLAN.md` 489 lines, operator-gate verified: 7/7 P0 items
+and 11/11 edge cases mapped, none orphaned). **A2H-9 CLOSED 2026-11-06**
+(a convergent dual closure — this lineage's 8 chunks across 2 sessions
+found the root cause: `bun test src` is a substring filter including 16
+`apps/*/src` test files in the battery; the R-2 settings-modal test left
+`<h2>Deck settings</h2>` in the shared document → the encore `getByRole`
+multi-matched; a 13-line `afterAll` reset fixes it — the battery
+**2258/0** restored, twice by A2 + once independently by the operator;
+the parallel lineage's 24-turn shard-bisect forensics folded as the
+converging trail; receipt `benchmarks/rondo-round/receipts/a2h9.md`).
+**Next: C-1 (the Chaconne domain core — the first code ticket, building
+against the C-0 plan), then the C-2..C-11 drive queue.**
 
 ---
 
