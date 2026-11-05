@@ -146,8 +146,29 @@ export function isCardDue(card: Card, now: string): boolean {
 export function computeDueQueue(data: OstinatoData, now: string): Card[] {
   if (data.cards.length === 0) return [];
   const due = data.cards.filter((c) => isCardDue(c, now));
-  // The pinned fallback: nothing due → review all.
-  const chosen = due.length > 0 ? due : data.cards;
+  // The pinned fallback (D1): nothing due → review all. It consults the
+  // PRE-CAP due set — new cards capped out of the queue are NEVER
+  // resurrected by the fallback; a non-empty pre-cap set that the cap
+  // empties yields an honest empty queue.
+  let chosen = due.length > 0 ? due : data.cards;
+  // R-2 queue cap (deck override > no default cap): per deck carrying
+  // settings.newCardsPerSession = N, admit at most N DUE NEW cards
+  // (no `sm2`) in cardOrder order. Due cards WITH `sm2` (real reviews)
+  // are NEVER capped; decks without settings are byte-identical to
+  // today. The cap applies at queue build time only.
+  const cardById = new Map<string, Card>(data.cards.map((c) => [c.id, c]));
+  const cappedIds = new Set<string>();
+  for (const deck of data.decks) {
+    const cap = deck.settings?.newCardsPerSession;
+    if (cap === undefined) continue;
+    const newInOrder = deck.cardOrder
+      .map((id) => cardById.get(id))
+      .filter((c): c is Card => !!c && isCardDue(c, now) && !c.sm2);
+    for (let i = cap; i < newInOrder.length; i += 1) cappedIds.add(newInOrder[i].id);
+  }
+  if (cappedIds.size > 0) {
+    chosen = chosen.filter((c) => !cappedIds.has(c.id));
+  }
   const deckIndex = new Map<string, number>();
   data.decks.forEach((d, i) => deckIndex.set(d.id, i));
   const pos = new Map<string, number>();

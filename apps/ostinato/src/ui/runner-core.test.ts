@@ -456,3 +456,133 @@ test("first boot: no session key → readSession is null, startSession persists 
   const s = startSession(mkData(), NOW, null);
   expect(s.phase).toBe("front"); // the fresh-boot session, no crash involved
 });
+
+// ─── R-2: the queue cap (deck settings.newCardsPerSession) ─────────────
+
+function capData(newCount: number, cap?: number, deck = "d1"): OstinatoData {
+  const ids = Array.from({ length: newCount }, (_, i) => `n${i}`);
+  return {
+    decks: [
+      {
+        id: deck,
+        name: "alpha",
+        cardOrder: ids,
+        createdAt: NOW,
+        updatedAt: NOW,
+        ...(cap !== undefined ? { settings: { newCardsPerSession: cap } } : {}),
+      },
+    ],
+    cards: ids.map((id) => mkCard(id, deck)), // all new (no sm2)
+    reviews: [],
+  };
+}
+
+test("R-2 cap: override resolution — capped deck sliced in cardOrder order, other decks untouched", () => {
+  const data: OstinatoData = {
+    decks: [
+      { id: "da", name: "a", cardOrder: ["a1", "a2", "a3", "a4", "a5"], createdAt: NOW, updatedAt: NOW, settings: { newCardsPerSession: 2 } },
+      { id: "db", name: "b", cardOrder: ["b1", "b2"], createdAt: NOW, updatedAt: NOW },
+    ],
+    cards: [
+      "a1", "a2", "a3", "a4", "a5", "b1", "b2" as const,
+    ].map((id) => mkCard(id, id.startsWith("a") ? "da" : "db")),
+    reviews: [],
+  };
+  expect(computeDueQueue(data, NOW).map((c) => c.id)).toEqual(["a1", "a2", "b1", "b2"]);
+});
+
+test("R-2 cap: all-new deck with cap N admits exactly min(N, new) cards", () => {
+  expect(computeDueQueue(capData(5, 3), NOW).map((c) => c.id)).toEqual(["n0", "n1", "n2"]);
+  expect(computeDueQueue(capData(5, 10), NOW).map((c) => c.id)).toEqual(["n0", "n1", "n2", "n3", "n4"]);
+});
+
+test("R-2 cap: pre-cap due EMPTY → review-all fallback fires; the cap never resurrects held cards", () => {
+  // All cards have sm2, none due (long intervals) → D1 fallback = ALL cards.
+  // The cap (0) must not hold the fallback's new-card resurrection — but
+  // here there are no NEW cards at all, and a capped-out new card (added
+  // to the fallback set) must not reappear either.
+  const data: OstinatoData = {
+    decks: [
+      {
+        id: "d1",
+        name: "alpha",
+        cardOrder: ["x", "y"],
+        createdAt: NOW,
+        updatedAt: NOW,
+        settings: { newCardsPerSession: 0 },
+      },
+    ],
+    cards: [
+      mkCard("x", "d1", sm2State(2, 2.5, 30, 1)), // not due
+      mkCard("y", "d1"), // NEW — due, but the cap holds it
+    ],
+    reviews: [],
+  };
+  // Pre-cap due = {y} (non-empty) → no fallback. Cap 0 empties it →
+  // honest EMPTY queue: the fallback never resurrects capped cards.
+  expect(computeDueQueue(data, NOW)).toEqual([]);
+});
+
+test("R-2 cap: pre-cap due non-empty (new cards only), cap 0 → honest EMPTY queue", () => {
+  expect(computeDueQueue(capData(4, 0), NOW)).toEqual([]);
+});
+
+test("R-2 cap: reviews (due cards WITH sm2) are NEVER capped, even at cap 0", () => {
+  const data: OstinatoData = {
+    decks: [
+      {
+        id: "d1",
+        name: "alpha",
+        cardOrder: ["r1", "r2", "n1"],
+        createdAt: NOW,
+        updatedAt: NOW,
+        settings: { newCardsPerSession: 0 },
+      },
+    ],
+    cards: [
+      mkCard("r1", "d1", sm2State(3, 2.5, 1, 7)), // due review
+      mkCard("r2", "d1", sm2State(2, 2.5, 2, 5)), // due review
+      mkCard("n1", "d1"), // new, held by cap 0
+    ],
+    reviews: [],
+  };
+  expect(computeDueQueue(data, NOW).map((c) => c.id)).toEqual(["r1", "r2"]);
+});
+
+test("R-2 cap: default-untouched path — decks without settings are byte-identical to pre-R-2", () => {
+  // Same data + clock as the pre-R-2 D1 pin, expected queue constructed literally.
+  const data: OstinatoData = {
+    decks: [
+      { id: "d1", name: "alpha", cardOrder: ["a", "b"], createdAt: NOW, updatedAt: NOW },
+      { id: "d2", name: "beta", cardOrder: ["c"], createdAt: NOW, updatedAt: NOW },
+    ],
+    cards: [
+      mkCard("a", "d1", sm2State(2, 2.5, 30, 1)), // not due
+      mkCard("b", "d1", sm2State(2, 2.5, 30, 1)), // not due
+      mkCard("c", "d2"), // due (new)
+    ],
+    reviews: [],
+  };
+  expect(computeDueQueue(data, NOW).map((c) => c.id)).toEqual(["c"]);
+  // And the all-due-new fallback path without settings:
+  const allNew: OstinatoData = capData(3); // no settings field
+  expect(computeDueQueue(allNew, NOW).map((c) => c.id)).toEqual(["n0", "n1", "n2"]);
+});
+
+test("R-2 cap: cap 0 holds ALL new cards of that deck while other decks flow", () => {
+  const data: OstinatoData = {
+    decks: [
+      { id: "da", name: "a", cardOrder: ["a1", "a2"], createdAt: NOW, updatedAt: NOW, settings: { newCardsPerSession: 0 } },
+      { id: "db", name: "b", cardOrder: ["b1"], createdAt: NOW, updatedAt: NOW },
+    ],
+    cards: [mkCard("a1", "da"), mkCard("a2", "da"), mkCard("b1", "db")],
+    reviews: [],
+  };
+  expect(computeDueQueue(data, NOW).map((c) => c.id)).toEqual(["b1"]);
+});
+
+test("R-2 cap: settings: {} behaves like absent (no cap)", () => {
+  const data: OstinatoData = capData(5, 3);
+  data.decks[0].settings = {};
+  expect(computeDueQueue(data, NOW).map((c) => c.id)).toEqual(["n0", "n1", "n2", "n3", "n4"]);
+});

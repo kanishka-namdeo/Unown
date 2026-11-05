@@ -5,7 +5,7 @@
  * count was NEVER asserted anywhere (grep: no palette.test.ts). This
  * suite pins the whole enumeration:
  *
- *   - the 18-command count (the dropped-row guard)
+ *   - the 19-command count (the dropped-row guard; grew 18→19 with R-2's deck-settings)
  *   - id uniqueness + PALETTE_BY_ID totality
  *   - group membership + render-order law (PALETTE_GROUPS order)
  *   - the two create rows (create-deck / create-card, group "data",
@@ -35,18 +35,18 @@ type Phase = "front" | "revealed" | "done";
 
 // ─── Enumeration shape ─────────────────────────────────────────────────
 
-test("PALETTE_COMMAND_COUNT === 18 (the dropped-row guard)", () => {
-  expect(PALETTE_COMMAND_COUNT).toBe(18);
-  expect(PALETTE_COMMANDS.length).toBe(18);
+test("PALETTE_COMMAND_COUNT === 19 (the dropped-row guard)", () => {
+  expect(PALETTE_COMMAND_COUNT).toBe(19);
+  expect(PALETTE_COMMANDS.length).toBe(19);
 });
 
-test("every command id is UNIQUE (18 rows → 18 distinct ids)", () => {
+test("every command id is UNIQUE (19 rows → 19 distinct ids)", () => {
   const ids = PALETTE_COMMANDS.map((c) => c.id);
-  expect(new Set(ids).size).toBe(18);
+  expect(new Set(ids).size).toBe(19);
 });
 
-test("PALETTE_BY_ID contains every row (18 keys, each mapping to its row)", () => {
-  expect(Object.keys(PALETTE_BY_ID).length).toBe(18);
+test("PALETTE_BY_ID contains every row (19 keys, each mapping to its row)", () => {
+  expect(Object.keys(PALETTE_BY_ID).length).toBe(19);
   for (const cmd of PALETTE_COMMANDS) {
     expect(PALETTE_BY_ID[cmd.id]).toBe(cmd);
   }
@@ -130,10 +130,10 @@ test("skip: disabled only in \"done\"", () => {
 
 // ─── filterCommands ─────────────────────────────────────────────────────
 
-test("filterCommands: empty/null/undefined query → the full 18", () => {
-  expect(filterCommands("")).toHaveLength(18);
-  expect(filterCommands(null)).toHaveLength(18);
-  expect(filterCommands(undefined)).toHaveLength(18);
+test("filterCommands: empty/null/undefined query → the full 19", () => {
+  expect(filterCommands("")).toHaveLength(19);
+  expect(filterCommands(null)).toHaveLength(19);
+  expect(filterCommands(undefined)).toHaveLength(19);
 });
 
 test("filterCommands: \"create\" → exactly the two create rows, in table order", () => {
@@ -162,7 +162,8 @@ test("filterCommands: matches on id, label, group, AND hint substrings", () => {
     "create-card",
     "export",
     "import",
-  ]); // group match
+    "deck-settings",
+  ]); // group match (R-2 added deck-settings to the group)
   expect(filterCommands("json").map((c) => c.id)).toEqual([
     "export",
     "import",
@@ -186,6 +187,11 @@ test("COMMAND_KEY_DISPATCH: n/N → create-deck, c/C → create-card", () => {
   expect(COMMAND_KEY_DISPATCH["N"]).toBe("create-deck");
   expect(COMMAND_KEY_DISPATCH["c"]).toBe("create-card");
   expect(COMMAND_KEY_DISPATCH["C"]).toBe("create-card");
+});
+
+test("COMMAND_KEY_DISPATCH: d/D → deck-settings (R-2)", () => {
+  expect(COMMAND_KEY_DISPATCH["d"]).toBe("deck-settings");
+  expect(COMMAND_KEY_DISPATCH["D"]).toBe("deck-settings");
 });
 
 test("COMMAND_KEY_DISPATCH: the classic mappings", () => {

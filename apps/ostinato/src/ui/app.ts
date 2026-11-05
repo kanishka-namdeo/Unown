@@ -28,7 +28,8 @@
 import type { OstinatoData, Clock, Grade } from "../domain/ports.js";
 import { DomainInvariantError } from "../domain/ports.js";
 import { createImportExport } from "../domain/io.js";
-import { createDeck, addCard } from "../domain/model.js";
+import { createDeck, addCard, setDeckSettings } from "../domain/model.js";
+import type { DeckSettings } from "../domain/types.js";
 import { reviewsPerDay } from "../domain/stats.js";
 import { createLocalStorageAdapter } from "../storage/local-storage.js";
 import {
@@ -77,6 +78,11 @@ type CreateActions = {
   createCard: (deckId: string, front: string, back: string) => string | null;
 };
 
+/** The deck-settings surface's actions (main()'s closures, passed to the settings renderer). */
+type SettingsActions = {
+  saveSettings: (deckId: string, settings: DeckSettings | null) => string | null;
+};
+
 type AppState = {
   boot: BootState;
   /** The card/deck filter (the `/` search's query). */
@@ -95,10 +101,14 @@ type AppState = {
   onListSurface: boolean;
   /** The open create form (null = closed). kind picks the form; discardArmed is the unsaved-changes guard. */
   createForm: { kind: "deck" | "card"; discardArmed: boolean } | null;
+  /** The deck-settings modal's open state (R-2: null = closed). */
+  settingsForm: { discardArmed: boolean } | null;
   /** The stats overlay's open state (R-1: null = closed). */
   statsOpen: boolean;
   /** The create actions (set once in main; the form's submit calls them). */
   createActions: CreateActions | null;
+  /** The settings actions (R-2; set once in main; the settings form's submit calls them). */
+  settingsActions: SettingsActions | null;
   /** The session notice (rendered under the header; cleared when the session advances). */
   notice: string | null;
 };
@@ -154,6 +164,8 @@ function renderMarkdown(src: string): string {
 // ─── The main entry (the index.html's module script) ─────────────────────────
 
 export { el };
+export { renderSettingsForm, handleSettingsFormEscape };
+export type { AppState };
 
 export async function main(): Promise<void> {
   const storage = createLocalStorageAdapter(window.localStorage);
@@ -172,8 +184,10 @@ export async function main(): Promise<void> {
     invokingEl: null,
     onListSurface: false,
     createForm: null,
+    settingsForm: null,
     statsOpen: false,
     createActions: null,
+    settingsActions: null,
     notice: null,
   };
 
@@ -300,8 +314,21 @@ export async function main(): Promise<void> {
         return e instanceof DomainInvariantError ? e.message : String(e);
       }
     },
+    saveSettings: (deckId: string, settings: DeckSettings | null): string | null => {
+      if (app.boot.kind !== "ready") return "Not ready.";
+      try {
+        const next = setDeckSettings(app.boot.data, deckId, settings, appClock()());
+        app.boot = { ...app.boot, data: next };
+        app.notice = settings === null ? "Settings cleared — no cap on this deck." : "Settings saved.";
+        persistAll();
+        return null;
+      } catch (e) {
+        return e instanceof DomainInvariantError ? e.message : String(e);
+      }
+    },
   };
   app.createActions = actions;
+  app.settingsActions = actions;
 
   function rerender() {
     renderBoot(app, persistAll);
@@ -331,6 +358,18 @@ function onKey(
     if (e.key === "Escape") {
       e.preventDefault();
       handleCreateFormEscape(app);
+      return;
+    }
+    return;
+  }
+
+  // The settings modal's own keys (R-2: when open, the modal owns the
+  // event — the create form's contract). Same D8 discard guard:
+  // first Esc arms the unsaved-changes guard, second Esc discards.
+  if (app.settingsForm) {
+    if (e.key === "Escape") {
+      e.preventDefault();
+      handleSettingsFormEscape(app);
       return;
     }
     return;
@@ -480,6 +519,15 @@ function dispatchCommand(
       // B-10: the form paints itself — no full-root rerender (the
       // invoking element must stay alive for the close-focus lane).
       if (app.createActions) renderCreateForm(app, app.createActions, rerender);
+      return;
+    case "deck-settings":
+      // R-2: close any open palette first (the create form's rule — the
+      // modal and the palette never coexist), then open the renderer.
+      app.paletteOpen = false;
+      document.getElementById("ostinato-palette")?.remove();
+      app.invokingEl = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+      app.settingsForm = { discardArmed: false };
+      renderSettingsForm(app, rerender);
       return;
   }
 }
@@ -728,6 +776,142 @@ function renderCreateForm(app: AppState, actions: CreateActions, rerender: () =>
   // field receives focus.
   const firstField = kind === "deck" ? nameInput : data.decks.length > 0 ? deckSelect : frontInput;
   firstField?.focus();
+}
+
+// ─── The deck settings modal (R-2: the D command's renderer; the
+// create-form pattern reused EXACTLY — D8's modal semantics) ───────
+
+/** The Esc lane (the D8 unsaved-changes guard, the create form's
+ *  keyboard-clean pattern): with unsaved input and no armed guard,
+ *  arm it + paint the message; the second Esc discards. */
+function handleSettingsFormEscape(app: AppState) {
+  const form = document.getElementById("ostinato-settings-form");
+  const sf = app.settingsForm;
+  if (form && sf && !sf.discardArmed) {
+    const hasInput = Array.from(form.querySelectorAll<HTMLInputElement>("input, textarea")).some(
+      (i) => i.value.trim() !== "",
+    );
+    if (hasInput) {
+      sf.discardArmed = true;
+      const guard = form.querySelector<HTMLParagraphElement>(".ostinato-settings-guard");
+      if (guard) guard.textContent = "You have unsaved input — press Esc again to discard.";
+      return;
+    }
+  }
+  closeSettingsForm(app);
+}
+
+function closeSettingsForm(app: AppState) {
+  app.settingsForm = null;
+  document.getElementById("ostinato-settings-overlay")?.remove();
+  // D8: focus returns to the invoking control (closeCreateForm's pattern).
+  (app.invokingEl ?? document.body).focus();
+  app.invokingEl = null;
+}
+
+function renderSettingsForm(app: AppState, rerender: () => void) {
+  const data = app.boot.kind === "ready" ? app.boot.data : { decks: [], cards: [], reviews: [] };
+  let overlay = document.getElementById("ostinato-settings-overlay");
+  if (!overlay) {
+    overlay = el("div", { id: "ostinato-settings-overlay", class: "ostinato-create-overlay" });
+    document.body.append(overlay);
+  }
+  const form = el(
+    "form",
+    {
+      id: "ostinato-settings-form",
+      class: "ostinato-create-form",
+      role: "dialog",
+      "aria-modal": "true",
+      "aria-labelledby": "ostinato-settings-title",
+    },
+  );
+  form.append(el("h2", { id: "ostinato-settings-title", text: "Deck settings" }));
+
+  const deckLabel = el("label", { text: "Deck", class: "ostinato-create-label" });
+  deckLabel.setAttribute("for", "ostinato-settings-deck");
+  const deckSelect = el("select", { id: "ostinato-settings-deck", class: "ostinato-create-input" }) as HTMLSelectElement;
+  for (const d of data.decks) {
+    deckSelect.append(el("option", { text: d.name, value: d.id }) as HTMLOptionElement);
+  }
+  if (data.decks.length > 0) deckSelect.selectedIndex = 0; // the first deck preselected
+
+  const capLabel = el("label", { text: "New cards per session (empty = no cap)", class: "ostinato-create-label" });
+  capLabel.setAttribute("for", "ostinato-settings-cap");
+  const capInput = el("input", {
+    id: "ostinato-settings-cap",
+    class: "ostinato-create-input",
+    type: "number",
+    min: "0",
+    step: "1",
+    autocomplete: "off",
+  }) as HTMLInputElement;
+
+  // On select-change: load the selected deck's current cap into the
+  // input (empty when the deck has no cap set). The first deck is
+  // preselected, so load it once on mount too.
+  const loadCap = () => {
+    const deck = data.decks.find((d) => d.id === deckSelect.value);
+    capInput.value = deck?.settings?.newCardsPerSession !== undefined
+      ? String(deck.settings.newCardsPerSession)
+      : "";
+  };
+  deckSelect.addEventListener("change", loadCap);
+  loadCap();
+
+  const guard = el("p", { class: "ostinato-settings-guard", role: "status" });
+  const error = el("p", { class: "ostinato-create-error", role: "alert" });
+  const submitRow = el("div", { class: "ostinato-create-row" });
+  submitRow.append(
+    el("button", { type: "submit", text: "Save settings", class: "ostinato-action" }),
+    el("span", { text: "Esc cancels", class: "ostinato-create-hint" }),
+  );
+  form.append(deckLabel, deckSelect, capLabel, capInput, guard, error, submitRow);
+  overlay.replaceChildren(form);
+
+  // The honest empty state (the zero-deck precedent — never a dead end).
+  if (data.decks.length === 0) {
+    error.textContent = "No decks yet — create a deck first (N).";
+  }
+
+  // The submit lane: read + trim + validate; empty → UNSET (delete the
+  // deck's settings — the byte-stability law, a capped→uncapped deck
+  // exports pre-R-2 bytes); integer >= 0 or the error lane keeps the
+  // form open. Success closes the modal + rerenders; the RUNNING
+  // session's queue is NOT rebuilt (the next session picks the cap up).
+  form.addEventListener("submit", (e) => {
+    e.preventDefault();
+    if (data.decks.length === 0) return; // the honest empty state owns the surface
+    const deckId = deckSelect.value;
+    const raw = capInput.value.trim();
+    let settings: DeckSettings | null;
+    if (raw === "") {
+      settings = null; // unset — delete the field
+    } else {
+      const parsed = Number.parseInt(raw, 10);
+      const isInt = Number.isFinite(parsed) && String(parsed) === raw && parsed >= 0 && parsed % 1 === 0;
+      if (!isInt) {
+        error.textContent = "Cap must be a whole number >= 0 (or empty for no cap).";
+        capInput.focus();
+        return; // the form stays open
+      }
+      settings = { newCardsPerSession: parsed };
+    }
+    const sa = app.settingsActions;
+    if (sa) {
+      const err = sa.saveSettings(deckId, settings);
+      if (err !== null) {
+        error.textContent = err;
+        return; // the form stays open
+      }
+    }
+    closeSettingsForm(app);
+    rerender();
+  });
+
+  // D11: attach-before-focus — the form is in the DOM before the
+  // select receives focus.
+  if (data.decks.length > 0) deckSelect.focus();
 }
 
 // ─── The stats overlay (R-1: the heatmap modal, the T command) ─────────────

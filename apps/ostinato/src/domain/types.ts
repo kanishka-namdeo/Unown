@@ -50,6 +50,25 @@ export type Deck = {
   cardOrder: string[];
   createdAt: string;
   updatedAt: string;
+  /**
+   * Deck-level review settings (R-2). Absent = no cap (today's
+   * behavior, byte-identical); `settings: {}` is valid and also means
+   * no cap. The canonical export includes `settings` ONLY when
+   * present — old stores export byte-identical to pre-R-2 bytes.
+   */
+  settings?: DeckSettings;
+};
+
+export type DeckSettings = {
+  /**
+   * max NEW cards (no `sm2` state) admitted into one session's queue;
+   * integer >= 0; 0 = hold all new cards of this deck; absent = no cap
+   * (today's behavior). Due cards WITH `sm2` (real reviews) are never
+   * capped. The cap applies at queue build time only (session boot /
+   * restart) — grading within a session never re-admits held-back
+   * cards.
+   */
+  newCardsPerSession?: number;
 };
 
 /**

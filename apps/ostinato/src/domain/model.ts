@@ -14,7 +14,7 @@
  * P0 #2 contract; a construction-time `now` is the one accepted
  * exception: the caller is the edge).
  */
-import type { Card, Deck, OstinatoData, Grade, ReviewEvent } from "./types.js";
+import type { Card, Deck, DeckSettings, OstinatoData, Grade, ReviewEvent } from "./types.js";
 import { DomainInvariantError } from "./types.js";
 import { assertData } from "./invariants.js";
 import { newUniqueId } from "./ids.js";
@@ -228,6 +228,39 @@ export function gradeCard(
   const next: OstinatoData = { decks: data.decks, cards, reviews: [...data.reviews, event] };
   assertData(next);
   return next;
+}
+
+/**
+ * Set or clear a deck's R-2 settings. `settings` is a full replacement
+ * of the deck's `settings` field: pass `null` to DELETE the field
+ * (the byte-stability law — a capped→uncapped deck exports pre-R-2
+ * bytes, `settings` absent; `{}` is legal and also means no cap but
+ * does round-trip, so the honest "uncap" write is `null`). Returns
+ * the updated data set; `updatedAt` advances like every other
+ * deck mutation.
+ */
+export function setDeckSettings(
+  data: OstinatoData,
+  deckId: string,
+  settings: DeckSettings | null,
+  now: string,
+): OstinatoData {
+  let found = false;
+  const decks = data.decks.map((d) => {
+    if (d.id !== deckId) return d;
+    found = true;
+    const next: Deck = { ...d, updatedAt: now };
+    if (settings === null) {
+      delete next.settings;
+    } else {
+      next.settings = settings;
+    }
+    return next;
+  });
+  if (!found) throw new DomainInvariantError(`unknown deck: ${deckId}`);
+  const out: OstinatoData = { decks, cards: data.cards, reviews: data.reviews };
+  assertData(out);
+  return out;
 }
 
 /** Empty data set — the starting point for a new install. */

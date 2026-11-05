@@ -30,10 +30,10 @@ export interface ChangelogStop {
   groups: ChangelogGroup[];
 }
 
-export const CHANGELOG_TOTAL_ENTRIES = 539;
+export const CHANGELOG_TOTAL_ENTRIES = 540;
 
 export const CHANGELOG_TOTALS: Record<ChangelogBucket, number> = {
-  "Added": 255,
+  "Added": 256,
   "Changed": 32,
   "Deprecated": 0,
   "Removed": 3,
@@ -46,9 +46,9 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
   {
     "label": "Unreleased",
     "date": null,
-    "total": 32,
+    "total": 33,
     "counts": {
-      "Added": 24,
+      "Added": 25,
       "Changed": 0,
       "Deprecated": 0,
       "Removed": 0,
@@ -60,6 +60,10 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
       {
         "bucket": "Added",
         "items": [
+          {
+            "title": "The Reprise round's second drive milestone — R-2 lands: deck-level review settings (2026-11-05)",
+            "behavior": false
+          },
           {
             "title": "A2H-4 lands — the PTY harness's fresh-install hardening (registry H-8 PROMOTED, the V-3/V-4/V-5 durable fix…",
             "behavior": false

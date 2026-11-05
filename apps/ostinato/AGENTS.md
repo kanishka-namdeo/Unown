@@ -14,7 +14,8 @@ Ostinato is a **keyboard-first, offline-first, installable PWA for
 spaced-repetition flashcards**, at `apps/ostinato/` (the second user
 product under `apps/` after Coda — distinct job: decks of markdown
 front/back cards scheduled by SM-2, driven entirely by the keyboard:
-`j`/`k` browse, `1`–`4` grade, `/` search, `Ctrl+K` palette, `t` stats
+`j`/`k` browse, `1`–`4` grade, `/` search, `Ctrl+K` palette, `t` stats,
+`d` deck settings
 heatmap). Vanilla TypeScript, **zero runtime dependencies**:
 `apps/ostinato/package.json` carries NO `dependencies`/`devDependencies`
 fields (the Coda zero-dep law — the app's package.json is 7 lines: the
@@ -66,20 +67,27 @@ brace pair plus exactly five fields). The DOM-free domain core under
     LAZY inside the else-branch, because app.ts's module bootstrap runs
     `main().catch(...)` on load and touches `document` at module scope)
     and RUNS the real pins where the DOM does (Lane B, via the root
-    happy-dom preload).
-- **The e2e battery** (O-4, +1 spec R-1-e2e): isolated Playwright lane
-  (`playwright.ostinato.config.ts` at the repo root, self-skip-guarded
-  the Coda way — the root landing lane untouched by construction), six
-  spec files / 14 tests: the K-1 zero-mouse flow (create → review →
-  export → import, keyboard events only), A-1 axe `wcag2a`/`wcag2aa`
-  both schemes + the tab-order + Esc focus-return pins, O-1 offline
-  (SW-controlled boot, offline reload, the fallback page), R-1
-  crash-resume + resize, the review trio, and
+    happy-dom preload). `src/ui/settings-modal.test.ts` (R-2) follows
+    the same pattern for the settings modal's render + keyboard
+    contract (app.ts exports `renderSettingsForm` +
+    `handleSettingsFormEscape` + the AppState type as the pin seam).
+- **The e2e battery** (O-4, +1 spec R-1-e2e, +1 spec R-2): isolated
+  Playwright lane (`playwright.ostinato.config.ts` at the repo root,
+  self-skip-guarded the Coda way — the root landing lane untouched by
+  construction), seven spec files / 17 tests: the K-1 zero-mouse flow
+  (create → review → export → import, keyboard events only), A-1 axe
+  `wcag2a`/`wcag2aa` both schemes + the tab-order + Esc focus-return
+  pins, O-1 offline (SW-controlled boot, offline reload, the fallback
+  page), R-1 crash-resume + resize, the review trio,
   **`e2e/ostinato-stats.spec.ts`** (R-1: seeded reviews render the
   heatmap via both keyboard paths — the palette and the direct `t` —
   pinning the dialog focus-on-open, the summary line, the per-cell aria
   names, the Esc close lane with honest focus-return, and arrow-key cell
-  navigation). 14 tests green at this closeout.
+  navigation), and **`e2e/ostinato-settings.spec.ts`** (R-2: the deck
+  settings modal end to end — the palette path AND the direct `d` key,
+  a cap change reshaping the next session's queue 6→3 through the
+  restart lane, the Esc-focus-return contract, and the axe-clean OPEN
+  modal state; zero pointer events). 17 tests green at this closeout.
 - **Domain model.** `OstinatoData` = plain JSON at every level (no class
   instances, no Date objects). Per-deck invariant (the Coda
   Board.taskOrder rule): a deck's `cardOrder` set-matches its cards
@@ -89,6 +97,27 @@ brace pair plus exactly five fields). The DOM-free domain core under
   `ReviewEvent` log (R-1) rides as `reviews` with its own invariant
   checks (unique ids, `cardId` resolves, `deckId` matches the card's own
   deck, grade 1..4, ISO strings).
+- **Deck-level review settings (R-2).** `Deck.settings?: DeckSettings`
+  (`newCardsPerSession?: number`, integer >= 0; absent = no cap,
+  byte-identical to pre-R-2 behavior; 0 = hold all new cards) —
+  validated at import (null/negative/fractional/non-number →
+  `DomainInvariantError`), exported canonically only when present.
+  `computeDueQueue` resolves per-deck caps AFTER the due filter: only
+  NEW cards (no `sm2`) are sliced, in cardOrder order; due reviews are
+  never capped; the D1 "nothing due → review all" fallback consults
+  the PRE-CAP due set (capped-out new cards are never resurrected);
+  the cap applies at queue-build time only (session boot/restart —
+  grading never re-admits held-back cards). `setDeckSettings` is the
+  domain mutation (null = DELETE the field — the byte-stability law).
+  The `d` palette command (the 19th row) opens the settings modal —
+  the create form's pattern reused exactly: `role=dialog` +
+  `aria-modal` + a deck select (loads the selected deck's cap) + the
+  cap input (empty submit = unset; invalid keeps the form open on the
+  error lane) + the double-Esc discard guard + focus-in/focus-return +
+  the zero-deck honest empty state; submit rides the same
+  every-transition persistAll lane; the RUNNING queue is never
+  rebuilt on submit.
+
 - **The Scheduler seam.** Pure `(card, grade, now) → Card`; "now" is
   injected as an ISO-8601 string — the domain never calls `Date.now()`,
   so scheduling is deterministic and unit-pinnable. The implementation is

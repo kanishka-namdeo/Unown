@@ -147,3 +147,73 @@ test("io: unknown top-level key rejected", () => {
   const injected = JSON.stringify({ ...JSON.parse(json), version: 2 });
   expect(() => importExport.importData(injected)).toThrow(DomainInvariantError);
 });
+
+// ─── R-2: deck settings (newCardsPerSession) ─────────────────────
+
+function settingsImport(settings: unknown, includeKey = true): string {
+  const deck: Record<string, unknown> = {
+    id: "d1",
+    name: "Deck",
+    cardOrder: ["c1"],
+    createdAt: "2026-11-04T00:00:00Z",
+    updatedAt: "2026-11-04T00:00:00Z",
+  };
+  if (includeKey) deck.settings = settings;
+  return JSON.stringify({
+    decks: [deck],
+    cards: [
+      {
+        id: "c1",
+        deckId: "d1",
+        front: "q",
+        back: "a",
+        createdAt: "2026-11-04T00:00:00Z",
+        updatedAt: "2026-11-04T00:00:00Z",
+      },
+    ],
+    reviews: [],
+  });
+}
+
+test("io: deck without settings imports clean (backward compat)", () => {
+  const back = importExport.importData(settingsImport(undefined, false));
+  expect(back.decks[0].settings).toBeUndefined();
+});
+
+test("io: settings: {} imports clean", () => {
+  const back = importExport.importData(settingsImport({}));
+  expect(back.decks[0].settings).toEqual({});
+});
+
+test("io: newCardsPerSession 0 and 3 import clean", () => {
+  expect(importExport.importData(settingsImport({ newCardsPerSession: 0 })).decks[0].settings).toEqual({
+    newCardsPerSession: 0,
+  });
+  expect(importExport.importData(settingsImport({ newCardsPerSession: 3 })).decks[0].settings).toEqual({
+    newCardsPerSession: 3,
+  });
+});
+
+for (const bad of [ -1, 1.5, "3", null ]) {
+  test(`io: newCardsPerSession ${JSON.stringify(bad)} throws DomainInvariantError with deck id`, () => {
+    expect(() => importExport.importData(settingsImport({ newCardsPerSession: bad as never }))).toThrow(
+      new RegExp(`deck d1: settings\\.newCardsPerSession`),
+    );
+  });
+}
+
+test("io: store WITH settings round-trips byte-identical", () => {
+  const data = makeSmallData();
+  data.decks[0].settings = { newCardsPerSession: 2 };
+  const json = importExport.exportData(data);
+  const back = importExport.importData(json);
+  expect(importExport.exportData(back)).toBe(json);
+});
+
+test("io: store WITHOUT settings exports byte-identical to pre-R-2 form", () => {
+  const data = makeSmallData();
+  const json = importExport.exportData(data);
+  // The canonical bytes must NOT contain the settings key at all
+  expect(json).not.toContain("settings");
+  expect(importExport.exportData(importExport.importData(json))).toBe(json);
+});

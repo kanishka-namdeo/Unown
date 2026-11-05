@@ -33,8 +33,15 @@ and re-verified the landing from the fresh side**: install 7/7, unit
 and the H-3 PTY audit's first ZERO-CURE run (footer-quiet 9/9,
 resume-hint ALL HELD, picker PASS on a fresh install AND with ambient
 `UNOWN_HOME` set — the V-3/V-4/V-5 operator cures all retired; V-8: the
-fd/pyte environmental cures moved into the bring-up checklist). R-2
-dispatches on this lineage.
+fd/pyte environmental cures moved into the bring-up checklist). **R-2
+CLOSED 2026-11-05 by the sixteenth lineage** — deck-level review
+settings (`Deck.settings.newCardsPerSession`, the pre-cap queue cap
+resolution, the `d` settings modal on the create-form pattern):
+Lane A 121/0, Lane B 128/0, tsc 0, proof 19/0, the e2e battery
+**17/17** (3 new specs), the DOX amended; 9 A2 dispatches (the
+degradation curve measured — V-10's pricing lesson), one genuine
+defect + one receipt-overclaim caught at the operator gates (V-9).
+**Next: R-3 (CSV Anki-style import).**
 
 ---
 

@@ -13,7 +13,7 @@
  *   top-level fields, duplicate ids, …). A corrupted or foreign JSON
  *   document must NEVER pass through silently.
  */
-import type { OstinatoData, ImportExportPort, ReviewEvent } from "./types.js";
+import type { OstinatoData, ImportExportPort, ReviewEvent, DeckSettings } from "./types.js";
 import { DomainInvariantError } from "./types.js";
 import { assertData } from "./invariants.js";
 
@@ -192,6 +192,20 @@ export function createImportExport(): ImportExportPort {
         for (const id of deck.cardOrder) {
           if (typeof id !== "string") {
             throw new DomainInvariantError(`import: deck ${deck.id}: cardOrder entries must be strings`);
+          }
+        }
+        // R-2 deck settings: absent = clean (backward compat), `{}` = clean,
+        // a present field must be an integer >= 0.
+        if (deck.settings !== undefined && deck.settings !== null) {
+          const s = deck.settings as unknown as DeckSettings;
+          if (typeof s !== "object" || Array.isArray(s)) {
+            throw new DomainInvariantError(`import: deck ${deck.id}: settings must be an object`);
+          }
+          const n = s.newCardsPerSession;
+          if (n !== undefined) {
+            if (typeof n !== "number" || !Number.isInteger(n) || n < 0) {
+              throw new DomainInvariantError(`import: deck ${deck.id}: settings.newCardsPerSession must be an integer >= 0`);
+            }
           }
         }
       }

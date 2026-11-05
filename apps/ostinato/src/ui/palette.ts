@@ -10,7 +10,7 @@
  * unit-pinned without a browser.
  *
  * The command set (every runner action, enumerated — the receipt's
- * D7). 18 commands:
+ * D7). 19 commands:
  *
  *   group "review"   — the review loop's direct controls:
  *     - `reveal`       — show the card's back (Space / Enter)
@@ -37,13 +37,17 @@
  *     - `create-card`  — create a new card (C) — same every-phase law
  *     - `export`       — download the data set (P0 #7's JSON round-trip)
  *     - `import`       — load a JSON document
+     - `deck-settings` — open the deck settings modal (D) — the R-2
+                        per-deck `newCardsPerSession` cap surface,
+                        enabled in every phase (a settings write is
+                        a data mutation, like the create rows)
  *
  *   group "app"      — surface-level controls:
  *     - `clear-session` — discard the persisted review session
  *     - `stats`        — open the review stats heatmap (T) — the R-1
  *                        activity-log surface, enabled in every phase
  *
- * 18 commands. The table is data, not code: `PALETTE_COMMANDS`
+ * 19 commands. The table is data, not code: `PALETTE_COMMANDS`
  * carries the id, the label, the hint (the keyboard shortcut,
  * honest copy), the group, and a `disabledIn` set (a command that
  * cannot apply in the current phase is disabled in the palette,
@@ -84,7 +88,7 @@ export const PALETTE_GROUPS: Array<PaletteCommand["group"]> = [
 /**
  * The command table — THE enumeration (the PRD's hardening row,
  * the receipt's D7). Every runner action lands here; a new action
- * is a new row, and the test suite's count assertion (18 commands,
+ * is a new row, and the test suite's count assertion (19 commands,
  * one per id) fails if a row is silently dropped.
  */
 export const PALETTE_COMMANDS: PaletteCommand[] = [
@@ -108,6 +112,7 @@ export const PALETTE_COMMANDS: PaletteCommand[] = [
   { id: "create-card", label: "Create card", hint: "C", group: "data", disabledIn: [] },
   { id: "export", label: "Export data (JSON)", hint: "Ctrl+E", group: "data", disabledIn: [] },
   { id: "import", label: "Import data (JSON)", hint: "Ctrl+O", group: "data", disabledIn: [] },
+  { id: "deck-settings", label: "Deck settings", hint: "D", group: "data", disabledIn: [] },
   // app group
   { id: "clear-session", label: "Clear review session", hint: "Ctrl+X", group: "app", disabledIn: [] },
   { id: "stats", label: "Review stats (heatmap)", hint: "T", group: "app", disabledIn: [] },
@@ -118,7 +123,7 @@ export const PALETTE_BY_ID: Record<string, PaletteCommand> = Object.fromEntries(
   PALETTE_COMMANDS.map((c) => [c.id, c]),
 );
 
-/** The total command count (the test suite pins 18 — a silently
+/** The total command count (the test suite pins 19 — a silently
  *  dropped row fails the count check, the "pinned by enumeration"
  *  guarantee). */
 export const PALETTE_COMMAND_COUNT = PALETTE_COMMANDS.length;
@@ -179,6 +184,8 @@ export const COMMAND_KEY_DISPATCH: Record<string, string> = {
   N: "create-deck",
   c: "create-card",
   C: "create-card",
+  d: "deck-settings",
+  D: "deck-settings",
   t: "stats",
   T: "stats",
 };
