@@ -19,6 +19,15 @@ engagement — current coverage, planned coverage, gaps.
   round re-validates every lane it touches and adds the fresh-install
   truth law (wiped-home lane runs) to the Keyboard Accessibility and TUI
   Consistency lanes, where the round's opening harvest (B-13/B-14) lives
+  (the round PARKED 2026-11-06 with its E-0 gate unresolved — the Etude
+  plans below stand as parked history); **re-opened for the Rondo round
+  2026-11-06** (the fresh DRIVE × AUGMENT × PROVE directive): the
+  headline lanes this round are the browser-flow classes the §0.9-selected
+  [Chaconne](chaconne-prd.md) vehicle stresses — Engineering, Quality and
+  Recovery & Resilience on the runner lane (fixture-page determinism,
+  artifact hashes, crash-mid-run resume) — plus the standing lanes
+  re-validated at every teardown; the baseline re-receipted at
+  `18e4a98a` ([the round's benchmark README](../benchmarks/rondo-round/README.md))
 
 **Mini-TOC**
 

@@ -8,34 +8,44 @@ archaeology. When a round completes, its log graduates to a round-specific
 
 ---
 
-## ACTIVE ROUND — the Etude round (2026-11-05, OPENED by the seventeenth lineage)
+## ACTIVE ROUND — the Rondo round (2026-11-06, OPENED by the eighteenth lineage)
 
-A FRESH A1 directive (the standing shape: STABILISE × HARDEN × PROVE)
-opened a new engagement: `docs/etude-round-session.md` — Phase 0 executed
-by the seventeenth lineage on the fresh tree at `f3f0176e` (install 7/7,
-stack up, doctor ready-to-chat, baseline ALL GREEN: unit 2235/0/160, tsc
-0, lint 0-143w, rail 55/539/54, blog 46/116, benchmarks 6/6, claims
-62/62, e2e 14/14 — the battery figure receipted at `f3f0176e`; the
-parallel lineage's R-2 landing moved it to **17/17** by the time this
-commit rebased on top — the reconciliation itself receipted). The round's
-opening harvest: the first keyboard/TUI audit (with the new
-**fresh-install truth law** — wiped VERIFY_HOMEs) found two deterministic
-harness defects (B-13 the hint lane's ambient-`UNOWN_HOME` setup leak,
-B-14 the picker lane's fresh-boot first-run-gate block) — tickets
-**A2H-5/A2H-6 queued with dispatch briefs**; the **Etude PRD**
-(`docs/etude-prd.md`) proposes **Tempo**, a keyboard-first offline-first
-time-tracking + invoicing PWA at `apps/tempo/`, for approval at the E-0
-gate; the benchmark baseline + calibration canaries live at
-`benchmarks/etude-round/`; the registry re-opened EMPTY for the round
-with **H-9** (fresh-boot gate awareness) **CANARY-COMPLETE and
-GATE-READY 2026-11-05 — both fix tickets CLOSED through A2**: A2H-5 (the
-hint lane's env-filter fix, 2 chunks) and A2H-6 (the pane-aware
-`answer_first_run_gate` helper in `pty_common.py` + the picker's call
-sites, 3 chunks — the H-9 preferred shape); wiped-home ×3 per lane + the
-operator's independent reruns all exit 0; B-13 and B-14 both FIXED
-(receipts `benchmarks/etude-round/receipts/a2h5.md` + `a2h6.md`); the
-H-9 PROMOTION decision reserved to the operator. **Next: the E-0
-approval gate (the Tempo PRD), then Phase 1.**
+A FRESH A1 directive (**DRIVE A2 × AUGMENT A2 × PROVE IT** — app + proof
+as twin deliverables, DRIVE and AUGMENT tracks, §0.9 weakness-driven
+selection, §4 SDLC coverage, §6c learning-mechanism validation) opened a
+new engagement: `docs/rondo-round-session.md` — Phase 0 executed by the
+eighteenth lineage on the fresh tree at `18e4a98a` (install 7/7, stack
+up, doctor ready-to-chat 19✓/2⚠, canaries C1–C4 all green with the V-1
+stdin-guard cure, baseline battery: tsc 0, lint 0-143w, unit
+**2257/1/161 — one pre-existing deterministic fail root-caused as V-4**
+(the encore Finale test, ticket **A2H-9**), rail 55/540/54, blog 46/116,
+benchmarks 6/6, claims 62/62, e2e 17/17). The **§0.9 selection executed
+with a pre-registered receipt** (`benchmarks/rondo-round/README.md`):
+four candidates scored, **Chaconne** — a keyboard-first browser-recipe
+runner at `apps/chaconne/` — selected (Exposure 2 × Generalizability 2 ×
+Value 2; Tempo scored 1×1×2 and stays parked; §0.9.5 re-scope trigger
+armed), the PRD at `docs/chaconne-prd.md` **APPROVED**. **H-9 PROMOTED**
+(the operator decision the Etude round reserved — A2H-5/A2H-6 receipts
+stand). The registry re-opened for the round with H-10/H-11/H-12 at
+PROPOSE. **Next: A2H-9 (the encore baseline fix) → C-0 (the Chaconne
+architecture plan), then the C-1..C-11 drive queue.**
+
+---
+
+## PARKED ROUND — the Etude round (2026-11-05, PARKED by the eighteenth lineage)
+
+The STABILISE × HARDEN × PROVE engagement parked OPEN when the fresh
+Rondo directive arrived (new task, not a resume — nothing deleted, the
+queue stands): `docs/etude-round-session.md`. Phase 0 stood complete on
+the seventeenth lineage (recon, the baseline suite + C1–C3 canaries at
+`benchmarks/etude-round/`, the matrix re-opened); A2H-5/A2H-6 CLOSED
+through A2 (B-13/B-14 fixed, receipts in the round log); H-9 canary
+complete — **promoted by the Rondo round's opening operator decision**
+(the decision Etude reserved). The **E-0 approval gate never resolved**:
+the Tempo PRD (`docs/etude-prd.md`) was PROPOSED, not approved — the
+Rondo round's §0.9 selection scored Tempo as one candidate (1×1×2,
+comfort-zone) and chose Chaconne instead; Tempo stays a carry-over
+candidate with the Reprise queue.
 
 ---
 

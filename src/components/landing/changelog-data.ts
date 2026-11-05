@@ -30,10 +30,10 @@ export interface ChangelogStop {
   groups: ChangelogGroup[];
 }
 
-export const CHANGELOG_TOTAL_ENTRIES = 540;
+export const CHANGELOG_TOTAL_ENTRIES = 541;
 
 export const CHANGELOG_TOTALS: Record<ChangelogBucket, number> = {
-  "Added": 256,
+  "Added": 257,
   "Changed": 32,
   "Deprecated": 0,
   "Removed": 3,
@@ -46,9 +46,9 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
   {
     "label": "Unreleased",
     "date": null,
-    "total": 33,
+    "total": 34,
     "counts": {
-      "Added": 25,
+      "Added": 26,
       "Changed": 0,
       "Deprecated": 0,
       "Removed": 0,
@@ -60,6 +60,10 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
       {
         "bucket": "Added",
         "items": [
+          {
+            "title": "The Rondo round opens — the eighteenth lineage's Phase 0 (2026-11-06)",
+            "behavior": false
+          },
           {
             "title": "The Reprise round's second drive milestone — R-2 lands: deck-level review settings (2026-11-05)",
             "behavior": false

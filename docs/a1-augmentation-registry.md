@@ -11,7 +11,7 @@ augmentation this engagement proposes, canaries, gates and promotes — or
 retires.
 
 - Owner: the A1 operator (authored outside A2 sessions)
-- Status: OPENED 2026-11-04; the Ostinato round closed 2026-11-04 — promoted rows: 2 (H-6, H-4); the **Reprise round opened 2026-11-05** — **promoted rows: 3 (+H-8, A2H-4, 2026-11-05)**; H-1/H-2/H-3 carry live records at PROPOSE; the Reprise round PARKED 2026-11-05 (a fresh directive opened); the **Etude round opened 2026-11-05 EMPTY** — promoted rows: 0, one PROPOSE on file (H-9, this round's opening harvest); the round's validation log lives in [the round log](etude-round-session.md) + [the benchmark validation log](../benchmarks/etude-round/validation-log.md)
+- Status: OPENED 2026-11-04; the Ostinato round closed 2026-11-04 — promoted rows: 2 (H-6, H-4); the **Reprise round opened 2026-11-05** — **promoted rows: 3 (+H-8, A2H-4, 2026-11-05)**; H-1/H-2/H-3 carry live records at PROPOSE; the Reprise round PARKED 2026-11-05 (a fresh directive opened); the **Etude round opened 2026-11-05 EMPTY** — promoted rows: 0, one PROPOSE on file (H-9, this round's opening harvest); the round's validation log lives in [the round log](etude-round-session.md) + [the benchmark validation log](../benchmarks/etude-round/validation-log.md); the **Rondo round opened 2026-11-06** (the fresh DRIVE × AUGMENT × PROVE directive) — **H-9 PROMOTED** by the operator decision the Etude round reserved (promoted rows: 4), **H-10/H-11/H-12 opened at PROPOSE** (the round's pre-registered seed hypotheses); the round's validation log lives in [the round log](rondo-round-session.md) + [the benchmark validation log](../benchmarks/rondo-round/validation-log.md)
 
 **Mini-TOC**
 
@@ -199,7 +199,40 @@ PROPOSE-stage candidates (none canaried, none promoted):
   cold-home 0/2 lanes → 2/2; regression-detection neutral-or-better;
   no keyboard/TUI regressions (the V-7 variance root-caused
   environment-class); retention by construction (durable shared-harness
-  code, the same lane H-8 rode).
+  code, the same lane H-8 rode). **PROMOTED 2026-11-06 — the Rondo
+  round's opening operator decision** (the call the Etude round
+  reserved): all five gate requirements hold on the receipts as they
+  stand — measurable improvement (cold-home 0/2 → 2/2 lanes),
+  regression-detection neutral-or-better, no keyboard/TUI regressions
+  (the V-7 variance root-caused environment-class), cost $0 metered,
+  retention by construction; the row moves to the registry table
+  below; the retire condition is any PTY lane regressing on a wiped
+  home after a harness change (the same bar that caught H-8's receipt
+  correction).
+- **H-10 — the browser-resilience skill (A2-side, Rondo round seed).**
+  Pre-registered at the round's opening per the fresh directive's §0.9.4
+  (before the tickets that will spawn the evidence): the Chaconne
+  runner's browser lanes are predicted to hit the fill/iframe/wait
+  defect classes (#43/#44 kin — the §0.9 predicted-failure receipt);
+  a staged SKILL.md encoding the recover pattern (re-query the frame,
+  retry-with-jitter, verify-the-value-landed) is the candidate lane.
+  Metric: e2e lane flake rate and turns-to-green on browser tickets,
+  WITH vs WITHOUT (the paired gate). Stage: PROPOSE.
+- **H-11 — the stdin-guard dispatch helper (operator lane, Rondo round
+  seed).** V-1's cure formalized: every `-p` dispatch in this harness
+  must guard stdin (inline `< /dev/null`; `stdio:["ignore"]` in
+  spawned runners — the polyglot runner's standing pattern, now law).
+  Candidate form: a one-line operator wrapper with a bounded timeout +
+  envelope capture, so the law is enforced by tooling not memory.
+  Metric: hang-class dispatch failures → 0 across the round (V-1 is the
+  spawning receipt). Stage: PROPOSE.
+- **H-12 — the chunk-continuation brief generator (operator lane, Rondo
+  round seed).** The standing byte-exact-continuation economics,
+  automated: read the capped session's last state, emit the continuation
+  brief (the Etude round's V-6 pattern — capped chunks are errors, never
+  silent; the continuation carries the state). Candidate: a small
+  operator script. Metric: continuation chunks needing operator
+  correction → 0; operator minutes per resume. Stage: PROPOSE.
 
 A2-side candidates (skills, subagents, hooks, review checks) enter at
 PROPOSE only from receipted failures observed during O-ticket driving —
