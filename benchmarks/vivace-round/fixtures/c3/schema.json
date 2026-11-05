@@ -1,0 +1,10 @@
+{
+  "type": "object",
+  "properties": {
+    "total_todos": { "type": "integer" },
+    "files_with_todos": { "type": "array", "items": { "type": "string" } },
+    "delegated": { "type": "boolean" }
+  },
+  "required": ["total_todos", "files_with_todos", "delegated"],
+  "additionalProperties": false
+}

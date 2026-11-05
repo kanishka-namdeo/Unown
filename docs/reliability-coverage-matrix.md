@@ -27,7 +27,13 @@ engagement — current coverage, planned coverage, gaps.
   Recovery & Resilience on the runner lane (fixture-page determinism,
   artifact hashes, crash-mid-run resume) — plus the standing lanes
   re-validated at every teardown; the baseline re-receipted at
-  `18e4a98a` ([the round's benchmark README](../benchmarks/rondo-round/README.md))
+  `18e4a98a` ([the round's benchmark README](../benchmarks/rondo-round/README.md));
+  a **third parallel lineage's Vivace/Legato proposal PARKED 2026-11-06**
+  at the reconciliation (its pre-registered selection record + frozen
+  canary rig stand at [the Legato PRD](vivace-prd.md) +
+  [the vivace suite](../benchmarks/vivace-round/README.md) — a future-round
+  candidate behind Tempo; its B-17 attribution matrix folded into A2H-9's
+  forensics dossier)
 
 **Mini-TOC**
 

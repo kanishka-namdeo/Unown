@@ -60,6 +60,26 @@ improvement survives a session boundary (memory or skill lane receipt).
 
 PROPOSE-stage candidates (none canaried, none promoted):
 
+- **H-13 — the hostile-page-clip skill (Vivace seed, PARKED at the reconciliation — renumbered from H-10 to clear the Rondo collision; operator lane → skill).** When a clip target is
+  JS-walled, redirect-crazy, or oddly encoded, a fetch→browser→readability fallback chain skill should
+  beat ad-hoc per-ticket flailing. Spawning evidence: the PRD's W2 weakness (prior rounds' live-web
+  `[U]`s; the research sweep's browser-resilience gap); predicted to fire first at ticket V-3.
+  Metric: hostile-clip task success (the frozen B-16 holdout) WITH vs WITHOUT, ≥3 paired runs.
+  SHOULD fire on URL-fetch failures + extraction-empty pages; SHOULD-NOT on local files or clean
+  pages. Stage: PROPOSE (2026-11-05).
+- **H-14 — the schema-contract memory rule (Vivace seed, PARKED — renumbered from H-11; operator lane → memory rule).** A standing
+  `## Manual notes` bullet carrying the vehicle's current storage schema + migration state, edited
+  OUTSIDE sessions per ticket, protects late tickets against the 110-bullet render cap pruning
+  early-ticket facts (the W3 weakness). Metric: V-7/V-9 dispatches that need zero operator
+  schema re-explanation vs the V-2/V-3 baseline; failed-retrieval count in the memory health card.
+  Stage: PROPOSE (2026-11-05).
+- **H-15 — the schema-strict-final lane (Vivace seed, evidence-backed by the frozen C3 canary's exit-3 class — PARKED, renumbered from H-12; operator lane → command/review check).** The
+  C3 class (correct content, prose-wrapped JSON, exit 3) cured by a reusable final-answer contract
+  (a `/schema-strict` command prefix or a review check) rather than per-brief sentences. Metric:
+  the C3 canary rig exit 3 → exit 0 with the SAME brief, ≥3 runs (the B-15 holdout is the frozen
+  brief-side comparison — if B-15 alone cures it, H-12 stays PROPOSE and the brief lane wins).
+  Stage: PROPOSE (2026-11-05).
+
 - **H-1 — pre-dispatch smoke canary (operator lane).** One `UNOWN_OK`
   print-mode round trip before every A2 dispatch catches
   provider/bridge/engine staleness for ~4 s of spend, converting silent

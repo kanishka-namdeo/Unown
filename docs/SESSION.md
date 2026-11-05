@@ -63,6 +63,33 @@ Reprise queue.
 
 ---
 
+## PARKED ROUND — the Vivace round (2026-11-06, PARKED at the triple-incarnation reconciliation)
+
+A third parallel lineage's fresh-directive round, opened 2026-11-05 (late)
+on the same tree at `18e4a98a` and parked at the reconciliation before any
+ticket ran: `docs/vivace-round-session.md` — Phase 0 stands receipted (the
+Agnes upstream hand-verified, the calibration canaries frozen into a
+rerunnable rig — `benchmarks/vivace-round/run-canaries.sh`, C1 PASS · C2
+PASS · C3 content-pass with the schema class exit 3, the V-3 finding; the
+pre-declared tuning/holdout split; the pre-registered §0.9 selection of
+**Legato**, an offline-first read-later/web-clip PWA). At the
+reconciliation the ledger-arbiter law applies twice over: **Chaconne
+governs** (the Rondo round's selection landed on `main` first and its C-0
+plan is closed), Tempo stays carry-over #1, and **Legato parks as
+carry-over #2** — a future-round candidate whose selection record, PRD and
+frozen rig stand intact. The lineage's independent harvest of the encore
+Finale defect (its "B-17", root-caused in parallel as this round's V-4)
+folds into **A2H-9's forensics dossier**: the attribution matrix
+(bun 1.4.3 × 1.4.4 both fail in-suite; changelog-data revert excluded;
+isolated and sibling runs pass; **GitHub CI green on the same commit** —
+the check-runs receipt) narrows the shard-bisect to cross-file pollution
+under constrained CPU. The round's renumbered seed hypotheses (H-13
+hostile-page-clip, H-14 schema-contract memory rule, H-15
+schema-strict-final — the C3 class cured at the right layer) sit at
+PROPOSE in the registry as parked candidates.
+
+---
+
 ## PARKED ROUND — the Reprise round (2026-11-05, PARKED by the seventeenth lineage)
 
 The Ostinato engagement's P1 continuation round parked OPEN when the fresh
