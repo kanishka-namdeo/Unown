@@ -30,10 +30,10 @@ export interface ChangelogStop {
   groups: ChangelogGroup[];
 }
 
-export const CHANGELOG_TOTAL_ENTRIES = 541;
+export const CHANGELOG_TOTAL_ENTRIES = 542;
 
 export const CHANGELOG_TOTALS: Record<ChangelogBucket, number> = {
-  "Added": 257,
+  "Added": 258,
   "Changed": 32,
   "Deprecated": 0,
   "Removed": 3,
@@ -46,9 +46,9 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
   {
     "label": "Unreleased",
     "date": null,
-    "total": 34,
+    "total": 35,
     "counts": {
-      "Added": 26,
+      "Added": 27,
       "Changed": 0,
       "Deprecated": 0,
       "Removed": 0,
@@ -60,6 +60,10 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
       {
         "bucket": "Added",
         "items": [
+          {
+            "title": "A2H-9 closes — the encore Finale test-isolation fix (2026-11-06)",
+            "behavior": false
+          },
           {
             "title": "The Rondo round opens — the eighteenth lineage's Phase 0 (2026-11-06)",
             "behavior": false

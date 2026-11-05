@@ -36,7 +36,7 @@
  * tests + the e2e spec; the unit lane pins the RENDER + KEYBOARD
  * contract only.
  */
-import { afterAll, test, expect } from "bun:test";
+import { test, expect, afterEach } from "bun:test";
 
 const hasDom = typeof document !== "undefined";
 
@@ -94,6 +94,13 @@ if (!hasDom) {
   function cleanBody(): void {
     document.body.innerHTML = "";
   }
+
+  // Post-test hygiene: the LAST test's overlay must not outlive this
+  // file in the shared happy-dom document (a leftover h2 pollutes other
+  // suites' heading queries in the root battery).
+  afterEach(() => {
+    cleanBody();
+  });
 
   test("render: two decks (one capped, one not) → dialog + preselected select + loaded cap", async () => {
     const { renderSettingsForm } = await importApp();
@@ -246,17 +253,5 @@ if (!hasDom) {
     expect(form).not.toBeNull();
     const error = form.querySelector(".ostinato-create-error") as HTMLParagraphElement;
     expect(error.textContent).toBe("No decks yet — create a deck first (N).");
-  });
-
-  /** A2H-9 isolation: every pin renders the settings form into the
-   * shared happy-dom document.body WITHOUT RTL (and RTL's cleanup does
-   * not run in this file), so the overlay + its <h2> title outlive the
-   * suite and pollute the one-process battery — the encore Finale's
-   * `getByRole("heading", { level: 2 })` then finds this leftover
-   * heading alongside its own. Each pin's cleanBody() resets between
-   * tests, so this afterAll removes only the residue the LAST pin
-   * leaves behind. Lane A (DOM-free) skips it. */
-  afterAll(() => {
-    document.body.innerHTML = "";
   });
 }

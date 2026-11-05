@@ -94,3 +94,11 @@ investigated-and-excluded lane. **Standing lesson**: battery subsets
 must reproduce the battery's ACTUAL file set (substring filters
 included) — `bun run test:unit 2>&1 | rg "^apps/"` is now the
 one-command check for what the "src" battery really runs.
+
+Convergent-closure note (2026-11-06, the third lineage): the parallel
+Vivace-lineage closure (afterEach shape) landed second and folded into
+[the receipt's final section](receipts/a2h9.md) — its unique evidence:
+the full-capture error dump that printed BOTH h2s, the group-combo
+matrix, the CI check-runs receipt (green on the same commit), and the
+bun 1.4.3×1.4.4 / changelog-revert exclusions. Both closures name the
+same root cause and the same acceptance; the landed `afterAll` governs.
