@@ -12,9 +12,13 @@ is **Legato** and whose cargo is driving-improvement evidence.
   reconciliation** — the Rondo round's Chaconne governs (landed on `main`
   first, C-0 closed), Tempo is carry-over #1, Legato parks as carry-over
   #2 with this Phase-0 record + the frozen rig intact. This lineage
-  continues the mission inside the Rondo round's queue (A2H-9 chunk 4,
-  then C-1) — the dual-incarnation working pattern receipted since
-  Coda-C4. Phase 0 stood COMPLETE at park time; no V-ticket ever ran.
+  continued the mission inside the Rondo round's queue and **CLOSED
+  A2H-9** (2026-11-06 — chunks 4a-4d, the convergent dual closure with
+  the Rondo lineage, receipt
+  `benchmarks/rondo-round/receipts/a2h9.md`; the merged tree
+  re-verified 2258/0 by this operator). Next in the Rondo queue: **C-1,
+  the Chaconne domain core** (its dispatch brief is in the Rondo round
+  log). Phase 0 stood COMPLETE at park time; no V-ticket ever ran.
 
 ## Mission
 

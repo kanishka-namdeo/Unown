@@ -166,7 +166,24 @@ The eighteenth lineage (this round's opening lineage), 2026-11-06:
 
 User/operator-visible findings of this round (the B register continues the
 lineage numbering — B-1..B-14 live in the Ostinato, Reprise and Etude
-logs). **None yet** — B-15 is the next free id.
+logs). **B-15/B-16** are the holdout benchmark ids (see the suite README);
+**B-17** was the Vivace lineage's alias for the A2H-9 defect (CLOSED —
+folded into the receipt); the next free bug id is **B-18**.
+
+- **B-18 (OPEN, memory-hygiene lane — filed by the third lineage
+  2026-11-06):** the AutoDream/Mem0 consolidation's rendered
+  `.unown/memory/project.md` carries an embedded REASONING-NOISE blob —
+  a "Known pitfalls" bullet contains the dream LLM's own meta-deliberation
+  ("[NOTE: The original memory contained a markdown artifact… I will
+  keep the text as is…]" — ~90 words of it) leaked INTO the stored fact
+  (observed in the 2026-11-06 re-render, git-visible in the A2H-9
+  closeout commit). The extraction/consolidation prompt's chain-of-
+  thought is not being stripped before storage. Impact: every future
+  session injecting project memory reads the noise; the memory-quality
+  backlog item (inference review queue; placement/duplication audit)
+  gains a concrete defect class. Fix lane: the dream's extraction
+  prompt/output filter (engine-side — check whether it's extension-
+  surface or upstream before ticketing).
 
 ## Ticket queue
 
