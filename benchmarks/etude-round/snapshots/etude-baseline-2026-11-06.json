@@ -1,0 +1,178 @@
+{
+ "label": "etude-baseline",
+ "capturedAt": "2026-11-05T20:10:39",
+ "schema": "validation-round/1",
+ "drained": true,
+ "engine": {
+  "version": "self-learning v0.0.56",
+  "provider": "zai-bridge/agnes-3.0-flash",
+  "bridgeUpstreamOk": true
+ },
+ "memoryMetrics": {
+  "memoryVersions": {
+   "policy": 1,
+   "project": 1,
+   "user": 1,
+   "local": 1
+  },
+  "terminalMemory": {
+   "provenance": {
+    "version": 2,
+    "changedBy": "mem0",
+    "at": 1793860552849,
+    "sha256": "a942f2b7842aec7f0a6d6ef2d6d69cbb9ce86d1a421419403b88ed853359edc5",
+    "manualSha256": "c0f237e9cd03b481913310e386b4118e2586c0d77a2345832c55e2888e869944",
+    "manualEdited": true
+   },
+   "contentChars": 20215,
+   "bulletCount": 107,
+   "sectionCount": 5,
+   "userSkills": [
+    "restart-engine",
+    "recover-failed-cycle",
+    "pin-settings-defaults",
+    "pre-commit-engine-check",
+    "hostile-page-checkout",
+    "design-system-generator",
+    "ux-reviewer",
+    "motion-designer",
+    "test-cadence-domain",
+    "fix-nocturne-seed-invariants",
+    "frontend-craftsman",
+    "landing-page-architect",
+    "accessibility-auditor"
+   ],
+   "stagedSkills": []
+  },
+  "retrievalProbeResults": null
+ },
+ "learningMetrics": {
+  "tasks": [
+   {
+    "id": "fix-fizzbuzz",
+    "name": "Fix FizzBuzz",
+    "category": "bugfix",
+    "difficulty": 1,
+    "status": "regression",
+    "origin": "seed",
+    "pass_count": 0,
+    "fail_count": 0,
+    "created_at": 1793909302337
+   },
+   {
+    "id": "fix-drop-right",
+    "name": "Fix dropRight off-by-one",
+    "category": "bugfix",
+    "difficulty": 2,
+    "status": "regression",
+    "origin": "seed",
+    "pass_count": 0,
+    "fail_count": 0,
+    "created_at": 1793909302337
+   },
+   {
+    "id": "fix-csv-parser",
+    "name": "Fix CSV parsing",
+    "category": "bugfix",
+    "difficulty": 3,
+    "status": "regression",
+    "origin": "seed",
+    "pass_count": 0,
+    "fail_count": 0,
+    "created_at": 1793909302337
+   },
+   {
+    "id": "swap-if-else-messages",
+    "name": "Swap if/else branch bodies",
+    "category": "bugfix",
+    "difficulty": 3,
+    "status": "regression",
+    "origin": "seed",
+    "pass_count": 0,
+    "fail_count": 0,
+    "created_at": 1793909302337
+   },
+   {
+    "id": "impl-debounce",
+    "name": "Implement debounce",
+    "category": "implementation",
+    "difficulty": 4,
+    "status": "regression",
+    "origin": "seed",
+    "pass_count": 0,
+    "fail_count": 0,
+    "created_at": 1793909302337
+   },
+   {
+    "id": "impl-map-limit",
+    "name": "Implement mapLimit",
+    "category": "implementation",
+    "difficulty": 4,
+    "status": "regression",
+    "origin": "seed",
+    "pass_count": 0,
+    "fail_count": 0,
+    "created_at": 1793909302337
+   }
+  ],
+  "taskCount": 6,
+  "tasksPassing": 6,
+  "suiteStats": {
+   "total": 6,
+   "passing": 0,
+   "capability": 0,
+   "regression": 6,
+   "minted": 0,
+   "graduated": 0,
+   "quarantined": 0,
+   "saturated": false
+  },
+  "cycles": [],
+  "cycleCount": 0,
+  "cycleStatusCounts": {},
+  "improvements": [],
+  "improvementCount": 0,
+  "improvementsShipped": 0,
+  "dreams": [],
+  "dreamCount": 0,
+  "skills": [],
+  "skillCount": 0,
+  "runCount": 0,
+  "runStats": {
+   "tokensIn": 0,
+   "tokensOut": 0,
+   "toolCalls": 0
+  },
+  "passRate": {
+   "runsPassed": 0,
+   "runsTotal": 0
+  },
+  "noteCount": 1,
+  "notesPending": 1,
+  "hooks": {
+   "total": 0,
+   "denies": 0
+  },
+  "governor": {
+   "budget": {
+    "callsHour": 0,
+    "callsDay": 0,
+    "tokensHour": 0,
+    "tokensDay": 0,
+    "limits": {
+     "callsHour": 60,
+     "tokensHour": 200000,
+     "tokensDay": 2000000
+    },
+    "overBudget": false,
+    "reason": null
+   },
+   "breaker": {
+    "open": false,
+    "consecutiveFailures": 0,
+    "threshold": 3,
+    "retryInMs": 0
+   }
+  }
+ }
+}

@@ -12,7 +12,8 @@ tickets land receipts; every figure names its receipt.
 | e2e battery (ostinato) | 14/14 | 14/14 (2026-11-05) | [README.md](README.md) |
 | Harness-defect burn-down | 2 open (B-13, B-14) | **0 open — both FIXED via A2H-5/A2H-6 (2026-11-05)** | [receipts/a2h5.md](receipts/a2h5.md) · [receipts/a2h6.md](receipts/a2h6.md) |
 | A2 turns-to-close (the round's DRIVE tickets) | n/a | A2H-5: 13 turns / 2 chunks · A2H-6: 22 turns / 3 chunks · 0 operator unblocks | the round log's ticket queue |
-| Learning-layer baseline (ops-accuracy, quality-axes, selfimprove, engine snapshot) | null — captures at Phase-1 opening | null | this file |
+| Learning-layer baseline (ops-accuracy, quality-axes, selfimprove, engine snapshot) | null — captures at Phase-1 opening | **captured 2026-11-06** — the engine snapshot drained (6 tasks passing, terminal memory v2/107 bullets) + the standing receipts pinned | [snapshots/etude-baseline-2026-11-06.json](snapshots/etude-baseline-2026-11-06.json) |
+| Augmentation registry (promoted this round) | 0 (opened empty) | **1 — H-9 PROMOTED 2026-11-06** (A2H-5 + A2H-6, the fresh-boot gate awareness; the operator gate at the E-0 decision package) | [the registry](../../docs/a1-augmentation-registry.md) |
 
 After A2H-5/A2H-6: the fresh-home row's verifier is the wiped-home ×3 run
 pinned in the validation log; the burn-down row moves only on gate-passed

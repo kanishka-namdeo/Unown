@@ -1,13 +1,23 @@
-# The Tempo PRD (outline — proposed for approval)
+# The Tempo PRD (outline — E-0 approved in a dual-incarnation event, then parked)
 
-> **Status: PROPOSED 2026-11-05** — the A1 directive's APP placeholder
-> (`[APP_NAME + ONE-PARAGRAPH VISION + REPO PATH]`) arrived unfilled; this
-> outline proposes the vehicle. Nothing below dispatches until the operator
-> approves (or substitutes) at the E-0 gate in
-> [the round log](etude-round-session.md).
+> **Status: E-0 APPROVED 2026-11-06, then PARKED the same day** — a
+> parallel lineage approved Tempo as proposed, amended by the five
+> amendments from [the round's market
+> research](etude-round-market-research.md) (the platform-scope rewording,
+> the storage budget + migration seam, the invoice invariants pinned to
+> the legal floor, the shortcut sheet promoted to P0, the portfolio
+> metrics — all folded into this PRD below); the same day, the Rondo
+> round's §0.9 selection (a fresh scored comparison that treated this
+> proposal as ONE candidate, scoring it 1×1×2 — comfort-zone under the
+> anti-gaming bar) chose **Chaconne** instead and landed on `main` first —
+> the ledger-arbiter law gives that selection precedence. This PRD, the
+> amendments and the frozen E-1..E-6 queue stand as the parked round's
+> record; Tempo remains a carry-over candidate. The full event chain is
+> receipted in [the round log](etude-round-session.md).
 
-One-line purpose: the PRD outline for **Tempo**, the Etude round's proposed
-DRIVE-track application — the production build that doubles as A2's
+One-line purpose: the PRD for **Tempo**, the Etude round's DRIVE-track
+application (E-0 approved with amendments in a dual-incarnation event,
+then parked) — the production build that doubles as A2's
 reliability stress test.
 
 **Mini-TOC**
@@ -76,18 +86,33 @@ derivation proof, and a full keyboard model verified by an e2e battery.
 4. The review surface: day/week/month grouping, per-project subtotals,
    unbilled vs billed filtering, keyboard-navigable.
 5. Invoicing: draft from unbilled entries (per client), sequential
-   per-client numbering with a re-issue path, line items grouped by
-   project, totals with per-line and per-invoice rounding rules pinned by
-   unit tests, markdown + HTML export, print-to-PDF via the browser.
+   per-client numbering — strictly monotonic, gapless, no reuse, immutable
+   after issue, never user-editable post-issue (amendment 3, the legal
+   floor) — with a void-and-reissue path and corrections only via linked
+   credit notes; issue date mandatory, optional supply date when different;
+   per-line VAT rate, VAT-ID fields for both parties, a reverse-charge
+   toggle; line items grouped by project, totals with per-line and
+   per-invoice rounding rules pinned by unit tests; markdown + HTML export
+   with the issued-invoice snapshot embedded in the canonical-JSON export
+   (the 7-year retention rationale); print-to-PDF via the browser; and a
+   short jurisdiction checklist doc (EU/UK/US invoice requirements) shipped
+   beside the app.
 6. Import/export: canonical-JSON export (byte-stable, the Ostinato
    canonicalization law), CSV export of entries, JSON import with
    validation and a dry-run report.
 7. The PWA: offline-complete, installable, precache with a static
-   derivation proof (`apps/tempo/scripts/verify-precache.ts`).
+   derivation proof (`apps/tempo/scripts/verify-precache.ts`); a byte
+   budget with headroom under the ~5 MB localStorage cap,
+   `QuotaExceededError` handling with user-facing remediation, and the
+   IndexedDB migration seam defined up front (amendment 2 — the Coda
+   pattern at `apps/coda/src/db/idb.ts`, the storage adapter the proven
+   Ostinato atomic-write pattern).
+8. The shortcut sheet: a `?`-invoked keyboard reference derived from the
+   palette table (promoted from P1 by amendment 4 — keyboard-first is the
+   wedge and ships with the core, not after it).
 
-**P1 (post-freeze candidates)**: CSV import, per-entry tags, a `?`
-shortcut sheet derived from the palette table, invoice templates,
-multi-currency.
+**P1 (post-freeze candidates)**: CSV import, per-entry tags, invoice
+templates, multi-currency.
 
 **P2 (explicitly deferred)**: cloud sync, accounts, team/time-approval
 flows, native mobile.
@@ -97,8 +122,13 @@ flows, native mobile.
 - No backend, no accounts, no telemetry — local-first, full stop.
 - No dependency additions (the zero-dep house law; vendored libs only if a
   P0 need is proven).
-- No WebKit/Firefox/mobile claims in P0 — Chromium-desktop is the honest
-  scope (the Ostinato precedent); the others stay `[U]` in the matrix.
+- No unsupported-browser claims in P0 — v1 is tested and supported on
+  Chrome and Edge desktop; Safari (macOS 14+) and Firefox (with extension)
+  also install PWAs but are unsupported in v1, stated as a support policy
+  and never as a platform claim (amendment 1). No Chromium-only web API
+  without feature detection and a graceful path; an explicit
+  unsupported-browser screen instead of silent breakage. WebKit, Firefox
+  and mobile stay `[U]` in the coverage matrix.
 
 ## Hardening-first mapping
 
@@ -137,19 +167,39 @@ discovers them late.
   zero-dependency hash, the precache derivation proof, the e2e battery
   (K-1 zero-mouse, A-1 axe both schemes, O-1 offline, R-1 crash-resume,
   resize, the invoice round-trip).
+- Success is measured as portfolio outcomes, not a SaaS funnel (amendment
+  5): installs, 30-day installed-PWA retention, and export usage as the
+  no-telemetry real-usage proxy (locally counted); no revenue targets in
+  v1.
 - The engagement's own bars: turns-to-done trending down across the E-
   tickets; every harvested defect converted to a pinned regression; the
   reliability lanes re-receipted at teardown ([the matrix](reliability-coverage-matrix.md)).
-- Honest scope stated on the landing surface (Chromium-desktop-only P0).
+- Honest scope stated on the landing surface (the support-policy wording
+  above).
 
 ## Approval
 
-The E-0 gate: approve Tempo as proposed, substitute another vehicle, or
-amend scope. Until then, only the harness tickets (A2H-5, A2H-6) dispatch.
+**APPROVED at E-0 on 2026-11-06** (a parallel lineage's operator gate):
+Tempo as proposed, with the five market-research amendments folded into
+this PRD above — the platform-scope rewording, the storage budget +
+migration seam, the invoice invariants pinned to the legal floor, the
+shortcut sheet promoted to P0, and the portfolio metrics. The market
+evidence and the rejected/counter-signal analysis live in
+[the research record](etude-round-market-research.md); the vehicle selection
+scoring (against the sibling candidates) is the seventeenth lineage's
+Phase-0 record in [the round log](etude-round-session.md). The app queue
+E-1..E-6 formed at approval. **Superseded the same day**: the Rondo
+round's §0.9 selection (Chaconne) landed on `main` first and the Etude
+round parked — this section records an approval that was real, receipted,
+and then outrun by a fuller selection pass on a parallel lineage; the
+queue never dispatched (the V-10 dual-incarnation event, in the round
+log).
 
 ## Related pages
 
 - [The Etude round log](etude-round-session.md)
+- [The Etude round market research](etude-round-market-research.md) — the
+  E-0 evidence base
 - [The Ostinato PRD](ostinato-prd.md) — the house pattern this follows
 - [The reliability coverage matrix](reliability-coverage-matrix.md)
 - [Coda](coda.md) · [Ostinato](ostinato.md) — the sibling products

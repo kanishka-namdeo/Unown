@@ -40,12 +40,21 @@ queue stands): `docs/etude-round-session.md`. Phase 0 stood complete on
 the seventeenth lineage (recon, the baseline suite + C1–C3 canaries at
 `benchmarks/etude-round/`, the matrix re-opened); A2H-5/A2H-6 CLOSED
 through A2 (B-13/B-14 fixed, receipts in the round log); H-9 canary
-complete — **promoted by the Rondo round's opening operator decision**
-(the decision Etude reserved). The **E-0 approval gate never resolved**:
-the Tempo PRD (`docs/etude-prd.md`) was PROPOSED, not approved — the
-Rondo round's §0.9 selection scored Tempo as one candidate (1×1×2,
-comfort-zone) and chose Chaconne instead; Tempo stays a carry-over
-candidate with the Reprise queue.
+complete — **promoted 2026-11-06 by the CONVERGENT DUAL operator
+decision** (both parallel lineages promoted it independently the same
+day — the Etude lineage's operator gate and the Rondo round's opening
+decision; the registry row records both). **The E-0 gate: a
+dual-incarnation event, receipted in the round log** — a parallel
+lineage approved Tempo with the five market-research amendments ([the
+research record](etude-round-market-research.md)) and captured the
+learning baseline
+(`benchmarks/etude-round/snapshots/etude-baseline-2026-11-06.json`, the
+engine snapshot drained) the same day the Rondo round's §0.9 selection
+(Chaconne over Tempo, scored 1×1×2 comfort-zone) landed on `main` first;
+the ledger-arbiter law gives the Rondo selection precedence — the
+amended PRD, the frozen E-1..E-6 queue and all the receipts stand as the
+parked round's record. Tempo stays a carry-over candidate with the
+Reprise queue.
 
 ---
 

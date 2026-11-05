@@ -79,6 +79,14 @@ snapshot via the nocturne-round pattern (`bun validation-round/snapshot.mjs
 snapshot). These pin the "did A2 actually learn" axis the engagement is
 accountable for.
 
+**Captured 2026-11-06 (the eighteenth lineage, pre-E-1)**: the engine
+snapshot at
+[snapshots/etude-baseline-2026-11-06.json](snapshots/etude-baseline-2026-11-06.json)
+(drained; engine v0.0.56; 6 tasks passing; terminal memory v2, 107 bullets)
++ the standing receipts pinned at their latest runs (ops-accuracy
+2026-10-26, quality-axes agnes-3.0-flash, the selfimprove v3-notes). The
+Phase-1 holdout forms against this capture.
+
 ## RESULTS.md
 
 Honest nulls until the round's tickets land receipts; the file carries the
