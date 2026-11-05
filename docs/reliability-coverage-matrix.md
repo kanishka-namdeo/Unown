@@ -13,7 +13,12 @@ engagement — current coverage, planned coverage, gaps.
 
 - Owner: the A1 operator (operator-authored, refreshed alongside
   [`A2_GROUND_TRUTH.md`](../A2_GROUND_TRUTH.md))
-- Status: opened 2026-11-04; **refreshed at the Ostinato round's teardown (2026-11-04, the closeout commit)** — the round's headline lanes are receipted below; the freeze rule held (no P1 feature work before every lane carried a receipt produced or re-validated this engagement)
+- Status: opened 2026-11-04; refreshed at the Ostinato round's teardown
+  (2026-11-04); **re-opened for the Etude round 2026-11-05** (the fresh
+  A1 directive's Phase 0) — the Ostinato receipts stand as history; this
+  round re-validates every lane it touches and adds the fresh-install
+  truth law (wiped-home lane runs) to the Keyboard Accessibility and TUI
+  Consistency lanes, where the round's opening harvest (B-13/B-14) lives
 
 **Mini-TOC**
 
@@ -46,18 +51,24 @@ or `[U]`).
 
 - Receipts above were re-verified against `main` @ `189fa033` and the live
   stack on 2026-11-04 where the receipt is a live surface (engine status,
-  bridge health); historical receipts are linked, not restated.
-- The two headline lanes for THIS round are **Keyboard Accessibility** and
-  **Recovery & Resilience** applied to the app lane — the directive's
-  hardening-first requirement is exactly there (see
-  [the PRD's mapping table](ostinato-prd.md#hardening-first-requirement)).
-  **At the round's teardown (2026-11-04): both lanes carry their receipts**
-  (the committed closeout re-run,
-  `benchmarks/ostinato/receipts/run-20261104T181704Z/`) — the freeze's own
-  condition is met for the round's P0 set; the honest `[U]`s
-  (WebKit/Firefox/mobile) stand recorded, not claimed.
+  bridge health); historical receipts are linked, not restated. The Etude
+  round (2026-11-05) re-verified the live surfaces on `f3f0176e`: bridge
+  200/6 models, engine ready/9 jobs, doctor 19✓/2⚠, unit 2235/0/160,
+  gates green, e2e 14/14 — [the baseline](../benchmarks/etude-round/README.md).
+- **The Etude round's headline lanes** (per its directive's
+  hardening-first bar): Keyboard Accessibility and TUI Consistency
+  applied to the PTY harness itself first (the fresh-install truth law —
+  every lane claim must hold on a wiped home's FIRST boot). The opening
+  audit harvested B-13/B-14 there; the fix tickets A2H-5/A2H-6 and the
+  H-9 helper restore the lanes' fresh-home coverage — the receipts land
+  in [the round's validation log](../benchmarks/etude-round/validation-log.md).
+- The two headline lanes for the Ostinato round were **Keyboard
+  Accessibility** and **Recovery & Resilience** applied to the app lane —
+  both carried their receipts at that round's teardown (the committed
+  closeout re-run, `benchmarks/ostinato/receipts/run-20261104T181704Z/`);
+  the honest `[U]`s (WebKit/Firefox/mobile) stand recorded, not claimed.
 - The gap column is deliberately short because prior rounds closed the
-  backlog; the two standing gaps (#30 capture, subagent-reuse) are queued
+  backlog; the standing gaps (#30 capture, subagent-reuse) are queued
   in [SESSION.md](SESSION.md), not forgotten.
 
 ## Freeze rule
@@ -68,9 +79,10 @@ The freeze is lifted by the matrix, not by opinion.
 
 ## Related pages
 
-- [The Ostinato PRD](ostinato-prd.md) — the DRIVE vehicle this matrix gates
+- [The Ostinato PRD](ostinato-prd.md) — the Ostinato round's DRIVE vehicle
+- [The Etude PRD](etude-prd.md) — the Etude round's proposed DRIVE vehicle
 - [The augmentation registry](a1-augmentation-registry.md)
-- [The round's session log](ostinato-round-session.md)
+- [The Ostinato round log](ostinato-round-session.md) · [the Etude round log](etude-round-session.md)
 - [`A2_GROUND_TRUTH.md`](../A2_GROUND_TRUTH.md) — the recon snapshot
 - [`SDLC_CAPABILITY_MATRIX.md`](../SDLC_CAPABILITY_MATRIX.md) — the
   sibling lane-by-lane capability inventory

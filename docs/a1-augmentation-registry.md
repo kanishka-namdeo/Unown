@@ -11,7 +11,7 @@ augmentation this engagement proposes, canaries, gates and promotes — or
 retires.
 
 - Owner: the A1 operator (authored outside A2 sessions)
-- Status: OPENED 2026-11-04; the Ostinato round closed 2026-11-04 — promoted rows: 2 (H-6, H-4); the **Reprise round opened 2026-11-05** — **promoted rows: 3 (+H-8, A2H-4, 2026-11-05)**; H-1/H-2/H-3 carry live records at PROPOSE; the round's validation log lives in [the round log](reprise-round-session.md)
+- Status: OPENED 2026-11-04; the Ostinato round closed 2026-11-04 — promoted rows: 2 (H-6, H-4); the **Reprise round opened 2026-11-05** — **promoted rows: 3 (+H-8, A2H-4, 2026-11-05)**; H-1/H-2/H-3 carry live records at PROPOSE; the Reprise round PARKED 2026-11-05 (a fresh directive opened); the **Etude round opened 2026-11-05 EMPTY** — promoted rows: 0, one PROPOSE on file (H-9, this round's opening harvest); the round's validation log lives in [the round log](etude-round-session.md) + [the benchmark validation log](../benchmarks/etude-round/validation-log.md)
 
 **Mini-TOC**
 
@@ -162,6 +162,30 @@ PROPOSE-stage candidates (none canaried, none promoted):
   gate receipts — BEFORE 3/3 FAIL on a fresh install → AFTER 3/3 PASS
   with the ambient `UNOWN_HOME` deliberately set, the standing lanes
   green with zero env overrides, the durable-code retention.
+  **Receipt correction (2026-11-05, the Etude round's V-3)**: the
+  3/3 PASS holds only for pre-warmed homes — on a WIPED home the lane
+  is deterministically red (the pre-TUI first-run gate blocks the
+  header; B-14). The promotion stands (the `pty_common` hardening is
+  real and load-bearing); the fresh-install claim is corrected by
+  H-9/A2H-6 below, which restore it.
+- **H-9 — fresh-boot gate awareness in the PTY harness (operator lane /
+  repo harness, spawns tickets A2H-5 + A2H-6).** Every fresh-home lane
+  boot must survive the product's OWN pre-TUI first-run gate
+  (`cli.ts:3595-3618`) — either provisioned (an env-filtered
+  `setup --provider bridge` that writes `settings.json`, suppressing
+  the gate) or pane-aware (a `first_run_gate` helper in `pty_common.py`
+  that answers `n` + Enter when the gate text is on the pane — the
+  preferred shape: the lane then exercises the product's real
+  first-run flow instead of bypassing it). Spawning evidence: the
+  Etude round's V-2/V-3 (2026-11-05, the seventeenth lineage — the
+  hint lane's setup subprocess leaked ambient `UNOWN_HOME` and
+  provisioned the wrong home, B-13; the picker lane provisions nothing
+  and blocks on the gate, B-14; cold-home 0/2 lanes → warm-home 3/3,
+  with the controlled `setup`-writes-`settings.json` experiment as the
+  root-cause receipt). Metric: the hint and picker lanes pass WIPED
+  homes ×3 consecutive, ambient `UNOWN_HOME` deliberately exported.
+  Stage: **PROPOSE (opened 2026-11-05 at the Etude round's Phase 0 —
+  this round's first augmentation hypothesis, filed for approval)**.
 
 A2-side candidates (skills, subagents, hooks, review checks) enter at
 PROPOSE only from receipted failures observed during O-ticket driving —
@@ -179,8 +203,9 @@ re-trials).
 
 ## Related pages
 
-- [The Ostinato PRD](ostinato-prd.md) — the DRIVE vehicle
+- [The Ostinato PRD](ostinato-prd.md) — the Ostinato round's DRIVE vehicle
+- [The Etude PRD](etude-prd.md) — the Etude round's proposed DRIVE vehicle
 - [The reliability coverage matrix](reliability-coverage-matrix.md)
-- [The round's session log](ostinato-round-session.md)
+- [The Ostinato round log](ostinato-round-session.md) · [the Reprise round log](reprise-round-session.md) · [the Etude round log](etude-round-session.md) — the registry's rounds
 - [`A2_GROUND_TRUTH.md`](../A2_GROUND_TRUTH.md) — §9 learning-mechanism
   inventory; the augmentation surface's recon base

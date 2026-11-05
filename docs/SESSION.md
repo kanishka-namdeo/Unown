@@ -8,40 +8,53 @@ archaeology. When a round completes, its log graduates to a round-specific
 
 ---
 
-## ACTIVE ROUND — the Reprise round (2026-11-05, OPENED by the fourteenth lineage)
+## ACTIVE ROUND — the Etude round (2026-11-05, OPENED by the seventeenth lineage)
 
-The Ostinato engagement's P1 continuation round is **OPEN**:
-`docs/reprise-round-session.md` — the PRD's P1 backlog (stats heatmap,
-deck-level review settings, CSV Anki-style import, the in-app `?`
-shortcut sheet) ships through A2 tickets R-1..R-5 under the inherited
-freeze law: the full e2e battery, Lane A/B, app tsc, the zero-dep hash
-and the precache derivation proof stay green through every ticket. The
-round opened on the receipted tree at `a83336f4` + the teardown-refresh
-commit `6688a9c0` (the fourteenth lineage's ground-truth + capability-
-matrix refresh); the pre-ticket baseline is ALL GREEN (unit 2223/0,
-rail 55/535, blog 46/116, claims 62/62). The queue and the per-ticket
-verifiers live in the round log. **R-1 is CLOSED 2026-11-05** — the
-fourteenth lineage landed the code lane (V-2's operator-gate catch
-receipted); the fifteenth lineage landed the e2e heatmap spec + the
-B-12 harvest (the el() tabindex junk-expando fix — the stats overlay's
-keyboard surface was dead; the battery now 14 tests / 6 spec files,
-Lane A 101+1skip / Lane B 105, tsc 0, proof 19/0, receipt COMPLETE).
-**Next: R-2 (deck-level review settings) — the
-SIXTEENTH lineage (2026-11-05 latest) brought the stack up post-A2H-4
-and re-verified the landing from the fresh side**: install 7/7, unit
-2235/0/160, the full gate set + e2e battery 14/14 green at `0c57548c`,
-and the H-3 PTY audit's first ZERO-CURE run (footer-quiet 9/9,
-resume-hint ALL HELD, picker PASS on a fresh install AND with ambient
-`UNOWN_HOME` set — the V-3/V-4/V-5 operator cures all retired; V-8: the
-fd/pyte environmental cures moved into the bring-up checklist). **R-2
-CLOSED 2026-11-05 by the sixteenth lineage** — deck-level review
-settings (`Deck.settings.newCardsPerSession`, the pre-cap queue cap
-resolution, the `d` settings modal on the create-form pattern):
-Lane A 121/0, Lane B 128/0, tsc 0, proof 19/0, the e2e battery
-**17/17** (3 new specs), the DOX amended; 9 A2 dispatches (the
-degradation curve measured — V-10's pricing lesson), one genuine
-defect + one receipt-overclaim caught at the operator gates (V-9).
-**Next: R-3 (CSV Anki-style import).**
+A FRESH A1 directive (the standing shape: STABILISE × HARDEN × PROVE)
+opened a new engagement: `docs/etude-round-session.md` — Phase 0 executed
+by the seventeenth lineage on the fresh tree at `f3f0176e` (install 7/7,
+stack up, doctor ready-to-chat, baseline ALL GREEN: unit 2235/0/160, tsc
+0, lint 0-143w, rail 55/539/54, blog 46/116, benchmarks 6/6, claims
+62/62, e2e 14/14 — the battery figure receipted at `f3f0176e`; the
+parallel lineage's R-2 landing moved it to **17/17** by the time this
+commit rebased on top — the reconciliation itself receipted). The round's
+opening harvest: the first keyboard/TUI audit (with the new
+**fresh-install truth law** — wiped VERIFY_HOMEs) found two deterministic
+harness defects (B-13 the hint lane's ambient-`UNOWN_HOME` setup leak,
+B-14 the picker lane's fresh-boot first-run-gate block) — tickets
+**A2H-5/A2H-6 queued with dispatch briefs**; the **Etude PRD**
+(`docs/etude-prd.md`) proposes **Tempo**, a keyboard-first offline-first
+time-tracking + invoicing PWA at `apps/tempo/`, for approval at the E-0
+gate; the benchmark baseline + calibration canaries live at
+`benchmarks/etude-round/`; the registry re-opened EMPTY for the round
+with **H-9** (fresh-boot gate awareness) at PROPOSE for approval.
+**Next: A2H-5 dispatch (its brief is in the round log), then A2H-6,
+then the E-0 approval gate.**
+
+---
+
+## PARKED ROUND — the Reprise round (2026-11-05, PARKED by the seventeenth lineage)
+
+The Ostinato engagement's P1 continuation round parked OPEN when the fresh
+Etude directive arrived (new task, not a resume — nothing deleted, the
+queue stands): `docs/reprise-round-session.md` — the PRD's P1 backlog
+(stats heatmap, deck-level review settings, CSV Anki-style import, the
+in-app `?` shortcut sheet) ships through A2 tickets R-1..R-5 under the
+inherited freeze law. **R-1 CLOSED 2026-11-05** (the code lane + the e2e
+heatmap spec + the B-12 harvest). **R-2 CLOSED 2026-11-05 by a parallel
+lineage mid-Etude-Phase-0** (deck-level review settings —
+`Deck.settings.newCardsPerSession`, the pre-cap queue cap resolution, the
+`d` settings modal on the create-form pattern: Lane A 121/0, Lane B
+128/0, tsc 0, proof 19/0, the e2e battery **17/17** with 3 new specs;
+9 A2 dispatches, the degradation curve measured — V-10's pricing lesson;
+one genuine defect + one receipt-overclaim caught at the operator gates,
+V-9) — landed as `782f090b` and reconciled by the Etude round's rebase.
+The sixteenth lineage's bring-up receipts stand (install 7/7, unit
+2235/0/160, the full gate set green — its H-3 PTY audit's fresh-install
+claim corrected by the Etude round's V-3: the lanes pass pre-warmed
+homes only until A2H-5/A2H-6 land). **R-3..R-5 remain OPEN as carry-over
+candidates** for the Etude round's queue (R-3: CSV Anki-style import was
+next).
 
 ---
 
