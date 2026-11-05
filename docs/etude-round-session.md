@@ -116,6 +116,7 @@ The seventeenth lineage (this round's opening lineage), 2026-11-05:
 | V-3 | `verify_resume_picker.py` failed `wait_ready` (PaneTimeout, 90 s) on a wiped VERIFY_HOME — the lane provisions nothing, and the FIRST boot of any fresh home deterministically blocks on the pre-TUI first-run gate (`cli.ts:3595-3618`; `created: models.fresh \|\| !settingsExisted` at `term.ts:276`). Cold-home FAIL ×2 → warm-home PASS ×2 (2026-11-05) | genuine-gap (harness + receipt correction) | **A2H-6 opened**: the lane must either provision its VERIFY_HOME via an env-filtered `setup` or — the better coverage — answer the gate pane-aware (the helper proposed as H-9), so the lane exercises the product's real first-run flow. The H-8 receipt's "fresh install 3/3 PASS" is corrected: it holds only for pre-warmed homes. Receipt: [V-3 repro matrix](../benchmarks/etude-round/validation-log.md) |
 | V-4 | The full pre-ticket baseline re-run (2026-11-05): every gate green on the fresh tree — the numbers in the environment checkpoint above | receipt | Filed as the Etude round's baseline snapshot ([the round's benchmark README](../benchmarks/etude-round/README.md)); the Phase-1 holdout forms against it |
 | V-5 | A PARALLEL lineage closed Reprise R-2 (`782f090b`, deck-level review settings, 9 A2 dispatches, battery → 17/17) mid-Etude-Phase-0; the push rejected, the rebase reconciled (memory render taken theirs — the newer dream; SESSION.md merged semantically: R-2 CLOSED folded into the parked section) | upstream-change (the known parallel-lineage class) | Reconciled 2026-11-05: rebase clean after 3 semantic resolutions; gates re-verified green post-rebase; the battery figure drift (14/14 → 17/17) noted wherever the `f3f0176e` baseline is quoted |
+| V-6 | The A2H-5 dispatch's chunk 1 hit the `--max-turns 8` cap mid-work (`capped:true`, `error_during_execution` — no answer produced); chunk 2 resumed the SAME session byte-exact and closed in 5 turns (2026-11-05) | receipt (the standing chunking economics) | The pattern works as designed: capped chunks are errors, never silent; the continuation brief carries the state; the round's first DRIVE ticket closed in exactly its ≤2-chunk budget with 0 operator unblocks |
 
 ## Bug register
 
@@ -127,7 +128,9 @@ lineage numbering — B-1..B-12 live in the Ostinato and Reprise logs):
   subprocess). Failure: every run on a wiped home provisions the wrong
   home and then PaneTimeouts at the TUI header. Root cause: the H-8 env
   filter was applied to the picker lane's subprocesses but not to this
-  lane's setup call. Fix lane: A2H-5. Found 2026-11-05 (V-2).
+  lane's setup call. **FIXED 2026-11-05 (A2H-5, CLOSED)** — the H-8 filter
+  applied to the setup subprocess; wiped-home ×3 + the operator's
+  independent rerun all exit 0. Found 2026-11-05 (V-2).
 - **B-14 — the resume-picker lane cannot pass a genuinely fresh home's
   first boot** (`scripts/tui-capture/verify_resume_picker.py`). Failure:
   the pre-TUI first-run gate blocks the header on any home without
@@ -139,10 +142,10 @@ lineage numbering — B-1..B-12 live in the Ostinato and Reprise logs):
 
 | Ticket | Scope | Verifier (external, named) | State |
 |---|---|---|---|
-| A2H-5 | The resume-hint lane's provision env filter: drop `UNOWN_HOME` from the setup subprocess env in `verify_resume_hint.py` (the H-8 pattern already in the picker lane), so the isolated home is provisioned and the lane passes a WIPED home on the first boot | The lane on a wiped VERIFY_HOME ×3 consecutive (exit 0 each); the warm-home runs stay green; `rg -l "my-project/Unown" scripts/tui-capture/` still empty | **OPEN** — dispatch brief below |
+| A2H-5 | The resume-hint lane's provision env filter: drop `UNOWN_HOME` from the setup subprocess env in `verify_resume_hint.py` (the H-8 pattern already in the picker lane), so the isolated home is provisioned and the lane passes a WIPED home on the first boot | The lane on a wiped VERIFY_HOME ×3 consecutive (exit 0 each); the warm-home runs stay green; `rg -l "my-project/Unown" scripts/tui-capture/` still empty | **CLOSED 2026-11-05** — two A2 chunks (session `01a1aa60…`: chunk 1 capped at 8 turns mid-work after landing the 5+/1- env filter, chunk 2 resumed byte-exact and finished in 5 turns — the standing economics, 0 operator unblocks); A2's verifies 3/3 exit 0 on wiped homes with ambient `UNOWN_HOME` deliberately exported; the operator gate re-verified independently (fresh wiped-home rerun exit 0, ALL ASSERTIONS HELD, the ambient home's `model-specs.json` mtime byte-identical); receipt [a2h5.md](../benchmarks/etude-round/receipts/a2h5.md) tree-verified (one file, 5+/1-) |
 | A2H-6 | The picker lane's fresh-boot truth: provision VERIFY_HOME via an env-filtered `setup --provider bridge` (A2H-5's pattern) OR add the pane-aware first-run-gate helper to `pty_common.py` (send `n` + Enter when the gate text is on the pane — the H-9 candidate; preferred: it exercises the product's real first-run flow) | The lane on a wiped VERIFY_HOME ×3 consecutive; if the helper lands, footer-quiet and resume-hint re-run green with zero cures; unit/test lanes untouched | **OPEN** — dispatch brief below |
 | E-0 | The PRD approval gate: the Tempo proposal (or the operator's substitute) approved — the app queue E-1..E-n forms at approval | The PRD's approval section signed in this log | **AWAITING APPROVAL** |
-| (carry) | Reprise R-2..R-5, the #30 live-hang capture, the standing SESSION.md items | per their own logs | PARKED (candidates) |
+| (carry) | Reprise R-3..R-5 (R-2 closed by the parallel lineage, V-5), the #30 live-hang capture, the standing SESSION.md items | per their own logs | PARKED (candidates) |
 
 **EFFORT_BUDGET**: A2H-5 ≤2 chunks · A2H-6 ≤4 chunks — each chunk ≤8 turns
 (`--max-turns 8`), fresh session per ticket, byte-exact continuation briefs

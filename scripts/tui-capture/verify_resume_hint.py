@@ -228,7 +228,11 @@ def main() -> None:
     proc = subprocess.run(
         ["bun", UNOWN_BIN, "setup", "--provider", "bridge"],
         cwd=WORK_DIR,
-        env={**os.environ, **env_extra()},
+        env={
+            **{k: v for k, v in os.environ.items() if k != "UNOWN_HOME"},
+            **env_extra(),
+            "PATH": os.environ.get("PATH", ""),
+        },
         capture_output=True,
         text=True,
         timeout=180,

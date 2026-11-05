@@ -184,8 +184,13 @@ PROPOSE-stage candidates (none canaried, none promoted):
   with the controlled `setup`-writes-`settings.json` experiment as the
   root-cause receipt). Metric: the hint and picker lanes pass WIPED
   homes ×3 consecutive, ambient `UNOWN_HOME` deliberately exported.
-  Stage: **PROPOSE (opened 2026-11-05 at the Etude round's Phase 0 —
-  this round's first augmentation hypothesis, filed for approval)**.
+  Stage: **PROPOSE — CANARY LIVE (first half green 2026-11-05)**: the
+  A2H-5 lane (the env-filter shape) closed through A2 in two chunks
+  (session `01a1aa60…`, 0 operator unblocks; wiped-home ×3 + the
+  operator's independent rerun all exit 0 — receipt
+  [a2h5.md](../benchmarks/etude-round/receipts/a2h5.md)); the A2H-6
+  lane (the picker + the pane-aware helper, the preferred shape) is the
+  remaining canary before any promotion gate.
 
 A2-side candidates (skills, subagents, hooks, review checks) enter at
 PROPOSE only from receipted failures observed during O-ticket driving —

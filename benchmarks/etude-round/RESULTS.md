@@ -5,11 +5,12 @@ tickets land receipts; every figure names its receipt.
 
 | Metric | Baseline (2026-11-05, `f3f0176e`) | Latest | Receipt |
 |---|---|---|---|
-| Fresh-home PTY lane pass rate (hint + picker, wiped homes ×3) | 0/2 lanes (B-13, B-14) | null | [validation-log.md](validation-log.md) |
+| Fresh-home PTY lane pass rate (hint lane, wiped homes ×3 + operator rerun) | 0/1 lane (B-13) | **PASS — B-13 FIXED (A2H-5, 2026-11-05)** | [receipts/a2h5.md](receipts/a2h5.md) |
+| Fresh-home PTY lane pass rate (picker lane, wiped homes ×3) | 0/1 lane (B-14) | 0/1 — A2H-6 queued | [validation-log.md](validation-log.md) |
 | Warm-home PTY lane pass rate | 3/3 lanes | 3/3 (2026-11-05) | [README.md](README.md) |
 | Unit / tsc / lint | 2235/0/160 · 0 · 0-143w | same (baseline) | [README.md](README.md) |
 | e2e battery (ostinato) | 14/14 | 14/14 (2026-11-05) | [README.md](README.md) |
-| Harness-defect burn-down | 2 open (B-13, B-14) | 2 open | [validation-log.md](validation-log.md) |
+| Harness-defect burn-down | 2 open (B-13, B-14) | **1 open (B-14)** — B-13 fixed via A2H-5 | [receipts/a2h5.md](receipts/a2h5.md) |
 | Learning-layer baseline (ops-accuracy, quality-axes, selfimprove, engine snapshot) | null — captures at Phase-1 opening | null | this file |
 
 After A2H-5/A2H-6: the fresh-home row's verifier is the wiped-home ×3 run
