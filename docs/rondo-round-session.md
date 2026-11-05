@@ -159,7 +159,8 @@ logs). **None yet** — B-15 is the next free id.
 | Ticket | Scope | Verifier (external, named) | State |
 |---|---|---|---|
 | R-0 | The §0.9 selection gate: candidates scored, vehicle approved, PRD opened | The scoring receipt + the pre-registered failure classes in [the benchmark round](../benchmarks/rondo-round/README.md) | **CLOSED 2026-11-06** (this lineage — Chaconne approved per the directive's own scoring rule; §0.9.5 re-scope trigger armed) |
-| C-0 | The architecture plan: the storage/runner/UI decomposition, the fixture-page test strategy, the dependency-law ruling for the runner's playwright import — a read-only `--plan` run with a scored plan file | The plan gate's own score + the operator's review against the PRD's P0 constraints | **NEXT** (first dispatch — brief below) |
+| A2H-9 | The encore Finale unit-battery isolation fix: the battery's one deterministic fail — `Finale — the program's success question + live answer (plan §5.7) > renders the success question as an h2 + blockquote` (`encore.test.tsx:817`, a `getByRole("heading", { level: 2 })` query) — passes standalone 55/0 but fails in-battery 3×; root-cause the cross-file pollution and fix it at the polluting layer, assertions unweakened | `bun run test:unit` exits 0 twice consecutive (2258/0); `bun test src/components/encore/__tests__/encore.test.tsx` stays 55/0 standalone; the failing test's h2 + blockquote assertions NOT weakened | **NEXT** (the dispatch brief below — the V-4 classification receipted in [the validation log](../benchmarks/rondo-round/validation-log.md)) |
+| C-0 | The architecture plan: the storage/runner/UI decomposition, the fixture-page test strategy, the dependency-law ruling for the runner's playwright import — a read-only `--plan` run with a scored plan file | The plan gate's own score + the operator's review against the PRD's P0 constraints | QUEUED (after A2H-9 — the brief below) |
 | C-1 | The domain core: recipe/step/run types, validation, canonical JSON, atomic store | Lane A unit battery (bun test in `apps/chaconne/`), tsc, lint | QUEUED |
 | C-2 | The runner v1: goto/click/fill/select/wait/assert/extract/screenshot against LOCAL fixture pages, honest error taxonomy, run records | Runner unit lane with a fake page adapter + one real-browser smoke against a fixture | QUEUED |
 | C-3 | The web app shell: recipe list/create/edit, run history, artifact viewer — keyboard-first, zero-dep, palette, empty/loading/error states | Lane A/B unit + the e2e happy path | QUEUED |
@@ -181,8 +182,40 @@ on every resume (the standing economics); satellites ≤2 chunks.
 
 ## First dispatch brief
 
-The C-0 architecture plan ticket — dispatched AFTER the round-opening
-commit is pushed (the standing practice: push the claim before dispatch):
+The A2H-9 isolation-fix ticket — dispatched AFTER this queue update is
+pushed (the standing practice: push the claim before dispatch):
+
+```
+ROLE: A2 executor — one scoped test-isolation fix, no scope creep.
+ALLOWED_INPUTS: src/components/encore/__tests__/encore.test.tsx (the
+  failing test's file — isolation guards only, never assertion
+  weakening), src/components/encore/views/finale.tsx + src/test-dom-setup.ts
+  (read-only context; editable ONLY if the root cause lands there), and
+  the polluting test file(s) once identified — the receipt names them.
+FORBIDDEN_INPUTS: weakening, skipping or re-basing the failing test's
+  assertions (the h2 + blockquote contract stands); changing the Finale
+  component's product behavior; product code outside the encore lane;
+  DOX; CHANGELOG (the operator lane); apps/.
+OUTPUT_ARTIFACT: the isolation fix at the layer the root cause names
+  (the polluting file, the shared setup, or the test file's own guards);
+  a receipt at .unown/receipts/a2h9.md with the root-cause chain, the
+  differential evidence (standalone 55/0 vs in-battery 2257/1 → 2258/0),
+  and the verify tally.
+HANDOFF_SCHEMA: plain text — the root cause, what changed, the verify
+  tally, the receipt path.
+EFFORT_BUDGET: <=4 chunks x <=8 turns.
+NON-OVERLAP: C-0 owns the Chaconne plan; nothing here touches apps/ or
+  any Unown product code outside the encore lane.
+ACCEPTANCE: `bun run test:unit` exits 0 (2258 tests, 0 fail) TWICE
+  consecutive; `bun test src/components/encore/__tests__/encore.test.tsx`
+  stays 55/0 standalone; the failing test's assertions are byte-identical
+  or stronger (the h2 role query and the blockquote textContent check
+  stand); if the fix lands in a polluting file, the receipt names it and
+  the isolation mechanism.
+```
+
+The C-0 architecture plan ticket — dispatched AFTER A2H-9 closes (the
+round-opening law stood: the claim is pushed before dispatch):
 
 ```
 ROLE: A2 executor — one read-only architecture plan, no code writes.
