@@ -138,6 +138,33 @@ The fifteenth lineage (the round's second bring-up, 2026-11-05 late):
   + `dispatch-bg.py` + `tickets/`) — the credential store's third
   layout (`.secrets` → `.creds` → `.a1/`).
 
+The sixteenth lineage (the round's third bring-up, 2026-11-05 latest —
+the post-A2H-4 consumer-side verification):
+
+- Fresh re-clone @ `0c57548c` = `origin/main` (A2H-4's landing — 3
+  commits past the fifteenth's snapshot; NO parallel incarnation this
+  time, no pull needed). Shallow-born clone repaired (`--unshallow` +
+  tags: 54 tags, 980 commits). PAT rewired into the remote. bun **1.4.4**
+  re-npm-installed (the recycle reclaimed the npm-global binary too);
+  `UNOWN_NO_LINK=1 UNOWN_NO_ENGINE_SERVICE=1 bun scripts/install.ts`
+  **7/7**; `.env` from `.env.example` with the Agnes lane in place.
+- Stack: bridge `:3031` upstream 200 with **6 agnes models**, default
+  `agnes-3.0-flash`; engine `:3030` ready @ v0.0.56/`0c57548c` (fresh DB
+  0/0 — the known recycle limit). Doctor "ready to chat" **19✓/2⚠**.
+  Smoke `UNOWN_OK` exit 0 direct (2.97 s) AND through the rebuilt
+  daemonizer (`/home/z/my-project/.a1/scripts/dispatch-bg.py`, PPID-1,
+  log/exit receipts — the fourth rebuild of the operator tooling).
+- Pre-ticket baseline ALL green at `0c57548c`: tsc 0 · lint 0/143 · unit
+  **2235/0/160** (159.4 s — the family baseline grew with A2H-4's pins)
+  · rail 55/539/54 · blog 46/116 · benchmarks 6/6 · claims 62/62 ·
+  **e2e battery 14/14 in 9.0 s** (chromium-1248 + headless shell
+  re-installed).
+- **The H-3 audit's first ZERO-CURE run** (A2H-4's landing verified from
+  the fresh side): footer-quiet **9/9** · resume-hint **ALL HELD** ·
+  resume-picker **PASS** on the fresh install, re-run PASS with ambient
+  `UNOWN_HOME` deliberately exported. The only environmental re-cure was
+  `fd` 10.2.0 back on PATH (V-8) + `pyte` re-pip-installed.
+
 ## Validation log
 
 | # | Finding | Class | Disposition |
@@ -149,6 +176,7 @@ The fifteenth lineage (the round's second bring-up, 2026-11-05 late):
 | V-5 | **The `ensureTool("fd")` boot download 403s** on the rate-limited anonymous GitHub API (fresh homes attempt the download at TUI boot and stall first paint — the picker lane's 90 s header timeout); `UNOWN_BIN`'s hard-coded prior-checkout default is the same environment-portability class | environmental (upstream-shaped: `tools-manager.ts` has no download timeout/fallback — an upstream note, not a local patch; the vendored agent is §6b territory) | Cured environmentally: `fd` 10.2.0 on PATH (`/home/z/.npm-global/bin`); lanes take env overrides; the upstream limitation recorded in the ground truth §7 |
 | V-6 | **B-12 — the el() tabindex junk-expando defect (the R-1-e2e harvest, a genuine product gap)**: `el()`'s props loop routed the hyphenless key `tabindex` through the DOM-property branch — the reflected property is camelCase `tabIndex`, so the assignment set a junk expando and the real attribute never landed; the stats dialog + grid were never focusable, `dialog.focus()` was a no-op, and the dialog's own keydown listener (Esc + arrows) NEVER fired — the overlay's entire keyboard surface was dead on both open paths (the operator's live DOM probe: `activeElement=body`, overlayCount=1 after Esc). The B-5 class one lane over (aria-* was cured in O-4; tabindex was not); the unit lanes structurally could not see it — the NEW e2e spec red on its first run, exactly the hardening-first harvest the program exists for | genuine-gap (product code, R-1's own landed surface — caught 1 day after landing by the ticket's own verifier) | Cured through A2 (byte-exact brief): `tabindex` joins el()'s real-attribute branch + the cells' `tabindex: "-1"` completes the focus contract; pinned two ways (the DOM-guarded unit pin `src/ui/el.test.ts` — Lane A skips one stub, Lane B runs 4 pins — and the spec's `toBeFocused()` regression pin on both open paths); the battery now 14 tests / 6 spec files, all green |
 | V-7 | **A2H-4 — the PTY harness's fresh-install hardening (registry H-8, PROMOTED as the third row)**: the V-3/V-4/V-5 durable fix landed through five budgeted chunks — `pty_common.py` the single source of truth (`UNOWN_ROOT`/`UNOWN_BIN` script-relative + the ambient `UNOWN_HOME` strip in every spawn), the picker lane a true fresh-install truth (isolated `VERIFY_HOME` + the dismissals + the lane's-own-HOME discovery + the subprocess env filter). The ticket's honest record: the chunk-1 scoped fix passed its own gates but REGRESSED the standing lanes (eight scripts' local path defaults — footer-quiet PaneTimeout, resume-hint module-not-found), caught by the operator's standing-lane ritual and cured in-ticket; two residuals (the `expanduser` discovery, the subprocess `UNOWN_HOME` leak) were masked by scrubbed-env gates and caught only by the operator's AMBIENT runs | genuine-gap (harness) + the fairness laws exercised (flake-vs-gap separated, before/after receipted) | CLOSED: the picker lane BEFORE 3/3 FAIL on a fresh install → AFTER **3/3 PASS with the ambient `UNOWN_HOME` deliberately set**; resume-hint ALL HELD with zero env overrides; footer-quiet's A2/A3 were the V-6 drift detector firing on the engine's version skew (cured by the restart-align — NOT a regression), its B1 then showing the known condition-dependent timing variance (the fast model's answer inside the fixed 1.5 s window — same code passed 9/9 earlier; a poll-based de-flake is a future harness candidate); the engine's governor observed THROTTLED (249k/200k tok/h from the dream jobs — the metered-tier guard working) |
+| V-8 | **The V-5 cure is itself recyclable**: the sandbox recycle reclaimed the fifteenth lineage's `fd` 10.2.0 binary (npm-global bin) along with `pyte` — the fresh picker run stalled exactly as documented (90 s PaneTimeout at the TUI header: the fresh isolated home attempts `ensureTool("fd")` at boot, the anonymous GitHub API 403s, first paint never comes). Re-cured by the direct release-asset download (`releases/download/v10.2.0`, not the rate-limited API). The lesson: the fd cure + pyte belong in the BRING-UP CHECKLIST, not just the failure path — pre-armed this lineage before the audit's second lane ran | environmental (the standing upstream class: no download timeout/fallback in `tools-manager.ts`; §6b territory) | Standing: `fd` on PATH is a bring-up step; the picker lane's 90 s header wait is the signature to recognize instantly. **The counter-finding: with fd cured, the picker lane passed with ZERO operator cures on a true fresh install** — A2H-4's landing verified from the consumer side (the V-3/V-4/V-5 operator cures are all retired) |
 
 ## Ticket queue
 

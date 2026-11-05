@@ -26,10 +26,15 @@ receipted); the fifteenth lineage landed the e2e heatmap spec + the
 B-12 harvest (the el() tabindex junk-expando fix — the stats overlay's
 keyboard surface was dead; the battery now 14 tests / 6 spec files,
 Lane A 101+1skip / Lane B 105, tsc 0, proof 19/0, receipt COMPLETE).
-**Next: R-2 (deck-level review settings) after the H-1 smoke canary**;
-A2H-4 LANDED 2026-11-05 (registry H-8 PROMOTED — the PTY harness's
-fresh-install hardening: the picker lane 3/3 PASS with zero operator
-cures, the standing lanes green with zero env overrides).
+**Next: R-2 (deck-level review settings) — the
+SIXTEENTH lineage (2026-11-05 latest) brought the stack up post-A2H-4
+and re-verified the landing from the fresh side**: install 7/7, unit
+2235/0/160, the full gate set + e2e battery 14/14 green at `0c57548c`,
+and the H-3 PTY audit's first ZERO-CURE run (footer-quiet 9/9,
+resume-hint ALL HELD, picker PASS on a fresh install AND with ambient
+`UNOWN_HOME` set — the V-3/V-4/V-5 operator cures all retired; V-8: the
+fd/pyte environmental cures moved into the bring-up checklist). R-2
+dispatches on this lineage.
 
 ---
 
