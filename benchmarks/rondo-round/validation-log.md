@@ -45,3 +45,24 @@ rebase — same verdict). Classification:
   (`.a1/tickets/logs/v4-rerun.log`, 3183 lines — the failure block at
   lines 2185-2235); the in-repo receipt (`.unown/receipts/a2h9.md`,
   tree-verified into `receipts/` at close) carries the root-cause chain.
+
+## Update — V-4 classification (2026-11-06, appended)
+
+The rerun (full-capture) confirmed the same single fail — and the
+investigation that followed (A2H-9's 3 chunks + the operator's pair
+matrices) sharpened the class: the encore Finale test fails ONLY in the
+full-suite run — order/timing-dependent (3 fails / 7 runs), still fails
+under `--max-concurrency=1`, GREEN in isolation (55/0) and in every
+two-file pair tested (~20 pairs: the landing suspects live-demo/carving/
+creature/presence, the gallery siblings aria/cadence/ledger/nocturne/
+parley, and the nocturne/aria API auth+rotations tests). A2's forensics
+surfaced the `NotSupportedError: Failed to load iframe page
+"about:blank"` stack (happy-dom iframe page loading is disabled by
+default) and traced GlobalRegistrator / DefaultBrowserSettings /
+BrowserSettingsFactory. **Class: genuine-gap (open) — a test-isolation
+defect requiring the full-set context; not a component defect.** The
+next A2H-9 chunk runs the shard-bisect protocol (`bun test --shard=N/M`)
+to find the minimal co-failing file set, then fixes at the named layer.
+The dispatch economics lesson (the cumulative `--max-turns` counter, the
+`capped:true`-with-`subtype:"success"` envelope hazard) is receipted as
+V-5 in [the round log](../../docs/rondo-round-session.md).
