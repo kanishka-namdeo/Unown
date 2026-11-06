@@ -297,6 +297,20 @@ PROPOSE-stage candidates (none canaried, none promoted):
   receipts are the metric's first data point. Stage: CANARY (the
   activation is verified every dispatch; the promotion gate needs the
   round's full dispatch tally).
+  **Evidence accrual 2026-11-06 (the twenty-fourth lineage)**: this
+  lane's every `-p` dispatch rode the rebuilt helper — 6 dispatch-side
+  runs (the wrapper self-test, 2 envelope-format probes, the H-10
+  research chunk 1, its H-12-continued chunk 2, one capped-envelope
+  repro), zero hang-class failures, zero stdin-inheritance incidents;
+  the helper's own build iteration caught and cured TWO defects live
+  (the stderr-pollution envelope parse and the bare-PATH binary
+  resolution — both now encoded in the script, both reusable laws).
+  Round tally to date: 16 (the twentieth's cross-lane receipt) + 6 =
+  **22 dispatch-side runs, 0 hang-class**. The watcher's own 16+16
+  spawns (the twentieth's + this lane's fresh r24 receipts) ride the
+  same stdin-guard contract via their own bounded loop — corroborating,
+  not counted. Stage: CANARY (holding for the round's full tally at
+  teardown).
 - **H-12 — the chunk-continuation brief generator (operator lane, Rondo
   round seed).** The standing byte-exact-continuation economics,
   automated: read the capped session's last state, emit the continuation
