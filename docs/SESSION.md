@@ -59,8 +59,16 @@ files / 3,303 lines through A2 in 33 turns / 4 rounds, the round's
 smoothest ticket; Lane A 81p/4s/0, Lane B 110/0, root battery 2329/0/171,
 serve.mjs boot verified HTTP 200; the every-3-tickets playbook review
 landed the ordered-write brief pattern; receipt
-`benchmarks/rondo-round/receipts/c3.md`). **Next: C-4 (the recurring
-loop) — the §7 competition cycle opens at its closure; then C-5..C-11.**
+`benchmarks/rondo-round/receipts/c3.md`). **C-4 CLOSED 2026-11-06** (the nineteenth lineage — the recurring loop:
+8 files / 2,024 lines in 57 turns / 6 rounds; the test-caught genuine gap
+(a crashed-persistence window bricking interval schedules) fixed via the
+dedup-HEAL, the round's best §5 receipt; Lane A 109/0, Lane B 138/0, root
+battery 2351/0/172; receipt `benchmarks/rondo-round/receipts/c4.md`).
+The §7 competition cycle opened:
+[the Letta filesystem-memory teardown](TEARDOWN_2026-11-06_letta-filesystem-memory.md)
+(74.0% LoCoMo with plain files vs Mem0's 68.5% — the challenge to A2's
+Mem0 bet, reckoned; two PROPOSE candidates queued). **Next: C-5 (the
+assertion + artifact hardening), then the C-6..C-11 drive queue.**
 
 The **twenty-first lineage's post-freeze reconciliation** (07:30 UTC):
 the B-19 windows-CI fix landed convergently (V-23 — the twentieth's

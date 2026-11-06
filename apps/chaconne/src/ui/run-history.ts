@@ -12,7 +12,7 @@
  * selection survives re-renders of the route (the "selection pins"
  * row of the ticket).
  */
-import type { Recipe, RunRecord, RunStatus } from "../domain/types.js";
+import type { Recipe, RunRecord, RunStatus, Schedule } from "../domain/types.js";
 import { RUN_STATUSES } from "../domain/types.js";
 import { el } from "./el.js";
 
@@ -95,6 +95,63 @@ export function renderRunHistory(
     wrap.append(el("p", { text: "No runs yet. Run a recipe to build the history.", class: "chaconne-state-copy", id: "chaconne-empty-runs" }));
   }
   return wrap;
+}
+
+/**
+ * A NEW schedule row for the run-history surface (C-4): per-recipe
+ * next-due / interval / last-fired / paused state, with honest
+ * badges (the schedule-kind badge + the state badge). The old
+ * C-3 call signatures (`renderRunHistory`, `groupRunsByRecipe`, …)
+ * are unchanged; this NEW export is what the schedule row appends.
+ * DOM-guarded: the el-kin render is pinned under happy-dom.
+ */
+export function renderScheduleRow(
+  recipe: Recipe,
+  nowIso?: string,
+): HTMLElement {
+  const sched = recipe.schedule;
+  const row = el("li", {
+    class: "chaconne-schedule-row",
+    "data-recipe": String(recipe.id),
+    role: "option",
+  });
+  row.append(el("span", { text: recipe.name, class: "chaconne-schedule-name" }));
+  if (!sched) {
+    row.append(el("span", { text: "unscheduled", class: "chaconne-badge chaconne-badge-schedule-none", "data-state": "unscheduled" }));
+    return row;
+  }
+  row.append(el("span", { text: sched.kind, class: "chaconne-badge chaconne-badge-schedule-" + sched.kind, "data-kind": sched.kind }));
+  const now = nowIso ? Date.parse(nowIso) : Date.now();
+  const dueMs = sched.nextDueIso ? Date.parse(sched.nextDueIso) : null;
+  const lastMs = sched.lastFiredIso ? Date.parse(sched.lastFiredIso) : null;
+  let state: "due" | "due-soon" | "idle" | "paused";
+  if (sched.kind === "one-shot" && lastMs !== null && sched.nextDueIso === undefined) state = "paused";
+  else if (dueMs === null) state = "idle";
+  else if (dueMs <= now) state = "due";
+  else state = "due-soon";
+  const meta: string[] = [];
+  if (sched.everyMs !== undefined) meta.push(`every ${Math.round(sched.everyMs / 1000)}s`);
+  if (dueMs !== null) meta.push(`next due ${new Date(dueMs).toISOString().replace("T", " ").replace("Z", "")}`);
+  if (lastMs !== null) meta.push(`last fired ${new Date(lastMs).toISOString().replace("T", " ").replace("Z", "")}`);
+  if (state === "paused") meta.push("retired");
+  row.append(
+    el("span", { text: meta.join(" · ") || "—", class: "chaconne-schedule-meta" }),
+    el("span", { text: state, class: `chaconne-badge chaconne-badge-state-${state}`, "data-state": state }),
+  );
+  return row;
+}
+
+/** NEW: all scheduled-recipe rows in display order (recipe list order). */
+export function renderScheduleRows(recipes: Recipe[], nowIso?: string): HTMLElement {
+  const list = el("ol", { class: "chaconne-schedule-list", role: "list", "aria-label": "Schedules" });
+  for (const r of recipes) {
+    if (r.schedule === undefined) continue;
+    list.append(renderScheduleRow(r, nowIso));
+  }
+  if (list.childElementCount === 0) {
+    list.append(el("p", { text: "No scheduled recipes. Add a schedule in the recipe editor.", class: "chaconne-state-copy" }));
+  }
+  return list;
 }
 
 /**

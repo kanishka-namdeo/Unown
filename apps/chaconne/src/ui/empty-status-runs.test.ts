@@ -89,7 +89,7 @@ if (!hasDom) {
 
   // ─── status.ts: the not-scheduled placeholder + the live row ─────────
 
-  test("renderStatusIdle: the honest not-scheduled panel (C-4's kin)", async () => {
+  test("renderStatusIdle: the C-3 backward-compatible string call (honest not-scheduled copy)", async () => {
     const { renderStatusIdle } = await import("./status.js");
     cleanBody();
 
@@ -99,8 +99,28 @@ if (!hasDom) {
     const idle = document.getElementById("chaconne-status-idle");
     expect(idle).not.toBeNull();
     expect(idle?.getAttribute("role")).toBe("status");
-    expect(idle?.textContent).toContain("not been scheduled yet");
     expect(idle?.textContent).toContain("My recipe");
+    // The C-4 real-state copy:
+    expect(idle?.textContent).toContain("has no schedule");
+  });
+
+  test("renderStatusIdle: with a schedule shows the real state (C-4)", async () => {
+    const { renderStatusIdle } = await import("./status.js");
+    cleanBody();
+
+    const panel = renderStatusIdle(
+      { name: "My recipe" },
+      { kind: "interval", everyMs: 60_000, nextDueIso: "2026-11-06T12:00:00.000Z", lastFiredIso: "2026-11-06T11:59:00.000Z" },
+      "2026-11-06T11:59:30.000Z",
+    );
+    document.body.append(panel);
+
+    const idle = document.getElementById("chaconne-status-idle");
+    expect(idle).not.toBeNull();
+    expect(idle?.textContent).toContain("interval");
+    expect(idle?.textContent).toContain("60s");
+    expect(idle?.textContent).toContain("next due");
+    expect(idle?.textContent).toContain("last fired");
   });
 
   test("renderStatusLive: step N of M + elapsed (the live progress row)", async () => {
@@ -211,6 +231,60 @@ if (!hasDom) {
     document.body.append(wrap);
 
     expect(document.getElementById("chaconne-empty-runs")?.textContent).toContain("No runs yet");
+  });
+
+  // ─── C-4 schedule rows (the new run-history exports) ─────────────
+
+  test("renderScheduleRow: an interval recipe shows kind + interval + next due + last fired", async () => {
+    const { renderScheduleRow } = await import("./run-history.js");
+    cleanBody();
+
+    const recipe: Recipe = {
+      id: 1, name: "A", version: 1, steps: [],
+      schedule: { kind: "interval", everyMs: 30_000, nextDueIso: "2026-11-06T12:00:00.000Z", lastFiredIso: "2026-11-06T11:59:30.000Z" },
+    };
+    const row = renderScheduleRow(recipe, "2026-11-06T11:59:45.000Z");
+    document.body.append(row);
+
+    expect(row.textContent).toContain("A");
+    expect(row.textContent).toContain("interval");
+    expect(row.textContent).toContain("30s");
+    expect(row.textContent).toContain("next due");
+    expect(row.textContent).toContain("last fired");
+  });
+
+  test("renderScheduleRow: a retired one-shot shows the paused state", async () => {
+    const { renderScheduleRow } = await import("./run-history.js");
+    cleanBody();
+
+    const recipe: Recipe = {
+      id: 2, name: "B", version: 1, steps: [],
+      schedule: { kind: "one-shot", lastFiredIso: "2026-11-06T11:00:00.000Z" },
+    };
+    const row = renderScheduleRow(recipe, "2026-11-06T12:00:00.000Z");
+    document.body.append(row);
+
+    expect(row.textContent).toContain("retired");
+    expect(row.textContent).toContain("paused");
+  });
+
+  test("renderScheduleRows: shows only scheduled recipes; empty → the honest copy", async () => {
+    const { renderScheduleRows } = await import("./run-history.js");
+    cleanBody();
+
+    const recipes: Recipe[] = [
+      { id: 1, name: "A", version: 1, steps: [], schedule: { kind: "interval", everyMs: 1000, nextDueIso: "2026-11-06T12:00:00.000Z" } },
+      { id: 2, name: "B", version: 1, steps: [] }, // unscheduled → skipped
+    ];
+    const list = renderScheduleRows(recipes);
+    document.body.append(list);
+
+    const rows = document.querySelectorAll(".chaconne-schedule-row");
+    expect(rows.length).toBe(1); // only the scheduled recipe
+
+    const empty = renderScheduleRows([]);
+    document.body.append(empty);
+    expect(document.querySelector(".chaconne-schedule-list .chaconne-state-copy")?.textContent).toContain("No scheduled recipes");
   });
 
   test("moveRunSelection: wraps + the Home/End kin (j/k WRAP, absolute bounds)", async () => {

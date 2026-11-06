@@ -1,37 +1,54 @@
 /**
  * Chaconne — live runner status (C-3; P0 #4's honest loading states).
  *
- * In C-3 the "Run" action does NOT invoke the runner (C-4+ owns the
- * scheduling integration) — so this module renders the two honest
- * states the shell actually shows:
- *
- *   - `renderStatusIdle()`: the "not scheduled yet" placeholder that
- *     the Run palette row flips into — honest copy, never a fake
- *     spinner (the loading-state honesty law: a status that can't
- *     happen is not rendered).
- *   - `renderStatusLive()`: the live progress row (step N of M,
- *     elapsed) — rendered whenever a run record is the active one.
- *     Elapsed is computed from the record's startedAt/finishedAt
- *     (domain data, ISO-8601 strings) at the UI edge; a finished run
- *     shows the total, a missing finishedAt shows the running marker.
+ * C-4 landed the real schedule state: `renderStatusIdle` now shows
+ * the real schedule state for a recipe (next due, last fired, paused
+ * / retired) instead of the C-3 "not scheduled yet" placeholder. The
+ * live row (`renderStatusLive`) is unchanged — it still renders the
+ * active run record's progress.
  *
  * The DOM wiring lives in app.ts; this file owns the render + the
  * elapsed math so both stay testable.
  */
 import { el } from "./el.js";
+import type { Recipe, Schedule } from "../domain/types.js";
 
 /**
- * The "Run recipe" placeholder panel — the honest not-scheduled state
- * (NON-OVERLAP: C-4 wires the real trigger; C-3 records the state).
+ * The "Run recipe" idle panel — backward-compatible with C-3's call
+ * signature (`renderStatusIdle("name")`), extended in C-4 to show the
+ * REAL schedule state when a schedule (or the recipe itself) is
+ * passed. Honest not-scheduled copy is kept for a recipe with no
+ * schedule (never a fake spinner — the loading-state honesty law).
  */
-export function renderStatusIdle(recipeName: string): HTMLElement {
+export function renderStatusIdle(
+  recipeOrName: Pick<Recipe, "name"> | string,
+  schedule?: Schedule,
+  nowIso?: string,
+): HTMLElement {
+  const name =
+    typeof recipeOrName === "string" ? recipeOrName : recipeOrName.name;
   const d = el("div", { class: "chaconne-status-idle", role: "status", id: "chaconne-status-idle" });
-  d.append(
-    el("p", {
-      text: `"${recipeName}" has not been scheduled yet. The runner integration lands with C-4; the recipe itself is ready.`,
-      class: "chaconne-state-copy",
-    }),
-  );
+  const sched = schedule;
+  const now = nowIso ? Date.parse(nowIso) : Date.now();
+  if (!sched) {
+    d.append(el("p", { text: `"${name}" has no schedule. Run it now or add a schedule in the recipe editor.`, class: "chaconne-state-copy" }));
+    return d;
+  }
+  const lines: string[] = [];
+  if (sched.kind === "one-shot" && sched.lastFiredIso !== undefined && sched.nextDueIso === undefined) {
+    lines.push(`"${name}" · one-shot · retired (fired)`);
+  } else {
+    lines.push(`"${name}" · ${sched.kind}`);
+    if (sched.everyMs !== undefined) lines.push(`every ${Math.round(sched.everyMs / 1000)}s`);
+    if (sched.nextDueIso !== undefined) {
+      const t = new Date(Date.parse(sched.nextDueIso)).toISOString().replace("T", " ").replace("Z", "");
+      lines.push(Date.parse(sched.nextDueIso) <= now ? `due now (${t})` : `next due ${t}`);
+    }
+    if (sched.lastFiredIso !== undefined) {
+      lines.push(`last fired ${new Date(Date.parse(sched.lastFiredIso)).toISOString().replace("T", " ").replace("Z", "")}`);
+    }
+  }
+  d.append(el("p", { text: lines.join(" · "), class: "chaconne-state-copy" }));
   return d;
 }
 

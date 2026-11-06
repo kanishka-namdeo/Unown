@@ -54,12 +54,38 @@ export type ExecuteOptions = {
 };
 
 /**
- * The single C-4 hook: when C-4 lands, the schedule loop lives BEHIND
- * this. No schedule logic in this ticket (NON-OVERLAP: C-4).
+ * The C-4 wiring (replaces the C-2 stub): the single-shot pull entry
+ * `runScheduleTick` does the real work — it asks the pure domain
+ * scheduler with the real clock, executes the due recipes through
+ * `executeRecipe`, records skips and fires atomically, and persists
+ * the advanced schedule state through the C-1 model functions.
+ *
+ * The CLI's `run` subcommand invokes `scheduleHook` as a no-op guard:
+ * a manual `run` does NOT fire a schedule (the schedule loop's job).
+ * Re-entrancy is prevented: `tickSchedule` → `executeRecipe` →
+ * `scheduleHook` must not re-enter `tickSchedule`.
  */
-export function scheduleHook(_recipe: Recipe): void {
-  /* C-4 — stub call-site only */
+let inTick = false;
+export async function scheduleHook(
+  recipe: Recipe,
+  dataDir?: string,
+): Promise<import("./schedule.js").TickResult | void> {
+  if (inTick) return; // we're already inside the schedule loop — no re-entry
+  if (dataDir === undefined) return; // manual run: no schedule context
+  const { tickSchedule } = await import("./schedule.js");
+  inTick = true;
+  try {
+    return await tickSchedule(recipe, { dataDir });
+  } finally {
+    inTick = false;
+  }
 }
+
+/**
+ * Internal: set/clear the re-entrancy guard so the fire path in
+ * `tickSchedule` → `executeRecipe` → `scheduleHook` is a no-op.
+ */
+export function setInTick(v: boolean): void { inTick = v; }
 
 export async function executeRecipe(
   adapter: PageAdapter,
@@ -313,8 +339,30 @@ async function makeRealAdapter(baseUrl?: string): Promise<PageAdapter> {
 /** The entry: `bun apps/chaconne/runner/index.ts run <id> [flags]` */
 async function main(): Promise<void> {
   const argv = process.argv.slice(2);
+  if (argv[0] === "schedule") {
+    let fake = false;
+    let baseUrl: string | undefined;
+    let dataDir: string | undefined;
+    for (let i = 1; i < argv.length; i++) {
+      const a = argv[i];
+      if (a === "--fake") fake = true;
+      else if (a === "--base-url") baseUrl = argv[++i];
+      else if (a === "--data-dir") dataDir = argv[++i];
+    }
+    const ticks = await runScheduleTickCli({ dataDir, fake, baseUrl });
+    for (const t of ticks) {
+      if (t.fired && t.run) {
+        console.log(`recipe ${t.recipeId}: fired; run ${t.run.id} (${t.run.status})`);
+      } else if (t.skip) {
+        console.log(`recipe ${t.recipeId}: skipped (${t.skip.reason})`);
+      } else {
+        console.log(`recipe ${t.recipeId}: not due`);
+      }
+    }
+    process.exit(0);
+  }
   if (argv[0] !== "run") {
-    console.error('usage: bun apps/chaconne/runner/index.ts run <recipeId> [--fake] [--data-dir <dir>] [--base-url <u>]');
+    console.error('usage: bun apps/chaconne/runner/index.ts run <recipeId> [--fake] [--data-dir <dir>] [--base-url <u>] | schedule [--fake] [--data-dir <dir>]');
     process.exit(2);
   }
   const recipeId = Number(argv[1]);
@@ -349,3 +397,14 @@ const isMain = (() => {
   }
 })();
 if (isMain) main();
+
+/** The schedule subcommand's CLI entry (kept separate from cmdSchedule's
+ *   export so the dynamic import above stays type-accurate). */
+async function runScheduleTickCli(args: { dataDir?: string; fake?: boolean; baseUrl?: string }) {
+  const { runScheduleTick } = await import("./schedule.js");
+  return runScheduleTick({
+    dataDir: args.dataDir,
+    fake: args.fake,
+    baseUrl: args.baseUrl,
+  });
+}
