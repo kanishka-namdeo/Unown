@@ -574,6 +574,17 @@ dream → later-ticket benefit), skill generation (repeated procedure →
 SKILL.md staged → promoted with paired evidence). A mechanism never
 exercised is a coverage-matrix gap, not an assumption.
 
+**§6c accrual state (2026-11-06, the twentieth lineage's mid-round
+receipt — the plan's mechanisms, exercised so far)**:
+
+| Mechanism | Exercised | The receipt |
+|---|---|---|
+| Tiered memory (create → reuse) | YES | The A2H-8 session's browser-probe findings landed as clean pitfall facts in the very next memory render (V-17/B-18's third observation: "the two A2H-8-derived pitfalls rendered CLEANLY alongside" the noise) — the note→memory loop works; the C-tickets' reuse test comes with C-2/C-3 |
+| Harness (failure → benchmark → verify → retain) | YES | A2H-9 (the test-isolation genuine-gap → the substring-filter lesson pinned in the standing `bun run test:unit 2>&1 \| rg "^apps/"` check + the afterAll pattern) and A2H-10's four gate-caught defects → the 14-pin suite (the pins ARE the retained regression) |
+| Minting (pattern → capability-eval task) | NOT YET | No recurring cross-ticket pattern has repeated ≥2× yet; the V-15 pins-first pattern is the leading candidate (one occurrence) |
+| Consolidation (notes → dream → benefit) | YES (richly) | The B-18 arc: the defect FOUND in consolidation renders, root-caused across three engine instances, fixed at the write boundary (A2H-10, v0.0.57) — plus V-17's four live-lane observations (the spend governor, the canary gate's tool-drift catch, the tier-vs-terminal split, the .env rewrite) |
+| Skill generation (procedure → staged → promoted) | PARTIAL | H-10's evidence base complete (A2H-8), staging waits for the C-2/C-6 lanes; H-11 advanced to CANARY (the registry row); no PROMOTE yet this round (H-9's promotion was the opening call) |
+
 ## Seed augmentation hypotheses
 
 Opened at PROPOSE per the directive's §0.9.4 (pre-registered before the
