@@ -4,10 +4,10 @@ One-line purpose: the PROVE track's evidence package — the before/after
 pairs the round's tickets landed, honestly labelled (single-run claims
 stay single-run, nulls stay nulls, the 2–6 pp noise band respected).
 Baseline table: [README.md](README.md) (tree `18e4a98a`, 2026-11-06, the
-eighteenth lineage's Phase 0). Status: **C-11 (the round's last ticket)
-in flight on the twenty-second's lane at compilation** — this file
-finalizes at the round closeout; every number below is receipted as of
-the C-10 + A2H-14 merged tree (`6fd21f88`).
+eighteenth lineage's Phase 0). Status: **FINAL at the DRIVE-complete
+tree `4a531894` (C-1..C-11 all closed) + the twenty-fifth's cross-machine
+verification** — the round's closeout receipts (the every-3 review, the
+§7 cycle, the §0.9 reconciliation) land on top of this file.
 
 ## 1. The DRIVE track — the vehicle shipped, gate by gate
 
@@ -21,9 +21,10 @@ cross-machine verified:
 | Lane A (app unit, DOM-free) | — (app did not exist) | **114 pass / 5 skip / 0 fail** (18 files) | C-1..C-10 + A2H-14 (+1 the cross-host pin) |
 | Lane B (app unit, happy-dom) | — | **157 / 0** | C-3..C-10 |
 | Chaconne e2e battery | — (app did not exist) | **20/20, ×2 consecutive on the merged tree (19.1 s / 19.0 s)**; ×3 incl. a CI=1 cold boot at C-9; 12 consecutive at C-8 | [c6](receipts/c6.md) · [c8](receipts/c8.md) · the C-9/C-10 queue rows |
-| Typecheck / lint | 0 / 0e-143w | **0 / 0e-143w** (unchanged through 11 tickets) | every operator gate |
+| Typecheck / lint | 0 / 0e-143w | **0 / 0e-143w** (unchanged through 12 tickets) | every operator gate |
 | The five check gates (docs/changelog/blog/benchmarks/claims) | 55 stops/540 · 46/116 · 6/6 · 62/62 | **56 stops/544 · 46/116 · 6/6 · 62/62** — all ok with the new docs/chaconne.md + the v0.0.57 rail | the C-10 close + the merged-tree verification (V-42) |
-| Landing surface | — | the ChaconneSection band (7 real stills, IHDR-pinned), docs/chaconne.md, the README rows, the capture lane | the C-10 queue row |
+| The CI surface | — | **the `chaconne` job: 10 steps (the ostinato pattern), ci.yml valid at 20 jobs; the `chaconne:dev`/`test`/`e2e` root scripts run green from root** | the C-11 close + the twenty-fifth's cross-check |
+| Landing surface | — | the ChaconneSection band (7 real stills, IHDR-pinned, **the post-fix refresh driving the REAL runner through the fixed bridge — the V-41 seam proven live**), docs/chaconne.md + the RUNBOOK section, the README rows, the capture lane with the `--runner` mode | the C-10/C-11 queue rows |
 
 The honest scope statement: **Chromium-desktop-only** (Safari/Firefox/
 mobile untested, stated on the landing band and the docs page — never
@@ -47,6 +48,7 @@ per ticket (A2 turns as dispatched, operator gates excluded):
 | C-8 | import/export | ~135 | the filechooser race flake (12-13/14 cold cross-runs) — the C-8 flake-fix lane, V-39 |
 | C-9 | the accessibility battery | ~74 | V-32(b) cap overspend ×2, the V-38 provider flip window (tolled) |
 | C-10 | the landing band | ~92 (46 the twenty-second's close + the twenty-fifth's stood-down chunk 1) | V-40 (the output-token ceiling → the split-write law), the convergent dual (V-42) |
+| C-11 | the runbook + CI gate + capture refresh | **165 (ONE dispatch — the round's first single-dispatch ticket; the 8-turn chunk budget blown 20×, the cap gate firing post-hoc)** | the MISSING-LAW finding: EFFORT_BUDGET is advisory to the model — a mid-run turn-budget HOOK filed as an augment candidate |
 | A2H-9 | the encore test isolation | ~40 (2 lineages, convergent) | the substring-filter blind spot |
 | A2H-10 | the dream noise filter (Unown core) | 24 + the operator's priced completion | V-15: the template-literal syntax rider, the pins-first completion |
 | A2H-12 | the dead isMain guard | ~24 | one out-of-scope edit self-caught mid-flight |
@@ -80,10 +82,14 @@ Every major landing was independently re-verified on a second tree: C-1
 (V-14, quadruply), C-3 (V-25), C-4+C-5 (V-28), C-6 (the twenty-fourth's
 sixth-tree battery), C-7+A2H-13 (V-36, triply), C-9 (the twenty-third,
 14:25 UTC), C-10 (the twenty-third, 15:32 UTC), A2H-14 (the
-twenty-third's cross-check `38492e94`), and the C-10+A2H-14 **merged
+twenty-third's cross-check `38492e94`), the C-10+A2H-14 **merged
 tree** (the twenty-fifth's joint verification — V-42: nobody else had
-verified the band and the fix together). The round's fleet: **at least
-seven independent trees** ran the battery green.
+verified the band and the fix together), and **C-11 (the twenty-fifth,
+16:05–16:10 UTC: every number exact — `chaconne:test` 114p/5s/0, root
+2366/0/174 at 158.7 s, `chaconne:e2e` 20/20 at 18.5 s, the five gates,
+ci.yml valid at 20 jobs, the 7 stills' real-runner PROVENANCE)**. The
+round's fleet: **at least eight independent trees** ran the battery
+green.
 
 ## 5. The genuine-gap harvest (the §5 reflex — failures → benchmarks)
 
@@ -99,13 +105,21 @@ pin that makes regression loud, and the receipt.
 
 ## 6. What stays OPEN at this compilation
 
-- **C-11** (the runbook + CI gate + honest-scope statement + the
-  post-fix capture refresh) — the twenty-second's lane, in flight.
-- The engine's learning-layer accumulation for THIS round (dream count,
-  memory growth, skill candidates minted) — receipted per-ticket in the
-  round log; the closeout summarizes.
+- **C-11 — CLOSED** (`4a531894`, cross-machine verified by the
+  twenty-fifth): the DRIVE track is complete; the closeout portfolio
+  (the every-3 review, the §7 cycle, the OQ-1 PLAN amendment, the §0.9
+  reconciliation, the §6c/§8 final receipts, the claim-evidence gap
+  formalization) is the next lineage's work per the updated resume
+  instructions.
+- The engine's learning-layer accumulation for THIS round: the
+  twenty-fifth's lane alone drove **16 runs / 12 dreams** (the live KPI
+  at the closeout) with the terminal render clean throughout (B-18
+  FIXED-RENDERED, V-43) and the dream consolidation carrying the
+  round's latest fix facts; the closeout summarizes across lanes.
 - The §0.9.5 re-scope trigger: never fired (Chaconne's exposure held —
   the a11y/resilience/io batteries all found real work).
 - The H-10 teardown choice (a hostile-variant fixture via a proper
   ticket, 6/arm, or holding the null) — the teardown window's standing
   question.
+- The C-11 missing-law finding: the mid-run turn-budget hook (the
+  augment candidate the 165-turn single dispatch receipted).
