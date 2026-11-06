@@ -261,6 +261,22 @@ folded into the receipt); the next free bug id is **B-18**.
   filter is the gap). The fix lane is unchanged; this strengthens the
   case for an output-shape validation (JSON-parse the fact line, reject
   fragments) at the dream's write boundary.
+  **Third observation (the twentieth lineage, 2026-11-06 ~05:22 UTC
+  render, git-visible in the A2H-7/A2H-8 closeout rebase): the
+  ORIGINAL reasoning-blob shape RECURRED on a fully fresh engine DB**
+  (this lineage's engine was recycled-fresh at 05:01, 0 dreams at
+  bring-up) — the render's clippad fact carries ~180 words of embedded
+  meta-deliberation ("[NOTE: The original memory contained a markdown
+  artifact '[note 1]'… I will keep the text as is… Let's look at
+  similar memories… I will just keep the text…]") PLUS the two
+  A2H-8-derived pitfalls rendered CLEANLY alongside it (the iframe
+  race findings landed as crisp facts — the note→memory loop works
+  again; only the filter is the gap). Both shapes (reasoning-blob and
+  JSON-fragment) are now observed within one hour across three
+  independent engine instances — the defect is deterministic-enough to
+  ticket: the fix lane gains a concrete repro (run any dream
+  consolidation on the clippad fact lineage) and the output-shape
+  validation proposal above stands.
 
 ## Ticket queue
 
@@ -281,8 +297,8 @@ folded into the receipt); the next free bug id is **B-18**.
 | C-10 | The landing band + docs page + usage captures (screenshots of the app in use) | `check:docs`/`check:claims`/`check:blog` + the landing audit | QUEUED |
 | C-11 | The runbook + CI gate entry + honest-scope statement | The CI gate config + `bun run chaconne:test`/`e2e` from root | QUEUED |
 | A2H-9 | The encore Finale test-isolation fix (V-4): the full-suite-only, order-dependent unit fail — next chunk runs the shard-bisect protocol (find the minimal co-failing file set), then fixes at the named layer; the encore test's intent is NOT weakened | `bun run test:unit` 0 fail (quoted tail) + isolation rerun green + the minimal co-failing set receipted in `.unown/receipts/a2h9.md` | **CLOSED 2026-11-06** — see the first queue row + [the receipt](../benchmarks/rondo-round/receipts/a2h9.md) |
-| A2H-7 | The #30 live-hang capture: the armed watcher (`scripts/issue30_watcher.mjs`) run in both churn lanes during this round's dispatch traffic | A hang capture dir with /proc evidence, or a non-repro receipt with run count | QUEUED (satellite — harness lane) |
-| A2H-8 | The #43 browser fill_form iframe-race probe: a fixture-page repro of the iframe fill class through A2's own browser tools, evidence filed upstream | The repro transcript + the upstream issue comment draft | QUEUED (satellite — browser lane) |
+| A2H-7 | The #30 live-hang capture: the armed watcher (`scripts/issue30_watcher.mjs`) run in both churn lanes during this round's dispatch traffic | A hang capture dir with /proc evidence, or a non-repro receipt with run count | **NON-REPRO RECEIPTED 2026-11-06 (the twentieth lineage)** — both lanes ×8 runs: idle 8/8 exit 0 (`UNOWN_OK`, 1.5–4.7 s), dream 8/8 exit 0 (1.5–2.1 s) — the dream lane run CONCURRENT with the A2H-8 browser dispatch (real dispatch traffic, engine requests 18→48 mid-lane); no hang, no capture dir; receipts [a2h7/idle-summary.json](../benchmarks/rondo-round/receipts/a2h7/idle-summary.json) + [a2h7/dream-summary.json](../benchmarks/rondo-round/receipts/a2h7/dream-summary.json) committed. The watcher STAYS ARMED for the round's later dispatch traffic (each re-run mints a fresh non-repro receipt; a capture ends the wait) |
+| A2H-8 | The #43 browser fill_form iframe-race probe: a fixture-page repro of the iframe fill class through A2's own browser tools, evidence filed upstream | The repro transcript + the upstream issue comment draft | **CLOSED 2026-11-06 (the twentieth lineage)** — 2 chunks (8+8 turns, session `01a1af48-8b74…`, the V-5 continuation law applied); the verdict (reconciled with the repo's own F3 postfix evidence): **the v0.0.55 silent-loss path is NOT REPRODUCIBLE on v0.0.56** — the F3 fix (`0d0c64ff`, in v0.0.56) closed it; 5/5 runs fail LOUDLY; RESIDUAL GAP: a loud-failure window between navigate's return and the frame's ref readiness (the barrier should extend to fill_form's ref resolution), plus a minor partial-application atomicity gap (the select lands when the input fails); evidence filed upstream — [comment 1](https://github.com/kanishka-namdeo/Unown/issues/43#issuecomment-6677636789) + [the reconciliation follow-up](https://github.com/kanishka-namdeo/Unown/issues/43#issuecomment-6677653366); receipt [a2h8.md](../benchmarks/rondo-round/receipts/a2h8.md) (5 verbatim run records, the operator gate verified the excerpts against the session log, the amended reconciliation section included). Feeds C-2's RealPageAdapter design (verify-value-landed is now CONFIRMED necessary — the residual window is real) |
 | (carry) | Reprise R-3..R-5, the standing SESSION.md items | per their own logs | PARKED (candidates) |
 
 **EFFORT_BUDGET**: C-tickets ≤4 chunks each · each chunk ≤8 turns
