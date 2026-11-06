@@ -54,8 +54,13 @@ the fake-clock spiral V-14 receipted — the operator's §3.7 structural
 decision (delete the manual clock, bounded real-clock polls) closed what
 three derivations could not; Lane A/B 70/0, root battery 2289/0 holding,
 3-test real-browser smoke on LOCAL file:// fixtures; receipt
-`benchmarks/rondo-round/receipts/c2.md`). **Next: C-3 (the web app
-shell), then the C-4..C-11 drive queue.**
+`benchmarks/rondo-round/receipts/c2.md`). **C-3 CLOSED 2026-11-06** (the nineteenth lineage — the UI shell: 19
+files / 3,303 lines through A2 in 33 turns / 4 rounds, the round's
+smoothest ticket; Lane A 81p/4s/0, Lane B 110/0, root battery 2329/0/171,
+serve.mjs boot verified HTTP 200; the every-3-tickets playbook review
+landed the ordered-write brief pattern; receipt
+`benchmarks/rondo-round/receipts/c3.md`). **Next: C-4 (the recurring
+loop) — the §7 competition cycle opens at its closure; then C-5..C-11.**
 
 The **twentieth lineage** (a PARALLEL resume — the V-9 dual-incarnation
 event: the nineteenth's checkpoint `6885f2f3` landed first and governs;
