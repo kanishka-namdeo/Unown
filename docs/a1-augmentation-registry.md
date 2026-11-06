@@ -410,6 +410,24 @@ PROPOSE-stage candidates (none canaried, none promoted):
   nor a regeneration story; the recommendation is the C-8 brief
   author's decision, not an inherited convention) is recorded for the
   C-8 brief author at `.a1/logs/c8-prep-chunk2.json` (operator lane).
+  **Pattern-tally accrual 2026-11-06 (the twenty-fifth lineage, the
+  V-40-era stress test)**: 8 more continuation dispatches across two
+  sessions under the output-token ceiling — the C-10 capture session
+  (`01a1b15e…`, 3 continuations: the split-write law's first exercise,
+  the §3.7 operator-derivation fix handoff, the A2H-14-unblocked
+  completion) + the A2H-14 fix session (`01a1b169…`, 4 continuations:
+  the pin-writing completion, the edit completion, the acceptance
+  lanes, the real-run receipt) — **every continuation resumed
+  productively on first contact, 0 brief corrections needed, 0
+  misfires** (the caps were the 4096-token ceiling's turn-budget
+  artifacts, not brief failures). Honest scope: these 8 were
+  HAND-authored per the generator's laws (the state carry, the pins
+  injection, the derivation handoff) — the PATTERN's tally, not the
+  generator's emission tally (which stays 2/2). The V-40 ceiling makes
+  the continuation shape the DEFAULT dispatch mode, raising the
+  generator's value: at 4096 output tokens/run, multi-chunk is no
+  longer the exception. Pattern tally: **10/10 continuations, 0
+  corrections** across four task shapes and three lineages.
 
 A2-side candidates (skills, subagents, hooks, review checks) enter at
 PROPOSE only from receipted failures observed during O-ticket driving —
