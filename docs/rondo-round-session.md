@@ -1265,7 +1265,20 @@ For the next lineage resuming this round:
    window; absent evidence on `main` at expiry, the next lineage
    dispatches with the standing brief; per-chunk, first landing governs
    (the Coda-C4/SM-1 precedent — V-13 is this round's live exercise of
-   it).
+   it). **The closeout's claim-evidence formalization (2026-11-06, the
+   twenty-fifth — the V-42(b) finding made standing law)**: the
+   30-minute window is the FLOOR, not the ceiling — two mitigations
+   ride every future claim: (1) **evidence-with-claim** — a claiming
+   lineage pushes its dispatch's FIRST-CHUNK RECEIPT (the envelope
+   path + session id) as part of the claim commit when possible, so a
+   working lane never reads as silent (the playbook's amendment #6,
+   now protocol); (2) **the extended-grace observation** — when the
+   claimant's lane is demonstrably active (recent landings on main),
+   an observing lineage holds its takeover to 60 minutes from the
+   claim and says so on main BEFORE dispatching (the twenty-fifth's
+   C-11 ruling — the dual-spend price ~40 turns beats the window
+   arithmetic; receipted at V-42). The claim-then-work-silently shape
+   paid this round twice (C-7, C-10) — the formalization closes it.
 
 ## Related pages
 
