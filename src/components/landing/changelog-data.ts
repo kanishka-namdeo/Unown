@@ -30,14 +30,14 @@ export interface ChangelogStop {
   groups: ChangelogGroup[];
 }
 
-export const CHANGELOG_TOTAL_ENTRIES = 542;
+export const CHANGELOG_TOTAL_ENTRIES = 543;
 
 export const CHANGELOG_TOTALS: Record<ChangelogBucket, number> = {
   "Added": 258,
   "Changed": 32,
   "Deprecated": 0,
   "Removed": 3,
-  "Fixed": 197,
+  "Fixed": 198,
   "Security": 5,
   "Behavior": 47
 };
@@ -208,6 +208,31 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
           },
           {
             "title": "The dev server was silently un-interactable when browsed by IP literal",
+            "behavior": false
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "label": "0.0.57",
+    "date": "2026-11-06",
+    "total": 1,
+    "counts": {
+      "Added": 0,
+      "Changed": 0,
+      "Deprecated": 0,
+      "Removed": 0,
+      "Fixed": 1,
+      "Security": 0,
+      "Behavior": 0
+    },
+    "groups": [
+      {
+        "bucket": "Fixed",
+        "items": [
+          {
+            "title": "sanitizeMemoryText() — the deterministic reasoning-noise filter at every memory write boundary (B-18)",
             "behavior": false
           }
         ]

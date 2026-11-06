@@ -162,7 +162,8 @@ When a note supersedes an earlier rule, link the new memory to the old one (link
 Environment facts include infrastructure details — ports, endpoints, backup schedules, retention windows, cache and queue configs, feature flags, cron times. Extract EVERY distinct fact even when several share one sentence or the note reads as routine: a fact skipped at extraction is unrecoverable later (the dream never re-reads the note).
 Verified vs asserted: extract facts the note VERIFIED (a command's output, a test result, a file the session read, a fix it applied and re-tested) — never the session's own UNVERIFIED assertions. An answer the agent GAVE (a reply to a question, a recommendation, a restatement from its own training) is not evidence: a session that answered wrongly produces note text that is wrong, however confident it reads. If a note's fact carries no verification trail and contradicts what the session actually read or ran, drop the assertion; keep the verified observation.
 Unverified recency must not overwrite verified knowledge: when a new, unverified assertion conflicts with an established memory whose note carried verification (a read, a run, a fix), keep the established memory and link the assertion as a candidate correction (linked_memory_ids) instead of replacing it.
-Prefer short imperative statements ("Run X with flag Y", "Z fails unless W").`;
+Prefer short imperative statements ("Run X with flag Y", "Z fails unless W").
+The 'text' field must NEVER carry decision rationale, meta-deliberation or JSON fragments: no "Reason:" clauses, no [note ...] deliberation blobs, no ', "reason": ...' provenance fragments — the why goes to its own 'reason' field only.`;
 
 // ---------------------------------------------------------------- embedders
 
@@ -644,14 +645,118 @@ export async function applyEmbedderBackendSwitch(
  * text sat in the store) are dropped here so they never render or count as
  * learnings.
  */
+/**
+ * B-18 — the deterministic reasoning-noise filter at the memory write boundary
+ * (2026-11-06, observed three times across three engine instances in one
+ * hour: the dream LLM's meta-deliberation leaks INTO stored facts). Strips
+ * the three observed leak shapes, conservatively — clean facts pass through
+ * BYTE-IDENTICAL (no shape matched → the input is returned untouched):
+ *
+ *   1. embedded [NOTE: …] / [note: …] deliberation blobs (the bracket must
+ *      OPEN with "note" — a [link]-style annotation never matches),
+ *   2. JSON-fragment tails — a fact ending `…", "reason": "…"}, {` — the
+ *      mem0 provenance object rendered as fact text. Only the fragment
+ *      SYNTAX is stripped (a trailing "reason" key after a comma at the
+ *      string's end); prose that merely contains the word "reason" is
+ *      never touched,
+ *   3. trailing Reason:/reason: clauses (the 2026-10-23 reconcile strip,
+ *      generalized: the word must open a clause — a leading or space-
+ *      preceded "Reason:" — not sit mid-prose inside a quote),
+ *   then collapses the whitespace the strips leave behind (single spaces;
+ *   the ends trimmed).
+ *
+ * Rejected input: a residual that is empty after all strips is the caller's
+ * drop signal (the lanes never store a noise-only row).
+ */
+export function sanitizeMemoryText(text: string): string {
+        const t0 = String(text ?? "");
+        // The reject rule's floor: a whitespace-only row is not a fact —
+        // the empty return is the lanes' drop signal, and it takes
+        // precedence over the byte-identity guarantee (which exists for
+        // non-empty facts).
+        if (t0.trim() === "") return "";
+        let out = t0;
+        // (1) embedded [NOTE: …] blobs — non-greedy, repeatable, case-
+        // insensitive. The blob body may contain ONE level of nested
+        // brackets (the observed clippad payload embeds '[note 1]' INSIDE
+        // the deliberation) — the body alternation admits non-bracket
+        // chars OR a complete nested […] group, so the match ends at the
+        // blob's OWN closing bracket, not the nested one. A clean fact
+        // whose bracket is NOT a note marker ([link], [subagent]) never
+        // matches. The second, EOF-anchored pass catches a TRUNCATED blob
+        // (the model's own cutoff mid-sentence): the opening fragment to
+        // the end of the string is noise either way — and when it is the
+        // whole row, the lane's empty check drops it (reject rule).
+        out = out
+                .replace(/\[[Nn][Oo][Tt][Ee]:(?:[^\[\]]|\[[^\]]*\])*\]/g, " ")
+                .replace(/\[[Nn][Oo][Tt][Ee]:[\s\S]*$/, "");
+        // (2) JSON-fragment tails — the provenance object's trailing fields
+        // the model rendered INTO the fact text: ` …", "reason": "…"}, {`
+        // (and the bare `…", "reason": "…"` when the fragment ran past the
+        // model's cutoff, closing brace and bracket absent; and the FULLY
+        // truncated `…", "reason": "…` with no closing quote at all). Only
+        // the fragment SYNTAX is matched — a trailing "reason" key after a
+        // comma at the string's end; the prose before it is byte-preserved.
+        // An escaped quote inside the value is honored so the match ends at
+        // the fragment's real boundary; the `}, {` inter-object separator
+        // may carry a comma and whitespace between the brace and the next
+        // object's opening brace (the observed payload: `…"}, {`).
+        out = out
+                .replace(/"?\s*,\s*"reason"\s*:\s*"(?:[^"\\]|\\.)*"\s*\}[\s,]*\{?\s*$/, "")
+                .replace(/"?\s*,\s*"reason"\s*:\s*"(?:[^"\\]|\\.)*"\s*$/, "")
+                .replace(/"?\s*,\s*"reason"\s*:\s*"[^"]*$/, "");
+        // (3) trailing Reason clause — the 2026-10-23 strip generalized:
+        // the clause must START A SENTENCE (immediately after . ; ! ? or at
+        // the string beginning — a LOOKBEHIND so the sentence's own
+        // punctuation is preserved in the residual), so a legitimate
+        // mid-prose "for a reason:" never matches — the observed leak
+        // always begins a fresh sentence ("… any restart. Reason:
+        // tightened wording …").
+        out = out
+                .replace(/(?<=[.;!?])\s*Reason:\s*[\s\S]*$/i, "")
+                .replace(/^\s*Reason:\s*[\s\S]*$/i, "");
+        // (4) whitespace collapse: the strips replaced shapes with spaces —
+        // squeeze the resulting runs (a fact is single-line by contract) and
+        // trim the ends.
+        out = out.replace(/\s+/g, " ").trim();
+        // clean pass-through guarantee: when NOTHING matched, return the
+        // ORIGINAL string, not the (textually identical) transformed copy —
+        // byte-identity is the pinned contract. The "nothing matched" test
+        // is shape-aware (the probes mirror the three strips exactly,
+        // including the sentence-start rule for Reason and the
+        // truncated-fragment tail), not a comparison of t0 to the collapsed
+        // out — a clean fact may legitimately carry internal whitespace
+        // runs and must survive untouched.
+        const shapeFree =
+                !/\[[Nn][Oo][Tt][Ee]:/.test(t0) &&
+                !/,\s*"reason"\s*:\s*"/.test(t0) &&
+                !/(?:[.;!?]\s*|^)\s*Reason:\s/i.test(t0);
+        return shapeFree ? t0 : out;
+}
+
+/**
+ * Map mem0 add() results onto platform events. Shared by the first pass,
+ * the empty-extraction retry and the level-3 salvage inserts. Empty-text rows
+ * (an extraction returning a blank fact — observed live: a memory with empty
+ * text sat in the store) are dropped here so they never render or count as
+ * learnings.
+ */
 function mapAddResults(results: any[]): MemoryPlatformEvent[] {
         return results
                 .map((r) => ({
                         event:
                                 (String(r?.metadata?.event ?? r?.event ?? "ADD").toUpperCase() as MemoryPlatformEvent["event"]) || "ADD",
                         id: String(r?.id ?? ""),
-                        text: String(r?.memory ?? r?.text ?? ""),
+                        // B-18: the ADD-lane write boundary — every extracted
+                        // memory is sanitized at this single chokepoint
+                        // (primary extraction, the reframe retry, the salvage
+                        // inserts and migrateLegacyScope's verbatim re-adds
+                        // all land through here).
+                        text: sanitizeMemoryText(String(r?.memory ?? r?.text ?? "")),
                 }))
+                // AND the B-18 reject rule: a row whose whole content was
+                // rationale/JSON-fragment noise sanitizes to empty and is
+                // dropped — noise must not land as an empty row.
                 .filter((e) => e.id && e.text.trim());
 }
 
@@ -814,6 +919,12 @@ async function salvageExtractMemories(text: string): Promise<string[]> {
         return raw
                 .filter((m): m is string => typeof m === "string")
                 .map((m) => m.trim().slice(0, 240))
+                // B-18: the salvage lane's write boundary — sanitize AFTER
+                // the trim (a salvage verdict is the same stochastic model
+                // class that leaked into the stock-extraction lane); then
+                // reject: a noise-only residual sanitizes to "" and is
+                // dropped, never stored.
+                .map((m) => sanitizeMemoryText(m))
                 .filter((m) => m.length > 0)
                 .slice(0, 8);
 }
@@ -1315,14 +1426,18 @@ export async function reconcileMemories(
                         });
                         pruned++;
                 } else if (op.op === "UPDATE" && typeof op.text === "string" && op.text.trim()) {
-                        // Rationale stripping (2026-10-23, found live in this repo's own
-                        // scope): models leak their decision rationale into the text field
-                        // ("…; check this after any restart. Reason: tightened wording
-                        // from 'restart' …") even though the prompt sends "why" to its own
-                        // `reason` field — the leak then renders into project memory and
-                        // reads as meta-commentary, not knowledge. Strip a trailing
-                        // Reason clause deterministically; the rationale was never memory.
-                        const next = op.text.trim().replace(/\s*Reason:\s*[\s\S]*$/i, "").trim();
+                        // B-18 (2026-11-06, generalizing the 2026-10-23 strip
+                        // that introduced this lane): the same write-boundary
+                        // filter as every other lane — embedded [NOTE: …]
+                        // deliberation blobs, JSON-fragment tails and the
+                        // trailing Reason clause (the 2026-10-23 finding: the
+                        // model leaked its decision rationale into the text
+                        // field even though the prompt sends "why" to its own
+                        // `reason` field; the rationale was never memory).
+                        // A noise-only residual is REJECTED: the existing
+                        // `!next` guard skips the UPDATE — noise must not
+                        // land as an empty row.
+                        const next = sanitizeMemoryText(op.text.trim());
                         if (!next || next === prior.text) continue;
                         try {
                                 await platform.update(op.id, next);
