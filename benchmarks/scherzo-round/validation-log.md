@@ -60,4 +60,35 @@ upstream-change, operator-tooling}. Nothing is patched around silently.
 
 ---
 
+## V-5 — the research spiral on reference-rich tickets (genuine-gap, A2 behavior)
+
+- **What**: S-2 burned TWO full chunks (16 turns) reading references
+  without writing a single file — the chunk-2 last words ("let me read
+  the two remaining reference files, then start writing") repeated the
+  chunk-1 pattern verbatim. The flash model's reference appetite on a
+  rich tree (PLAN + frozen domain + the Chaconne runner + the house
+  patterns) is unbounded under a turn cap: each chunk re-derives
+  "one more file to read" and the write never starts.
+- **Class**: genuine-gap (repeatable A2 behavior, not infra/prompt
+  one-off) — this is H-17's exact predicted firing surface
+  (conversation-pattern stuck detection), now with a receipt.
+- **The §3.7 operator intervention (the V-18 mechanism law)**: the
+  continuation carried a **write-now directive** — no reading except
+  self-authored files + an exact file order (adapter → executor →
+  report → fixtures → tests → e2e). Chunk 3 then landed 5 source files
+  in 8 turns (the round's highest per-turn yield).
+- **Cure (standing, this round)**: every continuation on a ticket whose
+  chunk-1 produced no files carries the write-now pin by default. The
+  H-17 detector's design gains its first acceptance case: "chunk
+  boundary crossed with zero writes AND repeated read-intent in the
+  last words" → flag for the operator.
+- **Benchmark conversion**: the S-2 chunk-1/chunk-2 transcripts are the
+  frozen negative example; a rerunnable check will ride H-17's gate
+  design (detect-at-boundary, no false positive on legitimate research
+  tickets — S-0/S-1 chunk-1s were research-only but chunk-2 wrote
+  immediately; the discriminator is the SECOND boundary with zero
+  writes).
+
+---
+
 *Next entries append below as the round's tickets run.*

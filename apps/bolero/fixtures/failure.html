@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>bolero fixture — failure path</title>
+    <style>
+      body { font-family: system-ui, sans-serif; margin: 2rem; }
+    </style>
+  </head>
+  <body>
+    <h1>Failure-path fixture</h1>
+
+    <!-- Elements that ARE present (so the run can commit a prefix). -->
+    <p id="present">always here</p>
+    <button id="failbtn" type="button">fail</button>
+
+    <!-- The selector #ghost NEVER appears on this page (no timer, no
+         injection) — a capped wait on it is a `selector-not-found`
+         miss, never a hang (the §6 failure-path fixture law). -->
+
+    <!-- #late appears on a slow timer (4s) — a capped wait below that
+         window is a `timeout` taxonomy entry. -->
+    <script>
+      setTimeout(function () {
+        const el = document.createElement("p");
+        el.id = "late";
+        el.textContent = "late arrival";
+        document.body.appendChild(el);
+      }, 4000);
+    </script>
+  </body>
+</html>

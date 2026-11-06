@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>bolero fixture — happy path</title>
+    <style>
+      body { font-family: system-ui, sans-serif; margin: 2rem; }
+      .row { margin: 0.5rem 0; }
+    </style>
+  </head>
+  <body>
+    <h1>Happy-path fixture</h1>
+
+    <!-- The fill target: a text input. -->
+    <div class="row">
+      <input id="name" type="text" value="" aria-label="name" />
+    </div>
+
+    <!-- The select target: a real <select> with options. -->
+    <div class="row">
+      <select id="tier" aria-label="tier">
+        <option value="a">tier-a</option>
+        <option value="b">tier-b</option>
+        <option value="c">tier-c</option>
+      </select>
+    </div>
+
+    <!-- Text to extract (textContent). -->
+    <p id="readout" data-ref="ref-42">initial readout</p>
+
+    <!-- The click target: a button that flips the readout text. -->
+    <button id="go" type="button">go</button>
+
+    <script>
+      document.getElementById("go").addEventListener("click", function () {
+        document.getElementById("readout").textContent = "committed";
+      });
+    </script>
+  </body>
+</html>

@@ -6,17 +6,15 @@
 ## Known pitfalls
 - Bolero roundtrip tests verify canonical JSON byte pinning and include PLANTED-DRIFT RED checks that throw errors on field renames (e.g., `status`→`state` triggers `report.status not in the closed RunStatus set`) or missing fields (e.g., `startedAt`)
 - Always verify that test file imports are correctly applied after editing failures, as missed edits can cause downstream test failures.
-- In Unown, `ensureAutomationsSchema` must be called as the first statement in `beforeAll` in `pi-repo/packages/self-learning/test/automation-spend.test.ts` before any `DELETE FROM` statements to prevent automation spend test failures.
-- In /home/z/my-project/Unown, the `apps/chaconne` test suite has 9 pre-existing failures from other test files that are unrelated to automation-spend.test.ts changes
-
-## Task playbooks
-- The chaconne UI module contains specific sub-components: palette, recipe-editor, run-history, and artifact-viewer.
 
 ## Environment
 - For high-reliability frontend or browser-based CI steps, use Chromium with headless flags to ensure consistent rendering and testing in containerized environments.
 - Remove unused variable declarations (e.g., `void seedStore;`) to keep builds clean.
 
 ## Facts
+- Adopt a 'read-then-write' workflow: fully analyze domain core, reference semantics (e.g., Chaconne), and utility modules (log builders, test patterns) before starting implementation.
+- When implementing a Chaconne-based runner, always verify and enforce the 'committed-prefix law' to ensure correct execution semantics.
+- When extending system functionality, review existing smoke test patterns and log builder references before writing new code to maintain consistency.
 - The edge-case register in `apps/bolero/PLAN.md` is expected to contain 14 rows labeled E-01 through E-14.
 - Maintain `apps/bolero/PLAN.md` with six specific sections: Architecture overview, FROZEN artifact grammar draft, Ticket map, Edge-case register, Ops contract, and Test strategy.
 - `chaconne-a11y.spec.ts` validates 4 accessibility checks: axe audit in light mode, axe audit in dark mode, tab order, and Esc-key focus-return.
@@ -127,4 +125,4 @@
 - Stealth verification suite on bot.sannysoft.com: all 10 checks (webdriver, userAgent, platform, userAgentData, timezone, locale, screen, viewport, plugins, window.chrome) pass; 0 FAIL rows in Intoli tests. (Restored by hand 2026-11-01 — second occurrence of the dream-render-prunes-landing-quoted-lines class, issue #46; moved here to the durable lane.)
 - Parley password hashing: scrypt N=16384 r=8 p=1 (src/lib/parley/password.ts). Restored by hand 2026-10-29 after AutoDream reconciles twice erased the fact (upstream 79->66 render, then the F1/F2 bcrypt poison round). Never let a memory answer overwrite this without reading the source.
 
-<!-- unown: rendered 110/113 memories via Mem0 (backend: lexical) · 3 oldest pruned at render (cap 110; hard-won rules immune) at 2026-11-06T20:13:15.932Z -->
+<!-- unown: rendered 110/116 memories via Mem0 (backend: lexical) · 6 oldest pruned at render (cap 110; hard-won rules immune) at 2026-11-06T20:25:51.788Z -->
