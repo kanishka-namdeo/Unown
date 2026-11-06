@@ -18,6 +18,15 @@
 import type { ArtifactRef, RunRecord } from "../domain/types.js";
 import { el } from "./el.js";
 
+/**
+ * The C-5 extraction-report shape (the `extract-report` artifact's JSON
+ * payload, produced by the runner's cmdRun): step index → the step's
+ * expected-vs-actual entries (the runner's uniform record shape across
+ * both adapters — `expected` is present only where a check named one).
+ */
+export type ExtractReportEntry = { selector: string; attr: string; expected?: string; actual: string };
+export type ExtractReport = Record<string, ExtractReportEntry[]>;
+
 /** The screenshot artifact's metadata panel (honest: ref, not bytes). */
 export function renderScreenshotArtifact(artifact: ArtifactRef, recipeName: string): HTMLElement {
   const d = el("div", { class: "chaconne-artifact", role: "region", "aria-label": "Screenshot artifact", id: "chaconne-artifact-screenshot" });
@@ -44,6 +53,46 @@ export function renderScreenshotArtifact(artifact: ArtifactRef, recipeName: stri
  * value map; empty (or absent) → the honest no-values panel, never a
  * blank.
  */
+/**
+ * The C-5 extraction-report panel: renders a content-addressed
+ * `extract-report` artifact's payload (step-indexed expected-vs-actual,
+ * each row with its selector + attr) as a table. Empty payload → the
+ * honest no-reports panel, never a blank.
+ */
+export function renderExtractReport(report: ExtractReport, recipeName: string): HTMLElement {
+  const d = el("div", { class: "chaconne-artifact", role: "region", "aria-label": "Extraction report", id: "chaconne-artifact-extract-report" });
+  d.append(el("h2", { text: `Extraction report — ${recipeName}`, class: "chaconne-state-title" }));
+  const steps = Object.keys(report);
+  if (steps.length === 0) {
+    d.append(
+      el("p", { text: "No extraction report in this run (no extract steps ran).", class: "chaconne-state-copy", id: "chaconne-extract-report-empty" }),
+    );
+    return d;
+  }
+  const table = el("table", { class: "chaconne-extraction-table", "aria-label": "Extraction report" });
+  const head = el("thead", {});
+  const hr = el("tr", {});
+  for (const h of ["Step", "Selector", "Attr", "Expected", "Actual"]) hr.append(el("th", { text: h, class: "chaconne-artifact-key" }));
+  head.append(hr);
+  const tbody = el("tbody", {});
+  for (const stepIdx of steps) {
+    for (const entry of report[stepIdx]) {
+      const tr = el("tr", { "data-step": stepIdx });
+      tr.append(
+        el("td", { text: stepIdx, class: "chaconne-artifact-key" }),
+        el("td", { text: entry.selector, class: "chaconne-artifact-value" }),
+        el("td", { text: entry.attr, class: "chaconne-artifact-value" }),
+        el("td", { text: entry.expected ?? "—", class: "chaconne-artifact-value" }),
+        el("td", { text: entry.actual, class: "chaconne-artifact-value" }),
+      );
+      tbody.append(tr);
+    }
+  }
+  table.append(head, tbody);
+  d.append(table);
+  return d;
+}
+
 export function renderExtractedValues(run: RunRecord, recipeName: string): HTMLElement {
   const d = el("div", { class: "chaconne-artifact", role: "region", "aria-label": "Extracted values", id: "chaconne-artifact-extracted" });
   d.append(el("h2", { text: `Extracted values — ${recipeName}`, class: "chaconne-state-title" }));

@@ -12,6 +12,17 @@
  *    a silently-raced fill (the #43 defect) fails the step instead of
  *    surfacing as ok.
  *
+ * C-5 value checks: assert-text's `expected` may carry a `=~` prefix —
+ * `=~text` is a CONTAINS match, anything else is EXACT (trimmed
+ * before comparison). A mismatch ALWAYS throws a `step-failed`
+ * AdapterStepError carrying expected-vs-actual, never a silent pass.
+ * Screenshot bytes: every capture is fullPage PNG, content-addressed
+ * with the hash computed BEFORE naming (store.ts builds the name from
+ * the payload's sha256 — a lying caller cannot clobber a slot; the
+ * determinism + format pins live in real-smoke.test.ts — a CI
+ * chromium/font drift would show up as byte drift under a stable
+ * PNG-magic + hash-grammar format contract).
+ *
  * Capped waits: every Playwright `waitFor*` call gets `capMs - RESERVE`
  * so that when the browser's timeout fires, this code still has
  * RESERVE ms left to translate it into the taxonomy error. A capped
@@ -200,7 +211,10 @@ class RealPageAdapterImpl implements PageAdapter {
     await this.wait(selector, capMs, intoFrame);
   }
 
-  async extract(selector: string, capMs: number, intoFrame?: string, attr?: string): Promise<string> {
+  async extract(selector: string, capMs: number, intoFrame?: string, attr?: string, _expected?: string): Promise<string> {
+    // C-5: the real adapter does not carry a recordExtract hook — the
+    // runner core records its actual-value entry with expected omitted
+    // (the extraction report's shape is uniform across adapters).
     return await this.withFrame(intoFrame, capMs, async (host) => {
       const loc: Locator = host.locator(selector).first();
       try {

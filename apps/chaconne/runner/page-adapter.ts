@@ -63,12 +63,27 @@ export type PageAdapter = {
   select(selector: string, value: string, capMs: number, intoFrame?: string): Promise<void>;
   /** presence of selector within capMs (selector-not-found on miss). */
   wait(selector: string, capMs: number, intoFrame?: string): Promise<void>;
-  /** textContent equals `expected` (a check, not a poll). */
+  /**
+   * assert-text VALUE CHECK (C-5): `expected` may be written as
+   * `=~<text>` for a CONTAINS match; anything else is an EXACT match
+   * (the real adapter trims before comparing; both adapters share the
+   * form). A mismatch is ALWAYS a `step-failed` AdapterStepError whose
+   * message carries expected-vs-actual — a silent pass is impossible.
+   */
   assertText(selector: string, expected: string, capMs: number, intoFrame?: string): Promise<void>;
   /** selector resolves to an element within capMs. */
   assertElement(selector: string, capMs: number, intoFrame?: string): Promise<void>;
-  /** textContent (or attribute when `attr` is set) of the element. */
-  extract(selector: string, capMs: number, intoFrame?: string, attr?: string): Promise<string>;
+  /**
+   * textContent (or attribute when `attr` is set) of the element.
+   * C-5 extraction report: `expected` (when the runner names an
+   * expectation) is compared against the read value and the pair is
+   * recorded via `recordExtract(selector, attr, expected, actual)` —
+   * the actual value is returned either way; a mismatch is NOT a step
+   * failure (extraction observes, it does not gate).
+   */
+  extract(selector: string, capMs: number, intoFrame?: string, attr?: string, expected?: string): Promise<string>;
+  /** C-5: record one extraction's expected-vs-actual into the report. */
+  recordExtract?(selector: string, attr: string | undefined, expected: string | undefined, actual: string): void;
   /** fullPage capture (edge case 4). */
   screenshot(capMs: number): Promise<ScreenshotResult>;
   /** runner-core extension point — no-op on the fake. */
@@ -125,6 +140,7 @@ export class FakePageAdapter implements PageAdapter {
   private currentUrl = "";
   private extractLog: string[] = [];
   private fillLog: string[] = [];
+  private extractReport: { selector: string; attr: string; expected?: string; actual: string }[] = [];
   private urlTables: Map<string, Record<string, FakeElement>> = new Map();
 
   constructor(private readonly opts: FakePageAdapterOptions) {}
@@ -283,7 +299,10 @@ export class FakePageAdapter implements PageAdapter {
 
   async assertText(selector: string, expected: string, capMs: number, intoFrame?: string): Promise<void> {
     const el = this.findOrThrow(selector, capMs, intoFrame);
-    if (el.text !== expected) {
+    const matched = expected.startsWith("=~")
+      ? el.text.includes(expected.slice(2))
+      : el.text === expected;
+    if (!matched) {
       throw new AdapterStepError(
         "step-failed",
         `assert-text ${selector}: expected ${JSON.stringify(expected)}, got ${JSON.stringify(el.text)}`,
@@ -295,7 +314,7 @@ export class FakePageAdapter implements PageAdapter {
     this.findOrThrow(selector, capMs, intoFrame);
   }
 
-  async extract(selector: string, capMs: number, intoFrame?: string, attr?: string): Promise<string> {
+  async extract(selector: string, capMs: number, intoFrame?: string, attr?: string, expected?: string): Promise<string> {
     const el = this.findOrThrow(selector, capMs, intoFrame);
     const value = attr !== undefined ? el.attrs[attr] : el.text;
     if (value === undefined) {
@@ -305,7 +324,17 @@ export class FakePageAdapter implements PageAdapter {
       );
     }
     this.extractLog.push(value);
+    this.recordExtract?.(selector, attr, expected, value);
     return value;
+  }
+
+  /** C-5 extraction report hook: every extract records expected-vs-actual. */
+  recordExtract(selector: string, attr: string | undefined, expected: string | undefined, actual: string): void {
+    this.extractReport.push({ selector, attr: attr ?? "text", expected, actual });
+  }
+  /** C-5: the step-by-step extraction report (the runner serializes it). */
+  get extractionReport(): { selector: string; attr: string; expected?: string; actual: string }[] {
+    return this.extractReport;
   }
 
   async screenshot(capMs: number): Promise<ScreenshotResult> {

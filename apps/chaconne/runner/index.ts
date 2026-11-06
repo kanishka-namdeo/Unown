@@ -40,6 +40,12 @@ export type ExecutionResult = {
   committedPrefix: number;
   failedStepIdx?: number;
   extracted: Record<string, string>;
+  /**
+   * C-5 extraction report (the `extract-report` artifact payload):
+   * step index → the step-by-step expected-vs-actual entries (selector +
+   * attr + expected when named + actual), serialized to JSON by the CLI.
+   */
+  extractionReport: Record<string, { selector: string; attr: string; expected?: string; actual: string }[]>;
   /** artifact payloads produced by this run, in order (screenshot/extract). */
   artifacts: { stepIdx: number; ext: string; payload: Uint8Array | string; kind: "png" | "json" | "log" }[];
   /** the run-log artifact text (its name is derived from these bytes). */
@@ -105,6 +111,7 @@ export async function executeRecipe(
 
   const log = createLogBuilder();
   const extracted: Record<string, string> = {};
+  const extractionReport: ExecutionResult["extractionReport"] = {};
   const artifacts: ExecutionResult["artifacts"] = [];
   let failedStepIdx: number | undefined;
   let failedStatus: RunRecord["status"] | undefined;
@@ -123,7 +130,7 @@ export async function executeRecipe(
         value: step.value,
         intoFrame: step.intoFrame,
       };
-      await runStep(adapter, stepInput, step.kind, i, extracted, artifacts, cap);
+      await runStep(adapter, stepInput, step.kind, i, extracted, artifacts, cap, extractionReport);
       wallCursor += 1; // advance the fake wall by a constant (the real elapsed is adapter-dependent; 1ms keeps the step-count cap firing first in unit tests)
       ledger.checkWall(wallCursor - wallStart); // re-check after the advance
       ledger.commitStep();
@@ -155,7 +162,7 @@ export async function executeRecipe(
   });
 
   const logText = logArtifactBytes(log.build(), recipe.name, recipe.steps.length);
-  return { ...finished, extracted, artifacts, logText };
+  return { ...finished, extracted, artifacts, extractionReport, logText };
 }
 
 async function runStep(
@@ -166,6 +173,7 @@ async function runStep(
   extracted: Record<string, string>,
   artifacts: ExecutionResult["artifacts"],
   cap: number,
+  extractionReport?: Record<string, { selector: string; attr: string; expected?: string; actual: string }[]>,
 ): Promise<void> {
   const sel = input.selector;
   const val = input.value;
@@ -196,8 +204,19 @@ async function runStep(
       // value, when present, names the ATTRIBUTE to read (extract-with-attr);
       // absent means textContent.
       const attr = val;
-      const v = await adapter.extract(sel, cap, frame, attr);
+      const v = await adapter.extract(sel, cap, frame, attr, undefined);
       extracted[String(idx)] = v;
+      // C-5 extraction report: record expected-vs-actual per step (the
+      // fake adapter's recordExtract hook; real adapters get an entry
+      // with expected omitted).
+      const recs = (adapter as { extractionReport?: { selector: string; attr: string; expected?: string; actual: string }[] }).extractionReport;
+      const report = extractionReport ?? {};
+      if (recs && recs.length > 0) {
+        report[String(idx)] = recs.slice();
+        recs.length = 0;
+      } else {
+        report[String(idx)] = [{ selector: sel, attr: attr ?? "text", actual: v }];
+      }
       artifacts.push({ stepIdx: idx, ext: "json", payload: JSON.stringify({ [String(idx)]: v }), kind: "json" });
       break;
     }
@@ -272,6 +291,16 @@ export async function cmdRun(args: {
     const hex = store.artifactRef(a.stepIdx, runId, a.ext, payload);
     store.saveArtifact(a.stepIdx, runId, a.ext, payload);
     refs.push(hex);
+  }
+  // The C-5 extraction-report artifact: step-indexed expected-vs-actual
+  // report, content-addressed like every other artifact. Written ONLY
+  // when extract steps ran, so an extract-free run's artifact list stays
+  // byte-identical to pre-C-5 (the store dedup + run-record byte law).
+  if (Object.keys(result.extractionReport).length > 0) {
+    const reportJson = JSON.stringify(result.extractionReport, null, 2);
+    const reportRef = store.artifactRef(0, runId, "extract-report.json", reportJson);
+    store.saveArtifact(0, runId, "extract-report.json", reportJson);
+    refs.push(reportRef);
   }
   // The run-log artifact (its bytes are the logText we just built).
   const logRef = store.artifactRef(0, runId, "log", result.logText);

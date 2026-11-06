@@ -172,6 +172,86 @@ test("step kind: screenshot (tall page, fullPage kin)", async () => {
   expect(res.artifacts.some((a) => a.ext === "png")).toBe(true);
 });
 
+/* — C-5 value checks: assert-text exact/contains + expected-vs-actual — */
+
+test("assert-text value-check: an EXACT mismatch is step-failed with expected-vs-actual", async () => {
+  const { adapter } = fake("dynamic");
+  const r = recipe([{ kind: "goto", selector: "dynamic" }, { kind: "assert-text", selector: "#label", value: "settled" }]);
+  const res = await executeRecipe(adapter, r);
+  expect(res.status).toBe("ok");
+  const bad = await executeRecipe(adapter, recipe([{ kind: "assert-text", selector: "#label", value: "other" }]));
+  expect(bad.status).toBe("step-failed");
+  expect(bad.failedStepIdx).toBe(0);
+  expect(bad.logText).toContain(`expected "other"`);
+  expect(bad.logText).toContain(`got "settled"`);
+});
+
+test("assert-text value-check: a `=~` CONTAINS match passes on a substring", async () => {
+  const { adapter } = fake("dynamic");
+  const r = recipe([{ kind: "goto", selector: "dynamic" }, { kind: "assert-text", selector: "#label", value: "=~sett" }]);
+  const res = await executeRecipe(adapter, r);
+  expect(res.status).toBe("ok");
+});
+
+test("assert-text value-check: a `=~` CONTAINS mismatch is step-failed (no silent pass)", async () => {
+  const { adapter } = fake("dynamic");
+  const r = recipe([{ kind: "goto", selector: "dynamic" }, { kind: "assert-text", selector: "#label", value: "=~nope" }]);
+  const res = await executeRecipe(adapter, r);
+  expect(res.status).toBe("step-failed");
+  expect(res.logText).toContain(`expected "=~nope"`);
+  expect(res.logText).toContain(`got "settled"`);
+});
+
+/* — C-5 extraction report: expected-vs-actual recorded per step — */
+
+test("extract value-check: the fake adapter records expected-vs-actual per extract step", async () => {
+  const { adapter } = fake("tall");
+  const r = recipe([
+    { kind: "goto", selector: "tall" },
+    { kind: "extract", selector: "#bottom" },
+    { kind: "extract", selector: "#mid", value: "data-attr" },
+  ]);
+  const res = await executeRecipe(adapter, r);
+  expect(res.status).toBe("ok");
+  // The C-5 report is step-keyed with the actual value (the fake
+  // adapter's recordExtract hook; the runner serializes it into the
+  // extract-report artifact the CLI writes content-addressed).
+  expect(res.extractionReport["1"]?.[0]?.actual).toBe("bottom-marker");
+  expect(res.extractionReport["2"]?.[0]?.attr).toBe("data-attr");
+  expect(res.extractionReport["2"]?.[0]?.actual).toBe("mid");
+  // Every extract step produced a json artifact (byte-stable).
+  expect(res.artifacts.filter((a) => a.ext === "json").length).toBe(2);
+});
+
+/* — C-5 screenshot-hash determinism pin (the fake's stable bytes) — */
+
+test("screenshot hash: two runs of the same fixture produce identical png bytes + sha256", async () => {
+  const { adapter: a1 } = fake("tall");
+  const r = recipe([{ kind: "goto", selector: "tall" }, { kind: "screenshot", selector: "#" }]);
+  const res1 = await executeRecipe(a1, r);
+  const { adapter: a2 } = fake("tall");
+  const res2 = await executeRecipe(a2, r);
+  const shot1 = res1.artifacts.find((a) => a.ext === "png");
+  const shot2 = res2.artifacts.find((a) => a.ext === "png");
+  expect(shot1).toBeDefined();
+  expect(shot2).toBeDefined();
+  const b1 = shot1!.payload as Uint8Array;
+  const b2 = shot2!.payload as Uint8Array;
+  // Byte-identical across two independent adapters → the sha256 pin
+  // is stable on the fixture (the CI's byte-stable-enough lane; a
+  // real-browser run on a different chromium build would show byte
+  // drift and degrade to the documented format pin, not this one).
+  expect(b1.length).toBe(b2.length);
+  for (let i = 0; i < b1.length; i++) {
+    if (b1[i] !== b2[i]) {
+      throw new Error(`byte ${i} differs: ${b1[i]} vs ${b2[i]}`);
+    }
+  }
+  // The content-addressed name carries the sha256 (store.ts computes it
+  // from these exact bytes before naming — no temp-name collisions).
+  expect((b1.length > 0)).toBe(true);
+});
+
 /* — acceptance #4: ALL 5 error-taxonomy entries — */
 
 test("taxonomy: ok", async () => {

@@ -124,16 +124,36 @@ if (!hasDom) {
     expect(loaded?.recipes[0]?.name).toBe("persist-test");
   });
 
-  test("sw.js skeleton: CACHE_NAME 'chaconne-v0' + the empty PRECACHE_LIST (C-6/C-7 contract)", async () => {
-    // Read the sw.js source (the skeleton's static contract — the
-    // list is empty until C-6/C-7 complete it). Resolve the path
-    // via process.cwd() + the known relative path (the test runs
-    // from the repo root).
+  test("sw.js: CACHE_NAME 'chaconne-v0' + the C-5-completed PRECACHE_LIST (the offline closure)", async () => {
+    // Read the sw.js source (the offline closure's static contract —
+    // the list is completed at C-5; every static asset the shell
+    // needs at boot is enumerated with a derivation comment).
     const { readFile } = await import("node:fs/promises");
     const { join } = await import("node:path");
     const swPath = join(process.cwd(), "apps/chaconne/sw.js");
     const sw = await readFile(swPath, "utf8");
     expect(sw).toContain('const CACHE_NAME = "chaconne-v0";');
-    expect(sw).toContain("const PRECACHE_LIST = [];");
+    // The C-5 completion: the list is non-empty and carries the shell's
+    // document root + manifest + icon + css + offline fallback + the
+    // app.ts entry + the module graph (the derivation comment).
+    expect(sw).toContain("const PRECACHE_LIST = [");
+    expect(sw).toContain('"index.html"');
+    expect(sw).toContain('"public/manifest.webmanifest"');
+    expect(sw).toContain('"public/icon.svg"');
+    // The C-5 gate-caught fix: public/offline.html is a C-7 asset and
+    // MUST NOT appear as a LIVE precache entry (cache.add rejects a
+    // 404 — the install would fail). It lives only in the fetch-lane
+    // fallback reference (cache.match on a missing entry → undefined,
+    // no throw) and in the comment naming C-7 as the restorer. Scan
+    // the list's live entries (non-comment lines) for the string.
+    const swListBlock = sw.slice(sw.indexOf("const PRECACHE_LIST"), sw.indexOf("];", sw.indexOf("const PRECACHE_LIST")));
+    const liveEntries = swListBlock.split("\n").filter((l) => !l.trim().startsWith("//"));
+    expect(liveEntries.join("\n")).not.toContain('"public/offline.html"');
+    expect(sw).toContain('"src/ui/chaconne.css"');
+    expect(sw).toContain('"src/ui/app.ts"');
+    expect(sw).toContain('"src/domain/types.ts"');
+    expect(sw).toContain('"src/storage/local-storage.ts"');
+    // The derivation comment (the ticket's doc pin).
+    expect(sw).toContain("Derivation (the comment the ticket");
   });
 }

@@ -137,3 +137,34 @@ test("loadRuns/loadRecipes: empty on a fresh store", () => {
   expect(store.loadRuns()).toEqual([]);
   fs.rmSync(dir, { recursive: true, force: true });
 });
+
+/* — C-5 extraction-report artifact: content-addressed step-indexed JSON — */
+
+test("extract-report artifact: step-keyed JSON through the same content-addressed store", () => {
+  const dir = tmpDir();
+  const store = new ChaconneDiskStore(dir);
+  store.recover();
+
+  // The runner's extract-report payload: step index → expected-vs-actual.
+  const report: Record<string, { selector: string; attr: string; expected?: string; actual: string }[]> = {
+    "1": [{ selector: "#bottom", attr: "text", actual: "bottom-marker" }],
+    "2": [{ selector: "#mid", attr: "data-attr", expected: "mid", actual: "mid" }],
+  };
+  const payload = JSON.stringify(report, null, 2);
+  const ref = store.artifactRef(0, 1, "extract-report.json", payload);
+  store.saveArtifact(0, 1, "extract-report.json", payload);
+
+  // The ref matches the domain's content-addressed grammar (invariants.ts).
+  expect(ref.name).toMatch(/^0_r1_sha256:[0-9a-f]{64}\.extract-report\.json$/);
+  expect(ref.sha256).toBe(sha256Hex(payload));
+  // Read back: byte-identical (the same file, not a second slot).
+  expect(store.readArtifact(ref.name)).toBe(payload);
+  // A second run with the SAME report dedupes to the same bytes — a
+  // different run id still produces the same digest (the name differs
+  // only by run id; the hash is content-addressed, not run-scoped).
+  const ref2 = store.artifactRef(0, 2, "extract-report.json", payload);
+  store.saveArtifact(0, 2, "extract-report.json", payload);
+  expect(ref2.sha256).toBe(ref.sha256);
+  expect(ref2.name).not.toBe(ref.name); // r2 ≠ r1
+  fs.rmSync(dir, { recursive: true, force: true });
+});

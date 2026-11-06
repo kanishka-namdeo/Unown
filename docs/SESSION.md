@@ -67,8 +67,14 @@ battery 2351/0/172; receipt `benchmarks/rondo-round/receipts/c4.md`).
 The §7 competition cycle opened:
 [the Letta filesystem-memory teardown](TEARDOWN_2026-11-06_letta-filesystem-memory.md)
 (74.0% LoCoMo with plain files vs Mem0's 68.5% — the challenge to A2's
-Mem0 bet, reckoned; two PROPOSE candidates queued). **Next: C-5 (the
-assertion + artifact hardening), then the C-6..C-11 drive queue.**
+Mem0 bet, reckoned; two PROPOSE candidates queued). **C-5 CLOSED 2026-11-06** (the nineteenth lineage — the assertion +
+artifact hardening: value checks with expected-vs-actual, the screenshot
+determinism pin, the content-addressed extract-report, the completed
+precache list; one gate catch — the offline.html forward reference that
+would have failed SW install, fixed through A2; Lane A 115/0, Lane B
+146/0, root battery 2353/0/172; receipt
+`benchmarks/rondo-round/receipts/c5.md`). **Next: C-6 (the e2e battery),
+then the C-7..C-11 drive queue.**
 
 The **twenty-first lineage's post-freeze reconciliation** (07:30 UTC):
 the B-19 windows-CI fix landed convergently (V-23 — the twentieth's

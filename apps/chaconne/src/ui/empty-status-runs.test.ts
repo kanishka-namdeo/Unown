@@ -381,4 +381,43 @@ if (!hasDom) {
       "No extracted values in this run.",
     );
   });
+
+  // C-5: the extraction-report panel (the extract-report artifact's shape).
+  test("renderExtractReport: the step-indexed expected-vs-actual table", async () => {
+    const { renderExtractReport } = await import("./artifact-viewer.js");
+    cleanBody();
+
+    const panel = renderExtractReport(
+      {
+        "1": [{ selector: "#bottom", attr: "text", actual: "bottom-marker" }],
+        "2": [{ selector: "#mid", attr: "data-attr", expected: "mid", actual: "mid" }],
+      },
+      "My recipe",
+    );
+    document.body.append(panel);
+
+    const region = document.getElementById("chaconne-artifact-extract-report");
+    expect(region).not.toBeNull();
+    const table = region?.querySelector(".chaconne-extraction-table");
+    expect(table).not.toBeNull();
+    const rows = table?.querySelectorAll("tbody tr");
+    expect(rows?.length).toBe(2);
+    expect(rows?.[0]?.textContent).toContain("#bottom");
+    expect(rows?.[0]?.textContent).toContain("bottom-marker");
+    expect(rows?.[1]?.textContent).toContain("data-attr");
+    // The named expectation renders (expected-vs-actual law, C-5 #1).
+    expect(rows?.[1]?.textContent).toContain("mid");
+  });
+
+  test("renderExtractReport: an empty report → the honest no-reports panel", async () => {
+    const { renderExtractReport } = await import("./artifact-viewer.js");
+    cleanBody();
+
+    const panel = renderExtractReport({}, "My recipe");
+    document.body.append(panel);
+
+    expect(document.getElementById("chaconne-extract-report-empty")?.textContent).toBe(
+      "No extraction report in this run (no extract steps ran).",
+    );
+  });
 }
