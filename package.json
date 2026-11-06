@@ -34,6 +34,7 @@
     "chaconne:dev": "bun apps/chaconne/serve.mjs",
     "chaconne:test": "cd apps/chaconne && bun test",
     "chaconne:e2e": "bunx playwright test -c playwright.chaconne.config.ts",
+    "bolero:test": "cd apps/bolero && bun test",
     "unown": "bun bin/unown",
     "agent:install": "bun scripts/install.ts",
     "agent:start": "bun scripts/start.ts",

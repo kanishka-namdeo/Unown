@@ -1,11 +1,13 @@
 # Project Memory
 
+## Workflow
+- Run `bun run bolero:test` to execute the bolero test suite from project root, defined in `package.json` as `cd apps/bolero && bun test`
+
 ## Known pitfalls
+- Bolero roundtrip tests verify canonical JSON byte pinning and include PLANTED-DRIFT RED checks that throw errors on field renames (e.g., `status`→`state` triggers `report.status not in the closed RunStatus set`) or missing fields (e.g., `startedAt`)
 - Always verify that test file imports are correctly applied after editing failures, as missed edits can cause downstream test failures.
 - In Unown, `ensureAutomationsSchema` must be called as the first statement in `beforeAll` in `pi-repo/packages/self-learning/test/automation-spend.test.ts` before any `DELETE FROM` statements to prevent automation spend test failures.
 - In /home/z/my-project/Unown, the `apps/chaconne` test suite has 9 pre-existing failures from other test files that are unrelated to automation-spend.test.ts changes
-- CI verification steps should explicitly check both positive assertions (e.g., 21 precache items found) and negative assertions (e.g., 0 missing dependencies) to prevent silent failures.
-- Check the current state of scheduler.ts when debugging scheduling logic to ensure recent changes have been properly applied.
 
 ## Task playbooks
 - The chaconne UI module contains specific sub-components: palette, recipe-editor, run-history, and artifact-viewer.
@@ -125,4 +127,4 @@
 - Stealth verification suite on bot.sannysoft.com: all 10 checks (webdriver, userAgent, platform, userAgentData, timezone, locale, screen, viewport, plugins, window.chrome) pass; 0 FAIL rows in Intoli tests. (Restored by hand 2026-11-01 — second occurrence of the dream-render-prunes-landing-quoted-lines class, issue #46; moved here to the durable lane.)
 - Parley password hashing: scrypt N=16384 r=8 p=1 (src/lib/parley/password.ts). Restored by hand 2026-10-29 after AutoDream reconciles twice erased the fact (upstream 79->66 render, then the F1/F2 bcrypt poison round). Never let a memory answer overwrite this without reading the source.
 
-<!-- unown: rendered 110/111 memories via Mem0 (backend: lexical) · 1 oldest pruned at render (cap 110; hard-won rules immune) at 2026-11-06T19:57:15.786Z -->
+<!-- unown: rendered 110/113 memories via Mem0 (backend: lexical) · 3 oldest pruned at render (cap 110; hard-won rules immune) at 2026-11-06T20:13:15.932Z -->
