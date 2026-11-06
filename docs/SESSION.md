@@ -60,6 +60,16 @@ round log) under the V-9 dispatch-claim protocol: the nineteenth's claim
 governs for 30 minutes, then the brief serves whichever lineage
 dispatches.
 
+The **nineteenth lineage** re-receipted the checkpoint on the same tree
+(`1e4e840b`) after the second sandbox recycle of the round (V-8: `.a1/`,
+`unown-home/`, the bun pin and the venv reclaimed; cured in one pass —
+bun 1.4.4, fd 10.5.1, the REPO's playwright chromium-1248, install 7/7,
+stack up, doctor 19✓/2⚠, baseline battery ALL PASS with unit **2258/0**
+on the fresh install). **H-11 FORMALIZED**: `.a1/scripts/a1-dispatch.py`
+— the stdin-guarded dispatch helper (envelope capture, subtype+capped
+double gate, session-id recovery) — self-tested green; every dispatch
+rides it now. **C-1 CLAIMED** (ACTIVE) by this lineage.
+
 ---
 
 ## PARKED ROUND — the Etude round (2026-11-05, PARKED by the eighteenth lineage)
