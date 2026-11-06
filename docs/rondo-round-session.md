@@ -1,11 +1,37 @@
 # The Rondo round — session log
 
-> **Status: OPEN 2026-11-06** — opened by the **eighteenth lineage** under a
-> FRESH A1 directive (the standing shape: **DRIVE A2 × AUGMENT A2 × PROVE
-> IT**). The Etude round is PARKED with its E-0 approval gate unresolved —
-> its Tempo proposal was scored as ONE candidate among four per the fresh
-> directive's §0.9 selection procedure and not auto-accepted; nothing
-> standing was deleted. See [SESSION.md](SESSION.md).
+> **Status: CLOSED 2026-11-06 (the twenty-fifth lineage's formal close,
+> ~16:20 UTC)** — opened by the **eighteenth lineage** under a FRESH A1
+> directive (the standing shape: **DRIVE A2 × AUGMENT A2 × PROVE IT**),
+> closed at the DRIVE-complete + closeout-portfolio-complete tree
+> `c6591c91`. The Etude round is PARKED with its E-0 approval gate
+> unresolved — its Tempo proposal was scored as ONE candidate among four
+> per the fresh directive's §0.9 selection procedure and not
+> auto-accepted; nothing standing was deleted. See [SESSION.md](SESSION.md).
+>
+> **The close summary**: **DRIVE** — Chaconne shipped through A2
+> (C-0..C-11 + the A2H satellites, every ticket operator-gated, the
+> close doubly cross-verified; the app: a keyboard-first
+> browser-recipe runner at `apps/chaconne/`, the landing band with
+> real-runner stills, the CI gate, the runbook, the honest
+> Chromium-desktop-only scope). **AUGMENT** — H-8/H-9 promoted with
+> retention receipts; H-10's paired runs executed with an honest null
+> (the instrument is the cargo); H-11 at canary (22/0 + the GUARD-KILL
+> class); H-12 at canary with the pattern tally 10/10 (the promotion
+> honestly blocked on the retention requirement — the off-repo
+> generator was recycled; the rebuild+commit is the next round's
+> first act); H-16/H-17 filed at PROPOSE (the budget-visibility
+> teardown's candidates); the engine's learning loop live throughout
+> (this lane alone: 19 runs / 13 dreams, the render clean, B-18
+> FIXED-RENDERED). **PROVE** — [RESULTS.md](../benchmarks/rondo-round/RESULTS.md):
+> the gate table (unit 2258/1-fail → 2366/0; the 20/20 e2e battery),
+> the honest dispatch-economics ledger, the AUGMENT deltas, eight
+> independent rerun-green trees, six genuine-gap classes converted
+> into standing seams (V-41/A2H-14 the deepest — a latent defect in a
+> closed ticket's landing, caught by the real-data bridge). The
+> §0.9.5 re-scope trigger never fired. Forty-three validation events
+> receipted (V-1..V-43). The round's laws live on in the resume
+> instructions below.
 
 One-line purpose: the Rondo round's resumable checkpoint log — mission,
 operator decisions, environment checkpoint, validation log, ticket queue,

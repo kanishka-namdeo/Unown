@@ -463,6 +463,24 @@ PROPOSE-stage candidates (none canaried, none promoted):
   generator's value: at 4096 output tokens/run, multi-chunk is no
   longer the exception. Pattern tally: **10/10 continuations, 0
   corrections** across four task shapes and three lineages.
+  **The closeout disposition (2026-11-06, the twenty-fifth — the
+  round's formal close): H-12 STAYS AT CANARY.** The promotion gate's
+  five requirements: the metric bar met (zero corrections, the
+  canary + the tally), regression-neutral, no product surface, $0
+  metered — but **requirement 5 (retention) FAILS HONESTLY**: the
+  generator lives at `.a1/scripts/a1-continue.py` on the OPERATOR
+  lane — off-repo, and the sandbox recycle claimed it with the
+  twenty-fourth's lane (the V-2 class's eleventh victim; the
+  twenty-fifth's rebuilt `.a1/` carries no a1-continue.py — verified
+  at the close). The fix is named for the next round's first AUGMENT
+  act: rebuild the generator from the receipts' design description
+  (the registry row above IS the spec) and COMMIT it in-repo
+  (`scripts/a1-continue.py`, the tui-capture lane's home) — then the
+  promotion gate re-runs on the retained artifact. The pattern LAWS
+  it encoded (the state carry, the V-11 escape, the V-15 pins
+  injection, the raised cap) are already standing operator practice —
+  the tally stands as the pattern's evidence regardless of the
+  artifact's loss.
 
 A2-side candidates (skills, subagents, hooks, review checks) enter at
 PROPOSE only from receipted failures observed during O-ticket driving —

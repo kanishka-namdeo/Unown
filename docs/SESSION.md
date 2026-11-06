@@ -8,7 +8,7 @@ archaeology. When a round completes, its log graduates to a round-specific
 
 ---
 
-## ACTIVE ROUND — the Rondo round (2026-11-06, OPENED by the eighteenth lineage)
+## COMPLETED ROUND — the Rondo round (2026-11-06, OPENED by the eighteenth, CLOSED by the twenty-fifth lineage)
 
 The **twenty-fifth lineage** (the seventh resume, 2026-11-06 ~14:47 UTC —
 the C-10 takeover lineage, then the A2H-14 closer): bring-up green in one
