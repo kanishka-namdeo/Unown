@@ -243,6 +243,10 @@ clone `/home/z/my-project/Unown`, this reconciliation's author), 2026-11-06:
 | V-24 | The A2H-11 dispatch's 9-failure observation was a CONCURRENT COLLISION artifact: the operator's parallel isolation-repro run raced A2's full-suite verify on the shared `/tmp/engine-tests-b` redirect (the `_env.ts` co-ownership warning); clean sequential re-runs showed 0 fail both WITH the fix (5575/0/248) and WITHOUT (5470/0) | operator-procedure (the V-3 measurement-isolation class, now at the test-suite boundary) | Law: never run the self-learning suite concurrently with anything touching `/tmp/engine-tests-b` — check the a1-dispatch pidfile status before every gate run |
 | V-25 | The C-3 landing's cross-machine operator gate (the twenty-first verifying the nineteenth's `5cedc01a`): Lane A **85/0/15**, Lane B **110/0/15** (the DOM-guarded honest-skip pattern — 25 DOM pins run only under Lane B's happy-dom), tsc 0, lint 0 err/143 warn, root battery **2329/0/171** (2289 standing + 40 new; `apps/chaconne/src/ui/**` carries the src substring so the UI tests join the root battery, unlike the runner lane) | receipt | C-3 is now triply verified (A2's run + the landing lineage's gate + this lane). The battery's app-suite growth is tracked: 2258 → 2289 (C-1) → 2329 (C-3) |
 
+| V-26 | The C-4 CONVERGENT DUAL closure (2026-11-06, the fourth convergence of the round — A2H-9, B-19, C-2, C-4): the twenty-first's session `01a1afd8…` (5 rounds, envelope turns 8/16/24/40/56, operator-gated ALL GREEN: Lane A 116/0, Lane B 143/0, tsc 0, lint 0/143, battery 2353/0/173) and the nineteenth's `9c316604` (57 turns / 6 rounds) — independent implementations of the same PLAN §1/§5-edge-6 laws, agreeing on every invariant (the injected-clock scheduler, SKIP_RECORD_CAP=1, the (recipeId, dueAt) dedup, the OQ-2 true-run-id), differing only in module shape | receipt (the convergence pattern — duplicated spend, cross-validated invariants) | Their landing governs; this lane's tree reset + their C-4+C-5 verified cross-machine (V-28). The spend-duplication cost is receipted honestly: ~2 tickets' dispatch spend for 1 ticket's landing, twice this round — the claim-before-dispatch law held on this lane's side (the claim `2315f8ec` landed before the dispatch), but the parallel lane was already mid-flight. The mitigation for C-6+: the queue row's ACTIVE marker is checked at dispatch time AND at chunk-2 time (a mid-flight stand-down is cheaper than a full duplicate run) |
+| V-27 | The reset-survivor class (2026-11-06, the C-4/C-5 gate): after the convergent reset (`git reset --hard origin/main`), this lane's UNTRACKED test file (`schedule-ui.test.ts`, importing this lane's module shape) survived — hard reset touches tracked files only — andredded the FIRST verification pass with a phantom `Export named 'scheduleRowState' not found` (1 error in both lanes) that looked like a C-4/C-5 interface break in the LANDED code | operator-procedure (a new measurement-isolation class: the convergent-closure reset) | Law: after every convergent reset, `git status --short` + remove the untracked app-lane files (they live in the parallel-impl tag) BEFORE any gate run. The clean re-verification: Lane A 115/0/17, Lane B 146/0/17, tsc 0, lint 0/143, battery 2353/0/172 — every number exact-matching the C-5 receipt |
+| V-28 | The C-4+C-5 cross-machine operator gate (the twenty-first verifying the nineteenth's landings, post-reset-clean): Lane A **115/0/17**, Lane B **146/0/17**, tsc 0, lint 0 err/143 warn, root battery **2353/0/172** (159.3 s) — every number exact-matches both landing receipts' tallies | receipt | C-4 and C-5 are now triply verified each (A2's run + the landing lineage's gate + this lane). The battery growth: 2258 → 2289 (C-1) → 2329 (C-3) → 2353 (C-4/C-5) |
+
 ## Bug register
 
 User/operator-visible findings of this round (the B register continues the
@@ -328,7 +332,7 @@ folded into the receipt); the next free bug id is **B-18**.
 | C-3 | The web app shell: recipe list/create/edit, run history, artifact viewer — keyboard-first, zero-dep, palette, empty/loading/error states | Lane A/B unit + the e2e happy path | **CLOSED 2026-11-06** — the nineteenth lineage; session `01a1af91…`, 33 turns / 4 dispatch rounds (the round's smoothest — the ordered-write brief pattern, adopted into the playbook per the every-3-tickets review in [the receipt](../benchmarks/rondo-round/receipts/c3.md)); 19 files / 3,303 lines: the PWA shell + serve.mjs (Bun.Transpiler :4014) + the 11-command Ctrl+K palette + the dialog-contract recipe editor + grouped run history with 5-status badges + artifact viewer + the four empty panels + light/dark CSS + 5 DOM-guarded test files; the operator gate re-ran every lane — Lane A 81p/4s/0, Lane B **110/0**, root battery **2329/0/171** (2289+40), typecheck 0, lint 0/143, serve boot HTTP 200 verified |
 | C-4 | The recurring loop: schedules (interval/one-shot), misfire policy, run history | Unit battery on an injected clock (the Ostinato law) + e2e | **CLOSED 2026-11-06** — the nineteenth lineage; session `01a1afb2…`, 57 turns / 6 dispatch rounds (the twenty-first's concurrent CLAIM stands down per the per-chunk ledger-arbiter law — the V-19 shape again; its standing brief's misfire/OQ-2 rulings fold into the record as corroborating design review); 8 files / 2,024 lines: the PURE injected-clock scheduler (one-shot retires; interval anchor-relative; misfire skip-and-record, no catch-up storm; dedup + **the HEAL** — the test-caught genuine gap: a crashed-persistence window bricked interval schedules forever, the dedup no-op now advances nextDue past now, §5 receipt), the runner loop with the re-entrancy guard, the scheduleHook wiring, the schedule UI rows (backward-compatible signatures — app.ts byte-identical); the operator gate re-ran every lane — Lane A 109/0, Lane B **138/0**, root battery **2351/0/172** (2329+22), typecheck 0, lint 0/143; five deviations reviewed (one attribution corrected); receipt [c4.md](../benchmarks/rondo-round/receipts/c4.md) |
 | C-5 | Assertions + artifacts: value checks, screenshot capture with pinned hashes, extraction report | Deterministic fixture battery; artifact sha256 pins | **CLOSED 2026-11-06** — the nineteenth lineage; session `01a1afdf…`, 63 turns / 5 dispatch rounds (one gate catch: the sw.js PRECACHE_LIST forward-referenced C-7's offline.html — cache.add on a 404 would fail SW install; fixed through A2 in one round with the fetch-fallback fall-through verified); value checks (exact + `=~` contains, mismatch = step-failed with expected-vs-actual, never silent), the screenshot determinism pin, the content-addressed extract-report artifact + renderExtractReport, the completed precache list with the 3-part derivation; the operator gate re-ran every lane — Lane A 115/0, Lane B **146/0**, root battery **2353/0/172**, typecheck 0, lint 0/143; receipt [c5.md](../benchmarks/rondo-round/receipts/c5.md) |
-| C-6 | The e2e battery lane 1: compose → run → artifacts, keyboard-only (K-1 law) | Playwright battery green ×3 consecutive | QUEUED |
+| C-6 | The e2e battery lane 1: compose → run → artifacts, keyboard-only (K-1 law) | Playwright battery green ×3 consecutive  | **ACTIVE 2026-11-06 (the twenty-first lineage — claimed before dispatch; the C-6 standing brief below)** |
 | C-7 | The resilience battery: crash-mid-run resume, corrupt-store recovery, offline PWA boot | The R-1 law battery (kill/resume/verify) | QUEUED |
 | C-8 | Import/export: byte-stable canonical JSON round-trip, dry-run validation report | Round-trip pin + golden files | QUEUED |
 | C-9 | The accessibility battery: axe wcag2a/2aa both schemes, tab-order pin, Esc focus-return | A-1 battery green light AND dark | QUEUED |
@@ -645,6 +649,71 @@ ACCEPTANCE: (1) cd apps/chaconne && bun test — Lane A green, 0 fail
   (9) the OQ-2 resolution landed (the artifact name's r<id> is the
   run id) + a test pinning it; (10) no file outside apps/chaconne/
   written except .unown/receipts/c4.md.
+```
+
+The C-6 e2e battery ticket — the STANDING BRIEF (authored by the
+twenty-first lineage against the PLAN §4's config spec + §5's K-1 law;
+dispatched after the claim-push; fresh session, the prompt-economy
+header, stdin guarded via the a1-dispatch helper, `--output-format
+json` envelope, ≤4 chunks × ≤8 turns + the 16-turn closing allowance):
+
+```
+ROLE: A2 executor — C-6, the Chaconne e2e battery lane 1: the
+  compose -> run -> artifacts flow, KEYBOARD-ONLY (the K-1 law),
+  building strictly against apps/chaconne/PLAN.md and the landed
+  C-1..C-5 code.
+ALLOWED_INPUTS: apps/chaconne/PLAN.md (§4 the config spec verbatim:
+  the webServer/testDir/testMatch/marker/outputDir/baseURL/project
+  shape; §5 the K-1 law), docs/chaconne-prd.md, apps/chaconne/**
+  (the landed app — read + import; serve.mjs is the webServer target),
+  playwright.ostinato.config.ts + e2e/ostinato-*.spec.ts (read-only:
+  the house e2e pattern — the self-skip guard, the battery
+  conventions), the repo root's @playwright/test + playwright.
+FORBIDDEN_INPUTS: every write outside e2e/ + playwright.chaconne.config.ts
+  EXCEPT the receipt at .unown/receipts/c6.md; NO root package.json
+  edits (C-11 lands the chaconne:* script entries — the verifier runs
+  the battery via bunx directly); no app code changes (if the flow
+  finds a genuine app defect, STOP and report it BLOCKED with the
+  repro — the fix is a new ticket, not an in-ticket patch); no
+  resilience/offline/precache specs (C-7); no a11y spec (C-9 — the
+  queue's lane split defers the PLAN's a11y-spec-in-C-6 mapping to
+  C-9, a documented deviation); no new deps.
+OUTPUT_ARTIFACT: playwright.chaconne.config.ts (repo root, the PLAN §4
+  spec VERBATIM: testDir "e2e", testMatch /chaconne-.*\.spec\.ts/,
+  module-scope process.env.CHACONNE_E2E = "1", outputDir
+  "download/test-results-chaconne", baseURL
+  http://127.0.0.1:4014, the chromium-desktop-only project
+  devices["Desktop Chrome"], ONE webServer: bun
+  apps/chaconne/serve.mjs with env CHACONNE_PORT 4014,
+  reuseExistingServer: !process.env.CI, timeout 60_000),
+  e2e/chaconne-flow.spec.ts (the K-1 battery: create a recipe via the
+  palette/editor keyboard-only (Ctrl+K, arrows, Enter, Esc per the
+  C-3 contract), run it against a LOCAL fixture (the runner's
+  fixture lane — the recipe's goto targets the served
+  /test/fixtures/ pages), watch the run history update, open the
+  artifact viewer, assert the screenshot + extract artifacts render;
+  EVERY interaction keyboard-only — zero mouse clicks in the spec),
+  AND the receipt at .unown/receipts/c6.md (files, the x3-consecutive
+  battery tallies verbatim, timings, open questions for C-7).
+HANDOFF_SCHEMA: plain text — files written, the battery tally x3,
+  timings, open questions.
+EFFORT_BUDGET: <=4 chunks x <=8 turns (closing verify chunk may run 16).
+NON-OVERLAP: C-7 owns resilience + offline + precache specs; C-9 owns
+  a11y; C-11 owns the root script wiring; the round log/CHANGELOG are
+  the operator's.
+ACCEPTANCE: (1) `bunx playwright test -c playwright.chaconne.config.ts`
+  from root — the battery GREEN, named count, run THREE consecutive
+  times (the x3 law — quote each tally + wall time); (2) the spec is
+  keyboard-only (a grep-level self-check: no .click( with a mouse
+  position, no page.mouse — keyboard actions only); (3) the config is
+  the PLAN §4 spec verbatim (the self-skip guard verified: running the
+  root `bunx playwright test` WITHOUT the chaconne config skips the
+  chaconne specs); (4) the fixtures stay LOCAL (the spec's goto URLs
+  are /test/fixtures/... on 127.0.0.1:4014 only); (5) root bun run
+  typecheck + lint — 0 NEW errors; (6) bun run test:unit — 2353/0
+  holds (the e2e specs are NOT unit tests — no battery growth); (7)
+  no file outside e2e/, playwright.chaconne.config.ts, and
+  .unown/receipts/c6.md written.
 ```
 
 ## SDLC coverage and learning-mechanism plan
