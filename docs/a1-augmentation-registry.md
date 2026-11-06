@@ -11,7 +11,7 @@ augmentation this engagement proposes, canaries, gates and promotes — or
 retires.
 
 - Owner: the A1 operator (authored outside A2 sessions)
-- Status: OPENED 2026-11-04; the Ostinato round closed 2026-11-04 — promoted rows: 2 (H-6, H-4); the **Reprise round opened 2026-11-05** — **promoted rows: 3 (+H-8, A2H-4, 2026-11-05)**; H-1/H-2/H-3 carry live records at PROPOSE; the Reprise round PARKED 2026-11-05 (a fresh directive opened); the **Etude round opened 2026-11-05 EMPTY** — one PROPOSE on file (H-9, that round's opening harvest); the round's validation log lives in [the round log](etude-round-session.md) + [the benchmark validation log](../benchmarks/etude-round/validation-log.md); the **Rondo round opened 2026-11-06** (the fresh DRIVE × AUGMENT × PROVE directive) — **H-9 PROMOTED by the CONVERGENT DUAL operator decision** (both parallel lineages promoted it independently on the same receipts — the Rondo round's opening call and the Etude lineage's own E-0-gate decision; promoted rows: 4), **H-10/H-11/H-12 opened at PROPOSE** (the round's pre-registered seed hypotheses); the round's validation log lives in [the round log](rondo-round-session.md) + [the benchmark validation log](../benchmarks/rondo-round/validation-log.md)
+- Status: OPENED 2026-11-04; the Ostinato round closed 2026-11-04 — promoted rows: 2 (H-6, H-4); the **Reprise round opened 2026-11-05** — **promoted rows: 3 (+H-8, A2H-4, 2026-11-05)**; H-1/H-2/H-3 carry live records at PROPOSE; the Reprise round PARKED 2026-11-05 (a fresh directive opened); the **Etude round opened 2026-11-05 EMPTY** — one PROPOSE on file (H-9, that round's opening harvest); the round's validation log lives in [the round log](etude-round-session.md) + [the benchmark validation log](../benchmarks/etude-round/validation-log.md); the **Rondo round opened 2026-11-06** (the fresh DRIVE × AUGMENT × PROVE directive) — **H-9 PROMOTED by the CONVERGENT DUAL operator decision** (both parallel lineages promoted it independently on the same receipts — the Rondo round's opening call and the Etude lineage's own E-0-gate decision; promoted rows: 4), **H-10/H-11/H-12 opened at PROPOSE** (the round's pre-registered seed hypotheses; H-11 advanced to CANARY 2026-11-06 — formalized by the twenty-first, cross-lane receipted by the twentieth); the round's validation log lives in [the round log](rondo-round-session.md) + [the benchmark validation log](../benchmarks/rondo-round/validation-log.md)
 
 **Mini-TOC**
 
@@ -242,6 +242,17 @@ PROPOSE-stage candidates (none canaried, none promoted):
   retry-with-jitter, verify-the-value-landed) is the candidate lane.
   Metric: e2e lane flake rate and turns-to-green on browser tickets,
   WITH vs WITHOUT (the paired gate). Stage: PROPOSE.
+  **Evidence accrual 2026-11-06 (the twentieth lineage, A2H-8)**: the
+  probe CONFIRMED the residual gap is real (the loud-failure window
+  between navigate's return and the frame's ref readiness — see
+  [a2h8.md](../benchmarks/rondo-round/receipts/a2h8.md) + the two
+  upstream comments on issue #43) and named the exact recover-pattern
+  ingredients the skill must encode: re-snapshot for fresh refs, the
+  eval-into-contentDocument fallback, verify-value-landed after every
+  fill, and the partial-application hazard (resolve ALL fields before
+  applying any). The skill's staging waits for C-2/C-6's actual runner
+  lanes (the WITH/WITHOUT gate needs the lane to exist); the receipt
+  is the pre-registered evidence base.
 - **H-11 — the stdin-guard dispatch helper (operator lane, Rondo round
   seed).** V-1's cure formalized: every `-p` dispatch in this harness
   must guard stdin (inline `< /dev/null`; `stdio:["ignore"]` in
@@ -250,6 +261,16 @@ PROPOSE-stage candidates (none canaried, none promoted):
   envelope capture, so the law is enforced by tooling not memory.
   Metric: hang-class dispatch failures → 0 across the round (V-1 is the
   spawning receipt). Stage: PROPOSE.
+  **Formalized 2026-11-06 by the twenty-first lineage** as
+  `.a1/scripts/a1-dispatch.py` (off-repo, the standing convention —
+  documented in the round log): the wrapper enforces the stdin guard
+  by construction. **Cross-lane receipt (the twentieth lineage)**: 16
+  dispatch-side runs this round (8 A2H-8 browser-tool turns through
+  the daemonizer's `os.close(0)` + the 16 watcher `-p` loops) — zero
+  hang-class failures; the A2H-7 watcher's both-lane non-repro
+  receipts are the metric's first data point. Stage: CANARY (the
+  activation is verified every dispatch; the promotion gate needs the
+  round's full dispatch tally).
 - **H-12 — the chunk-continuation brief generator (operator lane, Rondo
   round seed).** The standing byte-exact-continuation economics,
   automated: read the capped session's last state, emit the continuation
@@ -257,6 +278,19 @@ PROPOSE-stage candidates (none canaried, none promoted):
   silent; the continuation carries the state). Candidate: a small
   operator script. Metric: continuation chunks needing operator
   correction → 0; operator minutes per resume. Stage: PROPOSE.
+  **Evidence accrual 2026-11-06 (the twentieth lineage)**: three
+  continuation briefs authored this round (A2H-8 chunk 2, A2H-10 chunks
+  2+3) — zero required re-dispatch correction (each resumed session
+  continued productively on first contact), but TWO new taxonomy
+  entries feed the generator's design: the V-11 template-literal law
+  (never brief raw backticks into a template literal — the generator
+  must escape them) and the V-15 pins-first completion pattern (when a
+  chunk dies pre-test, the continuation should INJECT the operator's
+  pin set, not just the state). The C-1 lane's V-11/V-12 envelope
+  taxonomy (preamble-stop + cap-abort-mid-stream) adds the envelope
+  parsing the generator needs. Stage: PROPOSE (the automation itself
+  is not yet built; the round's remaining C-tickets are its evidence
+  surface).
 
 A2-side candidates (skills, subagents, hooks, review checks) enter at
 PROPOSE only from receipted failures observed during O-ticket driving —
