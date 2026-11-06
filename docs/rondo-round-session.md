@@ -474,6 +474,7 @@ folded into the receipt); the next free bug id is **B-18**.
 | A2H-10 | The B-18 fix: the deterministic reasoning-noise filter at the dream's write boundary — `sanitizeMemoryText()` applied at all three leak lanes (ADD/reconcile-UPDATE/salvage) in `pi-repo/packages/self-learning/src/memzero.ts`, stripping the `[NOTE: …]` blob + JSON-fragment + trailing-Reason shapes, REJECTING empty residuals; clean facts pass byte-identical | The package suite (`cd pi-repo/packages/self-learning && bun test test/`) green with new shape pins + the clean pass-through pin + each lane's pin; tsc parity (0 new errors); the root battery holds | **CLOSED 2026-11-06 (the twentieth lineage)** — A2 3 chunks (session `01a1af52…`: recon 8 / implementation +106/−10 with all three lanes wired / the rider attempt that died at cap on a template-literal syntax error), then the operator's priced completion (the R-2/SM-1 precedent): the syntax cure, the ENTIRE 14-pin test file, and four genuine defects caught by the pins at the gate (nested-bracket residue; a stray-quote regex bug that made the JSON-fragment strip a NO-OP for every non-empty value; the missing `}, {` comma; the over-aggressive mid-prose Reason strip → the sentence-start lookbehind) + the whitespace-only reject floor. **Gates: pins 14/14 · package suite 5470/105-skip/0-fail (the 9-fail bridge-under-load flake set from the mid-dispatch baseline ALSO resolved on the quiet re-run) · package tsc 77 = 77 exact parity (stash-verified; memzero.ts 0 errors both sides) · root typecheck 0**. Receipt [a2h10.md](../benchmarks/rondo-round/receipts/a2h10.md) with the honest A2/operator split + the four design deviations. **The round's first Unown-code enhancement → the version bump v0.0.57 + the CHANGELOG entry + the regenerated rail (56 stops/543 entries/55 dated) ride this closeout**. B-18's register row moves to FIXED-pending-render (the next dream cycle over a shape-carrying fact lineage is the natural experiment) |
 | A2H-11 | (CONVERGENT — see V-23) the windows-CI test-isolation fix: `automation-spend.test.ts`'s beforeAll calls `ensureAutomationsSchema()` before the DELETEs (one file) | The isolation repro green (10/0, was 1 fail); the full suite green with the fix (5575/0/248) | **CLOSED-CONVERGENT 2026-11-06** — the twentieth's B-19 landing (`c69d6382`) governs; this lane's session `01a1afb2…` + receipt [a2h11.md](../benchmarks/rondo-round/receipts/a2h11.md) stand as the parallel evidence |
 | A2H-12 | The B-20 fix: the runner CLI's dead isMain guard — replace the path-vs-URL comparison with Bun's native `import.meta.main` (one hunk, the guard region only) | The CLI runs for real (a seeded store → 'run 1 (recipe 1 v1): ok; committed prefix 1', exit by status); Lane A 115/0 unaffected (the import lane never fires the guard) | **CLOSED 2026-11-06** — session `01a1b031…`, 3 chunks (one out-of-scope edit self-caught and reverted mid-flight); the operator gate re-verified: Lane A 115/0, the CLI spec's invocation reaches the real run path; receipt [a2h12.md](../benchmarks/rondo-round/receipts/a2h12.md) — **lands ON TOP of the parallel C-6 (b6013928) whose landing still carried the dead guard** |
+| A2H-13 | The V-30 reconciliation: the runner's `extract-report.json` ext (a dotted token) violates the PWA domain's single-token `ARTIFACT_NAME_RE` — the cross-host artifact-name seam | The cross-host pin (the runner's on-disk record → the PWA domain's validation) green, and RED on the old grammar; `bun run test:unit` + Lane A green; the ruling receipted | **CLAIMED 2026-11-06 (the twenty-third lineage) — DISPATCH GATED on the C-7 landing** (the same tree C-7's ACTIVE dispatch owns; the standing brief below) |
 | (carry) | Reprise R-3..R-5, the standing SESSION.md items | per their own logs | PARKED (candidates) |
 
 **EFFORT_BUDGET**: C-tickets ≤4 chunks each · each chunk ≤8 turns
@@ -932,6 +933,56 @@ ACCEPTANCE: (1) `node_modules/.bin/playwright test -c
   repro — the fix is a new ticket, not an in-ticket patch; (9) no
   file outside apps/chaconne/, e2e/chaconne-resilience.spec.ts, and
   .unown/receipts/c7.md written.
+```
+
+The A2H-13 artifact-grammar reconciliation ticket — the STANDING BRIEF
+(authored by the twenty-third lineage against V-30's receipt; claimed,
+DISPATCH GATED on the C-7 landing — the ticket touches
+`apps/chaconne/runner/` and `apps/chaconne/src/domain/`, the same tree
+C-7's ACTIVE dispatch owns; the per-chunk ledger-arbiter law and the
+V-26 spend-duplication lesson both say: serialize, don't collide):
+
+```
+ROLE: A2 executor — A2H-13, the V-30 reconciliation: the runner's
+  artifact-name grammar must conform to the PWA domain's
+  ARTIFACT_NAME_RE (or the ruling must be explicit and receipted).
+ALLOWED_INPUTS: apps/chaconne/runner/{store.ts,store.test.ts,index.ts,
+  schedule.ts}, apps/chaconne/src/domain/invariants.ts + its test
+  (ONLY if the ruling lands domain-side), e2e/chaconne-flow-cli.spec.ts
+  + e2e/chaconne-flow.spec.ts (assertion updates if artifact names
+  change), benchmarks/rondo-round/receipts/a2h13.md (the operator
+  receipt — NOT this ticket's; A2's receipt is .unown/receipts/a2h13.md),
+  .unown/receipts/a2h13.md.
+FORBIDDEN_INPUTS: everything else — pi-repo/, mini-services/, src/,
+  other apps, the root package.json, CHANGELOG/DOX/round log; NO
+  weakening of existing pins; no new deps.
+OUTPUT_ARTIFACT: the one-layer fix + its pin: EITHER (a) the runner
+  side — saveArtifact's ext for the extract report becomes a single
+  token (e.g. "extract-report" — no dot), the name grammar then passes
+  ARTIFACT_NAME_RE unchanged (the PREFERRED ruling: the PWA domain's
+  grammar is the published canonical-export contract, C-8's lane
+  depends on it staying frozen), with the artifact-viewer's rendering
+  of the report verified; OR (b) the domain side — ARTIFACT_NAME_RE's
+  ext segment widens to allow dots, WITH the io.ts canonical round-trip
+  re-pinned and the ruling receipted as a grammar change (the costlier
+  lane). A pin asserting a round-trip through BOTH hosts: the runner's
+  on-disk record -> the PWA domain's validation (the exact cross-host
+  seam V-30 named). The receipt names the ruling + why.
+HANDOFF_SCHEMA: plain text — the ruling, the diff files, the pin, the
+  verify tally.
+EFFORT_BUDGET: <=2 chunks x <=8 turns (a satellite).
+NON-OVERLAP: C-7 owns the resilience battery (this ticket dispatches
+  only after C-7 lands); C-8 owns the io round-trip lanes; the round
+  log/CHANGELOG are the operator's.
+ACCEPTANCE: (1) `bun run test:unit` (THE SCRIPT) — green, the tally
+  quoted, any growth accounted; (2) Lane A (`cd apps/chaconne && bun
+  test`) green, tally quoted; (3) `bun run typecheck` + `bun run lint`
+  — 0 NEW errors; (4) the cross-host pin exists and fails RED on the
+  OLD grammar (run it against the pre-fix shape once via a stash or a
+  fixture, quote the failure); (5) the chaconne e2e battery
+  (`node_modules/.bin/playwright test -c playwright.chaconne.config.ts`)
+  green if any e2e assertion touched the old names; (6) no file
+  outside the ALLOWED list written.
 ```
 
 ## SDLC coverage and learning-mechanism plan
