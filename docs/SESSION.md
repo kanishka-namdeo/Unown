@@ -8,6 +8,34 @@ archaeology. When a round completes, its log graduates to a round-specific
 
 ---
 
+## ACTIVE ROUND — the Scherzo round (2026-11-07, OPENED by the twenty-sixth lineage)
+
+A FRESH A1 directive (**DRIVE A2 × AUGMENT A2 × PROVE IT** — the app and
+the proof as twin deliverables; a new task, not a resumption of Rondo):
+`docs/scherzo-round-session.md`. **Phase 0 COMPLETE on the pristine tree
+`ae8a73db`**: bring-up green in one pass (bun 1.4.3, fd 10.2.0,
+chromium-1248, install 7/7, the Agnes `.env` lane, the V-38 pre-seed on
+BOTH homes — the split-homes trap cured at canary stage), canaries C1–C4
+all green (C4 = a real dispatch through the rebuilt H-11 tooling, 3
+turns, 4/4 tests, tree-verified), the baseline battery **ALL GREEN 11/11
+lanes** (unit **2366/0/174**, every number matching the Rondo final
+receipt). The **§0.9 selection pre-registered**: five candidates scored,
+**Bolero** — a recipe-driven website watchdog (runner + server +
+dashboard + deploy) at `apps/bolero/` — SELECTED at 2×2×2 (it forces the
+four lanes no prior vehicle touched: W3 browser, W4 cross-host
+contracts, W5 real-data bridges, W6 ops/deploy); Crescendo is the
+declared carry-over; [the PRD](bolero-prd.md) APPROVED. **The H-12
+mandate executed**: the continuation-brief generator REBUILT + COMMITTED
+in-repo at `scripts/a1-continue.py` (the Rondo closeout's first act —
+the retention gap cured by construction; the promotion gate re-runs on
+this round's first genuine capped chunk). The registry re-opened with
+H-10 re-activated (the firing surface finally exists), H-16 build
+scheduled, seeds H-18/H-19 at PROPOSE. The round's validation log:
+V-1..V-4 filed (all operator-tooling class, honest). **Next: S-0 (the
+PLAN ticket) opens the DRIVE track.**
+
+---
+
 ## COMPLETED ROUND — the Rondo round (2026-11-06, OPENED by the eighteenth, CLOSED by the twenty-fifth lineage)
 
 The **twenty-fifth lineage** (the seventh resume, 2026-11-06 ~14:47 UTC —

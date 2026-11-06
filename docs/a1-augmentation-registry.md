@@ -11,7 +11,7 @@ augmentation this engagement proposes, canaries, gates and promotes — or
 retires.
 
 - Owner: the A1 operator (authored outside A2 sessions)
-- Status: OPENED 2026-11-04; the Ostinato round closed 2026-11-04 — promoted rows: 2 (H-6, H-4); the **Reprise round opened 2026-11-05** — **promoted rows: 3 (+H-8, A2H-4, 2026-11-05)**; H-1/H-2/H-3 carry live records at PROPOSE; the Reprise round PARKED 2026-11-05 (a fresh directive opened); the **Etude round opened 2026-11-05 EMPTY** — one PROPOSE on file (H-9, that round's opening harvest); the round's validation log lives in [the round log](etude-round-session.md) + [the benchmark validation log](../benchmarks/etude-round/validation-log.md); the **Rondo round opened 2026-11-06** (the fresh DRIVE × AUGMENT × PROVE directive) — **H-9 PROMOTED by the CONVERGENT DUAL operator decision** (both parallel lineages promoted it independently on the same receipts — the Rondo round's opening call and the Etude lineage's own E-0-gate decision; promoted rows: 4), **H-10/H-11/H-12 opened at PROPOSE** (the round's pre-registered seed hypotheses; H-11 advanced to CANARY 2026-11-06 — formalized by the twenty-first, cross-lane receipted by the twentieth; H-12 advanced to CANARY 2026-11-06 — BUILT + live-canaried by the twenty-fourth on a genuine V-12 capped chunk, zero operator correction; H-10 advanced to CANARY-READY 2026-11-06 — staged + gate-designed by the twenty-fourth, the paired runs pre-committed to the teardown window); the round's validation log lives in [the round log](rondo-round-session.md) + [the benchmark validation log](../benchmarks/rondo-round/validation-log.md)
+- Status: OPENED 2026-11-04; the Ostinato round closed 2026-11-04 — promoted rows: 2 (H-6, H-4); the **Reprise round opened 2026-11-05** — **promoted rows: 3 (+H-8, A2H-4, 2026-11-05)**; H-1/H-2/H-3 carry live records at PROPOSE; the Reprise round PARKED 2026-11-05 (a fresh directive opened); the **Etude round opened 2026-11-05 EMPTY** — one PROPOSE on file (H-9, that round's opening harvest); the round's validation log lives in [the round log](etude-round-session.md) + [the benchmark validation log](../benchmarks/etude-round/validation-log.md); the **Rondo round opened 2026-11-06** (the fresh DRIVE × AUGMENT × PROVE directive) — **H-9 PROMOTED by the CONVERGENT DUAL operator decision** (both parallel lineages promoted it independently on the same receipts — the Rondo round's opening call and the Etude lineage's own E-0-gate decision; promoted rows: 4), **H-10/H-11/H-12 opened at PROPOSE** (the round's pre-registered seed hypotheses; H-11 advanced to CANARY 2026-11-06 — formalized by the twenty-first, cross-lane receipted by the twentieth; H-12 advanced to CANARY 2026-11-06 — BUILT + live-canaried by the twenty-fourth on a genuine V-12 capped chunk, zero operator correction; H-10 advanced to CANARY-READY 2026-11-06 — staged + gate-designed by the twenty-fourth, the paired runs pre-committed to the teardown window); the round's validation log lives in [the round log](rondo-round-session.md) + [the benchmark validation log](../benchmarks/rondo-round/validation-log.md); the **Rondo round CLOSED 2026-11-06** (the twenty-fifth's close portfolio receipted in its log); the **Scherzo round opened 2026-11-07** (the fresh DRIVE × AUGMENT × PROVE directive, the twenty-sixth lineage — vehicle **Bolero** per [the §0.9 selection receipt](../benchmarks/scherzo-round/README.md)) — **H-12's generator REBUILT + COMMITTED in-repo** at `scripts/a1-continue.py` (the Rondo closeout's mandated first act: the retention gap is cured by construction — the artifact now survives recycles; the promotion gate re-runs on this round's first genuine capped chunk), **H-10 RE-ACTIVATED** (Bolero's scheduled browser lane is the firing surface the Rondo null lacked — the round decides promote-or-retire on real evidence), **H-16 BUILD SCHEDULED** (the round's PROPOSE→build candidate, the teardown research standing), seeds **H-18/H-19 opened at PROPOSE** (the §0.9 pre-registration); the round's validation log lives in [the round log](scherzo-round-session.md) + [the benchmark validation log](../benchmarks/scherzo-round/validation-log.md)
 
 **Mini-TOC**
 
@@ -94,6 +94,35 @@ PROPOSE-stage candidates (none canaried, none promoted):
   read; false positives on legitimate retry ladders → 0 (the C-8
   flake-fix's 15 s bounded retry is the honest-retry shape to not
   flag). Stage: PROPOSE (filed at the closeout; not dispatched).
+- **H-18 — the cross-host contract-pin skill (operator lane, Scherzo round
+  seed; the V-41 generalization).** Two hosts, one grammar, one law: when
+  a producer (a runner, a CLI, a generator) and a consumer (a server, a
+  PWA, a parser) share an artifact contract, the grammar is declared ONCE
+  in a shared module, both hosts import it, and a round-trip pin test
+  throws on drift — dotted names THROW, RED by construction (the
+  A2H-13/A2H-14 pattern made reusable). Spawning evidence: V-41 (the
+  Rondo round's genuine find — the runner's report ext drifted from the
+  PWA's boot grammar across THREE invisible gate gaps: a runner-side pin,
+  a satisfiable-only e2e assertion, and no real-record bridge). Candidate:
+  a `.unown/skills-staged/contract-pin/SKILL.md` procedure A2 loads when
+  building any producer/consumer pair. Metric: contract-drift defects
+  caught at A2's own gates (not the operator's) on Bolero's S-1/S-3
+  seams; the round-trip pin's presence in every cross-host ticket.
+  Stage: PROPOSE (2026-11-07, pre-registered in the Scherzo selection).
+- **H-19 — the ops-lane memory rules (operator lane, Scherzo round
+  seed).** The project's memory tiers hold rich app-craft (PWA patterns,
+  test batteries, golden files) and ZERO server-ops craft: supervision,
+  health endpoints, graceful drain, restart-mid-run, log hygiene, the
+  daemonizer pattern. Spawning evidence: the SDLC matrix's thinnest lane
+  (W6) — every prior vehicle is a local-first PWA; Bolero's S-3/S-4/S-6
+  are the first server/supervision tickets. Candidate: a `## Manual
+  notes` batch in the project memory tier (authored outside sessions,
+  committed) distilling the ops laws as they are EARNED this round (each
+  rule receipts its ticket). Metric: server tickets after the rules land
+  need fewer continuation chunks than before (turns-to-done on the S-3→S-6
+  trend); the rules are retrieved by A2 in later sessions (the memory
+  health card's successful-retrieval count). Stage: PROPOSE (2026-11-07,
+  pre-registered in the Scherzo selection).
 
 - **H-13 — the hostile-page-clip skill (Vivace seed, PARKED at the reconciliation — renumbered from H-10 to clear the Rondo collision; operator lane → skill).** When a clip target is
   JS-walled, redirect-crazy, or oddly encoded, a fetch→browser→readability fallback chain skill should
