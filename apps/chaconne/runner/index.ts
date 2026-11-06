@@ -298,8 +298,11 @@ export async function cmdRun(args: {
   // byte-identical to pre-C-5 (the store dedup + run-record byte law).
   if (Object.keys(result.extractionReport).length > 0) {
     const reportJson = JSON.stringify(result.extractionReport, null, 2);
-    const reportRef = store.artifactRef(0, runId, "extract-report", reportJson);
-    store.saveArtifact(0, runId, "extract-report", reportJson);
+    // V-41: ext is the single token "json" (the A2H-13 ruling (a)); the
+    // hyphenated "extract-report" ext FAILED the PWA domain's
+    // ARTIFACT_NAME_RE, tripping assertData on any bridged record.
+    const reportRef = store.artifactRef(0, runId, "json", reportJson);
+    store.saveArtifact(0, runId, "json", reportJson);
     refs.push(reportRef);
   }
   // The run-log artifact (its bytes are the logText we just built).

@@ -185,20 +185,41 @@ test("extract-report artifact: step-keyed JSON through the same content-addresse
     "2": [{ selector: "#mid", attr: "data-attr", expected: "mid", actual: "mid" }],
   };
   const payload = JSON.stringify(report, null, 2);
-  const ref = store.artifactRef(0, 1, "extract-report", payload);
-  store.saveArtifact(0, 1, "extract-report", payload);
+  // V-41: the runner's own call path now writes the ruled ext "json"
+  // (the A2H-13 ruling (a)); the name ends ".json", never
+  // ".extract-report" (the hyphen FAILS the PWA domain's ARTIFACT_NAME_RE).
+  const ref = store.artifactRef(0, 1, "json", payload);
+  store.saveArtifact(0, 1, "json", payload);
 
   // The ref matches the domain's content-addressed grammar (invariants.ts).
-  expect(ref.name).toMatch(/^0_r1_sha256:[0-9a-f]{64}\.extract-report$/);
+  expect(ref.name).toMatch(/^0_r1_sha256:[0-9a-f]{64}\.json$/);
   expect(ref.sha256).toBe(sha256Hex(payload));
   // Read back: byte-identical (the same file, not a second slot).
   expect(store.readArtifact(ref.name)).toBe(payload);
   // A second run with the SAME report dedupes to the same bytes — a
   // different run id still produces the same digest (the name differs
   // only by run id; the hash is content-addressed, not run-scoped).
-  const ref2 = store.artifactRef(0, 2, "extract-report", payload);
-  store.saveArtifact(0, 2, "extract-report", payload);
+  const ref2 = store.artifactRef(0, 2, "json", payload);
+  store.saveArtifact(0, 2, "json", payload);
   expect(ref2.sha256).toBe(ref.sha256);
   expect(ref2.name).not.toBe(ref.name); // r2 ≠ r1
+  fs.rmSync(dir, { recursive: true, force: true });
+});
+
+test("cross-host V-41: the runner's report ref round-trips through the PWA domain", () => {
+  const dir = tmpDir();
+  const store = new ChaconneDiskStore(dir);
+  store.recover();
+  const payload = JSON.stringify({ "1": [{ selector: "#x", attr: "text", actual: "x" }] }, null, 2);
+  // Build the ref via the runner's OWN call path (index.ts's report lane).
+  const ref = store.artifactRef(0, 1, "json", payload);
+  // Feed a document carrying it through the PWA domain's assertData —
+  // it VALIDATES (the .json name satisfies ARTIFACT_NAME_RE).
+  expect(() => assertData(dataWithArtifact(ref.name, ref.sha256))).not.toThrow();
+  // The two wrong shapes THROW through the same lane:
+  // the dotted ext (two dots) and the hyphenated ext (no dot, hyphen).
+  const hex = ref.sha256;
+  expect(() => assertData(dataWithArtifact(`0_r1_sha256:${hex}.extract-report.json`, hex))).toThrow();
+  expect(() => assertData(dataWithArtifact(`0_r1_sha256:${hex}.extract-report`, hex))).toThrow();
   fs.rmSync(dir, { recursive: true, force: true });
 });

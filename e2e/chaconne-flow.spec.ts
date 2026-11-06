@@ -257,13 +257,11 @@ test("compose → run (local fixture) → history → artifact viewer, keyboard 
     const names = run2.artifacts.map((a) => a.name);
     expect(names.some((n) => n.includes("_r2_") && n.endsWith(".png"))).toBe(true);
     expect(names.some((n) => n.endsWith("log"))).toBe(true);
-    // V-30/A2H-13: the extract-report artifact's ext is now the single
-    // token "json" (the PWA domain's ARTIFACT_NAME_RE is the canonical
-    // contract — dotted exts are frozen out), so its name carries no
-    // "extract-report" substring; it is the step-idx-0 .json name,
-    // distinguished from the extract-value JSON by the _r2_ run-id
-    // segment (the extract-value JSON is _r3_).
-    expect(names.some((n) => n.endsWith(".json") && n.includes("_r2_") && !n.startsWith("2_"))).toBe(true);
+    // V-41 (A2H-13 ruling (a)): the extract-report artifact's ext is the
+    // single token "json", so its name is the step-idx-0 .json shape;
+    // the tight assertion pins that exact shape — the extract-value
+    // artifact `3_r2_….json` (a different step idx) must NOT satisfy it.
+    expect(names.some((n) => n.startsWith("0_") && n.endsWith(".json"))).toBe(true);
 
     // The history updates: seed ONLY the pre-run doc into localStorage
     // (the two hosts converge on one schema — the app's import gate runs
