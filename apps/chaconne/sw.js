@@ -26,26 +26,28 @@ const CACHE_NAME = "chaconne-v0";
  *    icon.svg live under public/ (index.html's <link> tags point at
  *    ./public/manifest.webmanifest + ./public/icon.svg); the CSS is
  *    src/ui/chaconne.css (index.html's <link rel=stylesheet>).
- *    public/offline.html is the fetch lane's fallback page — it does
- *    NOT ship until C-7 (the asset + the PWA lane). It is deliberately
- *    ABSENT from this list because `cache.add` REJECTS a non-2xx
- *    response and would fail the install; C-7 restores the entry in
- *    the same change that commits the file. The fetch handler's
- *    `cache.match("public/offline.html")` falls through honestly on
- *    the missing entry (match resolves to undefined → Response.error,
- *    never a throw), so the fallback reference stays as-is at C-5.
+ *    public/offline.html is the fetch lane's fallback page (the C-7
+ *    asset: the file + this PRECACHE_LIST entry landed in the same
+ *    change — `cache.add` REJECTS a non-2xx response, so a missing
+ *    file would fail the install; the entry is present because the
+ *    file now exists). The fetch handler's `cache.match("public/offline.html")`
+ *    falls back to it on any uncached miss.
  *
- * 2. The module graph: index.html loads /src/ui/app.ts; serve.mjs
- *    transpiles TS on the fly (Bun.Transpiler, loader "tsx") and maps
- *    the `./x.js` import-specifier convention back to x.ts source —
- *    so the SERVED paths hold the .ts module URLs as the browser
- *    requests them (app.ts, artifact-viewer.ts, el.ts, empty.ts,
- *    palette.ts, recipe-editor.ts, run-history.ts, status.ts, plus the
- *    domain + storage modules app.ts imports: types.ts, ids.ts,
- *    invariants.ts, model.ts, io.ts, storage.ts, local-storage.ts). A
- *    static offline build (C-7/C-11) would transpile these to .js and
- *    this list would carry the .js paths — the served-form note lives
- *    here so the transpile ticket updates it deliberately, not silently.
+ * 2. The module graph: index.html loads /src/ui/app.ts (the entry is
+ *    requested AS .ts — the script's src); serve.mjs transpiles it on
+ *    the fly (Bun.Transpiler, loader "tsx") and the emitted import
+ *    statements keep the `./x.js`-convention specifiers, so the browser
+ *    requests the SUB-MODULES as the .js-convention URLs (artifact-viewer.js,
+ *    el.js, …, types.js, ids.js, …). The Ostinato C-4/C-5 pattern is the
+ *    proven one: the install precache's keys MUST match the browser's
+ *    module-graph requests, else an offline reload falls through to
+ *    offline.html for a JS module (the parse fails and the shell stalls
+ *    on "Booting…"). So the entry stays the .ts URL index.html requests,
+ *    and every sub-module is the .js-convention URL the transpiled
+ *    entry's import statements request (the Ostinato O-4 lane, ported
+ *    verbatim). A static offline build (C-7/C-11) would transpile to .js
+ *    and the entry would become app.js — the served-form note lives here
+ *    so the transpile ticket updates it deliberately, not silently.
  *
  * 3. What is NOT precached: sw.js itself (workers are never cached in
  *    their own cache), test/fixtures/** (the runner's local fixture
@@ -60,24 +62,27 @@ const PRECACHE_LIST = [
   "index.html",
   "public/manifest.webmanifest",
   "public/icon.svg",
-  // "public/offline.html" — the C-7 asset; the entry is restored with
-  // the file (a 404 here would reject cache.add and fail the install).
+  "public/offline.html",
   "src/ui/chaconne.css",
+  // The entry: index.html's script src requests it AS .ts.
   "src/ui/app.ts",
-  "src/ui/artifact-viewer.ts",
-  "src/ui/el.ts",
-  "src/ui/empty.ts",
-  "src/ui/palette.ts",
-  "src/ui/recipe-editor.ts",
-  "src/ui/run-history.ts",
-  "src/ui/status.ts",
-  "src/domain/types.ts",
-  "src/domain/ids.ts",
-  "src/domain/invariants.ts",
-  "src/domain/model.ts",
-  "src/domain/io.ts",
-  "src/domain/storage.ts",
-  "src/storage/local-storage.ts",
+  // The sub-modules: the transpiled entry's import statements keep the
+  // .js-convention specifiers, so the browser requests the .js forms —
+  // the cache keys must match (the Ostinato O-4 offline-boot law).
+  "src/ui/artifact-viewer.js",
+  "src/ui/el.js",
+  "src/ui/empty.js",
+  "src/ui/palette.js",
+  "src/ui/recipe-editor.js",
+  "src/ui/run-history.js",
+  "src/ui/status.js",
+  "src/domain/types.js",
+  "src/domain/ids.js",
+  "src/domain/invariants.js",
+  "src/domain/model.js",
+  "src/domain/io.js",
+  "src/domain/storage.js",
+  "src/storage/local-storage.js",
 ];
 
 self.addEventListener("install", (event) => {

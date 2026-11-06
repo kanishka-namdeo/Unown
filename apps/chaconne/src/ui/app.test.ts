@@ -140,19 +140,26 @@ if (!hasDom) {
     expect(sw).toContain('"index.html"');
     expect(sw).toContain('"public/manifest.webmanifest"');
     expect(sw).toContain('"public/icon.svg"');
-    // The C-5 gate-caught fix: public/offline.html is a C-7 asset and
-    // MUST NOT appear as a LIVE precache entry (cache.add rejects a
-    // 404 — the install would fail). It lives only in the fetch-lane
-    // fallback reference (cache.match on a missing entry → undefined,
-    // no throw) and in the comment naming C-7 as the restorer. Scan
-    // the list's live entries (non-comment lines) for the string.
+    // The C-7 correction: the offline-boot key-mismatch fix (the O-1
+    // stall root cause). The entry stays the .ts URL index.html
+    // requests (app.ts); the sub-modules are the .js-convention URLs
+    // the transpiled entry's import statements request — the install
+    // precache's keys MUST match the browser's module-graph requests,
+    // else an offline reload serves offline.html for a JS module and
+    // the shell stalls on "Booting…". public/offline.html is now a
+    // LIVE precache entry (the C-7 asset + sw.js entry landed in the
+    // same change — cache.add's 2xx requirement is met because the
+    // file exists; the O-5 Ostinato offline.html precedent).
     const swListBlock = sw.slice(sw.indexOf("const PRECACHE_LIST"), sw.indexOf("];", sw.indexOf("const PRECACHE_LIST")));
-    const liveEntries = swListBlock.split("\n").filter((l) => !l.trim().startsWith("//"));
-    expect(liveEntries.join("\n")).not.toContain('"public/offline.html"');
+    expect(swListBlock).toContain('"public/offline.html"');
     expect(sw).toContain('"src/ui/chaconne.css"');
     expect(sw).toContain('"src/ui/app.ts"');
-    expect(sw).toContain('"src/domain/types.ts"');
-    expect(sw).toContain('"src/storage/local-storage.ts"');
+    // The .js-convention sub-module keys (the offline-boot law):
+    expect(swListBlock).toContain('"src/domain/types.js"');
+    expect(swListBlock).toContain('"src/storage/local-storage.js"');
+    // The old .ts sub-module forms are no longer live keys (the fix):
+    expect(swListBlock).not.toContain('"src/domain/types.ts"');
+    expect(swListBlock).not.toContain('"src/storage/local-storage.ts"');
     // The derivation comment (the ticket's doc pin).
     expect(sw).toContain("Derivation (the comment the ticket");
   });
