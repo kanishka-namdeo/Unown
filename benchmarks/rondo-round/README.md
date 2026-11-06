@@ -66,6 +66,48 @@ approval recorded in [the round log](../../docs/rondo-round-session.md).
 Each prediction gets reconciled at the round's teardown — no
 retroactive story-telling.
 
+**The reconciliation (2026-11-06, the round closeout — the
+twenty-fifth lineage, at the DRIVE-complete tree)**:
+
+1. **fill/iframe flakes — HIT (the e2e variant)**: the browser-lane
+   flake class fired as C-8's filechooser race (12-13/14 cold
+   cross-runs; the DOM-condition-waits + bounded-retry cure), and the
+   #43 kin was probed directly (A2H-8: not reproducible on v0.0.56,
+   the residual ref-readiness window receipted, feeding C-2's
+   verify-value-landed design).
+2. **screenshot/artifact handling — DIRECT HIT (the round's genuine
+   find)**: the artifact-name grammar became the round's deepest seam —
+   V-30 (the PWA grammar vs the runner's dotted ext) → A2H-13 (the
+   rename ruling) → **V-41 (the landing's latent call-site defect,
+   caught only by the real-runner capture lane) → A2H-14** (the fix +
+   the cross-host round-trip pin). Extensions, paths, and hashes — all
+   three, exactly as predicted.
+3. **long-horizon chunk degradation — MISS (the discipline prevented
+   it)**: the fresh-session-per-ticket + capped-continuation economics
+   held; no context degradation shaped any failure. The closest call —
+   C-11's 165-turn single dispatch — stayed in-scope and green, but
+   its spend shape receipted the turn-budget-hook candidate (the
+   mitigation that would catch the NEXT degradation attempt mid-run).
+4. **runner-service lifecycle — PARTIAL (the adjacent class fired
+   operator-side)**: the #30 product hang never reproduced (the armed
+   watcher's three receipt sets: both lanes ×8 across three lineages,
+   zero hangs); the #30-adjacent event was V-1 (the operator
+   harness's stdin confound — a different class, receipted as such).
+5. **proactive-memory gaps — PARTIAL-HIT**: the engine's loop ran
+   live across the round (the twenty-fifth's lane alone: 19 runs /
+   13 dreams, the memory carrying the fix facts across tickets, B-18
+   rendered clean); the C-11 capture-refresh consuming the V-41
+   proof design is the learnings riding in practice. The clean
+   unprompted-reuse measurement stays the §6c closeout's.
+
+**The unpredicted classes that fired** (the honest ledger): the
+provider capability flip (V-38 — an environment class outside the
+vehicle's surface), its output-side ceiling (V-40), and the
+concurrent-lineage churn (V-42 — the round's ninth event, a known
+engagement-shape class, not vehicle-specific). All three converted
+into standing laws (the spec-pin pre-seed, the split-write law, the
+window-is-the-floor ruling).
+
 ## Holdout discipline (the fairness laws)
 
 Tuning vs holdout, split up front: the C-tickets are TUNING surfaces

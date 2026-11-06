@@ -389,9 +389,14 @@ P0#7→C-10+C-11. **Edge cases (the PRD's 11) → ticket's verifier:**
    without scroll flake.
 5. **A run killed and resumed mid-recipe** — C-7: the R-1 law battery
    (SIGKILL mid-recipe against `slow.html`; boot restores the
-   committed prefix; re-run resumes from the prefix boundary, never
-   re-fires completed steps; the dedup is C-4's — C-7's verifier
-   exercises it against C-4's scheduler).
+   committed prefix; **[OQ-1 amendment, 2026-11-06 — the round
+   closeout (c): the landed semantics are RECORD-AT-END, not
+   prefix-resume: a killed run's record keeps its committedPrefix (the
+   honest count of fully-completed steps, written by the atomic
+   record-at-end lane), and a re-run is a FRESH run id executing the
+   recipe whole — the no-re-fire guarantee is the SCHEDULE-level dedup
+   (C-4's, `run-history dedup` above), never a step-level resume. The
+   C-7 battery's completion-only kill form receipted the deviation]**)
 6. **A schedule misfire after machine sleep (skip-and-record)** —
    C-4: injected-clock scheduler tests (a gap ≥ interval →
    `skipped+recorded` entry, never a silent-double-run, never a
