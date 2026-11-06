@@ -236,6 +236,8 @@ clone `/home/z/my-project/Unown`, this reconciliation's author), 2026-11-06:
 | V-18 | The C-2 fake-clock spiral (2026-11-06, session `01a1af59…` rounds 2-6): A2 self-designed a manual-clock mechanism for the fake adapter's timed waits; a microtask-ordering flaw (the test advanced the clock BEFORE the run armed its timer), then an unbounded real-setTimeout accumulation → the battery OOM-killed (rc 137) and 5 s test timeouts; three operator continuations with progressively sharper derivations did not break the spiral — A2 kept redesigning the mechanism | genuine-gap → **the §3.7 brief-adaptation cure**: the operator imposed the structural decision (DELETE the manual clock; bounded real-clock poll `max(25, cap/20)` ≤ ~20 probes; the two hanging tests rewritten as real-clock tests at 200 ms caps) and A2 landed it clean in one round | Runbook law gained: when a model spirals on a self-chosen mechanism (~40 turns on one test family), the operator does not keep deriving the bug — it decides the MECHANISM (A1 owns the what) and hands the design down. The injected-clock law stays C-4's scheduler lane, where the PLAN put it. Receipt [c2.md](../benchmarks/rondo-round/receipts/c2.md) |
 | V-19 | The C-2 LANDING reconciliation (2026-11-06): the nineteenth's closure (session `01a1af59…`, the tree + receipt on `main`) is the FIRST C-2 evidence — the twenty-first's CLAIM (`31ce2b2a`, the standing brief authored, dispatch planned but not landed) stands down per the per-chunk ledger-arbiter law; the claim's brief differences are noted for the record (it planned an ephemeral Bun.serve smoke; the landing used file:// — both LOCAL-only, the acceptance's letter) | upstream-change (the parallel-lineage class, the LANDING boundary again — V-13's live exercise, now with a claim-vs-landing shape) | First landing governs: C-2 is CLOSED by the nineteenth's evidence. The twenty-first's brief work is not wasted — it becomes the seed of the C-3 brief's shape. If the twenty-first's chunks land later, they reconcile against this closure at its next fetch |
 | V-21 | The v0.0.57 tag's CI cancellation + the C-2 cross-machine gate (2026-11-06, the twentieth lineage — the V-id renumbered past the C-2 landing's V-18/V-19 at the pull): (a) the tagged commit `ff5d1785`'s CI matrix was CANCELLED mid-flight by the twentieth's own rapid follow-up pushes (the concurrency group's cancel-in-progress — the registry and §6c receipts landed within minutes of the tag), so the Release workflow's "CI green on the tagged commit" gate FAILED and the v0.0.57 GitHub release never rendered; **cured**: both cancelled workflows re-run via the API (CI + CodeQL), the Release workflow re-runs after CI greens — **the tag-push law is born: after a release tag, NO pushes until the tagged commit's CI concludes**; (b) the C-2 landing's cross-machine operator gate (the V-14 precedent, this time the twentieth verifying the nineteenth's landing): Lane A **70/0**, Lane B **70/0**, root typecheck 0, lint 0 errors/143 warnings, root battery **2289/0/166** (157.9 s) — every number matches the landing commit's tally on a fourth independent tree | operator-procedure (the push-timing race) + receipt (the C-2 gate) | The C-2 closure is now triply verified (A2's run + the landing lineage's operator gate + this lane). The v0.0.57 release renders when the re-run CI greens (the receipt amends with the release URL). **AMENDMENT (06:52 UTC): the law was violated BY ITS OWN AUTHOR within minutes** — the V-21 receipt push (16dad48a, 06:42) cancelled the first re-run; the repair sequence is now: THIS freeze-note commit is the LAST push, then the CI/CodeQL re-runs for `ff5d1785`, then the Release re-run (its gate waits up to 40 min for CI) — **ALL LINEAGES: hold main pushes until the v0.0.57 release renders (ETA ~07:15 UTC; check the release tag's check-runs before pushing)** |
+**ALL LINEAGES: hold main pushes until the v0.0.57 release renders (ETA ~07:15 UTC; check the release tag's check-runs before pushing)** |
+| V-22 | The v0.0.57 release-blocker root-caused (2026-11-06, the twentieth lineage): the re-run CI on the tagged commit failed GENUINELY this time — Windows `Self-learning engine tests` → `automation-spend.test.ts:110` "no such table: automations" — and the archaeology found the PRE-EXISTING wall: **the v0.0.56 tag's CI has been red since 2026-11-04** (the same Windows failure + a changed-line-coverage fail), its Release workflow failed, and **the last rendered GitHub release is v0.0.55** — two release tags exist with no releases. The defect (B-19 below): the test's `beforeAll` does raw SQL on the lazily-created `automations` table; Windows alphabetical discovery makes this file the FIRST store caller on a fresh DB. Reproduced locally (wipe the redirected test DB, run the file alone → the exact CI stack), cured with the one-call fix (`ensureAutomationsSchema()` first), verified: fresh-DB 10/0, package suite **5575/0** | genuine-gap (the §5 reflex exercised: deterministic repro → fix at the named layer → the fresh-DB single-file lane as the pin) | The freeze broke for the fix commit (receipted necessity: the tag pointed at a red commit; the release ships from green). The v0.0.57 tag re-points to the fix commit; CI's three-OS verdict re-runs on it (the version bump is in the tree); the Release workflow follows the new tag. **The release-rendering verification closes this entry** |
 
 ## Bug register
 
@@ -288,6 +290,27 @@ folded into the receipt); the next free bug id is **B-18**.
   ticket: the fix lane gains a concrete repro (run any dream
   consolidation on the clippad fact lineage) and the output-shape
   validation proposal above stands.
+
+- **B-19 (FIXED 2026-11-06 by the twentieth lineage — the Windows
+  release-blocker, found blocking BOTH v0.0.56 and v0.0.57):**
+  `automation-spend.test.ts`'s isolation `beforeAll` runs a raw
+  `DELETE FROM automations` — but the `automations` table is created
+  lazily by `ensureAutomationsSchema()`, NOT by store.ts's base SCHEMA.
+  On Linux the table pre-exists by the time the file runs (a sibling
+  suite's `createAutomation` migrated the shared redirected DB, or a
+  live engine created it); on Windows CI's ALPHABETICAL discovery,
+  `automation-spend` runs FIRST — the raw DELETE hits a fresh DB →
+  "no such table: automations" → the three-OS release verdict fails →
+  the Release gate blocks the release. **The v0.0.56 tag has been red
+  since 2026-11-04 and its release never rendered — the last rendered
+  release is v0.0.55; the v0.0.57 attempt exposed the same wall.**
+  Reproduced deterministically locally (wipe `/tmp/engine-tests-b`,
+  run the file alone: 9/1 with the exact CI stack). Fix:
+  `ensureAutomationsSchema()` at the top of the `beforeAll` (the
+  one-call cure at the named layer); the fresh-DB single-file run 10/0,
+  the full package suite 5575/0. The v0.0.57 tag re-points to the fix
+  commit (the tag had pointed at a red-CI commit; no release existed,
+  so the re-point is clean).
 
 ## Ticket queue
 

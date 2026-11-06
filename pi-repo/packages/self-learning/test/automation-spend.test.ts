@@ -18,6 +18,7 @@ import { join } from "node:path";
 import {
         AutomationsScheduler,
         createAutomation,
+        ensureAutomationsSchema,
         getAutomation,
         listRuns,
         updateAutomation,
@@ -107,6 +108,16 @@ describe("automation spend aggregation", () => {
         beforeAll(() => {
                 // Test isolation: failed runs in earlier suites leave rows behind
                 // (their inline drop() never ran) — start from a clean slate.
+                // ensureAutomationsSchema FIRST: the `automations` table is NOT in
+                // store.ts's base SCHEMA — it is created lazily by the
+                // automations module. On a fresh test DB this file can be the
+                // FIRST store caller (Windows CI's alphabetical discovery runs
+                // `automation-spend` before every `automations*` sibling), so the
+                // raw DELETE below would hit "no such table" — the v0.0.56
+                // release-blocking defect (receipted: the v0.0.56 tag's CI red,
+                // its release never rendered; reproduced locally by wiping
+                // /tmp/engine-tests-b and running this file alone).
+                ensureAutomationsSchema();
                 store.run(`DELETE FROM automations`);
                 store.run(`DELETE FROM automation_runs`);
         });
