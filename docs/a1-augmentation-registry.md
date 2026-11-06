@@ -279,6 +279,18 @@ PROPOSE-stage candidates (none canaried, none promoted):
   surface is stable across its landing). Stage: **PROPOSE → CANARY-READY**
   (the instrument is staged and the protocol pre-registered; the
   canary's live runs are the teardown window's first act).
+  **External methodology anchors (the twenty-fourth's research pass,
+  2026-11-06)**: the gate's flake-rate verdicts interpret against the
+  industry baselines — a healthy e2e flake rate is **under 3%** of runs
+  ([testdino's benchmark data](https://testdino.com/blog/e2e-test-performance-benchmarks)),
+  and a single test at 5% flake blocks CI roughly once every 20 runs
+  ([the flaky-tests survey](https://wopee.io/blog/flaky-tests-complete-guide),
+  after Luo et al.) — the gate's
+  harness already treats a flaky (retry-passed) lane as NOT green, the
+  masking-cautious convention the same survey recommends. The golden-file
+  lane (C-8's surface, the H-12 canary's second artifact) matches the
+  pin-on-first-run + committed-artifact convention
+  ([the golden library's model](https://github.com/franiglesias/golden)).
 - **H-11 — the stdin-guard dispatch helper (operator lane, Rondo round
   seed).** V-1's cure formalized: every `-p` dispatch in this harness
   must guard stdin (inline `< /dev/null`; `stdio:["ignore"]` in
