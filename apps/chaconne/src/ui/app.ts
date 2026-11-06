@@ -73,6 +73,7 @@ import {
 } from "./artifact-viewer.js";
 import { renderStatusIdle } from "./status.js";
 import { renderEmpty, renderFailedRun } from "./empty.js";
+import { cycleFocusWithin } from "./focus-trap.js";
 
 // ─── The app's clock (the injected Clock; the UI edge reads the wall) ────────
 
@@ -310,6 +311,18 @@ function onKey(
       });
       return;
     }
+    if (e.key === "Tab") {
+      // The C-9 focus-trap pin: Tab/Shift+Tab cycle inside the dialog;
+      // focus never escapes to the page behind while the overlay is up.
+      const overlay = document.getElementById("chaconne-editor");
+      if (overlay) {
+        const handled = cycleFocusWithin(overlay, e.shiftKey ? -1 : 1);
+        if (handled) {
+          e.preventDefault();
+          return;
+        }
+      }
+    }
     return;
   }
 
@@ -318,6 +331,20 @@ function onKey(
     if (e.key === "Escape") {
       closePalette(app);
       e.preventDefault();
+      return;
+    }
+    if (e.key === "Tab") {
+      // The C-9 focus-trap pin: Tab/Shift+Tab stay inside the palette
+      // dialog (the input + the listbox are the two stops; the wrap
+      // law cycles between them).
+      const overlay = document.getElementById("chaconne-palette");
+      if (overlay) {
+        const handled = cycleFocusWithin(overlay, e.shiftKey ? -1 : 1);
+        if (handled) {
+          e.preventDefault();
+          return;
+        }
+      }
       return;
     }
     if (e.key === "ArrowDown" || e.key === "ArrowUp") {
@@ -439,6 +466,7 @@ function dispatchCommand(
       // C-3 records the HONEST placeholder state (the ticket's ruling):
       // the Run action flips the notice to the not-scheduled copy,
       // the recipe is untouched, no fake progress.
+      app.route = "runs";
       app.lastRunNotice = "not-scheduled";
       rerender();
       return;

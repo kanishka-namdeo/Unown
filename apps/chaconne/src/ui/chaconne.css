@@ -222,6 +222,18 @@ button:active {
   max-width: 18rem;
 }
 
+/* ── Run meta (the v/snapshot + timestamps + prefix line — the C-9
+       overflow lane): the timestamps are the long tail (two ISO
+       datetimes ≈ 40 chars, mono-ish); nowrap alone would push a
+       ~330px run row past a 375px viewport. Truncate to fit (the
+       ellipsis keeps the line honest; the full text stays in the
+       DOM for AT users) while the row's flex layout keeps its
+       siblings reachable. ─────────────────────────────────────── */
+.chaconne-run-meta {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 .chaconne-recipe-meta,
 .chaconne-run-meta {
   color: var(--muted);

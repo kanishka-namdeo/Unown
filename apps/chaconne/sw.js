@@ -72,6 +72,7 @@ const PRECACHE_LIST = [
   "src/ui/artifact-viewer.js",
   "src/ui/el.js",
   "src/ui/empty.js",
+  "src/ui/focus-trap.js",
   "src/ui/palette.js",
   "src/ui/recipe-editor.js",
   "src/ui/run-history.js",
