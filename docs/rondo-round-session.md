@@ -197,6 +197,8 @@ The nineteenth lineage (the resume lineage), 2026-11-06:
 | V-6 | The C-0 plan ticket closed clean through A2: 11 turns across 2 chunks (8 recon + 3 write), `apps/chaconne/PLAN.md` 489 lines | receipt | The operator gate tree-verified: 6/6 sections, 7/7 PRD P0 items mapped, 11/11 PRD-named edge cases individually mapped to named tickets' verifiers (none orphaned), the dependency ruling explicit (repo-root `node_modules` walk-up, fallback recorded), the fixture set named, 3 unknowns with spikes; only PLAN.md written — the round's first DRIVE artifact |
 
 | V-7 | A parallel incarnation of the same lineage landed `7f615d84`+`8df0f580` mid-session (the Etude E-0 Tempo approval with amendments + the A2H-9 claim + the C-0 re-queue) while this lineage closed C-0 and deepened A2H-9 — the rebase conflicted in the round log, the validation log and the memory render | upstream-change (the known parallel-lineage class — the Etude round's V-5) | Reconciled 2026-11-06: both threads' evidence stands; the vehicle question is governed by the directive's §0.9 letter (a proposed idea is scored, not auto-accepted) — Chaconne stays the active vehicle, the Etude-approved Tempo becomes the designated §0.9.5 re-scope fallback with its evidence base ready; A2H-9 merges both forensics threads (OPEN, shard-bisect next); C-0's closure supersedes the re-queue; the memory render takes theirs (the newer dream); gates re-verified post-rebase |
+| V-8 | The TWENTIETH lineage's bring-up (2026-11-06, a PARALLEL resume of this round — see V-9): the sandbox recycle again reclaimed the environment (bun pin, fd, venv, `.a1/` workspace — the known V-2 class, seventh rebuild) AND `npm install -g bun` this time landed the 1.4.3 binary inside the package despite the allow-scripts warning (the `.exe`-named Linux binary — a drift from the eighteenth lineage's GitHub-release lane, verified working); `fd` 10.2.0 via `apt-get download` + dpkg-extract (the npm fd-find postinstall 403s on GitHub releases in this sandbox — a new cure lane, receipted); chromium-1248 + the venv re-pinned; install 7/7; `.env` Agnes lane in place; stack up (bridge upstream 200, 6 models, default `agnes-3.0-flash`; engine ready v0.0.56 @ `1e4e840b` = HEAD); doctor "ready to chat" 19✓/2⚠; C1 smoke `UNOWN_OK` exit 0 (5.3 s, stdin guarded); the full battery at `1e4e840b`: **9/9 — tsc 0 · lint 0e/143w · unit 2258/0/161 (158.1 s) · check:docs/changelog/blog/benchmarks/claims ok · ostinato e2e 17/17** (the A2H-9 close's numbers hold at the newer HEAD — independently corroborating the nineteenth lineage's same-tally re-verification 159.2 s on its own fresh tree); the `.a1/` workspace recreated as durable scripts again (`dispatch-bg.py` double-fork daemonizer + `battery.sh`) — the daemonizer's `execvp` env bug caught and cured in one pass | infra-flake (the known recycle class) | One-pass cure. Environment facts for the next lineage: the fd npm lane is now 403-blocked — use the apt lane recorded here; the bun npm lane works again (verify with `bun --version`, the binary is named `bun.exe` inside the package) |
+| V-9 | The DUAL-INCARNATION resume event (2026-11-06): TWO parallel lineages resumed the round within minutes of each other on separate machines — the nineteenth (clone at `/home/z/my-project/work/unown`, its checkpoint `6885f2f3` landed on `main` at 05:05 UTC: bring-up green, A2H-9 re-verified 2258/0/161, "C-1 dispatched next") and the twentieth (clone at `/home/z/my-project/unown`, its checkpoint authored against the same `1e4e840b` base, push rejected by the race, rebased onto `6885f2f3` — this reconciliation). Both bring-ups independently re-verified the same green state (battery 9/9, unit 2258/0/161 ±1 s, doctor 19✓/2⚠, C1 smoke guarded) — a dual-verification receipt, not a conflict | upstream-change (the known parallel-lineage class — V-7's, now at the resume boundary) | Ruled per the ledger-arbiter law: the nineteenth's landing governs the lineage numbering and the C-1 dispatch claim; the twentieth reconciles (this entry), keeps BOTH evidence sets (they corroborate), and stands down from C-1 for a 30-minute window (the protocol in the resume instructions). The C-1 brief below stands as the shared dispatch artifact for whichever lineage dispatches |
 ## Bug register
 
 User/operator-visible findings of this round (the B register continues the
@@ -227,7 +229,7 @@ folded into the receipt); the next free bug id is **B-18**.
 | R-0 | The §0.9 selection gate: candidates scored, vehicle approved, PRD opened | The scoring receipt + the pre-registered failure classes in [the benchmark round](../benchmarks/rondo-round/README.md) | **CLOSED 2026-11-06** (this lineage — Chaconne approved per the directive's own scoring rule; §0.9.5 re-scope trigger armed) |
 | A2H-9 | The encore Finale unit-battery isolation fix: the battery's one near-deterministic fail — `Finale — the program's success question + live answer (plan §5.7) > renders the success question as an h2 + blockquote` (`encore.test.tsx:817`, a `getByRole("heading", { level: 2 })` query) — passes standalone 55/0 but fails in-battery (~6/8 runs across both lineages — order/timing-dependent; still fails under `--max-concurrency=1`; every two-file pair green); root-cause the cross-file pollution and fix it at the polluting layer, assertions unweakened | `bun run test:unit` exits 0 twice consecutive (2258/0); `bun test src/components/encore/__tests__/encore.test.tsx` stays 55/0 standalone; the failing test's h2 + blockquote assertions NOT weakened | **CLOSED 2026-11-06** — a CONVERGENT DUAL closure: this lineage's 8 A2 chunks across 2 sessions (session `01a1ad6e…` chunks 1–4, then the fresh-session extension `01a1ad98…` chunks 5–8, the last a 16-turn closing chunk by operator ruling — the 8-turn cap mis-fit for battery-verification tickets, a pre-split lesson); the root cause: **`bun test src` is a substring filter** — the battery's 161 files include 16 `apps/*/src` test files every green subset missed; the polluter `apps/ostinato/src/ui/settings-modal.test.ts` (the R-2 landing) left `<h2>Deck settings</h2>` in the shared one-process document → the encore `getByRole` multi-matched (the order-dependence the parallel lineage measured at ~6/8 is the mechanism's signature: the pollution needs settings-modal to run before encore in the walk, and bun's file-discovery order varies); the fix: a 13-line `afterAll` body-reset in the polluting file (the encore file byte-identical, product code untouched); A2's verifies: the pair 60/0 (pre-fix 59/1), battery **2258/0 ×2 consecutive** (157.6 s / 157.7 s), encore standalone 55/0, ostinato Lane A 119/2-skip/0; the operator gate re-verified independently (battery 2258/0 exit 0, 159.6 s) + tree-verified the one-file scope; the substring-filter blind spot was the OPERATOR's derivation handed to A2 in the closing brief (the §3.7 brief-adaptation lane, receipted); the PARALLEL lineage's independent forensics (24 turns, 3 chunks: full-suite-only, `--max-concurrency=1` still red, all pairs green — the shard-bisect lane) stand as the converging pre-close investigation, folded into [the V-4 dossier](../benchmarks/rondo-round/validation-log.md); receipt [a2h9.md](../benchmarks/rondo-round/receipts/a2h9.md) tree-verified (one file, +13/-1) |
 | C-0 | The architecture plan: the storage/runner/UI decomposition, the fixture-page test strategy, the dependency-law ruling for the runner's playwright import — a read-only `--plan` run with a scored plan file | The plan gate's own score + the operator's review against the PRD's P0 constraints | **CLOSED 2026-11-06** — 2 chunks, 11 turns (8 recon + 3 write), fresh session `01a1ad6d…`; `apps/chaconne/PLAN.md` (489 lines); the operator gate tree-verified (V-6). The parallel lineage's re-queue of C-0 behind A2H-9 is superseded by this closure (V-7's reconciliation) — both rulings stand: A2H-9 closed independently on the same clock |
-| C-1 | The domain core: recipe/step/run types, validation, canonical JSON, atomic store | Lane A unit battery (bun test in `apps/chaconne/`), tsc, lint | QUEUED |
+| C-1 | The domain core: recipe/step/run types, validation, canonical JSON, atomic store | Lane A unit battery (bun test in `apps/chaconne/`), tsc, lint | **CLAIMED 2026-11-06 (the nineteenth lineage's checkpoint pre-declares the dispatch — the V-9 ruling; the twentieth stands down 30 min, then the brief below governs)** — the C-1 brief below is the standing dispatch artifact |
 | C-2 | The runner v1: goto/click/fill/select/wait/assert/extract/screenshot against LOCAL fixture pages, honest error taxonomy, run records | Runner unit lane with a fake page adapter + one real-browser smoke against a fixture | QUEUED |
 | C-3 | The web app shell: recipe list/create/edit, run history, artifact viewer — keyboard-first, zero-dep, palette, empty/loading/error states | Lane A/B unit + the e2e happy path | QUEUED |
 | C-4 | The recurring loop: schedules (interval/one-shot), misfire policy, run history | Unit battery on an injected clock (the Ostinato law) + e2e | QUEUED |
@@ -307,6 +309,74 @@ ACCEPTANCE: the plan names every PRD P0 item and maps it to a C-ticket;
   is written.
 ```
 
+The C-1 domain-core ticket — the STANDING BRIEF (authored by the
+twentieth lineage against the PLAN; whichever lineage dispatches per
+the V-9 protocol uses it; fresh session, the prompt-economy header,
+stdin guarded, `--mode json` envelope, ≤4 chunks × ≤8 turns; the claim
+pushed BEFORE dispatch per the ledger-arbiter law):
+
+```
+ROLE: A2 executor — C-1, the Chaconne domain core: the FIRST code write
+  under apps/chaconne/, building strictly against apps/chaconne/PLAN.md.
+ALLOWED_INPUTS: apps/chaconne/PLAN.md (the governing plan — §1 file
+  tree, §2 schema + invariants, §3 lanes, §4 dependency ruling),
+  docs/chaconne-prd.md (the requirements), apps/ostinato/src/domain/**
+  + apps/ostinato/src/storage/local-storage.ts + apps/ostinato/package.json
+  (read-only: the house patterns — types/ids/invariants/model/io/storage
+  + boundary.test.ts + the 7-line package.json), tsconfig.json +
+  eslint.config.mjs (read-only: the scoping targets).
+FORBIDDEN_INPUTS: every write outside apps/chaconne/ EXCEPT the root
+  tsconfig.json include line; no runner/ code (C-2), no src/ui/ (C-3),
+  no scheduler LOGIC (C-4 owns src/domain/scheduler.ts; C-1 owns only
+  the Schedule TYPE + the recordSchedule mutation), no fixtures (C-2),
+  no index.html/sw.js/serve.mjs (C-3/C-6), no playwright imports (the
+  runner's exception is C-2's, never the domain's), no new deps, no
+  CHANGELOG/DOX edits (the operator lane), nothing under src/, pi-repo/,
+  mini-services/, apps/coda/, apps/ostinato/ (writes).
+OUTPUT_ARTIFACT: under apps/chaconne/ exactly — package.json (the
+  7-line zero-dep law: @unown/chaconne), src/domain/types.ts (Recipe,
+  Step, RunRecord, Schedule, ArtifactRef, the 5-entry status taxonomy
+  ok|step-failed|selector-not-found|timeout|invalid-recipe,
+  DomainInvariantError), src/domain/ids.ts (INTEGER ids, deterministic
+  next-free allocation — the PLAN's deliberate divergence from
+  Ostinato's strings), src/domain/invariants.ts (assertData: unique ids
+  per collection; run.recipeId resolves; recipeVersion present on runs;
+  selectors non-empty; step kinds in the closed 9-set; artifact names
+  match the content-addressed grammar; committedPrefix <= steps.length),
+  src/domain/model.ts (pure mutations: addRecipe, updateRecipe bumps
+  recipeVersion, addRun, recordSchedule), src/domain/io.ts (canonical
+  JSON — sortKeysDeep + compact separators + stable array order,
+  byte-stable; export; import with the "chaconne.v1" schema gate —
+  foreign/future schema REJECTED with a dry-run report, never partial),
+  src/domain/storage.ts (StoragePort: load/save/recover, temp-key +
+  commit-swap contract), src/storage/local-storage.ts (the adapter:
+  "chaconne.data"/"chaconne.tmp", atomic writes, corrupt-store recovery
+  — load() null on undecodable, recover() discards orphaned tmp, never
+  a silent wipe), co-located *.test.ts per module + boundary.test.ts
+  (the import-graph pin: src/** imports ./ ../ bun:test ONLY — the
+  Ostinato V-14 regex precedent), PLUS the root tsconfig.json include
+  gains "apps/chaconne/**/*.ts" AND eslint.config.mjs gains the
+  chaconne domain pair (the Coda scope shape on
+  apps/chaconne/src/domain/*.ts + *.test.ts). A receipt at
+  .unown/receipts/c1.md (root cause-free: files written, the Lane A/B
+  tallies, tsc/lint state, open questions).
+HANDOFF_SCHEMA: plain text — files written, test tallies, gates state,
+  open questions for C-2.
+EFFORT_BUDGET: <=4 chunks x <=8 turns.
+NON-OVERLAP: C-2 owns runner/ + fixtures; C-3 owns the UI; the
+  round log/CHANGELOG are the operator's; the receipt is the LAST
+  chunk's closeout write.
+ACCEPTANCE: (1) cd apps/chaconne && bun test — Lane A green, 0 fail;
+  (2) bun test apps/chaconne from root — Lane B green; (3) root
+  bun run typecheck — 0 NEW errors; (4) bun run lint — 0 NEW
+  errors; (5) bun run test:unit — 2258/0 holds (no regression);
+  (6) the schema laws pinned by tests: canonical export byte-stable
+  (same data two boots -> identical bytes), the schema-gate rejection,
+  the version-bump law, committedPrefix bound, the artifact-name
+  grammar, integer-id allocation; (7) boundary.test.ts green in BOTH
+  lanes (the import-graph pin).
+```
+
 ## SDLC coverage and learning-mechanism plan
 
 The directive's §4 coverage requirement, mapped (every lane ≥ 1 ticket
@@ -369,8 +439,17 @@ For the next lineage resuming this round:
    guarded, `unown engine status` UP at the checkout SHA.
 4. Next ticket: the first UNCLOSED row in the queue above (**C-1**, the
    Chaconne domain core — C-0 and A2H-9 are both CLOSED, the battery
-   2258/0 re-verified on the fresh tree by the nineteenth lineage); every
-   dispatch carries the PROMPT ECONOMY header and the stdin guard.
+   2258/0 re-verified on the fresh tree by BOTH resume lineages); every
+   dispatch carries the PROMPT ECONOMY header and the stdin guard. The
+   **C-1 dispatch-claim protocol (the V-9 dual-incarnation ruling)**:
+   the nineteenth lineage's checkpoint (`6885f2f3`) pre-declared the
+   dispatch, so its claim governs; the twentieth stands down for a
+   30-minute window from that landing — if no C-1 evidence (session id,
+   chunk receipt, or landing commit) appears on `main` by then, the
+   twentieth dispatches with the C-1 brief below (the standing brief
+   for whichever lineage dispatches). If both land chunks, the
+   ledger-arbiter law applies per-chunk: first landing governs, the
+   other reconciles at its next fetch — the Coda-C4/SM-1 precedent.
 
 ## Related pages
 

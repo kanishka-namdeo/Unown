@@ -47,6 +47,19 @@ store), stack/doctor/engine canaries green, and the A2H-9 cure re-verified
 on the fresh tree (unit **2258/0/161**, 159 s, first run) — C-1 dispatched
 next.
 
+The **twentieth lineage** (a PARALLEL resume — the V-9 dual-incarnation
+event: the nineteenth's checkpoint `6885f2f3` landed first and governs;
+both bring-ups independently re-verified the same green state) also
+resumed 2026-11-06: bring-up green in one pass (V-8 — the recycle class
+cured again: bun 1.4.3 via the npm `.exe` lane, fd via the new apt lane
+after the GitHub 403, chromium-1248, install 7/7, stack up, doctor
+19✓/2⚠, C1 smoke guarded), the full battery re-receipted at `1e4e840b`
+**9/9** (unit **2258/0/161** — corroborating the nineteenth's
+159.2 s run at 158.1 s), and authored the **standing C-1 brief** (in the
+round log) under the V-9 dispatch-claim protocol: the nineteenth's claim
+governs for 30 minutes, then the brief serves whichever lineage
+dispatches.
+
 ---
 
 ## PARKED ROUND — the Etude round (2026-11-05, PARKED by the eighteenth lineage)
