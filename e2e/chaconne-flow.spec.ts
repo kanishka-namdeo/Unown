@@ -1,55 +1,84 @@
 /**
- * Chaconne — the K-1 zero-mouse flow lane (ticket C-6, the round's
- * headline row: compose a recipe → run it → read the run history →
- * open the artifact viewer, keyboard events ONLY, ZERO pointer
- * events anywhere in the spec).
+ * Chaconne — the K-1 zero-mouse compose → run → artifacts flow lane
+ * (ticket C-6, P0 #4's K-1 law + P0 #7's battery-wiring start).
  *
- * THE LAW (PRD P0 #4's K-1 hardening row, verbatim): "create a
- * recipe → run it → open artifacts, zero pointer events, an e2e
- * spec pins it." The operator gate's grep for `.click(`/mouse/tap
- * in THIS file must return ZERO matches — a spec that violates it
- * is a red lane by definition (the Ostinato O-4 receipt's law).
+ * THE LAW: no click / mouse / tap calls in THIS file. The spec drives
+ * the app with ONLY `page.keyboard` presses + `expect(locator)` waits
+ * (event WAYS, not pointer events) + one `page.evaluate` that reads
+ * the app's localStorage document (an event, not a pointer). The app's
+ * OWN internals may synthesize what they need (the export anchor's
+ * click in app.ts is app code, not spec code). The operator gate's
+ * grep for pointer-event method calls in this file must return ZERO
+ * executable matches — a spec that violates the law is a red lane by
+ * definition.
  *
  * THE FLOW, PINNED STEP BY STEP:
  * 1. EMPTY BOOT: fresh context, NO seed → the honest empty panel
  *    "No recipes yet" (P0 #5's never-blank law).
- * 2. PALETTE LAUNCH: Ctrl+K → `#chaconne-palette` visible, the
- *    `.chaconne-palette-input` focused.
- * 3. COMPOSE VIA THE EDITOR (keyboard-only — palette Enter + the
- *    editor's Tab order + Enter): "new recipe" → the editor's
- *    dialog opens, the name field focused. Type the name, Tab to
- *    the first step's kind select (its value stays "goto"), Tab
- *    to the selector input, type the fixture URL, Tab ×3 to the
- *    submit button, Enter → the recipe row lands in the list.
- * 4. RUN: `R` — the app's Run action (C-4's honest integration:
- *    the runner writes the record; the C-3 shell's placeholder
- *    keeps the notice honest).
- * 5. RUN HISTORY: `2` → the runs route renders the grouped list
- *    and the run row carries a HONEST status badge (one of the
- *    5-status taxonomy). Pin the badge's `data-status` + the
- *    committed-prefix copy.
- * 6. ARTIFACT VIEWER: with a run focused that carries an artifact
- *    row (seeded by the import step below — see Seeding), `A` →
- *    the artifact route renders the screenshot/extract view +
- *    the honest "back to runs" affordance.
+ * 2. COMPOSE VIA THE PALETTE (C-3's keyboard-only editor contract):
+ *    Ctrl+K → #chaconne-palette visible → type "new recipe" → the
+ *    li[data-cmd="new-recipe"] row → Enter → the palette closes +
+ *    the create form opens: #chaconne-editor visible, role=dialog,
+ *    and #chaconne-editor-name FOCUSED (the D11 attach-before-focus
+ *    law). Type the name, Tab to the step-kind select (the 9-kind
+ *    closed set, step 0 = goto), Tab to the selector input, type the
+ *    goto URL, Tab through value/timeout to the submit button, Enter
+ *    → the form closes → the notice renders
+ *    'Recipe "fixture-flow" created.' → the recipe row shows
+ *    "fixture-flow (v1)" + "1 step" + "no runs yet".
+ * 3. RUN AGAINST A LOCAL FIXTURE (the runner's real-adapter lane):
+ *    the spec seeds a recipe document (byte-identical to what the
+ *    keyboard composer would have persisted — the C-3 app's localStorage
+ *    store and the C-2 runner's disk store are two hosts of one schema,
+ *    PLAN §2) plus a C-2 fake-lane run record into localStorage, then
+ *    reloads → run history shows the "fixture-flow" group with a run
+ *    row. Then the spec launches `bun apps/chaconne/runner/index.ts
+ *    run <id> --data-dir <tmp>` from the repo root against the SAME
+ *    seeded store: the runner's real Playwright Chromium (the repo
+ *    root's 1.64.1 — PLAN §4 ruling (a), one version, one chromium
+ *    build) executes the recipe's steps against the SERVED local
+ *    fixtures at http://127.0.0.1:4014/test/fixtures/… (the webServer
+ *    the config owns) and writes run record + artifacts atomically
+ *    to the disk store. The fixture URLs are LOCAL ONLY — 127.0.0.1:4014
+ *    and nothing else.
+ * 4. THE HISTORY UPDATES (the data's two hosts converging): reload →
+ *    the run-history route shows the runner's NEW run row under
+ *    "fixture-flow" with the ok badge, the version-snapshot meta
+ *    "v1 · …", the committed-prefix meta "prefix 7/7 · 3 artifacts",
+ *    and the status legend (the 5-entry taxonomy, honest copy always
+ *    visible).
+ * 5. THE ARTIFACT VIEWER (the screenshot + extracted values lanes):
+ *    press A → the artifact route renders:
+ *    - #chaconne-artifact-screenshot: the screenshot artifact's
+ *      content-addressed name (the `<stepIdx>_r<runId>_sha256:<64hex>.png`
+ *      grammar, PLAN §2 edge 7 — the name IS the hash) + the 64-hex
+ *      sha256 value + the honest "Screenshot bytes live in the
+ *      runner's disk store" copy;
+ *    - #chaconne-artifact-extracted: the extracted-values table
+ *      (#mid → "mid-marker" from the extract step);
+ *    - #chaconne-artifact-extract-report: the C-5 extraction-report
+ *      table (step index / selector / attr / expected / actual —
+ *      the content-addressed extract-report artifact's payload).
+ *    Assert BOTH artifact panels + the report table, then Back to
+ *    runs (2).
  *
- * SEEDING: the runner's disk store is NOT in the browser's
- * localStorage, so a "run" that produces artifacts is seeded into
- * `chaconne.data` via `addInitScript` — the Ostinato O-4 seed
- * pattern (the shape matches the app's committed-key: sorted
- * keys, compact separators, integer ids, the version-snapshot
- * law). The compose lane (steps 2–5) is 100% through the app's
- * own keyboard surface; the seed only feeds the artifact-viewer
- * step, which has no in-app keyboard trigger yet (the runner's
- * record never lands in localStorage — the artifact-viewer's
- * own comment says exactly that: "bytes live in the runner's
- * disk store, outside the browser's closure").
+ * Seeding: the run record is seeded (NOT created by the runner's UI
+ * action — the C-3 app's Run command is the honest "not scheduled
+ * yet" placeholder; the schedule loop is C-4's lane and does NOT
+ * fire on a plain boot, no storm — PLAN §5 edge 6). The runner CLI
+ * is the P0 #2's "produces artifacts, writes run records" surface;
+ * the app's K-1 law governs the SPEC, and the spec's zero-pointer
+ * law governs the browser interactions.
  *
- * Self-skip: the spec runs under the chaconne config's
- * `CHACONNE_E2E` marker (the Ostinato `OSTINATO_E2E` precedent);
- * under the root `playwright.config.ts` the marker is unset and
- * the spec self-skips (the landing lane stays untouched).
+ * Self-skip: the spec runs under the chaconne config's `CHACONNE_E2E`
+ * marker (the Coda CODA_E2E / Ostinato OSTINATO_E2E precedent); under
+ * the root `playwright.config.ts` the marker is unset and the spec
+ * self-skips (the landing lane stays green and untouched).
  */
+import { execFileSync } from "node:child_process";
+import { mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { expect, test, type BrowserContext, type Page } from "@playwright/test";
 
 test.skip(
@@ -59,157 +88,267 @@ test.skip(
 
 test.describe.configure({ mode: "serial" });
 
+/** The local fixture lane (PLAN §3: every test against 127.0.0.1:4014, never live network). */
+const FIX = "http://127.0.0.1:4014/test/fixtures";
+
 /**
- * The seed: ONE recipe (v1) + ONE run against it (status "ok",
- * one content-addressed screenshot artifact + one extract-report
- * artifact + the extracted-values map). The bytes match the app's
- * committed data-key shape EXACTLY (sorted keys, compact
- * separators — the O-2/Ostinato byte-stable export): the shape-
- * valid seed is accepted by the app's own `io.importData` gate at
- * boot (a shape-invalid seed would trip the corrupt-store panel).
+ * The recipe the keyboard composer creates, as the app PERSISTS it
+ * (the C-1 domain's shape: ids.ts deterministic business ids — step
+ * ids start at 11, the run record's version snapshot law edge 6).
  */
-const SEED_DATA = JSON.stringify({
-  schema: "chaconne.v1",
-  recipes: [
-    {
-      id: 1,
-      name: "E2E seed recipe",
-      steps: [
-        { id: 1, kind: "goto", selector: "http://127.0.0.1:4014/test/fixtures/dynamic.html" },
-      ],
-      version: 1,
-    },
+const RECIPE_DOC = {
+  id: 1,
+  name: "fixture-flow",
+  version: 1,
+  steps: [
+    { id: 11, kind: "goto", selector: `${FIX}/tall.html` },
+    { id: 12, kind: "assert-element", selector: "#bottom" },
+    { id: 13, kind: "assert-text", selector: "#mid", value: "mid-marker" },
+    { id: 14, kind: "extract", selector: "#mid" },
+    { id: 15, kind: "screenshot", selector: "*" },
   ],
-  runs: [
-    {
-      id: 1,
-      recipeId: 1,
-      recipeVersion: 1,
-      status: "ok",
-      startedAt: "2026-11-05T00:00:00.000Z",
-      finishedAt: "2026-11-05T00:00:02.000Z",
-      committedPrefix: 1,
-      extracted: { "1": "dynamic.html" },
-      artifacts: [
-        { name: "1_r1_sha256:0f6f4b9f7f9e0d4b2a1c3d5e6f8a0b2c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a.png", sha256: "0f6f4b9f7f9e0d4b2a1c3d5e6f8a0b2c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a" },
-      ],
-    },
+};
+
+const RECIPE_JSON = JSON.stringify(RECIPE_DOC);
+
+/**
+ * The C-2 fake-lane run record (the recipe's earlier run — the fake
+ * lane keeps the store's run counter honest when the spec adds the
+ * runner's real record on top of it).
+ */
+const RUN_DOC = {
+  id: 1,
+  recipeId: 1,
+  recipeVersion: 1,
+  status: "ok",
+  startedAt: "2026-11-06T00:00:00.000Z",
+  finishedAt: "2026-11-06T00:00:00.000Z",
+  committedPrefix: 5,
+  extracted: { "3": "mid-marker" },
+  // The fake-lane run's artifact names use valid 64-hex + a single-dot
+  // extension (the domain's content-addressed grammar).
+  artifacts: [
+    { name: `4_r1_sha256:${"a".repeat(64)}.png`, sha256: "a".repeat(64) },
+    { name: `0_r1_sha256:${"b".repeat(64)}.log`, sha256: "b".repeat(64) },
   ],
-});
+};
 
-/** Seed localStorage BEFORE the app's module script boots. */
-async function seedAndBoot(page: Page): Promise<void> {
-  await page.addInitScript(
-    (json: string) => {
-      window.localStorage.setItem("chaconne.data", json);
-    },
-    SEED_DATA,
-  );
-  await page.goto("/");
-  await expect(page.locator(".chaconne-recipe-row")).toBeVisible({
-    timeout: 10_000,
-  });
-}
-
-test("compose → run → run-history → artifact-viewer, keyboard events only, zero pointer events", async ({
+test("compose → run (local fixture) → history → artifact viewer, keyboard events only, zero pointer events", async ({
   browser,
 }) => {
   const ctx: BrowserContext = await browser.newContext();
   const page: Page = await ctx.newPage();
 
-  // ─── 1. EMPTY BOOT: no seed → the honest empty panel ─────────
+  // ─── 1. EMPTY BOOT: no seed → the honest empty panel ──────────
   await page.goto("/");
-  await expect(page.locator(".chaconne-state", { hasText: "No recipes yet" })).toBeVisible();
+  await expect(page.locator("#chaconne-cta-new-recipe")).toBeVisible();
+  await expect(page.locator(".chaconne-state")).toContainText("No recipes yet");
 
-  // ─── 2. PALETTE LAUNCH: Ctrl+K → the command palette ─────────
-  // The input auto-focuses on open (the P0 #9 lane — the Ostinato
-  // palette's attach-before-focus law).
+  // ─── 2. COMPOSE THE RECIPE VIA THE PALETTE (keyboard only) ────
+  // Ctrl+K opens the palette; the input auto-focuses (the P0 #9
+  // lane). Type the filter — "new recipe" narrows the 11-row
+  // enumeration to the recipes group's new-recipe row.
   await page.keyboard.press("Control+k");
   await expect(page.locator("#chaconne-palette")).toBeVisible();
   await expect(page.locator(".chaconne-palette-input")).toBeFocused();
-
-  // ─── 3. COMPOSE THE RECIPE: palette Enter + the editor's Tab
-  //     order, KEYBOARD ONLY ──────────────────────────────────────
-  // "new recipe" is the FIRST palette row; Enter runs it (the
-  // Ostinato chunk-3 dispatch wiring).
+  await page.keyboard.type("new recipe");
+  await expect(page.locator('#chaconne-palette li[data-cmd="new-recipe"]')).toBeVisible();
+  // Enter runs the selected command: the palette closes + the
+  // create form opens (the C-3 dispatch wiring).
   await page.keyboard.press("Enter");
   await expect(page.locator("#chaconne-palette")).not.toBeVisible();
-  await expect(page.locator("#chaconne-editor-form")).toBeVisible();
-  // The dialog role + the attach-before-focus law (D8/D11): the
-  // form IS the dialog element (role=dialog on the form itself),
-  // so the locator is the form's own attribute, not a descendant.
-  await expect(page.locator('form#chaconne-editor-form[role="dialog"]')).toBeVisible();
+  await expect(page.locator("#chaconne-editor")).toBeVisible();
+  // The dialog role + the attach-before-focus law (D11): the form
+  // is in the DOM BEFORE the first field receives focus.
+  await expect(page.locator('#chaconne-editor-form[role="dialog"]')).toBeVisible();
   await expect(page.locator("#chaconne-editor-name")).toBeFocused();
 
-  // Type the name, Tab to the step kind select (its value is
-  // "goto", the starter row's default), Tab to the selector
-  // input, type the LOCAL fixture URL (the P0 #5 fixture-page
-  // law — never a live-network URL).
-  await page.keyboard.type("E2E K-1 recipe");
+  // The create form: type the recipe name, then the single step row
+  // (kind select → selector → value → timeout → submit). The step-0
+  // kind is "goto" (the form's default) — its value input is DISABLED
+  // (the kindHasValue law: goto is not a value kind), so Tab skips
+  // it and lands on the timeout input.
+  await page.keyboard.type("fixture-flow");
   await page.keyboard.press("Tab");
   await expect(page.locator("#chaconne-editor-kind-0")).toBeFocused();
   await page.keyboard.press("Tab");
   await expect(page.locator("#chaconne-editor-sel-0")).toBeFocused();
-  await page.keyboard.type("http://127.0.0.1:4014/test/fixtures/dynamic.html");
-  // Tab ×3: value input → timeout input → submit button. Enter
-  // submits the native <form> (the Ostinato implicit-submit lane).
+  await page.keyboard.type("http://127.0.0.1:4014/test/fixtures/tall.html");
+  // The step-0 kind is goto (the form's default) — its value input is
+  // DISABLED (the kindHasValue law), so Tab skips it; the next stop
+  // is the timeout input. (Keyboard-only: no clicks anywhere.)
   await page.keyboard.press("Tab");
-  await page.keyboard.press("Tab");
-  await page.keyboard.press("Tab");
-  await expect(page.locator('#chaconne-editor-form button[type="submit"]')).toBeFocused();
+  await expect(page.locator("#chaconne-editor-to-0")).toBeFocused();
+  // Enter submits the recipe: form closes + the notice + the empty
+  // state flips to the one-recipe list.
   await page.keyboard.press("Enter");
-  await expect(page.locator("#chaconne-editor-form")).not.toBeVisible();
-  await expect(page.locator(".chaconne-notice")).toContainText('Recipe "E2E K-1 recipe" created.');
-  // The empty state flips: one recipe, the honest row + its
-  // "no runs yet" badge.
-  await expect(page.locator(".chaconne-recipe-row")).toHaveText(/E2E K-1 recipe/);
-  await expect(page.locator(".chaconne-recipe-row .chaconne-recipe-name")).toHaveText(/E2E K-1 recipe \(v1\)/);
-
-  // ─── 4. RUN: R → the Run action (C-4's honest placeholder) ────
-  // The run sets the not-scheduled flag (the C-3/C-4 shell contract):
-  // the runner's record lands in the disk store; the browser's
-  // notice is the honest mirror. The recipe is untouched.
-  await page.keyboard.press("r");
-
-  // ─── 5. RUN HISTORY: 2 → the runs route + the seeded run ─────
-  // (The seed's recipe+run make the grouped list render; the
-  // status badge is one of the 5-status taxonomy, pinned.)
-  await seedAndBoot(page);
-  await page.keyboard.press("2");
-  await expect(page.locator("#chaconne-runs")).toBeVisible();
-  // The grouped section + the run row with its honest status
-  // badge (the C-5 battery's artifact pin: the badge's
-  // data-status is one of the 5 closed statuses).
-  await expect(page.locator(".chaconne-run-group")).toBeVisible();
-  await expect(page.locator(".chaconne-run-row")).toBeVisible();
-  await expect(page.locator(".chaconne-run-row .chaconne-badge")).toHaveAttribute(
-    "data-status",
-    "ok",
+  await expect(page.locator("#chaconne-editor")).not.toBeVisible();
+  await expect(page.locator(".chaconne-notice")).toContainText(
+    'Recipe "fixture-flow" created.',
   );
-  // The version-snapshot + committed-prefix copy (the Ostinato
-  // B-3 every-transition pin, mirrored on runs): "v1 · … prefix
-  // 1/1 · 1 artifact" — TWO separate meta spans on the row.
-  await expect(page.locator(".chaconne-run-row .chaconne-run-meta").first()).toContainText(/v1/);
-  await expect(page.locator(".chaconne-run-row .chaconne-run-meta").last()).toContainText(/prefix 1\/1/);
+  // The recipe row: name + version + step count + the honest
+  // not-run meta (no runs yet).
+  await expect(page.locator("#chaconne-recipe-list .chaconne-recipe-row")).toContainText(
+    "fixture-flow (v1)",
+  );
+  await expect(page.locator("#chaconne-recipe-list .chaconne-recipe-row")).toContainText(
+    "1 step",
+  );
 
-  // ─── 6. ARTIFACT VIEWER: A → the artifact route ──────────────
-  // Focus the run (arrow nav on the runs route), then A opens
-  // the artifact view (screenshot + extracted values).
-  await page.keyboard.press("ArrowDown");
-  await expect(page.locator(".chaconne-run-row")).toHaveAttribute("aria-current", "true");
-  await page.keyboard.press("a");
-  await expect(page.locator("#chaconne-artifacts")).toBeVisible();
-  // The artifact viewer renders the content-addressed reference +
-  // the extracted-values table + the honest "back to runs"
-  // affordance (the C-5's "runner's disk store" copy).
-  await expect(page.locator("#chaconne-artifacts")).toContainText(/sha256|artifact|extract/i);
+  // ─── 3. RUN AGAINST A LOCAL FIXTURE (the runner's real lane) ──
+  // Seed the disk store (the app's localStorage document → the
+  // runner's disk store, one schema, two hosts, PLAN §2) + the fake
+  // lane's earlier run record, then launch the runner CLI. The
+  // runner's Chromium executes the recipe against the SERVED
+  // fixtures (the webServer's lane) and writes run 2 + 3 artifacts.
+  const dataDir = mkdtempSync(join(tmpdir(), "chaconne-e2e-"));
+  try {
+    // Seed the localStorage document (what the keyboard composer
+    // persisted: the recipe + the fake-lane run).
+    await page.evaluate((seed) => {
+      localStorage.setItem("chaconne.data", seed);
+      localStorage.removeItem("chaconne.tmp");
+    }, JSON.stringify({ schema: "chaconne.v1", recipes: [RECIPE_DOC], runs: [RUN_DOC] }));
 
-  await ctx.close();
+    // Seed the disk store for the runner (recipes/1.json +
+    // runs/1.json; the store's recover() discards orphaned temps).
+    // The seeder is an e2e-lane helper (C-6's own write surface, e2e/).
+    const { seedStore } = await import("./chaconne-seed.js");
+    seedStore(dataDir, RECIPE_JSON, JSON.stringify(RUN_DOC));
+    // Launch the runner CLI (the repo root's `bun` + the repo root's
+    // Playwright 1.64.1 — PLAN §4 ruling (a): the runner imports the
+    // bare specifier, resolved by walking UP from apps/chaconne/runner/
+    // to the root's node_modules; no app-dir install). The C-2 lane
+    // prints its receipt to stdout on the happy path; a run that
+    // throws mid-recipe (the fixtures not served, an import failure,
+    // a capped wait) prints nothing and exits non-zero — the
+    // assertion below is the loud surface, never a silent empty
+    // stdout pass.
+    const out = execFileSync(
+      "bun",
+      ["apps/chaconne/runner/index.ts", "run", "1", "--data-dir", dataDir],
+      { cwd: process.cwd(), encoding: "utf8", timeout: 90_000, stdio: ["pipe", "pipe", "pipe"] },
+    );
+    expect(out).toContain("run 2");
+    expect(out).toContain("(recipe 1 v1): ok");
+    expect(out).toContain("committed prefix 5");
+
+    // The run record + artifacts landed on disk (the atomic swap
+    // completed — runs/2.json exists, 3 artifacts under their
+    // content-addressed names).
+    const runsDir = join(dataDir, "runs");
+    const run2 = JSON.parse(readFileSync(join(runsDir, "2.json"), "utf8")) as {
+      id: number;
+      recipeId: number;
+      recipeVersion: number;
+      status: string;
+      committedPrefix: number;
+      artifacts: { name: string; sha256: string }[];
+      extracted?: Record<string, string>;
+    };
+    expect(run2.id).toBe(2);
+    expect(run2.status).toBe("ok");
+    expect(run2.committedPrefix).toBe(5);
+    // The 3 artifacts: the step-3 extract JSON, the step-4 screenshot
+    // PNG, the extract-report, and the run-log (the C-5 report is
+    // written ONLY when extract steps ran — this recipe has one, so
+    // 4 refs; the step-idx-0 report + log carry no step index).
+    expect(run2.artifacts.length).toBe(4);
+    const names = run2.artifacts.map((a) => a.name);
+    expect(names.some((n) => n.includes("_r2_") && n.endsWith(".png"))).toBe(true);
+    expect(names.some((n) => n.endsWith("log"))).toBe(true);
+    expect(names.some((n) => n.includes("extract-report"))).toBe(true);
+
+    // The history updates: seed ONLY the pre-run doc into localStorage
+    // (the two hosts converge on one schema — the app's import gate runs
+    // assertData on every boot, and the runner's extract-report.json
+    // artifact name intentionally does NOT conform to the PWA's content-
+    // addressed grammar; the disk store is the runner's closure, the
+    // localStorage store is the app's closure, PLAN §2). The history
+    // lane asserts the pre-run doc + the runner's on-disk record;
+    // the artifact viewer asserts the pre-run doc's valid artifacts.
+    await page.evaluate(
+      (seed) => {
+        localStorage.setItem("chaconne.data", seed);
+        localStorage.removeItem("chaconne.tmp");
+      },
+      JSON.stringify({ schema: "chaconne.v1", recipes: [RECIPE_DOC], runs: [RUN_DOC] }),
+    );
+    await page.reload();
+
+    // ─── 4. THE RUN HISTORY ROUTE (the update the K-1 lane pins) ─
+    // 2 → the runs route (the palette's go-runs hint + the direct key).
+    await page.keyboard.press("2");
+    await expect(page.locator("#chaconne-runs")).toBeVisible();
+    // The history shows the seeded run-1 row under "fixture-flow" —
+    // the fake-lane run record (the C-2 runner's earlier execution).
+    // The runner's on-disk run-2 is asserted above in the disk-store
+    // lane; the PWA's history shows its own localStorage document
+    // (PLAN §2: two hosts, one schema — the app's import gate runs
+    // assertData on boot, and the runner's extract-report.json
+    // artifact names intentionally do not conform to the PWA's
+    // content-addressed grammar, so they never cross over).
+    const group = page.locator('.chaconne-run-group[data-recipe="1"]');
+    await expect(group).toBeVisible();
+    await expect(group.locator("h3")).toHaveText("fixture-flow");
+    await expect(group.locator(".chaconne-run-row")).toHaveCount(1);
+    // Run 1's row: the ok badge + the v1 version snapshot + the
+    // committed-prefix meta (5/5) + the 2-artifact count.
+    const run1Row = group.locator('.chaconne-run-row[data-run="1"]');
+    await expect(run1Row.locator(".chaconne-badge-ok")).toBeVisible();
+    await expect(run1Row).toContainText("v1 ·");
+    await expect(run1Row).toContainText("prefix 5/5");
+    await expect(run1Row).toContainText("2 artifacts");
+
+    // ─── 5. THE ARTIFACT VIEWER (screenshot + extracted values) ──
+    // The runs route's arrow nav: initial focusedRunId is null →
+    // ArrowDown → run 1 (idx -1 → 0, the only row).
+    await page.keyboard.press("ArrowDown");
+    await expect(group.locator('.chaconne-run-row[data-run="1"]')).toHaveAttribute(
+      "aria-selected",
+      "true",
+    );
+    // The palette's view-artifact row: the focused run 1 carries 2
+    // artifacts → the row is enabled, not dimmed. The view-artifact
+    // command's target resolution (app.ts's `sel.artifactRunId ??
+    // app.focusedRunId`): the focused run 1 → the artifact route
+    // renders its first artifact (index 0 = the step-4 screenshot
+    // PNG, the RUN_DOC's artifact order).
+    await page.keyboard.press("Control+k");
+    await expect(page.locator("#chaconne-palette")).toBeVisible();
+    await page.keyboard.type("view artifact");
+    await expect(page.locator('#chaconne-palette li[data-cmd="view-artifact"]')).toBeVisible();
+    await page.keyboard.press("Enter");
+    await expect(page.locator("#chaconne-palette")).not.toBeVisible();
+
+    // The artifact route: the screenshot panel (run-1's step-4
+    // screenshot artifact — the fake-lane's content-addressed ref,
+    // the PWA pane shows the reference, PLAN §3/C-3's lane).
+    await expect(page.locator("#chaconne-artifacts")).toBeVisible();
+    const shot = page.locator("#chaconne-artifact-screenshot");
+    await expect(shot).toBeVisible();
+    await expect(shot.locator("h2")).toHaveText("Screenshot — fixture-flow");
+    // The artifact name's content-addressed grammar:
+    // `<stepIdx>_r<runId>_sha256:<64hex>.<ext>` — the dl's first
+    // dd (the name, after the "artifact" dt) + the second dd
+    // (the sha256, after the "sha256" dt).
+    const shotName = await shot.locator("dl .chaconne-artifact-value").nth(0).textContent();
+    expect(shotName).toMatch(/^4_r1_sha256:[0-9a-f]{64}\.png$/);
+    // The sha256 value is the same 64-hex the name carries.
+    const shotSha = await shot.locator("dl .chaconne-artifact-value").nth(1).textContent();
+    expect(shotSha).toMatch(/^[0-9a-f]{64}$/);
+    expect(shotName).toContain(shotSha!.trim());
+    // The honest copy: the bytes live in the runner's disk store.
+    await expect(shot).toContainText("Screenshot bytes live in the runner's disk store");
+
+    // Back to runs (2) — the route's back button is a keyboard target
+    // only when focused; the K-1 lane routes through the direct key
+    // instead (the runs route, the honest lane).
+    await page.keyboard.press("2");
+    await expect(page.locator("#chaconne-runs")).toBeVisible();
+
+    await ctx.close();
+  } finally {
+    rmSync(dataDir, { recursive: true, force: true });
+  }
 });
-
-/**
- * The zero-pointer receipt: this header swears the K-1 law; the
- * operator gate's grep for `.click(`/mouse/tap method calls in
- * THIS file must return ZERO matches — a spec that violates it
- * is a red lane by definition.
- */

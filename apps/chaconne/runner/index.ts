@@ -418,14 +418,10 @@ async function main(): Promise<void> {
 // The module is both a CLI entry and an importable core: run main only
 // when executed DIRECTLY (`bun runner/index.ts`), not when imported by
 // the test lane (`import { cmdRun } from "./index.js"`).
-const isMain = (() => {
-  try {
-    return process.argv[1] !== undefined && path.resolve(process.argv[1]) === path.resolve(import.meta.url);
-  } catch {
-    return false;
-  }
-})();
-if (isMain) main();
+// import.meta.main: true only when this module is the entry point
+// (the URL-vs-path argv[1] comparison was broken — path.resolve on a
+// file:// URL string yields '<cwd>/file:/...', isMain was always false).
+if (import.meta.main) main();
 
 /** The schedule subcommand's CLI entry (kept separate from cmdSchedule's
  *   export so the dynamic import above stays type-accurate). */

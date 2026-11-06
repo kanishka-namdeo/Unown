@@ -92,6 +92,23 @@ V-24 filed (the /tmp/engine-tests-b concurrent-collision law).
 **C-4 CLAIMED by this lineage** (the recurring loop — the standing
 brief in the round log, dispatched after the claim-push).
 
+**The lane's later arc (08:00-10:00 UTC):** C-4 closed CONVERGENTLY
+(V-26 — the nineteenth's `9c316604` governs; this lane's ALL-GREEN
+session `01a1afd8…` receipted at `benchmarks/rondo-round/receipts/
+c4-convergent.md`; the fourth convergence of the round), their C-4+C-5
+cross-machine verified (V-28: Lane A 115/0, Lane B 146/0, battery
+2353/0/172 — every number exact), the reset-survivor class law filed
+(V-27). **C-6 CLOSED through A2 by this lineage** (session
+`01a1b01a…`, 5 rounds + the A2H-12 interlock): the K-1 keyboard-only
+e2e battery (zero pointer events), the PLAN §4 config verbatim, the
+disk-store seeder — and the battery's first real CLI invocation caught
+**B-20: the runner CLI was a silent no-op** (the dead isMain guard —
+path-vs-URL, always false; fixed through A2 as A2H-12 with
+`import.meta.main`; V-29's e2e-first coverage law); operator gate:
+battery **×3 green**, tsc 0, lint 0/143, test:unit **2353/0/172
+exact-hold**; the P1 artifact-grammar mismatch BLOCKED-noted for a
+pre-C-8 ticket (V-30). **Next: C-7 (the resilience battery).**
+
 The **twentieth lineage** (a PARALLEL resume — the V-9 dual-incarnation
 event: the nineteenth's checkpoint `6885f2f3` landed first and governs;
 both bring-ups independently re-verified the same green state) also
