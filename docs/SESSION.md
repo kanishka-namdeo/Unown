@@ -231,6 +231,22 @@ degradation window — the upstream's degenerate-200 class, every
 dispatch failing at 0 input tokens since ~13:46 UTC; the smoke-poll
 backoff armed on that lane).
 
+The twenty-third lineage's later arc (the session's close): the
+**V-38 cure applied + re-smoked green on this lane's stack** (the
+spec pin 65536→4096, operator-pin provenance, the engine restarted —
+the cross-lane corroboration receipted); the **overdue C-4..C-8
+playbook review** landed (six amendments, the cold-boot x3 law
+effective C-9); the **cross-machine verifications of C-9, C-10, and
+C-11** (every number exact — C-11 a CONVERGENT DUAL with the
+twenty-fifth); the **A2H-13 receipt's honest V-41 amendment** (the
+call-site defect the twenty-fifth's capture lane caught, fixed as
+A2H-14, verified green by this lane); **V-39 filed** (the
+prompt-guard silent kill — the H-11 helper patched with the
+GUARD-KILL classification). **The Rondo DRIVE track is COMPLETE:
+C-1..C-11 all closed and verified.** This session's next-lane state:
+the round CLOSEOUT queue (the resume instructions' list) — the
+twenty-fifth's C-9..C-11 playbook review already landed as item (a).
+
 The **twentieth lineage** (a PARALLEL resume — the V-9 dual-incarnation
 event: the nineteenth's checkpoint `6885f2f3` landed first and governs;
 both bring-ups independently re-verified the same green state) also
