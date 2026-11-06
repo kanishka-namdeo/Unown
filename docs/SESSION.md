@@ -39,7 +39,13 @@ multi-matched; a 13-line `afterAll` reset fixes it — the battery
 the parallel lineage's 24-turn shard-bisect forensics folded as the
 converging trail; receipt `benchmarks/rondo-round/receipts/a2h9.md`).
 **Next: C-1 (the Chaconne domain core — the first code ticket, building
-against the C-0 plan), then the C-2..C-11 drive queue.**
+against the C-0 plan), then the C-2..C-11 drive queue.** The nineteenth
+lineage resumed 2026-11-06: fresh clone @ `1e4e840b`, the V-2 recycle
+taxes cured one-pass (bun 1.4.3 pin, fd, venv, install 7/7, Agnes `.env`,
+`.a1/` operator tools rebuilt as durable scripts, PAT to the credential
+store), stack/doctor/engine canaries green, and the A2H-9 cure re-verified
+on the fresh tree (unit **2258/0/161**, 159 s, first run) — C-1 dispatched
+next.
 
 ---
 

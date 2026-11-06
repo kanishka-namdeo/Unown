@@ -150,6 +150,41 @@ The eighteenth lineage (this round's opening lineage), 2026-11-06:
   ok · the ostinato e2e battery **17/17** — the full receipt table in
   [the benchmark round](../benchmarks/rondo-round/README.md).
 
+The nineteenth lineage (the resume lineage), 2026-11-06:
+
+- Fresh clone @ `1e4e840b` = `origin/main` (the eighteenth lineage's
+  session-checkpoint commit — B-18 filed, the Rondo queue's continuation
+  state updated); 54 tags, 994 commits, clean tree. Clone path drift:
+  `/home/z/my-project/work/unown` (the prior `/home/z/my-project/Unown`
+  was recycled away; all off-repo tooling re-pathed to match).
+- Recycle taxes cured in one pass (the V-2 class, seventh rebuild of the
+  operator tools): npm-global bun **1.4.3** re-pinned (the 1.4.4 install
+  was downgraded back to the deliberate pin per bun#46510), `fd` 10.2.0
+  (prior lineage's 10.5.1 URL drifted; 10.2.0 verified working), the venv
+  re-pipped (`pyte`/`pexpect`/`pillow`), playwright chromium, install
+  **7/7**, `.env` Agnes lane in place, `UNOWN_HOME` recreated fresh.
+- The `.a1/` operator workspace REBUILT as durable scripts
+  (`dispatch-bg.py` — double-fork daemonizer with PID-tree stop;
+  `battery.sh` — the nine-lane receipt runner; logs/pids/canaries dirs).
+  The git PAT moved to the credential store at
+  `/home/z/my-project/.secrets/git-credentials` (the in-remote-URL clone
+  convention reverted — no token in `.git/config`, per the ground-truth
+  drift note).
+- Stack up via the rebuilt daemonizer: bridge `:3031` upstream **200**;
+  engine `:3030` UP @ v0.0.56/`1e4e840b`, 9 router jobs scheduled (fresh
+  DB — the known recycle limit), breaker closed.
+- Checkpoint canaries: **C2** doctor gate green ("unown is ready to chat",
+  19 ✓ / 2 ⚠ — the same honest pair); **C3** engine lane green (UP, SHA =
+  HEAD); **C1** provider-chain smoke ×2 green (exit 0, `UNOWN_OK`, 3.7 s
+  on 1.4.4 pre-pin + 6.1 s on the 1.4.3 pin — both under the stdin
+  guard). C4 (the DRIVE-lane code canary) skipped: the C-1 dispatch
+  itself exercises the same lane within its verified envelope.
+- **The A2H-9 cure re-verified on the fresh tree**: `bun run test:unit`
+  **2258 pass / 0 fail / 161 files** (159.2 s) — the closure receipt's
+  tally holds post-recycle, first run, no flakes.
+- **Next ticket: C-1** (the Chaconne domain core, building against
+  `apps/chaconne/PLAN.md`) — dispatched after this checkpoint is pushed.
+
 ## Validation log
 
 | ID | Event (dated) | Class | Disposition |
@@ -332,8 +367,9 @@ For the next lineage resuming this round:
    `.a1/scripts/battery.sh` if a baseline re-receipt is needed.
 3. Verify the checkpoint: doctor "ready to chat", C1 smoke with stdin
    guarded, `unown engine status` UP at the checkout SHA.
-4. Next ticket: the first UNCLOSED row in the queue above (**C-0**, the
-   Chaconne architecture plan — A2H-9 is CLOSED, the battery 2258/0); every
+4. Next ticket: the first UNCLOSED row in the queue above (**C-1**, the
+   Chaconne domain core — C-0 and A2H-9 are both CLOSED, the battery
+   2258/0 re-verified on the fresh tree by the nineteenth lineage); every
    dispatch carries the PROMPT ECONOMY header and the stdin guard.
 
 ## Related pages
