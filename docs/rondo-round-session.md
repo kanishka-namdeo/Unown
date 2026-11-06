@@ -320,6 +320,57 @@ incarnation of the C-7 bring-up, 2026-11-06, reconciled 11:30 UTC):
   per the standing instruction). No apps/chaconne writes from this
   lane while C-7 is ACTIVE (the non-overlap discipline).
 
+The twenty-fifth lineage (the seventh resume, 2026-11-06 ~14:47 UTC —
+the C-10 takeover lineage), same day:
+
+- Fresh clone @ `296f96d5` = `origin/main` (the twenty-third's C-9
+  cross-machine verification — the round's current HEAD); clean tree.
+  Clone path drift: `/home/z/my-project/unown` (the prior
+  `/home/z/my-project/Unown` recycled; the standing path-drift note).
+  The git PAT moved to the credential store at
+  `/home/z/my-project/.secrets/git-credentials` immediately on clone
+  (the in-remote-URL convention reverted again — no token in
+  `.git/config`).
+- Recycle taxes cured in one pass (the V-2 class, tenth tool rebuild):
+  npm-global bun **1.4.3** re-pinned, fd **10.2.0** via the GitHub
+  `.deb` + dpkg-extract lane, `bunx playwright@1.64.1 install
+  chromium` → **chromium-1248** (the version-pinned variant, the
+  standing trap's known cure), the venv re-pipped (pyte/pexpect/
+  pillow), install **7/7** (`UNOWN_NO_LINK=1
+  UNOWN_NO_ENGINE_SERVICE=1`), `.env` Agnes lane in place,
+  `UNOWN_HOME=/home/z/my-project/unown-home` fresh.
+- **The V-38 pin applied PRE-SEED this lineage**: a fresh UNOWN_HOME
+  seeds `maxTokens: 65536` from `KNOWN_MODEL_SPECS` at first session —
+  the exact flip the upstream punished at ~13:46 UTC. The cure moved
+  earlier in the bring-up: both flash models' specs pre-written to
+  `4096` in `UNOWN_HOME/agent/models.json` + `model-specs.json`
+  (`source: "user"`, the operator-pin provenance) BEFORE the first
+  dispatch — `writeModelsJson`'s never-clobber law makes the pre-write
+  authoritative. Doctor confirms: "model specs verified —
+  zai-bridge/agnes-3.0-flash: 524,288 ctx / 4,096 out (you entered
+  it)".
+- Stack up via the rebuilt `.a1/` tools (`dispatch-bg.py` double-fork
+  daemonizer + `a1-dispatch.py` with the V-1 stdin guard, the V-39
+  brief-sanitizer and envelope parsing built in — the tenth rebuild,
+  now with the V-38 pin script alongside): bridge `:3031` upstream
+  **200**, 6 agnes models live; engine `:3030` UP @ v0.0.57/
+  `296f96d5` = HEAD, 9 router jobs (fresh DB — the known recycle
+  limit), breaker closed.
+- Checkpoint canaries: **C1** smoke green (`UNOWN_OK`, 2.1 s, stdin
+  guarded — the V-38 pin riding, zero degenerate streams); **C2**
+  doctor green ("ready to chat", the LSP ⚠ the honest pair); **C3**
+  engine lane green (UP, SHA = HEAD).
+- **The C-10 takeover (the V-9/V-10/V-32 protocol)**: the
+  twenty-second's claim (pushed 14:20:26 UTC) governed for its
+  30-minute window; at expiry (14:50:26 UTC) `origin/main` still stood
+  at `296f96d5` with ZERO C-10 dispatch evidence (no
+  `apps/chaconne/scripts/capture-usage.mjs`, no `public/landing/
+  chaconne/`, no `src/components/landing/chaconne*.ts*`, no
+  `docs/chaconne.md` — verified by `git ls-tree origin/main` at
+  14:54:11 UTC, 3 min 45 s past expiry). This lineage dispatches C-10
+  with the standing brief (the Ostinato-band house pattern). The
+  twenty-second's claim row is preserved below; the takeover is the
+  ledger-arbiter law's standing disposition, not a dispute.
 
 ## Validation log
 
@@ -473,7 +524,7 @@ folded into the receipt); the next free bug id is **B-18**.
 | C-7 | The resilience battery: crash-mid-run resume, corrupt-store recovery, offline PWA boot | The R-1 law battery (kill/resume/verify) | **CLOSED 2026-11-06** — the twenty-third lineage (dispatched at the twenty-second's window expiry per V-32's disposition); session `01a1b0b2…`/`01a1b0b3…`, **89 turns / 7 rounds** (incl. the 8-turn operator-caused recovery chunk — V-35); the 4-lane spec (the REAL SIGKILL harness + the fake-lane log-bytes twin, the corrupt panel with bytes surviving, the O-1 offline boot + fallback + storm-check twin), offline.html + the sw.js entry restored **+ the O-1 root-cause fix (the `.js`-convention precache keys — the install-cache/module-graph key mismatch that stalled the offline shell on "Booting…")**, verify-precache.ts (the 3-way ladder, clean 0/drift 1/restored 0); the operator gate: e2e **7 consecutive green** (A2's 3 + the operator's 4, ~13 s each), test:unit **2353/0/172 exact-hold** (+7 expect), tsc 0, lint 0/143, Lane A 111p/4s/0; three deviations accepted (the storm-check form, the completion-only kill form, the capture-usage pricing); receipt [c7.md](../benchmarks/rondo-round/receipts/c7.md) |
 | C-8 | Import/export: byte-stable canonical JSON round-trip, dry-run validation report | Round-trip pin + golden files | **CLOSED 2026-11-06** — the twenty-third lineage; session `01a1b0ef…`, **10 rounds / ~135 turns** (the round's heaviest: 6 chunks to the first x3-green + the operator gate's FLAKE CATCH — the battery was 12-13/14 on cold cross-runs after A2's warm x3 — and 4 chunks of root-cause/fix/proof); the 4 goldens (unicode RAW UTF-8, sha256-pinned) + regen-golden.ts `--check` (0/1 exits proven) + the 4-lane io spec (EXPORT byte-equal, ROUND-TRIP byte-identical, REFUSED never-partial with the store byte-identical, CORRUPT honest error + the boot twin); the fix (DOM-condition waits + the 15 s bounded retry + fail-fast dump — the C-2 law applied to the filechooser); **12 consecutive green** (A2's 6/6 + the operator's 6/6, 6 cold boots); test:unit 2353/0/172 exact-hold, tsc 0, lint 0, Lane A 113/4/0; V-39 filed (the prompt-guard silent kill); receipt [c8.md](../benchmarks/rondo-round/receipts/c8.md) |
 | C-9 | The accessibility battery: axe wcag2a/2aa both schemes, tab-order pin, Esc focus-return | A-1 battery green light AND dark | **CLOSED 2026-11-06** — the twenty-second lineage; session `01a1b0f6…` (the scope, cut by the operator's 2400 s timeout — the V-32 fresh-session-handoff cure applied) + the closing chunk `01a1b12b…` (34 turns / 576 s, subtype success — the 16-turn cap overspend receipted, the V-32(b) shape a second time; the two infra-failed closes in between are V-38's max_tokens window, toll receipted); the 7-block a11y spec (the dialog contract on editor + palette: role=dialog, aria-modal, attach-before-focus, the Tab trap, Esc + focus-return; the resize lane at 1280×800/768×1024/375×667 — no overflow, no zero-size, keyboard operable, axe clean at the narrowest, light+dark; the selection semantics — arrow-nav + aria-current + role=listitem; the loading state — the honest #chaconne-status-idle terminal, deviation #1) + focus-trap.ts + its test (the unit backing); the operator gate re-ran every lane — Lane A 113p/5s/0, Lane B **156/0**, root battery **2361/0/173** (+8, the focus-trap tests join via src/ui), tsc 0, lint 0/143, the e2e battery **20/20 × 3 consecutive incl. the CI=1 cold boot** (the C-8 amendment honored; the cold-boot retry arms fired on the io lanes and held), the io lane untouched (the parallel-courtesy check); receipt `.unown/receipts/c9.md` (the hardening-map BEFORE/AFTER table — every PRD row pinned or scoped; 3 deviations, 3 OQs for C-10/C-11: the live progress row, the breakpoint re-derivation law, the palette P0-reachability audit) **Cross-machine verified (the twenty-third, 14:25 UTC — the V-14 precedent): e2e 20/20 ×3 (19.3/19.4/18.8 s, run 2 a killed-server cold boot), unit 2361/0/173 (159.4 s), tsc 0, Lane A 113p/5s/0 — every number exact; the WIP+close landing shape is V-31-clean (the code tree-verified via `4d9f6dd2` before the gate ran)** |
-| C-10 | The landing band + docs page + usage captures (screenshots of the app in use) | `check:docs`/`check:claims`/`check:blog` + the landing audit | **CLAIMED 2026-11-06 (the twenty-second lineage, post-C-9)** — the Ostinato-band house pattern applied to Chaconne: the ChaconneSection band + capture-usage.mjs (the C-7 receipt's ruling: C-10's to consume/write) + the real stills + docs/chaconne.md + the README rows; dispatched after the claim-push |
+| C-10 | The landing band + docs page + usage captures (screenshots of the app in use) | `check:docs`/`check:claims`/`check:blog` + the landing audit | **DISPATCHING 2026-11-06 (the twenty-fifth lineage takeover)** — the twenty-second's CLAIM (pushed 14:20:26 UTC) governed its 30-minute window; at expiry (14:50:26 UTC) `origin/main` stood at `296f96d5` with zero dispatch evidence (ls-tree verified 14:54:11 UTC); per the V-9/V-10/V-32 ledger-arbiter disposition this lineage dispatches with the standing brief (the Ostinato-band house pattern): `apps/chaconne/scripts/capture-usage.mjs` (the O-5 capture lane, keyboard-only through the real UI, the C-7 receipt's ruling — this ticket's to write), the real stills + `PROVENANCE.md` under `public/landing/chaconne/`, the `ChaconneSection` band + `chaconne-data.ts` + the drift-pin test (the ostinato.tsx trio pattern), the `src/app/page.tsx` wiring after `OstinatoSection`, `docs/chaconne.md` + the `docs/AGENTS.md` row, the README rows |
 | C-11 | The runbook + CI gate entry + honest-scope statement | The CI gate config + `bun run chaconne:test`/`e2e` from root | QUEUED |
 | A2H-9 | The encore Finale test-isolation fix (V-4): the full-suite-only, order-dependent unit fail — next chunk runs the shard-bisect protocol (find the minimal co-failing file set), then fixes at the named layer; the encore test's intent is NOT weakened | `bun run test:unit` 0 fail (quoted tail) + isolation rerun green + the minimal co-failing set receipted in `.unown/receipts/a2h9.md` | **CLOSED 2026-11-06** — see the first queue row + [the receipt](../benchmarks/rondo-round/receipts/a2h9.md) |
 | A2H-7 | The #30 live-hang capture: the armed watcher (`scripts/issue30_watcher.mjs`) run in both churn lanes during this round's dispatch traffic | A hang capture dir with /proc evidence, or a non-repro receipt with run count | **NON-REPRO RECEIPTED 2026-11-06 (the twentieth lineage)** — both lanes ×8 runs: idle 8/8 exit 0 (`UNOWN_OK`, 1.5–4.7 s), dream 8/8 exit 0 (1.5–2.1 s) — the dream lane run CONCURRENT with the A2H-8 browser dispatch (real dispatch traffic, engine requests 18→48 mid-lane); no hang, no capture dir; receipts [a2h7/idle-summary.json](../benchmarks/rondo-round/receipts/a2h7/idle-summary.json) + [a2h7/dream-summary.json](../benchmarks/rondo-round/receipts/a2h7/dream-summary.json) committed. The watcher STAYS ARMED for the round's later dispatch traffic (each re-run mints a fresh non-repro receipt; a capture ends the wait) |
