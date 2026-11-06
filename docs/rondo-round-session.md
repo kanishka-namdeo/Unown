@@ -1233,13 +1233,20 @@ For the next lineage resuming this round:
    guarded, `unown engine status` UP at the checkout SHA.
 4. **The DRIVE track is COMPLETE (2026-11-06, the `4a531894` closure):
    C-1..C-11 ALL CLOSED** + A2H-9..A2H-14 + B-18..B-20 FIXED — the
-   next lineage's work is the ROUND CLOSEOUT: (a) the every-3-tickets
-   playbook review for the C-9..C-11 era; (b) the §7 competition cycle
+   next lineage's work is the ROUND CLOSEOUT: (a) ~~the every-3-tickets
+   playbook review for the C-9..C-11 era~~ **DONE (the twenty-fifth,
+   [the receipt](../benchmarks/rondo-round/receipts/playbook-review-c9-c11.md):
+   five amendments (the spec-pin pre-seed, the split-write law, the
+   real-data-bridge acceptance lane, the window-is-the-floor ruling +
+   the merged-tree verification duty, the turn-budget-hook candidate)
+   + the brief-adaptation lane's maturation + the H-12 pattern tally's
+   PROMOTE-bar met + the §8 ledger's honest close)**; (b) the §7 competition cycle
    (due: >5 tickets since the Letta teardown); (c) the OQ-1 PLAN
    amendment (the edge-5 "prefix resume" wording → the landed
    record-at-end semantics); (d) the §0.9 predicted-failure-classes
    reconciliation (no retroactive story-telling); (e) the §6c
-   learning-mechanism receipts + the §8 evidence pack; (f) the
+   learning-mechanism receipts + the §8 evidence pack (**[RESULTS.md](../benchmarks/rondo-round/RESULTS.md)
+   carries the bulk — the final cross-lane learning summary rides**); (f) the
    mid-flight dispatch-evidence gap (the twenty-second's claims expired
    twice with work in flight — the claim protocol's known cost; the
    twenty-fifth's extended-grace observation is the mitigation
