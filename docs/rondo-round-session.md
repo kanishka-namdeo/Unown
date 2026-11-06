@@ -239,6 +239,10 @@ clone `/home/z/my-project/Unown`, this reconciliation's author), 2026-11-06:
 **ALL LINEAGES: hold main pushes until the v0.0.57 release renders (ETA ~07:15 UTC; check the release tag's check-runs before pushing)** |
 | V-22 | The v0.0.57 release-blocker root-caused (2026-11-06, the twentieth lineage): the re-run CI on the tagged commit failed GENUINELY this time — Windows `Self-learning engine tests` → `automation-spend.test.ts:110` "no such table: automations" — and the archaeology found the PRE-EXISTING wall: **the v0.0.56 tag's CI has been red since 2026-11-04** (the same Windows failure + a changed-line-coverage fail), its Release workflow failed, and **the last rendered GitHub release is v0.0.55** — two release tags exist with no releases. The defect (B-19 below): the test's `beforeAll` does raw SQL on the lazily-created `automations` table; Windows alphabetical discovery makes this file the FIRST store caller on a fresh DB. Reproduced locally (wipe the redirected test DB, run the file alone → the exact CI stack), cured with the one-call fix (`ensureAutomationsSchema()` first), verified: fresh-DB 10/0, package suite **5575/0** | genuine-gap (the §5 reflex exercised: deterministic repro → fix at the named layer → the fresh-DB single-file lane as the pin) | The freeze broke for the fix commit (receipted necessity: the tag pointed at a red commit; the release ships from green). The v0.0.57 tag re-points to the fix commit; CI's three-OS verdict re-runs on it (the version bump is in the tree); the Release workflow follows the new tag. **The release-rendering verification closes this entry** |
 
+| V-23 | The B-19 CONVERGENT DUAL closure (2026-11-06): the twenty-first's A2H-11 (session `01a1afb2…`, 2 chunks — the windows-CI log diagnosis + the live isolation repro + the identical one-call fix) and the twentieth's B-19 fix (`c69d6382`) landed within the hour — the same root cause (the lazily-created `automations` table + the beforeAll's raw DELETE), the same cure (`ensureAutomationsSchema()` first), independent chains | receipt (the A2H-9 convergence pattern, third occurrence — the directive's parallel-incarnation discipline producing cross-validated fixes, not conflicts) | The twentieth's landing governs (first on `main`); the twenty-first's tree was reset to it and the fix verified AGAIN cross-machine (isolation 10/0 on their variant). Receipt [a2h11.md](../benchmarks/rondo-round/receipts/a2h11.md) carries the parallel lane's evidence |
+| V-24 | The A2H-11 dispatch's 9-failure observation was a CONCURRENT COLLISION artifact: the operator's parallel isolation-repro run raced A2's full-suite verify on the shared `/tmp/engine-tests-b` redirect (the `_env.ts` co-ownership warning); clean sequential re-runs showed 0 fail both WITH the fix (5575/0/248) and WITHOUT (5470/0) | operator-procedure (the V-3 measurement-isolation class, now at the test-suite boundary) | Law: never run the self-learning suite concurrently with anything touching `/tmp/engine-tests-b` — check the a1-dispatch pidfile status before every gate run |
+| V-25 | The C-3 landing's cross-machine operator gate (the twenty-first verifying the nineteenth's `5cedc01a`): Lane A **85/0/15**, Lane B **110/0/15** (the DOM-guarded honest-skip pattern — 25 DOM pins run only under Lane B's happy-dom), tsc 0, lint 0 err/143 warn, root battery **2329/0/171** (2289 standing + 40 new; `apps/chaconne/src/ui/**` carries the src substring so the UI tests join the root battery, unlike the runner lane) | receipt | C-3 is now triply verified (A2's run + the landing lineage's gate + this lane). The battery's app-suite growth is tracked: 2258 → 2289 (C-1) → 2329 (C-3) |
+
 ## Bug register
 
 User/operator-visible findings of this round (the B register continues the
@@ -322,7 +326,7 @@ folded into the receipt); the next free bug id is **B-18**.
 | C-1 | The domain core: recipe/step/run types, validation, canonical JSON, atomic store | Lane A unit battery (bun test in `apps/chaconne/`), tsc, lint | **CLOSED 2026-11-06** — the nineteenth lineage; session `01a1af41…`, 27 turns / 5 dispatch rounds (the preamble-stop V-11 + the capped continuations V-12 in the ledger; the V-13 landing reconciliation against the V-10 handoff ruling); 1,367 lines: types/ids/invariants/model/io/storage + co-located tests + the boundary scanner + the localStorage adapter + the 7-line zero-dep package.json + eslint chaconne scoping + the tsconfig include (PLAN §4's own assignment); the operator gate independently re-ran every lane (Lane A 31/0, Lane B 31/0, root battery **2289/0/166** = 2258 standing + 31 new, typecheck 0, lint 0/143 standing) and PROVED the boundary pin bites (live DOM-glob injection → 1 fail → restore → green); four deviations reviewed and accepted (receipt [c1.md](../benchmarks/rondo-round/receipts/c1.md)) |
 | C-2 | The runner v1: goto/click/fill/select/wait/assert/extract/screenshot against LOCAL fixture pages, honest error taxonomy, run records | Runner unit lane with a fake page adapter + one real-browser smoke against a fixture | **CLOSED 2026-11-06** — the nineteenth lineage; session `01a1af59…`, 65 turns / 8 dispatch rounds (the fake-clock spiral V-18 — the operator's structural decision closed it; the V-19 claim-vs-landing reconciliation); 1,933 lines: the PageAdapter seam + FakePageAdapter + RealPageAdapter (iframe resolution, post-fill read-back — the #43 cure), caps/RunLedger (committed-prefix law), disk store (temp+rename atomic, sha256 artifacts), run log, CLI entry with the C-4 stub, 5 LOCAL fixtures, 39 runner tests incl. the 3-test real-browser smoke (file://, zero network); the operator gate re-ran every lane — Lane A/B **70/0/10**, root battery **2289/0/166** holding, typecheck 0, lint 0/143 standing; six deviations reviewed and accepted (receipt [c2.md](../benchmarks/rondo-round/receipts/c2.md)) |)
 | C-3 | The web app shell: recipe list/create/edit, run history, artifact viewer — keyboard-first, zero-dep, palette, empty/loading/error states | Lane A/B unit + the e2e happy path | **CLOSED 2026-11-06** — the nineteenth lineage; session `01a1af91…`, 33 turns / 4 dispatch rounds (the round's smoothest — the ordered-write brief pattern, adopted into the playbook per the every-3-tickets review in [the receipt](../benchmarks/rondo-round/receipts/c3.md)); 19 files / 3,303 lines: the PWA shell + serve.mjs (Bun.Transpiler :4014) + the 11-command Ctrl+K palette + the dialog-contract recipe editor + grouped run history with 5-status badges + artifact viewer + the four empty panels + light/dark CSS + 5 DOM-guarded test files; the operator gate re-ran every lane — Lane A 81p/4s/0, Lane B **110/0**, root battery **2329/0/171** (2289+40), typecheck 0, lint 0/143, serve boot HTTP 200 verified |
-| C-4 | The recurring loop: schedules (interval/one-shot), misfire policy, run history | Unit battery on an injected clock (the Ostinato law) + e2e | QUEUED |
+| C-4 | The recurring loop: schedules (interval/one-shot), misfire policy, run history | Unit battery on an injected clock (the Ostinato law) + e2e | **ACTIVE 2026-11-06 (the twenty-first lineage — claimed before dispatch; the C-4 standing brief below)** |
 | C-5 | Assertions + artifacts: value checks, screenshot capture with pinned hashes, extraction report | Deterministic fixture battery; artifact sha256 pins | QUEUED |
 | C-6 | The e2e battery lane 1: compose → run → artifacts, keyboard-only (K-1 law) | Playwright battery green ×3 consecutive | QUEUED |
 | C-7 | The resilience battery: crash-mid-run resume, corrupt-store recovery, offline PWA boot | The R-1 law battery (kill/resume/verify) | QUEUED |
@@ -334,6 +338,7 @@ folded into the receipt); the next free bug id is **B-18**.
 | A2H-7 | The #30 live-hang capture: the armed watcher (`scripts/issue30_watcher.mjs`) run in both churn lanes during this round's dispatch traffic | A hang capture dir with /proc evidence, or a non-repro receipt with run count | **NON-REPRO RECEIPTED 2026-11-06 (the twentieth lineage)** — both lanes ×8 runs: idle 8/8 exit 0 (`UNOWN_OK`, 1.5–4.7 s), dream 8/8 exit 0 (1.5–2.1 s) — the dream lane run CONCURRENT with the A2H-8 browser dispatch (real dispatch traffic, engine requests 18→48 mid-lane); no hang, no capture dir; receipts [a2h7/idle-summary.json](../benchmarks/rondo-round/receipts/a2h7/idle-summary.json) + [a2h7/dream-summary.json](../benchmarks/rondo-round/receipts/a2h7/dream-summary.json) committed. The watcher STAYS ARMED for the round's later dispatch traffic (each re-run mints a fresh non-repro receipt; a capture ends the wait) |
 | A2H-8 | The #43 browser fill_form iframe-race probe: a fixture-page repro of the iframe fill class through A2's own browser tools, evidence filed upstream | The repro transcript + the upstream issue comment draft | **CLOSED 2026-11-06 (the twentieth lineage)** — 2 chunks (8+8 turns, session `01a1af48-8b74…`, the V-5 continuation law applied); the verdict (reconciled with the repo's own F3 postfix evidence): **the v0.0.55 silent-loss path is NOT REPRODUCIBLE on v0.0.56** — the F3 fix (`0d0c64ff`, in v0.0.56) closed it; 5/5 runs fail LOUDLY; RESIDUAL GAP: a loud-failure window between navigate's return and the frame's ref readiness (the barrier should extend to fill_form's ref resolution), plus a minor partial-application atomicity gap (the select lands when the input fails); evidence filed upstream — [comment 1](https://github.com/kanishka-namdeo/Unown/issues/43#issuecomment-6677636789) + [the reconciliation follow-up](https://github.com/kanishka-namdeo/Unown/issues/43#issuecomment-6677653366); receipt [a2h8.md](../benchmarks/rondo-round/receipts/a2h8.md) (5 verbatim run records, the operator gate verified the excerpts against the session log, the amended reconciliation section included). Feeds C-2's RealPageAdapter design (verify-value-landed is now CONFIRMED necessary — the residual window is real) |
 | A2H-10 | The B-18 fix: the deterministic reasoning-noise filter at the dream's write boundary — `sanitizeMemoryText()` applied at all three leak lanes (ADD/reconcile-UPDATE/salvage) in `pi-repo/packages/self-learning/src/memzero.ts`, stripping the `[NOTE: …]` blob + JSON-fragment + trailing-Reason shapes, REJECTING empty residuals; clean facts pass byte-identical | The package suite (`cd pi-repo/packages/self-learning && bun test test/`) green with new shape pins + the clean pass-through pin + each lane's pin; tsc parity (0 new errors); the root battery holds | **CLOSED 2026-11-06 (the twentieth lineage)** — A2 3 chunks (session `01a1af52…`: recon 8 / implementation +106/−10 with all three lanes wired / the rider attempt that died at cap on a template-literal syntax error), then the operator's priced completion (the R-2/SM-1 precedent): the syntax cure, the ENTIRE 14-pin test file, and four genuine defects caught by the pins at the gate (nested-bracket residue; a stray-quote regex bug that made the JSON-fragment strip a NO-OP for every non-empty value; the missing `}, {` comma; the over-aggressive mid-prose Reason strip → the sentence-start lookbehind) + the whitespace-only reject floor. **Gates: pins 14/14 · package suite 5470/105-skip/0-fail (the 9-fail bridge-under-load flake set from the mid-dispatch baseline ALSO resolved on the quiet re-run) · package tsc 77 = 77 exact parity (stash-verified; memzero.ts 0 errors both sides) · root typecheck 0**. Receipt [a2h10.md](../benchmarks/rondo-round/receipts/a2h10.md) with the honest A2/operator split + the four design deviations. **The round's first Unown-code enhancement → the version bump v0.0.57 + the CHANGELOG entry + the regenerated rail (56 stops/543 entries/55 dated) ride this closeout**. B-18's register row moves to FIXED-pending-render (the next dream cycle over a shape-carrying fact lineage is the natural experiment) |
+| A2H-11 | (CONVERGENT — see V-23) the windows-CI test-isolation fix: `automation-spend.test.ts`'s beforeAll calls `ensureAutomationsSchema()` before the DELETEs (one file) | The isolation repro green (10/0, was 1 fail); the full suite green with the fix (5575/0/248) | **CLOSED-CONVERGENT 2026-11-06** — the twentieth's B-19 landing (`c69d6382`) governs; this lane's session `01a1afb2…` + receipt [a2h11.md](../benchmarks/rondo-round/receipts/a2h11.md) stand as the parallel evidence |
 | (carry) | Reprise R-3..R-5, the standing SESSION.md items | per their own logs | PARKED (candidates) |
 
 **EFFORT_BUDGET**: C-tickets ≤4 chunks each · each chunk ≤8 turns
@@ -574,6 +579,72 @@ ACCEPTANCE: (1) `cd apps/chaconne && bun test` — Lane A green, 0
   snapshot in the run record (fake lane); (9) the 5 fixtures:
   static, zero-network, inline timers only; (10) no file outside
   apps/chaconne/ written except .unown/receipts/c2.md.
+```
+
+The C-4 scheduling ticket — the STANDING BRIEF (authored by the
+twenty-first lineage against the PLAN §1/§5-edge-6; dispatched after
+the claim-push, fresh session, the prompt-economy header, stdin
+guarded via the a1-dispatch helper, `--output-format json` envelope,
+≤4 chunks × ≤8 turns + the A2H-9 16-turn closing allowance):
+
+```
+ROLE: A2 executor — C-4, the Chaconne recurring loop: schedules
+  (one-shot + interval), the misfire policy, and their run-history
+  integration, building strictly against apps/chaconne/PLAN.md and
+  the landed C-1/C-2/C-3 code.
+ALLOWED_INPUTS: apps/chaconne/PLAN.md (§1 the scheduler files, §2 the
+  Schedule shape, §5 edge 6's verifier), docs/chaconne-prd.md,
+  apps/chaconne/src/** + apps/chaconne/runner/** + apps/chaconne/src/ui/**
+  (the landed code — IMPORT freely; the C-2 receipt's OQ-2 ruling is
+  yours to implement: the artifact-name runId convention), apps/ostinato/
+  (read-only: the house scheduler pattern — src/domain/scheduler.ts),
+  the repo root's node_modules/playwright-core (the C-2 OQ-1 resolution).
+FORBIDDEN_INPUTS: every write outside apps/chaconne/ EXCEPT the receipt
+  at .unown/receipts/c4.md; no C-5 lanes (assertion depth, screenshot
+  hash pinning); no e2e specs or playwright config (C-6); no
+  index.html/sw.js product changes beyond wiring schedule UI rows into
+  the EXISTING run-history view; no new deps; no edits to
+  pi-repo/ or the engine.
+OUTPUT_ARTIFACT: under apps/chaconne/ exactly — src/domain/scheduler.ts
+  (PURE (schedule, now) -> {due, skip, record}: interval + one-shot,
+  the misfire policy SKIP-AND-RECORD — a gap >= interval yields a
+  skipped+recorded entry, never a silent double-run, never a catch-up
+  storm; deterministic, injected-clock testable — the Ostinato law),
+  src/domain/scheduler.test.ts (the injected-clock battery: due/not-due
+  boundaries, the misfire gap, the one-shot expiry, the interval
+  rollover, DST-free plain-ms math), runner/schedule.ts (the loop:
+  ONE-SHOT fires once then deactivates; INTERVAL fires per due tick;
+  reads the schedule via the domain, executes through the C-2 runner
+  seam (executeRecipe / the scheduleHook stub C-2 left), records
+  skipped misfires, run-history dedup by (recipeId, dueAt)), the OQ-2
+  resolution in the runner's artifact naming (the TRUE run id in the
+  r<id> slot — the C-2 receipt names this refactor as C-4's), the
+  schedule UI rows in src/ui/run-history.ts + their tests (the
+  existing view gains: the schedule state per recipe, the next-due
+  display, the skip-record entries in history — keyboard-navigable,
+  the C-3 contract), AND the receipt at .unown/receipts/c4.md (files,
+  tallies, the misfire-policy pin outputs, open questions).
+HANDOFF_SCHEMA: plain text — files written, test tallies, the
+  misfire/dedup pins, gates state, open questions for C-5.
+EFFORT_BUDGET: <=4 chunks x <=8 turns (closing verify chunk may run 16).
+NON-OVERLAP: C-5 owns assertion/artifact depth; C-6 owns e2e; the
+  round log/CHANGELOG are the operator's; the receipt is the LAST
+  chunk's closeout write.
+ACCEPTANCE: (1) cd apps/chaconne && bun test — Lane A green, 0 fail
+  (the standing 85 + the new scheduler/UI tests; count named);
+  (2) bun test apps/chaconne from root — Lane B green (the standing
+  110 + the new count); (3) root bun run typecheck — 0 NEW errors;
+  (4) bun run lint — 0 NEW errors; (5) bun run test:unit — 2329/0
+  holds PLUS the new scheduler tests that live under src/ (the src
+  substring joins them — name the new exact total); (6) the misfire
+  law pinned: a gap >= interval -> ONE skipped+recorded entry, ZERO
+  double-runs, ZERO catch-up storms (the injected-clock battery);
+  (7) the dedup law pinned: run-history has no (recipeId, dueAt)
+  duplicates after an interval fire + a misfire recovery; (8) the
+  one-shot law: fires exactly once, then the schedule reads inactive;
+  (9) the OQ-2 resolution landed (the artifact name's r<id> is the
+  run id) + a test pinning it; (10) no file outside apps/chaconne/
+  written except .unown/receipts/c4.md.
 ```
 
 ## SDLC coverage and learning-mechanism plan

@@ -62,6 +62,17 @@ landed the ordered-write brief pattern; receipt
 `benchmarks/rondo-round/receipts/c3.md`). **Next: C-4 (the recurring
 loop) — the §7 competition cycle opens at its closure; then C-5..C-11.**
 
+The **twenty-first lineage's post-freeze reconciliation** (07:30 UTC):
+the B-19 windows-CI fix landed convergently (V-23 — the twentieth's
+`c69d6382` governs; this lane's A2H-11 session `01a1afb2…` + receipt
+`benchmarks/rondo-round/receipts/a2h11.md` stand as the parallel
+evidence, the identical one-call cure from an independent diagnosis
+chain); their fix + the C-3 landing cross-machine verified here (V-25:
+Lane A 85/0, Lane B 110/0, tsc 0, lint 0/143, battery **2329/0/171**);
+V-24 filed (the /tmp/engine-tests-b concurrent-collision law).
+**C-4 CLAIMED by this lineage** (the recurring loop — the standing
+brief in the round log, dispatched after the claim-push).
+
 The **twentieth lineage** (a PARALLEL resume — the V-9 dual-incarnation
 event: the nineteenth's checkpoint `6885f2f3` landed first and governs;
 both bring-ups independently re-verified the same green state) also
