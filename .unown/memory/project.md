@@ -1,7 +1,6 @@
 # Project Memory
 
 ## Workflow
-- Run `bun test` for `apps/chaconne` from both the subdirectory and the project root to verify count parity between execution contexts
 - Test fixtures are co-located with the chaconne UI codebase.
 
 ## Known pitfalls
@@ -112,7 +111,6 @@
 - A separate, unrelated `dayKeyOf` function exists in `src/lib/sigil/stats.ts` which uses local-timezone ISO-input formatting.
 - pi-repo: Pi agent harness monorepo with cross-platform shell entry points.
 - In /home/z/my-project/Unown, the `pi-repo/packages/self-learning/test/automation-spend.test.ts` file was fixed by adding `ensureAutomationsSchema` to its `../src/automations.ts` import and calling it as the first statement in the `before` hook
-- In /home/z/my-project/Unown, writes from the chaconne test session were confined to `apps/chaconne/` and all gates were green
 - In /home/z/my-project/Unown, terminal operations use DISPATCH_OK for dispatch-related sessions and UNOWN_OK for general completion markers, both indicating successful execution status.", "reason": "Merged and clarified redundant and superseded completion marker definitions into a single current, unambiguous rule.
 - The `src/lib/nocturne/types.ts` file in the worktree contains the full data model from `benchmarks/nocturne-round/plan.md` §1, defining 17 entity interfaces including NocturneTenant, NocturneUser, NocturneService, NocturneAlert, NocturneIncident, NocturneTimelineEvent, NocturneRunbook, and NocturneNote.
 - `chaconne-a11y.spec.ts` validates 4 accessibility checks: axe audit in light mode, axe audit in dark mode, tab order, and Esc-key focus-return.
@@ -126,5 +124,5 @@
 - Stealth verification suite on bot.sannysoft.com: all 10 checks (webdriver, userAgent, platform, userAgentData, timezone, locale, screen, viewport, plugins, window.chrome) pass; 0 FAIL rows in Intoli tests. (Restored by hand 2026-11-01 — second occurrence of the dream-render-prunes-landing-quoted-lines class, issue #46; moved here to the durable lane.)
 - Parley password hashing: scrypt N=16384 r=8 p=1 (src/lib/parley/password.ts). Restored by hand 2026-10-29 after AutoDream reconciles twice erased the fact (upstream 79->66 render, then the F1/F2 bcrypt poison round). Never let a memory answer overwrite this without reading the source.
 
-<!-- unown: rendered 110/115 memories via Mem0 (backend: lexical) · 5 oldest pruned at render (cap 110; hard-won rules immune) at 2026-11-06T14:14:09.661Z -->
+<!-- unown: rendered 110/115 memories via Mem0 (backend: lexical) · 5 oldest pruned at render (cap 110; hard-won rules immune) at 2026-11-06T15:19:04.830Z -->
 
