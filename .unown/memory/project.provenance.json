@@ -1,8 +1,15 @@
 {
+<<<<<<< HEAD
   "version": 3,
   "changedBy": "mem0",
   "at": 1793973015034,
   "sha256": "45f8bfc573faccd2c1a6d591426a8a37e35e010a4ad202c2a25167a339998a30",
+=======
+  "version": 14,
+  "changedBy": "mem0",
+  "at": 1793973148664,
+  "sha256": "42bcd3295b10647b7fddecd9f49cdb739b2ea9ae79c6b34dbaebf6a34d39f488",
+>>>>>>> d5432fb5 (docs + receipts: the C-8 closure's graduation — the operator receipt (the golden-layout ruling, the flake catch + reconciled root cause, V-38 the prompt-guard silent kill, the x3-with-cold-boot law proposal for C-9), the queue row CLOSED (C-9 stands CLAIMED by the twenty-second), the local dream sync rides, 2026-11-06)
   "manualSha256": "c0f237e9cd03b481913310e386b4118e2586c0d77a2345832c55e2888e869944",
   "manualEdited": true
 }
