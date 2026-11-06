@@ -360,6 +360,46 @@ the C-10 takeover lineage), same day:
   guarded — the V-38 pin riding, zero degenerate streams); **C2**
   doctor green ("ready to chat", the LSP ⚠ the honest pair); **C3**
   engine lane green (UP, SHA = HEAD).
+- **The lane's full arc (the twenty-fifth's record, 14:47–15:58 UTC)**:
+  the C-10 takeover claim (the window expiry) → chunk 1 dispatched (the
+  real-runner capture lane) → **V-40** discovered (the V-38 pin's
+  output-side ceiling — the split-write law) → **V-41 discovered** (the
+  A2H-13 landing's latent cross-host defect: the runner's extract-report
+  ext, the hyphen tripping the PWA grammar at boot; three gate gaps
+  receipted) → **A2H-14 filed + dispatched + CLOSED through A2**
+  (session `01a1b169…`, 5 dispatches / 40 turns; A2's gates + the
+  operator gate + the bridge probe all green; landed `e2dd23b7`) →
+  **the V-42 convergent dual** (the twenty-second landed C-10's chunks
+  2-4 mid-flight; first landing governs; this lane's chunk-1 stood
+  down, the orphaned WIP preserved; the rebase theirs/ours inversion
+  caught pre-push by the tree-verify law) → **the merged-tree joint
+  verification** (their band + the fix together: tsc 0, Lane A
+  114p/5s/0, Lane B 157/0, root 2366/0/174, the five check gates ok,
+  e2e 20/20 ×2 — unblocking the twenty-second's C-11) → **the PROVE
+  track's accruals**: [RESULTS.md](../benchmarks/rondo-round/RESULTS.md)
+  (the evidence package at the merged tree: the DRIVE gate table, the
+  honest dispatch-economics ledger, the AUGMENT deltas, the seven-tree
+  rerun-green receipts, the six-class genuine-gap harvest), the A2H-7
+  watcher's r25 non-repro receipts (both lanes ×8 on this lane's real
+  dispatch traffic), **H-12's pattern tally 10/10 continuations 0
+  corrections** (8 hand-authored per the generator's laws under the
+  V-40 ceiling — the honest scope receipted in the registry), **V-43
+  the B-18 render observation CLOSED** (9→12 dreams through the
+  A2H-10-fixed boundary this lane's era, the terminal render clean at
+  80–128 lines, zero leak shapes; the dream consolidation carrying the
+  V-41 fix facts — the engine's learning loop live end-to-end).
+  **The C-11 window ruling (15:57 UTC)**: the twenty-second's claim
+  (`ff1c05e3`, ~15:26) expired its 30-minute window at ~15:56 with no
+  dispatch evidence on main — but the lane is DEMONSTRABLY active (four
+  landings in the prior hour, their C-10 close at 15:25) and the V-42
+  receipt just priced a letter-of-the-law takeover at ~40 duplicated
+  turns. Ruling: **an extended-grace observation to 16:26 UTC (60 min
+  from the claim)** — poll every few minutes; a landing reconciles;
+  silence past 16:26 triggers the takeover claim + the standing-brief
+  dispatch (the C-11 brief authored fresh: the runbook + the CI gate +
+  the honest-scope statement + the post-fix capture refresh, per the
+  C-10 row's receipted act). The poll-then-dispatch gap the round
+  already receipted is not re-paid twice in one round.
 - **The C-10 takeover (the V-9/V-10/V-32 protocol)**: the
   twenty-second's claim (pushed 14:20:26 UTC) governed for its
   30-minute window; at expiry (14:50:26 UTC) `origin/main` still stood
