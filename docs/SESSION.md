@@ -36,6 +36,39 @@ PLAN ticket) opens the DRIVE track.**
 
 ---
 
+## PARALLEL ENGAGEMENT — the Sonata track (2026-11-07, OPENED by the twenty-seventh lineage, non-overlapping with the Scherzo round)
+
+A SECOND fresh A1 directive (the same DRIVE × AUGMENT × PROVE charter)
+opened in parallel on the same base tree `ae8a73d`. This lane's
+round-opening push was rejected at the remote — the Scherzo round had
+landed first (the V-42 class, the tenth concurrent-lineage event): **the
+ledger-arbiter law applies — Scherzo/Bolero governs the round opening**,
+and rather than stand down (both directives demand a full program), this
+lane reconciles as a **PARALLEL NON-OVERLAPPING ENGAGEMENT**:
+[the Sonata round log](sonata-round-session.md) · vehicle
+[Fugue](fugue-prd.md) at `apps/fugue/` — the engine-native automation
+console (the learning-loop surface: W1/W2/W7) — deliberately
+complementary to Bolero's browser/ops surface (W3–W6).
+
+Phase 0 executed independently and identically where the lanes overlap
+(bring-up one-pass with the V-38 pre-seed, canaries C1–C4, the baseline
+battery identical to the Rondo close — every number, a three-way
+independent verification). **The H-12 mandate is a CONVERGENT DUAL**: both
+lanes rebuilt `scripts/a1-continue.py` within the hour — the Scherzo
+artifact governs (first landing), the Sonata draft folds as the
+converging trail (V-23 precedent). **The non-overlap contract**: Sonata
+owns `apps/fugue/**` + `docs/fugue*` + `benchmarks/sonata-round/**` + the
+engine/learning-loop augment surface (H-17, H-20, H-14); Scherzo owns
+`apps/bolero/**` + `docs/bolero*` + `benchmarks/scherzo-round/**` + the
+browser/ops augment surface (H-10 reactivation, H-16 build, H-18/H-19);
+shared files (this index, the registry, the ground truth, README,
+CHANGELOG, root package.json) are append-only +
+fetch-rebase-before-every-push. **Cross-machine verification duty
+assumed** (the V-14 role): Scherzo's S-1 receipt re-verified green on
+this lane's tree — `bolero:test` **9/0/50** ([V-4](../benchmarks/sonata-round/validation-log.md)).
+**Next: F-0** (the Fugue architecture plan through A2, read-only
+`--plan`).
+
 ## COMPLETED ROUND — the Rondo round (2026-11-06, OPENED by the eighteenth, CLOSED by the twenty-fifth lineage)
 
 The **twenty-fifth lineage** (the seventh resume, 2026-11-06 ~14:47 UTC —

@@ -1,0 +1,14 @@
+# The Sonata round — validation log
+
+> The round's V-ledger. Every meaningful event gets a row: description,
+> reproduction, class (prompt-brittleness · infra-flake · operator-procedure
+> · genuine-gap · receipt · upstream-change · operator-harness ·
+> infra-instability), disposition. Round-scoped numbering; Rondo's V-1..V-43
+> laws are inherited by reference (see the round log's resume instructions).
+
+| ID | Event (dated) | Class | Disposition |
+|---|---|---|---|
+| V-1 | **Background process mortality.** The first `agent:install` attempt was launched `nohup … &` and found dead at the next poll — log stops mid-[1/7], `node_modules` empty (2026-11-07, bring-up). Reproduced by construction: any directly-spawned background job dies when its Bash call returns; DETACHED supervisor children (the `agent:start` bridge/engine pair) survive across calls. | operator-harness | **CURED + LAW**: installs/one-shots run FOREGROUND (or under a daemonizer); every call that needs the stack opens with a bridge health probe and re-runs `agent:start` if down. Receipted in the round log's environment checkpoint. |
+| V-2 | **bun install-script tag 404.** `bun.sh/install` with a version arg builds the GitHub release URL with the bare tag (`…/download/1.4.3/bun-linux-x64.zip`) which 404s on this network; the correct asset tag is `bun-v1.4.3` (2026-11-07). | infra-flake | **CURED**: direct download of the `bun-v1.4.3` release zip → `/home/z/my-project/.bun/bin/bun` (1.4.3 verified). npm lane (`npm view bun@1.4.3`) confirms the version exists — fallback documented. |
+| V-3 | **Round-name availability sweep timeout.** The first name-availability `rg` sweep over the whole 368 MB tree hit the 120 s tool timeout (2026-11-07). | operator-procedure | **CURED**: sweeps restricted to `docs content apps` + the index files; **Sonata** verified unclaimed (0 hits). Law: name checks scope to doc dirs, never the full tree. |
+| V-4 | **The concurrent-lineage event (the V-42 class, tenth on record).** This lane's round-opening push was rejected: a parallel incarnation of the same directive had landed the **Scherzo round** (vehicle Bolero) with its Phase 0 + S-0 (PLAN, 20 turns) + S-1 (domain core, 729 lines, 21 turns) already on `main` (2026-11-07). Both lanes executed the H-12 mandate independently within the hour (the convergent dual, V-23 class). | upstream-change (concurrent lineage) | **RECONCILED per the ledger-arbiter law**: Scherzo governs the round opening; this lane runs as the NON-OVERLAPPING parallel engagement (Fugue: the engine/learning-loop surface vs Bolero's browser/ops; the non-overlap contract in the round log). The Scherzo a1-continue.py governs; this lane's draft preserved operator-side. **Cross-machine verification executed** (the V-14 role): Scherzo's S-1 `bolero:test` re-run green on this lane's tree — 9/0/50, matching its receipt exactly. |
