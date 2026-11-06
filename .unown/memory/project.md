@@ -1,17 +1,13 @@
 # Project Memory
 
-## Workflow
-- Verify the `smoke-resolve.ts` spike from §6.1 executes with exit code 0 and explicitly resolves to the `chromium-124` executable path
-- Run `bun test` for `apps/chaconne` from both the subdirectory and the project root to verify count parity between execution contexts
-
 ## Known pitfalls
+- When seeding or testing the Unown chaconne fixture, verify that a `#city` field is absent (fixture contains `#color` select and `#status` extract target) to avoid Step 3 failures.
 - In /home/z/my-project/Unown, the `apps/chaconne` test suite has 9 pre-existing failures from other test files that are unrelated to automation-spend.test.ts changes
-- Check the current state of scheduler.ts when debugging scheduling logic to ensure recent changes have been properly applied.
-- Always verify that test file imports are correctly applied after editing failures, as missed edits can cause downstream test failures.
-- In Unown, `ensureAutomationsSchema` must be called as the first statement in `beforeAll` in `pi-repo/packages/self-learning/test/automation-spend.test.ts` before any `DELETE FROM` statements to prevent automation spend test failures.
-- `chaconne-flow-cli.spec.ts` pins the B-20 CLI regression, and `chaconne-flow.spec.ts` covers the K-1 flow lane.
 
 ## Task playbooks
+- In /home/z/my-project/unown, the workflow begins by verifying the fixture server is up and inspecting the runner CLI and recipe format before executing tasks
+- When seeding a chaconne recipe with an `#token` field, configure the `fill` step with `intoFrame: "inner"` for #43-class fields.
+- For Unown recipe seeding, use `saveRecipe` to write to the data store for byte-consistency; A2 executor H-10 uses a fresh data directory in `/tmp`.
 - In /home/z/my-project/unown, gate task pair 1 is the e2e/chaconne-flow-cli.spec.ts spec using a recipe variant whose step-0 goto targets apps/chaconne/test/fixture files
 - The chaconne UI module contains specific sub-components: palette, recipe-editor, run-history, and artifact-viewer.
 
@@ -21,6 +17,8 @@
 - Remove unused variable declarations (e.g., `void seedStore;`) to keep builds clean.
 
 ## Facts
+- In /home/z/my-project/unown, the workflow involves starting the fixture server, verifying it is up, and writing a seeding script as part of the session process
+- To reconcile a diverged local HEAD containing only docs and memory changes in Unown, rebase local commits onto `origin/main`.
 - In /home/z/my-project/unown, C-8 design briefs cannot be fully derived from the allowed inputs on main because Coda and Ostinato do not use committed golden files or a regeneration story, leaving a boundary gap in the golden-file layout that a C-8 brief author must close
 - In /home/z/my-project/unown, a gate task set consists of three pairs keyed off the a2h8 residual findings on the C-6 lanes; docs/a1-augmentation-registry.md:253 notes that the skill's staging waits for C-2/C-6's actual runner lanes
 - Unown terminal sessions may conclude with status markers ENVELOPE_OK or WRAPPER_OK in addition to the standard UNOWN_OK and DISPATCH_OK
@@ -127,4 +125,4 @@
 - Stealth verification suite on bot.sannysoft.com: all 10 checks (webdriver, userAgent, platform, userAgentData, timezone, locale, screen, viewport, plugins, window.chrome) pass; 0 FAIL rows in Intoli tests. (Restored by hand 2026-11-01 — second occurrence of the dream-render-prunes-landing-quoted-lines class, issue #46; moved here to the durable lane.)
 - Parley password hashing: scrypt N=16384 r=8 p=1 (src/lib/parley/password.ts). Restored by hand 2026-10-29 after AutoDream reconciles twice erased the fact (upstream 79->66 render, then the F1/F2 bcrypt poison round). Never let a memory answer overwrite this without reading the source.
 
-<!-- unown: rendered 110/115 memories via Mem0 (backend: lexical) · 5 oldest pruned at render (cap 110; hard-won rules immune) at 2026-11-06T12:53:39.146Z -->
+<!-- unown: rendered 110/121 memories via Mem0 (backend: lexical) · 11 oldest pruned at render (cap 110; hard-won rules immune) at 2026-11-06T13:14:06.455Z -->
