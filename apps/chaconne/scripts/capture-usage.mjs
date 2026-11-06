@@ -20,13 +20,24 @@
  *   06-empty-boot-dark.png     — the empty state, dark scheme
  *   07-recipe-list-dark.png    — the recipe list, dark scheme
  *
- * THE SEEDS: the app's own localStorage document shapes from
- * `e2e/chaconne-a11y.spec.ts` (SEED_DATA — one recipe + one run,
- * PWA-grammatical content-addressed artifact names, the single-dot-ext
- * convention of the app lane; the runner's multi-dot extract-report
- * names stay in the disk store and never cross into the app lane, the
- * C-6 workaround convention). NO live network: the capture is a local
- * dev server + a local fixture URL inside the seed document.
+ * THE REAL-RUNNER SEEDS (the C-11 post-A2H-14 refresh): the seeded
+ * document is the RUNNER'S OWN on-disk record — the capture lane boots
+ * the app's dev server, runs the app's own recipe 1 (the dynamic.html
+ * demo: wait/assert-element/extract/screenshot — the C-2 fixture demo)
+ * through the REAL runner against the local fixtures (`bun
+ * apps/chaconne/runner/index.ts run 1 --base-url …` into a scratch
+ * data dir), then bridges that disk store's canonical document into
+ * the app lane's localStorage (the `io.importData` grammar — the SAME
+ * bytes the app's own "I" import would read). The stills therefore
+ * exercise the REAL artifact-name bridge that the seeded C-10
+ * convention kept latent: run-history and artifact-viewer render a
+ * runner-produced record whose artifact names pass the PWA domain's
+ * `assertData` (the V-41 defect's bridge, now proven live). The
+ * bridge is a `--seeded` flag (default): without it the lane seeds the
+ * e2e specs' own SEED_DATA shape (the C-10 pre-A2H-14 provenance, kept
+ * re-runnable for the byte-stable convention pin). NO live network:
+ * the capture is a local dev server + a local fixture URL inside the
+ * seed document.
  *
  * THE KEYBOARD-ONLY LAW: every navigation in this script is a
  * `page.keyboard` press (direct keys "1"/"2"/"a"/"A", arrows, Ctrl+K,
@@ -50,7 +61,7 @@
  * ≥ 1 PNG was written.
  */
 import { spawn } from "node:child_process";
-import { writeFileSync, mkdirSync, readdirSync } from "node:fs";
+import { writeFileSync, mkdirSync, readdirSync, rmSync, existsSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -139,6 +150,65 @@ const SEED_DATA = JSON.stringify({
   ],
 });
 
+/** The capture lane's seed mode: "seeded" (default — the C-10 e2e
+ * SEED_DATA shape, byte-stable) or "runner" (the C-11 refresh: the
+ * app's own recipe 1 run through the REAL runner, its disk store's
+ * canonical document bridged into the app lane — the V-41 fix's live
+ * proof). `--runner` selects the real lane. */
+const RUNNER = process.argv.includes("--runner");
+console.log(`[chaconne-capture] seed mode: ${RUNNER ? "REAL RUNNER (post-A2H-14)" : "seeded (C-10 default)"}`);
+
+/**
+ * Run the app's own recipe 1 through the REAL runner into a scratch
+ * data dir, then bridge the disk store's canonical document (the
+ * `io.importData` grammar — the bytes the app's import would read)
+ * into a seed string for the app lane. The disk store's shapes are
+ * the runner's own artifact names (content-addressed, single-token
+ * exts post-A2H-14 — the "json" report, the "log" run-log, the "png"
+ * capture, the "json" extract values); bridging through
+ * `loadAll()` + `JSON.stringify` produces EXACTLY the document the
+ * PWA domain's `assertData` accepts (the cross-host seam the C-6
+ * convention previously kept latent).
+ */
+async function bridgeRealRunner(base) {
+  const dataDir = resolve(REPO_ROOT, "download", "chaconne-capture-data");
+  rmSync(dataDir, { recursive: true, force: true });
+  mkdirSync(resolve(dataDir, "recipes"), { recursive: true });
+  // Recipe 1: the demo recipe — the dynamic.html fixture through the
+  // four step kinds that produce every artifact class (wait →
+  // assert-element → extract → screenshot), the app's own seeded
+  // recipe (SEED_DATA above) but pointed at the live server so the
+  // real browser lane can run it.
+  const recipe = {
+    id: 1,
+    name: "Demo: dynamic.html (the real-runner lane)",
+    version: 1,
+    steps: [
+      { id: 1, kind: "goto", selector: `${base}/test/fixtures/dynamic.html` },
+      { id: 2, kind: "wait", selector: "#pop", timeoutMs: 10_000 },
+      { id: 3, kind: "assert-element", selector: "#label", timeoutMs: 10_000 },
+      { id: 4, kind: "extract", selector: "#label", value: "data-attr" },
+      { id: 5, kind: "screenshot", selector: "body" },
+    ],
+  };
+  const store = await import("../../chaconne/runner/store.js");
+  const s = new store.ChaconneDiskStore(dataDir);
+  s.recover();
+  s.saveRecipe(recipe, JSON.stringify(recipe));
+  const { cmdRun } = await import("../../chaconne/runner/index.js");
+  const { run } = await cmdRun({ dataDir, recipeId: 1, fake: false, baseUrl: base });
+  if (run.status !== "ok") {
+    fail(`the real runner's run 1 is not ok (status=${run.status}) — the stills would bridge a failed record; refusing to capture`);
+  }
+  const doc = s.loadAll();
+  const seedStr = JSON.stringify(doc);
+  console.log(`[chaconne-capture] real runner: run ${run.id} ok, ${run.artifacts.length} artifacts bridged (the V-41 seam, live)`);
+  // Clean up the scratch data dir — it was a transient bridge artefact.
+  rmSync(dataDir, { recursive: true, force: true });
+  return seedStr;
+}
+
+
 /** A fresh context (no SW state, no localStorage) at the given scheme. */
 async function freshContext(browser, colorScheme) {
   const ctx = await browser.newContext({
@@ -180,13 +250,23 @@ try {
     await ctx.close();
   }
 
-  // 2-5. SEEDED DOCUMENT: recipe list → runs → artifacts → palette,
-  //      driven by the app's own direct keys (zero pointer events).
+  // 2-5. SEEDED DOCUMENT (the default C-10 lane — the e2e SEED_DATA
+  //      shape, byte-stable) OR the REAL RUNNER'S RECORD (the C-11
+  //      `--runner` flag: recipe 1 run against the live fixtures,
+  //      its disk store bridged into the app lane — the V-41 seam
+  //      proven live). Driven by the app's own direct keys (zero
+  //      pointer events).
   {
+    const seed = RUNNER ? await bridgeRealRunner(base) : SEED_DATA;
     const { ctx, page } = await freshContext(browser, "light");
-    seedPage(page, SEED_DATA);
+    seedPage(page, seed);
+    page.on("console", (m) => { if (m.type() === "error") console.warn(`[chaconne-capture] console error: ${m.text().slice(0, 200)}`); });
     await page.goto(base, { waitUntil: "domcontentloaded" });
-    await page.locator("#chaconne-recipe-list .chaconne-recipe-row").waitFor({ timeout: 30_000 });
+    // The runner-lane seed is a larger document (the real record + its
+    // artifacts); give the async module boot a 10 s head start, then the
+    // locator-wait enforces the real contract.
+    await page.waitForTimeout(RUNNER ? 10_000 : 0);
+    await page.locator("#chaconne-recipe-list .chaconne-recipe-row").waitFor({ state: "visible", timeout: 30_000 });
     await still(page, "02-recipe-list-light.png");
 
     // 3. RUN HISTORY (the "2" direct key → the runs route; ArrowDown
@@ -214,26 +294,33 @@ try {
   // 6-7. DARK SCHEME: the same two empty + list states under
   //      prefers-color-scheme: dark (the CSS's @media branch, the
   //      C-9 both-schemes lane extended to the capture lane).
+  const darkSeed = RUNNER ? await bridgeRealRunner(base) : SEED_DATA;
   for (const [name, seed] of [
     ["06-empty-boot-dark.png", null],
-    ["07-recipe-list-dark.png", SEED_DATA],
+    ["07-recipe-list-dark.png", darkSeed],
   ]) {
     const { ctx, page } = await freshContext(browser, "dark");
     if (seed) seedPage(page, seed);
     await page.goto(base, { waitUntil: "domcontentloaded" });
+    if (seed && RUNNER) await page.waitForTimeout(10_000);
     await page.locator("#chaconne-recipe-list .chaconne-recipe-row, .chaconne-state").first().waitFor({ timeout: 30_000 });
     await still(page, name);
     await ctx.close();
   }
 
   // ─── The sidecar receipt (provenance lands next to the media) ───
+  const laneName = RUNNER
+    ? "the C-11 post-A2H-14 REAL-RUNNER refresh (the round's last ticket, driving the app's own recipe 1 through the live runner and bridging its disk store into the app lane — the V-41 seam proven live; the C-10 seeded default remains re-runnable without the flag)"
+    : "C-10, the product-surface lane; the Ostinato \`apps/ostinato/scripts/capture-usage.mjs\` precedent ported";
   const provenance = `# Chaconne usage stills — provenance
 
-- Captured: ${new Date().toISOString()} by \`apps/chaconne/scripts/capture-usage.mjs\` (C-10, the product-surface lane; the Ostinato \`apps/ostinato/scripts/capture-usage.mjs\` precedent ported).
+- Captured: ${new Date().toISOString()} by \`apps/chaconne/scripts/capture-usage.mjs\` (${laneName}).
 - Server: \`bun apps/chaconne/serve.mjs\` on scratch port ${PORT} (the real transpiling dev server; 4014 is the app's reserved dev port, so the capture lane takes 4015). NO live network — the seeded document's fixture URL is local (127.0.0.1:4014), and the capture drives the app shell only.
 - Browser: headless Chromium (the e2e lane's own install, repo-root \`@playwright/test\`), ONE FRESH context per still — no service worker state, no IndexedDB, no localStorage leftovers.
 - Viewport: ${VIEWPORT.width}x${VIEWPORT.height}, deviceScaleFactor 2, full-page screenshots.
-- Seeds: the e2e specs' own localStorage document shape (\`e2e/chaconne-a11y.spec.ts\` SEED_DATA, verbatim — one recipe + one run, the PWA-grammatical content-addressed artifact names; the runner's multi-dot extract-report names stay in the disk store and never cross into the app lane, the C-6 workaround convention).
+- Seeds: ${RUNNER
+    ? "the REAL RUNNER'S OWN record — recipe 1 (the dynamic.html demo: wait/assert-element/extract/screenshot) executed through \`bun apps/chaconne/runner/index.ts run 1 --base-url …\` into a scratch data dir, its disk store's canonical document (\`loadAll()\` + \`JSON.stringify\`) bridged into the app lane's localStorage — the V-41 post-A2H-14 proof that runner-produced artifact names (single-token exts: \`json\`, \`log\`, \`png\`) pass the PWA domain's \`assertData\`. The stills therefore exercise the REAL artifact-name bridge that the seeded C-10 convention kept latent."
+    : "the e2e specs' own localStorage document shape (\`e2e/chaconne-a11y.spec.ts\` SEED_DATA, verbatim — one recipe + one run, the PWA-grammatical content-addressed artifact names; the runner's multi-dot extract-report names stay in the disk store and never cross into the app lane, the C-6 workaround convention)."}
 - KEYBOARD-ONLY LAW: every navigation is a \`page.keyboard\` press — the app's own direct keys ("1"/"2"/"a"/"A" via the palette.ts COMMAND_KEY_DISPATCH, arrows for run-row focus, Ctrl+K for the palette). Zero pointer events, no \`.fill()\`.
 - Schemes: light + dark via the context's colorScheme (the CSS's @media (prefers-color-scheme) branch, the C-9 both-schemes lane).
 - 01-empty-boot-light.png — the honest empty state (".chaconne-state" = "No recipes yet", the never-blank law).

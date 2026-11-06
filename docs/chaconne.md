@@ -27,21 +27,21 @@ The app directory is a flat, self-contained boundary; the five Playwright specs 
 
 ## Run it
 
-The app's dev/test server (the shape C-11's root `package.json` entry encodes — until then, run it direct):
-
 ```sh
-bun apps/chaconne/serve.mjs
+bun run chaconne:dev    # = bun apps/chaconne/serve.mjs (the root package.json entry, C-11)
 ```
 
-It boots at **http://127.0.0.1:4014** (override the port with `CHACONNE_PORT`). It is a transpiling static server — the Coda/Ostinato pattern: plain files plus on-the-fly `.ts` transpile via `Bun.Transpiler` (bun-only, which is why the script is `.mjs` run under `bun`, not a node tool), the `.js`→`.ts` swap added. No import map, no vendored libraries — the zero-dep law means there is nothing to wire. No build step, no bundler: the browser loads `.ts` modules directly through the transpiler. The runner is separate: `bun apps/chaconne/runner/index.ts run <recipeId>` (data dir defaults to `apps/chaconne/data/`, gitignored).
+It boots at **http://127.0.0.1:4014** (override the port with `CHACONNE_PORT`). It is a transpiling static server — the Coda/Ostinato pattern: plain files plus on-the-fly `.ts` transpile via `Bun.Transpiler` (bun-only, which is why the script is `.mjs` run under `bun`, not a node tool), the `.js`→`.ts` swap added. No import map, no vendored libraries — the zero-dep law means there is nothing to wire. No build step, no bundler: the browser loads `.ts` modules directly through the transpiler. The runner is separate: `bun apps/chaconne/runner/index.ts run <recipeId> [--data-dir <dir>] [--base-url <u>] [--fake]` (data dir defaults to `apps/chaconne/data/`, gitignored; the runner resolves `playwright` from the repo root's `node_modules`, the PLAN §4 walk-up assumption — a resolution break fails loudly, not silently).
 
 ## Test it
 
 | Lane | Command | What it is |
 |---|---|---|
-| **Lane A** (the purity enforcement lane) | `cd apps/chaconne && bun test` | 118 tests, run from the app directory where no `bunfig.toml` preload applies (bun's config resolution is cwd-bounded and no `apps/chaconne/bunfig.toml` exists) — the happy-dom DOM globals are **absent**, so the domain's DOM-free boundary is enforced against a genuinely DOM-free runtime; includes the runner's FakePageAdapter unit lane (every step kind, every error taxonomy entry, the caps, the committed-prefix law, the misfire policy — deterministic, no browser) |
-| **Lane B** (the compatibility lane) | `bun test apps/chaconne` | the same files from the repo root, where the root `bunfig.toml`'s `[test]` preload (happy-dom) **is** active — the DOM-guarded UI pins (the el-kin renders) run here; 156 tests (the 118 minus the DOM-absent-enforced skips, plus the DOM-guarded UI test files the happy-dom lane un-skip) |
-| **e2e battery** (isolated, Chromium) | `bunx playwright test -c playwright.chaconne.config.ts` | 20 specs across five files: **K-1** the zero-mouse flow (compose via the palette → run against a fixture via the real runner → artifacts, keyboard events only), **A-1** axe `wcag2a/2aa` in BOTH schemes + the tab-order + Esc focus-return pins (the C-9 7-block battery: the dialog contract on editor + palette, the 3-viewport resize lane, the selection semantics, the honest loading state), **O-1 + R-1** the resilience lanes (kill no-phantom + orphaned-tmp recovery, corrupt-store quarantine, offline + 0-storm), **I-1** the import/export battery (the byte-stable golden, the refused future-schema dry-run report, the corrupt-import twin), and the **runner CLI** lane |
+| **Lane A** (the purity enforcement lane) | `cd apps/chaconne && bun test` — or `bun run chaconne:test` from the repo root | 119 tests, run from the app directory where no `bunfig.toml` preload applies (bun's config resolution is cwd-bounded and no `apps/chaconne/bunfig.toml` exists) — the happy-dom DOM globals are **absent**, so the domain's DOM-free boundary is enforced against a genuinely DOM-free runtime; includes the runner's FakePageAdapter unit lane (every step kind, every error taxonomy entry, the caps, the committed-prefix law, the misfire policy — deterministic, no browser) |
+| **Lane B** (the compatibility lane) | `bun test apps/chaconne` from the repo root | the same files from the repo root, where the root `bunfig.toml`'s `[test]` preload (happy-dom) **is** active — the DOM-guarded UI pins (the el-kin renders) run here; 157 tests |
+| **e2e battery** (isolated, Chromium) | `bun run chaconne:e2e` = `bunx playwright test -c playwright.chaconne.config.ts` | 20 specs across five files: **K-1** the zero-mouse flow (compose via the palette → run against a fixture via the real runner → artifacts, keyboard events only), **A-1** axe `wcag2a/2aa` in BOTH schemes + the tab-order + Esc focus-return pins, **O-1 + R-1** the resilience lanes (kill no-phantom + orphaned-tmp recovery, corrupt-store quarantine, offline + 0-storm), **I-1** the import/export battery (the byte-stable golden, the refused future-schema dry-run report, the corrupt-import twin), and the **runner CLI** lane |
+
+The **precache derivation proof** (`bun apps/chaconne/scripts/verify-precache.ts`) is a sub-second fs walk that parses `PRECACHE_LIST` out of `sw.js` and resolves every entry to a real on-disk file — the Ostinato O-5 pattern; it is a dedicated CI step in the `chaconne` job and re-runs locally on demand.
 
 The chaconne specs are self-skip-guarded (`test.skip(!process.env.CHACONNE_E2E, …)` at the top of each file; the marker is armed inside `playwright.chaconne.config.ts` only — the root `playwright.config.ts` never does). Under the **root** Playwright config they are collected but skipped at run-time, so the landing lane's `bunx playwright test` stays green and untouched by construction. The round's operator-gate numbers as of C-9: the e2e battery **20/20 × 3 consecutive runs including the CI=1 cold boot**; the round's full record is in [docs/rondo-round-session.md](rondo-round-session.md).
 
@@ -67,7 +67,15 @@ The service worker (`apps/chaconne/sw.js`, a classic non-module worker at the ap
 
 ## The CI chaconne job
 
-**Lands in C-11** (the CI gate + the root `package.json` `chaconne:dev`/`chaconne:test`/`chaconne:e2e` entries + the runbook + the honest-scope statement) — C-10 lands the product surface (this page, the landing band, the capture lane) and leaves the gate entry for the ticket that asserts everything above is green. The gate ledger entry is [docs/testing-strategy.md](testing-strategy.md) §6 — the Coda lane is gate 23, and the Ostinato lane rides the Ostinato round's own ledger entry (this page does not renumber the ledger; the next free gate number is the CI gate C-11 lands).
+One dedicated `chaconne` job in `.github/workflows/ci.yml` (the gate ledger entry: [docs/testing-strategy.md](testing-strategy.md) §6), mirroring the Ostinato job's shape with Chaconne's own counts and honest-scope comment. It is **Chromium-desktop-only** — the PRD's own platform scope statement; Safari, Firefox, and mobile are untested, not "cross-platform". Five proofs in the one job:
+
+1. **Frozen lockfile + the zero-dep invariant** — `bun install --frozen-lockfile` followed by a lockfile-drift assert (`sha256sum bun.lock` against `git show HEAD:bun.lock`). `apps/chaconne/package.json` declares no dependency fields at all, so any Chaconne dep pulled in at the root moves the hash and reds the job. (The runner's walk-up resolution of the root `node_modules/playwright` is a feature of this invariant, not a violation: it is the existing root install, not a new dep.)
+2. **Lane A** (`cd apps/chaconne && bun test` — 119 tests) and **Lane B** (`bun test apps/chaconne` — 157 tests) — the two-lane purity/compatibility pair, milliseconds each.
+3. **The precache derivation proof** (`bun apps/chaconne/scripts/verify-precache.ts`) — a dedicated CI step; the offline lane's static half, fails loudly on drift.
+4. **The isolated e2e battery** (`bunx playwright test -c playwright.chaconne.config.ts` — 20 specs across five files) with its own Chromium install and its own artifact (`playwright-report-chaconne`); the `CHACONNE_E2E` marker keeps the root landing lane untouched by construction.
+5. **The fixture honesty** — every e2e spec runs against LOCAL fixture pages under `apps/chaconne/test/fixtures/`; no live-network test ever runs in CI (the PRD's P0 #5 law).
+
+The round's full record is in [docs/rondo-round-session.md](rondo-round-session.md); the app's own contracts live in `apps/chaconne/AGENTS.md` and its PRD in [docs/chaconne-prd.md](chaconne-prd.md).
 
 ## The landing band's stills
 

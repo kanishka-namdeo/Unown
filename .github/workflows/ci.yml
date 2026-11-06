@@ -961,6 +961,84 @@ jobs:
           if-no-files-found: ignore
           retention-days: 7
 
+  chaconne:
+    name: Chaconne app (unit + e2e + PWA)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
+        with:
+          bun-version: "1.4.3"
+      - name: Install dependencies (frozen lockfile)
+        # Chaconne is the repo's THIRD zero-dependency app (apps/chaconne/
+        # package.json declares NO dependencies/devDependencies) — the same
+        # frozen-lockfile + hash-assert contract the coda + ostinato jobs
+        # pin for Coda and Ostinato.
+        run: bun install --frozen-lockfile
+      - name: Lockfile unchanged assert (Chaconne's zero-dep invariant)
+        shell: bash
+        run: |
+          set -euo pipefail
+          expected=$(git show HEAD:bun.lock | sha256sum | cut -d' ' -f1)
+          actual=$(sha256sum bun.lock | cut -d' ' -f1)
+          echo "bun.lock: expected=$expected actual=$actual"
+          if [ "$expected" != "$actual" ]; then
+            echo "::error::bun.lock drifted after a --frozen-lockfile install: Chaconne added a dependency? (apps/chaconne must stay zero-dep; record a new root dep in the lockfile instead)"
+            exit 1
+          fi
+          echo "lockfile byte-identical: Chaconne's zero-dep invariant holds"
+      - name: Chaconne unit tests — Lane A (app-dir, DOM-free enforcement)
+        # `cd apps/chaconne && bun test`: no bunfig preload applies (bun's
+        # config resolution is cwd-bounded — no apps/chaconne/bunfig.toml
+        # exists), so the happy-dom DOM globals are ABSENT and the
+        # domain-purity boundary (src/domain/boundary.test.ts + the eslint
+        # no-restricted-globals scope) is enforced against a genuinely
+        # DOM-free runtime. 119 tests (incl. the runner's FakePageAdapter
+        # unit lane: every step kind, every error taxonomy entry, the
+        # caps, the committed-prefix law, the misfire policy — deterministic,
+        # no browser).
+        run: cd apps/chaconne && bun test
+      - name: Chaconne unit tests — Lane B (root form, preload active, masked by design)
+        # `bun test apps/chaconne` from the repo root: the root bunfig.toml's
+        # happy-dom preload IS active here, so DOM-globally-dependent domain
+        # code would be MASKED — which is why Lane A is the enforcement lane
+        # and this lane is the compatibility lane (the form a developer will
+        # actually type). 157 tests.
+        run: bun test apps/chaconne
+      - name: Precache derivation proof (verify-precache)
+        # The offline lane's static half: every PRECACHE_LIST URL in sw.js
+        # must map to a real on-disk file (the Ostinato O-5 pattern; the
+        # script's three-way ladder — exact file → + ".ts" → the .js→.ts
+        # swap — makes the proof a sub-second fs walk that fails loudly on
+        # drift).
+        run: bun apps/chaconne/scripts/verify-precache.ts
+      - name: Chromium for Playwright
+        run: bunx playwright install chromium --with-deps
+      - name: "Chaconne e2e battery (isolated, self-skip-guarded, Chromium-desktop-only)"
+        # The round's P0 honesty: Chromium-desktop-only PWA + runner scope.
+        # The 20-spec battery (K-1 zero-mouse flow, A-1 axe wcag2a/2aa
+        # both schemes + the tab-order + Esc focus-return pins, O-1
+        # offline lanes, R-1 crash-resume + corrupt-store, I-1 io,
+        # runner CLI) runs against LOCAL fixture pages — no live-network
+        # test ever runs in CI. playwright.chaconne.config.ts boots the
+        # app's own transpiling dev server (bun apps/chaconne/serve.mjs)
+        # as its webServer on 127.0.0.1:4014; the CHACONNE_E2E marker
+        # arms in the chaconne config ONLY, so the specs self-skip under
+        # the root landing lane — it stays green and untouched by
+        # construction.
+        run: bunx playwright test -c playwright.chaconne.config.ts
+      - name: Upload Chaconne report + traces
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: playwright-report-chaconne
+          path: |
+            download/playwright-report-chaconne
+            download/test-results-chaconne
+          if-no-files-found: ignore
+          retention-days: 7
+
 # NOT in CI yet, on purpose:
 # - Lighthouse (testing-strategy.md §12 criterion 6's second half) — needs a
 #   LHCI collect run against the same standalone + mock-engine pair the e2e

@@ -460,10 +460,12 @@ The full story — the keyboard-first surface (every action reachable, crash-saf
 
 ## Chaconne — the keyboard-first browser-recipe runner
 
-The repo's third self-contained user app: **Chaconne**, a keyboard-first, self-hosted browser-recipe runner PWA at `apps/chaconne/` — compose a flow (goto, click, fill, select, wait, assert, extract, screenshot) and it repeats on demand or on a schedule, capturing content-addressed artifacts and an honest run record every time. Vanilla TypeScript, **zero package dependencies** (the app's own `package.json` declares none; the one deliberate exception is the runner, which imports the repo root's Playwright — [the PLAN §4 ruling](apps/chaconne/PLAN.md)); all data stays in the browser (localStorage with atomic writes, a crash-safe committed-prefix run record) while the runner persists to disk JSON; every test lane runs against **local fixture pages — no live-network test in CI**; the round's honest scope is Chromium-desktop-only. The commands (the `chaconne:*` root entries land in C-11 — until then, the direct forms):
+The repo's third self-contained user app: **Chaconne**, a keyboard-first, self-hosted browser-recipe runner PWA at `apps/chaconne/` — compose a flow (goto, click, fill, select, wait, assert, extract, screenshot) and it repeats on demand or on a schedule, capturing content-addressed artifacts and an honest run record every time. Vanilla TypeScript, **zero package dependencies** (the app's own `package.json` declares none; the one deliberate exception is the runner, which imports the repo root's Playwright — [the PLAN §4 ruling](apps/chaconne/PLAN.md)); all data stays in the browser (localStorage with atomic writes, a crash-safe committed-prefix run record) while the runner persists to disk JSON; every test lane runs against **local fixture pages — no live-network test in CI**; the round's honest scope is Chromium-desktop-only. The commands (`chaconne:*` root entries, C-11):
 
 ```sh
-bun apps/chaconne/serve.mjs             # transpiling static server → http://127.0.0.1:4014 (CHACONNE_PORT to override)
+bun run chaconne:dev    # transpiling static server → http://127.0.0.1:4014 (CHACONNE_PORT to override)
+bun run chaconne:test   # Lane A (app-dir, DOM-free enforcement) + the runner's FakePageAdapter lane
+bun run chaconne:e2e    # the 20-spec isolated e2e battery (Chromium-desktop-only, local fixtures)
 bun apps/chaconne/runner/index.ts run <id>   # the runner CLI: execute a recipe against local fixtures
 ```
 
