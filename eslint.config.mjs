@@ -28,6 +28,19 @@ const __dirname = dirname(__filename);
 const CODA_DOMAIN = "apps/coda/src/domain/*.ts"
 const CODA_DOMAIN_TESTS = "apps/coda/src/domain/*.test.ts"
 
+// Chaconne domain-purity gate (C-1, PLAN §3/§4 — the Ostinato/Coda
+// precedent extended to the fourth app): the domain is DOM-free AND
+// Node-free; the runner (C-2+) lives at apps/chaconne/runner/ which is
+// deliberately OUTSIDE this scope (the named exception, PLAN §4
+// ruling (a) — it imports the repo-root playwright and fs on purpose).
+//   1. chaconneDomainTestConfig (*.test.ts) — co-located tests may mock
+//      DOM globals (Lane B surface) but NOT Node globals.
+//   2. chaconneDomainConfig (*.ts) — the strict rule; boundary.test.ts
+//      is excluded by the test glob: it is the scanner itself and
+//      legitimately imports node:fs/promises + bun:test.
+const CHACONNE_DOMAIN = "apps/chaconne/src/domain/*.ts"
+const CHACONNE_DOMAIN_TESTS = "apps/chaconne/src/domain/*.test.ts"
+
 const DOM_GLOBALS = [
   "document", "window", "location", "navigator", "history",
   "indexedDB", "localStorage", "sessionStorage", "caches",
@@ -61,6 +74,32 @@ const codaDomainConfig = {
       ...restricted(
         [...DOM_GLOBALS, ...NODE_GLOBALS],
         "apps/coda/src/domain/** must stay DOM/Node-free; the import side of the boundary is enforced by boundary.test.ts",
+      ),
+    ],
+  },
+}
+
+const chaconneDomainTestConfig = {
+  files: [CHACONNE_DOMAIN_TESTS],
+  rules: {
+    "no-restricted-globals": [
+      "error",
+      ...restricted(
+        [...DOM_GLOBALS, ...NODE_GLOBALS],
+        "apps/chaconne/src/domain/*.test.ts may mock DOM globals (the unit-under-test surface) but must not reference Node globals (the domain stays Node-free on both bun lanes)",
+      ),
+    ],
+  },
+}
+
+const chaconneDomainConfig = {
+  files: [CHACONNE_DOMAIN],
+  rules: {
+    "no-restricted-globals": [
+      "error",
+      ...restricted(
+        [...DOM_GLOBALS, ...NODE_GLOBALS],
+        "apps/chaconne/src/domain/** must stay DOM/Node-free; the import side of the boundary is enforced by boundary.test.ts (the runner at apps/chaconne/runner/ is the PLAN §4 named exception and stays out of scope)",
       ),
     ],
   },
@@ -110,6 +149,8 @@ const eslintConfig = [
   },
   codaDomainConfig,
   codaDomainTestConfig,
+  chaconneDomainConfig,
+  chaconneDomainTestConfig,
   {
     ignores: ["node_modules/**", ".next/**", ".vercel/**", "out/**", "build/**", "next-env.d.ts", "examples/**", "skills", "pi-repo/**", "mini-services/**", "data/**", "download/**", "upload/**", "tests/**", ".zscripts/**", "src/generated/**", "benchmarks/**", "scripts/vendor/**", "scripts/tui-capture/**"],
   },

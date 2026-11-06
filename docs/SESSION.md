@@ -38,14 +38,18 @@ multi-matched; a 13-line `afterAll` reset fixes it — the battery
 **2258/0** restored, twice by A2 + once independently by the operator;
 the parallel lineage's 24-turn shard-bisect forensics folded as the
 converging trail; receipt `benchmarks/rondo-round/receipts/a2h9.md`).
-**Next: C-1 (the Chaconne domain core — the first code ticket, building
-against the C-0 plan), then the C-2..C-11 drive queue.** The nineteenth
-lineage resumed 2026-11-06: fresh clone @ `1e4e840b`, the V-2 recycle
-taxes cured one-pass (bun 1.4.3 pin, fd, venv, install 7/7, Agnes `.env`,
-`.a1/` operator tools rebuilt as durable scripts, PAT to the credential
-store), stack/doctor/engine canaries green, and the A2H-9 cure re-verified
-on the fresh tree (unit **2258/0/161**, 159 s, first run) — C-1 dispatched
-next.
+**C-1 CLOSED 2026-11-06** (the nineteenth lineage — the Chaconne domain
+core: 1,367 lines through A2 in 27 turns / 5 dispatch rounds; the operator
+gate re-ran every lane — Lane A/B 31/0, root battery **2289/0/166**
+(2258 standing + 31 new), typecheck 0, lint 0/143 — and proved the
+boundary pin bites with a live DOM-glob injection; four deviations
+reviewed and accepted; the V-8 preamble-stop and V-9 cap-abort taxonomy
+logged; receipt `benchmarks/rondo-round/receipts/c1.md`). The nineteenth
+lineage's bring-up: fresh clone @ `1e4e840b`, V-2 recycle taxes cured
+one-pass (bun 1.4.3 pin, fd, venv, install 7/7, Agnes `.env`, `.a1/`
+operator tools rebuilt, PAT to the credential store), canaries green,
+A2H-9 cure re-verified 2258/0 on the fresh tree. **Next: C-2 (the runner
+v1), then the C-3..C-11 drive queue.**
 
 The **twentieth lineage** (a PARALLEL resume — the V-9 dual-incarnation
 event: the nineteenth's checkpoint `6885f2f3` landed first and governs;

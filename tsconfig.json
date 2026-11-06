@@ -37,6 +37,7 @@
     "e2e/**/*.ts",
     "apps/coda/**/*.ts",
     "apps/ostinato/**/*.ts",
+    "apps/chaconne/**/*.ts",
     ".next/types/**/*.ts",
     ".next/dev/types/**/*.ts"
   ],

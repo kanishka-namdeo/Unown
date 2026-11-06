@@ -1,0 +1,7 @@
+{
+  "name": "@unown/chaconne",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Keyboard-first, offline-first browser-recipe runner PWA (vanilla TS, zero dependencies)."
+}
