@@ -229,6 +229,8 @@ clone `/home/z/my-project/Unown`, this reconciliation's author), 2026-11-06:
 | V-11 | The C-1 opening dispatch ended `subtype:"success"`, `capped:false`, after ONE turn with the 7-token result "I'll start with the pref" — the model emitted an intent-to-act preamble as its complete reply, zero tool calls (2026-11-06, session `01a1af41…` round 1) | prompt-brittleness (model-behavior class — agnes-3.0-flash preamble-stop; NOT a product defect) | Cure: a firm continuation ("do not announce intent… execute… BLOCKED is acceptable; a preamble is not") restarted the session into normal tool use. Runbook law: the operator gate reads the RESULT TEXT on every envelope — `success` + short text + no file writes = preamble-stop, re-dispatch, don't re-brief |
 | V-12 | The C-1 continuation that hit its cap MID-TOOL-STREAM surfaced `subtype:"error_during_execution"` with an EMPTY result + `capped:true` (vs the message-boundary cap's `success` + `capped:true` + partial text) — the cap-abort taxonomy depends on WHERE the Nth turn start lands (2026-11-06, rounds 2-4) | operator-harness (envelope taxonomy — a §8 measurement note, not a product defect; the CLI's documented contract only names capped-success) | Cure: none needed beyond the standing law — read `capped` FIRST; if true, the subtype is unreliable and the session simply continues with a raised cap (V-5's `--max-turns <prior_total + budget>`). Logged for the benchmark report's envelope-fidelity row |
 | V-13 | The nineteenth's C-1 LANDING reconciled against the V-10 handoff ruling: the closure commit (session `01a1af41…`, 27 turns / 5 dispatch rounds, the tree + receipt `benchmarks/rondo-round/receipts/c1.md` on the nineteenth's clone) reached `main` as the FIRST C-1 evidence — the twenty-first's armed dispatch (window expiry 05:35 UTC) stands down per the per-chunk ledger-arbiter law; if its chunks land later, they reconcile against this closure at its next fetch | upstream-change (the parallel-lineage class, now at the LANDING boundary — the third such event this round) | First landing governs: C-1 is CLOSED by the nineteenth's evidence (the operator gate re-ran every lane on the landing tree — Lane A/B 31/0, root battery 2289/0/166, typecheck 0, lint 0/143 — and proved the boundary pin bites via live DOM-glob injection). The twentieth's/twenty-first's bring-up receipts stand as independent corroboration of the baseline. All evidence sets retained |
+| V-14 | The twenty-first's post-landing verification of C-1 (2026-11-06, 05:40 UTC, the H-2 tree-verify law applied to a PARALLEL lineage's landing — the first cross-machine operator re-verification of the round): Lane A 31/0/5 exit 0; Lane B 31/0/5 exit 0; root battery **2289/0/166** (159.3 s); typecheck exit 0; lint 0 errors — every number matches the nineteenth's operator-gate tally on a fourth independent tree | receipt | The C-1 closure is now quadruply verified (A2's run + the nineteenth's operator gate + the C-1 landing's CI-green check + this lane). The C-2 claim follows on the same tree (the queue row + the standing brief below); the twenty-first dispatches after this claim-push — the twentieth's A2H-10 lane is untouched (no overlap: engine vs app dirs) |
+
 ## Bug register
 
 User/operator-visible findings of this round (the B register continues the
@@ -289,7 +291,7 @@ folded into the receipt); the next free bug id is **B-18**.
 | A2H-9 | The encore Finale unit-battery isolation fix: the battery's one near-deterministic fail — `Finale — the program's success question + live answer (plan §5.7) > renders the success question as an h2 + blockquote` (`encore.test.tsx:817`, a `getByRole("heading", { level: 2 })` query) — passes standalone 55/0 but fails in-battery (~6/8 runs across both lineages — order/timing-dependent; still fails under `--max-concurrency=1`; every two-file pair green); root-cause the cross-file pollution and fix it at the polluting layer, assertions unweakened | `bun run test:unit` exits 0 twice consecutive (2258/0); `bun test src/components/encore/__tests__/encore.test.tsx` stays 55/0 standalone; the failing test's h2 + blockquote assertions NOT weakened | **CLOSED 2026-11-06** — a CONVERGENT DUAL closure: this lineage's 8 A2 chunks across 2 sessions (session `01a1ad6e…` chunks 1–4, then the fresh-session extension `01a1ad98…` chunks 5–8, the last a 16-turn closing chunk by operator ruling — the 8-turn cap mis-fit for battery-verification tickets, a pre-split lesson); the root cause: **`bun test src` is a substring filter** — the battery's 161 files include 16 `apps/*/src` test files every green subset missed; the polluter `apps/ostinato/src/ui/settings-modal.test.ts` (the R-2 landing) left `<h2>Deck settings</h2>` in the shared one-process document → the encore `getByRole` multi-matched (the order-dependence the parallel lineage measured at ~6/8 is the mechanism's signature: the pollution needs settings-modal to run before encore in the walk, and bun's file-discovery order varies); the fix: a 13-line `afterAll` body-reset in the polluting file (the encore file byte-identical, product code untouched); A2's verifies: the pair 60/0 (pre-fix 59/1), battery **2258/0 ×2 consecutive** (157.6 s / 157.7 s), encore standalone 55/0, ostinato Lane A 119/2-skip/0; the operator gate re-verified independently (battery 2258/0 exit 0, 159.6 s) + tree-verified the one-file scope; the substring-filter blind spot was the OPERATOR's derivation handed to A2 in the closing brief (the §3.7 brief-adaptation lane, receipted); the PARALLEL lineage's independent forensics (24 turns, 3 chunks: full-suite-only, `--max-concurrency=1` still red, all pairs green — the shard-bisect lane) stand as the converging pre-close investigation, folded into [the V-4 dossier](../benchmarks/rondo-round/validation-log.md); receipt [a2h9.md](../benchmarks/rondo-round/receipts/a2h9.md) tree-verified (one file, +13/-1) |
 | C-0 | The architecture plan: the storage/runner/UI decomposition, the fixture-page test strategy, the dependency-law ruling for the runner's playwright import — a read-only `--plan` run with a scored plan file | The plan gate's own score + the operator's review against the PRD's P0 constraints | **CLOSED 2026-11-06** — 2 chunks, 11 turns (8 recon + 3 write), fresh session `01a1ad6d…`; `apps/chaconne/PLAN.md` (489 lines); the operator gate tree-verified (V-6). The parallel lineage's re-queue of C-0 behind A2H-9 is superseded by this closure (V-7's reconciliation) — both rulings stand: A2H-9 closed independently on the same clock |
 | C-1 | The domain core: recipe/step/run types, validation, canonical JSON, atomic store | Lane A unit battery (bun test in `apps/chaconne/`), tsc, lint | **CLOSED 2026-11-06** — the nineteenth lineage; session `01a1af41…`, 27 turns / 5 dispatch rounds (the preamble-stop V-11 + the capped continuations V-12 in the ledger; the V-13 landing reconciliation against the V-10 handoff ruling); 1,367 lines: types/ids/invariants/model/io/storage + co-located tests + the boundary scanner + the localStorage adapter + the 7-line zero-dep package.json + eslint chaconne scoping + the tsconfig include (PLAN §4's own assignment); the operator gate independently re-ran every lane (Lane A 31/0, Lane B 31/0, root battery **2289/0/166** = 2258 standing + 31 new, typecheck 0, lint 0/143 standing) and PROVED the boundary pin bites (live DOM-glob injection → 1 fail → restore → green); four deviations reviewed and accepted (receipt [c1.md](../benchmarks/rondo-round/receipts/c1.md)) |
-| C-2 | The runner v1: goto/click/fill/select/wait/assert/extract/screenshot against LOCAL fixture pages, honest error taxonomy, run records | Runner unit lane with a fake page adapter + one real-browser smoke against a fixture | QUEUED |
+| C-2 | The runner v1: goto/click/fill/select/wait/assert/extract/screenshot against LOCAL fixture pages, honest error taxonomy, run records | Runner unit lane with a fake page adapter + one real-browser smoke against a fixture | **ACTIVE 2026-11-06 (the twenty-first lineage — claimed before dispatch, the push-the-claim-first law; the C-2 standing brief below)** — the twentieth works A2H-10 (the B-18 fix), no lane overlap |
 | C-3 | The web app shell: recipe list/create/edit, run history, artifact viewer — keyboard-first, zero-dep, palette, empty/loading/error states | Lane A/B unit + the e2e happy path | QUEUED |
 | C-4 | The recurring loop: schedules (interval/one-shot), misfire policy, run history | Unit battery on an injected clock (the Ostinato law) + e2e | QUEUED |
 | C-5 | Assertions + artifacts: value checks, screenshot capture with pinned hashes, extraction report | Deterministic fixture battery; artifact sha256 pins | QUEUED |
@@ -435,6 +437,114 @@ ACCEPTANCE: (1) cd apps/chaconne && bun test — Lane A green, 0 fail;
   the version-bump law, committedPrefix bound, the artifact-name
   grammar, integer-id allocation; (7) boundary.test.ts green in BOTH
   lanes (the import-graph pin).
+```
+
+The C-2 runner ticket — the STANDING BRIEF (authored by the
+twenty-first lineage against the PLAN §1/§3/§4/§6.1; fresh session,
+the prompt-economy header, stdin guarded via the a1-dispatch helper,
+`--output-format json` envelope, ≤4 chunks × ≤8 turns — a closing
+verify chunk may run 16 by the A2H-9 pre-split precedent; the claim
+pushed BEFORE dispatch per the ledger-arbiter law):
+
+```
+ROLE: A2 executor — C-2, the Chaconne runner v1: the execution engine
+  that turns a C-1 recipe into a run record against LOCAL fixture
+  pages, building strictly against apps/chaconne/PLAN.md.
+ALLOWED_INPUTS: apps/chaconne/PLAN.md (the governing plan — §1 the
+  runner tree, §3 the fixture set + the fake-adapter strategy, §4 the
+  dependency ruling + the exact import mechanism, §6.1 the spike),
+  docs/chaconne-prd.md, apps/chaconne/src/** (C-1's landed domain —
+  IMPORT freely: types, model, invariants, io; treat as CLOSED: no
+  edits — a discovered gap is an open question in the receipt, never
+  a silent change), apps/ostinato/** + apps/coda/** (read-only: house
+  patterns), the repo root's node_modules/playwright (the import
+  target — resolution by bare specifier per PLAN §4).
+FORBIDDEN_INPUTS: every write outside apps/chaconne/ EXCEPT the
+  receipt at .unown/receipts/c2.md; no src/ui/ (C-3), no
+  index.html/sw.js/serve.mjs/public/ (C-3/C-6/C-7), no
+  playwright.chaconne.config.ts or e2e/ specs (C-6), no scheduler —
+  src/domain/scheduler.ts and runner/schedule.ts are C-4's entirely
+  (the Schedule TYPE + recordSchedule already exist from C-1); no
+  edits to src/domain/** or src/storage/**; no new deps anywhere (the
+  runner imports the root playwright ONLY); no CHANGELOG/DOX edits;
+  nothing under src/, pi-repo/, mini-services/, apps/coda/,
+  apps/ostinato/ (writes).
+OUTPUT_ARTIFACT: under apps/chaconne/ exactly — runner/smoke-resolve.ts
+  (the §6.1 spike, RUN FIRST: bare `import { chromium } from
+  "playwright"`, print chromium.executablePath(), launch headless
+  against test/fixtures/blank.html via file:// or a boot-local static
+  server, close, exit 0 — green before anything else is built),
+  runner/page-adapter.ts (the PageAdapter seam: goto/click/fill/
+  select/wait/assertText/assertElement/extract/screenshot + the
+  step-error taxonomy types mapping to the 5-entry RunRecord status
+  set), runner/caps.ts (per-step + per-run caps: max steps, wall
+  clock; the committed-prefix law — a killed/failed run keeps only
+  fully-completed steps), runner/store.ts (the DISK store:
+  data/chaconne.data.json + .tmp twin, writeFile(tmp) ->
+  renameSync(tmp, commit); content-addressed artifact names
+  sha256(payload) under data/artifacts/; recover() discards
+  orphaned tmp on boot), runner/log.ts (the run-log artifact: honest
+  step-by-step log + taxonomy entries, written atomically),
+  runner/real-adapter.ts (RealPageAdapter over a playwright Page:
+  intoFrame resolution by name/data-testid, post-fill READ-BACK
+  verification — input.value() must equal the intended value, the
+  #43 cure; screenshot({fullPage:true}); capped waitForSelector/
+  waitForFunction surfacing selector-not-found/timeout, NEVER a
+  hang), runner/fake-adapter.ts (the in-memory DOM table + injected
+  clock test double: every step kind, every taxonomy entry,
+  deterministic), runner/index.ts (the CLI: `bun
+  apps/chaconne/runner/index.ts run <recipeId>` with --store <dir>
+  (default <app>/data) and --base <url> (relative goto URLs resolve
+  against it; absolute pass through); loads the store, executes via
+  the real adapter, writes the run record atomically, prints a
+  one-line summary + exit code by status), runner/smoke.ts (the ONE
+  real-browser smoke — a SCRIPT, not a bun:test file: boots an
+  ephemeral Bun.serve serving ONLY test/fixtures/ on 127.0.0.1:<free
+  port> (never 4014 — that is C-3's), runs a 4-step recipe through
+  the RealPageAdapter: goto form-iframe.html, fill the plain field,
+  fill the iframe-hosted field (the read-back assert), assert-text on
+  a known marker; writes the run record + artifacts to a temp dir,
+  prints the summary line, exits 0), runner/*.test.ts co-located (the
+  fake-adapter unit lane: every step kind; every taxonomy entry;
+  caps; committed-prefix on mid-run failure; recipeVersion snapshot
+  in the run record; corrupt/orphan store recovery on fs; the tests
+  MUST NOT import real-adapter.ts or index.ts — the unit lane never
+  transitively loads playwright), test/fixtures/form-iframe.html +
+  tall.html + slow.html + dynamic.html + blank.html (the 5 named
+  fixtures of PLAN §3: static, zero-network, inline <script> timers
+  only, no CDNs), .gitignore (app-local, 2 lines: data/ + any
+  runner scratch), AND the receipt at .unown/receipts/c2.md (files
+  written, the Lane A/B tallies, the spike + smoke outputs verbatim,
+  tsc/lint state, open questions for C-3/C-4).
+HANDOFF_SCHEMA: plain text — files written, test tallies, the spike
+  and smoke result lines, gates state, open questions.
+EFFORT_BUDGET: <=4 chunks x <=8 turns (a closing verify chunk may
+  run 16 turns — the A2H-9 pre-split lesson, prefer splitting).
+NON-OVERLAP: C-3 owns the UI shell + serve.mjs + the 4014 lane; C-4
+  owns all scheduling; C-6 owns the e2e config + specs; the round
+  log/CHANGELOG are the operator's; the receipt is the LAST chunk's
+  closeout write.
+ACCEPTANCE: (1) `cd apps/chaconne && bun test` — Lane A green, 0
+  fail (the standing 31 domain tests + the new runner unit tests;
+  the count named in the receipt); (2) `bun test apps/chaconne` from
+  root — Lane B green, same count; (3) `bun
+  apps/chaconne/runner/smoke-resolve.ts` — exit 0, the executablePath
+  line printed (the §6.1 spike settled); (4) `bun
+  apps/chaconne/runner/smoke.ts` — exit 0, the 4-step real-browser
+  recipe's summary line printed, the run record + artifacts present
+  in the temp dir (the ONE real-browser verification); (5) root
+  `bun run typecheck` — 0 NEW errors; (6) `bun run lint` — 0 NEW
+  errors; (7) `bun run test:unit` — **2289/0 holds exactly** (the
+  runner tests live under apps/chaconne/runner/ whose path carries
+  no "src" substring — they join Lane A/B, NOT the root battery;
+  apps/chaconne/src/** stays the only joiner); (8) the edge pins:
+  timeout mid-run -> committedPrefix in the run record (slow.html
+  via fake + the cap); selector-not-found (blank.html via fake) ->
+  the taxonomy entry, NO hang (the capped wait returns); iframe fill
+  -> the read-back assert (the smoke's step 3); recipeVersion
+  snapshot in the run record (fake lane); (9) the 5 fixtures:
+  static, zero-network, inline timers only; (10) no file outside
+  apps/chaconne/ written except .unown/receipts/c2.md.
 ```
 
 ## SDLC coverage and learning-mechanism plan
