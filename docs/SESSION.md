@@ -169,7 +169,18 @@ green**, test:unit **2353/0/172 exact-hold**, tsc 0, lint 0/143; V-35
 filed (the operator's own drift-test revert caught by A2's pin, cured
 through A2); receipt `benchmarks/rondo-round/receipts/c7.md`.
 **A2H-13 (the V-30 reconciliation) dispatches next on the post-C-7
-tree** (the gate opens), then C-8.
+tree** (the gate opens), then C-8. **A2H-13 CLOSED through A2 by this
+lineage** (session `01a1b0df…`, 56 turns / 6 chunks): ruling (a) the
+ext → `json` (the domain's vocabulary), the domain FROZEN; the 4-file
+diff + the two cross-host pins through `assertData` (the dotted name
+THROWS — RED by construction); one latent defect caught at A2's own
+gate (the flow specs' stale old-grammar seeds); the operator gate:
+Lane A **113/4/0 (+2)**, e2e 10 passed, test:unit **2353/0/172
+unchanged**, tsc 0, lint 0; V-30 RESOLVED; receipt
+`benchmarks/rondo-round/receipts/a2h13.md`. **C-8 CLAIMED** (the
+import/export battery; the standing brief with the golden-layout
+ruling — the twenty-fourth's prep-research gap answered); dispatched
+after the claim-push.
 
 The **twentieth lineage** (a PARALLEL resume — the V-9 dual-incarnation
 event: the nineteenth's checkpoint `6885f2f3` landed first and governs;

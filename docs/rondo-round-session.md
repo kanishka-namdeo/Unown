@@ -466,7 +466,7 @@ folded into the receipt); the next free bug id is **B-18**.
 | C-5 | Assertions + artifacts: value checks, screenshot capture with pinned hashes, extraction report | Deterministic fixture battery; artifact sha256 pins | **CLOSED 2026-11-06** — the nineteenth lineage; session `01a1afdf…`, 63 turns / 5 dispatch rounds (one gate catch: the sw.js PRECACHE_LIST forward-referenced C-7's offline.html — cache.add on a 404 would fail SW install; fixed through A2 in one round with the fetch-fallback fall-through verified); value checks (exact + `=~` contains, mismatch = step-failed with expected-vs-actual, never silent), the screenshot determinism pin, the content-addressed extract-report artifact + renderExtractReport, the completed precache list with the 3-part derivation; the operator gate re-ran every lane — Lane A 115/0, Lane B **146/0**, root battery **2353/0/172**, typecheck 0, lint 0/143; receipt [c5.md](../benchmarks/rondo-round/receipts/c5.md) |
 | C-6 | The e2e battery lane 1: compose → run → artifacts, keyboard-only (K-1 law) | Playwright battery green ×3 consecutive | **CLOSED 2026-11-06** — the nineteenth lineage; session `01a1affe…`, 87 turns / 5 dispatch rounds (the twenty-first's concurrent CLAIM stands down — the V-19 shape a third time; its standing brief folds in as corroborating design review, and its V-27 reset-survivor receipt is the SAME class as this closure's measurement confound — the bare-`bun test src` engine-fixture pickup — both receipts stand as independent discoveries of the one law: acceptance gates run the SCRIPT, and the tree is clean of untracked phantoms); the CHACONNE_E2E-armed config + the K-1 flow spec (zero pointer events — the gate's grep verified the only `.click(` hits are comments) + the a11y lane start (axe wcag2a/2aa light+dark, tab-order, Esc focus-return); the e2e battery green **6 consecutive** (A2's 3 + the operator's 3, ~7.5 s each); one out-of-lane ARIA fix ACCEPTED (role option→listitem + aria-current, honestly flagged, C-9-adjacent); the real `bun run test:unit` is 2353/0/172; Lane A 115/0, Lane B 146/0, typecheck 0, lint 0/143; receipt [c6.md](../benchmarks/rondo-round/receipts/c6.md) |)
 | C-7 | The resilience battery: crash-mid-run resume, corrupt-store recovery, offline PWA boot | The R-1 law battery (kill/resume/verify) | **CLOSED 2026-11-06** — the twenty-third lineage (dispatched at the twenty-second's window expiry per V-32's disposition); session `01a1b0b2…`/`01a1b0b3…`, **89 turns / 7 rounds** (incl. the 8-turn operator-caused recovery chunk — V-35); the 4-lane spec (the REAL SIGKILL harness + the fake-lane log-bytes twin, the corrupt panel with bytes surviving, the O-1 offline boot + fallback + storm-check twin), offline.html + the sw.js entry restored **+ the O-1 root-cause fix (the `.js`-convention precache keys — the install-cache/module-graph key mismatch that stalled the offline shell on "Booting…")**, verify-precache.ts (the 3-way ladder, clean 0/drift 1/restored 0); the operator gate: e2e **7 consecutive green** (A2's 3 + the operator's 4, ~13 s each), test:unit **2353/0/172 exact-hold** (+7 expect), tsc 0, lint 0/143, Lane A 111p/4s/0; three deviations accepted (the storm-check form, the completion-only kill form, the capture-usage pricing); receipt [c7.md](../benchmarks/rondo-round/receipts/c7.md) |
-| C-8 | Import/export: byte-stable canonical JSON round-trip, dry-run validation report | Round-trip pin + golden files | QUEUED |
+| C-8 | Import/export: byte-stable canonical JSON round-trip, dry-run validation report | Round-trip pin + golden files | **CLAIMED 2026-11-06 (the twenty-third lineage)** — the standing brief below (the golden-layout ruling landed with it); dispatched after the claim-push |
 | C-9 | The accessibility battery: axe wcag2a/2aa both schemes, tab-order pin, Esc focus-return | A-1 battery green light AND dark | QUEUED |
 | C-10 | The landing band + docs page + usage captures (screenshots of the app in use) | `check:docs`/`check:claims`/`check:blog` + the landing audit | QUEUED |
 | C-11 | The runbook + CI gate entry + honest-scope statement | The CI gate config + `bun run chaconne:test`/`e2e` from root | QUEUED |
@@ -985,6 +985,78 @@ ACCEPTANCE: (1) `bun run test:unit` (THE SCRIPT) — green, the tally
   (`node_modules/.bin/playwright test -c playwright.chaconne.config.ts`)
   green if any e2e assertion touched the old names; (6) no file
   outside the ALLOWED list written.
+```
+
+The C-8 import/export battery ticket — the STANDING BRIEF (authored by
+the twenty-third lineage; the golden-file layout is THIS brief's ruling
+— the twenty-fourth's C-8 prep research honestly flagged that the
+layout is NOT derivable from the house patterns, so it is decided here:
+goldens COMMITTED under `apps/chaconne/test/golden/`, deterministic by
+the V-15 pins-first law — no timestamps, no boot-dependent bytes — and
+a regen script whose `--check` mode is the gate, whose write mode is a
+deliberate operator-priced update):
+
+```
+ROLE: A2 executor — C-8, the Chaconne import/export battery: the
+  byte-stable canonical JSON round-trip end-to-end + the dry-run
+  validation report, building strictly against apps/chaconne/PLAN.md
+  (§5 C-8 row, edge cases 9 + 10) on the post-A2H-13 tree.
+ALLOWED_INPUTS: apps/chaconne/** (the app tree — src/domain/io.ts is
+  LANDED and its shape governs; src/ui assertion updates if the specs
+  need them; the new test/golden/ + scripts/ trees), e2e/
+  chaconne-io.spec.ts (new), the existing chaconne specs (read-only
+  context), .unown/receipts/c8.md (your receipt).
+FORBIDDEN_INPUTS: pi-repo/ core; mini-services/; src/ (the landing
+  site); apps/ostinato/ + apps/coda/; the root package.json script
+  entries (C-11 owns chaconne:test/e2e); CHANGELOG / DOX / the round
+  log (the operator lane); weakening any existing pin; new deps;
+  live-network anything (the io lane is pure local).
+OUTPUT_ARTIFACT: (1) the GOLDEN FILES under apps/chaconne/test/golden/:
+  export.golden.json (a fixture dataset with UNICODE recipe names —
+  edge case 9 — serialized through io.ts's toCanonicalJson, committed
+  as raw UTF-8 bytes, never \u-escaped), import-refused.golden.json
+  (a chaconne.v2 future-schema document — edge case 10's input), and
+  the expected dry-run report golden for the refusal. (2)
+  apps/chaconne/scripts/regen-golden.ts — regenerates the goldens
+  from the same fixture source; `--check` mode asserts byte-equality
+  and exits 1 on drift (the gate); the bare write mode is the
+  deliberate-update lane (prints what changed). (3)
+  e2e/chaconne-io.spec.ts — the battery lanes: [EXPORT] via the UI
+  keyboard-only (the palette's export action), the exported bytes
+  BYTE-EQUAL the golden (UTF-8, no \u-escape drift); [ROUND-TRIP]
+  import the golden back -> the store's canonical re-export is
+  byte-identical (the same-data-same-bytes law across the UI's import
+  lane); [REFUSED] import the chaconne.v2 golden -> the dry-run
+  report renders (the would-have counts + the refusal reasons), the
+  store is BYTE-IDENTICAL to pre-import (asserted — never a partial
+  import); [CORRUPT] import a malformed JSON file -> the honest
+  error notice, store unchanged. (4) .unown/receipts/c8.md — files,
+  the x3 battery tallies, the golden byte-stability proof across 3
+  independent boots, the drift-check exits, open questions for C-9.
+HANDOFF_SCHEMA: plain text — files written, the battery tally x3, the
+  golden proofs, open questions.
+EFFORT_BUDGET: <=4 chunks x <=8 turns (the closing verify chunk may
+  run 16 — the e2e-lane law).
+NON-OVERLAP: C-9 owns the a11y depth; C-10 owns the landing band +
+  captures; C-11 owns the root script wiring + runbook; the round
+  log/CHANGELOG are the operator's; io.ts's SHAPE is C-1's landed
+  contract — only additive changes if a genuine gap is found (and a
+  found gap is reported, not silently patched).
+ACCEPTANCE: (1) `node_modules/.bin/playwright test -c
+  playwright.chaconne.config.ts` — the FULL battery (the standing 10 +
+  the new io lanes) GREEN, named count, THREE consecutive runs (the x3
+  law — quote each tally + wall time); (2) `bun
+  apps/chaconne/scripts/regen-golden.ts --check` exits 0, and a
+  deliberate one-byte drift proves it exits 1 (quote both); (3) the
+  export golden round-trips byte-identically through the UI import
+  lane (asserted in the spec); (4) the unicode golden carries RAW
+  UTF-8 bytes (the spec asserts the actual bytes, not a re-serialization);
+  (5) the refused import leaves the store byte-identical (asserted);
+  (6) `bun run test:unit` (THE SCRIPT) — 2353/0/172 exact-hold (any
+  growth accounted); (7) `bun run typecheck` + `bun run lint` — 0 NEW
+  errors; (8) a genuine app defect: STOP, report BLOCKED with the
+  repro; (9) no file outside apps/chaconne/, e2e/
+  chaconne-io.spec.ts, and .unown/receipts/c8.md written.
 ```
 
 ## SDLC coverage and learning-mechanism plan
