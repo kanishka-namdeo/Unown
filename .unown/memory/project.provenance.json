@@ -4,5 +4,6 @@
   "at": 1793964703408,
   "sha256": "433d50417a8fcbeaca0121df1b259c031a29884da2a5e45a92ef653f38bef413",
   "manualSha256": "c0f237e9cd03b481913310e386b4118e2586c0d77a2345832c55e2888e869944",
-  "manualEdited": true
+  "manualEdited": true,
+  "note": "union-reconciled at rebase 2026-11-06: newer 11:38:43 render governs; landed 11:31:43 unique bullets folded"
 }
