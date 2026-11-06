@@ -257,15 +257,20 @@ test("compose → run (local fixture) → history → artifact viewer, keyboard 
     const names = run2.artifacts.map((a) => a.name);
     expect(names.some((n) => n.includes("_r2_") && n.endsWith(".png"))).toBe(true);
     expect(names.some((n) => n.endsWith("log"))).toBe(true);
-    expect(names.some((n) => n.includes("extract-report"))).toBe(true);
+    // V-30/A2H-13: the extract-report artifact's ext is now the single
+    // token "json" (the PWA domain's ARTIFACT_NAME_RE is the canonical
+    // contract — dotted exts are frozen out), so its name carries no
+    // "extract-report" substring; it is the step-idx-0 .json name,
+    // distinguished from the extract-value JSON by the _r2_ run-id
+    // segment (the extract-value JSON is _r3_).
+    expect(names.some((n) => n.endsWith(".json") && n.includes("_r2_") && !n.startsWith("2_"))).toBe(true);
 
     // The history updates: seed ONLY the pre-run doc into localStorage
     // (the two hosts converge on one schema — the app's import gate runs
-    // assertData on every boot, and the runner's extract-report.json
-    // artifact name intentionally does NOT conform to the PWA's content-
-    // addressed grammar; the disk store is the runner's closure, the
-    // localStorage store is the app's closure, PLAN §2). The history
-    // lane asserts the pre-run doc + the runner's on-disk record;
+    // assertData on every boot, and the runner's extract-report artifact
+    // name now conforms to the PWA's content-addressed grammar (V-30,
+    // A2H-13); the cross-host round-trip is pinned in runner/store.test.ts).
+    // The history lane asserts the pre-run doc + the runner's on-disk record;
     // the artifact viewer asserts the pre-run doc's valid artifacts.
     await page.evaluate(
       (seed) => {
@@ -285,9 +290,8 @@ test("compose → run (local fixture) → history → artifact viewer, keyboard 
     // The runner's on-disk run-2 is asserted above in the disk-store
     // lane; the PWA's history shows its own localStorage document
     // (PLAN §2: two hosts, one schema — the app's import gate runs
-    // assertData on boot, and the runner's extract-report.json
-    // artifact names intentionally do not conform to the PWA's
-    // content-addressed grammar, so they never cross over).
+    // assertData on boot, and the runner's extract-report artifact names
+    // conform to the PWA's content-addressed grammar (V-30, A2H-13)).
     const group = page.locator('.chaconne-run-group[data-recipe="1"]');
     await expect(group).toBeVisible();
     await expect(group.locator("h3")).toHaveText("fixture-flow");

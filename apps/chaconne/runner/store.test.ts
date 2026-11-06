@@ -129,6 +129,40 @@ test("artifactName: matches the invariants' content-addressed grammar", () => {
   expect(name).toMatch(/^\d+_r\d+_sha256:[0-9a-f]{64}\.[A-Za-z0-9]+$/);
 });
 
+/* — V-30 cross-host seam pin (A2H-13, ruling (a)) — */
+// The runner's on-disk artifact record must round-trip through the PWA
+// domain's validation: a name built under the single-token ext grammar
+// satisfies invariants.ts' ARTIFACT_NAME_RE (the canonical-export
+// contract, C-8's lane). The pre-A2H-13 dotted shape ("extract-report.json")
+// FAILS domain validation — RED on the old grammar. assertData is the
+// domain's boundary lane; the runner lane imports it so the seam is
+// pinned in ONE place.
+import { assertData } from "../src/domain/invariants.js";
+import type { ChaconneData } from "../src/domain/types.js";
+
+function dataWithArtifact(name: string, hex: string): ChaconneData {
+  return {
+    schema: "chaconne.v1",
+    recipes: [recipe(1)],
+    runs: [{ ...run(1, 1, "ok"), artifacts: [{ name, sha256: hex }] }],
+  };
+}
+
+test("cross-host: a single-token ext artifact record validates through the domain (V-30 seam)", () => {
+  const hex = sha256Hex("cross-host");
+  // ext = "json" → one dot in the name: `0_r9_sha256:<64hex>.json` — the
+  // PWA domain's ARTIFACT_NAME_RE (the canonical-export contract) accepts it.
+  const name = artifactName(0, 9, hex, "json");
+  expect(() => assertData(dataWithArtifact(name, hex))).not.toThrow();
+});
+
+test("cross-host: a dotted ext artifact record FAILS domain validation (RED on the old grammar)", () => {
+  const hex = sha256Hex("cross-host");
+  // The pre-A2H-13 shape: ext "extract-report.json" → TWO dots in the name.
+  const name = artifactName(0, 9, hex, "extract-report.json");
+  expect(() => assertData(dataWithArtifact(name, hex))).toThrow();
+});
+
 test("loadRuns/loadRecipes: empty on a fresh store", () => {
   const dir = tmpDir();
   const store = new ChaconneDiskStore(dir);
@@ -151,19 +185,19 @@ test("extract-report artifact: step-keyed JSON through the same content-addresse
     "2": [{ selector: "#mid", attr: "data-attr", expected: "mid", actual: "mid" }],
   };
   const payload = JSON.stringify(report, null, 2);
-  const ref = store.artifactRef(0, 1, "extract-report.json", payload);
-  store.saveArtifact(0, 1, "extract-report.json", payload);
+  const ref = store.artifactRef(0, 1, "extract-report", payload);
+  store.saveArtifact(0, 1, "extract-report", payload);
 
   // The ref matches the domain's content-addressed grammar (invariants.ts).
-  expect(ref.name).toMatch(/^0_r1_sha256:[0-9a-f]{64}\.extract-report\.json$/);
+  expect(ref.name).toMatch(/^0_r1_sha256:[0-9a-f]{64}\.extract-report$/);
   expect(ref.sha256).toBe(sha256Hex(payload));
   // Read back: byte-identical (the same file, not a second slot).
   expect(store.readArtifact(ref.name)).toBe(payload);
   // A second run with the SAME report dedupes to the same bytes — a
   // different run id still produces the same digest (the name differs
   // only by run id; the hash is content-addressed, not run-scoped).
-  const ref2 = store.artifactRef(0, 2, "extract-report.json", payload);
-  store.saveArtifact(0, 2, "extract-report.json", payload);
+  const ref2 = store.artifactRef(0, 2, "extract-report", payload);
+  store.saveArtifact(0, 2, "extract-report", payload);
   expect(ref2.sha256).toBe(ref.sha256);
   expect(ref2.name).not.toBe(ref.name); // r2 ≠ r1
   fs.rmSync(dir, { recursive: true, force: true });
