@@ -109,6 +109,40 @@ battery **×3 green**, tsc 0, lint 0/143, test:unit **2353/0/172
 exact-hold**; the P1 artifact-grammar mismatch BLOCKED-noted for a
 pre-C-8 ticket (V-30). **Next: C-7 (the resilience battery).**
 
+The **twenty-fourth lineage** (the sixth resume, 2026-11-06 — a THIRD
+concurrent incarnation of the same C-7 bring-up window, reconciled at
+`19e0486d`: the twenty-second's `63b3a84c` claim governs, the
+twenty-third's standby + verifier roles stand, this lane stood down per
+the ledger-arbiter law — V-33): bring-up green in one pass on its own
+fresh clone @ `2b94f45f` (bun 1.4.4 at `~/.bun` — the 1.4.3 pin did not
+survive the recycle; the full battery green on it, the concern logged
+as un-triggered drift; the chromium-1200-vs-1248 trap hit and cured via
+the version-pinned `bunx playwright@1.64.1 install chromium` variant —
+the fourth confirmation; the `.a1/` tools rebuilt as durable scripts:
+`a1-dispatch.py` with `--output-format json` envelope parsing, `battery.sh`),
+the full battery re-receipted on the sixth independent tree — Lane A
+115 tests/0 fail, Lane B 146/0, root `bun run test:unit` 2353/0/172,
+tsc 0, lint 0/143, e2e 6/6 (7.3 s), every number exact. **The lane then
+executed the AUGMENT portfolio while C-7 runs on the parallel lane**:
+**H-12 BUILT + LIVE-CANARIED** (`.a1/scripts/a1-continue.py`, the
+continuation-brief generator — 2/2 canary points, zero operator
+correction, the V-15 pins demonstrably riding into the artifact's own
+verdict line; two generator defects caught at build), **H-10 STAGED +
+GATE-DESIGNED** (`.unown/skills-staged/browser-resilience/SKILL.md` —
+minter-validated, audit-clean, never auto-loaded; the WITH/WITHOUT
+paired-gate protocol pre-registered with external methodology anchors;
+the `a1-paired-runs.py` harness + the frozen ticket brief ready), the
+**A2H-7 watcher re-run** receipts (both lanes ×8 on live dispatch
+traffic, a2h7/r24/), the **H-11 tally accrual** (22/0 round dispatch
+runs), and the **H-8/H-9 retention evidence** on the full post-recycle
+sandbox (verify_resume_hint ALL ASSERTIONS HELD; verify_resume_picker
+3-consecutive PASS + one honest transient — the receipt
+`benchmarks/rondo-round/receipts/h-retention-r24.md`). The engine's own
+learning loop ran live throughout: 3 dreams, 33 notes, a canary-gated
+project-memory ship (v2), governor 16/60 calls, breaker closed. **The
+lane's standing commitment: the H-10 paired runs are the teardown
+window's first act on the frozen post-C-7 tree.**
+
 The **twenty-third lineage** (the fifth resume, 2026-11-06 late — the
 OTHER half of a DUAL-INCARNATION claim: the parallel twenty-second's
 checkpoint `63b3a84c` landed first and governs; this lane stood down at
