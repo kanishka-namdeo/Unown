@@ -4,9 +4,6 @@
 - The project structure includes a dedicated UI module named 'chaconne' under /home/z/my-project/Unown, containing the C-3 application and related components.
 - Verify that `makeSeam` returns `data` as expected before integrating it into the pipeline.
 - Verify the `smoke-resolve.ts` spike from §6.1 executes with exit code 0 and explicitly resolves to the `chromium-124` executable path
-- Run `bun test` for `apps/chaconne` from both the subdirectory and the project root to verify count parity between execution contexts
-- Verify CLI smoke tests after confirming the full test suite passes
-- Test fixtures are co-located with the chaconne UI codebase.
 
 ## Known pitfalls
 - Always verify that test file imports are correctly applied after editing failures, as missed edits can cause downstream test failures.
@@ -20,9 +17,12 @@
 - The chaconne UI module contains specific sub-components: palette, recipe-editor, run-history, and artifact-viewer.
 
 ## Environment
+- Test verification must explicitly confirm which execution path (e.g., DOM-based Lane B vs. others) a test actually exercises, not just that it passed.
 - Remove unused variable declarations (e.g., `void seedStore;`) to keep builds clean.
 
 ## Facts
+- In Unown's chaconne app, PRECACHE_LIST sub-module keys must use the .js convention (matching transpiled import specifiers like src/domain/types.js) because index.html requests the entry as .ts while sub-modules are requested as .js; caching .ts sub-modules causes offline reload cache misses, offline.html HTML fallback for JS modules, and 'Booting...' stall signature
+- The O-1 offline-boot stall symptom ('Booting' forever after setOffline+reload) is the signature of PRECACHE_LIST key-mismatch between .ts and .js module conventions; the Ostinato O-4 offline-boot law (entry .ts, sub-modules .js) remediates it
 - Always verify that custom success markers (e.g., UNOWN_OK) are emitted by the project's test/health check suite, not just assumed to be valid terminal output.
 - In Unown's GitHub light color scheme, contrast ratios are verified as: foreground #1f2328 on #ffffff is ~14.5:1, and muted #57606a on #ffffff is ~6.5:1, both exceeding the 4.5:1 threshold for regular text.
 - In /home/z/my-project/Unown, the O-4 receipt workflow uses incremental chunk appends (chunks 3 and 7 explicitly referenced) with a cap on heredoc length, landing each chunk at the end of the previous turn's output before the cap.
@@ -127,4 +127,4 @@
 - Stealth verification suite on bot.sannysoft.com: all 10 checks (webdriver, userAgent, platform, userAgentData, timezone, locale, screen, viewport, plugins, window.chrome) pass; 0 FAIL rows in Intoli tests. (Restored by hand 2026-11-01 — second occurrence of the dream-render-prunes-landing-quoted-lines class, issue #46; moved here to the durable lane.)
 - Parley password hashing: scrypt N=16384 r=8 p=1 (src/lib/parley/password.ts). Restored by hand 2026-10-29 after AutoDream reconciles twice erased the fact (upstream 79->66 render, then the F1/F2 bcrypt poison round). Never let a memory answer overwrite this without reading the source.
 
-<!-- unown: rendered 110/111 memories via Mem0 (backend: lexical) · 1 oldest pruned at render (cap 110; hard-won rules immune) at 2026-11-06T11:36:36.225Z -->
+<!-- unown: rendered 110/114 memories via Mem0 (backend: lexical) · 4 oldest pruned at render (cap 110; hard-won rules immune) at 2026-11-06T12:39:09.770Z -->

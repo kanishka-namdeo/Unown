@@ -1,9 +1,8 @@
 {
-  "version": 3,
+  "version": 6,
   "changedBy": "mem0",
-  "at": 1793964996227,
-  "sha256": "989b2b1d912e36a73d1e3543d2b5db60bc6cf4378ea012fbdef1ee42a7b4abc4",
+  "at": 1793968749772,
+  "sha256": "c65dbc81717614a8d2bf4c26be2cec0b837b6408dd407d8aeadf0e55b68f392a",
   "manualSha256": "c0f237e9cd03b481913310e386b4118e2586c0d77a2345832c55e2888e869944",
-  "manualEdited": true,
-  "note": "union-reconciled at rebase 2026-11-06: newer 11:38:43 render governs; landed 11:31:43 unique bullets folded"
+  "manualEdited": true
 }

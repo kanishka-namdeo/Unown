@@ -157,10 +157,19 @@ third confirmation); stack up (bridge 200, engine UP v0.0.57 @ HEAD,
 doctor 19✓/2⚠), canaries C1–C4 all green (C4 operator-verified 4/4 —
 completing the pair the twenty-second skipped), the chaconne e2e
 battery re-verified **6/6 (9.0 s)** on the fifth independent tree.
-**C-7's dispatch** stays with the twenty-second's ACTIVE window
-(~11:49 UTC expiry); this lane's STANDING BRIEF (in the round log) is
-the substantive one both lanes ride, and this lane takes the
-cross-machine verifier role at the C-7 landing (the V-14 precedent).
+**C-7 CLOSED through A2 by this lineage** — the twenty-second's ACTIVE
+window expired at ~11:49 UTC with zero dispatch evidence (V-32's
+disposition), the standby dispatched with the standing brief: session
+`01a1b0b2…`/`01a1b0b3…`, **89 turns / 7 rounds**; the 4-lane
+resilience spec (the REAL SIGKILL harness + the log-bytes twin, the
+corrupt panel, the O-1 offline boot + storm-check), offline.html + the
+sw.js entry **+ the O-1 root-cause fix (the `.js`-convention precache
+keys)**, verify-precache.ts; the operator gate: e2e **7 consecutive
+green**, test:unit **2353/0/172 exact-hold**, tsc 0, lint 0/143; V-35
+filed (the operator's own drift-test revert caught by A2's pin, cured
+through A2); receipt `benchmarks/rondo-round/receipts/c7.md`.
+**A2H-13 (the V-30 reconciliation) dispatches next on the post-C-7
+tree** (the gate opens), then C-8.
 
 The **twentieth lineage** (a PARALLEL resume — the V-9 dual-incarnation
 event: the nineteenth's checkpoint `6885f2f3` landed first and governs;
