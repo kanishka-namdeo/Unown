@@ -359,6 +359,24 @@ PROPOSE-stage candidates (none canaried, none promoted):
   gate needs the round's full continuation tally — C-7's own chunks
   and the teardown window's H-10 paired runs are the remaining
   evidence surface).
+  **Second canary point 2026-11-06 (the same lineage, a different task
+  shape)**: the C-8 prep-research dispatch (read-only survey, the
+  import/export design inputs) — chunk 1 capped at 6 turns mid-research
+  → the generator emitted the brief WITH the operator's `--pins` set
+  injected (the V-15 law: "committed golden files, deterministic
+  dry-run reports") → the continuation completed the full 11,087-char
+  four-section artifact at 14 turns, subtype success, **zero operator
+  correction — and the artifact's own verdict line cites the pins as
+  complied-with** ("Pin-compliant: committed golden files,
+  deterministic dry-run reports — no timestamps"): the pins-first
+  pattern demonstrably rode into the output. Canary tally: **2/2
+  continuations, 0 corrections** (two task shapes: a gate-design
+  research task and an import/export survey). The honest gap the
+  artifact itself flags (the golden-file layout is NOT derivable from
+  the house patterns — Coda/Ostinato carry neither committed goldens
+  nor a regeneration story; the recommendation is the C-8 brief
+  author's decision, not an inherited convention) is recorded for the
+  C-8 brief author at `.a1/logs/c8-prep-chunk2.json` (operator lane).
 
 A2-side candidates (skills, subagents, hooks, review checks) enter at
 PROPOSE only from receipted failures observed during O-ticket driving —
