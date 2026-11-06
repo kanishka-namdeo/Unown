@@ -14,7 +14,9 @@ import { openStore } from "./store.js";
 import { startServer } from "./http.js";
 
 export function main(): void {
-  const dataDir = join(import.meta.dir, "../../data");
+  // BOLERO_DATA_DIR override: e2e isolation (the e2e never touches
+  // the shared app data dir; it boots against a fresh temp dir).
+  const dataDir = process.env.BOLERO_DATA_DIR ?? join(import.meta.dir, "../../data");
   const artifactsDir = join(dataDir, "artifacts");
   const dbPath = join(dataDir, "bolero.db");
 

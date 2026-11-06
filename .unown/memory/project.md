@@ -4,6 +4,7 @@
 - Run `bun run bolero:test` to execute the bolero test suite from project root, defined in `package.json` as `cd apps/bolero && bun test`
 
 ## Known pitfalls
+- In Unown, `ensureAutomationsSchema` must be called as the first statement in the `before` hook in `pi-repo/packages/self-learning/test/automation-spend.test.ts` before any `DELETE FROM` statements to prevent automation spend test failures; verify imports are correctly applied after editing to avoid downstream failures.",
 - In /home/z/my-project/Unown, `bun run bolero:test` passes with 33 tests, 0 failures, 135 expect() calls, and 5 test files covering domain, runner, and server lanes
 - In /home/z/my-project/Unown, the bolero registry and round-trip test files assumed watch id `1` matches the auto-assigned PK, causing failures; they needed fixing when spec's id differed from the auto-generated PK
 - Bolero roundtrip tests verify canonical JSON byte pinning and include PLANTED-DRIFT RED checks that throw errors on field renames (e.g., `status`→`state` triggers `report.status not in the closed RunStatus set`) or missing fields (e.g., `startedAt`)
@@ -118,7 +119,6 @@
 - Unown palette commands movePaletteSelection and runSelectedPaletteCommand verified gap-free after D10 rerender fix
 - benchmarks/local-llm/lib: Cross-platform llama-server lifecycle, OpenAI-compatible clients
 - In /home/z/my-project/Unown, `bun test apps/ostinato` runs the Lane B unit test suite from the project root and currently reports 93 passing tests across 7 files with 377 expectations.
-- Ticket A2H-2 in Unown: V-9 hardening landed in `scripts/tui-capture/pty_common.py` — added private `_send_drained()` helper where a reader thread pumps `self.pump(0.05)` until a stop event, joined in `finally` so `pump()` never runs concurrently with itself; wired into `send()`, `key()`, and `type_prompt()` (char loop and Esc/Enter tail) with caller semantics unchanged (same delays).
 
 ## Manual notes
 
@@ -127,4 +127,4 @@
 - Stealth verification suite on bot.sannysoft.com: all 10 checks (webdriver, userAgent, platform, userAgentData, timezone, locale, screen, viewport, plugins, window.chrome) pass; 0 FAIL rows in Intoli tests. (Restored by hand 2026-11-01 — second occurrence of the dream-render-prunes-landing-quoted-lines class, issue #46; moved here to the durable lane.)
 - Parley password hashing: scrypt N=16384 r=8 p=1 (src/lib/parley/password.ts). Restored by hand 2026-10-29 after AutoDream reconciles twice erased the fact (upstream 79->66 render, then the F1/F2 bcrypt poison round). Never let a memory answer overwrite this without reading the source.
 
-<!-- unown: rendered 110/125 memories via Mem0 (backend: lexical) · 15 oldest pruned at render (cap 110; hard-won rules immune) at 2026-11-06T21:15:24.299Z -->
+<!-- unown: rendered 110/124 memories via Mem0 (backend: lexical) · 14 oldest pruned at render (cap 110; hard-won rules immune) at 2026-11-06T21:27:55.644Z -->

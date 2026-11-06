@@ -92,3 +92,28 @@ upstream-change, operator-tooling}. Nothing is patched around silently.
 ---
 
 *Next entries append below as the round's tickets run.*
+
+## V-6 — the e2e's shared-data-dir assumption: an operator seed 422'd the next e2e boot (operator-tooling + test-isolation, cured in-ticket)
+
+**When**: 2026-11-07, the S-5 polish run. **Class**: operator-tooling ×
+test isolation (NOT a genuine A2 gap — the e2e's own header claimed "a
+fresh SQLite store" while booting the shared `apps/bolero/data/` dir;
+its finally-wipe only covers clean exits, so the operator's manual
+live-pass seed (a legit real-user verification) polluted the next
+boot — the UNIQUE constraint 422'd the e2e's own seed POST).
+
+**Signal**: the polish continuation reported "seedRegistry … 422 …
+register a watch" — a failure the operator could reproduce exactly
+(one look at data/bolero.db explained it).
+
+**Cure (handed down per V-18, landed through A2 in-ticket)**: the
+1-line `BOLERO_DATA_DIR` env seam in boot.ts + the e2e boots on
+mkdtemp + rm in finally — the e2e is hermetic now (proven: no data/
+residue after the run; the shared dir is never touched). The two
+polish companions: the %ZZ 500→404 taxonomy cure + the real-digest
+seed (both operator gate-catches, both unit-pinned).
+
+**Law carried forward**: an e2e that claims a fresh store must OWN its
+freshness (temp dir), never borrow a shared path whose state another
+actor (the operator, a crashed run) can change — the isolation law,
+added to the playbook's e2e checklist.

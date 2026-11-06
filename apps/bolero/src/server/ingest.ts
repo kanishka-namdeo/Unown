@@ -37,7 +37,8 @@ import {
 } from "../domain/io.js";
 import { SCHEMA_VERSION } from "../domain/sets.js";
 import type { RunReport, WatchSpec } from "../domain/types.js";
-import { writeArtifact, type RunRow, type WatchRow } from "./store.js";
+import { writeArtifact, readArtifact, type RunRow, type WatchRow } from "./store.js";
+import { handleGetArtifact } from "./artifact-route.js";
 import type { InflightTracker, PhaseHandle } from "./http.js";
 
 export type RequestDeps = {
@@ -74,6 +75,9 @@ export async function handleRequest(req: Request, ctx: RequestDeps): Promise<Res
   if (req.method === "GET" && /^\/api\/watches\/\d+$/.test(pathname)) {
     const id = Number(pathname.split("/").pop());
     return getWatch(ctx, id);
+  }
+  if (req.method === "GET" && /^\/api\/artifacts\/[^/]+$/.test(pathname)) {
+    return handleGetArtifact(req, ctx);
   }
   return notFound();
 }

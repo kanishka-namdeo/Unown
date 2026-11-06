@@ -18,9 +18,9 @@ evidence that driving A2 improved while doing it.
 | Track | Status |
 |---|---|
 | Phase 0 (recon refresh, canaries, selection, PRD, baseline) | ✅ COMPLETE (this lineage) |
-| DRIVE (S-0..S-10) | **S-0..S-4 CLOSED** (plan, domain+pins, runner+real-browser e2e, server+health, scheduler) — S-5 (dashboard) is next |
-| AUGMENT (H-12 gate re-run, H-10 re-activation, H-16 build, H-18/H-19 seeds) | H-12 rebuilt + committed (the mandated first act) + **5 zero-correction continuation data points** (S-0 c2, S-1 c2/c3, S-2 c3/c4, S-3 c3/c4, S-4 c2/c3); V-5 filed (the research spiral — H-17's firing surface, receipted, the write-now cure standing); the rest queued |
-| PROVE (§8 evidence pack, RESULTS.md) | receipts s0..s4 committed; turns-to-done trend recorded (20 → 21 → 32 → 25 → 24) |
+| DRIVE (S-0..S-10) | **S-0..S-5 CLOSED** (plan, domain+pins, runner+real-browser e2e, server+health, scheduler, dashboard PWA) — S-6 (deploy+supervision) is next |
+| AUGMENT (H-12 gate re-run, H-10 re-activation, H-16 build, H-18/H-19 seeds) | H-12 rebuilt + committed (the mandated first act) + **10 zero-correction continuation data points** (S-5's main run added five more; the polish run exercised the V-15 pin-cure path); V-5 held (no spirals on S-5 — 79 scope turns, 0 spiral turns); V-6 filed (the e2e isolation law); the rest queued |
+| PROVE (§8 evidence pack, RESULTS.md) | receipts s0..s5 committed; turns-to-done trend recorded (20 → 21 → 32 → 25 → 24 → 79-scope) |
 
 **Drive receipts so far** (all through A2, all operator-gated):
 
@@ -31,6 +31,7 @@ evidence that driving A2 improved while doing it.
 | S-2 runner + real-browser e2e | 32 / 5 | PASS (22/0/84 unit; e2e 1/0 real Chromium) |
 | S-3 server + ingest + health | 25 / 4 | PASS (33/0/135; /health live-curled) |
 | S-4 scheduler (mechanism handed down) | 24 / 3 | PASS (39/0/150 ×2 consecutive) |
+| S-5 dashboard PWA (+polish) | 79 / 9 | PASS (45/0/163 A + 49/0/188 B; e2e 2/0 real Chromium keyboard-only; precache 6 URLs 0 missing; the operator's live browser pass + 2 media captures) |
 
 **Parallel engagement**: the twenty-seventh lineage opened the **Sonata
 round** (vehicle Fugue, `apps/fugue/` — the engine/learning-loop surface,
@@ -97,13 +98,13 @@ Lives at [benchmarks/scherzo-round/validation-log.md](../benchmarks/scherzo-roun
 
 | # | Lane | Status |
 |---|---|---|
-| S-0 PLAN.md (architecture, grammar, edge cases) | Planning | 🔜 next |
-| S-1 domain core + frozen grammar + round-trip pins | Engineering | queued |
-| S-2 runner v1 (fixture-first) | Engineering | queued |
-| S-3 server + SQLite + ingest API + health | Architecture/Eng | queued |
-| S-4 scheduler (bounded real-clock) | Engineering | queued |
-| S-5 dashboard PWA | Engineering | queued |
-| S-6 deploy + supervision + CI lane | Operations | queued |
+| S-0 PLAN.md (491 lines, 14 edges) | Planning | ✅ |
+| S-1 domain core + frozen grammar + round-trip pins | Engineering | ✅ |
+| S-2 runner v1 (fixture-first) | Engineering | ✅ |
+| S-3 server + SQLite + ingest API + health | Architecture/Eng | ✅ |
+| S-4 scheduler (bounded real-clock) | Engineering | ✅ |
+| S-5 dashboard PWA | Engineering | **CLOSED** (receipt s5.md) |
+| S-6 deploy + supervision + CI lane | Operations | 🔜 next |
 | S-7 resilience battery | Quality | queued |
 | S-8 e2e + a11y battery | Quality | queued |
 | S-9 docs + landing + README + blog | Collaboration | queued |
@@ -157,3 +158,30 @@ operator gate: P0 items complete, edge cases mapped, none orphaned).
    preamble-stop) · the V-18 mechanism law (operator hands async
    designs down) · H-2 tree-verify at every gate · V-31 final-tree-only
    battery claims · no tree writes mid-battery (V-3/V-4).
+
+## S-5 close notes (2026-11-07, the twenty-eighth lineage — the resume + S-5)
+
+- **Resume**: HEAD ff-matched `origin/main` @ `536b2086` (no parallel
+  drift); stack already warm — bridge :3031 (Agnes 200), engine :3030
+  healthy, smoke UNOWN_OK, V-38 pinned, toolchain + secrets intact.
+  Both unit lanes green on arrival (39/0/150 ×2).
+- **The receipted throttle** (V-17 precedent exercised): the S-5 drive
+  exhausted the 200k tok/h ceiling (engine status: 212037 tok/h,
+  THROTTLED) → `PI_ENGINE_MAX_TOKENS_HOUR=400000` set in `.env` (the
+  round's standing decision) + a stack restart — engine now UP @
+  `536b2086` (the STALE advisory cured too), budget healthy.
+- **S-5 CLOSED through A2** (receipt `benchmarks/scherzo-round/receipts/s5.md`):
+  9 dispatches / 79 turns; the four surfaces + the PWA shell + the
+  keyboard-only flow lane all operator-verified LIVE (real browser
+  pass, media captured at `download/bolero-media/` for S-9's landing).
+  Two gate-catches + one isolation defect cured through A2 (the
+  polish ticket): %ZZ 500→404 (taxonomy), the real-digest seed
+  (content-addressing honesty), the `BOLERO_DATA_DIR` e2e isolation
+  seam (V-6 filed — the isolation law).
+- **Gates on the final tree**: bolero:test 45/0/163 (Lane A) ·
+  49/0/188 (Lane B) · bolero:e2e 2/0/18 (real Chromium, keyboard-only
+  flow) · verify-precache "6 precache URLs, 0 missing — PASS".
+- **Next**: S-6 (deploy + supervision + the public/bolero/ lane), then
+  S-7/S-8 (batteries), S-9 (docs/landing — the captured media ride),
+  S-10 closeout; AUGMENT queue unchanged (H-12 gate formal re-run,
+  H-10 promote-or-retire, H-16 build, H-18/H-19 seeds).

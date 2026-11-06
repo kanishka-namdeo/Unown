@@ -1,0 +1,110 @@
+/* Bolero status board — minimal, keyboard-first. */
+:root {
+  --bg: #ffffff;
+  --ink: #1f2328;
+  --dim: #57606a;
+  --accent: #1f6feb;
+  --ok: #1a7f37;
+  --fail: #d1242f;
+  --card: #f6f8fa;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #0d1117;
+    --ink: #e6edf3;
+    --dim: #9aa0a6;
+    --card: #161b22;
+  }
+}
+body {
+  font-family: system-ui, sans-serif;
+  background: var(--bg);
+  color: var(--ink);
+  margin: 0;
+}
+main {
+  max-width: 52rem;
+  margin: 0 auto;
+  padding: 1.5rem;
+}
+h1 {
+  font-size: 1.3rem;
+  margin-bottom: 0.5rem;
+}
+h2 {
+  font-size: 1.05rem;
+  margin: 0.5rem 0;
+}
+h3 {
+  font-size: 0.95rem;
+  margin: 1rem 0 0.25rem;
+}
+.bolero-state[data-state="loading"] {
+  color: var(--dim);
+}
+.bolero-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--card);
+  border-radius: 6px;
+  margin: 0.25rem 0;
+  cursor: pointer;
+  outline: 2px solid transparent;
+}
+.bolero-row[tabindex="0"] {
+  outline-color: var(--accent);
+  outline-offset: 2px;
+}
+.bolero-row__status[data-status="ok"] { color: var(--ok); }
+.bolero-row__status[data-status="none"] { color: var(--dim); }
+.bolero-row__status[data-status="step-failed"],
+.bolero-row__status[data-status="selector-not-found"],
+.bolero-row__status[data-status="timeout"],
+.bolero-row__status[data-status="screenshot-failed"],
+.bolero-row__status[data-status="runner-offline"],
+.bolero-row__status[data-status="invalid-recipe"] { color: var(--fail); }
+.bolero-history li {
+  display: grid;
+  grid-template-columns: auto 1fr auto auto;
+  gap: 0.75rem;
+  padding: 0.25rem 0;
+  border-bottom: 1px solid var(--card);
+  font-size: 0.85rem;
+}
+.bolero-history__note { color: var(--dim); }
+.bolero-shot img {
+  max-width: 20rem;
+  border: 1px solid var(--card);
+  border-radius: 6px;
+}
+.bolero-fail {
+  margin-top: 0.75rem;
+  border: 1px solid var(--card);
+  border-radius: 6px;
+  padding: 0.5rem 0.75rem;
+}
+.bolero-fail[open] summary {
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+}
+.bolero-fail__log {
+  background: var(--card);
+  padding: 0.5rem;
+  border-radius: 4px;
+  font-size: 0.8rem;
+  white-space: pre-wrap;
+}
+.bolero-retry {
+  background: var(--accent);
+  color: #fff;
+  border: none;
+  padding: 0.4rem 0.9rem;
+  border-radius: 4px;
+  cursor: pointer;
+}
+.bolero-detail__last {
+  color: var(--dim);
+  font-size: 0.85rem;
+}

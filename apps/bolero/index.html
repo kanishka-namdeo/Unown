@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Bolero — status board</title>
+    <meta name="theme-color" media="(prefers-color-scheme: light)" content="#ffffff" />
+    <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#15181e" />
+    <meta name="description" content="Bolero status board: watch list, run history, latest screenshot, failure detail. Keyboard-first." />
+    <link rel="manifest" href="./public/manifest.webmanifest" />
+    <link rel="icon" type="image/svg+xml" href="./public/icon.svg" />
+    <link rel="stylesheet" href="./src/ui/bolero.css" />
+  </head>
+  <body>
+    <main id="bolero-root">
+      <h1>Bolero — status board</h1>
+      <div id="bolero-board" aria-busy="true">
+        <p class="bolero-state" data-state="loading">Loading…</p>
+      </div>
+      <noscript>
+        <p>Bolero's status board needs JavaScript. The PWA shell precaches
+        the app; data comes from the bolero API server.</p>
+      </noscript>
+    </main>
+    <!-- S-5 lands the UI shell (watch list, run history, latest
+         screenshot, failure detail). The service worker registers
+         fail-soft on window load — a warn, never a boot dependency. -->
+    <script type="module" src="/src/ui/app.ts"></script>
+  </body>
+</html>

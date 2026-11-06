@@ -12,7 +12,7 @@
  * row keeps only the ref and large bytes never bloat the DB.
  */
 import { Database } from "bun:sqlite";
-import { mkdirSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 
 export type WatchRow = {
@@ -155,4 +155,20 @@ export function writeArtifact(artifactsDir: string, name: string, bytes: Uint8Ar
   const path = join(artifactsDir, name);
   writeFileSync(path, bytes);
   return name;
+}
+
+/**
+ * Read one artifact back out of `artifactsDir` under its content-
+ * addressed name — the GET /api/artifacts route's read seam beside
+ * writeArtifact. Returns null on a miss (no file, name not present)
+ * so the caller can answer 404 json, never throw a 500.
+ */
+export function readArtifact(artifactsDir: string, name: string): Buffer | null {
+  const path = join(artifactsDir, name);
+  if (!existsSync(path)) return null;
+  try {
+    return readFileSync(path);
+  } catch {
+    return null;
+  }
 }
