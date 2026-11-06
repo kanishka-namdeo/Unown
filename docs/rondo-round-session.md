@@ -1231,13 +1231,23 @@ For the next lineage resuming this round:
    `.a1/scripts/battery.sh` if a baseline re-receipt is needed.
 3. Verify the checkpoint: doctor "ready to chat", C1 smoke with stdin
    guarded, `unown engine status` UP at the checkout SHA.
-4. Next ticket: the first UNCLOSED row in the queue above (**C-7**, the
-   resilience battery — C-1..C-6 CLOSED, the battery 2353/0; the e2e-lane
-   tickets cost ~2x the unit lanes (the C-6 ledger) — budget C-7
-   accordingly; acceptance items name the SCRIPT (`bun run test:unit`),
-   never the bare command — the C-6 confound lesson);
-   the §7 competition cycle OPENED at this closure:
-   [the Letta filesystem-memory teardown](TEARDOWN_2026-11-06_letta-filesystem-memory.md));
+4. **The DRIVE track is COMPLETE (2026-11-06, the `4a531894` closure):
+   C-1..C-11 ALL CLOSED** + A2H-9..A2H-14 + B-18..B-20 FIXED — the
+   next lineage's work is the ROUND CLOSEOUT: (a) the every-3-tickets
+   playbook review for the C-9..C-11 era; (b) the §7 competition cycle
+   (due: >5 tickets since the Letta teardown); (c) the OQ-1 PLAN
+   amendment (the edge-5 "prefix resume" wording → the landed
+   record-at-end semantics); (d) the §0.9 predicted-failure-classes
+   reconciliation (no retroactive story-telling); (e) the §6c
+   learning-mechanism receipts + the §8 evidence pack; (f) the
+   mid-flight dispatch-evidence gap (the twenty-second's claims expired
+   twice with work in flight — the claim protocol's known cost; the
+   twenty-fifth's extended-grace observation is the mitigation
+   candidate). Standing laws the closeout inherits: acceptance items
+   name the SCRIPT; the fresh-session handoff for long chunks (V-32);
+   the spec-pin law for upstream flips (V-38); the closing-cap
+   adjudication + the turn-budget-hook candidate (the C-11 receipt);
+   the V-31/V-35 re-run + drift laws;
    every dispatch carries the PROMPT ECONOMY header, the stdin guard,
    the V-11 preamble-stop watch (read the result text), and the V-14
    spiral watch (a self-chosen mechanism burning >2 chunks on one test
