@@ -36,6 +36,7 @@
     "chaconne:e2e": "bunx playwright test -c playwright.chaconne.config.ts",
     "bolero:test": "cd apps/bolero && bun test",
     "bolero:e2e": "cd apps/bolero && BOLERO_E2E=1 bun test e2e",
+    "bolero:server": "cd apps/bolero && bun src/server/boot.ts",
     "unown": "bun bin/unown",
     "agent:install": "bun scripts/install.ts",
     "agent:start": "bun scripts/start.ts",

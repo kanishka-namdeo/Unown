@@ -122,3 +122,6 @@ __pycache__/
 
 # Chaconne runner: the disk-store runtime dir (PLAN §1 — gitignored)
 apps/chaconne/data/
+
+# Bolero server: the SQLite store + content-addressed artifacts (PLAN S-3 — gitignored)
+apps/bolero/data/
