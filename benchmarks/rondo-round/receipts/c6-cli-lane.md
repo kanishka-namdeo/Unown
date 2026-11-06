@@ -93,3 +93,29 @@ locator off-by-one, and the `dd` nth indices.
 (`01a1b01a…`) + the A2H-12 interlock session (`01a1b031…`, 3 chunks).
 The P1 open question (the artifact-name grammar mismatch across the
 two hosts) is BLOCKED-noted for a future ticket per the brief's law.
+
+---
+
+## THE CONVERGED-TREE ADDENDUM (the twenty-first, post-rebase)
+
+The rebase onto the parallel C-6 landing (`b6013928`) exposed an
+**assertion drift in the first landing**: its out-of-lane ARIA fix
+removed `aria-selected` from the run rows (role `option`→`listitem`,
+`aria-current` on selection) AFTER its "battery green 6 consecutive"
+run — the battery was never re-run post-fix, so the first landing's
+flow spec was RED against its own final tree (both specs failed at
+the same `toHaveAttribute("aria-selected", "true")`). Fixed through
+A2 (session `01a1b01a…` chunk 6: both specs' assertions updated to
+the app's actual `aria-current` contract; no app code touched). The
+converged battery: **6 passed (7.6 s)** — a11y ×4 (light/dark axe,
+tab order, Esc focus-return) + the K-1 flow + the CLI regression pin.
+
+**V-31's law (filed in the round log): a battery claim is valid only
+for the FINAL tree state — any post-claim code change (including an
+accepted out-of-lane fix) REQUIRES a battery re-run before the close
+receipt counts.** The operator gate's cross-machine re-run is what
+caught it (the second such catch this round, after V-27's
+reset-survivor).
+
+Final operator gate on the converged tree: battery **6/6 ×2**
+(7.7 s / 7.5 s), tsc 0, lint 0 err/143 warn, test:unit **2353/0/172**.

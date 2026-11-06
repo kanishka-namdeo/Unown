@@ -304,8 +304,11 @@ test("compose → run (local fixture) → history → artifact viewer, keyboard 
     // The runs route's arrow nav: initial focusedRunId is null →
     // ArrowDown → run 1 (idx -1 → 0, the only row).
     await page.keyboard.press("ArrowDown");
+    // The selected row's focus ring: aria-current (the b6013928 ARIA
+    // fix — role listitem rows carry aria-current when selected, not
+    // aria-selected).
     await expect(group.locator('.chaconne-run-row[data-run="1"]')).toHaveAttribute(
-      "aria-selected",
+      "aria-current",
       "true",
     );
     // The palette's view-artifact row: the focused run 1 carries 2

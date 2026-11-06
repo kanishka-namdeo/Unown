@@ -1,6 +1,7 @@
 # Project Memory
 
 ## Workflow
+- Run the 3 chaconne Playwright e2e specs (`chaconne-a11y`, `chaconne-flow-cli`, `chaconne-flow`) with `bunx playwright test -c playwright.chaconne.config.ts` from `/home/z/my-project/Unown` to verify the full chaconne e2e suite (6 tests).
 - Verify CLI smoke tests after confirming the full test suite passes
 - Test fixtures are co-located with the chaconne UI codebase.
 - The project structure includes a dedicated UI module named 'chaconne' under /home/z/my-project/Unown, containing the C-3 application and related components.
@@ -9,6 +10,8 @@
 - Run `bun test` for `apps/chaconne` from both the subdirectory and the project root to verify count parity between execution contexts
 
 ## Known pitfalls
+- `chaconne-flow-cli.spec.ts` pins the B-20 CLI regression, and `chaconne-flow.spec.ts` covers the K-1 flow lane.
+- When run-row selectors in the chaconne e2e specs fail to match, verify the exact DOM structure of the run-row elements before adjusting locators; the fix applied in this session targeted run-row selectors in both specs.
 - In /home/z/my-project/Unown, the `apps/chaconne` test suite has 9 pre-existing failures from other test files that are unrelated to automation-spend.test.ts changes
 - Check the current state of scheduler.ts when debugging scheduling logic to ensure recent changes have been properly applied.
 - Always verify that test file imports are correctly applied after editing failures, as missed edits can cause downstream test failures.
@@ -19,13 +22,13 @@
 
 ## Environment
 - Remove unused variable declarations (e.g., `void seedStore;`) to keep builds clean.
-- Hardened DOM_GLOBS verifier regex in boundary.test.ts to require an identifier after the dot (\b(document|window|indexedDB|localStorage|sessionStorage).\w) to prevent false positives from prose while catching genuine DOM member access.
-- In the Unown project's interactive-mode.ts, the showStatus back-to-back reuse branch now requires message === lastStatusMessage to refresh in place; different text appends its own spacer+line. This fixes the B-1 collision by covering both orderings without changing the API.
 
 ## Facts
+- `chaconne-a11y.spec.ts` validates 4 accessibility checks: axe audit in light mode, axe audit in dark mode, tab order, and Esc-key focus-return.
 - In Unown's screenshot panel (`dl`), `dd` locators use `nth(0)` for the artifact name and `nth(1)` for the SHA-256, following the order dt("artifact"), dd(name), dt("sha256"), dd(sha).
 - Revert any code changes that fall outside the explicitly allowed guard region to prevent scope creep
 - In /home/z/my-project/Unown, the `pi-repo/packages/self-learning/test/automation-spend.test.ts` file was fixed by adding `ensureAutomationsSchema` to its `../src/automations.ts` import and calling it as the first statement in the `before` hook
+- In /home/z/my-project/Unown, writes from the chaconne test session were confined to `apps/chaconne/` and all gates were green
 - benchmarks/longhorizon/reference/tests: Reference implementation tests for clippad.", "reason": "Removed raw markdown note and truncated fragment from original memory text to present a clean, complete atomic fact without embedded artifacts."}, {
 - In /home/z/my-project/Unown, terminal operations use DISPATCH_OK for dispatch-related sessions and UNOWN_OK for general completion markers, both indicating successful execution status.", "reason": "Merged and clarified redundant and superseded completion marker definitions into a single current, unambiguous rule.
 - The `src/lib/nocturne/types.ts` file in the worktree contains the full data model from `benchmarks/nocturne-round/plan.md` §1, defining 17 entity interfaces including NocturneTenant, NocturneUser, NocturneService, NocturneAlert, NocturneIncident, NocturneTimelineEvent, NocturneRunbook, and NocturneNote.
@@ -116,8 +119,6 @@
 - Unown palette commands movePaletteSelection and runSelectedPaletteCommand verified gap-free after D10 rerender fix
 - benchmarks/local-llm/lib: Cross-platform llama-server lifecycle, OpenAI-compatible clients
 - In /home/z/my-project/Unown, `bun test apps/ostinato` runs the Lane B unit test suite from the project root and currently reports 93 passing tests across 7 files with 377 expectations.
-- In /home/z/my-project/Unown, the `actions.import` handler in `apps/ostinato/src/ui/app.ts` now calls `startSession(next, appClock()(), null)` with the D7-law comment to ensure clock capture is deferred.
-- In /home/z/my-project/Unown, O-5 chunk 1 landed: new `apps/ostinato/scripts/verify-precache.ts` (Coda C3 port, three-way ladder + 3 pins) and new `apps/ostinato/scripts/capture-usage.mjs` (Coda T3 port, keyboard-only law, 4 stills); receipt `.unown/receipts/o5.md` created with STATUS: PARTIAL; `bun apps/ostinato/scripts/verify-precache.ts` exits 0.
 
 ## Manual notes
 
@@ -126,5 +127,4 @@
 - Stealth verification suite on bot.sannysoft.com: all 10 checks (webdriver, userAgent, platform, userAgentData, timezone, locale, screen, viewport, plugins, window.chrome) pass; 0 FAIL rows in Intoli tests. (Restored by hand 2026-11-01 — second occurrence of the dream-render-prunes-landing-quoted-lines class, issue #46; moved here to the durable lane.)
 - Parley password hashing: scrypt N=16384 r=8 p=1 (src/lib/parley/password.ts). Restored by hand 2026-10-29 after AutoDream reconciles twice erased the fact (upstream 79->66 render, then the F1/F2 bcrypt poison round). Never let a memory answer overwrite this without reading the source.
 
-<!-- unown: rendered 110/120 memories via Mem0 (backend: lexical) · 10 oldest pruned at render (cap 110; hard-won rules immune) at 2026-11-06T10:00:51.553Z -->
-
+<!-- unown: rendered 110/124 memories via Mem0 (backend: lexical) · 14 oldest pruned at render (cap 110; hard-won rules immune) at 2026-11-06T10:11:42.052Z -->
