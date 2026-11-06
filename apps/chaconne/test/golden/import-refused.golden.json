@@ -1,0 +1,1 @@
+{"recipes":[{"id":1,"name":"naïve-ünicode","steps":[{"id":11,"kind":"goto","selector":"http://127.0.0.1:4014/test/fixtures/blank.html"}],"version":1}],"runs":[{"artifacts":[],"committedPrefix":1,"finishedAt":"2026-11-06T00:00:05.000Z","id":1,"recipeId":1,"recipeVersion":1,"startedAt":"2026-11-06T00:00:00.000Z","status":"ok"}],"schema":"chaconne.v2"}
