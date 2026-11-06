@@ -255,6 +255,32 @@ export function assertAutomations(payload: unknown): void {
   }
 }
 
+/** Pin a single automation row — used by POST /api/automations (create,
+ *  returns `{ automation }`) and PATCH /api/automations/:id (lifecycle,
+ *  returns `{ automation }`). The row may be a camelCase domain row or an
+ *  engine-native snake_case row; required fields are pinned, snake_case
+ *  wire fields are optional-pinned when present. */
+export function assertSingleAutomation(payload: unknown): void {
+  pin(payload, "automation", "object");
+  const row = dig(payload, "automation") as Record<string, unknown>;
+  const r: Record<string, unknown> = {};
+  for (const [k, v] of Object.entries(row)) r[k] = v;
+  pin(payload, "automation.id", "number");
+  pin(payload, "automation.title", "string");
+  pin(payload, "automation.prompt", "string");
+  pin(payload, "automation.schedule", "object");
+  pinEnum(payload, "automation.schedule.kind", ["cron", "every", "after", "once", "event"]);
+  pinEnum(payload, "automation.mode", ["read-only", "standard"]);
+  pin(payload, "automation.state", "string");
+  pinEnum(payload, "automation.state", ["active", "paused"]);
+  // Optional fields pinned when present.
+  if ("model" in r) pin(payload, "automation.model", "string");
+  if ("timezone" in r) pin(payload, "automation.timezone", "string");
+  if ("lifecycle" in r) pin(payload, "automation.lifecycle", "string");
+  if ("created_at" in r) pin(payload, "automation.created_at", "number-or-null");
+  if ("updated_at" in r) pin(payload, "automation.updated_at", "number-or-null");
+}
+
 export function assertRunRecord(payload: unknown): void {
   pin(payload, "id", "number");
   pin(payload, "taskId", "number");
@@ -328,6 +354,7 @@ export function assertSpend(payload: unknown): void {
 
 export type ContractEndpoint =
   | "automations"
+  | "single-automation"
   | "runs"
   | "overview"
   | "dreams"
@@ -345,6 +372,9 @@ export function assertContract(endpoint: ContractEndpoint, payload: unknown): vo
   switch (endpoint) {
     case "automations":
       assertAutomations(payload);
+      return;
+    case "single-automation":
+      assertSingleAutomation(payload);
       return;
     case "runs":
       assertRuns(payload);
