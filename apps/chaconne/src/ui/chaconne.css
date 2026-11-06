@@ -1,0 +1,608 @@
+/*
+ * Chaconne — the app stylesheet (C-3; the Ostinato visual kin).
+ *
+ * Hand-authored, plain CSS, no build step, no dependencies (the
+ * zero-dep law: linked from index.html as ./src/ui/chaconne.css —
+ * the Ostinato/Coda precedent).
+ *
+ * Design tokens: :root (light) + @media (prefers-color-scheme: dark)
+ * overrides, `color-scheme: light dark` so form controls + scrollbars
+ * follow the scheme. The Ostinato GitHub-pair-calibre token set, verbatim.
+ */
+
+:root {
+  color-scheme: light dark;
+
+  /* ── Design tokens (light scheme) ─────────────────────────────────── */
+  --bg: #ffffff;
+  --fg: #1f2328;
+  --muted: #57606a;
+  --border: #d0d7de;
+  --accent: #0a5dc2;
+  --focus: #0a5dc2;
+  --surface: #f6f8fa;
+  --surface-raised: #ffffff;
+  --accent-contrast: #ffffff;
+
+  --radius: 8px;
+  --radius-sm: 6px;
+  --shadow-overlay: 0 12px 32px rgba(31, 35, 40, 0.18);
+
+  /* status tints (the badge colors — never the ONLY cue: the badge
+     text carries the status, the tint is reinforcement). */
+  --badge-ok: #1a7f37;
+  --badge-fail: #cf222e;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    /* ── Design tokens (dark scheme) ────────────────────────────────── */
+    --bg: #0d1117;
+    --fg: #e6edf3;
+    --muted: #8b949e;
+    --border: #30363d;
+    --accent: #58a6ff;
+    --focus: #58a6ff;
+    --surface: #161b22;
+    --surface-raised: #161b22;
+    --accent-contrast: #0d1117;
+    --shadow-overlay: 0 12px 32px rgba(0, 0, 0, 0.5);
+
+    --badge-ok: #3fb950;
+    --badge-fail: #f85149;
+  }
+}
+
+/* ── Reset + base ─────────────────────────────────────────────────────────── */
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--fg);
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  font-size: 16px;
+  line-height: 1.5;
+}
+
+/* ── The visible focus contract (P0 #9): every interactive element gets a
+       2px solid ring + offset. `outline: none` never appears in this file. */
+
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+[tabindex="0"]:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+
+/* ── The app root + the pre-boot placeholder ─────────────────────────────── */
+
+#chaconne-root {
+  max-width: 52rem;
+  margin: 0 auto;
+  padding: 1rem;
+}
+
+@media (min-width: 900px) {
+  #chaconne-root {
+    padding: 2rem;
+  }
+}
+
+#chaconne-status {
+  color: var(--muted);
+  font-style: italic;
+}
+
+/* ── Header ───────────────────────────────────────────────────────────────── */
+
+.chaconne-header {
+  display: flex;
+  align-items: baseline;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  padding: 0.5rem 0 1rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.chaconne-title {
+  margin: 0;
+  font-size: 1.5rem;
+  line-height: 1.2;
+}
+
+.chaconne-palette-hint {
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+/* ── States (loading / empty / error) ─────────────────────────────────────── */
+
+.chaconne-state {
+  padding: 2rem 0;
+  color: var(--muted);
+}
+
+.chaconne-state-copy {
+  margin: 0.5rem 0;
+}
+
+.chaconne-state-title {
+  margin: 0;
+  font-size: 1.25rem;
+  color: var(--fg);
+}
+
+/* The error panel: distinct by SHAPE + border, not by color alone. */
+.chaconne-error {
+  border: 2px solid var(--accent);
+  border-radius: var(--radius);
+  padding: 1rem;
+  background: var(--surface);
+  color: var(--fg);
+}
+
+.chaconne-error .chaconne-state-copy {
+  color: var(--fg);
+}
+
+/* ── Buttons ──────────────────────────────────────────────────────────────── */
+
+button {
+  font: inherit;
+  color: var(--fg);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 0.4rem 0.75rem;
+  cursor: pointer;
+}
+
+button:hover {
+  background: var(--surface-raised);
+  border-color: var(--accent);
+}
+
+button:active {
+  background: var(--accent);
+  color: var(--accent-contrast);
+}
+
+/* ── Sections + lists ─────────────────────────────────────────────────────── */
+
+.chaconne-section-title {
+  font-size: 1.1rem;
+  margin: 1rem 0 0.5rem;
+  padding-bottom: 0.25rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.chaconne-recipe-list,
+.chaconne-run-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.4rem;
+}
+
+.chaconne-recipe-row,
+.chaconne-run-row {
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
+  flex-wrap: wrap;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  min-width: 0;
+}
+
+/* The visible selection ring: outline + background (the DOM rides
+   aria-current — the visual cue is NOT color-only). */
+.chaconne-recipe-row[aria-current="true"],
+.chaconne-run-row[aria-current="true"] {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+  border-color: var(--border);
+  background: var(--surface);
+}
+
+.chaconne-recipe-name {
+  font-weight: 600;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 18rem;
+}
+
+.chaconne-recipe-meta,
+.chaconne-run-meta {
+  color: var(--muted);
+  font-size: 0.8rem;
+  white-space: nowrap;
+}
+
+/* ── Status badges (the 5-entry taxonomy; text is the cue, tint is
+       reinforcement — never color-only) ───────────────────────────────────── */
+
+.chaconne-badge {
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 0.15rem 0.5rem;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--fg);
+  white-space: nowrap;
+}
+
+.chaconne-badge-ok {
+  color: var(--badge-ok);
+  border-color: var(--badge-ok);
+}
+
+.chaconne-badge-step-failed,
+.chaconne-badge-selector-not-found,
+.chaconne-badge-timeout,
+.chaconne-badge-invalid-recipe {
+  color: var(--badge-fail);
+  border-color: var(--badge-fail);
+}
+
+/* The status legend (the 5 rows, always visible on the runs route). */
+.chaconne-status-legend {
+  margin: 1rem 0;
+  padding: 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  display: grid;
+  gap: 0.35rem;
+}
+
+.chaconne-legend-row {
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
+}
+
+.chaconne-legend-copy {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+/* ── Run groups ────────────────────────────────────────────────────────────── */
+
+.chaconne-run-group {
+  margin-top: 1.25rem;
+}
+
+.chaconne-run-group-title {
+  font-size: 0.95rem;
+  margin: 0 0 0.5rem;
+  color: var(--fg);
+}
+
+/* ── The status rows (idle / live) ───────────────────────────────────────── */
+
+.chaconne-status-idle,
+.chaconne-status-live {
+  margin-top: 1rem;
+  padding: 0.75rem 1rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+}
+
+/* ── The failed-run panel (the alert shape, border + role in the DOM) ────── */
+
+.chaconne-failed {
+  border: 2px solid var(--badge-fail);
+  border-radius: var(--radius);
+  padding: 1rem;
+  background: var(--surface);
+  margin-top: 1rem;
+}
+
+/* ── The artifact panes ───────────────────────────────────────────────────── */
+
+.chaconne-artifact {
+  margin-top: 1rem;
+  padding: 1rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface-raised);
+  max-width: 44rem;
+}
+
+.chaconne-artifact-dl {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 0.3rem 1rem;
+  margin: 0.75rem 0;
+}
+
+.chaconne-artifact-key {
+  color: var(--muted);
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.chaconne-artifact-value {
+  margin: 0;
+  font-family: ui-monospace, monospace;
+  font-size: 0.8rem;
+  word-break: break-all;
+}
+
+.chaconne-extracted-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 0.75rem 0;
+}
+
+.chaconne-extracted-table td {
+  padding: 0.35rem 0.5rem;
+  border: 1px solid var(--border);
+  font-size: 0.9rem;
+}
+
+/* ── The recipe editor modal (the Ostinato create-form contract) ──────────── */
+
+/* The overlay: fixed full-inset backdrop, dark-scheme-aware. */
+.chaconne-modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  padding: 0 1rem;
+  background: rgba(31, 35, 40, 0.45);
+}
+
+@media (prefers-color-scheme: dark) {
+  .chaconne-modal-overlay {
+    background: rgba(1, 4, 9, 0.6);
+  }
+}
+
+/* The dialog box: the surface token, max-width ~34rem, elevation. */
+.chaconne-recipe-form {
+  width: 100%;
+  max-width: 34rem;
+  max-height: 80vh;
+  overflow-y: auto;
+  margin-top: 8vh;
+  padding: 1.25rem;
+  background: var(--surface-raised);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-overlay);
+}
+
+.chaconne-recipe-form h2 {
+  margin: 0 0 0.75rem;
+  font-size: 1.25rem;
+  color: var(--fg);
+}
+
+.chaconne-field-label {
+  display: block;
+  margin-top: 0.75rem;
+  font-weight: 600;
+  font-size: 0.9rem;
+  color: var(--fg);
+}
+
+.chaconne-field {
+  display: block;
+  width: 100%;
+  margin-top: 0.3rem;
+  padding: 0.45rem 0.6rem;
+  font: inherit;
+  color: var(--fg);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+}
+
+.chaconne-step-group {
+  margin: 0.75rem 0;
+  padding: 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+}
+
+.chaconne-step-group legend {
+  font-weight: 600;
+  font-size: 0.85rem;
+  color: var(--muted);
+  padding: 0 0.4rem;
+}
+
+.chaconne-step-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.5rem;
+  padding: 0.5rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.chaconne-step-row:last-child {
+  border-bottom: none;
+}
+
+.chaconne-modal-guard {
+  min-height: 1.5em;
+  margin: 0.75rem 0 0;
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+/* The submit-failure lane: NOT color-only — the border-left + padding. */
+.chaconne-modal-error {
+  min-height: 1.5em;
+  margin: 0.5rem 0 0;
+  padding: 0.5rem 0.75rem;
+  border-left: 3px solid var(--accent);
+  background: var(--surface);
+  color: var(--fg);
+  font-size: 0.85rem;
+}
+
+.chaconne-modal-row {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.75rem;
+  margin-top: 1rem;
+}
+
+.chaconne-modal-hint {
+  color: var(--muted);
+  font-size: 0.8rem;
+}
+
+/* ── The notice line ──────────────────────────────────────────────────────── */
+
+.chaconne-notice {
+  margin: 0.75rem 0 0;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--fg);
+  font-size: 0.9rem;
+}
+
+/* ── The command palette overlay ─────────────────────────────────────────── */
+
+#chaconne-palette {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  padding: 0 1rem;
+  background: rgba(31, 35, 40, 0.45);
+}
+
+@media (prefers-color-scheme: dark) {
+  #chaconne-palette {
+    background: rgba(1, 4, 9, 0.6);
+  }
+}
+
+.chaconne-palette-list,
+.chaconne-palette-input {
+  width: 100%;
+  max-width: 34rem;
+  margin-top: 15vh;
+}
+
+.chaconne-palette-input {
+  padding: 0.6rem 0.75rem;
+  font: inherit;
+  color: var(--fg);
+  background: var(--surface-raised);
+  border: 1px solid var(--border);
+  border-radius: var(--radius) var(--radius) 0 0;
+}
+
+.chaconne-palette-list {
+  list-style: none;
+  margin: 0;
+  padding: 0.5rem;
+  max-height: 60vh;
+  overflow-y: auto;
+  background: var(--surface-raised);
+  border: 1px solid var(--border);
+  border-radius: 0 0 var(--radius) var(--radius);
+  box-shadow: var(--shadow-overlay);
+}
+
+.chaconne-palette-list:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+
+.chaconne-palette-group {
+  padding: 0.75rem 0.5rem 0.25rem;
+  color: var(--muted);
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.chaconne-palette-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.4rem 0.5rem;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+
+#chaconne-palette kbd.chaconne-palette-hint {
+  color: var(--muted);
+  font-family: ui-monospace, monospace;
+  font-size: 0.75rem;
+  padding: 0.1rem 0.4rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  margin-left: auto;
+  white-space: nowrap;
+}
+
+.chaconne-palette-label {
+  flex: 1;
+  min-width: 0;
+}
+
+.chaconne-selected {
+  background: var(--accent);
+  font-weight: 600;
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+
+.chaconne-selected .chaconne-palette-label {
+  color: var(--accent-contrast);
+}
+
+.chaconne-selected .chaconne-palette-hint {
+  color: var(--accent-contrast);
+  border-color: transparent;
+  background: transparent;
+}
+
+/* Disabled commands dim by COLOR (the muted token, ≥4.5:1 both schemes),
+   never by opacity — the Ostinato B-9 axe-receipt law. */
+.chaconne-disabled .chaconne-palette-label,
+.chaconne-disabled .chaconne-palette-hint,
+.chaconne-disabled kbd {
+  color: var(--muted);
+}
+
+/* ── Reduced motion (P0 #9's pin): any transition is disabled here.
+       This file adds none by design — the rule is the pin, not a
+       precaution. */
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    transition: none !important;
+    animation: none !important;
+  }
+}

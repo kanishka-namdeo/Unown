@@ -1,0 +1,18 @@
+{
+  "name": "Chaconne — browser flows you can trust",
+  "short_name": "Chaconne",
+  "description": "Keyboard-first, offline-first browser-recipe runner. Your data stays in this browser; it works offline.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#0a5dc2",
+  "icons": [
+    {
+      "src": "./icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}

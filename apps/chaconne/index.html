@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Chaconne — browser flows you can trust</title>
+    <meta name="theme-color" media="(prefers-color-scheme: light)" content="#ffffff" />
+    <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#0d1117" />
+    <meta name="description" content="Keyboard-first, offline-first browser-recipe runner. Your data stays in this browser; it works offline." />
+    <link rel="manifest" href="./public/manifest.webmanifest" />
+    <link rel="icon" type="image/svg+xml" href="./public/icon.svg" />
+    <link rel="stylesheet" href="./src/ui/chaconne.css" />
+  </head>
+  <body>
+    <main id="chaconne-root">
+      <p id="chaconne-status">Booting…</p>
+    </main>
+    <!-- C-3 lands the UI shell; the module entry boots the app (the
+         recipes / run-history / artifact routes + the Ctrl+K palette).
+         C-6 lands the PWA lane (the sw.js precache list); C-4 wires
+         the runner trigger into the Run action. -->
+    <script type="module" src="/src/ui/app.ts"></script>
+  </body>
+</html>
