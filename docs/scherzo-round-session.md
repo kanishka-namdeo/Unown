@@ -18,9 +18,27 @@ evidence that driving A2 improved while doing it.
 | Track | Status |
 |---|---|
 | Phase 0 (recon refresh, canaries, selection, PRD, baseline) | ✅ COMPLETE (this lineage) |
-| DRIVE (S-0..S-10) | 🔜 S-0 (the PLAN ticket) is next |
-| AUGMENT (H-12 gate re-run, H-10 re-activation, H-16 build, H-18/H-19 seeds) | H-12 rebuilt + committed (the mandated first act); the rest queued |
-| PROVE (§8 evidence pack, RESULTS.md) | opens with the first ticket |
+| DRIVE (S-0..S-10) | **S-0..S-4 CLOSED** (plan, domain+pins, runner+real-browser e2e, server+health, scheduler) — S-5 (dashboard) is next |
+| AUGMENT (H-12 gate re-run, H-10 re-activation, H-16 build, H-18/H-19 seeds) | H-12 rebuilt + committed (the mandated first act) + **5 zero-correction continuation data points** (S-0 c2, S-1 c2/c3, S-2 c3/c4, S-3 c3/c4, S-4 c2/c3); V-5 filed (the research spiral — H-17's firing surface, receipted, the write-now cure standing); the rest queued |
+| PROVE (§8 evidence pack, RESULTS.md) | receipts s0..s4 committed; turns-to-done trend recorded (20 → 21 → 32 → 25 → 24) |
+
+**Drive receipts so far** (all through A2, all operator-gated):
+
+| Ticket | Turns / dispatches | Gate |
+|---|---|---|
+| S-0 PLAN.md (491 lines, 14 edges) | 20 / 2 | PASS (sections + rows verified) |
+| S-1 domain core + round-trip pins | 21 / 3 | PASS (9/0/50, planted-drift RED) |
+| S-2 runner + real-browser e2e | 32 / 5 | PASS (22/0/84 unit; e2e 1/0 real Chromium) |
+| S-3 server + ingest + health | 25 / 4 | PASS (33/0/135; /health live-curled) |
+| S-4 scheduler (mechanism handed down) | 24 / 3 | PASS (39/0/150 ×2 consecutive) |
+
+**Parallel engagement**: the twenty-seventh lineage opened the **Sonata
+round** (vehicle Fugue, `apps/fugue/` — the engine/learning-loop surface,
+non-overlapping with Bolero's browser/ops surface) mid-S-3; reconciled per
+the ledger-arbiter law at both landings (rebase, disjoint surfaces,
+merged-tree joint verification each time — bolero:test green on every
+merged tree). The two rounds coexist on `main` under the non-overlap
+contract they receipted.
 
 ## Operator decisions (2026-11-07)
 

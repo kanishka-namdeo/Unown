@@ -18,6 +18,10 @@ import type { ArtifactRef, RunReport } from "../domain/types.js";
 
 /** sha256 hex of arbitrary payload bytes (content-addressing). */
 export function sha256Hex(payload: Uint8Array | string): string {
+  return sha256HexImpl(payload);
+}
+
+function sha256HexImpl(payload: Uint8Array | string): string {
   const buf = typeof payload === "string" ? new TextEncoder().encode(payload) : payload;
   return createHash("sha256").update(buf).digest("hex");
 }

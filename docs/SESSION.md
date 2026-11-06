@@ -31,8 +31,22 @@ the retention gap cured by construction; the promotion gate re-runs on
 this round's first genuine capped chunk). The registry re-opened with
 H-10 re-activated (the firing surface finally exists), H-16 build
 scheduled, seeds H-18/H-19 at PROPOSE. The round's validation log:
-V-1..V-4 filed (all operator-tooling class, honest). **Next: S-0 (the
-PLAN ticket) opens the DRIVE track.**
+V-1..V-5 filed (V-1..V-4 operator-tooling; V-5 the research spiral —
+H-17's receipted firing surface, the write-now cure standing). **The
+DRIVE track is OPEN and moving: S-0..S-4 CLOSED through A2** (the
+491-line PLAN; the FROZEN bolero.v1 domain with the planted-drift
+round-trip pin 9/0/50; the runner with the REAL-BROWSER e2e smoke
+green — 22/0/84 unit, the H-10 surface live; the server with STRICT
+ingest + the live-curled /health endpoint 33/0/135; the scheduler with
+the operator-handed mechanism, 39/0/150 ×2 consecutive) — turns-to-done
+20 → 21 → 32 → 25 → 24 across the five tickets, every continuation
+riding the H-12 generator with ZERO operator correction (the promotion
+gate's evidence accrues). The parallel **Sonata round** (Fugue, the
+engine/learning-loop surface — the twenty-seventh lineage) opened mid-S-3
+and coexists under the non-overlap contract; both landings reconciled by
+rebase with merged-tree verification each time. **Next: S-5 (the
+dashboard PWA) → S-6 (deploy + supervision) → S-7/S-8 (batteries) →
+S-9 (docs/landing/blog) → S-10 (closeout).**
 
 ---
 
