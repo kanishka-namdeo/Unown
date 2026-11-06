@@ -177,10 +177,22 @@ THROWS — RED by construction); one latent defect caught at A2's own
 gate (the flow specs' stale old-grammar seeds); the operator gate:
 Lane A **113/4/0 (+2)**, e2e 10 passed, test:unit **2353/0/172
 unchanged**, tsc 0, lint 0; V-30 RESOLVED; receipt
-`benchmarks/rondo-round/receipts/a2h13.md`. **C-8 CLAIMED** (the
-import/export battery; the standing brief with the golden-layout
-ruling — the twenty-fourth's prep-research gap answered); dispatched
-after the claim-push.
+`benchmarks/rondo-round/receipts/a2h13.md`. **C-8 CLAIMED then CLOSED through A2 by this
+lineage** (session `01a1b0ef…`, 10 rounds / ~135 turns — the round's
+heaviest): the 4 committed goldens (unicode RAW UTF-8, sha256-pinned)
++ regen-golden.ts `--check` (the drift gate) + the 4-lane io spec
+(EXPORT byte-equal, ROUND-TRIP, REFUSED never-partial, CORRUPT);
+**the operator gate's flake catch** (12-13/14 on cold cross-runs
+after A2's warm x3 — the filechooser race) cured through A2
+(DOM-condition waits + the 15 s bounded retry + fail-fast);
+**12 consecutive green** (A2's 6/6 + the operator's 6/6, 6 cold
+boots); V-39 filed (the prompt-guard silent kill — dispatch briefs
+never carry literal kill-command text); receipt
+`benchmarks/rondo-round/receipts/c8.md`. **C-9 stands CLAIMED by the
+twenty-second** (the a11y completion, tolled for the V-38 Agnes
+degradation window — the upstream's degenerate-200 class, every
+dispatch failing at 0 input tokens since ~13:46 UTC; the smoke-poll
+backoff armed on that lane).
 
 The **twentieth lineage** (a PARALLEL resume — the V-9 dual-incarnation
 event: the nineteenth's checkpoint `6885f2f3` landed first and governs;
