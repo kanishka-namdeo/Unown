@@ -1,0 +1,76 @@
+{
+  "startedAt": "2026-11-06T11:30:59.275Z",
+  "runs": 8,
+  "timeoutMs": 45000,
+  "churn": "dream",
+  "engineOverview": {
+    "status": 200,
+    "body": "{\"ok\":true,\"pid\":3450,\"bootedAt\":1793963782874,\"uptimeMs\":876400,\"phase\":\"ready\",\"drainBudgetMs\":10000,\"agent\":{\"name\":\"pi (badlogic/pi-mono)\",\"layer\":\"self-learning v0.0.57\",\"provider\":\"zai-bridge/kimi-k2.5\",\"bridge\":{\"ok\":true,\"port\":3031,\"requests\":37,\"errors\":0,\"upstream\":{\"ok\":true,\"status\":200"
+  },
+  "results": [
+    {
+      "run": 1,
+      "exit": 0,
+      "ms": 1876,
+      "answer": "UNOWN_OK",
+      "hung": false,
+      "evidenceDir": null
+    },
+    {
+      "run": 2,
+      "exit": 0,
+      "ms": 3256,
+      "answer": "UNOWN_OK",
+      "hung": false,
+      "evidenceDir": null
+    },
+    {
+      "run": 3,
+      "exit": 0,
+      "ms": 2722,
+      "answer": "UNOWN_OK",
+      "hung": false,
+      "evidenceDir": null
+    },
+    {
+      "run": 4,
+      "exit": 0,
+      "ms": 2351,
+      "answer": "UNOWN_OK",
+      "hung": false,
+      "evidenceDir": null
+    },
+    {
+      "run": 5,
+      "exit": 0,
+      "ms": 1601,
+      "answer": "UNOWN_OK",
+      "hung": false,
+      "evidenceDir": null
+    },
+    {
+      "run": 6,
+      "exit": 0,
+      "ms": 1728,
+      "answer": "UNOWN_OK",
+      "hung": false,
+      "evidenceDir": null
+    },
+    {
+      "run": 7,
+      "exit": 0,
+      "ms": 2767,
+      "answer": "UNOWN_OK",
+      "hung": false,
+      "evidenceDir": null
+    },
+    {
+      "run": 8,
+      "exit": 0,
+      "ms": 2627,
+      "answer": "UNOWN_OK",
+      "hung": false,
+      "evidenceDir": null
+    }
+  ]
+}
