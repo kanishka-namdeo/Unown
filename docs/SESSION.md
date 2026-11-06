@@ -64,6 +64,23 @@ round log) under the V-9 dispatch-claim protocol: the nineteenth's claim
 governs for 30 minutes, then the brief serves whichever lineage
 dispatches.
 
+The twentieth's lane then executed **three satellite/engine tickets**
+while the C-queue ran on the parallel lineages: **A2H-7** (the #30
+watcher, both churn lanes 16/16 no-hang, receipts committed), **A2H-8**
+(the #43 iframe-race probe — the v0.0.55 silent-loss path NOT
+reproducible on v0.0.56, the F3 fix confirmed; the residual
+loud-failure window + partial-application gap receipted; two evidence
+comments posted upstream on issue #43), and **A2H-10** (the B-18
+reasoning-noise filter at the dream's write boundary —
+`sanitizeMemoryText()` at all three lanes, 14 pins, the honest
+A2/operator split with four draft defects caught by the gate pins;
+package suite 5470/0, tsc 77=77 parity) — **the round's first
+Unown-code enhancement, shipping as v0.0.57** (tagged). The combined
+state verified green post-rebase: **2289/0/166**, typecheck 0, rail
+56/543/55. C-1 (the nineteenth's lane, quadruply verified per V-14)
+and the C-2 claim (the twenty-first's lane) run in parallel; B-18's
+post-fix render observation is the pending close evidence.
+
 The **nineteenth lineage** re-receipted the checkpoint on the same tree
 (`1e4e840b`) after the second sandbox recycle of the round (V-8: `.a1/`,
 `unown-home/`, the bun pin and the venv reclaimed; cured in one pass —
