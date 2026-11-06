@@ -1,0 +1,7 @@
+{
+  "name": "@unown/fugue",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Keyboard-first, offline-capable PWA console for the engine's automation + learning loop (vanilla TS, zero dependencies)."
+}
