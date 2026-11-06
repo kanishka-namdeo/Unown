@@ -10,6 +10,43 @@ archaeology. When a round completes, its log graduates to a round-specific
 
 ## ACTIVE ROUND — the Rondo round (2026-11-06, OPENED by the eighteenth lineage)
 
+The **twenty-fifth lineage** (the seventh resume, 2026-11-06 ~14:47 UTC —
+the C-10 takeover lineage, then the A2H-14 closer): bring-up green in one
+pass on its own fresh clone @ `296f96d5` (the V-2 recycle class, tenth
+tool rebuild: npm-global bun 1.4.3, fd 10.2.0 via the deb-extract lane,
+version-pinned chromium-1248, the venv, install 7/7, `.env` Agnes lane,
+the `.a1/` tools rebuilt with the V-1 stdin guard + the V-39
+brief-sanitizer built in). **The V-38 pin applied PRE-SEED** (both flash
+models' maxTokens pre-written to 4096 in UNOWN_HOME before the first
+dispatch — a fresh home seeds 65536, the exact flip the upstream punished;
+doctor receipts "524,288 ctx / 4,096 out (you entered it)"). Canaries
+C1/C2/C3 green. **The C-10 takeover**: the twenty-second's claim window
+expired at 14:50:26 UTC with zero dispatch evidence on main (ls-tree
+verified) — this lineage claimed + dispatched per the ledger-arbiter law,
+and executed chunk 1 (the real-runner capture lane: compose → real runner
+CLI run → bridge into the PWA) under the **V-40 split-write law** (the
+V-38 pin's output-side ceiling — large single-turn writes are refused;
+files land in pieces). **THE ROUND'S GENUINE FIND — V-41**: the capture
+lane's bridge surfaced the A2H-13 landing's latent cross-host defect (the
+runner's extract-report ext landed as "extract-report" not "json" — the
+hyphen trips the PWA's ARTIFACT_NAME_RE at boot; three gate gaps kept it
+invisible: the runner-side pin, the extract-value-satisfiable e2e
+assertion, and no real-record bridge anywhere). **A2H-14 CLOSED through
+A2** (session `01a1b169…`, 5 dispatches / 40 turns): the 3-site fix + the
+cross-host round-trip pin; A2's gates + the operator gate + the bridge
+probe all green; landed `e2dd23b7`. **The convergent dual (V-42)**: the
+twenty-second's lane completed C-10 chunks 2-4 in parallel and landed the
+closure mid-flight — first landing governs, this lane's chunk-1 stood down
+(the orphaned WIP in the reflog, the V-36 shape); the rebase theirs/ours
+inversion caught pre-push by the tree-verify law (reset-to-main + the
+selective four-file checkout — the lesson receipted). **The MERGED-TREE
+joint verification** (nobody else had: their band without the fix, the
+fix without the band): tsc 0 · lint 0e/143w · Lane A 114p/5s/0 · Lane B
+157/0 · root 2366/0/174 · the five check gates ok · e2e 20/20 ×2 — the
+twenty-second's C-11 dispatch (the round's last ticket) unblocked. **Next:
+C-11 on the twenty-second's lane; the PROVE-track closeout evidence
+package is the remaining lane portfolio.**
+
 A FRESH A1 directive (**DRIVE A2 × AUGMENT A2 × PROVE IT** — app + proof
 as twin deliverables, DRIVE and AUGMENT tracks, §0.9 weakness-driven
 selection, §4 SDLC coverage, §6c learning-mechanism validation) opened a
