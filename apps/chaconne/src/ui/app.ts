@@ -654,8 +654,7 @@ function renderRecipesRoute(app: AppState, data: ChaconneData): HTMLElement {
     const li = el("li", {
       class: "chaconne-recipe-row",
       "data-recipe": String(r.id),
-      role: "option",
-      "aria-selected": String(r.id === app.focusedRecipeId),
+      role: "listitem",
       tabindex: r.id === app.focusedRecipeId ? "0" : "-1",
     });
     if (r.id === app.focusedRecipeId) li.setAttribute("aria-current", "true");

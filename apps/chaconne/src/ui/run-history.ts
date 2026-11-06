@@ -68,8 +68,7 @@ export function renderRunHistory(
       const row = el("li", {
         class: "chaconne-run-row",
         "data-run": String(run.id),
-        role: "option",
-        "aria-selected": String(run.id === selectedRunId),
+        role: "listitem",
         tabindex: run.id === selectedRunId ? "0" : "-1",
       });
       if (run.id === selectedRunId) row.setAttribute("aria-current", "true");
@@ -113,7 +112,7 @@ export function renderScheduleRow(
   const row = el("li", {
     class: "chaconne-schedule-row",
     "data-recipe": String(recipe.id),
-    role: "option",
+    role: "listitem",
   });
   row.append(el("span", { text: recipe.name, class: "chaconne-schedule-name" }));
   if (!sched) {

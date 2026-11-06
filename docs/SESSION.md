@@ -73,8 +73,13 @@ determinism pin, the content-addressed extract-report, the completed
 precache list; one gate catch — the offline.html forward reference that
 would have failed SW install, fixed through A2; Lane A 115/0, Lane B
 146/0, root battery 2353/0/172; receipt
-`benchmarks/rondo-round/receipts/c5.md`). **Next: C-6 (the e2e battery),
-then the C-7..C-11 drive queue.**
+`benchmarks/rondo-round/receipts/c5.md`). **C-6 CLOSED 2026-11-06** (the nineteenth lineage — the e2e battery lane
+1: the CHACONNE_E2E config + the K-1 keyboard-only flow spec + the a11y
+lane start; 6 consecutive green e2e runs; the ARIA fix accepted; the
+measurement confound receipted — A2's bare `bun test src` vs the real
+`bun run test:unit` 2353/0/172; receipt
+`benchmarks/rondo-round/receipts/c6.md`). **Next: C-7 (the resilience
+battery), then the C-8..C-11 drive queue.**
 
 The **twenty-first lineage's post-freeze reconciliation** (07:30 UTC):
 the B-19 windows-CI fix landed convergently (V-23 — the twentieth's

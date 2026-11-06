@@ -220,7 +220,6 @@ if (!hasDom) {
     // The selection pin: the focused row carries aria-current.
     const selected = document.querySelector(".chaconne-run-row[data-run='2']");
     expect(selected?.getAttribute("aria-current")).toBe("true");
-    expect(selected?.getAttribute("aria-selected")).toBe("true");
   });
 
   test("renderRunHistory: no runs → the honest no-runs copy (never blank)", async () => {

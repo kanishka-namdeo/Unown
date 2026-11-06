@@ -1,20 +1,24 @@
 # Project Memory
 
 ## Known pitfalls
+- In /home/z/my-project/work/unown, a service worker pitfall was fixed: `"public/offline.html"` was removed from `PRECACHE_LIST` in `sw.js` because `cache.add` rejects 404s and fails install; the entry was left as a comment to be restored in C-7.
 - Chaconne C-4 dedup-heal rule: when an interval schedule's persisted state is stale (`nextDueIso <= lastFiredIso` due to a crash that recorded `lastFiredIso` but not the `nextDue` advance), `decideSchedule`'s dedup branch must heal by setting `nextDueIso = lastFiredIso + periods * everyMs`
-- In /home/z/my-project/work/unown, the `require()` usage in `validateRecipeSteps` in `index.ts` will fail under ESM and needs to be addressed.
 - In Unown's runner-core, the `cappedWait` timeout test fails because the manual clock's `schedule` timer only fires when `clock.advance()` is called, but the test calls `clock.advance(1500)` after `executeRecipe` has already started awaiting; `check()` runs synchronously on the first call, sees `rem > 0`, arms the timer, and `await new Promise` never resolves until the timer fires.
 
 ## Task playbooks
+- In /home/z/my-project/work/unown, C-6 lane requires composing a recipe via keyboard only, running it against a local fixture, and verifying run history and artifact viewer; seeds must include `schema: "chaconne.v1"` and non-empty selectors to pass the schema gate.
 - In /home/z/my-project/work/unown, the `scheduleHook` function must be declared as `async` for proper re-entrancy guard semantics; it is invoked fire-and-forget (without `await`) in `executeRecipe`, so the caller does not block on completion
 - In /home/z/my-project/work/unown, `scheduleHook` in `apps/chaconne/runner/schedule.ts` must use a re-entrancy guard where `inTick` is set synchronously BEFORE calling `executeRecipe` to prevent concurrent ticks during fire-and-forget execution
 - In /home/z/my-project/work/unown, the Chaconne runner includes a recipe editor implemented as a dialog-contract modal.
 
 ## Environment
+- In /home/z/my-project/work/unown, C-5 Chaconne hardening requires extraction-report payloads to be written through the content-addressed store lane using `store.artifactRef` and `store.saveArtifact` with extension "extract-report.json".
 - In Unown, the 'timed DOM' test OOMs due to unbounded check() recursion and real setTimeout calls accumulating on the event loop because the real-clock path polls for an absent element
 - In Unown's runner-core, `wallCursor += cap` trips the wall cap before the step-count cap; fix by advancing `wallCursor` by a small constant (or 0) so the step-count cap fires first in tests; `nowMs` injection exists for tests that need a controlled start.
 
 ## Facts
+- C-6 Chaconne e2e battery lane 1 is complete with all 5 acceptance gates verified, adding new files `playwright.chaconne.config.ts` (79 lines), `e2e/chaconne-flow.spec.ts` (215 lines), and `e2e/chaconne-a11y.spec.ts` (221 lines)
+- In /home/z/my-project/work/unown, the `page-adapter.ts` file was updated in C-5 with +58 lines to add assert-text `=~` contains-support and an `extract` `expected` param with `recordExtract` hook and `extractionReport` getter.
 - In /home/z/my-project/work/unown, `app.ts` is included in FORBIDDEN_INPUTS and cannot be directly edited; when a new function signature conflicts with a call site in `app.ts` (e.g., C-3 `scheduleHook` signature change), the fix must be made in the test files or other allowed source files instead of modifying `app.ts`
 - In /home/z/my-project/work/unown, the C-4 Chaconne recurring-loop handoff is complete with all checks green; the primary new domain file is `apps/chaconne/src/domain/scheduler.ts` (199 lines)
 - In /home/z/my-project/work/unown, the extract step in `runStep` and the CLI artifact-writing logic required fixes as part of the C-4 recurring-loop implementation
@@ -23,7 +27,6 @@
 - Chaconne C-4 dedup-heal law: when an interval schedule's persisted state is stale (nextDueIso <= lastFiredIso), `decideSchedule` must HEAL the state by advancing `nextDueIso` to `lastFiredIso + periods*everyMs` to prevent the schedule from permanently bricking
 - In /home/z/my-project/work/unown, C-4 Chaconne Recurring Loop is complete with new files `apps/chaconne/src/domain/scheduler.ts` (199 lines), `apps/chaconne/runner/schedule.ts` (298 lines), and their respective test files all passing green
 - Align test expectations with implemented anchor-based semantics before considering the task complete.
-- Typecheck is green in /home/z/my-project/work/unown
 - In /home/z/my-project/work/unown, the C-3 Chaconne UI Shell handoff is complete and all gates are verified.
 - In /home/z/my-project/work/unown, the PWA shell at `apps/chaconne/index.html` (24 lines) loads `src/ui/app.ts` as a module.
 - In /home/z/my-project/work/unown, the service worker skeleton at `apps/chaconne/sw.js` (72 lines) defines `CACHE_NAME "chaconne-v0"` and an empty `PRECACHE_LIST`.
@@ -114,9 +117,6 @@
 - Ticket A2H-2 in Unown: V-9 hardening landed in `scripts/tui-capture/pty_common.py` — added private `_send_drained()` helper where a reader thread pumps `self.pump(0.05)` until a stop event, joined in `finally` so `pump()` never runs concurrently with itself; wired into `send()`, `key()`, and `type_prompt()` (char loop and Esc/Enter tail) with caller semantics unchanged (same delays).
 - benchmarks/polyglot: Aider polyglot benchmark with 50-exercise Exercism subset
 - pi-repo/packages/agent/test: E2E integration tests with faux providers, proxy streaming tests
-- In Unown's GitHub light color scheme, contrast ratios are verified as: foreground #1f2328 on #ffffff is ~14.5:1, and muted #57606a on #ffffff is ~6.5:1, both exceeding the 4.5:1 threshold for regular text.
-- In /home/z/my-project/Unown, the O-4 receipt workflow uses incremental chunk appends (chunks 3 and 7 explicitly referenced) with a cap on heredoc length, landing each chunk at the end of the previous turn's output before the cap.
-- In Unown's ostinato app, Chunk 3 of the O-4 implementation landed app.ts changes including the CreateActions type, AppState fields, notice refactor, create actions, onKey branch, dispatch cases, renderBoot tail, advanceSession clear, and four form functions, along with `.ostin` CSS updates.
 
 ## Manual notes
 
@@ -125,4 +125,4 @@
 - Stealth verification suite on bot.sannysoft.com: all 10 checks (webdriver, userAgent, platform, userAgentData, timezone, locale, screen, viewport, plugins, window.chrome) pass; 0 FAIL rows in Intoli tests. (Restored by hand 2026-11-01 — second occurrence of the dream-render-prunes-landing-quoted-lines class, issue #46; moved here to the durable lane.)
 - Parley password hashing: scrypt N=16384 r=8 p=1 (src/lib/parley/password.ts). Restored by hand 2026-10-29 after AutoDream reconciles twice erased the fact (upstream 79->66 render, then the F1/F2 bcrypt poison round). Never let a memory answer overwrite this without reading the source.
 
-<!-- unown: rendered 110/128 memories via Mem0 (backend: lexical) · 18 oldest pruned at render (cap 110; hard-won rules immune) at 2026-11-06T08:21:14.054Z -->
+<!-- unown: rendered 110/131 memories via Mem0 (backend: lexical) · 21 oldest pruned at render (cap 110; hard-won rules immune) at 2026-11-06T09:36:31.672Z -->
