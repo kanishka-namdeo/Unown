@@ -11,7 +11,7 @@ augmentation this engagement proposes, canaries, gates and promotes — or
 retires.
 
 - Owner: the A1 operator (authored outside A2 sessions)
-- Status: OPENED 2026-11-04; the Ostinato round closed 2026-11-04 — promoted rows: 2 (H-6, H-4); the **Reprise round opened 2026-11-05** — **promoted rows: 3 (+H-8, A2H-4, 2026-11-05)**; H-1/H-2/H-3 carry live records at PROPOSE; the Reprise round PARKED 2026-11-05 (a fresh directive opened); the **Etude round opened 2026-11-05 EMPTY** — one PROPOSE on file (H-9, that round's opening harvest); the round's validation log lives in [the round log](etude-round-session.md) + [the benchmark validation log](../benchmarks/etude-round/validation-log.md); the **Rondo round opened 2026-11-06** (the fresh DRIVE × AUGMENT × PROVE directive) — **H-9 PROMOTED by the CONVERGENT DUAL operator decision** (both parallel lineages promoted it independently on the same receipts — the Rondo round's opening call and the Etude lineage's own E-0-gate decision; promoted rows: 4), **H-10/H-11/H-12 opened at PROPOSE** (the round's pre-registered seed hypotheses; H-11 advanced to CANARY 2026-11-06 — formalized by the twenty-first, cross-lane receipted by the twentieth); the round's validation log lives in [the round log](rondo-round-session.md) + [the benchmark validation log](../benchmarks/rondo-round/validation-log.md)
+- Status: OPENED 2026-11-04; the Ostinato round closed 2026-11-04 — promoted rows: 2 (H-6, H-4); the **Reprise round opened 2026-11-05** — **promoted rows: 3 (+H-8, A2H-4, 2026-11-05)**; H-1/H-2/H-3 carry live records at PROPOSE; the Reprise round PARKED 2026-11-05 (a fresh directive opened); the **Etude round opened 2026-11-05 EMPTY** — one PROPOSE on file (H-9, that round's opening harvest); the round's validation log lives in [the round log](etude-round-session.md) + [the benchmark validation log](../benchmarks/etude-round/validation-log.md); the **Rondo round opened 2026-11-06** (the fresh DRIVE × AUGMENT × PROVE directive) — **H-9 PROMOTED by the CONVERGENT DUAL operator decision** (both parallel lineages promoted it independently on the same receipts — the Rondo round's opening call and the Etude lineage's own E-0-gate decision; promoted rows: 4), **H-10/H-11/H-12 opened at PROPOSE** (the round's pre-registered seed hypotheses; H-11 advanced to CANARY 2026-11-06 — formalized by the twenty-first, cross-lane receipted by the twentieth; H-12 advanced to CANARY 2026-11-06 — BUILT + live-canaried by the twenty-fourth on a genuine V-12 capped chunk, zero operator correction; H-10 advanced to CANARY-READY 2026-11-06 — staged + gate-designed by the twenty-fourth, the paired runs pre-committed to the teardown window); the round's validation log lives in [the round log](rondo-round-session.md) + [the benchmark validation log](../benchmarks/rondo-round/validation-log.md)
 
 **Mini-TOC**
 
@@ -253,6 +253,32 @@ PROPOSE-stage candidates (none canaried, none promoted):
   applying any). The skill's staging waits for C-2/C-6's actual runner
   lanes (the WITH/WITHOUT gate needs the lane to exist); the receipt
   is the pre-registered evidence base.
+  **Staged + gate-designed 2026-11-06 (the twenty-fourth lineage)**: the
+  C-2/C-6 lanes exist (the blocking condition cleared), so this lineage
+  STAGED the draft — [.unown/skills-staged/browser-resilience/SKILL.md]
+  (never auto-loaded, the 2026-10-22 hardening; minter-validated: name
+  regex / desc 380≤1024 / body 2880 chars, 58 lines — all within caps;
+  the instruction-set audit clean with it staged) — encoding the four
+  ingredients VERBATIM plus SHOULD/SHOULD-NOT firing conditions derived
+  from a2h8's named findings. The WITH/WITHOUT gate design is
+  pre-registered (authored through an A2 read-only research dispatch,
+  session `01a1b0a2…`, 6+7 turns across the H-12-continued chunks; the
+  full artifact in `.a1/logs/h10-research-chunk2.json` on the operator
+  lane): pairs = (1) the flow-cli lane on the form-iframe fixture (the
+  a2h8 twin — the primary flake arm), (2) the flow lane's reload/seed
+  surface, (3) the a11y battery as the neutral-or-better regression
+  arm; metrics = red-lane-runs/total per arm (the honest-gap note: the
+  config sets no `retries`, so flake-rate is measured as repeated
+  frozen-tree runs, the V-31 convention) + the envelope's `num_turns`
+  summed per ticket session (turns-to-green); pairing law = ≥3 runs/arm
+  (6 if the delta lands inside 2–3 pp), pins = frozen post-C-7 tree
+  SHA / the 4014 fixture server / playwright 1.64.1 build 1248 / the
+  same model tier / the skill the ONLY variable between arms. The
+  paired runs execute at the teardown window on the frozen post-C-7
+  tree (the existing specs are C-7's read-only context — the pairing
+  surface is stable across its landing). Stage: **PROPOSE → CANARY-READY**
+  (the instrument is staged and the protocol pre-registered; the
+  canary's live runs are the teardown window's first act).
 - **H-11 — the stdin-guard dispatch helper (operator lane, Rondo round
   seed).** V-1's cure formalized: every `-p` dispatch in this harness
   must guard stdin (inline `< /dev/null`; `stdio:["ignore"]` in
@@ -291,6 +317,34 @@ PROPOSE-stage candidates (none canaried, none promoted):
   parsing the generator needs. Stage: PROPOSE (the automation itself
   is not yet built; the round's remaining C-tickets are its evidence
   surface).
+  **BUILT + LIVE-CANARIED 2026-11-06 (the twenty-fourth lineage)**: the
+  generator now exists — `.a1/scripts/a1-continue.py` on the operator
+  lane (durable, the V-2 rebuild class): reads the dispatch envelope
+  log (a1-dispatch.py's capture), locates the session file by id,
+  parses the state (the original brief verbatim, the tool census, the
+  files written, the commands already run, the last settled assistant
+  words), applies the V-11 backtick-escape law to every carried
+  fragment, injects the operator's `--pins` set per the V-15 law, and
+  computes the V-5(a) raised cap (prior session turns + chunk budget)
+  for the `--resume <id> -p <brief>` dispatch. **The live canary**: a
+  genuine V-12 capped chunk (the H-10 gate-design research dispatch,
+  6 turns, cap-abort-mid-stream, empty result) → the generator emitted
+  the 3,972-char continuation brief as-is (zero operator edits) → the
+  resumed session completed the full four-section artifact in 7 more
+  turns (13 total, subtype success, capped false) — **continuation
+  chunks needing operator correction: 0** (the metric's first live
+  data point, on a real research artifact that this registry's H-10
+  row now cites). Two generator defects were caught and cured AT BUILD
+  by the canary itself: (a) stderr pollution broke the envelope JSON
+  parse — the cap notices ride stderr; the parser now extracts the
+  LAST `{"type":"result"}` line from clean stdout (the V-12 lesson
+  re-learned at the tooling layer); (b) the bare `unown` PATH lookup
+  failed in the subprocess context — the H-8 env-overridable
+  binary-resolution law applied. Stage: **PROPOSE → CANARY** (the
+  activation is verified on this lane's every dispatch; the promotion
+  gate needs the round's full continuation tally — C-7's own chunks
+  and the teardown window's H-10 paired runs are the remaining
+  evidence surface).
 
 A2-side candidates (skills, subagents, hooks, review checks) enter at
 PROPOSE only from receipted failures observed during O-ticket driving —

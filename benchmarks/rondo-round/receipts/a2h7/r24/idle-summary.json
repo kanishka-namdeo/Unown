@@ -1,0 +1,76 @@
+{
+  "startedAt": "2026-11-06T11:37:31.442Z",
+  "runs": 8,
+  "timeoutMs": 45000,
+  "churn": "idle",
+  "engineOverview": {
+    "status": 200,
+    "body": "{\"ok\":true,\"pid\":1961,\"bootedAt\":1793963141148,\"uptimeMs\":1910292,\"phase\":\"ready\",\"drainBudgetMs\":10000,\"agent\":{\"name\":\"pi (badlogic/pi-mono)\",\"layer\":\"self-learning v0.0.57\",\"provider\":\"zai-bridge/agnes-3.0-flash\",\"bridge\":{\"ok\":true,\"port\":3031,\"requests\":54,\"errors\":0,\"upstream\":{\"ok\":true,\"stat"
+  },
+  "results": [
+    {
+      "run": 1,
+      "exit": 0,
+      "ms": 1656,
+      "answer": "UNOWN_OK",
+      "hung": false,
+      "evidenceDir": null
+    },
+    {
+      "run": 2,
+      "exit": 0,
+      "ms": 1565,
+      "answer": "UNOWN_OK",
+      "hung": false,
+      "evidenceDir": null
+    },
+    {
+      "run": 3,
+      "exit": 0,
+      "ms": 1580,
+      "answer": "UNOWN_OK",
+      "hung": false,
+      "evidenceDir": null
+    },
+    {
+      "run": 4,
+      "exit": 0,
+      "ms": 1844,
+      "answer": "UNOWN_OK",
+      "hung": false,
+      "evidenceDir": null
+    },
+    {
+      "run": 5,
+      "exit": 0,
+      "ms": 1791,
+      "answer": "UNOWN_OK",
+      "hung": false,
+      "evidenceDir": null
+    },
+    {
+      "run": 6,
+      "exit": 0,
+      "ms": 1665,
+      "answer": "UNOWN_OK",
+      "hung": false,
+      "evidenceDir": null
+    },
+    {
+      "run": 7,
+      "exit": 0,
+      "ms": 1783,
+      "answer": "UNOWN_OK",
+      "hung": false,
+      "evidenceDir": null
+    },
+    {
+      "run": 8,
+      "exit": 0,
+      "ms": 1783,
+      "answer": "UNOWN_OK",
+      "hung": false,
+      "evidenceDir": null
+    }
+  ]
+}
