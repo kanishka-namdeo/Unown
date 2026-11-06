@@ -211,6 +211,46 @@ clone `/home/z/my-project/Unown`, this reconciliation's author), 2026-11-06:
   17/17 (9.9 s)** — the THIRD independent same-tally verification of the
   A2H-9 close across three fresh trees.
 
+The **twenty-second lineage** (the fourth resume, 2026-11-06), continuing
+the Rondo round:
+
+- Fresh clone @ `2b94f45f` = `origin/main` (the twenty-first's C-6
+  converged-tree cure, V-31); 995 commits, clean tree; the PAT in the
+  credential store (`~/.my-project` off-repo lane, `.git/config`
+  token-free per the nineteenth's convention).
+- Recycle taxes cured one pass (the V-2 class, eighth rebuild of the
+  operator tools): bun **1.4.4** npm-global, `fd` 10.2.0 (GitHub lane),
+  the repo's own `node_modules/.bin/playwright install chromium` →
+  chromium-1248, the venv re-pipped (`pyte` — pexpect/pillow survived),
+  install **7/7**, `.env` Agnes lane in place,
+  `UNOWN_HOME=/home/z/my-project/unown-home` fresh.
+- The `.a1/` operator workspace REBUILT (eighth rebuild): the
+  daemonizer `dispatch-bg.py` (double-fork, PPID-1, log + pidfile,
+  PID-tree stop), the stdin-guarded `a1-dispatch.py` (H-11 — envelope
+  capture via `--output-format json`, subtype + capped double gate,
+  session-id/turns recovery), the nine-lane `battery.sh`.
+- Stack up via the daemonizer: bridge `:3031` upstream **200** against
+  Agnes; engine `:3030` UP @ v0.0.57/`2b94f45f` (= HEAD), 9 router jobs
+  (fresh DB — the known recycle limit), breaker closed.
+- Checkpoint canaries: **C1** provider-chain smoke ×2 green (exit 0,
+  `UNOWN_OK`, 2.9 s / 1.8 s, subtype success, stdin guarded through the
+  helper); **C2** doctor green ("unown is ready to chat", 19 ✓ /
+  2 ⚠ — the same honest pair); **C3** engine lane green (UP, SHA = HEAD).
+- The full battery re-receipted at `2b94f45f`: **9/9 — tsc 14 s · lint
+  22 s (0 err/143 warn) · unit 2353/0/172 (160 s) · all five check
+  gates · ostinato e2e 17/17 (11 s)** — the FOURTH independent
+  cross-machine verification of the C-6 close, every number
+  exact-matching V-31's converged battery.
+- **Next ticket: C-7** (the resilience battery — crash-mid-run resume,
+  corrupt-store recovery, offline PWA boot). The standing brief lives
+  below. **CLAIM**: C-7 dispatched by this lineage at push time (the
+  V-9/V-10 protocol — 30-minute window; the queue row's ACTIVE marker
+  checked at dispatch time AND at chunk-2 time per the V-26 mitigation).
+  Budgeted at the C-6 ledger's ~2× e2e cost; acceptance items name the
+  SCRIPT (`bun run test:unit`), never the bare command (the C-6
+  confound lesson); V-30's artifact-grammar defect is OUT of scope (a
+  dedicated pre-C-8 ticket owns it — C-7 must not paper over it).
+
 ## Validation log
 
 | ID | Event (dated) | Class | Disposition |
@@ -350,7 +390,7 @@ folded into the receipt); the next free bug id is **B-18**.
 | C-4 | The recurring loop: schedules (interval/one-shot), misfire policy, run history | Unit battery on an injected clock (the Ostinato law) + e2e | **CLOSED 2026-11-06** — the nineteenth lineage; session `01a1afb2…`, 57 turns / 6 dispatch rounds (the twenty-first's concurrent CLAIM stands down per the per-chunk ledger-arbiter law — the V-19 shape again; its standing brief's misfire/OQ-2 rulings fold into the record as corroborating design review); 8 files / 2,024 lines: the PURE injected-clock scheduler (one-shot retires; interval anchor-relative; misfire skip-and-record, no catch-up storm; dedup + **the HEAL** — the test-caught genuine gap: a crashed-persistence window bricked interval schedules forever, the dedup no-op now advances nextDue past now, §5 receipt), the runner loop with the re-entrancy guard, the scheduleHook wiring, the schedule UI rows (backward-compatible signatures — app.ts byte-identical); the operator gate re-ran every lane — Lane A 109/0, Lane B **138/0**, root battery **2351/0/172** (2329+22), typecheck 0, lint 0/143; five deviations reviewed (one attribution corrected); receipt [c4.md](../benchmarks/rondo-round/receipts/c4.md) |
 | C-5 | Assertions + artifacts: value checks, screenshot capture with pinned hashes, extraction report | Deterministic fixture battery; artifact sha256 pins | **CLOSED 2026-11-06** — the nineteenth lineage; session `01a1afdf…`, 63 turns / 5 dispatch rounds (one gate catch: the sw.js PRECACHE_LIST forward-referenced C-7's offline.html — cache.add on a 404 would fail SW install; fixed through A2 in one round with the fetch-fallback fall-through verified); value checks (exact + `=~` contains, mismatch = step-failed with expected-vs-actual, never silent), the screenshot determinism pin, the content-addressed extract-report artifact + renderExtractReport, the completed precache list with the 3-part derivation; the operator gate re-ran every lane — Lane A 115/0, Lane B **146/0**, root battery **2353/0/172**, typecheck 0, lint 0/143; receipt [c5.md](../benchmarks/rondo-round/receipts/c5.md) |
 | C-6 | The e2e battery lane 1: compose → run → artifacts, keyboard-only (K-1 law) | Playwright battery green ×3 consecutive | **CLOSED 2026-11-06** — the nineteenth lineage; session `01a1affe…`, 87 turns / 5 dispatch rounds (the twenty-first's concurrent CLAIM stands down — the V-19 shape a third time; its standing brief folds in as corroborating design review, and its V-27 reset-survivor receipt is the SAME class as this closure's measurement confound — the bare-`bun test src` engine-fixture pickup — both receipts stand as independent discoveries of the one law: acceptance gates run the SCRIPT, and the tree is clean of untracked phantoms); the CHACONNE_E2E-armed config + the K-1 flow spec (zero pointer events — the gate's grep verified the only `.click(` hits are comments) + the a11y lane start (axe wcag2a/2aa light+dark, tab-order, Esc focus-return); the e2e battery green **6 consecutive** (A2's 3 + the operator's 3, ~7.5 s each); one out-of-lane ARIA fix ACCEPTED (role option→listitem + aria-current, honestly flagged, C-9-adjacent); the real `bun run test:unit` is 2353/0/172; Lane A 115/0, Lane B 146/0, typecheck 0, lint 0/143; receipt [c6.md](../benchmarks/rondo-round/receipts/c6.md) |)
-| C-7 | The resilience battery: crash-mid-run resume, corrupt-store recovery, offline PWA boot | The R-1 law battery (kill/resume/verify) | QUEUED |
+| C-7 | The resilience battery: crash-mid-run resume, corrupt-store recovery, offline PWA boot | The R-1 law battery (kill/resume/verify) | **ACTIVE 2026-11-06** (claimed by the twenty-second lineage at checkpoint push — the V-9/V-10 30-minute window) |
 | C-8 | Import/export: byte-stable canonical JSON round-trip, dry-run validation report | Round-trip pin + golden files | QUEUED |
 | C-9 | The accessibility battery: axe wcag2a/2aa both schemes, tab-order pin, Esc focus-return | A-1 battery green light AND dark | QUEUED |
 | C-10 | The landing band + docs page + usage captures (screenshots of the app in use) | `check:docs`/`check:claims`/`check:blog` + the landing audit | QUEUED |
