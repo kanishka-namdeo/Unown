@@ -285,6 +285,42 @@ independent claim stood down at the rebase — the V-9/V-19 shape),
   protocol (~11:49 UTC, absent dispatch evidence). This lane takes the
   cross-machine verifier role at the C-7 landing (the V-14 precedent).
 
+The **twenty-fourth lineage** (the sixth resume — a THIRD concurrent
+incarnation of the C-7 bring-up, 2026-11-06, reconciled 11:30 UTC):
+
+- This lane brought up on its own fresh clone of the same `2b94f45f`
+  INDEPENDENTLY of both landed lineages (its claim push was rejected by
+  the dual landing — the V-5 fetch+rebase law exercised again); all
+  standing down per the ledger-arbiter law: the twenty-second's ACTIVE
+  C-7 window governs, the twenty-third holds the standby dispatch + the
+  cross-machine verifier role.
+- Receipts folded in as the THIRD independent corroboration (the
+  sixth tree verification of the C-6 converged state): C1 smoke ×2
+  green (exit 0, stdin guarded), C2 doctor "ready to chat" (the
+  model-spec ⚠ self-healed via explicit `--context-window 131072
+  --max-tokens 16384` setup flags), C3 engine UP @ v0.0.57/`2b94f45f`
+  = HEAD, 9 jobs, breaker closed; Lane A **115 tests/0 fail** (111
+  pass + 4 DOM-guarded skip), Lane B **146/0**, root `bun run
+  test:unit` **2353/0/172**, tsc **0**, lint **0 err/143 warn**, e2e
+  battery **6/6 (7.3 s)** — every number exact.
+- The chromium browser-build trap hit this lane TOO (the fourth
+  confirmation): the cure variant here `bunx playwright@1.64.1 install
+  chromium` (version-pinned bunx — equivalent to the landed
+  repo-binary cure; both install build 1248, the only build the repo's
+  pinned playwright 1.64.1 accepts).
+- bun **1.4.4** ran the FULL battery green on this tree (install 7/7,
+  root 2353/0, e2e 6/6) — the bun#46510 concern logged as un-triggered
+  drift here too.
+- **This lane's portfolio (non-overlapping with the ACTIVE C-7
+  dispatch)**: the AUGMENT track — H-12's continuation-brief generator
+  BUILT and canaried on this round's live dispatch traffic (PROPOSE →
+  CANARY), H-10's browser-resilience skill staged + its WITH/WITHOUT
+  gate design prepared for the teardown review, A2H-7's armed watcher
+  re-run during the C-7 dispatch traffic (a fresh non-repro receipt,
+  per the standing instruction). No apps/chaconne writes from this
+  lane while C-7 is ACTIVE (the non-overlap discipline).
+
+
 ## Validation log
 
 | ID | Event (dated) | Class | Disposition |
@@ -326,6 +362,8 @@ independent claim stood down at the rebase — the V-9/V-19 shape),
 
 | V-31 | The converged-tree gate caught the parallel C-6 landing's OVERCLAIM: its receipt's "battery green 6 consecutive" did not hold on its own final tree — the out-of-lane ARIA fix (role option->listitem, aria-current on selection) landed AFTER the 6-green run and the battery was never re-run, so its flow spec's `toHaveAttribute("aria-selected", "true")` was RED against its own app code (the SM-1/V-9 class — a claim outrunning the final tree state) | operator-procedure (the post-fix re-run law, now explicit) | **The law: a battery claim is valid only for the FINAL tree state — any post-claim code change (including an accepted out-of-lane fix) REQUIRES a battery re-run before the close receipt counts.** Cured through A2 (session `01a1b01a…` chunk 6: both specs' assertions updated to aria-current, no app code touched); the converged battery 6/6 (a11y ×4 + the K-1 flow + the CLI pin), operator-verified ×2 (7.7 s / 7.5 s) + tsc 0 + lint 0/143 + test:unit 2353/0/172 |
 | V-32 | A DUAL-INCARNATION C-7 claim (2026-11-06, ~11:18 UTC): two lineages brought up INDEPENDENTLY on the same fresh clone `2b94f45f` within minutes (both one-pass cures, both stack-up green, both canaries green — the twenty-second skipped C4, the twenty-third ran it) and both authored a C-7 claim checkpoint; the twenty-second's `63b3a84c` landed first and governs per the ledger-arbiter law; the twenty-third's rebase folded its receipts in as the parallel verification + the substantive standing brief (the twenty-second's checkpoint references "the standing brief lives below" — the brief itself lands in the reconciliation commit) | infra-flake (the sandbox-recycle class spawning parallel resumes — the V-9/V-19/V-23 lineage, now the round's SIXTH dual event) | Standing down per the V-9/V-10 protocol: the twenty-second's ACTIVE window governs to ~11:49 UTC (checked at dispatch AND chunk-2 per the V-26 mitigation); at expiry, absent dispatch evidence on `main`, the twenty-third dispatches with the standing brief. The cross-machine verifier role at the C-7 landing is the twenty-third's (the V-14 precedent) |
+| V-33 | A THIRD concurrent incarnation of the same C-7 bring-up (2026-11-06, reconciled 11:30 UTC): this lane's claim push landed AFTER the twenty-second's `63b3a84c` + the twenty-third's `41d0e47b` reconciliation and was rejected (the fetch+rebase law); its independently-produced receipts duplicate the dual landing's almost exactly — same clone `2b94f45f`, same canary set green, same battery tallies to the digit (Lane A 115/0, Lane B 146/0, root 2353/0/172, tsc 0, lint 0/143, e2e 6/6), same chromium browser-build trap hit and cured (the version-pinned bunx variant) | infra-flake (the V-9/V-19/V-23/V-32 parallel-lineage class, now a TRIPLE incarnation — the round's seventh concurrent-lineage event) | This lane stands down on C-7 (the twenty-second's ACTIVE window + the twenty-third's standby govern) and takes the non-overlapping AUGMENT portfolio instead: H-12's generator built + canaried, H-10's skill staged + gate designed, A2H-7's watcher re-run on the C-7 dispatch traffic. The triple corroboration upgrades the bring-up baseline's confidence: three independent trees, three independent one-pass cures, identical tallies |
+
 
 ## Bug register
 
