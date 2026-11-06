@@ -109,6 +109,25 @@ battery **×3 green**, tsc 0, lint 0/143, test:unit **2353/0/172
 exact-hold**; the P1 artifact-grammar mismatch BLOCKED-noted for a
 pre-C-8 ticket (V-30). **Next: C-7 (the resilience battery).**
 
+The **twenty-third lineage** (the fifth resume, 2026-11-06 late — the
+OTHER half of a DUAL-INCARNATION claim: the parallel twenty-second's
+checkpoint `63b3a84c` landed first and governs; this lane stood down at
+the rebase per the ledger-arbiter law, the V-9/V-19 shape):
+bring-up green in one pass on the same fresh clone @ `2b94f45f` (the V-2
+recycle class, ninth tool rebuild: bun 1.4.3 npm-global, fd 10.2.0 via
+the GitHub `.deb`+dpkg-extract lane, the venv, install 7/7, `.env`
+Agnes lane, `.a1/` tools rebuilt — the H-11 dispatch helper included,
+self-tested; the chromium-1200-vs-1248 pitfall re-hit then cured via
+the repo binary — the twenty-first's drift note is a STANDING trap,
+third confirmation); stack up (bridge 200, engine UP v0.0.57 @ HEAD,
+doctor 19✓/2⚠), canaries C1–C4 all green (C4 operator-verified 4/4 —
+completing the pair the twenty-second skipped), the chaconne e2e
+battery re-verified **6/6 (9.0 s)** on the fifth independent tree.
+**C-7's dispatch** stays with the twenty-second's ACTIVE window
+(~11:49 UTC expiry); this lane's STANDING BRIEF (in the round log) is
+the substantive one both lanes ride, and this lane takes the
+cross-machine verifier role at the C-7 landing (the V-14 precedent).
+
 The **twentieth lineage** (a PARALLEL resume — the V-9 dual-incarnation
 event: the nineteenth's checkpoint `6885f2f3` landed first and governs;
 both bring-ups independently re-verified the same green state) also

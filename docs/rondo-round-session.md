@@ -251,6 +251,40 @@ the Rondo round:
   confound lesson); V-30's artifact-grammar defect is OUT of scope (a
   dedicated pre-C-8 ticket owns it — C-7 must not paper over it).
 
+The **twenty-third lineage** (the fifth resume — the OTHER half of a
+DUAL-INCARNATION claim: the twenty-second's checkpoint `63b3a84c`
+landed first and governs per the ledger-arbiter law; this lane's
+independent claim stood down at the rebase — the V-9/V-19 shape),
+2026-11-06 (late):
+
+- Same fresh clone @ `2b94f45f`, same one-pass cure (the V-2 class,
+  a NINTH tool rebuild in the same hour — the recycle tax now paid
+  twice per recycle): npm-global bun **1.4.3** (the deliberate pin —
+  a drift from the twenty-second's 1.4.4, both ≥ the floor), fd 10.2.0
+  via the GitHub-release `.deb` + dpkg-extract lane (the apt lane
+  needs a password in this sandbox — the download-and-extract variant
+  works), the venv, install **7/7**, `.env` Agnes lane, `.a1/` tools
+  rebuilt (the same trio, independently derived), PAT in the credential
+  store.
+- The chromium-1200-vs-1248 pitfall RE-HIT then cured here too
+  (`bunx playwright install` → 1200, the repo binary → 1248): the
+  twenty-first's drift note is a STANDING trap, not a one-machine
+  fluke — third independent confirmation.
+- Canaries **C1/C2/C3 green** (corroborating the twenty-second's
+  numbers: C1 `UNOWN_OK` 2 s through the rebuilt helper) **+ C4** the
+  DRIVE-lane code canary (fresh-dir fizzbuzz: exactly 2 files, 4/4
+  tests operator-verified independently — the H-2 law; the
+  twenty-second skipped C4, this lane's C4 completes the pair).
+- The chaconne e2e battery at HEAD re-verified **6/6 (9.0 s)** — the
+  FIFTH independent tree holding the C-6 converged-tree cure.
+- **Reconciliation**: this lane's C-7 claim stands down (first landing
+  governs); this lane's STANDING BRIEF (below — the substantive one
+  the twenty-second's checkpoint points at, landing in this same
+  commit) serves WHICHEVER lineage dispatches: the twenty-second's
+  active window, or this lane at window expiry per the V-9/V-10
+  protocol (~11:49 UTC, absent dispatch evidence). This lane takes the
+  cross-machine verifier role at the C-7 landing (the V-14 precedent).
+
 ## Validation log
 
 | ID | Event (dated) | Class | Disposition |
@@ -291,6 +325,7 @@ the Rondo round:
 | V-30 | The C-6 receipt's P1 open defect (BLOCKED-noted, a future ticket): the runner's saveArtifact with ext 'extract-report.json' produces names like 0_r2_sha256:…extract-report.json that violate the PWA domain's ARTIFACT_NAME_RE single-dot grammar — a cross-host schema boundary mismatch (the C-2/C-5 runner vs the C-1 domain); the spec's workaround (assert the runner's on-disk record directly; seed only PWA-grammatical names into localStorage) is correct for the lane | genuine-gap (OPEN — queued as a candidate; the fix is either widening the PWA regex or simplifying the runner's ext) | Reconcile in a dedicated ticket before C-8 (the io round-trip lane would trip the same boundary); the C-7 lane should not paper over it |
 
 | V-31 | The converged-tree gate caught the parallel C-6 landing's OVERCLAIM: its receipt's "battery green 6 consecutive" did not hold on its own final tree — the out-of-lane ARIA fix (role option->listitem, aria-current on selection) landed AFTER the 6-green run and the battery was never re-run, so its flow spec's `toHaveAttribute("aria-selected", "true")` was RED against its own app code (the SM-1/V-9 class — a claim outrunning the final tree state) | operator-procedure (the post-fix re-run law, now explicit) | **The law: a battery claim is valid only for the FINAL tree state — any post-claim code change (including an accepted out-of-lane fix) REQUIRES a battery re-run before the close receipt counts.** Cured through A2 (session `01a1b01a…` chunk 6: both specs' assertions updated to aria-current, no app code touched); the converged battery 6/6 (a11y ×4 + the K-1 flow + the CLI pin), operator-verified ×2 (7.7 s / 7.5 s) + tsc 0 + lint 0/143 + test:unit 2353/0/172 |
+| V-32 | A DUAL-INCARNATION C-7 claim (2026-11-06, ~11:18 UTC): two lineages brought up INDEPENDENTLY on the same fresh clone `2b94f45f` within minutes (both one-pass cures, both stack-up green, both canaries green — the twenty-second skipped C4, the twenty-third ran it) and both authored a C-7 claim checkpoint; the twenty-second's `63b3a84c` landed first and governs per the ledger-arbiter law; the twenty-third's rebase folded its receipts in as the parallel verification + the substantive standing brief (the twenty-second's checkpoint references "the standing brief lives below" — the brief itself lands in the reconciliation commit) | infra-flake (the sandbox-recycle class spawning parallel resumes — the V-9/V-19/V-23 lineage, now the round's SIXTH dual event) | Standing down per the V-9/V-10 protocol: the twenty-second's ACTIVE window governs to ~11:49 UTC (checked at dispatch AND chunk-2 per the V-26 mitigation); at expiry, absent dispatch evidence on `main`, the twenty-third dispatches with the standing brief. The cross-machine verifier role at the C-7 landing is the twenty-third's (the V-14 precedent) |
 
 ## Bug register
 
@@ -772,6 +807,93 @@ ACCEPTANCE: (1) `bunx playwright test -c playwright.chaconne.config.ts`
   holds (the e2e specs are NOT unit tests — no battery growth); (7)
   no file outside e2e/, playwright.chaconne.config.ts, and
   .unown/receipts/c6.md written.
+```
+
+The C-7 resilience-battery ticket — the STANDING BRIEF (authored by the
+twenty-second lineage against the PLAN §5 C-7 row + edge cases 5/11 +
+spike 3; fresh session, the prompt-economy header, stdin guarded,
+`--output-format json` envelope, ≤4 chunks × ≤8 turns with the closing
+verify chunk allowed 16; the claim pushed BEFORE dispatch):
+
+```
+ROLE: A2 executor — C-7, the Chaconne resilience battery: crash-mid-run
+  resume (the R-1 kill/resume/verify law), corrupt-store recovery boot,
+  and the offline PWA boot (O-1) — building strictly against
+  apps/chaconne/PLAN.md (§5 C-7 row, edge cases 5 + 11, spike 3).
+ALLOWED_INPUTS: apps/chaconne/** (the app tree: sw.js, public/, src/,
+  runner/, test/fixtures/, scripts/ — new dirs allowed under
+  apps/chaconne/scripts/), e2e/chaconne-resilience.spec.ts (new),
+  e2e/chaconne-seed.js + the existing chaconne specs (read-only
+  context), playwright.chaconne.config.ts (read-only — C-6's landed
+  config governs), apps/chaconne/PLAN.md + docs/chaconne-prd.md
+  (read-only: the governing docs), .unown/receipts/c7.md (your receipt).
+FORBIDDEN_INPUTS: pi-repo/ core; mini-services/; src/ (the landing
+  site); apps/ostinato/ + apps/coda/ (read-only context at most); the
+  root package.json script entries (C-11 owns chaconne:test/e2e);
+  CHANGELOG / DOX / the round log (the operator lane); weakening any
+  existing test; live-network tests (every fixture is LOCAL, served
+  from 127.0.0.1:4014 — no external URL may appear in a spec).
+OUTPUT_ARTIFACT: (1) e2e/chaconne-resilience.spec.ts — three lanes:
+  [R-1] a scripted kill harness: spawn `bun apps/chaconne/runner/index.ts
+  run <id> --data-dir <tmp>` against the slow.html fixture via
+  child_process, SIGKILL it mid-recipe at a chosen step boundary, then
+  VERIFY: the data dir holds either the clean committed prefix or an
+  orphaned temp file (never a torn commit); a fresh boot/inspection
+  recovers to the committed prefix (the orphaned-tmp discard — the
+  Ostinato recover() law on fs); a re-run NEVER re-fires steps <=
+  committedPrefix (assert against the run log's step records);
+  [CORRUPT] a corrupt-store boot: seed localStorage with invalid JSON
+  at the app's storage key -> boot -> the honest corrupt panel renders
+  (the DomainInvariantError UI state — NEVER a silent wipe, NEVER a
+  crash; the corrupt bytes stay inspectable, a reset is an explicit
+  user action); [O-1] the offline PWA boot: register the service
+  worker, context.setOffline(true), reload -> the shell boots ENTIRELY
+  from precache (assert the app surface, not a browser error page);
+  navigate to a non-precached path -> the offline fallback page
+  renders; the pending-schedules twin: 3 due schedules seeded, offline
+  boot -> 3 logged deferrals, 0 background fires, 0 UI storm (C-4's
+  misfire policy exercised against its scheduler).
+  (2) apps/chaconne/public/offline.html — the offline fallback page
+  (keyboard-accessible, links back to the app root) + the sw.js
+  PRECACHE_LIST entry restored IN THE SAME CHANGE (a 404 would reject
+  cache.add and fail install — the C-5 law).
+  (3) apps/chaconne/scripts/verify-precache.ts — the derivation
+  proof: statically derive the module closure (index.html's script
+  root + the served .ts import graph) and assert it EQUALS
+  PRECACHE_LIST, failing loudly on drift (exit 1 naming both sides).
+  Runnable as `bun apps/chaconne/scripts/verify-precache.ts`.
+  (4) .unown/receipts/c7.md — files, the x3 battery tallies verbatim,
+  timings, the R-1 kill-boundary choices, open questions for C-8.
+HANDOFF_SCHEMA: plain text — files written, the battery tally x3,
+  timings, the kill-boundary matrix, open questions.
+EFFORT_BUDGET: <=4 chunks x <=8 turns (the closing verify chunk may
+  run 16 — the C-6 precedent for e2e-lane tickets).
+NON-OVERLAP: C-8 owns import/export + golden files; C-9 owns a11y
+  depth; C-10 owns the landing band + usage captures (capture-usage.mjs
+  is C-10's to consume; do NOT write it this ticket — a documented
+  deviation from the PLAN's file list, priced by the operator: the
+  resilience battery is already the heaviest lane); C-11 owns the root
+  script wiring + runbook; the round log/CHANGELOG are the operator's.
+ACCEPTANCE: (1) `node_modules/.bin/playwright test -c
+  playwright.chaconne.config.ts` from root — the FULL battery (the
+  existing 6 + the new resilience specs) GREEN, named count, run THREE
+  consecutive times (the x3 law — quote each tally + wall time);
+  (2) `bun apps/chaconne/scripts/verify-precache.ts` exits 0, and a
+  deliberate one-entry drift test proves it exits 1 (run it, quote
+  both exits); (3) the R-1 lane kills a REAL runner process (a
+  child_process SIGKILL, not a page.reload stand-in — the runner is a
+  CLI, the PLAN's spike names the real kill); the no-re-fire assertion
+  cites the run log's step records; (4) the corrupt lane asserts the
+  honest panel AND that the store bytes survive (no wipe); (5) the
+  O-1 lane asserts 3 deferrals / 0 fires / 0 storm with the offline
+  boot; (6) `bun run test:unit` (THE SCRIPT, never bare `bun test src`
+  — the C-6 confound law) — 2353/0/172 exact-hold (new unit tests for
+  verify-precache's derivation may grow the count; quote it);
+  (7) `bun run typecheck` + `bun run lint` — 0 NEW errors; (8) any
+  genuine app defect found mid-lane: STOP, report BLOCKED with the
+  repro — the fix is a new ticket, not an in-ticket patch; (9) no
+  file outside apps/chaconne/, e2e/chaconne-resilience.spec.ts, and
+  .unown/receipts/c7.md written.
 ```
 
 ## SDLC coverage and learning-mechanism plan
