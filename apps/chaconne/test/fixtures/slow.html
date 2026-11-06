@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>chaconne fixture — slow</title>
+<style>
+  body { font: 14px/1.4 monospace; padding: 24px; }
+</style>
+</head>
+<body>
+<h1>slow</h1>
+<p>The ready marker is inserted by a 2-second timer chain (edge case 1: a short-capped wait → committed prefix; a generous cap → pass).</p>
+<div id="hint" data-testid="hint">loading…</div>
+<script>
+// A staggered timer chain: #ready appears at 2000ms.
+setTimeout(function () {
+  document.getElementById("hint").textContent = "…";
+}, 1000);
+setTimeout(function () {
+  var el = document.createElement("div");
+  el.id = "ready";
+  el.setAttribute("data-testid", "ready");
+  el.setAttribute("data-attr", "ready");
+  el.textContent = "ready";
+  document.body.appendChild(el);
+}, 2000);
+</script>
+</body>
+</html>

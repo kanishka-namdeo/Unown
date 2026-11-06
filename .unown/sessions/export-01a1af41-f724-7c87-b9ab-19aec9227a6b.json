@@ -1,0 +1,679 @@
+{
+  "version": 1,
+  "manifest": {
+    "id": "01a1af41-f724-7c87-b9ab-19aec9227a6b",
+    "createdAt": 1793941698340,
+    "model": "agnes-3.0-flash",
+    "provider": "zai-bridge",
+    "cwd": "/home/z/my-project/work/unown"
+  },
+  "messages": [
+    {
+      "role": "user",
+      "content": [
+        {
+          "type": "text",
+          "text": "ROLE: A2 executor — ticket C-1, the Chaconne domain core (the FIRST code ticket of the Rondo round; build EXACTLY against the approved C-0 plan, no scope creep).\n\nPREFLIGHT (read-only, do first): apps/chaconne/PLAN.md — §1 file tree + C-ticket mapping, §2 file-store schema + the Ostinato laws, §3 Lane A vs Lane B; apps/ostinato/src/domain/* (the house pattern: types/ids/invariants/io/model/storage + co-located tests + boundary.test.ts — mirror its shape); apps/ostinato/src/storage/local-storage.ts (the adapter pattern); apps/ostinato/package.json (the 7-line zero-dep law); eslint.config.mjs lines ~10-70 (the coda domain boundary configs — the pattern you will extend for chaconne); docs/chaconne-prd.md P0 #1 + edge cases 5-9 (version snapshot, crash prefix, artifact collisions, byte-stable export, foreign/future schema).\n\nALLOWED_INPUTS (the ONLY write paths): apps/chaconne/src/domain/types.ts, ids.ts, invariants.ts, model.ts, io.ts, storage.ts + co-located *.test.ts + boundary.test.ts; apps/chaconne/src/storage/local-storage.ts (+ local-storage.test.ts); apps/chaconne/package.json (7-line zero-dep, mirror ostinato's); eslint.config.mjs (add the chaconne domain scoping ONLY — mirror the coda pattern, do not touch existing configs).\n\nFORBIDDEN_INPUTS: apps/chaconne/runner/** (C-2 owns it), src/ui/** (C-3), scheduler.ts in any form (C-4), index.html/sw.js/serve.mjs/public/test/fixtures (later tickets), every Unown product path (src/, mini-services/, pi-repo/, bin/, scripts/), DOX/CHANGELOG/README (operator lane), .unown/** (instruction-set guard denies), NO git commits or pushes (the operator owns the commit lane).\n\nOUTPUT_ARTIFACT (per PLAN §1-2, the letter): (1) types.ts — Recipe, Step, RunRecord, Schedule, ArtifactRef; the closed 9-kind step set goto|click|fill|select|wait|assert-text|assert-element|extract|screenshot; the 5-entry run-status taxonomy ok|step-failed|selector-not-found|timeout|invalid-recipe; integer IDs; top-level schema literal \"chaconne.v1\". (2) ids.ts — deterministic next-id helpers (max+1 kin, never random). (3) invariants.ts — assertData: unique ids per collection, run's recipeId resolves, recipeVersion present on every run, step selectors non-empty strings, closed kind set, artifact names match the content-addressed grammar \"<stepIdx>_r<runId>_sha256:<64hex>.<ext>\", committedPrefix <= steps.length; any breach throws DomainInvariantError — validation on EVERY boundary. (4) model.ts — pure mutations: addRecipe, updateRecipe (bumps recipeVersion), addRun (snapshots recipeVersion — edge case 6), recordSchedule; no Date objects, timestamps are ISO-8601 strings, plain JSON at every level. (5) io.ts — canonical JSON: sortKeysDeep + compact separators + stable array order (arrays keep index order; runs order IS history; only object keys sort); export is byte-stable (same dataset -> same bytes); import rejects schema != \"chaconne.v1\" with a dry-run report of what WOULD import and why not — never a partial import (edge case 9). (6) storage.ts — the StoragePort contract: load()/save() with temp-key + commit-swap, recover() discards orphaned temps. (7) src/storage/local-storage.ts — the adapter over the port: keys \"chaconne.data\"/\"chaconne.tmp\"; corrupt committed bytes -> load() returns null and the caller surfaces the honest corrupt-panel state, never a silent wipe, never a crash. (8) boundary.test.ts — the import-graph pin: the domain imports nothing DOM, nothing Node (the Ostinato law; the adapter lives outside the domain dir on purpose). (9) eslint.config.mjs — the chaconne domain scoping configs mirroring coda's two-config pattern.\n\nHANDOFF_SCHEMA: plain text — (a) files written with paths, (b) the verify tally with QUOTED command outputs (Lane A: cd apps/chaconne && bun test; Lane B: bun test apps/chaconne from root; root battery: bun run test:unit; typecheck; lint), (c) any deviation from PLAN.md with the reason, (d) if BLOCKED: exactly what blocked you and what you tried. Quote only outputs you actually saw — never invent a tally.\n\nEFFORT_BUDGET: <=4 chunks x <=8 turns; this dispatch is chunk 1 (--max-turns 8). If the work does not fit, stop at a clean boundary and report the remaining work — the operator continues the session.\n\nNON-OVERLAP: C-2 owns the runner; C-3 the UI shell; C-4 the scheduler; C-10 the docs. You touch only the ALLOWED_INPUTS list.\n\nACCEPTANCE (the operator gate re-verifies all of these): (1) Lane A `cd apps/chaconne && bun test` exit 0, DOM-free (no happy-dom preload in the app dir — no bunfig.toml there); (2) Lane B `bun test apps/chaconne` from repo root exit 0; (3) root battery `bun run test:unit` stays 2258/0 PLUS your new tests, zero regressions (the encore h2 law: never weaken it); (4) boundary.test.ts actually pins the import graph (a test that FAILS if domain code imports DOM/Node); (5) a test pins canonical-JSON byte-stability (serialize twice, byte-identical; round-trip equal); (6) a test pins corrupt-store recovery (undecodable committed bytes -> load() null, no throw, no wipe); (7) a test pins foreign/future-schema rejection with the dry-run report; (8) `bun run typecheck` exit 0; (9) `bun run lint` 0 errors (warnings must not exceed the standing 143)."
+        }
+      ],
+      "timestamp": 1793941698402
+    },
+    {
+      "role": "assistant",
+      "content": [
+        {
+          "type": "text",
+          "text": "I'll start with the pref"
+        }
+      ],
+      "api": "openai-completions",
+      "provider": "zai-bridge",
+      "model": "agnes-3.0-flash",
+      "usage": {
+        "input": 29074,
+        "output": 7,
+        "cacheRead": 0,
+        "cacheWrite": 0,
+        "reasoning": 0,
+        "totalTokens": 29081,
+        "cost": {
+          "input": 0,
+          "output": 0,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "total": 0
+        }
+      },
+      "stopReason": "stop",
+      "timestamp": 1793941698458,
+      "responseId": "cc3f9c95b8c54a0599fb925743569354",
+      "rawStopReason": "stop"
+    },
+    {
+      "role": "user",
+      "content": [
+        {
+          "type": "text",
+          "text": "Continue NOW with tool use — do not announce intent, do not restate the plan. Your last message was a preamble with no action. Execute the C-1 brief from the previous message: read the preflight files with your tools, then write the domain core files, then run the verify tally (Lane A, Lane B, root battery, typecheck, lint) and report the quoted outputs. Work through the whole brief until the acceptance list is satisfied or you hit a real blocker. BLOCKED is an acceptable answer; a preamble is not."
+        }
+      ],
+      "timestamp": 1793941799401
+    },
+    {
+      "role": "assistant",
+      "content": [
+        {
+          "type": "toolCall",
+          "id": "call_b89c21acf67c44c6ac736445",
+          "name": "bash",
+          "arguments": {
+            "command": "ls /home/z/my-project/work/unown/apps/chaconne/ 2>/dev/null; ls /home/z/my-project/work/unown/apps/chaconne/src 2>/dev/null; ls /home/z/my-project/work/unown/apps/ostinato/src/domain/"
+          }
+        },
+        {
+          "type": "text",
+          "text": "\n"
+        },
+        {
+          "type": "toolCall",
+          "id": "call_1f549e7abfee4fca874e9319",
+          "name": "read",
+          "arguments": {
+            "path": "/home/z/my-project/work/unown/apps/chaconne/PLAN.md"
+          }
+        }
+      ],
+      "api": "openai-completions",
+      "provider": "zai-bridge",
+      "model": "agnes-3.0-flash",
+      "usage": {
+        "input": 29201,
+        "output": 121,
+        "cacheRead": 0,
+        "cacheWrite": 0,
+        "reasoning": 0,
+        "totalTokens": 29322,
+        "cost": {
+          "input": 0,
+          "output": 0,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "total": 0
+        }
+      },
+      "stopReason": "toolUse",
+      "timestamp": 1793941799453,
+      "responseId": "0d3e15a84a3e41fa8e4fe193f680f96e",
+      "rawStopReason": "tool_calls"
+    },
+    {
+      "role": "toolResult",
+      "toolCallId": "call_b89c21acf67c44c6ac736445",
+      "toolName": "bash",
+      "content": [
+        {
+          "type": "text",
+          "text": "PLAN.md\nboot.test.ts\nboundary.test.ts\nids.ts\ninvariants.ts\nio.test.ts\nio.ts\nmodel.ts\nports.ts\nscheduler.test.ts\nscheduler.ts\nstats.test.ts\nstats.ts\nstorage.ts\ntypes.ts\n"
+        }
+      ],
+      "isError": false,
+      "timestamp": 1793941803411
+    },
+    {
+      "role": "toolResult",
+      "toolCallId": "call_1f549e7abfee4fca874e9319",
+      "toolName": "read",
+      "content": [
+        {
+          "type": "text",
+          "text": "# Chaconne — Architecture Plan (C-0)\n\n> Read-only plan. No files exist under `apps/chaconne/` yet; this document is\n> the only write. C-1 owns the first code write. Basis: `docs/chaconne-prd.md`\n> (APPROVED 2026-11-06), the house patterns of `apps/coda/` + `apps/ostinato/`,\n> and the root test lanes (`package.json`, `playwright.ostinato.config.ts`,\n> `e2e/`). Ticket queue: C-1..C-11 from `docs/rondo-round-session.md`.\n\n## 1. Module decomposition + file tree + C-ticket mapping\n\nThree modules, mirroring the Ostinato layering (domain under, UI on top,\nhost edges outside the domain) with one deliberate extension: a **runner**\nprocess that lives OUTSIDE the browser-closure and imports the repo-root\nPlaywright (the PRD's named exception to the zero-dep law — ruling in §4).\n\n### File tree (proposed)\n\n```\napps/chaconne/\n  PLAN.md                       (this file)\n  package.json                  (7 lines, no dep fields — zero-dep law, C-1)\n  index.html                    (PWA shell, C-3)\n  sw.js                         (precache CACHE_NAME \"chaconne-v<N>\", C-6/PWA)\n  serve.mjs                     (Bun.Transpiler dev/test server, CHACONNE_PORT=4014, C-3)\n  public/\n    manifest.webmanifest        (start_url \"./\", scope \"./\", C-6)\n    offline.html                (offline fallback page, C-7)\n    icon.svg\n  test/fixtures/                (LOCAL fixture pages — never live network, §3; C-2)\n    form-iframe.html            (form page with an iframe-hosted field — #43 class)\n    tall.html                   (tall scrollable page, > viewport)\n    slow.html                   (slow-loading page: staggered timers, late content)\n    dynamic.html                (page with dynamic content: timer-driven DOM changes)\n    blank.html                  (assert-element-negative / empty-page control)\n  src/domain/                   (flat dir, DOM-free, Node-free — the Ostinato law)\n    types.ts                    (Recipe, Step, RunRecord, Schedule, ArtifactRef,\n                                 error taxonomy: step-failed | selector-not-found |\n                                 timeout | invalid-recipe; integer IDs)\n    ids.ts                      (deterministic nc-c-kin id helpers)\n    invariants.ts               (assertData: step-order invariants, unique ids,\n                                 known step kinds, selector shape, artifact name\n                                 collisions → content-addressed)\n    model.ts                    (pure mutations: addRecipe, updateRecipe (bumps\n                                 recipeVersion), addRun, recordSchedule)\n    io.ts                       (canonical JSON: sorted keys, compact separators,\n                                 unicode-stable; import rejects foreign/future\n                                 schema with a dry-run report — never partial)\n    storage.ts                  (StoragePort contract: temp-key + commit-swap,\n                                 recover() discards orphans — Ostinato law)\n    scheduler.ts                (pure (schedule, now) → due-skip-record: interval +\n                                 one-shot, misfire policy skip-and-record)\n    *co-located *.test.ts per module + boundary.test.ts (import-graph pin)\n  src/storage/\n    local-storage.ts            (localStorage adapter over the StoragePort:\n                                 \"chaconne.data\" / \"chaconne.tmp\"; atomic writes,\n                                 corrupt-store recovery — OUTSIDE the domain on\n                                 purpose, like Ostinato)\n  src/ui/\n    app.ts                      (boot, every-transition persistAll, route-by-route)\n    palette.ts                  (Ctrl+K palette: every P0 action reachable)\n    recipe-editor.ts            (modals on the Ostinato create-form contract:\n                                 role=dialog, aria-modal, attach-before-focus,\n                                 Esc focus-return, double-Esc discard guard)\n    run-history.ts              (grouped lists, arrow navigation, selection pins)\n    artifact-viewer.ts          (screenshot + extracted values)\n    status.ts                   (live runner progress: step N of M, elapsed;\n                                 honest loading states)\n    empty.ts                    (no recipes / no runs / no artifacts / failed run\n                                 panels — never blank)\n    chaconne.css\n    *co-located *.test.ts (DOM-guarded el-kin pins, the el.test.ts precedent)\n  runner/                       (★ the runner process — Node, NOT in the PWA\n                                 closure, NOT in boundary.test.ts's scan dir;\n                                 imports repo-root playwright, §4)\n    index.ts                    (CLI entry: `bun apps/chaconne/runner/index.ts\n                                 run <recipe>` — loads store from disk JSON,\n                                 executes, writes run record atomically)\n    page-adapter.ts             (the seam: interface PageAdapter{goto,click,\n                                 fill,select,wait,assertText,assertElement,\n                                 extract,screenshot}; a RealPageAdapter (wraps\n                                 Playwright Page) + the FakePageAdapter is a\n                                 domain-side test double, see §3)\n    real-adapter.ts             (RealPageAdapter on top of\n                                 @playwright/test / playwright Page: iframe\n                                 frame resolution for fill, fullPage screenshots,\n                                 verify-value-landed after fill — #43/#44 kin)\n    caps.ts                     (per-step + per-run caps: max steps, wall clock;\n                                 committed-prefix law — a killed run keeps only\n                                 the prefix of steps that fully completed)\n    store.ts                    (disk store: recipe/run JSON files under\n                                 apps/chaconne/data/ (gitignored), written with\n                                 temp-file + rename-swap; content-addressed\n                                 artifact names sha256(payload))\n    schedule.ts                 (schedule loop: one-shot/interval, misfire\n                                 policy skip-and-record on machine-sleep gaps,\n                                 no silent catch-up storm; run-history dedup)\n    log.ts                      (run log artifact: honest step-by-step log +\n                                 error taxonomy entries)\n```\n\n### C-ticket mapping (what each ticket builds)\n\n| Ticket | Builds (from the tree) | PRD P0 items it closes |\n|---|---|---|\n| **C-1** | `src/domain/*` (types, ids, invariants, model, io, storage contract + tests + boundary pin), `src/storage/local-storage.ts`, `apps/chaconne/package.json` (7-line zero-dep), `tsconfig`/eslint scoping notes | P0 #1 (model: recipes, step kinds, run records, validation on every boundary, integer IDs, canonical JSON) |\n| **C-2** | `runner/page-adapter.ts` seam + `caps.ts` + `store.ts` + `log.ts`, `test/fixtures/*.html`, fake-adapter runner unit lane + ONE real-browser smoke against a fixture | P0 #2 (runner: all 9 step kinds against LOCAL fixtures, per-step/per-run caps, artifacts, atomic run-record writes, error taxonomy) |\n| **C-3** | `index.html`, `sw.js` skeleton, `serve.mjs`, `public/manifest.webmanifest`, `src/ui/app.ts`, `recipe-editor.ts`, `run-history.ts`, `artifact-viewer.ts`, `palette.ts`, `empty.ts`, `chaconne.css` | P0 #4 (keyboard-first surface: list/create/edit, run history, artifact viewer, palette, honest empty/loading/error states, zero-dep, localStorage atomic) |\n| **C-4** | `src/domain/scheduler.ts` + tests (injected clock — Ostinato law), `runner/schedule.ts`, schedule UI rows in `run-history.ts` | P0 #3 (recurring loop: one-shot/interval schedules, misfire policy skip-and-record, run-history dedup) |\n| **C-5** | assertion + extraction hardening in `runner/*` (value checks, screenshot capture with pinned hashes, extraction report), `sw.js` precache list completion | P0 #2's artifact depth: **value checks, pinned screenshot hashes, extraction report** (the verification lanes P0 #5 are §3 + C-6..C-9's batteries) |\n| **C-6** | `e2e/chaconne-flow.spec.ts` (K-1 compose → run → artifacts keyboard-only), `e2e/chaconne-a11y.spec.ts` (axe both schemes + tab-order + Esc focus-return), `playwright.chaconne.config.ts` (arms CHACONNE_E2E, self-skip-guarded) | P0 #4's K-1 law + P0 #7's battery wiring start + P0 #6 PWA shell (sw.js, offline.html, precache proof `scripts/verify-precache.ts` written in C-6 or C-7 — **rule: verify-precache.ts lands with the PWA completion in C-7**) |\n| **C-7** | `e2e/chaconne-resilience.spec.ts` (kill/resume/verify R-1 law, corrupt-store recovery boot, offline PWA boot O-1), `public/offline.html`, `scripts/verify-precache.ts`, `scripts/capture-usage.mjs` | P0 #7 resilience lanes + P0 #6 PWA (offline-complete shell, installable, precache with static derivation proof) |\n| **C-8** | import/export battery: `e2e/chaconne-io.spec.ts` + golden files + dry-run report UI hook | P0 #1's canonical export (byte-stable) end-to-end + P0 #4's export/import surface |\n| **C-9** | a11y battery completion + light/dark both-scheme drive (axe wcag2a/2aa), tab-order pin, Esc focus-return pins | P0 #4 a11y hardening rows |\n| **C-10** | landing band + `docs/chaconne.md` + README section + usage captures (`public/landing/chaconne/` stills via capture-usage.mjs) | P0 #7's product surface (landing band, docs page, usage captures) |\n| **C-11** | root `package.json` scripts (`chaconne:dev`/`chaconne:test`/`chaconne:e2e`), `.github/workflows/ci.yml` chaconne job (lockfile-drift assert, Lane A/B, e2e), runbook, honest-scope statement (Chromium-desktop, fixture honesty) | P0 #7's CI gate entry + honest scope |\n\n## 2. File-store schema on the Ostinato laws\n\n**Two stores, one law:** the UI shell persists to **localStorage** (browser,\nthe Ostinato `local-storage.ts` law) and the runner persists to **disk JSON\nfiles** (Node, the same atomic pattern). The domain is plain-JSON at every\nlevel — no class instances, no `Date` objects; timestamps are ISO-8601\nstrings. The same schema shape feeds both; disk files are the import/export\ncanonical document.\n\n### `ChaconneData` (the document)\n\n```\n{\n  \"schema\": \"chaconne.v1\",       // top-level; import rejects any other value\n                                  // (future-schema → dry-run report, never\n                                  // partial import — PRD edge case 9)\n  \"recipes\": [                   // integer ids (ids.ts), stable array order\n    {\n      \"id\": 1,\n      \"name\": \"…\",               // unicode-safe; canonical export\n                                  //  byte-stable (PRD edge case 8)\n      \"version\": 3,              // bumped on every edit — a RUNNING recipe\n                                 // snapshots its version at start\n                                 // (PRD edge case 6)\n      \"steps\": [                 // ordered; kinds: goto|click|fill|select|\n        { \"id\": 11, \"kind\": \"fill\",   // wait|assert-text|assert-element|\n          \"selector\": \"…\",            // extract|screenshot\n          \"value\": \"…?\", \"timeoutMs\": 5000?, \"intoFrame\": \"…?\" }\n      ],\n      \"schedule\": { \"kind\": \"one-shot\"|\"interval\", \"everyMs\"? ,\n                    \"nextDueIso\"? , \"lastFiredIso\"? }?\n    }\n  ],\n  \"runs\": [\n    {\n      \"id\": 1,\n      \"recipeId\": 1,\n      \"recipeVersion\": 3,        // the snapshot law (edge case 6)\n      \"status\": \"ok\"|\"step-failed\"|\"selector-not-found\"|\"timeout\"\n                               |\"invalid-recipe\",\n      \"startedAt\": \"…\", \"finishedAt\": \"…?\",\n      \"committedPrefix\": 4,      // how many steps fully completed\n                                  // (crash-kill edge case 5)\n      \"artifacts\": [\n        { \"name\": \"1_r3_sha256:<64hex>.png\"|\"…_extract.json\"|\"…_run.log\",\n          \"sha256\": \"…\" }        // content-addressed (edge case 7) — a\n                                  // collision can't happen: the name IS\n                                  // the hash\n      ]\n    }\n  ]\n}\n```\n\n**Atomic writes (both hosts).** `save()` writes the temp key first, then\nswaps the commit key; `recover()` on boot discards an orphaned temp.\n- localStorage: `chaconne.data` / `chaconne.tmp` (Ostinato verbatim).\n- disk store: `data/chaconne.data.json` + `data/chaconne.data.json.tmp` —\n  `writeFile(tmp)` → `renameSync(tmp, commit)` (atomic on POSIX; the\n  runner is a bun/Node process, so `fs.renameSync` is the commit step).\n**Corrupt-store recovery.** Undecodable committed bytes → `load()`\nreturns `null` and boot runs `importData`-style validation that throws\nthe honest `DomainInvariantError` UI state (corrupt panel, never a\nsilent wipe; never a crash) — Ostinato's `load()` receipt, verbatim.\n**Canonical JSON byte-stability.** `io.ts` port of Ostinato:\n`sortKeysDeep` + compact separators + stable array order (arrays keep\nindex order — `runs` order IS the history; only object keys sort).\nSame dataset → same bytes on every boot; golden files pin it (C-8).\n**Invariants (`invariants.ts`)**: unique ids per collection; run's\n`recipeId` resolves; `recipeVersion` present on every run; step\nselectors are non-empty strings; step kinds in the closed 9-kind set;\nartifact names match the content-addressed grammar; committedPrefix ≤\nsteps.length. Any breach → `DomainInvariantError` at every boundary\n(P0 #1's \"validation on every boundary\").\n\n## 3. Fixture-page test strategy\n\n**Law (PRD P0 #5): every test runs against LOCAL fixture HTML committed\nunder `apps/chaconne/test/fixtures/` — no live-network test ever runs in\nCI. Chromium-desktop only (PWA + runner scope statement).**\n\n### The named fixture set\n\n| Fixture | Purpose | PRD edge cases it drives |\n|---|---|---|\n| `form-iframe.html` | a form whose critical field lives in a same-origin `<iframe>` (plus a plain field) | edge 3 (fill on iframe-hosted field, #43 class — runner must **verify the value landed** after fill) |\n| `tall.html` | content ~3× the viewport height, with a known target element near the bottom | edge 4 (screenshot of a page taller than the viewport — full-page capture + the element is assertable without scroll flake) |\n| `slow.html` | body content inserted by a `setTimeout` chain (2 s) + a \"ready\" marker | edge 1 (step timing out mid-run — a `wait` with too-short cap on the slow marker → run record shows the committed prefix; the generous cap passes) |\n| `dynamic.html` | timer-driven DOM: text that changes after 1 s, an element that appears then changes class | edge 1/4 kin + `assert-text`/`assert-element` timing determinism |\n| `blank.html` | empty document control | edge 2 (selector matching nothing → `selector-not-found`, NOT a hang — a capped wait must produce the taxonomy entry, not a silent timeout-hang) |\n\nFixtures are static, zero-JS-dependency (inline `<script>` timers only,\nno network, no CDNs), and served by `serve.mjs` (or by\n`playwright.chaconne.config.ts`'s webServer) so e2e and the runner's real\nadapter both address them as `http://127.0.0.1:4014/test/fixtures/…`.\n\n### Runner-unit strategy (the fake page adapter)\n\nThe runner's core logic sits BEHIND the `PageAdapter` interface\n(`runner/page-adapter.ts`): `goto, click, fill, select, wait,\nassertText, assertElement, extract, screenshot`. Two implementors:\n\n- **`FakePageAdapter`** — an in-memory DOM table (map of URL → element\n  table + value map + timer ticks driven by an injected clock). Unit lane\n  (`bun test`): every step kind, every error taxonomy entry, the caps,\n  the committed-prefix law, dedup, misfire policy — all deterministic, no\n  browser, no timers, fully off the real-Playwright flake surface\n  (#43/#44 kin isolated where they belong: the fake makes the CONTRACT\n  deterministic; the real adapter's iframe/verify-value-landed behavior is\n  pinned by exactly ONE real-browser smoke per ticket (C-2) + the fixture\n  battery in C-6/C-7).\n- **`RealPageAdapter`** (runner/real-adapter.ts) — wraps a real Playwright\n  `Page`: `frame` resolution for `intoFrame` (find the iframe by\n  `name`/`data-testid` on the page, then `frame.fill(...)`),\n  **post-fill verification** (`input.value()` read-back must equal the\n  intended value — #43's cure), `screenshot({ fullPage: true })` for\n  tall pages, capped `waitForSelector`/`waitForFunction` that surface\n  `selector-not-found`/`timeout` (never a hang), `textContent()`\n  asserts, and `textContent`/`getAttribute` extraction.\n\n**Lane A vs Lane B** applies to the domain exactly as Ostinato's:\n`cd apps/chaconne && bun test` (no app-dir bunfig → DOM-free runtime,\nthe enforcement lane) vs `bun test apps/chaconne` from root (root\n`bunfig.toml` happy-dom preload → masked, the compatibility form). The\nrunner unit tests are DOM-free + Node-fs (fs in a temp dir, not\nlocalStorage) and run in both lanes.\n\n## 4. THE DEPENDENCY-LAW RULING\n\n**Ruling: option (a)** — `apps/chaconne/` keeps `package.json` with NO\ndependency fields (the house 7-line law, exactly like Ostinato/Coda), and\nthe runner lives at `apps/chaconne/runner/` inside the app dir, importing\nPlaywright from the **repo root's `node_modules`** by absolute bare\nspecifier:\n\n```ts\n// apps/chaconne/runner/real-adapter.ts\nimport { chromium, Page } from \"playwright\";   // ← the repo-root @playwright/test's\n                                               //   sibling dep \"playwright\"\n```\n\n**Exact import mechanism.** `runner/` is executed ONLY by bun (`bun\napps/chaconne/runner/index.ts …`) from anywhere inside the repo. Bun\nresolves bare specifiers by walking up from the importing file's\ndirectory: `apps/chaconne/runner/` → `apps/chaconne/` → `apps/` →\nrepo root → **root `node_modules/playwright`** (present: root\n`package.json` devDependencies `playwright` + `@playwright/test` 1.64.1).\nThe app dir's own `package.json` having no deps does not block this —\nnode_modules resolution walks UP, and the root install owns the package.\nNo install, no lockfile move (the CI lockfile-drift assert stays green —\nthis is exactly the Ostinato precedent: \"No new dependency: the spec\nreuses the root `@playwright/test` (the zero-dep law … the Coda C4\nprecedent)\"). The PWA **browser closure** never imports the runner:\n`src/` (domain+ui+storage) imports only relative `./`/`../`, `bun:test`\n— `boundary.test.ts` scans `src/` only; `runner/` is Node-only and\nexcluded by construction.\n\n**Risks, named and mitigated** (why (a) over (b)):\n\n1. **Resolution fragility** — the runner only resolves `playwright`\n   while it lives under the repo root's tree. Moving `apps/chaconne/`\n   elsewhere silently breaks it. *Mitigation:* the C-2 verifier\n   (the real-browser smoke) FAILS LOUDLY (bare-specifier error, not a\n   flake) if resolution breaks; a one-line doc comment in\n   `runner/real-adapter.ts` states the walk-up assumption; CI runs the\n   runner lane from repo root only (the runbook, C-11, encodes this).\n2. **Version coupling** — the runner inherits whatever playwright\n   version the ROOT installs; the root is 1.64.1 for the e2e lane, so\n   the runner and the e2e battery can never drift apart (a feature —\n   ONE version, one chromium build, the env checkpoint's\n   `chromium_headless_shell-1248`). Risk: a root dep upgrade changing\n   the runner's behavior. *Mitigation:* the fixture battery IS the\n   upgrade verifier; C-11's CI job runs it in the same leg.\n3. **Accidental PWA contamination** — a future `import { … } from\n   \"playwright\"` inside `src/` (browser closure) would break the\n   offline build. *Mitigation:* `boundary.test.ts` bans bare\n   non-relative imports in `src/domain/` (Ostinato's `./`-only rule,\n   extended: `src/**` may import `./`, `../`, `bun:test` — nothing\n   else); the eslint `no-restricted-globals` scope on\n   `apps/chaconne/src/**` (Node globals + DOM in domain) rides the Coda\n   pair.\n4. **Why not (b) (root-level `scripts/chaconne-runner/`):** it would put\n   the runner's product code OUTSIDE the product dir — a runner that\n   ships with the app (the PRD's P0 #2 \"produces artifacts, writes run\n   records, reports the taxonomy\" is a product capability, not build\n   tooling) scattered in `scripts/`, where the repo convention is\n   lifecycle/CI tooling. It also orphans the runner from the app's\n   version/DOX ownership and would need a root-level test lane the repo\n   doesn't have. The zero-dep law is about **app `package.json` fields\n   and the browser closure** — (a) satisfies both while keeping the\n   product cohesive. (b)'s one real advantage (explicit \"not the app's\n   code\" signal) is covered by the doc comments + boundary-scan rule\n   above. **Operator pre-approves (a).**\n\n### Root `package.json` wiring (C-11 lands it; shapes pre-approved here)\n\nFollowing the Coda/Ostinato script naming EXACTLY (the Coda/Ostinato\nprecedent: one-word app token, uppercased, the marker suffix `_E2E`\n— `OSTINATO_E2E`, `CODA_E2E`; Chaconne's single-word app token is\n`chaconne`, so the marker is `CHACONNE_E2E` and the port var is\n`CHACONNE_PORT`):\n\n```jsonc\n\"chaconne:dev\":   \"bun apps/chaconne/serve.mjs\",\n\"chaconne:test\":  \"cd apps/chaconne && bun test\",          // Lane A (enforcement)\n                  // + the runner unit lane (FakePageAdapter) is IN\n                  // apps/chaconne's bun test, so one command covers both\n\"chaconne:e2e\":   \"bunx playwright test -c playwright.chaconne.config.ts\"\n```\n\n`playwright.chaconne.config.ts` (repo root, C-6) is the Ostinato config\nverbatim shape:\n\n- `testDir: \"e2e\"`, `testMatch: /chaconne-.*\\.spec\\.ts/` — selects ONLY\n  the chaconne specs; the root landing lane (`playwright.config.ts`,\n  `test:e2e`) and the Coda/Ostinato lanes never arm this marker, so the\n  chaconne specs self-skip under every other lane (the Coda\n  `CODA_E2E`/Ostinato `OSTINATO_E2E` self-skip-guard precedent).\n- module-scope `process.env.CHACONNE_E2E = \"1\"` arms the marker.\n- `outputDir: \"download/test-results-chaconne\"` (gitignored scratch).\n- `baseURL: \"http://127.0.0.1:4014\"`; chromium-desktop-only project\n  (`devices[\"Desktop Chrome\"]`, the PRD's platform-scope statement).\n- ONE webServer entry: `bun apps/chaconne/serve.mjs`\n  (`env: { CHACONNE_PORT: \"4014\" }`) — the PWA + fixtures lane; the\n  runner's fixture-serve is the SAME server — the fixtures are static\n  files under `apps/chaconne/test/fixtures/`, served at\n  `/test/fixtures/...`, so ONE webServer covers the e2e specs AND the\n  real-browser runner smoke (the runner's e2e cases point\n  `RealPageAdapter` at `http://127.0.0.1:4014/test/fixtures/...`).\n- `reuseExistingServer: !process.env.CI`, `timeout: 60_000`\n  (Ostinato's values verbatim).\n\nPort/env naming (the single-word token throughout —\n`CHA_CONNE_*` with a hyphen/underscore split is NOT the name; the app\ntoken is one word, `chaconne`): `CHACONNE_PORT` (default 4014, the\nnext free port after Ostinato's 4013; Coda is 4012), `CHACONNE_E2E`\n(the marker), `chaconne-v<N>` (the PWA `CACHE_NAME`, the\n`ostinato-v<N>`/`coda-v<N>` discipline), `chaconne.data` /\n`chaconne.tmp` (the localStorage keys, §2), `chaconne.v1` (the\nimport gate's schema value, §2/§5).\n\n`chaconne:test` runs Lane A in `apps/chaconne` (domain tests + runner\nunit tests via the FakePageAdapter + boundary pin + the DOM-guarded UI\npins' honest skips). The runner's real-browser smoke and the e2e\nbattery ride `chaconne:e2e`. The root `tsconfig.json` include gains\n`apps/chaconne/**/*.ts` (C-1, mirroring Ostinato's C5-wiring note —\nthe root tsconfig's include lists the app dirs; C-1 adds chaconne's),\nand root `bun run typecheck` becomes the app's typecheck gate.\n\n## 5. Ticket-sized build order — every P0 item + every edge case\nmapped to a named ticket's verifier (none orphaned)\n\n**P0 → ticket (all 7):** P0#1→C-1(+C-8); P0#2→C-2(+C-5); P0#3→C-4;\nP0#4→C-3(+C-6/C-9); P0#5→C-2's fixtures + C-6/C-7's battery; P0#6→C-7;\nP0#7→C-10+C-11. **Edge cases (the PRD's 11) → ticket's verifier:**\n\n1. **Step timing out mid-run (run record shows the committed prefix)** —\n   C-2's verifier: FakePageAdapter timeout case + `slow.html` real\n   smoke; `committedPrefix` asserted in the run record; C-7's R-1\n   battery re-pins it through the kill lane.\n2. **Selector matching nothing (selector-not-found, not a hang)** —\n   C-2: `blank.html` fixture + FakePageAdapter + real smoke; the capped\n   wait's taxonomy entry asserted (no hang — the e2e timeout is the\n   cap, never the spec timeout).\n3. **Fill on an iframe-hosted field (#43 class; verify the value\n   landed)** — C-2: `form-iframe.html` + `RealPageAdapter`'s\n   frame-resolution + post-fill read-back verification (the #43 kin;\n   A2H-8's probe feeds it); C-6's flow battery re-runs it\n   end-to-end.\n4. **Screenshot of a page taller than the viewport** — C-5: `tall.html`\n   + fullPage capture + sha256 pin on the artifact; the tall content\n   target is assertable (`assert-element` on the bottom element)\n   without scroll flake.\n5. **A run killed and resumed mid-recipe** — C-7: the R-1 law battery\n   (SIGKILL mid-recipe against `slow.html`; boot restores the\n   committed prefix; re-run resumes from the prefix boundary, never\n   re-fires completed steps; the dedup is C-4's — C-7's verifier\n   exercises it against C-4's scheduler).\n6. **A schedule misfire after machine sleep (skip-and-record)** —\n   C-4: injected-clock scheduler tests (a gap ≥ interval →\n   `skipped+recorded` entry, never a silent-double-run, never a\n   catch-up storm); the \"offline boot with pending schedules\" twin is\n   C-7's O-1 lane (boot with a due schedule + no network → the\n   schedule is deferred+logged, no storm).\n7. **A recipe edited while a run is in flight (the run snapshots its\n   recipe version)** — C-2: `recipeVersion` snapshot law; a mid-run\n   edit (the fake clock + a real e2e in C-6) shows the run's record\n   carries the START version; the editor's version bump (C-3's\n   recipe-editor) is what the snapshot reacts to.\n8. **Artifact-name collisions (content-addressed names)** — C-5: two\n   runs producing identical artifact bytes → identical\n   `sha256:<64hex>` names, deduped in storage, never clobbered;\n   `invariants.ts`'s name-grammar check (C-1) + C-5's battery.\n9. **Canonical export with unicode recipe names** — C-8: golden-file\n   round-trip with unicode names (UTF-8 byte-stability, no\n   \\u-escape drift across `JSON.stringify` implementations — the\n   golden is pinned, not re-derived).\n10. **Import of a future-schema recipe (rejected with a dry-run\n    report, never a partial import)** — C-8: the `schema:\n    \"chaconne.v1\"` gate (C-1's `io.ts`); a `chaconne.v2` fixture\n    import → the dry-run report lists the rejected rows, and the\n    store is byte-identical to pre-import (asserted).\n11. **The offline boot with pending schedules (no silent catch-up\n    storm)** — C-7: O-1 offline lane + C-4's misfire-policy\n    interaction; boot under offline with 3 due schedules → 3 logged\n    deferrals, 0 background fires, 0 UI storm.\n\n**Build order (ticket-sized, strict):** C-1 → C-2 → C-3 → C-4 →\nC-5 → C-6 → C-7 → C-8 → C-9 → C-10 → C-11. Rationale: domain before\nrunner before UI before batteries; C-4 (schedules) before C-5\n(artifact depth) so C-5's pins can reference the dedup; batteries\n(C-6..C-9) after all four product tickets (C-1..C-5); C-8's io\nbattery after C-2's store exists; C-9 (a11y) after C-6's happy path\n(the axe pin needs the flow spec's page states); C-10 (product\nsurface) needs C-7's capture-usage.mjs; C-11 last (the CI gate asserts\neverything above, so it lands on a green tree). Each ticket: ≤4\nchunks × 8 turns, fresh session, byte-exact continuation (the round\nlog's standing economics).\n\n## 6. The three riskiest unknowns + the spike that settles each\n\n1. **Can `bun apps/chaconne/runner/real-adapter.ts`'s\n   `import { chromium } from \"playwright\"` resolve through the root\n   `node_modules` from the app dir WITHOUT any app-dir install, in\n   BOTH `bun test`'s runner-unit lane and the real-browser smoke,\n   on a fresh clone after `bun install`?**\n   *Spike (C-2, first chunk):* a 15-line `runner/smoke-resolve.ts`\n   that imports the bare specifier, prints `require`-free\n   `chromium.executablePath()`, and launches headless chromium\n   against `blank.html`. Green → ruling (a) is confirmed; red →\n   the fallback is a root-level `test/chaconne-runner/` re-homing\n   (option (b)) recorded in the round log, NOT a silent app-dir\n   install. Settles the ruling's #1 risk before C-2 builds on it.\n2. **Does full-page screenshot + content-addressed sha256 pinning\n   actually give stable hashes across the e2e battery on THIS\n   machine (the CI's chromium build, GPU/driver state, font\n   metrics) — or do we get byte-stable-enough-with-retry flake\n   (the #44 kin) that the artifact pin is more honest as a\n   \"screenshot taken\" + \"size/dimensions pinned\" than a sha256\n   byte pin?**\n   *Spike (C-5, first chunk):* run the `tall.html` fullPage capture\n   5× in the e2e lane, hash each; if 5/5 identical → the sha256\n   pin is the law; if <5/5 → the artifact pin degrades to\n   dimensions+capture-time+sha-of-metadata (documented in C-5's\n   receipt; the PRD's \"pinned hashes\" wording is satisfied by the\n   honest pin, the receipt names which).\n3. **Does the R-1 kill/resume law hold across the DISK store's\n   temp-file-rename swap when SIGKILL lands between\n   `writeFile(tmp)` and `renameSync(tmp, commit)` (the exact\n   Ostinato \"orphaned temp\" window, now on fs instead of\n   localStorage) — and does the runner's committed-prefix law\n   survive the resume correctly (no step re-fire)?**\n   *Spike (C-7, first chunk):* a scripted kill harness — run the\n   `slow.html` recipe under `bun runner/index.ts`, SIGKILL at a\n   chosen step boundary, inspect the data dir (expect either the\n   clean rename or the orphaned tmp), boot, assert the store\n   recovers to the committed prefix, re-run, assert no\n   re-fire of steps ≤ committedPrefix. The orphaned-tmp discard\n   path is the Ostinato `recover()` law, re-pinned on fs.\n\n## Appendix — what does NOT land in this plan (out of C-0's scope)\n\n- No app code, no tests, no fixtures, no `package.json` (the app's\n  or the root's), no `playwright.chaconne.config.ts`, no `sw.js`, no\n  `serve.mjs` — all of it is C-1..C-11's. This file is the ONLY\n  write C-0 makes.\n- P1 (cron expressions, screenshot diffing vs a baseline, folders/\n  tags, CSV export, `?` sheet) and P2 (cloud sync, accounts,\n  captcha, live-network claims, native mobile) are post-freeze /\n  deferred per the PRD; C-tickets do not touch them.\n- The landing band + docs page + README + usage captures are C-10's\n  product-surface ticket; the CI gate + runbook + honest-scope\n  statement are C-11's.\n"
+        }
+      ],
+      "isError": false,
+      "timestamp": 1793941803411
+    },
+    {
+      "role": "assistant",
+      "content": [
+        {
+          "type": "toolCall",
+          "id": "call_8180c8f0c98d4abeab4c1352",
+          "name": "bash",
+          "arguments": {
+            "command": "cd /home/z/my-project/work/unown/apps/ostinato && cat package.json && head -30 src/domain/types.ts && head -60 src/domain/ids.ts"
+          }
+        },
+        {
+          "type": "text",
+          "text": "\n"
+        },
+        {
+          "type": "toolCall",
+          "id": "call_cdec36528eb24d178f956c28",
+          "name": "read",
+          "arguments": {
+            "path": "/home/z/my-project/work/unown/apps/ostinato/src/domain/io.ts"
+          }
+        }
+      ],
+      "api": "openai-completions",
+      "provider": "zai-bridge",
+      "model": "agnes-3.0-flash",
+      "usage": {
+        "input": 8913,
+        "output": 99,
+        "cacheRead": 28928,
+        "cacheWrite": 0,
+        "reasoning": 0,
+        "totalTokens": 37940,
+        "cost": {
+          "input": 0,
+          "output": 0,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "total": 0
+        }
+      },
+      "stopReason": "toolUse",
+      "timestamp": 1793941803414,
+      "responseId": "2cd3d14ddebd43f6a8d353aadd877cc7",
+      "rawStopReason": "tool_calls"
+    },
+    {
+      "role": "toolResult",
+      "toolCallId": "call_8180c8f0c98d4abeab4c1352",
+      "toolName": "bash",
+      "content": [
+        {
+          "type": "text",
+          "text": "{\n  \"name\": \"@unown/ostinato\",\n  \"version\": \"0.0.0\",\n  \"private\": true,\n  \"type\": \"module\",\n  \"description\": \"Keyboard-first, offline-first spaced-repetition flashcard PWA (vanilla TS, zero dependencies).\"\n}\n/**\n * Ostinato domain types — pure, serializable, DOM-free.\n *\n * Single source of truth for the app's data model (the Coda `types.ts`\n * precedent). Every entity is plain JSON (no class instances, no\n * Date objects) so a store serializing to JSON is a lossless,\n * non-rewrite path to import/export (P0 #7: JSON round-trip lossless).\n */\n\n/**\n * A flashcard. `front`/`back` are markdown source (P0 #1: markdown\n * front/back). SM-2 scheduling state is carried per-card; a card that\n * has never been reviewed carries no `sm2` field.\n */\nexport type Card = {\n  id: string;\n  /** the deck this card belongs to; must match a Deck.id present in the store */\n  deckId: string;\n  front: string;\n  back: string;\n  /**\n   * SM-2 scheduling state (O-2 implements the scheduler; O-1 pins the\n   * shape only). All timestamps ISO-8601; `interval` is in days\n   * (floating point is not a defect — SM-2's 2^0/2^1/… ease curve\n   * yields fractional intervals under `easiness` drift).\n   */\n  sm2?: {\n    /** repetitions since last `again` (0-based) */\n    repetitions: number;\n    /** current ease factor, ≥ 1.3 in SM-2 */\n/**\n * Id generation — pure, no `crypto` import (the boundary test's\n * NODE_BUILTINS gate: `node:crypto` would fail the import scan even\n * in a test file).\n *\n * Coda precedent: the domain keeps ids as plain strings; generation is\n * injected at the edge so the core stays deterministic. `newUniqueId`\n * mixes a base-36 time prefix with 21 random bits (53 - 32) and\n * validates uniqueness against the current sets — the caller retries on\n * the astronomically-unlikely collision.\n */\n\n/** Build the base-36 timestamp prefix shared with Coda's id scheme. */\nfunction timePrefix(): string {\n  return Date.now().toString(36);\n}\n\n/**\n * Draw 21 random bits from `Math.random()` (the only randomness source\n * the domain is allowed to touch — it is a global, not a module import,\n * and is never called on the scheduler's deterministic path).\n */\nfunction randomTail(): string {\n  let n = Math.floor(Math.random() * 0x1000000); // 24 bits, trimmed below\n  const bits = (n & 0x1fffff).toString(36); // 21 bits → up to 5 chars\n  return bits.padStart(5, \"0\");\n}\n\n/**\n * Generate a card, deck, or review id that is not already present.\n * Retry on collision (max 32 attempts — enough for any realistic set\n * size given 2^21 random space per time tick; throws\n * DomainInvariantError so the caller gets a guard failure, not an\n * infinite loop).\n *\n * `prefix` keeps ids readable (`card_…` / `deck_…` / `review_…`).\n */\nexport function newUniqueId(\n  prefix: \"card\" | \"deck\" | \"review\",\n  taken: ReadonlySet<string>,\n): string {\n  const base = timePrefix();\n  for (let attempt = 0; attempt < 32; attempt++) {\n    const id = `${prefix}_${base}_${randomTail()}`;\n    if (!taken.has(id)) return id;\n  }\n  // Unreachable in practice (birthday bound: 32 draws into 2^21);\n  // surface as a guard failure rather than loop.\n  throw new Error(`newUniqueId: 32 collisions for prefix ${prefix}`);\n}\n"
+        }
+      ],
+      "isError": false,
+      "timestamp": 1793941806012
+    },
+    {
+      "role": "toolResult",
+      "toolCallId": "call_cdec36528eb24d178f956c28",
+      "toolName": "read",
+      "content": [
+        {
+          "type": "text",
+          "text": "/**\n * Import/Export port — P0 #7 (JSON round-trip lossless, byte-stable).\n *\n * The implementation is pinned at O-2 by `io.test.ts` (the Lane A\n * suite). Matrix lane I-1: same data, two sequential boots →\n * identical export bytes. The contract:\n *\n * - `exportData`: canonical JSON — key-sorted objects, stable array\n *   order (the deck's `cardOrder` is the array-of-card-ids order,\n *   not re-sorted), no trailing newline. Byte-stable across boots.\n * - `importData`: parse → `assertData` → throw `DomainInvariantError`\n *   on ANY invariant breach (orphan card, cardOrder mismatch, unknown\n *   top-level fields, duplicate ids, …). A corrupted or foreign JSON\n *   document must NEVER pass through silently.\n */\nimport type { OstinatoData, ImportExportPort, ReviewEvent, DeckSettings } from \"./types.js\";\nimport { DomainInvariantError } from \"./types.js\";\nimport { assertData } from \"./invariants.js\";\n\n/** Top-level keys that are ALLOWED in an import document. */\nconst ALLOWED_TOP = new Set([\"decks\", \"cards\", \"reviews\"]);\n\n/**\n * Deep-clone a plain-JSON value (the data set is plain JSON at every\n * level — no class instances — so `JSON.parse(JSON.stringify(v))` is\n * the identity map, and no key-sorting is needed to clone).\n */\nfunction clone<T>(v: T): T {\n  return JSON.parse(JSON.stringify(v)) as T;\n}\n\n/**\n * Recursively sort object keys (depth-first) and produce a\n * deterministic key order. Arrays keep their index order (the\n * deck's cardOrder is the semantic array order — it must NOT be\n * sorted, only its contents are canonically ordered by the domain).\n *\n * This is the \"byte-stable\" requirement: two identical data sets\n * always serialize to the same bytes, regardless of key insertion\n * order (which `JSON.parse` from a user document does not\n * guarantee).\n */\nfunction sortKeysDeep(value: unknown): unknown {\n  if (Array.isArray(value)) {\n    return value.map(sortKeysDeep);\n  }\n  if (value !== null && typeof value === \"object\") {\n    const out: Record<string, unknown> = {};\n    const keys = Object.keys(value as Record<string, unknown>).sort();\n    for (const k of keys) {\n      out[k] = sortKeysDeep((value as Record<string, unknown>)[k]);\n    }\n    return out;\n  }\n  return value;\n}\n\n/**\n * Serialize to canonical JSON: sorted object keys, compact separators\n * (no whitespace — the wire format is machine-readable, not\n * human-pretty; the UI shell's export UI can pretty-print at the\n * edge without affecting byte-stability of the data layer).\n */\nexport function toCanonicalJson(data: OstinatoData): string {\n  const sorted = sortKeysDeep(clone(data));\n  return JSON.stringify(sorted);\n}\n\n/**\n * The ImportExportPort implementation.\n *\n * `exportData` is a pure function of the data set — byte-stable\n * across boots. `importData` validates every invariant before\n * returning the data.\n */\nexport function createImportExport(): ImportExportPort {\n  return {\n    /**\n     * Serialize to canonical, byte-stable JSON.\n     * Same data set → same bytes, every boot.\n     */\n    exportData(data: OstinatoData): string {\n      return toCanonicalJson(data);\n    },\n\n    /**\n     * Parse + validate a JSON document.\n     *\n     * @throws {DomainInvariantError} on:\n     *  - not valid JSON\n     *  - root is not a plain object\n     *  - unknown top-level keys (ALLOWED_TOP only: `decks`, `cards`, `reviews`)\n     *  - `decks` or `cards` not an array\n     *  - `reviews` present but not an array (a pre-log document omits it and imports clean as `reviews: []`)\n     *  - any `assertData` invariant breach\n     *  - duplicate card or deck or review ids (assertData catches this)\n     *  - orphan card (assertData catches this)\n     *  - cardOrder set-mismatch (assertData catches this)\n     *  - review log entries with unknown card/deck ids or grade outside 1..4 (assertData catches this)\n     */\n    importData(json: string): OstinatoData {\n      let parsed: unknown;\n      try {\n        parsed = JSON.parse(json);\n      } catch {\n        throw new DomainInvariantError(\"import: not valid JSON\");\n      }\n\n      // Root must be a plain object.\n      if (parsed === null || typeof parsed !== \"object\" || Array.isArray(parsed)) {\n        throw new DomainInvariantError(\n          \"import: root must be a plain object with 'decks' and 'cards'\",\n        );\n      }\n\n      const root = parsed as Record<string, unknown>;\n\n      // Unknown top-level keys are rejected (a future field added by a\n      // newer app version is NOT silently swallowed — it must be\n      // explicitly handled in importData, not just appear in the data).\n      for (const key of Object.keys(root)) {\n        if (!ALLOWED_TOP.has(key)) {\n          throw new DomainInvariantError(`import: unknown top-level key: '${key}'`);\n        }\n      }\n\n      // Both keys must be present.\n      if (!Array.isArray(root.decks)) {\n        throw new DomainInvariantError(\"import: 'decks' must be an array\");\n      }\n      if (!Array.isArray(root.cards)) {\n        throw new DomainInvariantError(\"import: 'cards' must be an array\");\n      }\n\n      // Backward compat (R-1): pre-log documents import clean — the\n      // absent key becomes an empty review log, never an error.\n      if (root.reviews !== undefined && !Array.isArray(root.reviews)) {\n        throw new DomainInvariantError(\"import: 'reviews' must be an array\");\n      }\n\n      const data = {\n        ...parsed,\n        reviews: Array.isArray(root.reviews) ? (root.reviews as ReviewEvent[]) : [],\n      } as OstinatoData;\n\n      // Per-card field checks: front/back must be strings.\n      for (const card of data.cards) {\n        if (typeof card !== \"object\" || card === null) {\n          throw new DomainInvariantError(\"import: card entry must be an object\");\n        }\n        if (typeof card.id !== \"string\") {\n          throw new DomainInvariantError(`import: card.id must be a string (got ${typeof card.id})`);\n        }\n        if (typeof card.deckId !== \"string\") {\n          throw new DomainInvariantError(`import: card.deckId must be a string`);\n        }\n        if (typeof card.front !== \"string\") {\n          throw new DomainInvariantError(`import: card ${card.id}: front must be a string`);\n        }\n        if (typeof card.back !== \"string\") {\n          throw new DomainInvariantError(`import: card ${card.id}: back must be a string`);\n        }\n        // sm2 is optional; if present, shape-check it.\n        if (card.sm2 !== undefined && card.sm2 !== null) {\n          const sm2 = card.sm2;\n          if (typeof sm2.repetitions !== \"number\" || sm2.repetitions < 0) {\n            throw new DomainInvariantError(`import: card ${card.id}: sm2.repetitions must be a non-negative number`);\n          }\n          if (typeof sm2.easiness !== \"number\" || sm2.easiness < 1.3) {\n            throw new DomainInvariantError(`import: card ${card.id}: sm2.easiness must be a number >= 1.3`);\n          }\n          if (typeof sm2.interval !== \"number\" || sm2.interval <= 0) {\n            throw new DomainInvariantError(`import: card ${card.id}: sm2.interval must be a positive number`);\n          }\n        }\n      }\n\n      // Per-deck field checks.\n      for (const deck of data.decks) {\n        if (typeof deck !== \"object\" || deck === null) {\n          throw new DomainInvariantError(\"import: deck entry must be an object\");\n        }\n        if (typeof deck.id !== \"string\") {\n          throw new DomainInvariantError(`import: deck.id must be a string (got ${typeof deck.id})`);\n        }\n        if (typeof deck.name !== \"string\" || deck.name.length === 0) {\n          throw new DomainInvariantError(`import: deck ${deck.id}: name must be a non-empty string`);\n        }\n        if (!Array.isArray(deck.cardOrder)) {\n          throw new DomainInvariantError(`import: deck ${deck.id}: cardOrder must be an array`);\n        }\n        for (const id of deck.cardOrder) {\n          if (typeof id !== \"string\") {\n            throw new DomainInvariantError(`import: deck ${deck.id}: cardOrder entries must be strings`);\n          }\n        }\n        // R-2 deck settings: absent = clean (backward compat), `{}` = clean,\n        // a present field must be an integer >= 0.\n        if (deck.settings !== undefined && deck.settings !== null) {\n          const s = deck.settings as unknown as DeckSettings;\n          if (typeof s !== \"object\" || Array.isArray(s)) {\n            throw new DomainInvariantError(`import: deck ${deck.id}: settings must be an object`);\n          }\n          const n = s.newCardsPerSession;\n          if (n !== undefined) {\n            if (typeof n !== \"number\" || !Number.isInteger(n) || n < 0) {\n              throw new DomainInvariantError(`import: deck ${deck.id}: settings.newCardsPerSession must be an integer >= 0`);\n            }\n          }\n        }\n      }\n\n      // Per-review field checks (R-1 review log entries).\n      for (const review of data.reviews) {\n        if (typeof review !== \"object\" || review === null) {\n          throw new DomainInvariantError(\"import: review entry must be an object\");\n        }\n        if (typeof review.id !== \"string\") {\n          throw new DomainInvariantError(`import: review.id must be a string (got ${typeof review.id})`);\n        }\n        if (typeof review.cardId !== \"string\") {\n          throw new DomainInvariantError(`import: review ${review.id}: cardId must be a string`);\n        }\n        if (typeof review.deckId !== \"string\") {\n          throw new DomainInvariantError(`import: review ${review.id}: deckId must be a string`);\n        }\n        if (review.grade !== 1 && review.grade !== 2 && review.grade !== 3 && review.grade !== 4) {\n          throw new DomainInvariantError(`import: review ${review.id}: grade must be 1..4`);\n        }\n        if (typeof review.reviewedAt !== \"string\") {\n          throw new DomainInvariantError(`import: review ${review.id}: reviewedAt must be a string`);\n        }\n      }\n\n      // Full shape invariants (orphan cards, cardOrder set-match,\n      // duplicate ids, review log refs, …).\n      assertData(data);\n\n      return data;\n    },\n  };\n}\n\n/** Convenience: the singleton port (the app uses one instance). */\nexport const importExport: ImportExportPort = createImportExport();\n"
+        }
+      ],
+      "isError": false,
+      "timestamp": 1793941806012
+    },
+    {
+      "role": "assistant",
+      "content": [
+        {
+          "type": "toolCall",
+          "id": "call_d735d7d653e646c79c5005f0",
+          "name": "read",
+          "arguments": {
+            "path": "/home/z/my-project/work/unown/apps/ostinato/src/domain/invariants.ts"
+          }
+        },
+        {
+          "type": "text",
+          "text": "\n\n"
+        },
+        {
+          "type": "toolCall",
+          "id": "call_45600d65dc4548658ee08edb",
+          "name": "read",
+          "arguments": {
+            "path": "/home/z/my-project/work/unown/apps/ostinato/src/domain/storage.ts"
+          }
+        }
+      ],
+      "api": "openai-completions",
+      "provider": "zai-bridge",
+      "model": "agnes-3.0-flash",
+      "usage": {
+        "input": 3912,
+        "output": 77,
+        "cacheRead": 37632,
+        "cacheWrite": 0,
+        "reasoning": 0,
+        "totalTokens": 41621,
+        "cost": {
+          "input": 0,
+          "output": 0,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "total": 0
+        }
+      },
+      "stopReason": "toolUse",
+      "timestamp": 1793941806013,
+      "responseId": "88b7f45e1c90477dacf0094b553e9cf6",
+      "rawStopReason": "tool_calls"
+    },
+    {
+      "role": "toolResult",
+      "toolCallId": "call_d735d7d653e646c79c5005f0",
+      "toolName": "read",
+      "content": [
+        {
+          "type": "text",
+          "text": "/**\n * Ostinato domain core — DOM-free invariant checks (P0 #1).\n *\n * The skeleton's only executable domain code: a small `assertData`\n * guard that validates the shape invariants of an `OstinatoData` (the\n * cardOrder set-match, no orphan cards, id uniqueness). O-2 adds the\n * scheduler; O-3 adds the repository + atomic persistence. Kept\n * deliberately tiny at O-1 so the Lane A test boot has a real\n * assertion target without touching SM-2 logic (non-overlap: O-2).\n */\nimport type { OstinatoData } from \"./types.js\";\nimport { DomainInvariantError } from \"./types.js\";\n\n/**\n * Assert `data` satisfies OstinatoData's invariants:\n *  - no duplicate deck ids / card ids\n *  - every card's `deckId` references an existing deck\n *  - every deck's `cardOrder` set-matches its cards exactly\n *     (the Coda Board.taskOrder invariant, per-deck)\n *  - card front/back are strings (markdown source, may be empty —\n *    an empty-front card is a user's choice, not an invariant breach)\n *  - R-1 review log (append-only activity log): every review id is\n *    unique; every `cardId` resolves to a card; every `deckId`\n *    resolves AND matches the card's own `deckId`; `grade` is 1..4;\n *    `reviewedAt` is a string\n *\n * @throws {DomainInvariantError} on the first breach\n */\nexport function assertData(data: OstinatoData): void {\n  const deckIds = new Set<string>();\n  for (const deck of data.decks) {\n    if (deckIds.has(deck.id)) throw new DomainInvariantError(`duplicate deck id: ${deck.id}`);\n    deckIds.add(deck.id);\n  }\n\n  const cardIds = new Set<string>();\n  const cardsByDeck = new Map<string, Set<string>>();\n  for (const card of data.cards) {\n    if (cardIds.has(card.id)) throw new DomainInvariantError(`duplicate card id: ${card.id}`);\n    cardIds.add(card.id);\n    if (!deckIds.has(card.deckId)) throw new DomainInvariantError(`orphan card ${card.id}: unknown deck ${card.deckId}`);\n    if (typeof card.front !== \"string\" || typeof card.back !== \"string\") {\n      throw new DomainInvariantError(`card ${card.id}: front/back must be strings`);\n    }\n    let bucket = cardsByDeck.get(card.deckId);\n    if (!bucket) {\n      bucket = new Set();\n      cardsByDeck.set(card.deckId, bucket);\n    }\n    bucket.add(card.id);\n  }\n\n  for (const deck of data.decks) {\n    const seenInOrder = new Set(deck.cardOrder);\n    if (seenInOrder.size !== deck.cardOrder.length) {\n      throw new DomainInvariantError(`deck ${deck.id}: duplicate cardOrder entry`);\n    }\n    const owned = cardsByDeck.get(deck.id) ?? new Set<string>();\n    for (const id of owned) {\n      if (!seenInOrder.has(id)) throw new DomainInvariantError(`deck ${deck.id}: card ${id} missing from cardOrder`);\n    }\n    for (const id of seenInOrder) {\n      if (!owned.has(id)) throw new DomainInvariantError(`deck ${deck.id}: cardOrder lists unknown card ${id}`);\n    }\n  }\n\n  // R-1 review log invariants (the append-only activity log).\n  const reviewIds = new Set<string>();\n  for (const event of data.reviews) {\n    if (reviewIds.has(event.id)) throw new DomainInvariantError(`duplicate review id: ${event.id}`);\n    reviewIds.add(event.id);\n    if (!cardIds.has(event.cardId)) throw new DomainInvariantError(`review ${event.id}: unknown card ${event.cardId}`);\n    const card = data.cards.find((c) => c.id === event.cardId)!;\n    if (event.deckId !== card.deckId) throw new DomainInvariantError(`review ${event.id}: deck ${event.deckId} does not match card's deck ${card.deckId}`);\n    if (event.grade !== 1 && event.grade !== 2 && event.grade !== 3 && event.grade !== 4) throw new DomainInvariantError(`review ${event.id}: grade must be 1..4`);\n    if (typeof event.reviewedAt !== \"string\") throw new DomainInvariantError(`review ${event.id}: reviewedAt must be a string`);\n  }\n}\n"
+        }
+      ],
+      "isError": false,
+      "timestamp": 1793941811079
+    },
+    {
+      "role": "toolResult",
+      "toolCallId": "call_45600d65dc4548658ee08edb",
+      "toolName": "read",
+      "content": [
+        {
+          "type": "text",
+          "text": "/**\n * Storage port — the persistence seam (P0 #6 + the O-2 [U] design gate).\n *\n * The domain owns the CONTRACT; host adapters live at the edge. This\n * file defines `StoragePort` (a plain async interface over\n * `OstinatoData` bytes) and `StorageLike` (the minimal host storage\n * surface an adapter needs). The concrete host adapter — the\n * localStorage + atomic-writes implementation — lives OUTSIDE the\n * domain (`src/storage/local-storage.ts`), because the boundary law\n * keeps `src/domain/**` DOM-free: the domain owns the seam, not the\n * host.\n *\n * DESIGN DECISION (the PRD's `[U]`, decided + justified at O-2 — the\n * full receipt is `.unown/receipts/o2.md`):\n *\n *   CHOICE: localStorage + atomic-writes (canonical JSON → temp key →\n *   commit key), NOT IndexedDB.\n *\n *   1. Byte-stability (matrix lane I-1): the adapter persists the\n *      EXACT bytes of `io.exportData` — no second serialization layer,\n *      no structured-clone drift. Two sequential boots → identical\n *      export bytes.\n *   2. Crash-safety (lane R-1): the \"temp-write + commit\" pair is the\n *      localStorage analogue of the PRD's \"temp-write + rename\"\n *      row; an interrupted save leaves the temp key, which boot\n *      recovery discards while the committed key survives.\n *   3. Sync reads (P0 #3/#6): the review runner needs queue state\n *      without a promise hop; localStorage is synchronous, IndexedDB\n *      is not. The port stays async so the seam survives a future\n *      adapter swap.\n *   4. Test-pinning: a `StorageLike` mock unit-tests both lanes\n *      without a browser; IndexedDB adapters need integration.\n *   5. Quota (5 MB) is ample for thousands of cards; if it is ever\n *      hit, the port seam makes an IndexedDB adapter a drop-in.\n */\nimport type { OstinatoData } from \"./types.js\";\n\n/**\n * The storage contract. Implementations MUST be byte-lossless:\n * `load()` after `save(data, rawJson)` returns the same data set.\n * All methods are async so the seam is uniform across sync (host\n * storage) and async (future) adapters.\n */\nexport type StoragePort = {\n  /**\n   * Load the persisted data set. `null` on first boot or when the\n   * committed key holds undecodable bytes (the caller then surfaces\n   * the corruption — the port never silently swallows it).\n   */\n  load(): Promise<OstinatoData | null>;\n\n  /**\n   * Atomically persist `data`. `rawJson` is the canonical bytes the\n   * caller produced via the ImportExportPort (`exportData` output) —\n   * the adapter stores EXACTLY those bytes, no re-encode.\n   */\n  save(data: OstinatoData, rawJson: string): Promise<void>;\n\n  /**\n   * Crash-recovery pass, called on boot before `load()`: an orphaned\n   * temp key (interrupted save) is discarded; the committed key,\n   * when present, is the last known-good state.\n   */\n  recover(): Promise<void>;\n};\n\n/**\n * The minimal host storage surface an adapter needs — the seam keeps\n * the domain free of any host-storage reference. The UI shell (O-3)\n * hands the host's browser storage object into the host adapter\n * (src/storage/local-storage.ts).\n */\nexport type StorageLike = {\n  getItem(key: string): string | null;\n  setItem(key: string, value: string): void;\n  removeItem(key: string): void;\n};\n"
+        }
+      ],
+      "isError": false,
+      "timestamp": 1793941811079
+    },
+    {
+      "role": "assistant",
+      "content": [
+        {
+          "type": "toolCall",
+          "id": "call_d88244e1c84c4ef7939c06b8",
+          "name": "read",
+          "arguments": {
+            "path": "/home/z/my-project/work/unown/apps/ostinato/src/storage/local-storage.ts"
+          }
+        },
+        {
+          "type": "text",
+          "text": "\n\n"
+        },
+        {
+          "type": "toolCall",
+          "id": "call_6c7c3bddf7d44949b2a373fd",
+          "name": "read",
+          "arguments": {
+            "path": "/home/z/my-project/work/unown/apps/ostinato/src/domain/model.ts"
+          }
+        }
+      ],
+      "api": "openai-completions",
+      "provider": "zai-bridge",
+      "model": "agnes-3.0-flash",
+      "usage": {
+        "input": 14361,
+        "output": 77,
+        "cacheRead": 29184,
+        "cacheWrite": 0,
+        "reasoning": 0,
+        "totalTokens": 43622,
+        "cost": {
+          "input": 0,
+          "output": 0,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "total": 0
+        }
+      },
+      "stopReason": "toolUse",
+      "timestamp": 1793941811081,
+      "responseId": "e675b19346a246b6beab9b1cc97479fd",
+      "rawStopReason": "tool_calls"
+    },
+    {
+      "role": "toolResult",
+      "toolCallId": "call_d88244e1c84c4ef7939c06b8",
+      "toolName": "read",
+      "content": [
+        {
+          "type": "text",
+          "text": "/**\n * localStorage + atomic-writes adapter — the HOST edge (O-2 storage\n * decision; contract in `src/domain/storage.ts`).\n *\n * LIVES OUTSIDE `src/domain/` on purpose: the boundary test bans\n * `localStorage.` references in domain modules. This file is host\n * code (like the UI shell) that implements the domain's `StoragePort`\n * over the host's `StorageLike` (e.g. `window.localStorage`).\n *\n * Atomicity: `save` writes the temp key first, then the commit key;\n * a crash between the two leaves an orphaned temp that `recover`\n * discards on boot. The committed key always holds the last complete\n * state.\n */\nimport type { OstinatoData, } from \"../domain/types.js\";\nimport type { StoragePort, StorageLike } from \"../domain/storage.js\";\n\n/** Canonical committed key + atomic temp key (the app's namespace). */\nexport const STORAGE_KEY = \"ostinato.data\";\nexport const STORAGE_TMP_KEY = \"ostinato.tmp\";\n\n/**\n * Create a `StoragePort` backed by a `StorageLike` (the UI edge passes\n * `window.localStorage`). See `src/domain/storage.ts` for the design\n * receipt (localStorage + atomic-writes, not IndexedDB).\n */\nexport function createLocalStorageAdapter(storage: StorageLike): StoragePort {\n  return {\n    async load(): Promise<OstinatoData | null> {\n      const raw = storage.getItem(STORAGE_KEY);\n      if (raw === null) return null;\n      try {\n        return JSON.parse(raw) as OstinatoData;\n      } catch {\n        // Undecodable committed bytes: surface as \"no data\" so the\n        // boot path can run importData(io) and throw the honest\n        // DomainInvariantError rather than crash on the raw parse.\n        return null;\n      }\n    },\n\n    async save(_data: OstinatoData, rawJson: string): Promise<void> {\n      // The adapter stores EXACTLY the canonical bytes the caller\n      // produced (io.exportData) — no re-encode, byte-stable by\n      // construction (matrix lane I-1).\n      storage.setItem(STORAGE_TMP_KEY, rawJson);\n      storage.setItem(STORAGE_KEY, rawJson);\n      try {\n        storage.removeItem(STORAGE_TMP_KEY);\n      } catch {\n        // best-effort: the commit already succeeded; a failed temp\n        // cleanup is harmless (recover() will tidy it next boot).\n      }\n    },\n\n    async recover(): Promise<void> {\n      // Orphaned temp (interrupted save) → discard. The commit key,\n      // when present, is the last complete state.\n      if (storage.getItem(STORAGE_TMP_KEY) !== null) {\n        try {\n          storage.removeItem(STORAGE_TMP_KEY);\n        } catch {\n          // ignore — next boot retries\n        }\n      }\n    },\n  };\n}\n"
+        }
+      ],
+      "isError": false,
+      "timestamp": 1793941816016
+    },
+    {
+      "role": "toolResult",
+      "toolCallId": "call_6c7c3bddf7d44949b2a373fd",
+      "toolName": "read",
+      "content": [
+        {
+          "type": "text",
+          "text": "/**\n * Deck/card construction + edit helpers (P0 #1, the finished model\n * layer).\n *\n * Every helper returns a NEW `OstinatoData` (the Coda domain-purity\n * convention — no in-place mutation of caller state) and re-runs\n * `assertData` on the result, so no mutation path can leave the store\n * in a breach state. Id generation is injected (`newUniqueId`'s\n * signature keeps the clock/randomness at the edge, so unit tests can\n * pin exact ids).\n *\n * Timestamps: `now` is an ISO-8601 string injected by the caller — the\n * domain never calls `Date.now()` on these paths (determinism is the\n * P0 #2 contract; a construction-time `now` is the one accepted\n * exception: the caller is the edge).\n */\nimport type { Card, Deck, DeckSettings, OstinatoData, Grade, ReviewEvent } from \"./types.js\";\nimport { DomainInvariantError } from \"./types.js\";\nimport { assertData } from \"./invariants.js\";\nimport { newUniqueId } from \"./ids.js\";\nimport { createScheduler } from \"./scheduler.js\";\n\nfunction takenDeckIds(data: OstinatoData): Set<string> {\n  const s = new Set<string>();\n  for (const d of data.decks) s.add(d.id);\n  return s;\n}\n\nfunction takenCardIds(data: OstinatoData): Set<string> {\n  const s = new Set<string>();\n  for (const c of data.cards) s.add(c.id);\n  return s;\n}\n\nfunction takenReviewIds(data: OstinatoData): Set<string> {\n  const s = new Set<string>();\n  for (const r of data.reviews) s.add(r.id);\n  return s;\n}\n\n/** Create a new deck. Returns the updated data set. */\nexport function createDeck(\n  data: OstinatoData,\n  name: string,\n  now: string,\n  id?: string,\n): OstinatoData {\n  const deckId = id ?? newUniqueId(\"deck\", takenDeckIds(data));\n  if (!id && takenDeckIds(data).has(deckId)) {\n    throw new DomainInvariantError(`duplicate deck id: ${deckId}`);\n  }\n  if (!name || typeof name !== \"string\") {\n    throw new DomainInvariantError(\"deck name must be a non-empty string\");\n  }\n  const deck: Deck = {\n    id: deckId,\n    name,\n    cardOrder: [],\n    createdAt: now,\n    updatedAt: now,\n  };\n  const next: OstinatoData = {\n    decks: [...data.decks, deck],\n    cards: data.cards,\n    reviews: data.reviews,\n  };\n  assertData(next);\n  return next;\n}\n\n/**\n * Add a card to an existing deck. `front`/`back` are markdown source\n * (may be empty — a user's choice, not a breach). Returns the updated\n * data set; the new card's id is exposed as `card.id`.\n */\nexport function addCard(\n  data: OstinatoData,\n  deckId: string,\n  front: string,\n  back: string,\n  now: string,\n  cardId?: string,\n): { data: OstinatoData; card: Card } {\n  const deck = data.decks.find((d) => d.id === deckId);\n  if (!deck) throw new DomainInvariantError(`unknown deck: ${deckId}`);\n  const cid = cardId ?? newUniqueId(\"card\", takenCardIds(data));\n  if (takenCardIds(data).has(cid)) {\n    throw new DomainInvariantError(`duplicate card id: ${cid}`);\n  }\n  const card: Card = {\n    id: cid,\n    deckId,\n    front,\n    back,\n    createdAt: now,\n    updatedAt: now,\n  };\n  const next: OstinatoData = {\n    decks: data.decks.map((d) =>\n      d.id === deckId\n        ? { ...d, cardOrder: [...d.cardOrder, cid], updatedAt: now }\n        : d,\n    ),\n    cards: [...data.cards, card],\n    reviews: data.reviews,\n  };\n  assertData(next);\n  return { data: next, card };\n}\n\n/** Edit a card's front/back. Returns the updated data set. */\nexport function updateCard(\n  data: OstinatoData,\n  cardId: string,\n  patch: Partial<Pick<Card, \"front\" | \"back\">>,\n  now: string,\n): OstinatoData {\n  let found = false;\n  const cards = data.cards.map((c) => {\n    if (c.id !== cardId) return c;\n    found = true;\n    return {\n      ...c,\n      front: patch.front !== undefined ? patch.front : c.front,\n      back: patch.back !== undefined ? patch.back : c.back,\n      updatedAt: now,\n    };\n  });\n  if (!found) throw new DomainInvariantError(`unknown card: ${cardId}`);\n  const next: OstinatoData = { decks: data.decks, cards, reviews: data.reviews };\n  assertData(next);\n  return next;\n}\n\n/** Remove a card (and its SM-2 state) from its deck. Returns the updated data set. */\nexport function removeCard(data: OstinatoData, cardId: string, now: string): OstinatoData {\n  const card = data.cards.find((c) => c.id === cardId);\n  if (!card) throw new DomainInvariantError(`unknown card: ${cardId}`);\n  const next: OstinatoData = {\n    decks: data.decks.map((d) =>\n      d.id === card.deckId\n        ? {\n            ...d,\n            cardOrder: d.cardOrder.filter((id) => id !== cardId),\n            updatedAt: now,\n          }\n        : d,\n    ),\n    cards: data.cards.filter((c) => c.id !== cardId),\n    reviews: data.reviews,\n  };\n  assertData(next);\n  return next;\n}\n\n/** Remove a deck and all its cards. Returns the updated data set. */\nexport function removeDeck(data: OstinatoData, deckId: string, now: string): OstinatoData {\n  const next: OstinatoData = {\n    decks: data.decks.filter((d) => d.id !== deckId),\n    cards: data.cards.filter((c) => c.deckId !== deckId),\n    reviews: data.reviews,\n  };\n  assertData(next);\n  return next;\n}\n\n/**\n * Reorder a deck's cards. `order` must be the deck's current card set\n * (a permutation) — any missing or extra id throws before the mutation\n * is applied.\n */\nexport function reorderDeck(data: OstinatoData, deckId: string, order: string[], now: string): OstinatoData {\n  const deck = data.decks.find((d) => d.id === deckId);\n  if (!deck) throw new DomainInvariantError(`unknown deck: ${deckId}`);\n  const current = new Set(deck.cardOrder);\n  const next = new Set(order);\n  if (current.size !== next.size) {\n    throw new DomainInvariantError(`reorderDeck: order length ${next.size} != card set size ${current.size}`);\n  }\n  for (const id of order) {\n    if (!current.has(id)) {\n      throw new DomainInvariantError(`reorderDeck: unknown card ${id} in deck ${deckId}`);\n    }\n  }\n  const out: OstinatoData = {\n    decks: data.decks.map((d) =>\n      d.id === deckId ? { ...d, cardOrder: [...order], updatedAt: now } : d,\n    ),\n    cards: data.cards,\n    reviews: data.reviews,\n  };\n  assertData(out);\n  return out;\n}\n\n/**\n * Apply a grade to a card via the SM-2 scheduler. Returns the updated\n * data set with the card's `sm2` state advanced AND a `ReviewEvent`\n * appended to the review log (R-1). The append rides the same\n * transition — every-transition persistence: a session killed here\n * restores the log by construction. This is the single entry point\n * from the review runner (O-3) into the scheduler.\n */\nexport function gradeCard(\n  data: OstinatoData,\n  cardId: string,\n  grade: Grade,\n  now: string,\n): OstinatoData {\n  const scheduler = createScheduler();\n  let found = false;\n  const cards = data.cards.map((c) => {\n    if (c.id !== cardId) return c;\n    found = true;\n    const graded = scheduler.grade(c, grade, now);\n    return graded;\n  });\n  if (!found) throw new DomainInvariantError(`unknown card: ${cardId}`);\n  const gradedCard = data.cards.find((c) => c.id === cardId)!;\n  const taken = new Set<string>([...takenReviewIds(data), ...takenCardIds(data), ...takenDeckIds(data)]);\n  const event: ReviewEvent = {\n    id: newUniqueId(\"review\", taken),\n    cardId: gradedCard.id,\n    deckId: gradedCard.deckId,\n    grade,\n    reviewedAt: now,\n  };\n  const next: OstinatoData = { decks: data.decks, cards, reviews: [...data.reviews, event] };\n  assertData(next);\n  return next;\n}\n\n/**\n * Set or clear a deck's R-2 settings. `settings` is a full replacement\n * of the deck's `settings` field: pass `null` to DELETE the field\n * (the byte-stability law — a capped→uncapped deck exports pre-R-2\n * bytes, `settings` absent; `{}` is legal and also means no cap but\n * does round-trip, so the honest \"uncap\" write is `null`). Returns\n * the updated data set; `updatedAt` advances like every other\n * deck mutation.\n */\nexport function setDeckSettings(\n  data: OstinatoData,\n  deckId: string,\n  settings: DeckSettings | null,\n  now: string,\n): OstinatoData {\n  let found = false;\n  const decks = data.decks.map((d) => {\n    if (d.id !== deckId) return d;\n    found = true;\n    const next: Deck = { ...d, updatedAt: now };\n    if (settings === null) {\n      delete next.settings;\n    } else {\n      next.settings = settings;\n    }\n    return next;\n  });\n  if (!found) throw new DomainInvariantError(`unknown deck: ${deckId}`);\n  const out: OstinatoData = { decks, cards: data.cards, reviews: data.reviews };\n  assertData(out);\n  return out;\n}\n\n/** Empty data set — the starting point for a new install. */\nexport function emptyData(): OstinatoData {\n  return { decks: [], cards: [], reviews: [] };\n}\n"
+        }
+      ],
+      "isError": false,
+      "timestamp": 1793941816016
+    },
+    {
+      "role": "assistant",
+      "content": [
+        {
+          "type": "toolCall",
+          "id": "call_69fa88e8b1784e95822ffde5",
+          "name": "read",
+          "arguments": {
+            "path": "/home/z/my-project/work/unown/apps/ostinato/src/domain/boundary.test.ts"
+          }
+        },
+        {
+          "type": "text",
+          "text": "\n\n"
+        },
+        {
+          "type": "toolCall",
+          "id": "call_8d610a9497054ead89d26550",
+          "name": "read",
+          "arguments": {
+            "path": "/home/z/my-project/work/unown/apps/ostinato/src/domain/ports.ts"
+          }
+        }
+      ],
+      "api": "openai-completions",
+      "provider": "zai-bridge",
+      "model": "agnes-3.0-flash",
+      "usage": {
+        "input": 9222,
+        "output": 79,
+        "cacheRead": 37632,
+        "cacheWrite": 0,
+        "reasoning": 0,
+        "totalTokens": 46933,
+        "cost": {
+          "input": 0,
+          "output": 0,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "total": 0
+        }
+      },
+      "stopReason": "toolUse",
+      "timestamp": 1793941816017,
+      "responseId": "bc7b50203d294c1d9df2c853b49ff3f1",
+      "rawStopReason": "tool_calls"
+    },
+    {
+      "role": "toolResult",
+      "toolCallId": "call_69fa88e8b1784e95822ffde5",
+      "toolName": "read",
+      "content": [
+        {
+          "type": "text",
+          "text": "/**\n * Domain-boundary test — the Coda `boundary.test.ts` precedent, ported\n * to Ostinato. Runs green in BOTH lanes:\n *\n *   Lane A — `cd apps/ostinato && bun test`: no `bunfig.toml` inside the\n *            app dir, so the root happy-dom preload does NOT apply and\n *            domain-purity is enforced against a genuinely DOM-free\n *            runtime.\n *   Lane B — `bun test apps/ostinato` from the repo root: the root\n *            `bunfig.toml`'s preload IS active (DOM globals present),\n *            so this test still runs but is masked-by-design; it\n *            remains the import-graph enforcer.\n *\n * Rule: every module under src/domain/ may import only\n *   - relative \"./\" imports that stay inside src/domain/ (the domain\n *     is a flat directory; \"../\" would escape it and is rejected)\n *   - \"bun:test\" (tests)\n *   - nothing Node-specific (fs/path/process/http/crypto/…)\n *   - no DOM/Node global reference (document./window./indexedDB/\n *    localStorage — the regex pins member ACCESS like\n *    `document.getElementById` or `window.localStorage`; English\n *    prose ending in the word \"document.\" must not trip it, hence\n *    the `\\w` after the dot (V-14 regex hardening))\n *   - and no self-import of a sibling module by its resolved\n *     extensionless specifier — a module importing itself creates a\n *     cycle bun reports as \"escapes src/domain\". Domain modules\n *     import siblings by relative specifier only (`./types.js` is\n *     valid because the scanner treats it as \"stays inside the\n *     domain\"); they do NOT import themselves.\n *\n * The scanner re-implements a small reader in plain JS so it survives\n * the repo's TS-unfriendly PostToolUse syntax hook (Coda precedent:\n * the boundary test uses node:fs/promises inside the TEST FILE ONLY,\n * which is explicitly allowed — tests are not domain logic).\n */\nimport { test, expect } from \"bun:test\";\n// Scanner infrastructure — allowed in test files, banned from domain\n// modules (the ALLOWED set below encodes that split).\n// eslint-disable-next-line -- scanner infrastructure, not domain logic\nimport { readdir, readFile } from \"node:fs/promises\";\n\nconst DOMAIN_DIR = import.meta.dir;\n\nconst ALLOWED = new Set([\"bun:test\"]);\nconst NODE_BUILTINS = new Set([\n  \"node:fs\", \"fs\", \"node:fs/promises\", \"node:path\", \"path\",\n  \"node:process\", \"process\", \"node:os\", \"os\",\n  \"node:http\", \"http\", \"node:crypto\", \"crypto\", \"node:buffer\",\n  \"node:stream\", \"stream\", \"node:net\", \"net\", \"node:url\", \"url\",\n  \"node:util\", \"util\",\n]);\n/**\n * V-14 hardening: the regex requires an identifier after the dot\n * (`\\.\\w`) so it pins genuine member access (`document.getElementById`,\n * `window.localStorage`) while sentence-ending prose (\"…an import\n * document.\") stays immune. The storage.ts comment rewording is the\n * belt; this is the braces.\n */\nconst DOM_GLOBS = /\\b(document|window|indexedDB|localStorage|sessionStorage)\\.\\w/;\n\nasync function walk(dir: string): Promise<string[]> {\n  const out: string[] = [];\n  for (const e of await readdir(dir, { withFileTypes: true })) {\n    const p = `${dir}/${e.name}`;\n    if (e.isDirectory()) out.push(...(await walk(p)));\n    else if (e.name.endsWith(\".ts\")) out.push(p);\n  }\n  return out;\n}\n\ntest(\"domain modules: no Node builtins, no DOM globals, closed import graph\", async () => {\n  const files = await walk(DOMAIN_DIR);\n  const testFiles = files.filter((f) => f.endsWith(\".test.ts\"));\n  const domainFiles = files.filter((f) => !f.endsWith(\".test.ts\"));\n\n  expect(domainFiles.length).toBeGreaterThan(0); // the domain is not empty\n\n  for (const file of domainFiles) {\n    const src = await readFile(file, \"utf8\");\n\n    // 1. No DOM/Node global use.\n    expect(DOM_GLOBS.test(src), `${file} references a DOM/Node global`).toBe(false);\n\n    // 2. Import scan.\n    const importRe = /import\\s+(?:[\\s\\S]*?from\\s+)?[\"']([^\"']+)[\"']/g;\n    for (const m of src.matchAll(importRe)) {\n      const spec = m[1];\n      const bare = spec.replace(/\\.js$/, \"\"); // extensionless TS import convention\n      expect(NODE_BUILTINS.has(bare), `${file} imports Node builtin ${spec}`).toBe(false);\n      if (!bare.startsWith(\".\")) {\n        // bare non-relative import — must be in the allow-list\n        expect(ALLOWED.has(bare), `${file} imports unapproved external ${spec}`).toBe(true);\n      }\n      // relative imports must stay inside the domain (flat dir: only \"./\")\n      if (bare.startsWith(\"..\")) {\n        expect(false, `${file} escapes src/domain via ${spec}`).toBe(true);\n      }\n      // and no self-import (a module must not import its own specifier)\n      const ownName = file.slice(DOMAIN_DIR.length + 1).replace(/\\.ts$/, \"\");\n      if (bare === ownName || bare === `./${ownName}`) {\n        expect(false, `${file} self-imports ${spec}`).toBe(true);\n      }\n    }\n  }\n\n  // 3. Test files MAY use node:fs (scanner infra) — verify the test set\n  //    is what we expect, nothing hidden.\n  expect(testFiles.length).toBeGreaterThanOrEqual(1);\n});\n"
+        }
+      ],
+      "isError": false,
+      "timestamp": 1793941818665
+    },
+    {
+      "role": "toolResult",
+      "toolCallId": "call_8d610a9497054ead89d26550",
+      "toolName": "read",
+      "content": [
+        {
+          "type": "text",
+          "text": "/**\n * Ostinato — the port seams, pinned at O-1 as a single entry point.\n *\n * Re-exports `Scheduler` + `ImportExportPort` (and the model shapes\n * they name) from `./types.js` so O-2/O-3 can import the ports from\n * one named seam: `import { Scheduler, ImportExportPort } from\n * \"./ports.js\"`. This module is a pure re-export with no logic of its\n * own (O-2 implements `Scheduler`, O-2/O-4 implement\n * `ImportExportPort`); it exists so the domain-boundary test has a\n * stable \"ports\" file to assert on, and so the import-graph check\n * stays meaningful as the directory grows.\n */\nexport type {\n  Scheduler,\n  ImportExportPort,\n  Grade,\n  OstinatoData,\n  Card,\n  Deck,\n  ReviewEvent,\n} from \"./types.js\";\nexport { DomainInvariantError } from \"./types.js\";\nexport type { StoragePort, StorageLike } from \"./storage.js\";\n\n/**\n * The clock seam (O-3, P0 #3/#6 + the PRD's hardening table \"no\n * Date.now() inside domain-facing logic\"): Ostinato's runner-side\n * time source. An ISO-8601 instant as a plain string — the same\n * discipline as the Scheduler port's injected `now`, never a wall\n * clock read. Tests inject a fixed string; the browser edge passes\n * `new Date().toISOString()`.\n */\nexport type Clock = () => string;\n"
+        }
+      ],
+      "isError": false,
+      "timestamp": 1793941818665
+    },
+    {
+      "role": "assistant",
+      "content": [
+        {
+          "type": "toolCall",
+          "id": "call_daf79a5ac49d4a24ab23111a",
+          "name": "read",
+          "arguments": {
+            "path": "/home/z/my-project/work/unown/eslint.config.mjs",
+            "limit": 120
+          }
+        }
+      ],
+      "api": "openai-completions",
+      "provider": "zai-bridge",
+      "model": "agnes-3.0-flash",
+      "usage": {
+        "input": 7178,
+        "output": 49,
+        "cacheRead": 41472,
+        "cacheWrite": 0,
+        "reasoning": 0,
+        "totalTokens": 48699,
+        "cost": {
+          "input": 0,
+          "output": 0,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "total": 0
+        }
+      },
+      "stopReason": "toolUse",
+      "timestamp": 1793941818667,
+      "responseId": "2b5a2a793e364362b3341e61c1d1b4d2",
+      "rawStopReason": "tool_calls"
+    },
+    {
+      "role": "toolResult",
+      "toolCallId": "call_daf79a5ac49d4a24ab23111a",
+      "toolName": "read",
+      "content": [
+        {
+          "type": "text",
+          "text": "import nextCoreWebVitals from \"eslint-config-next/core-web-vitals\";\nimport nextTypescript from \"eslint-config-next/typescript\";\nimport { dirname } from \"path\";\nimport { fileURLToPath } from \"url\";\n\nconst __filename = fileURLToPath(import.meta.url);\nconst __dirname = dirname(__filename);\n\n// Coda domain-purity gate (ticket C5, plan step 7a): scope DOM/Node global\n// restrictions onto apps/coda/src/domain/**. The design doc's P1 fix —\n// \"grep-only purity is bypassable\" — is enforced here with\n// `no-restricted-globals` so a `document.` / `window.` / `indexedDB` /\n// `localStorage` reference in a domain module is a lint finding, not a\n// missed grep. The IMPORT side of the boundary is the runtime check in\n// apps/coda/src/domain/boundary.test.ts (both bun lanes); this config is\n// the global-reference half of the pair.\n//\n// Two files-scoped configs, in precedence order after the broad landing\n// configs:\n//   1. codaDomainTestConfig (*.test.ts) — the co-located domain tests are\n//      allowed to reference DOM globals (they are the unit-under-test mock\n//      surface in Lane B) but NOT Node globals (the domain must stay\n//      Node-free so the boundary holds on both lanes).\n//   2. codaDomainConfig (*.ts, catches the non-test modules) — the strict\n//      rule: no DOM globals, no Node globals. boundary.test.ts is excluded\n//      from its own scope by the test glob above: it is the scanner itself\n//      and legitimately imports node:fs/promises + bun:test.\nconst CODA_DOMAIN = \"apps/coda/src/domain/*.ts\"\nconst CODA_DOMAIN_TESTS = \"apps/coda/src/domain/*.test.ts\"\n\nconst DOM_GLOBALS = [\n  \"document\", \"window\", \"location\", \"navigator\", \"history\",\n  \"indexedDB\", \"localStorage\", \"sessionStorage\", \"caches\",\n  \"fetch\", \"alert\", \"confirm\", \"prompt\",\n  \"requestAnimationFrame\", \"requestIdleCallback\", \"postMessage\",\n]\nconst NODE_GLOBALS = [\n  \"process\", \"require\", \"module\", \"exports\", \"__dirname\", \"__filename\",\n]\nconst restricted = (names, message) =>\n  names.map((g) => ({ name: g, message }))\n\nconst codaDomainTestConfig = {\n  files: [CODA_DOMAIN_TESTS],\n  rules: {\n    \"no-restricted-globals\": [\n      \"error\",\n      ...restricted(\n        [...DOM_GLOBALS, ...NODE_GLOBALS],\n        \"apps/coda/src/domain/*.test.ts may mock DOM globals (the unit-under-test surface) but must not reference Node globals (the domain stays Node-free on both bun lanes)\",\n      ),\n    ],\n  },\n}\n\nconst codaDomainConfig = {\n  files: [CODA_DOMAIN],\n  rules: {\n    \"no-restricted-globals\": [\n      \"error\",\n      ...restricted(\n        [...DOM_GLOBALS, ...NODE_GLOBALS],\n        \"apps/coda/src/domain/** must stay DOM/Node-free; the import side of the boundary is enforced by boundary.test.ts\",\n      ),\n    ],\n  },\n}\n\nconst eslintConfig = [\n  ...nextCoreWebVitals,\n  ...nextTypescript,\n  {\n    rules: {\n      // TypeScript rules\n      \"@typescript-eslint/no-explicit-any\": \"off\",\n      \"@typescript-eslint/no-unused-vars\": \"off\",\n      \"@typescript-eslint/no-non-null-assertion\": \"off\",\n      \"@typescript-eslint/ban-ts-comment\": \"off\",\n      \"@typescript-eslint/prefer-as-const\": \"off\",\n      \"@typescript-eslint/no-unused-disable-directive\": \"off\",\n\n      // React rules\n      \"react-hooks/exhaustive-deps\": \"off\",\n      \"react-hooks/purity\": \"off\",\n      \"react-hooks/set-state-in-effect\": \"off\",\n      \"react/no-unescaped-entities\": \"off\",\n      \"react/display-name\": \"off\",\n      \"react/prop-types\": \"off\",\n      \"react-compiler/react-compiler\": \"off\",\n\n      // Next.js rules\n      \"@next/next/no-img-element\": \"off\",\n      \"@next/next/no-html-link-for-pages\": \"off\",\n\n      // General JavaScript rules\n      \"prefer-const\": \"off\",\n      \"no-unused-vars\": \"off\",\n      \"no-console\": \"off\",\n      \"no-debugger\": \"off\",\n      \"no-empty\": \"off\",\n      \"no-irregular-whitespace\": \"off\",\n      \"no-case-declarations\": \"off\",\n      \"no-fallthrough\": \"off\",\n      \"no-mixed-spaces-and-tabs\": \"off\",\n      \"no-redeclare\": \"off\",\n      \"no-undef\": \"off\",\n      \"no-unreachable\": \"off\",\n      \"no-useless-escape\": \"off\",\n    },\n  },\n  codaDomainConfig,\n  codaDomainTestConfig,\n  {\n    ignores: [\"node_modules/**\", \".next/**\", \".vercel/**\", \"out/**\", \"build/**\", \"next-env.d.ts\", \"examples/**\", \"skills\", \"pi-repo/**\", \"mini-services/**\", \"data/**\", \"download/**\", \"upload/**\", \"tests/**\", \".zscripts/**\", \"src/generated/**\", \"benchmarks/**\", \"scripts/vendor/**\", \"scripts/tui-capture/**\"],\n  },\n]\n\nexport default eslintConfig;\n"
+        }
+      ],
+      "isError": false,
+      "timestamp": 1793941820695
+    },
+    {
+      "role": "assistant",
+      "content": [
+        {
+          "type": "toolCall",
+          "id": "call_f2f357a60f5241e2b6ba7fb9",
+          "name": "bash",
+          "arguments": {
+            "command": "cd /home/z/my-project/work/unown && grep -n '\"test:unit\"\\|\"typecheck\"\\|\"lint\"' package.json && grep -n 'ostinato\\|coda' tsconfig.json && cat .eslintrc* 2>/dev/null | head -20; ls apps/ostinato/ && grep -rn \"warning\" .eslint* 2>/dev/null | head -3"
+          }
+        }
+      ],
+      "api": "openai-completions",
+      "provider": "zai-bridge",
+      "model": "agnes-3.0-flash",
+      "usage": {
+        "input": 1317,
+        "output": 111,
+        "cacheRead": 48640,
+        "cacheWrite": 0,
+        "reasoning": 0,
+        "totalTokens": 50068,
+        "cost": {
+          "input": 0,
+          "output": 0,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "total": 0
+        }
+      },
+      "stopReason": "toolUse",
+      "timestamp": 1793941820696,
+      "responseId": "8198e5aa596148f7af7d5c63ed948f52",
+      "rawStopReason": "tool_calls"
+    },
+    {
+      "role": "toolResult",
+      "toolCallId": "call_f2f357a60f5241e2b6ba7fb9",
+      "toolName": "bash",
+      "content": [
+        {
+          "type": "text",
+          "text": "14:    \"lint\": \"eslint .\",\n15:    \"typecheck\": \"tsc --noEmit\",\n16:    \"test:unit\": \"bun test src --path-ignore-patterns=data/self-learning/**\",\n38:    \"apps/coda/**/*.ts\",\n39:    \"apps/ostinato/**/*.ts\",\nAGENTS.md\nindex.html\npackage.json\npublic\nscripts\nserve.mjs\nsrc\nsw.js\n"
+        }
+      ],
+      "isError": false,
+      "timestamp": 1793941822383
+    },
+    {
+      "role": "assistant",
+      "content": [
+        {
+          "type": "toolCall",
+          "id": "call_9642610c9de445e29d654cc7",
+          "name": "read",
+          "arguments": {
+            "path": "/home/z/my-project/work/unown/tsconfig.json"
+          }
+        },
+        {
+          "type": "text",
+          "text": "\n"
+        },
+        {
+          "type": "toolCall",
+          "id": "call_7748695446944308bf99bcf6",
+          "name": "bash",
+          "arguments": {
+            "command": "cd /home/z/my-project/work/unown && grep -n \"DomainInvariantError\\|OstinatoData\\b\" apps/ostinato/src/domain/types.ts | head; sed -n '1,60p' docs/chaconne-prd.md"
+          }
+        }
+      ],
+      "api": "openai-completions",
+      "provider": "zai-bridge",
+      "model": "agnes-3.0-flash",
+      "usage": {
+        "input": 262,
+        "output": 112,
+        "cacheRead": 49920,
+        "cacheWrite": 0,
+        "reasoning": 0,
+        "totalTokens": 50294,
+        "cost": {
+          "input": 0,
+          "output": 0,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "total": 0
+        }
+      },
+      "stopReason": "toolUse",
+      "timestamp": 1793941822385,
+      "responseId": "d237010039fe4fa5a54905c36e26d9f6",
+      "rawStopReason": "tool_calls"
+    },
+    {
+      "role": "toolResult",
+      "toolCallId": "call_9642610c9de445e29d654cc7",
+      "toolName": "read",
+      "content": [
+        {
+          "type": "text",
+          "text": "{\n  \"compilerOptions\": {\n    \"target\": \"ES2017\",\n    \"lib\": [\n      \"dom\",\n      \"dom.iterable\",\n      \"esnext\"\n    ],\n    \"allowJs\": true,\n    \"skipLibCheck\": true,\n    \"strict\": true,\n    \"noEmit\": true,\n    \"noImplicitAny\": false,\n    \"esModuleInterop\": true,\n    \"module\": \"esnext\",\n    \"moduleResolution\": \"bundler\",\n    \"resolveJsonModule\": true,\n    \"isolatedModules\": true,\n    \"jsx\": \"react-jsx\",\n    \"incremental\": true,\n    \"plugins\": [\n      {\n        \"name\": \"next\"\n      }\n    ],\n    \"paths\": {\n      \"@/*\": [\n        \"./src/*\"\n      ]\n    }\n  },\n  \"include\": [\n    \"next-env.d.ts\",\n    \"*.ts\",\n    \"src/**/*.ts\",\n    \"src/**/*.tsx\",\n    \"e2e/**/*.ts\",\n    \"apps/coda/**/*.ts\",\n    \"apps/ostinato/**/*.ts\",\n    \".next/types/**/*.ts\",\n    \".next/dev/types/**/*.ts\"\n  ],\n  \"exclude\": [\n    \"node_modules\"\n  ]\n}\n"
+        }
+      ],
+      "isError": false,
+      "timestamp": 1793941824036
+    },
+    {
+      "role": "toolResult",
+      "toolCallId": "call_7748695446944308bf99bcf6",
+      "toolName": "bash",
+      "content": [
+        {
+          "type": "text",
+          "text": "96:export type OstinatoData = {\n120:   * Returns the updated card; throws `DomainInvariantError` on an\n135:  exportData(data: OstinatoData): string;\n137:   * Parse + validate a JSON document into an OstinatoData. Throws\n138:   * `DomainInvariantError` on any invariant breach (orphan card,\n141:  importData(json: string): OstinatoData;\n145:export class DomainInvariantError extends Error {\n148:    this.name = \"DomainInvariantError\";\n# The Chaconne PRD\n\n> **Status: APPROVED 2026-11-06** — selected per the directive's §0.9\n> procedure (scored against three alternatives; the receipt and the\n> pre-registered failure classes live in\n> [the benchmark round](../benchmarks/rondo-round/README.md)); the approval\n> ruling is recorded in [the round log](rondo-round-session.md). A chaconne\n> is a musical form built on a repeating ground line, endlessly varied —\n> the runner loop is the ground, the recipes are the variations.\n\nOne-line purpose: the PRD for **Chaconne**, the Rondo round's DRIVE-track\napplication — the production build that doubles as A2's capability stress\ntest.\n\n**Mini-TOC**\n\n- [The one-paragraph vision](#the-one-paragraph-vision)\n- [Why this app](#why-this-app)\n- [Users and jobs](#users-and-jobs)\n- [Scope](#scope)\n- [Non-goals](#non-goals)\n- [Hardening-first mapping](#hardening-first-mapping)\n- [Edge cases the PRD names up front](#edge-cases-the-prd-names-up-front)\n- [Success criteria](#success-criteria)\n- [Related pages](#related-pages)\n\n## The one-paragraph vision\n\n**Chaconne** (`apps/chaconne/`) is a keyboard-first, self-hosted\nbrowser-recipe runner: compose a browser flow once — navigate, click,\nfill, select, wait, assert, extract, screenshot — and it repeats on\ndemand or on a schedule, capturing screenshots, extracted values and an\nhonest run log for every execution. Recipes run against **fixture pages\nin every test lane** (deterministic, offline-verifiable), the run history\nis crash-safe (atomic writes, the Ostinato law), the artifacts are\ncontent-addressed (sha256-pinned), and the whole surface is operable\nwithout a mouse and installable as a PWA. It is the repo's fourth user\nproduct (after Coda, Ostinato and the proposed-but-unapproved Tempo),\nbuilt to the house pattern with one deliberate extension: a runner\nprocess — which is exactly the exposure the §0.9 selection bought.\n\n## Why this app\n\n- **Weakness-driven, not comfort-driven** (the §0.9 rule): the vehicle\n  forces A2 to confront the repo's live open defect classes — browser\n  flow resilience (#43 fill_form iframe race, #44 screenshot handling),\n  process/service lifecycle (#30 kin), concurrency and long-horizon\n  planning (a 12-ticket build in one repo) — while Tempo, the parked\n  alternative, would have been the third app of the same zero-service\n  pattern (Exposure 1, no augmentation headroom).\n- **Real-world, not a toy**: recurring browser checks and form flows are\n  a proven self-hosted category (n8n, Browserbase, Huginn); a\n  single-binary version with fixture-verified determinism is genuinely\n  useful to a small team.\n- **Benchmark-friendly**: every defect class mints a deterministic\n  verifier — a fixture-page repro, an artifact hash pin, a crash-resume\n  case — the Failure → Benchmark reflex has somewhere to land on every\n  lane.\n- **The learning lanes get a real workload**: 12+ A2 sessions in one\n  repo is exactly what tiered memory, AutoDream consolidation and skill\n"
+        }
+      ],
+      "isError": false,
+      "timestamp": 1793941824036
+    },
+    {
+      "role": "assistant",
+      "content": [
+        {
+          "type": "toolCall",
+          "id": "call_7fd8efc3acf440459b7b4973",
+          "name": "bash",
+          "arguments": {
+            "command": "cd /home/z/my-project/work/unown && grep -n \"edge case\\|Edge\\|snapshot\\|committedPrefix\\|collision\\|byte-stable\\|future-schema\" docs/chaconne-prd.md | head -20 && sed -n \"$(grep -n 'edge cases the PRD' docs/chaconne-prd.md | cut -d: -f1),+40p\" docs/chaconne-prd.md"
+          }
+        }
+      ],
+      "api": "openai-completions",
+      "provider": "zai-bridge",
+      "model": "agnes-3.0-flash",
+      "usage": {
+        "input": 4675,
+        "output": 122,
+        "cacheRead": 46848,
+        "cacheWrite": 0,
+        "reasoning": 0,
+        "totalTokens": 51645,
+        "cost": {
+          "input": 0,
+          "output": 0,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "total": 0
+        }
+      },
+      "stopReason": "toolUse",
+      "timestamp": 1793941824037,
+      "responseId": "98456ca13568406dbf90caeaa6bee362",
+      "rawStopReason": "tool_calls"
+    },
+    {
+      "role": "toolResult",
+      "toolCallId": "call_7fd8efc3acf440459b7b4973",
+      "toolName": "bash",
+      "content": [
+        {
+          "type": "text",
+          "text": "23:- [Edge cases the PRD names up front](#edge-cases-the-prd-names-up-front)\n81:   JSON export (byte-stable, the Ostinato canonicalization law).\n137:| cross-session consistency | the import/export round-trip pin (byte-stable canonical JSON) |\n139:## Edge cases the PRD names up front\n147:run snapshots its recipe version), artifact-name collisions\n149:import of a future-schema recipe (rejected with a dry-run report, never\n160:  schemes, O-1 offline, R-1 crash-resume, resize, the byte-stable\nsed: -e expression #1, char 1: unknown command: `,'\n\n\nCommand exited with code 1"
+        }
+      ],
+      "details": {},
+      "isError": true,
+      "timestamp": 1793941827504
+    },
+    {
+      "role": "assistant",
+      "content": [],
+      "api": "openai-completions",
+      "provider": "zai-bridge",
+      "model": "agnes-3.0-flash",
+      "usage": {
+        "input": 0,
+        "output": 0,
+        "cacheRead": 0,
+        "cacheWrite": 0,
+        "totalTokens": 0,
+        "cost": {
+          "input": 0,
+          "output": 0,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "total": 0
+        }
+      },
+      "stopReason": "aborted",
+      "timestamp": 1793941827505,
+      "responseId": "6a99c8315afd49e2b34de32a5da7aa0a",
+      "errorMessage": "Request was aborted"
+    }
+  ],
+  "todos": [],
+  "notes": [],
+  "skills": [
+    "bash",
+    "read"
+  ],
+  "files": []
+}

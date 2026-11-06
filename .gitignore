@@ -119,3 +119,6 @@ benchmarks/complementary/results/*/
 # python bytecode from the capture/audit scripts
 __pycache__/
 .unown/briefs/
+
+# Chaconne runner: the disk-store runtime dir (PLAN §1 — gitignored)
+apps/chaconne/data/

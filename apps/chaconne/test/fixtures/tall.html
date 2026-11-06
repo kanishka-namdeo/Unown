@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>chaconne fixture — tall</title>
+<style>
+  body { font: 14px/1.4 monospace; margin: 0; padding: 24px; }
+  .spacer { height: 600px; background: repeating-linear-gradient(#eee 0 20px, #fff 20px 40px); }
+  #bottom { background: #234; color: #fff; padding: 8px; }
+</style>
+</head>
+<body>
+<h1>tall</h1>
+<p>Content ~3× the viewport; the target sits near the bottom (edge case 4: fullPage capture + assertable without scroll flake).</p>
+<div class="spacer"></div>
+<div class="spacer"></div>
+<div id="mid" data-testid="mid">mid-marker</div>
+<div class="spacer"></div>
+<div class="spacer"></div>
+<div id="bottom" data-testid="bottom" data-attr="end">bottom-marker</div>
+</body>
+</html>

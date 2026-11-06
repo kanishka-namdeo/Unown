@@ -48,8 +48,14 @@ logged; receipt `benchmarks/rondo-round/receipts/c1.md`). The nineteenth
 lineage's bring-up: fresh clone @ `1e4e840b`, V-2 recycle taxes cured
 one-pass (bun 1.4.3 pin, fd, venv, install 7/7, Agnes `.env`, `.a1/`
 operator tools rebuilt, PAT to the credential store), canaries green,
-A2H-9 cure re-verified 2258/0 on the fresh tree. **Next: C-2 (the runner
-v1), then the C-3..C-11 drive queue.**
+A2H-9 cure re-verified 2258/0 on the fresh tree. **C-2 CLOSED 2026-11-06** (the nineteenth
+lineage — the runner v1: 1,933 lines through A2 in 65 turns / 8 rounds;
+the fake-clock spiral V-14 receipted — the operator's §3.7 structural
+decision (delete the manual clock, bounded real-clock polls) closed what
+three derivations could not; Lane A/B 70/0, root battery 2289/0 holding,
+3-test real-browser smoke on LOCAL file:// fixtures; receipt
+`benchmarks/rondo-round/receipts/c2.md`). **Next: C-3 (the web app
+shell), then the C-4..C-11 drive queue.**
 
 The **twentieth lineage** (a PARALLEL resume — the V-9 dual-incarnation
 event: the nineteenth's checkpoint `6885f2f3` landed first and governs;

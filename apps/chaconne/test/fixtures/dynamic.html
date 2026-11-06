@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>chaconne fixture — dynamic</title>
+<style>
+  body { font: 14px/1.4 monospace; padding: 24px; }
+  #pop.in { background: #488; }
+</style>
+</head>
+<body>
+<h1>dynamic</h1>
+<p>Timer-driven DOM (edge 1/4 kin): #label's text changes at 1000ms; #pop appears at 800ms and changes class at 1500ms.</p>
+<div id="label" data-testid="label" data-attr="pre">waiting</div>
+<script>
+setTimeout(function () {
+  var l = document.getElementById("label");
+  l.textContent = "settled";
+  l.setAttribute("data-attr", "settled");
+}, 1000);
+setTimeout(function () {
+  var el = document.createElement("div");
+  el.id = "pop";
+  el.setAttribute("data-testid", "pop");
+  el.setAttribute("data-attr", "fresh");
+  el.textContent = "popped";
+  document.body.appendChild(el);
+}, 800);
+setTimeout(function () {
+  document.getElementById("pop").classList.add("in");
+}, 1500);
+</script>
+</body>
+</html>

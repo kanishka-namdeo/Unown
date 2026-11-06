@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>chaconne fixture — form-iframe</title>
+<style>
+  body { font: 14px/1.4 monospace; margin: 24px; }
+  .row { margin-bottom: 12px; }
+  label { display: block; margin-bottom: 4px; }
+  input { display: block; width: 220px; }
+  iframe { border: 1px solid #888; width: 340px; height: 120px; }
+</style>
+</head>
+<body>
+<h1>form-iframe</h1>
+<!-- A plain field on the top page (the control) -->
+<div class="row">
+  <label for="name">Name</label>
+  <input id="name" data-testid="name" name="name" type="text" value="">
+</div>
+<!-- The #43-class field: the critical input lives INSIDE a same-origin iframe -->
+<div class="row">
+  <label>Token (iframe-hosted)</label>
+  <iframe id="inner" name="inner" data-testid="inner-frame"
+          srcdoc='<!doctype html><html><head><meta charset="utf-8"></head>
+<body>
+<input id="token" data-testid="token" name="token" type="text" value="">
+<script>
+// Simulate the #43 race: a late script re-sets the input and would clobber
+// a fill that lands before verification. The runner MUST read back the
+// value after filling and fail on mismatch.
+setTimeout(function () {
+  var i = document.getElementById("token");
+  if (i && i.value === "") i.value = "";
+}, 50);
+</script>
+</body></html>'></iframe>
+</div>
+<!-- A select on the top page -->
+<div class="row">
+  <label for="color">Color</label>
+  <select id="color" data-testid="color" name="color">
+    <option value="red">red</option>
+    <option value="green">green</option>
+    <option value="blue">blue</option>
+  </select>
+</div>
+<!-- Extract target: data-attr + textContent -->
+<div id="status" data-testid="status" data-attr="idle" class="label">idle</div>
+<!-- Click target -->
+<button id="go" data-testid="go" type="button">go</button>
+</body>
+</html>
