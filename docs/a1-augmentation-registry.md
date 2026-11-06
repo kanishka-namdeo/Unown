@@ -291,6 +291,27 @@ PROPOSE-stage candidates (none canaried, none promoted):
   lane (C-8's surface, the H-12 canary's second artifact) matches the
   pin-on-first-run + committed-artifact convention
   ([the golden library's model](https://github.com/franiglesias/golden)).
+  **The paired runs EXECUTED 2026-11-06 13:00 UTC (the same lineage, the
+  teardown-window first act on the frozen post-C-7 tree `b436b843`)**:
+  n=3/arm, the skill the only variable, the harness's pins enforced
+  live — **the result is an honest NULL**: the skill's firing surface
+  (iframe fill failure / partial application / empty read-back) never
+  occurred in any of the six runs (the fixture's 50 ms re-tap only
+  resets EMPTY fields; Playwright's fill+read-back wins synchronously —
+  the WITH-1 report itself derives the mechanism), completions 1/3 vs
+  1/3, e2e flake 0.0 both arms, no delta claimable on the mechanism.
+  The instrument itself is the run's cargo: the harness worked
+  end-to-end (refusals, promote/demote revert, incremental receipts,
+  resume), the v1 brief flaw was caught BY the runs and both arms
+  re-measured on the corrected v2 (the archived v1 data is the flaw's
+  receipt), and the genuine finding — the fixture's race is benign by
+  construction; measuring the recover pattern needs a hostile variant
+  via a proper ticket — is filed for the teardown. Receipt
+  [h10-paired-runs.md](../benchmarks/rondo-round/receipts/h10-paired-runs.md).
+  Stage: **CANARY-READY → CANARY (executed, null receipted)** — the
+  skill stays STAGED; the teardown chooses: 6/arm, the hostile-variant
+  instrument ticket, or hold the null and ride the round's remaining
+  browser tickets for organic firing evidence.
 - **H-11 — the stdin-guard dispatch helper (operator lane, Rondo round
   seed).** V-1's cure formalized: every `-p` dispatch in this harness
   must guard stdin (inline `< /dev/null`; `stdio:["ignore"]` in
