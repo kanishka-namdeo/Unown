@@ -100,18 +100,18 @@ prior rounds' structurally-zero 0/0 openings.
 
 | Ticket | Scope | Verifier (external, named) | State |
 |---|---|---|---|
-| F-0 | Architecture plan — read-only `--plan` run; `apps/fugue/PLAN.md` | operator gate: PLAN.md maps every PRD P0 item + every edge case to a named verifier, none orphaned | NEXT |
-| F-1 | Domain core: types, invariants, pure schedule math, canonical JSON, `EngineAdapter` seam + `FakeEngineAdapter` | `cd apps/fugue && bun test` (Lane A) | pending |
-| F-2 | Real adapter: HTTP client over the pinned engine REST surface, token discovery, typed contracts, drift pins | Lane A + fixture-server contract tests | pending |
-| F-3 | PWA shell + job authoring (compose prompt/schedule/mode/model; validation; save via adapter) | Lane A + `serve.mjs` boot HTTP 200 + e2e smoke | pending |
-| F-4 | Run history + job detail (runs/dreams/notes surfaces, honest empty/loading/error) | Lane A/B + e2e flow | pending |
-| F-5 | The LIVE loop: a routine created through the PWA, executed by the real engine, its run visible (the real-data bridge lane — the V-41 law) | live-engine e2e + operator witness receipt | pending |
-| F-6 | Learning views: memory tiers/versions, dream journal, manual-notes lane, skills-staged queue | Lane A/B + e2e | pending |
-| F-7 | Resilience battery: engine down → honest panels + queued actions; corrupt store; kill/resume | resilience e2e ×3 cold-boot | pending |
-| F-8 | Import/export + goldens (byte-stable job-definition export) | golden diff = 0 + round-trip pins | pending |
-| F-9 | a11y + keyboard battery (axe wcag2a/2aa, light+dark; keyboard-only flows) | a11y e2e lane | pending |
-| F-10 | e2e consolidation + CI gate (`playwright.fugue.config.ts`, root scripts, CI job) | 3× consecutive green e2e | pending |
-| F-11 | Docs (runbook `docs/fugue.md`), landing band with REAL captures + PROVENANCE, honest-scope statement | check:docs + check:blog + PROVENANCE sidecar | pending |
+| F-0 | Architecture plan — read-only `--plan` run + materialization; `apps/fugue/PLAN.md` | operator gate: PLAN.md maps every PRD P0 item + every edge case to a named verifier, none orphaned | **CLOSED** 2026-11-07 ([receipt](../benchmarks/sonata-round/receipts/f0.md): plan 98/100 · PLAN.md 395 lines · 11/11 tickets · 12/12 edges) |
+| F-1 | Domain core: `src/domain/{types,ids,invariants,io,schedule,storage,model}.ts` — Job, five ScheduleSpec kinds, RunRecordView/EngineStatusView, deterministic ids, assertData, canonical JSON + the `"fugue.v1"` schema gate, the pure schedule projection | `cd apps/fugue && bun test` (Lane A); `bun test apps/fugue` (Lane B) | NEXT |
+| F-2 | The `EngineAdapter` seam: the interface + typed error taxonomy (`EngineLocked`, `EngineDown`) + `FakeEngineAdapter` (canned, injected clock) — unit lane touches no network | Lane A | pending |
+| F-3 | Real HTTP adapter + fixture-server lane: `rest-adapter.ts`, `runner/engine-client.ts`, stub engine :4130, per-endpoint drift pins | `bun test apps/fugue/test/adapter-contract.test.ts` | pending |
+| F-4 | PWA shell + job authoring: `index.html`, `sw.js`, `serve.mjs` (:4015), manifest, palette + job editor + job list | Lane A + serve boot HTTP 200 + e2e smoke | pending |
+| F-5 | Run history + job detail: grouped runs, error verbatim, spend meter with throttle state, honest panels | Lane A + e2e flow | pending |
+| F-6 | The LIVE loop: a routine created through the PWA against the real engine, `run now`, the run + session note land back (the real-data bridge lane — the V-41 law) | `bun run fugue:e2e` live lane ×3 (≥1 cold boot) + operator witness receipt | pending |
+| F-7 | Learning views: dreams journal (gated/rolled-back), memory tiers + health, skills-staged queue, Manual-notes editor | Lane A + e2e battery | pending |
+| F-8 | Import/export + schema-gate e2e: byte-stable goldens, foreign-schema dry-run refusal | e2e io battery | pending |
+| F-9 | a11y lane: axe wcag2a/2aa light+dark, tab order, Esc focus-return | e2e a11y battery | pending |
+| F-10 | Docs + landing band: `docs/fugue.md`, README section, REAL captures + PROVENANCE | `bun run check:docs` | pending |
+| F-11 | CI gate + root wiring: root scripts, ci.yml fugue job, runbook, honest-scope statement | `bun run fugue:test` + `fugue:e2e` + `typecheck` on a clean tree | pending |
 
 Satellites: **A2H-15** = the H-12 generator rebuild (DONE — Phase 0 commit) ·
 the #30 watcher armed through all dispatch churn (the A2H-7 pattern) ·
