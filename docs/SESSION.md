@@ -92,6 +92,20 @@ state verified green post-rebase: **2289/0/166**, typecheck 0, rail
 and the C-2 claim (the twenty-first's lane) run in parallel; B-18's
 post-fix render observation is the pending close evidence.
 
+**The release saga (resolved 07:52 UTC)**: B-19 — the Windows
+release-blocker behind BOTH the un-rendered v0.0.56 AND the first
+v0.0.57 attempts (automation-spend's beforeAll doing raw SQL on the
+lazily-created automations table; Windows alphabetical discovery makes
+it the first store caller on a fresh DB) — root-caused, reproduced
+deterministically, fixed with the one-call cure, and **the v0.0.57
+release rendered with all 15 jobs green and 13 assets across 6
+platforms** ([the release](https://github.com/kanishka-namdeo/Unown/releases/tag/v0.0.57)).
+C-3 (the web app shell) also closed on the parallel lane (Lane A
+81p/4s/0, Lane B 110/0, root battery 2329/0/171); the §7 competition
+cycle opened (the Letta filesystem-memory teardown). **Next: C-4 (the
+scheduler — the injected-clock lane), then C-5..C-11; B-18's terminal
+render observation rides the next A2 session end.**
+
 The **nineteenth lineage** re-receipted the checkpoint on the same tree
 (`1e4e840b`) after the second sandbox recycle of the round (V-8: `.a1/`,
 `unown-home/`, the bun pin and the venv reclaimed; cured in one pass —
