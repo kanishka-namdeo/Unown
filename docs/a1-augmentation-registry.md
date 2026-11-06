@@ -60,6 +60,41 @@ improvement survives a session boundary (memory or skill lane receipt).
 
 PROPOSE-stage candidates (none canaried, none promoted):
 
+- **H-16 — the mid-run turn-budget hook (the C-11 receipt's candidate,
+  design-sharpened by [the budget-visibility
+  teardown](TEARDOWN_2026-11-06_budget-visibility.md), the round
+  closeout's §7 cycle).** Spawning evidence: C-11's 165-turn single
+  dispatch (the 8-turn EFFORT_BUDGET blown 20×, every gate green, the
+  cap gate firing post-hoc — the operator blind until the end). The
+  teardown's three-part design (sourced from three shipped systems —
+  Codex 0.142.0's rollout budgets, OpenHands's visible-limit proposal,
+  Strands's stop-reason reporting): (a) the harness enforces the turn
+  budget MID-RUN (the abort at the limit, not after); (b) the
+  remaining budget is injected into the session at intervals (the
+  model paces itself); (c) the envelope's stop-reason taxonomy gains
+  the budget class. The OpenHands #5480 recovery-gap receipt is the
+  design's caution: the abort path must preserve the resume path (the
+  V-12 continuation economics stay supreme). Metric: budget blowouts
+  detected at turn ~2×budget → 100%; operator blind-spots → 0. Stage:
+  PROPOSE (the next round's PROPOSE-gate research opens the Codex
+  changelog primary before building — the teardown's honest-depth
+  note).
+- **H-17 — the conversation-pattern stuck detector (the V-14 manual
+  watch automated; the OpenHands Stuck Detector's shape on A2's
+  engine).** Spawning evidence: the V-14 spiral watch (the operator
+  manually reading chunks for self-chosen mechanisms burning >2 chunks
+  — exercised live at C-2's fake-clock spiral and A2H-14's cap
+  continuations) + OpenHands's shipped detector (repeated-action and
+  repeated-error patterns over conversation history) + their #5480
+  recovery-gap receipt (a stuck-flagged conversation must stay
+  resumable). The candidate: engine-side pattern analysis over the
+  session log (repeated tool calls with identical args, repeated
+  failing verifications), surfaced on the dashboard + the dispatch
+  envelope. Metric: spirals detected before the operator's manual
+  read; false positives on legitimate retry ladders → 0 (the C-8
+  flake-fix's 15 s bounded retry is the honest-retry shape to not
+  flag). Stage: PROPOSE (filed at the closeout; not dispatched).
+
 - **H-13 — the hostile-page-clip skill (Vivace seed, PARKED at the reconciliation — renumbered from H-10 to clear the Rondo collision; operator lane → skill).** When a clip target is
   JS-walled, redirect-crazy, or oddly encoded, a fetch→browser→readability fallback chain skill should
   beat ad-hoc per-ticket flailing. Spawning evidence: the PRD's W2 weakness (prior rounds' live-web

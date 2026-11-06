@@ -1241,8 +1241,10 @@ For the next lineage resuming this round:
    real-data-bridge acceptance lane, the window-is-the-floor ruling +
    the merged-tree verification duty, the turn-budget-hook candidate)
    + the brief-adaptation lane's maturation + the H-12 pattern tally's
-   PROMOTE-bar met + the §8 ledger's honest close)**; (b) the §7 competition cycle
-   (due: >5 tickets since the Letta teardown); (c) the OQ-1 PLAN
+   PROMOTE-bar met + the §8 ledger's honest close)**; (b) ~~the §7 competition cycle~~ **DONE (the twenty-fifth,
+   [the budget-visibility teardown](TEARDOWN_2026-11-06_budget-visibility.md):
+   the mid-run budget-control convergence vs C-11's advisory-budget
+   receipt — H-16 + H-17 filed at PROPOSE)**; (c) the OQ-1 PLAN
    amendment (the edge-5 "prefix resume" wording → the landed
    record-at-end semantics); (d) the §0.9 predicted-failure-classes
    reconciliation (no retroactive story-telling); (e) the §6c

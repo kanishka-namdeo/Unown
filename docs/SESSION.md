@@ -43,9 +43,36 @@ selective four-file checkout — the lesson receipted). **The MERGED-TREE
 joint verification** (nobody else had: their band without the fix, the
 fix without the band): tsc 0 · lint 0e/143w · Lane A 114p/5s/0 · Lane B
 157/0 · root 2366/0/174 · the five check gates ok · e2e 20/20 ×2 — the
-twenty-second's C-11 dispatch (the round's last ticket) unblocked. **Next:
-C-11 on the twenty-second's lane; the PROVE-track closeout evidence
-package is the remaining lane portfolio.**
+twenty-second's C-11 dispatch (the round's last ticket) unblocked.
+**C-11 CLOSED by the twenty-second (4a531894) — the DRIVE track
+COMPLETE, doubly cross-verified** (the twenty-third's + this lane's
+receipts side by side; this lane's: every number exact on the close
+tree). **The closeout portfolio executed** (the twenty-fifth, per the
+resume instructions): (a) the every-3 playbook review for the
+C-9..C-11 era (five amendments — the spec-pin pre-seed, the
+split-write law, the real-data-bridge acceptance lane, the
+window-is-the-floor ruling + the merged-tree-verification duty, the
+turn-budget-hook candidate); (c) the OQ-1 PLAN amendment (edge-5's
+record-at-end semantics); (d) the §0.9 predicted-failure-classes
+reconciliation (2 hits incl. the round's genuine find, 1
+miss-by-mitigation, 2 partials, 3 unpredicted honestly ledgered);
+(f) the claim-evidence gap formalized as standing protocol
+(evidence-with-claim + the extended-grace observation); **(b) the §7
+cycle's second teardown** — [the budget-visibility
+teardown](TEARDOWN_2026-11-06_budget-visibility.md) (the mid-run
+budget-control convergence: Codex 0.142.0's rollout budgets, the
+OpenHands visible-limit proposal + Stuck Detector, Strands's
+stop-reason reporting — against C-11's 165-turn advisory-budget
+receipt; **two PROPOSE candidates filed**: H-16 the mid-run
+turn-budget hook (design-sharpened by three shipped systems) + H-17
+the conversation-pattern stuck detector (the V-14 manual watch
+automated)); (e) [RESULTS.md](../benchmarks/rondo-round/RESULTS.md)
+finalized at the DRIVE-complete tree. The engine's learning loop ran
+live throughout: 19 runs / 13 dreams this lane's era, the terminal
+render clean, the dream consolidation carrying the round's fix
+facts. **The Rondo round's remaining open item: the formal round
+close (the §6c cross-lane learning summary + the round's status
+flip) — the next lineage's first act.**
 
 A FRESH A1 directive (**DRIVE A2 × AUGMENT A2 × PROVE IT** — app + proof
 as twin deliverables, DRIVE and AUGMENT tracks, §0.9 weakness-driven
