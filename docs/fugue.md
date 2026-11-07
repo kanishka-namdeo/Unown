@@ -12,6 +12,7 @@ Fugue is the repo's fourth user-facing app, at `apps/fugue/`: **a keyboard-first
 - [The dependency ruling](#the-dependency-ruling)
 - [The a11y lane](#the-a11y-lane)
 - [The FUGUE_NOTES_ROOT law](#the-fugue_notes_root-law)
+- [The CI fugue job](#the-ci-fugue-job)
 - [The landing band's stills](#the-landing-bands-stills)
 - [Related pages](#related-pages)
 
@@ -81,6 +82,26 @@ F-9's battery (`e2e/fugue-a11y.spec.ts`): axe `wcag2a` + `wcag2aa` under **both*
 ## The FUGUE_NOTES_ROOT law
 
 The V-28 isolation ruling: a route that can write a real file resolves its target from the `FUGUE_NOTES_ROOT` env var — default the repo root (the live lane keeps working unchanged), **the test lane always overrides it** with a temp fixture dir, so no test-server boot can write a real file. `serve.mjs`'s `/manual-notes` and `/skills-staged` routes honor the seam, and `apps/fugue/test/isolation-pin.test.ts` pins it end-to-end through a real in-process server: the REAL repo's `.unown/memory/project.md` bytes are snapshotted BEFORE a PUT and asserted byte-identical AFTER, while the temp fixture tree under `os.tmpdir()` carries the change. The law's first live catch was receipted in the round log (an F-7 chunk session PUT-tested against the REAL project.md and was caught by the memory-guard at the commit boundary — the cure is the FUGUE_NOTES_ROOT override, and this doc is its standing statement).
+
+## The CI fugue job
+
+One dedicated `fugue` job in `.github/workflows/ci.yml` (the gate ledger entry: [docs/testing-strategy.md](testing-strategy.md) §6), mirroring the Ostinato/Chaconne job shape with Fugue's own counts and honest-scope comment. It is **Chromium-desktop-only** — the PRD's own platform scope statement; Safari, Firefox, and mobile are untested, not "cross-platform". The **engine-native runtime needs a local engine + the bearer token** (`$UNOWN_HOME/engine.token`, `3030`); without both, Fugue degrades to the `EngineDown` panel + the FakeEngineAdapter lane — never a blank — and that degraded lane is exactly what CI exercises. Three proofs in the one job:
+
+1. **Frozen lockfile + the zero-dep invariant** — `bun install --frozen-lockfile` followed by a lockfile-drift assert (`sha256sum bun.lock` against `git show HEAD:bun.lock`). `apps/fugue/package.json` declares no dependency fields at all (the seven-line whole-file invariant), so any Fugue dep pulled in at the root moves the hash and reds the job.
+2. **Lane A** (`cd apps/fugue && bun test` — 283 tests / 31 files, the F-9 close numbers receipted in `benchmarks/sonata-round/receipts/f9.md`) — the app directory's own `bunfig.toml` applies, so the DOM-free runtime is the enforcement of the domain's DOM-free boundary; the FakeEngineAdapter lane and the fixture contract lane ride here.
+3. **The isolated e2e battery** (`bunx playwright test -c playwright.fugue.config.ts` — 23 passed + 1 skipped) with its own Chromium install and its own artifact (`playwright-report-fugue`); the `FUGUE_E2E` marker keeps the root landing lane untouched by construction.
+
+**Port discipline** (the `PLAN.md` §5 ops contract, restated as CI law):
+
+- **4015** — the reserved dev port. `serve.mjs`'s default `FUGUE_PORT`; the e2e config's `webServer` boots it (`http://127.0.0.1:4015/health` liveness probe). CI reuses it via `reuseExistingServer: !process.env.CI` — a stale dev server reds the job rather than silently driving against it.
+- **4130** — the fixture engine. `runner/fixture-server.ts` serves the canned contract-pinned JSON; every e2e spec drives the app against the fixture lane only.
+- **4016** — the capture/probe lane (per the `PLAN.md` §5 ruling): `scripts/capture-usage.mjs` boots the real app on a scratch port beside the fixture engine; the landing stills' receipt lane. Never an e2e target, never a live target.
+
+**The FUGUE_NOTES_ROOT law** (the V-28 isolation ruling, restated): a route that can write a real file resolves its target from the `FUGUE_NOTES_ROOT` env var — default the repo root (the live lane keeps working unchanged), **the test lane always overrides it** with a temp fixture dir, so no test-server boot can write a real file. `serve.mjs`'s `/manual-notes` and `/skills-staged` routes honor the seam, and `apps/fugue/test/isolation-pin.test.ts` pins it end-to-end (byte-identical `.unown/memory/project.md` before/after a PUT against a real in-process server).
+
+**Honest-scope statement — what this job runs, and what it never runs:** the fixture lane and the e2e battery, Chromium-desktop only. It never runs **the live lane**: the `FUGUE_LIVE` gate (the real engine on 3030 + the operator's bearer token, ≥3 consecutive runs + a cold boot at close — the F-6 operator-gate law) is the operator's off-peak witness, and the comment in the job states it. No live-network test ever runs in CI (the PRD's P0 honesty law, the Chaconne fixture-honesty pattern).
+
+The round's full record is in [docs/sonata-round-session.md](sonata-round-session.md); the app's own contracts live in `apps/fugue/AGENTS.md` and its PRD in [docs/fugue-prd.md](fugue-prd.md).
 
 ## The landing band's stills
 

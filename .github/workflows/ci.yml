@@ -1039,6 +1039,71 @@ jobs:
           if-no-files-found: ignore
           retention-days: 7
 
+  fugue:
+    name: Fugue app (unit + e2e)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
+        with:
+          bun-version: "1.4.3"
+      - name: Install dependencies (frozen lockfile)
+        # Fugue is the repo's FOURTH zero-dependency app (apps/fugue/
+        # package.json declares NO dependencies/devDependencies) — the same
+        # frozen-lockfile + hash-assert contract the coda/ostinato/chaconne
+        # jobs pin for their siblings.
+        run: bun install --frozen-lockfile
+      - name: Lockfile unchanged assert (Fugue's zero-dep invariant)
+        shell: bash
+        run: |
+          set -euo pipefail
+          expected=$(git show HEAD:bun.lock | sha256sum | cut -d' ' -f1)
+          actual=$(sha256sum bun.lock | cut -d' ' -f1)
+          echo "bun.lock: expected=$expected actual=$actual"
+          if [ "$expected" != "$actual" ]; then
+            echo "::error::bun.lock drifted after a --frozen-lockfile install: Fugue added a dependency? (apps/fugue must stay zero-dep; record a new root dep in the lockfile instead)"
+            exit 1
+          fi
+          echo "lockfile byte-identical: Fugue's zero-dep invariant holds"
+      - name: Fugue unit tests — Lane A (app-dir, DOM-free enforcement)
+        # `cd apps/fugue && bun test`: the app directory's own bunfig.toml
+        # applies, so the DOM-free runtime enforces the domain's DOM-free
+        # boundary; the FakeEngineAdapter lane and the fixture contract
+        # lane ride here. 283 tests / 31 files (the F-9 close numbers,
+        # receipted in benchmarks/sonata-round/receipts/f9.md).
+        run: cd apps/fugue && bun test
+      - name: Chromium for Playwright
+        run: bunx playwright install chromium --with-deps
+      - name: "Fugue e2e battery (isolated, self-skip-guarded, Chromium-desktop-only)"
+        # The Fugue e2e battery (smoke, flow, io, learning, a11y — 23
+        # specs + 1 skip) runs against LOCAL fixture lane only: the
+        # stub engine on 4130 (canned contract-pinned JSON) + the app's
+        # own transpiling dev server (bun apps/fugue/serve.mjs) as the
+        # config's webServer on 127.0.0.1:4015. The FUGUE_E2E marker
+        # arms in the fugue config ONLY, so the specs self-skip under
+        # the root landing lane — it stays green and untouched by
+        # construction.
+        #
+        # THE LIVE LANE NEVER RUNS IN CI: the FUGUE_LIVE gate (the real
+        # engine on 3030 + the $UNOWN_HOME/engine.token bearer) is the
+        # operator's off-peak witness lane — create a routine through
+        # the compose UI, run-now, watch the session note land back.
+        # It needs a running engine; no live-network test ever runs in
+        # CI (the PRD's P0 honesty law, the chaconne fixture-honesty
+        # pattern).
+        run: bunx playwright test -c playwright.fugue.config.ts
+      - name: Upload Fugue report + traces
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: playwright-report-fugue
+          path: |
+            download/playwright-report-fugue
+            download/test-results-fugue
+          if-no-files-found: ignore
+          retention-days: 7
+
 # NOT in CI yet, on purpose:
 # - Lighthouse (testing-strategy.md §12 criterion 6's second half) — needs a
 #   LHCI collect run against the same standalone + mock-engine pair the e2e
