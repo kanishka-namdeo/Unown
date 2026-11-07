@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Empty Article</title>
+</head>
+<body>
+  <!-- The T-6 fixture: a valid page with zero readable body.
+       The <article> element is present but empty (no paragraphs,
+       no text), and the only other content is the nav bar — link
+       soup, not an article. The extractor's density floor is
+       below the threshold, so the extraction comes back with
+       text="" and the classifier routes it to the empty-text lane
+       (title+URL fallback, `emptyText: true` flag). -->
+  <article>
+    <!-- The <h1> is present (the title IS non-empty — the
+         fallback uses the document title), but the body is
+         empty: the extractor has no paragraph to extract. -->
+    <h1>The Empty Article</h1>
+  </article>
+  <nav>
+    <a href="/">Home</a>
+    <a href="/archive">Archive</a>
+    <a href="/tag/empty">Tag: Empty</a>
+  </nav>
+</body>
+</html>

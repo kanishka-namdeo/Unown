@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Clean story</title>
+</head>
+<body>
+  <article>
+    <h1>The Clean Story</h1>
+    <p>This is the first paragraph of a perfectly clean page. It has
+    real prose, several sentences, and enough density for the
+    readability-lite extractor to score it high. The paragraph-density
+    heuristic sees three paragraphs against zero links, so the
+    candidate wins by a wide margin.</p>
+    <p>A second paragraph follows, and a third, so the extractor has
+    the minimum block count it needs to clear the density floor.
+    Each paragraph is well over a hundred words, with no anchors,
+    no script tags, no style elements — just a clean readable body.</p>
+    <p>The final paragraph closes the article. It is deliberately
+    verbose so that the fixture file itself is well over a few KB
+    and any extractor that reads the whole document sees a stable,
+    deterministic text length. The byte-honest rule says this file
+    must NOT be a placeholder; it is a real readable article body.</p>
+  </article>
+  <footer>
+    <a href="/">Home</a>
+    <a href="/about">About</a>
+    <a href="/blog">Blog</a>
+  </footer>
+</body>
+</html>

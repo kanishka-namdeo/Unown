@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>The Paywalled Story</title>
+</head>
+<body>
+  <article>
+    <h1>The Paywalled Story</h1>
+    <p>First free paragraph. This is the part of the article that
+    every visitor gets, the lede and the context, the setup for the
+    story. It is deliberately long enough that the extractor scores
+    it as a real readable body before the paywall marker is hit.</p>
+    <p>Second free paragraph, still accessible, the narrative picks
+    up and the protagonist enters the scene. The extraction of these
+    two paragraphs is the clipable excerpt — the T-4 "clip the
+    excerpt + link, never bypass" lane.</p>
+    <!-- The paywall marker: the readable excerpt ends here; the
+         rest is behind the paywall. The data-paywall attribute is
+         the extractor's marker; the text after it is NOT the
+         clipable copy. -->
+    <div data-paywall="true">
+      <p>Paywall. Subscribe to read the rest of this story. The
+      remaining N paragraphs are not clipable, by product design —
+      the extractor stops at this marker, the clip's excerpt field
+      carries the two free paragraphs, and the `paywallExcerptOnly`
+      flag is set so the UI's "open in browser" affordance is the
+      only path to the full text.</p>
+    </div>
+  </article>
+  <footer>
+    <a href="/">Home</a>
+    <a href="/subscribe">Subscribe</a>
+  </footer>
+</body>
+</html>

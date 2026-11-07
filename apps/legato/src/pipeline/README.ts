@@ -15,7 +15,24 @@
  * test infrastructure RealFetcher points at in e2e — not a host
  * edge the app ships with.
  *
- * L-1 placeholder: the layer contract lives in this comment; the
- * seam lands at L-3.
+ * Landed at L-3 (the clip pipeline ticket):
+ *   fetcher.ts          — the Fetcher interface + FetchOutcome,
+ *                         FakeFetcher (one canned double per
+ *                         taxonomy entry), RealFetcher (injected
+ *                         fetch handle, the idb-storage.ts
+ *                         injection convention)
+ *   extractor.ts        — readability-lite over DOMParser (the
+ *                         parser injected through the
+ *                         globalThis-seam; the 500 KB cap law)
+ *   error-taxonomy.ts   — the 7-entry classifier, pure +
+ *                         table-driven
+ *   clip.ts             — the orchestrator: clipUrl(url, deps) ->
+ *                         a full Clip record per the grammar, every
+ *                         taxonomy lane honest
+ *   co-located tests    — classifier table pins, orchestrator pins
+ *                         over FakeFetcher (DOM-guarded extraction
+ *                         lanes per the ostinato el-pin precedent),
+ *                         the extractor's DOM-guarded fixture pins
+ * The B-16 holdout is frozen at fixtures/ (B16-HOLDOUT.md).
  */
 export {};
