@@ -75,3 +75,46 @@ above · snapshot at
 
 **Next: L-1** (the Legato scaffold, ticket 1 of the pre-written
 V-1..V-12 queue), dispatched through A2 per the standing brief shape.
+
+## The thirty-third lineage — fresh-sandbox resume, L-1 verified, the DUAL L-2 (2026-11-07)
+
+A sandbox recycle (the V-42 class) opened this lineage on a fresh
+container; the bring-up was rebuilt one-pass (bun 1.4.3, root 400 +
+pi-repo 340 frozen installs, hydrate:model-data, full build:offline,
+stack up — bridge upstream **200**, engine ready v0.0.57 @ `404b07ad`,
+9 router jobs; doctor "ready to chat" with the honest ⚠ pair; V-38
+pin both homes; canaries **C1 PASS · C2 PASS · C3 the known V-3
+class** — stamp `20261107T193607Z`, every verdict matching the frozen
+baseline; unit battery at HEAD **2654/0/208** typecheck 0 — the
+expect-count 17637-vs-17638 microvariance noted, pass/file counts
+identical). Bring-up checkpoint landed as the rebase over the L-1
+landing per the ledger-arbiter law.
+
+**L-1 (the scaffold) — cross-machine verified by this lineage** (the
+V-14 role; the thirty-second's landing `6718d2c7`, 2 dispatches /
+30+24 turns): lane A **1/0/5** ✓ · root typecheck **0** ✓ ·
+`/health` `{"ok":true,"port":4017}` ✓ · `/` 200 text/html ✓ · the
+7-line zero-dep package.json ✓ · the port-history header ✓ · the
+verify server stopped **by pid** (V-13) ✓ — every number of the
+landing receipt reproduced on a second tree.
+
+**The DUAL L-2 (the V-32 class, live)**: both lineages dispatched
+L-2 concurrently (sessions `01a1b783` there / `01a1b788` here — two
+engines, one upstream). The thirty-second's landing `5a4fffe2`
+(**34+23 turns**, lane A **56/0/173**, 13 files) reached `main`
+first and **governs**; this lineage's landing (30+3 turns, lane A
+40/0/127 — a smaller, equally-green variant with the
+`snapshotDuringMigration` S-4 law and the host-edge boundary
+exemption ruled on) **stands down** per the ledger-arbiter law and
+is preserved in the local reflog + `.a1/logs` envelopes as the
+duplicate-dispatch evidence. The reconciliation cross-verified the
+governing tree: lane A **56/0/173** ✓ · root typecheck **0** ✓ —
+every number of `5a4fffe2`'s receipt reproduced here. The standing
+operator rulings from the stood-down landing carry forward as
+L-3-bound law: (a) the boundary DOM-check exemption pattern — host
+edges are enumerated-and-commented in-file, never a silent pattern
+match; (b) `snapshotDuringMigration`-shaped S-4 pins belong in the
+L-9 golden lane regardless of implementation variant.
+
+**Next: L-3** (the clip pipeline — the hostile-page seam, the round's
+top weakness W5 driven for the first time).
