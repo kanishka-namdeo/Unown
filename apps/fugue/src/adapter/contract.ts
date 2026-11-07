@@ -562,7 +562,21 @@ export function assertOverview(payload: unknown): void {
   pin(payload, "phase", "string");
   pinEnum(payload, "phase", ["warming", "ready", "draining"]);
   if (dig(payload, "pid") !== undefined) pin(payload, "pid", "number-or-null");
-  if (dig(payload, "version") !== undefined) pin(payload, "version", "string");
+  if (dig(payload, "version") !== undefined) {
+    // Dual-lane (the H-24 catch, 2026-11-07): the FIXTURE lane carries a
+    // bare string ("engine.v1"); the LIVE wire carries a version OBJECT
+    // ({ version, gitSha, bootedAt, pid, uptimeMs, api }) — the pin
+    // previously rejected the live wire with `version: expected string,
+    // got object` (the refreshed-fixture lane's live catch #1).
+    const v = dig(payload, "version");
+    if (typeof v === "string") {
+      // fixture lane — accepted verbatim
+    } else if (v !== null && typeof v === "object" && !Array.isArray(v)) {
+      pin(payload, "version.version", "string");
+    } else {
+      throw new EngineDrift(`version: expected string (fixture lane) or object (live lane), got ${typeOf(v)}`);
+    }
+  }
   if (dig(payload, "memoryVersion") !== undefined) pin(payload, "memoryVersion", "number");
   if (dig(payload, "dreams") !== undefined) pin(payload, "dreams", "number");
 }
@@ -627,9 +641,40 @@ export function assertNotes(payload: unknown): void {
   const arr = (payload as { notes: unknown[] }).notes;
   for (let i = 0; i < arr.length; i++) {
     const p = `notes[${i}]`;
-    pin(payload, `${p}.id`, "number");
-    pin(payload, `${p}.text`, "string");
-    pin(payload, `${p}.at`, "string");
+    // Dual-lane (the H-24 catch, 2026-11-07): the FIXTURE row
+    // ({ id: number, text, at }) and the LIVE wire row
+    // ({ id: "<uuid>", run_id?, content, created_at, kind?, ... }).
+    // The id is raw-passthrough (number-or-string — the uuid coercion
+    // class was V-24 fiction #1); the content lane must carry text
+    // (fixture) OR content (live) as a string; the timestamp lane must
+    // carry at (fixture) OR created_at (live) — a row with neither is
+    // drift at notes[i].at (the fixture-mutation test's path).
+    pin(payload, `${p}.id`, "number-or-string");
+    const text = dig(payload, `${p}.text`);
+    const content = dig(payload, `${p}.content`);
+    if (typeof text === "string") {
+      // fixture content lane
+    } else if (typeof content === "string") {
+      // live content lane
+    } else {
+      throw new EngineDrift(`${p}.text: expected a string content lane (fixture: text / live: content), got text=${typeOf(text)} content=${typeOf(content)}`);
+    }
+    const at = dig(payload, `${p}.at`);
+    const createdAt = dig(payload, `${p}.created_at`);
+    if (at !== undefined) pin(payload, `${p}.at`, "string");
+    if (createdAt !== undefined) pin(payload, `${p}.created_at`, "string-or-number");
+    if (at === undefined && createdAt === undefined) {
+      throw new EngineDrift(`${p}.at: missing — a note row must carry a timestamp lane (fixture: at / live: created_at)`);
+    }
+    // The live row's optional provenance fields — type-pinned when
+    // present; the live wire NULLS absent optional fields explicitly
+    // (run_id/dream_id/project_path/project_slug can be null), so the
+    // optional pins admit the null spelling.
+    if (dig(payload, `${p}.run_id`) !== undefined) pin(payload, `${p}.run_id`, "string-or-null");
+    if (dig(payload, `${p}.kind`) !== undefined) pin(payload, `${p}.kind`, "string");
+    if (dig(payload, `${p}.project_slug`) !== undefined) pin(payload, `${p}.project_slug`, "string-or-null");
+    if (dig(payload, `${p}.project_path`) !== undefined) pin(payload, `${p}.project_path`, "string-or-null");
+    if (dig(payload, `${p}.dream_id`) !== undefined) pin(payload, `${p}.dream_id`, "string-or-null");
   }
 }
 
@@ -742,12 +787,51 @@ export function assertSkills(payload: unknown): void {
 }
 
 export function assertSpend(payload: unknown): void {
+  // Dual-lane (the H-24 catch, 2026-11-07): the FIXTURE shape
+  // ({ tokensIn, tokensOut, calls, windowStartedAt, windowLimit,
+  //    throttled }) and the LIVE wire shape
+  // ({ now, routines: [...], total: { day, week, cap, throttledNow,
+  //    drainAt } }). The pin previously rejected the live wire with
+  // `tokensIn: missing` (the refreshed-fixture lane's live catch #2 —
+  // and safeSpend() masked it, so the spend panel was silently dead
+  // against the real engine).
+  if (dig(payload, "total") !== undefined) {
+    // The live lane.
+    pin(payload, "now", "number");
+    pin(payload, "routines", "array");
+    const routines = (payload as { routines: unknown[] }).routines;
+    for (let i = 0; i < routines.length; i++) {
+      const p = `routines[${i}]`;
+      pin(payload, `${p}.id`, "number-or-string");
+      pin(payload, `${p}.title`, "string");
+      pinSpendWindow(payload, `${p}.day`);
+      pinSpendWindow(payload, `${p}.week`);
+      if (dig(payload, `${p}.spend_cap`) !== undefined) pin(payload, `${p}.spend_cap`, "number-or-null");
+      if (dig(payload, `${p}.effective_cap`) !== undefined) pin(payload, `${p}.effective_cap`, "number-or-null");
+      if (dig(payload, `${p}.throttled`) !== undefined) pin(payload, `${p}.throttled`, "boolean");
+      if (dig(payload, `${p}.drain_ms`) !== undefined) pin(payload, `${p}.drain_ms`, "number-or-null");
+    }
+    pinSpendWindow(payload, "total.day");
+    pinSpendWindow(payload, "total.week");
+    pin(payload, "total.cap", "number");
+    pin(payload, "total.throttledNow", "boolean");
+    if (dig(payload, "total.drainAt") !== undefined) pin(payload, "total.drainAt", "number-or-null");
+    return;
+  }
+  // The fixture lane (the six canned fields, verbatim pins).
   pin(payload, "tokensIn", "number");
   pin(payload, "tokensOut", "number");
   pin(payload, "calls", "number");
   pin(payload, "windowStartedAt", "string");
   pin(payload, "windowLimit", "number");
   pin(payload, "throttled", "boolean");
+}
+
+/** A live spend window { tokens, runs, turns } — all numbers. */
+function pinSpendWindow(payload: unknown, path: string): void {
+  pin(payload, `${path}.tokens`, "number");
+  pin(payload, `${path}.runs`, "number");
+  pin(payload, `${path}.turns`, "number");
 }
 
 export type ContractEndpoint =

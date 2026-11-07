@@ -167,3 +167,62 @@ law (claim immediately after the battery). Tree at claim: `42f86893`
 (governing `feba5680` + this lineage's fold-in). The governing tree
 was re-verified on this machine before claiming: lane A **56/0/173**
 · root typecheck **0**.
+
+## The 33rd lineage, part 2 — the split-lane AUGMENT: H-24 PROMOTED (2026-11-07)
+
+With the parallel lineage visibly driving the L-queue (L-1 19:36 ·
+L-2 19:45 — a 9-minute cadence), this lineage split lanes per the
+V-42 precedent (the L-queue vs the engine-contract surface — zero
+overlap) and took the **augment lane**: **H-24, the live-traffic
+fixture refresh**, advanced PROPOSE → CANARY → GATE → **PROMOTED** in
+one session. The full receipt:
+[receipts/h24.md](../benchmarks/serenade-round/receipts/h24.md).
+
+**The build**: `scripts/a1/fixture-refresh.mjs` (the record mode — a
+marker automation guarantees a real row shape, the read-only sweep of
+every adapter endpoint, the write-path shapes, the always-cleanup law,
+the provenance-stamped recording emitted as
+`apps/fugue/src/adapter/fixtures-live.gen.ts`) +
+`fixtures-live.test.ts` (the refreshed lane — every recorded body
+through assertContract, the raw-passthrough runs pin, the shape-diff
+fossil detector) + `scripts/a1/h24-gate.mjs` (the paired A/B).
+
+**The live catches (BEFORE, the canary's teeth)**: the FIRST refresh
+against the live engine REDDENED at three pins still pinned to the F-2
+fixture fiction — `overview.version` (the live wire carries a version
+OBJECT), the notes row (uuid ids + `content` + epoch `created_at` +
+explicit nulls), and `spend` (the live `{now, routines, total}` shape)
+— the third with teeth: `safeSpend()` masked the drift, so **the spend
+panel has been silently dead against the real engine**. The §5
+reflection dual-laned all three pins (the `assertMemories`
+precedent), took `mapNotes` raw-passthrough (the uuid-coercion class
+was V-24 fiction #1 living in the mapper), and landed `mapSpend` (the
+spend panel ALIVE against the real engine, `data-live-wire` marked).
+AFTER: fugue lanes **300/0/939** (the F-9 close was 283), root
+**2727/0/215** typecheck **0**, e2e **23+1 skipped** (the first e2e
+run's failures were the fresh-sandbox Playwright chromium missing —
+the toolchain-restore lane, cured by install, not a regression).
+
+**The gate, MEASURED**: the pre-registered paired A/B — the stub
+renames `notes[].content` → `note_body` (the MCP guide's quiet-change
+class); the STALE lane (canned `contract.test.ts`) stays **GREEN,
+wire-blind**; the REFRESHED lane (recorded from the mutated stub)
+goes **RED at `EngineDrift: notes[0].text: …`**. The false-confidence
+delta is a receipt, not a claim.
+
+**The promotion** (the five requirements, all receipted): 3 fiction
+pins caught at refresh-time vs ~590 turns of live-lane grind (the F-6
+baseline); regression-detection improved (the measured delta + every
+existing drift test still reddens); zero UI/keyboard regressions (the
+e2e battery green incl. the E-04 + a11y pins); $0 metered (zero LLM
+calls); retention by construction (all artifacts committed in-repo +
+the refresh-then-build law in docs/fugue.md). The fixture-server
+seed-from-recording swap is the named follow-up (receipted scope
+note). **The registry's fifth promotion.**
+
+**Standing next**: the L-queue continues (L-3+ — the parallel
+lineage's cadence governs unless it stalls; this lineage re-checks at
+each fetch per the ledger-arbiter law); the augment lane holds H-23
+(PROPOSE — the probe-first rule, its harness artifact already
+in-repo), H-25 (PROPOSE — next-round candidate by its own anti-scope)
+and H-16/H-21 (PROPOSE) as the standing candidates.

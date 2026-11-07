@@ -61,6 +61,12 @@ function memoryDiff() {
 function isProtected(line) {
   const t = line.trim();
   if (t === "") return false;
+  // The render's own provenance marker (`<!-- unown: rendered N/M … -->`)
+  // is METADATA, not a memory: every render rewrites it, so flagging it
+  // would fire on every single commit (the false-positive class caught
+  // at the H-24 close, 2026-11-07 — the marker carries the render stats,
+  // never a durable line).
+  if (t.startsWith("<!--")) return false;
   if (t === "## Environment" || t === "## Workflow" || t === "## Manual notes") return true;
   if (/landing-quoted|claims gate reddens|durable home|issue #46|occurrence receipt/i.test(t)) return true;
   // The durable-lane bullets (their stable first words)
@@ -122,7 +128,12 @@ for (const line of diff.split("\n")) {
     // see forward reliably; treat Manual-notes-body deletions as protected
     // whenever the last Manual-notes marker seen is still in force and no new
     // heading appeared since (handled below).
-    if (inManualNotes) { if (!moved(body)) deleted.push(body); }
+    if (inManualNotes) {
+      // The render's provenance marker (`<!-- unown: rendered … -->`) rides
+      // at the file tail after the Manual-notes section — metadata, never a
+      // note bullet (the false-positive class caught at the H-24 close).
+      if (!moved(body) && !body.trim().startsWith("<!--")) deleted.push(body);
+    }
     else if (isProtected(body) && !moved(body)) deleted.push(body);
   } else if (line.startsWith(" ")) {
     if (line.trim() === "## Manual notes") inManualNotes = true;

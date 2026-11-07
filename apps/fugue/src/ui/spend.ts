@@ -57,25 +57,35 @@ export function formatShare(share: number | null): string {
 }
 
 /** Render the meter HTML. The E-04 honesty law: `throttled` paints a
- *  red, non-silent state (never a zeroed bar). */
+ *  red, non-silent state (never a zeroed bar). The LIVE wire lane
+ *  (sp.live — the H-24 catch, 2026-11-07) renders the engine's native
+ *  day/week windows; the fixture lane renders verbatim. */
 export function renderSpendMeter(sp: SpendReport): string {
   const vm = spendMeterViewModel(sp);
   const barPct = vm.consumedShare === null ? 0 : Math.round(vm.consumedShare * 100);
   const stateClass = vm.throttled ? "is-throttled" : "is-ok";
   const budgetLabel =
     sp.windowLimit === 0 ? "unlimited window" : `${sp.calls} / ${sp.windowLimit} calls`;
+  const tokensLine = sp.live
+    ? `${sp.live.day.tokens.toLocaleString()} tokens today · ${sp.live.week.tokens.toLocaleString()} this week · ${sp.live.day.turns.toLocaleString()} turns today`
+    : `${sp.tokensIn.toLocaleString()} in / ${sp.tokensOut.toLocaleString()} out`;
+  const windowLine = sp.live
+    ? `today ${sp.live.day.runs} run${sp.live.day.runs === 1 ? "" : "s"} · week ${sp.live.week.runs} run${sp.live.week.runs === 1 ? "" : "s"}${
+        sp.live.drainAt != null ? ` · drains at ${new Date(sp.live.drainAt).toISOString().slice(11, 19)}Z` : " · no drain scheduled"
+      }`
+    : `window started ${sp.windowStartedAt}`;
   return [
     `<section class="fugue-route" data-route="spend" aria-label="Spend meter">`,
     `  <h2>Spend</h2>`,
-    `  <div class="fugue-spend-meter ${stateClass}" data-throttled="${vm.throttled ? "true" : "false"}" data-spend-link="">`,
+    `  <div class="fugue-spend-meter ${stateClass}" data-throttled="${vm.throttled ? "true" : "false"}" data-spend-link="" ${sp.live ? 'data-live-wire="true"' : ""}>`,
     `    <div class="fugue-spend-bar" role="meter" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${vm.throttled ? 100 : barPct}" aria-label="Window budget consumed">`,
     `      <div class="fugue-spend-bar-fill" style="width:${vm.throttled ? 100 : barPct}%"></div>`,
     `    </div>`,
     `    <p class="fugue-spend-budget" data-field="budget">${budgetLabel}</p>`,
     `    <p class="fugue-spend-share" data-field="share">${formatShare(vm.consumedShare)}</p>`,
     `    <p class="fugue-spend-throttle" data-field="throttle">${escapeHtml(vm.throttleLine)}</p>`,
-    `    <p class="fugue-spend-tokens" data-field="tokens">${sp.tokensIn.toLocaleString()} in / ${sp.tokensOut.toLocaleString()} out</p>`,
-    `    <p class="fugue-spend-window" data-field="window">window started ${escapeHtml(sp.windowStartedAt)}</p>`,
+    `    <p class="fugue-spend-tokens" data-field="tokens">${escapeHtml(tokensLine)}</p>`,
+    `    <p class="fugue-spend-window" data-field="window">${escapeHtml(windowLine)}</p>`,
     `  </div>`,
     `</section>`,
   ].join("\n");

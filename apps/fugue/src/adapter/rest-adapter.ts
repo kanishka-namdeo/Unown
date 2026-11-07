@@ -408,9 +408,10 @@ export class RestAdapter implements EngineAdapter {
   }
 
   async spend(): Promise<SpendReport> {
-    return this.checked("spend", () =>
+    const raw = await this.checked("spend", () =>
       this.client.call("GET", "/api/automations/spend"),
-    ) as Promise<SpendReport>;
+    );
+    return mapSpend(raw);
   }
 
   async skills(): Promise<SkillRecord[]> {
@@ -694,15 +695,72 @@ export function mapMemory(rawTiers: unknown, rawHealth?: unknown): MemoryView {
 function mapNotes(rows: unknown, limit?: number): NoteRecord[] {
   if (!Array.isArray(rows))
     throw new EngineDrift("notes: expected array, got " + typeof rows);
-  const mapped = (rows as Record<string, unknown>[]).map((n, i) => {
-    const numId = Number(n.id);
-    return {
-      id: Number.isFinite(numId) && numId > 0 ? numId : i + 1,
-      text: String(n.text ?? ""),
-      at: String(n.at ?? ""),
-    };
+  // Dual-lane + raw-passthrough (the H-24 catch, 2026-11-07): the live
+  // wire's uuid string ids pass through UNCOERCED (the old Number()
+  // coercion silently replaced every uuid with a row index — V-24
+  // fiction #1); the content lane bridges text (fixture) / content
+  // (live); the timestamp lane bridges at (fixture) / created_at (live).
+  const mapped = (rows as Record<string, unknown>[]).map((n): NoteRecord => {
+    const rawId = n.id;
+    const id: number | string =
+      typeof rawId === "string" || typeof rawId === "number" ? rawId : "";
+    const text = typeof n.text === "string" ? n.text : typeof n.content === "string" ? n.content : "";
+    const atRaw = n.at ?? n.created_at;
+    const at =
+      typeof atRaw === "string" ? atRaw : typeof atRaw === "number" ? new Date(atRaw).toISOString() : "";
+    return { id, text, at };
   });
   return limit !== undefined ? mapped.slice(0, limit) : mapped;
+}
+
+/** The live-wire spend body ({ now, routines, total }) mapped into the
+ * SpendReport view (the H-24 catch, 2026-11-07 — the pin used to reject
+ * this shape and safeSpend() masked the drift, leaving the spend panel
+ * silently dead against the real engine). The six legacy fields carry
+ * the honest mapped values; the `live` block carries the native windows
+ * for the meter's live rendering. The fixture lane passes through
+ * unchanged (the six canned fields verbatim). */
+export function mapSpend(body: unknown): SpendReport {
+  const b = body as Record<string, unknown>;
+  if (b && typeof b === "object" && b.total !== undefined) {
+    const total = b.total as {
+      day: { tokens: number; runs: number; turns: number };
+      week: { tokens: number; runs: number; turns: number };
+      cap: number;
+      throttledNow: boolean;
+      drainAt?: number | null;
+    };
+    const routines = (Array.isArray(b.routines) ? b.routines : []) as Array<Record<string, unknown>>;
+    return {
+      // The honest mapping: the day window's runs against the cap (both
+      // sides use "0 = unlimited"); the token total is the day window's
+      // combined count (the live wire has no in/out split).
+      tokensIn: total.day.tokens,
+      tokensOut: 0,
+      calls: total.day.runs,
+      windowStartedAt: "",
+      windowLimit: total.cap,
+      throttled: total.throttledNow,
+      live: {
+        now: typeof b.now === "number" ? b.now : 0,
+        day: total.day,
+        week: total.week,
+        cap: total.cap,
+        throttledNow: total.throttledNow,
+        drainAt: total.drainAt ?? null,
+        routines: routines.map((r) => ({
+          id: (typeof r.id === "string" || typeof r.id === "number" ? r.id : "") as number | string,
+          title: typeof r.title === "string" ? r.title : "",
+          day: (r.day ?? { tokens: 0, runs: 0, turns: 0 }) as { tokens: number; runs: number; turns: number },
+          week: (r.week ?? { tokens: 0, runs: 0, turns: 0 }) as { tokens: number; runs: number; turns: number },
+          throttled: r.throttled === true,
+        })),
+      },
+    };
+  }
+  // The fixture lane — the six canned fields verbatim (assertSpend
+  // already pinned them before this mapper runs).
+  return body as SpendReport;
 }
 
 /** Rows (LIVE snake_case SkillRow form OR camelCase fixture form,

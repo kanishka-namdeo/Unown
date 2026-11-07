@@ -40,7 +40,19 @@ async function walk(dir: string): Promise<string[]> {
 test("adapter modules: import ONLY from src/domain, no network, no Node builtins", async () => {
   const files = await walk(ADAPTER_DIR);
   const testFiles = files.filter((f) => f.endsWith(".test.ts"));
-  const adapterFiles = files.filter((f) => !f.endsWith(".test.ts"));
+  // The H-24 generated recording (2026-11-07) is DATA, not code: a
+  // verbatim live-wire capture whose PROSE legitimately contains words
+  // the DOM/network regexes pin in code (a dream output mentioning
+  // "localStorage." / "window.chrome"; a memory note naming "fetch(").
+  // The file has ZERO imports and never executes — the scanner's
+  // purpose is pinning code, and a no-import data module cannot touch
+  // the DOM. Enumerated by exact filename (the L-1/L-2 exemption
+  // precedent: named + commented, never a pattern match); the sibling
+  // fixtures-live.test.ts still scans as a test file.
+  const GENERATED_DATA = new Set(["fixtures-live.gen.ts"]);
+  const adapterFiles = files.filter(
+    (f) => !f.endsWith(".test.ts") && !GENERATED_DATA.has(f.split("/").pop() ?? ""),
+  );
 
   expect(adapterFiles.length).toBeGreaterThan(0); // the seam is not empty
 

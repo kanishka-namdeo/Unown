@@ -127,9 +127,14 @@ export interface DreamRecord {
 
 /** One session note record. */
 export interface NoteRecord {
-  id: number;
+  /** Raw-passthrough (the H-24/V-24 law): the live wire's uuid string
+   *  id stays a string; the fixture lane's numeric id stays a number —
+   *  never Number()-coerced (the coercion class was V-24 fiction #1). */
+  id: number | string;
+  /** The note text — the fixture lane's `text` or the live wire's
+   *  `content` (mapNotes bridges both, the dual-lane law). */
   text: string;
-  at: string; // ISO-8601 string
+  at: string; // ISO-8601 string (fixture `at` / live `created_at`, bridged)
 }
 
 /** One memory tier (GET /api/memory `tiers[]` — the engine's
@@ -186,6 +191,28 @@ export interface SpendReport {
   windowStartedAt: string; // ISO-8601 — the current accounting window
   windowLimit: number; // calls; 0 = unlimited
   throttled: boolean; // the governor is currently throttling new jobs
+  /** The LIVE wire lane (the H-24 catch, 2026-11-07): present when the
+   *  engine answered the native /api/automations/spend shape
+   *  ({ now, routines, total }). The six fields above carry the honest
+   *  mapped values (calls = total.day.runs, windowLimit = total.cap,
+   *  throttled = total.throttledNow); the meter renders the live
+   *  windows from this block when present (the fixture-lane rendering
+   *  stays verbatim otherwise). */
+  live?: {
+    now: number;
+    day: { tokens: number; runs: number; turns: number };
+    week: { tokens: number; runs: number; turns: number };
+    cap: number; // 0 = unlimited
+    throttledNow: boolean;
+    drainAt: number | null; // epoch ms, or null when no drain is scheduled
+    routines: Array<{
+      id: number | string;
+      title: string;
+      day: { tokens: number; runs: number; turns: number };
+      week: { tokens: number; runs: number; turns: number };
+      throttled: boolean;
+    }>;
+  };
 }
 
 /** History view for one automation: its runs, newest first. */
