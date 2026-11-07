@@ -10,6 +10,7 @@
 - In /home/z/my-project/unown, the e2e config boots serve.mjs with default env (LIVE lane); default FUGUE_NOTES_ROOT is repo root, and the live lane must keep working unchanged. Verified: e2e specs do not touch /manual-notes or /skills-staged routes.
 
 ## Facts
+- In /home/z/my-project/unown, a1-dispatch H-26 gate tests verify claim-conflict refusal (exit 7) when an active ticket claim is less than 45 minutes old on origin/main. (Restored by hand 2026-11-08 by the 35th lineage — the 34th's final memory render pruned it with the #46 class; the bullet was the H-26 session's one genuine new memory.)
 - In /home/z/my-project/unown, add an `emptyDoc` export to `migration.ts` to complete the L-2 storage-core deliverable.
 - In /home/z/my-project/unown, L-2 storage-core ticket for session 01a1b788 is closed and verified green on the current tree.
 - In /home/z/my-project/unown, the 8 deliverable lines from the L-2 brief are present in the working tree but uncommitted, per the resume protocol, with the operator to commit them via the draft-and-operator-land lane.
