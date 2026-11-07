@@ -368,3 +368,24 @@ a chunk hits the output-cap signature.
 round close if the cadence outruns the reviews):** the L-9 golden
 lane is the round's byte-stability keystone; the B-16 holdout re-run
 rides L-11; the H-26 promotion measure needs L-7..L-13 clean.
+
+### Review #2's revisit clause FIRES (L-7 datum — the 34th lineage, 2026-11-07)
+
+L-7 closed at **197 turns / 4 dispatches** — above review #2's
+~160-turn revisit threshold, and with two corrections to the review's
+own record:
+
+1. **The class-scaled budget WAS in use** (review #2's "not adopted"
+   was premature): L-7's caps ran 40 → 64 → 84 (the receipt names
+   chunk 1 "the class-aware budget"). The rule is live in the 33rd's
+   cadence — review #2's scorecard line is corrected here.
+2. **The first error-cap boundary** (L-7 chunk 1: `error_during_execution`,
+   no answer): the third boundary class (turn-cap and timeout were the
+   known two). Recovered clean by the split-write law (the work was on
+   disk) + the state-reading continuation. Filed as
+   [V-4](../benchmarks/serenade-round/validation-log.md).
+
+The heavy-class band is now 102–197 turns / 3–4 dispatches — the
+compound UI tickets (L-5 shell 145, L-7 tags+filters 197) sit at the
+top. The plan's "each ≤ the Ostinato C-ticket size" is ~2–3× off on
+this class; the next round's pre-split should use THIS band.
