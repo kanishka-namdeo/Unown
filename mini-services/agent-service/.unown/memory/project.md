@@ -1,8 +1,8 @@
 # Project Memory
 
 ## Known pitfalls
-- Agent-service's index.ts is a 20-line wrapper that boots the self-learning engine on port :3030, exits 0 on single-instance lock loss for supervisor health, and exits 1 on fatal errors.
 - Direct localhost engine health checks via localhost:3030 fail when attempted from the unattended probe environment.
+- Agent-service's index.ts is a 20-line wrapper that boots the self-learning engine on port :3030, exits 0 on single-instance lock loss for supervisor health, and exits 1 on fatal errors.
 
 ## Environment
 - In pi-repo/packages/self-learning/src/dream.ts, idempotent dream runs inflate version numbers because the no-change checks at ~line 256 and ~line 847 use raw string equality on rendered markdown that includes a volatile timestamp footer.
@@ -18,4 +18,4 @@
 - Your own durable rules. AutoDream preserves this section verbatim — one
   bullet per rule; everything outside it is re-rendered.
 
-<!-- unown: rendered 8/8 memories via Mem0 (backend: lexical) at 2026-11-07T14:55:07.932Z -->
+<!-- unown: rendered 8/8 memories via Mem0 (backend: lexical) at 2026-11-07T17:51:43.298Z -->
