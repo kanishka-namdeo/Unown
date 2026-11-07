@@ -95,6 +95,16 @@ export interface ListRenderOpts {
   /** the empty-state's "clip your first URL" affordance (L-3 seam
    *  hook — L-5 binds it to the palette's clip command) */
   onClipFirst: () => void;
+  /** L-6: the queue empty-state kind (Q-3): "no-clips" | "all-read" |
+   *  "no-matches" | null. When set AND clips is empty, the panel
+   *  is chosen by this kind (not the L-5 blanket "No clips yet"). */
+  queueEmpty?: "no-clips" | "all-read" | "no-matches" | null;
+  /** L-6: called when the user clicks the "Show all clips" button
+   *  (the "all-read" panel). */
+  onShowAll?: () => void;
+  /** L-6: called when the user clicks the "Clear filters" button
+   *  (the "no-matches" panel). */
+  onClearFilters?: () => void;
   /** id prefix (multiple list instances in tests) */
   idPrefix?: string;
 }
@@ -162,6 +172,59 @@ export function renderClipList(root: HTMLElement, opts: ListRenderOpts): {
       affordance,
     );
     root.append(emptyPanel);
+  }
+
+  // L-6: re-paint the panel contents for the active queue empty-kind.
+  // The panel element is the SAME node (idempotent); only the text
+  // and the button's action change.
+  const queueKind = opts.queueEmpty ?? null;
+  const showPanel = clips.length === 0;
+  if (showPanel && emptyPanel !== null) {
+    emptyPanel.replaceChildren();
+    if (queueKind === "all-read") {
+      emptyPanel.append(
+        el("h2", { class: "legato-empty-title", text: "All caught up" }),
+        el("p", {
+          class: "legato-empty-copy",
+          text: "Every clip is done or archived — the active queue is empty.",
+        }),
+      );
+      const showAllBtn = el("button", {
+        class: "legato-queue-empty-showall",
+        text: "Show all clips",
+      });
+      showAllBtn.addEventListener("click", () => opts.onShowAll?.());
+      emptyPanel.append(showAllBtn);
+    } else if (queueKind === "no-matches") {
+      emptyPanel.append(
+        el("h2", { class: "legato-empty-title", text: "No matches" }),
+        el("p", {
+          class: "legato-empty-copy",
+          text: "Nothing in the library matches the current filter.",
+        }),
+      );
+      const clearBtn = el("button", {
+        class: "legato-queue-empty-clear",
+        text: "Clear filters",
+      });
+      clearBtn.addEventListener("click", () => opts.onClearFilters?.());
+      emptyPanel.append(clearBtn);
+    } else {
+      // "no-clips" or null: the L-5 affordance (or the default panel)
+      emptyPanel.append(
+        el("h2", { class: "legato-empty-title", text: "No clips yet" }),
+        el("p", {
+          class: "legato-empty-copy",
+          text: "Press Ctrl+K and choose “Clip URL” to save a page for offline reading.",
+        }),
+      );
+      const clipFirstBtn = el("button", {
+        class: "legato-clip-first",
+        text: "Clip your first URL",
+      });
+      clipFirstBtn.addEventListener("click", () => onClipFirst());
+      emptyPanel.append(clipFirstBtn);
+    }
   }
   listEl.replaceChildren();
   const rowEls: HTMLElement[] = [];

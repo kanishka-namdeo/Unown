@@ -37,8 +37,15 @@ import {
 } from "./palette.js";
 import { restoreTheme, toggleTheme } from "./theme.js";
 import { buildIndex, search, tokenize, type SearchIndex } from "../domain/search.js";
+import {
+  activeClips, allClips,
+  markReading, markDone, archiveClip, restoreClip,
+  queueEmptyKind, filteredEmptyKind,
+  ConflictError, QueueTransitionError,
+  type QueueEmptyKind as QEmptyKind,
+} from "../domain/queue.js";
 import type { StoragePort } from "../storage/storage-port.js";
-import type { LegatoData, Clip } from "../domain/types.js";
+import type { LegatoData, Clip, ClipState } from "../domain/types.js";
 
 export interface AppDeps {
   storage: StoragePort;
@@ -62,6 +69,13 @@ export interface App {
     detailClipId: number | null;
     /** the originating row index (for Esc focus-return) */
     originRowIdx: number;
+    /** queue toggle: "active" = the default reading queue, "all" = show every clip */
+    queueView: "active" | "all";
+    /** the L-6 concurrent-flip guard: a notice shown when a state
+     *  flip conflicts (Q-1) or an illegal transition is attempted. */
+    conflictNotice: string | null;
+    /** the L-6 empty-state kind (Q-3): set by the queue lane */
+    queueEmpty: QEmptyKind | null;
   };
   palette: PaletteState;
   /** the live DOM handles (set after the first render). */
@@ -69,6 +83,8 @@ export interface App {
     searchInput: HTMLInputElement | null;
     rowEls: HTMLElement[];
     detailPane: HTMLElement | null;
+    /** the L-6 conflict notice panel (DOM element if mounted) */
+    conflictNoticeEl: HTMLElement | null;
   };
   /** the persist lane (Ostinato's every-transition rule). */
   persist: () => Promise<void>;
@@ -95,6 +111,9 @@ function makeApp(deps: AppDeps): App {
     detailOpen: false,
     detailClipId: null as number | null,
     originRowIdx: 0,
+    queueView: "active" as "active" | "all",
+    conflictNotice: null as string | null,
+    queueEmpty: null as QEmptyKind | null,
   };
   const app: App = {
     state,
@@ -112,7 +131,7 @@ function makeApp(deps: AppDeps): App {
         focusSearch: () => app.handles.searchInput?.focus(),
       },
     },
-    handles: { searchInput: null, rowEls: [], detailPane: null },
+    handles: { searchInput: null, rowEls: [], detailPane: null, conflictNoticeEl: null },
     persist: async () => {
       if (state.data === null) return;
       await deps.storage.save(state.data);
@@ -182,11 +201,27 @@ export async function main(deps: AppDeps, root?: HTMLElement): Promise<App> {
     const data = st.data!;
     const terms = st.searchQuery.trim() !== "" ? tokenize(st.searchQuery) : [];
     const results = terms.length > 0 ? search(st.searchIndex, st.searchQuery) : null;
-    const clips: readonly Clip[] =
-      results !== null
-        ? results.map((r) => data.clips.find((c) => c.id === r.id)!).filter((c) => c)
-        : data.clips;
+    let clips: readonly Clip[];
+    if (results !== null) {
+      // search lane: the ranked results, unchanged
+      clips = results.map((r) => data.clips.find((c) => c.id === r.id)!).filter((c) => c);
+    } else if (st.queueView === "all") {
+      // L-6's "all" toggle: every clip, no state filter
+      clips = allClips(data);
+    } else {
+      // L-6's default active queue: reading first, then unread
+      clips = activeClips(data);
+    }
     if (st.selectedIdx >= clips.length) st.selectedIdx = Math.max(0, clips.length - 1);
+
+    // L-6 Q-3: the empty-state discrimination runs BEFORE the paint
+    // so the panel is correct when the list is empty.
+    const filterActive = terms.length > 0;
+    if (filterActive) {
+      st.queueEmpty = filteredEmptyKind(clips as readonly Clip[], true);
+    } else {
+      st.queueEmpty = queueEmptyKind(data);
+    }
 
     const handles = renderClipList(listRoot, {
       clips,
@@ -201,10 +236,41 @@ export async function main(deps: AppDeps, root?: HTMLElement): Promise<App> {
         app.rerender();
       },
       onClipFirst: () => app.palette.actions.clipUrl(),
+      // L-6 Q-3: the queue empty-state kind + the panel affordances.
+      queueEmpty: st.queueEmpty,
+      onShowAll: () => {
+        st.queueView = "all";
+        st.selectedIdx = 0;
+        app.rerender();
+      },
+      onClearFilters: () => {
+        st.searchQuery = "";
+        st.selectedIdx = 0;
+        app.rerender();
+      },
       idPrefix: "legato",
     });
     app.handles.searchInput = handles.searchInput;
     app.handles.rowEls = handles.rowEls;
+
+    // L-6 conflict notice (Q-1): if the state just threw a
+    // ConflictError the app stores the notice and the panel
+    // renders it (never silent). Otherwise hide it.
+    if (st.conflictNotice !== null) {
+      if (app.handles.conflictNoticeEl === null) {
+        const notice = el("div", {
+          class: "legato-conflict-notice",
+          role: "alert",
+        }) as unknown as HTMLElement;
+        notice.setAttribute("aria-live", "assertive");
+        rootEl.append(notice);
+        app.handles.conflictNoticeEl = notice;
+      }
+      app.handles.conflictNoticeEl.style.display = "";
+      app.handles.conflictNoticeEl.textContent = st.conflictNotice;
+    } else if (app.handles.conflictNoticeEl !== null) {
+      app.handles.conflictNoticeEl.style.display = "none";
+    }
 
     const openClip =
       st.detailOpen && st.detailClipId !== null
@@ -223,7 +289,7 @@ export async function main(deps: AppDeps, root?: HTMLElement): Promise<App> {
   };
 
   doc.addEventListener("keydown", (e: KeyboardEvent) => {
-    onKey(e, app, doc);
+    onKey(e, app, doc, deps);
   });
 
   app.rerender();
@@ -239,7 +305,7 @@ function openDetail(app: App, rowIdx: number, clips: readonly Clip[]): void {
   app.handles.detailPane?.focus();
 }
 
-function onKey(e: KeyboardEvent, app: App, doc: Document): void {
+function onKey(e: KeyboardEvent, app: App, doc: Document, deps: AppDeps): void {
   const st = app.state;
   const palette = app.palette;
 
@@ -279,6 +345,67 @@ function onKey(e: KeyboardEvent, app: App, doc: Document): void {
 
   if (inInput) return;
 
+  // L-6 queue state flips (the keyboard lane, PLAN §3 L-6):
+  //   r → mark reading · d → mark done · a → archive · u → restore
+  // The guard: expectedPrior = the clip's CURRENT stored state
+  // (read just before the flip). A conflict surfaces an honest
+  // notice — never silent (Q-1). The current row is identified by
+  // selectedIdx (the j/k cursor, the L-5 law).
+  // the conflict lane: when a key press threw a ConflictError / QueueTransitionError
+  // the notice is stored; otherwise the flip succeeded and the notice clears.
+  const queueKey = e.key.toLowerCase();
+  if ((queueKey === "r" || queueKey === "d" || queueKey === "a" || queueKey === "u") && !e.ctrlKey && !e.metaKey && !e.altKey && st.data !== null) {
+    e.preventDefault();
+    const data = st.data;
+    const clips: readonly Clip[] =
+      st.queueView === "all" ? allClips(data) : activeClips(data);
+    if (clips.length === 0) return;
+    const clip = clips[st.selectedIdx];
+    if (clip === undefined) return;
+    const prior: ClipState = clip.state;
+    const now = new Date().toISOString();
+    let flipped: Clip | null = null;
+    let conflictMsg: string | null = null;
+    try {
+      switch (queueKey) {
+        case "r": flipped = markReading(data, clip.id, prior, now); break;
+        case "d": flipped = markDone(data, clip.id, prior, now); break;
+        case "a": flipped = archiveClip(data, clip.id, prior, now); break;
+        case "u": flipped = restoreClip(data, clip.id, prior, now); break;
+      }
+    } catch (err) {
+      if (err instanceof ConflictError) {
+        conflictMsg =
+          "Conflicting state flip: clip “" + clip.title +
+          "” is now “" + err.actual +
+          "” (you expected “" + err.expected +
+          "”). Try the flip again from the current state.";
+      } else if (err instanceof QueueTransitionError) {
+        conflictMsg =
+          "Cannot move clip “" + clip.title +
+          "” from “" + err.from + "” to “" + err.to +
+          "” — that transition is not allowed.";
+      } else {
+        conflictMsg = "State flip failed: " + String(err);
+      }
+    }
+    if (conflictMsg !== null) {
+      st.conflictNotice = conflictMsg;
+      app.rerender();
+    } else if (flipped !== null) {
+      st.conflictNotice = null;
+      // Persist every transition (the Ostinato law).
+      void deps.storage.save(data).catch(() => {});
+      // The flipped clip may no longer be in the active view
+      // (archived/done are out-of-view): re-render recomputes the
+      // view and focus. If the current row was removed, focus
+      // lands on the next row (Q-2).
+      app.rerender();
+      refocusAfterFlip(app, clip.id);
+    }
+    return;
+  }
+
   if ((e.key === "j" || e.key === "k") && !e.ctrlKey && !e.metaKey && !e.altKey) {
     e.preventDefault();
     const dir: 1 | -1 = e.key === "j" ? 1 : -1;
@@ -293,6 +420,39 @@ function onKey(e: KeyboardEvent, app: App, doc: Document): void {
     e.preventDefault();
     openDetail(app, st.selectedIdx, st.data?.clips ?? []);
     return;
+  }
+}
+
+// ─── L-6 queue state flip helpers ────────────────────────────────
+
+/**
+ * After a state flip that removes the focused clip from the active
+ * view (archived / done when the view is "active"), re-focus the
+ * NEXT row (Q-2: focus never lands on a non-focusable element).
+ * If the clip stayed in the view (e.g. unread→reading in active
+ * view) the same row index is still valid.
+ */
+function refocusAfterFlip(app: App, flippedClipId: number): void {
+  const st = app.state;
+  const data = st.data;
+  if (data === null) return;
+  const view: readonly Clip[] = st.queueView === "all" ? allClips(data) : activeClips(data);
+  const idx = view.findIndex((c) => c.id === flippedClipId);
+  if (idx >= 0) {
+    // still in view — the rerender kept it in place; re-focus that row
+    st.selectedIdx = idx;
+    app.rerender();
+    focusRow(app.handles.rowEls, idx);
+  } else {
+    // the clip left the active view — focus the next row by
+    // content position (the row that was at the flipped clip's
+    // ordinal, not a stale index into the shorter view).
+    const prevIdx = st.selectedIdx;
+    st.selectedIdx = Math.min(prevIdx, Math.max(0, view.length - 1));
+    app.rerender();
+    if (app.handles.rowEls.length > 0) {
+      focusRow(app.handles.rowEls, st.selectedIdx);
+    }
   }
 }
 

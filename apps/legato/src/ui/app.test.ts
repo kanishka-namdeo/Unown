@@ -99,7 +99,7 @@ if (!hasDom) {
       schemaVersion: 1,
       clips: [
         { id: 1, url: "https://a.example", title: "One", text: "alpha beta", tags: [], state: "unread", highlights: [], createdAt: "2026-01-01T00:00:00Z", updatedAt: "2026-01-01T00:00:00Z" },
-        { id: 2, url: "https://b.example", title: "Two", text: "gamma delta", tags: [], state: "done", highlights: [], createdAt: "2026-01-02T00:00:00Z", updatedAt: "2026-01-02T00:00:00Z" },
+        { id: 2, url: "https://b.example", title: "Two", text: "gamma delta", tags: [], state: "unread", highlights: [], createdAt: "2026-01-02T00:00:00Z", updatedAt: "2026-01-02T00:00:00Z" },
       ],
       tags: [],
       queue: [1, 2],
