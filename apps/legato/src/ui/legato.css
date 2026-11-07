@@ -1,0 +1,597 @@
+/*
+ * Legato — the app stylesheet (ticket L-5).
+ *
+ * Hand-authored, plain CSS, no build step, no dependencies (the
+ * zero-dep law: linked from index.html as ./src/ui/legato.css — the
+ * Ostinato precedent, apps/ostinato/src/ui/ostinato.css).
+ *
+ * TWO SCHEMES (the L-5 ruling, theme.ts): the document root carries
+ * a data-scheme attribute ("light" | "dark"); the tokens below
+ * resolve per scheme. The DEFAULT (no attribute) mirrors the OS
+ * preference via @media (prefers-color-scheme: dark), so an unthemed
+ * boot never flashes the wrong scheme. theme.ts's applyTheme() sets
+ * the attribute; this file routes every color through a token.
+ *
+ * Contrast arithmetic (relative luminance, WCAG 2.x) — the fugue
+ * accent-ink trap cured by CONSTRUCTION: the badge pair is
+ * SCHEME-PAIRED, so badge text never renders dark-on-dark:
+ *
+ *   light scheme (data-scheme="light" + the no-attribute default):
+ *     bg  #ffffff / fg #1f2328   ≈ 14.5:1 (≥4.5 body ✓)
+ *     muted #57606a on bg        ≈  6.5:1 (≥4.5 ✓)
+ *     accent #0a5dc2 on bg       ≈  5.6:1 (text + UI ✓)
+ *     badge: --badge-ink #0a5dc2 on --badge-bg #e8f0fe ≈ 5.1:1 ✓
+ *
+ *   dark scheme (data-scheme="dark" + the prefers-color-scheme branch):
+ *     bg  #0d1117 / fg #e6edf3   ≈ 15.7:1 (✓)
+ *     muted #8b949e on bg        ≈  6.6:1 (✓)
+ *     accent #58a6ff on bg       ≈  7.4:1 (✓)
+ *     badge: --badge-ink #9fd4b5 (fixed bright green) on
+ *            --badge-bg (the accent-mix surface) ≥ 4.5:1 ✓
+ *            — the fugue trap (--accent-ink resolving to the
+ *              near-black bg in dark) is impossible here: the dark
+ *              badge ink is a LITERAL bright green, never a token
+ *              that resolves to the background.
+ */
+
+:root {
+  color-scheme: light dark;
+}
+
+/* ── Design tokens (light scheme — the default) ─────────────────── */
+
+:root,
+:root[data-scheme="light"] {
+  --bg: #ffffff;
+  --fg: #1f2328;
+  --muted: #57606a;
+  --border: #d0d7de;
+  --accent: #0a5dc2;
+  --focus: #0a5dc2;
+  --surface: #f6f8fa;
+  --surface-raised: #ffffff;
+  --accent-contrast: #ffffff;
+  --badge-ink: #0a5dc2;
+  --badge-bg: #e8f0fe;
+  --shadow-overlay: 0 12px 32px rgba(31, 35, 40, 0.18);
+  --radius: 8px;
+  --radius-sm: 6px;
+}
+
+/* ── Design tokens (dark scheme) ───────────────────────────────── */
+
+:root[data-scheme="dark"] {
+  --bg: #0d1117;
+  --fg: #e6edf3;
+  --muted: #8b949e;
+  --border: #30363d;
+  --accent: #58a6ff;
+  --focus: #58a6ff;
+  --surface: #161b22;
+  --surface-raised: #161b22;
+  --accent-contrast: #0d1117;
+  --badge-ink: #9fd4b5; /* the fixed bright green — NEVER a bg-
+                            resolving token (the fugue cure) */
+  --badge-bg: #1a2f3d;
+  --shadow-overlay: 0 12px 32px rgba(0, 0, 0, 0.5);
+}
+
+/* The no-attribute default mirrors the OS preference: when the
+   user's OS is dark and theme.ts has not yet set the attribute
+   (or the preference could not be persisted), the dark tokens
+   apply — so the page never boots light-on-dark-OS. */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-scheme="light"]) {
+    --bg: #0d1117;
+    --fg: #e6edf3;
+    --muted: #8b949e;
+    --border: #30363d;
+    --accent: #58a6ff;
+    --focus: #58a6ff;
+    --surface: #161b22;
+    --surface-raised: #161b22;
+    --accent-contrast: #0d1117;
+    --badge-ink: #9fd4b5;
+    --badge-bg: #1a2f3d;
+    --shadow-overlay: 0 12px 32px rgba(0, 0, 0, 0.5);
+  }
+}
+
+/* ── Reset + base ──────────────────────────────────────────────── */
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--fg);
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  font-size: 16px;
+  line-height: 1.5;
+}
+
+/* ── The visible focus contract (the no-color-only rule): every
+       interactive element gets a 2px solid ring + offset.
+       `outline: none` NEVER appears in this file. ─────────────── */
+
+button:focus-visible,
+input:focus-visible,
+a:focus-visible,
+[tabindex="0"]:focus-visible,
+[tabindex="-1"]:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+
+/* ── The app root + the pre-boot placeholder ───────────────────── */
+
+#legato-root {
+  max-width: 72rem;
+  margin: 0 auto;
+  padding: 1rem;
+}
+
+@media (min-width: 900px) {
+  #legato-root {
+    padding: 2rem;
+  }
+}
+
+#legato-status,
+.legato-status {
+  color: var(--muted);
+  font-style: italic;
+  min-height: 1.5em;
+}
+
+/* ── Header ────────────────────────────────────────────────────── */
+
+.legato-header {
+  display: flex;
+  align-items: baseline;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  padding: 0.5rem 0 1rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.legato-title {
+  margin: 0;
+  font-size: 1.5rem;
+  line-height: 1.2;
+}
+
+.legato-header-hint {
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+/* ── The main grid (list + detail panes) ───────────────────────── */
+
+.legato-main {
+  display: grid;
+  gap: 1.5rem;
+  margin-top: 1rem;
+  align-items: start;
+}
+
+/* ≥900px: two panes — detail left (the read surface), list right
+   (the scan surface + the search input). Sub-900: stacked. */
+@media (min-width: 900px) {
+  .legato-main {
+    grid-template-columns: 1fr minmax(280px, 22rem);
+  }
+}
+
+/* Grid items shrink below their intrinsic minimums (the Ostinato
+   B-11 class — a wide content child must not force a horizontal
+   overflow at 375px). */
+.legato-main > * {
+  min-width: 0;
+}
+
+/* ── The clip list (the j/k + / surface) ───────────────────────── */
+
+.legato-search {
+  width: 100%;
+  padding: 0.45rem 0.75rem;
+  font: inherit;
+  color: var(--fg);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+}
+
+.legato-clip-list {
+  list-style: none;
+  margin: 0.75rem 0 0;
+  padding: 0;
+  max-height: 55vh;
+  overflow-y: auto;
+}
+
+.legato-clip-row {
+  display: block;
+  padding: 0.5rem 0.6rem;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  font-size: 0.9rem;
+  cursor: pointer;
+}
+
+.legato-clip-row + .legato-clip-row {
+  margin-top: 0.25rem;
+}
+
+/* The title line: the clip title + the degraded-clip flag inline. */
+.legato-clip-title {
+  display: block;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.legato-clip-degraded {
+  display: inline-block;
+  margin-left: 0.4rem;
+  padding: 0.05rem 0.4rem;
+  border-radius: 3px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: var(--badge-ink);
+  background: var(--badge-bg);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  vertical-align: middle;
+}
+
+.legato-clip-snippet {
+  margin: 0.25rem 0 0;
+  color: var(--muted);
+  font-size: 0.8rem;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+
+.legato-clip-meta {
+  display: block;
+  margin-top: 0.3rem;
+  font-size: 0.75rem;
+}
+
+/* The state badge (the fugue accent-ink trap cured — the ink/bg
+   pair is scheme-paired above; the state is never conveyed by color
+   alone: the badge also carries its text). */
+.legato-clip-state {
+  display: inline-block;
+  padding: 0.05rem 0.4rem;
+  border-radius: 3px;
+  font-weight: 600;
+  color: var(--badge-ink);
+  background: var(--badge-bg);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.legato-clip-tag {
+  display: inline-block;
+  margin-left: 0.3rem;
+  padding: 0.05rem 0.4rem;
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  color: var(--muted);
+  font-size: 0.7rem;
+}
+
+/* The visible selection ring (j/k cursor): outline + border +
+   weight — the DOM rides aria-current + tabindex; the visual cue is
+   NOT color-only. */
+.legato-clip-selected {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+  border-color: var(--border);
+  background: var(--surface);
+}
+
+/* ── The empty state (Q-3: honest, never a blank) ─────────────── */
+
+.legato-empty {
+  margin-top: 1rem;
+  padding: 2rem 1.5rem;
+  border: 1px dashed var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  text-align: center;
+}
+
+.legato-empty-title {
+  margin: 0;
+  font-size: 1.1rem;
+  color: var(--fg);
+}
+
+.legato-empty-copy {
+  margin: 0.5rem 0 1rem;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.legato-clip-first {
+  font: inherit;
+  font-weight: 600;
+  color: var(--accent-contrast);
+  background: var(--accent);
+  border: none;
+  border-radius: var(--radius-sm);
+  padding: 0.5rem 1rem;
+  cursor: pointer;
+}
+
+.legato-clip-first:hover {
+  filter: brightness(1.1);
+}
+
+/* ── The detail pane (the reading surface) ─────────────────────── */
+
+.legato-detail {
+  padding: 1.25rem 1.5rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface-raised);
+  min-height: 12rem;
+}
+
+.legato-detail-position {
+  margin: 0 0 0.5rem;
+  color: var(--muted);
+  font-size: 0.8rem;
+}
+
+.legato-detail-title {
+  margin: 0;
+  font-size: 1.35rem;
+  line-height: 1.25;
+  overflow-wrap: break-word;
+}
+
+.legato-detail-url {
+  display: inline-block;
+  margin-top: 0.35rem;
+  color: var(--accent);
+  font-size: 0.8rem;
+  overflow-wrap: break-word;
+}
+
+.legato-detail-badge {
+  display: inline-block;
+  margin-top: 0.5rem;
+  padding: 0.1rem 0.5rem;
+  border-radius: 4px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--badge-ink);
+  background: var(--badge-bg);
+}
+
+.legato-detail-tags {
+  display: block;
+  margin-top: 0.4rem;
+}
+
+.legato-detail-tag {
+  display: inline-block;
+  margin-right: 0.35rem;
+  padding: 0.05rem 0.4rem;
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  color: var(--muted);
+  font-size: 0.7rem;
+}
+
+.legato-detail-degraded {
+  margin-top: 0.75rem;
+  padding: 0.6rem 0.75rem;
+  border-left: 3px solid var(--accent);
+  background: var(--surface);
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+  font-size: 0.85rem;
+}
+
+.legato-detail-body {
+  margin-top: 1rem;
+}
+
+.legato-detail-body p {
+  margin: 0 0 1rem;
+  overflow-wrap: break-word;
+}
+
+.legato-detail-empty-text {
+  color: var(--muted);
+  font-style: italic;
+}
+
+/* The empty detail lane (Q-3: never a blank). */
+.legato-detail-empty-title {
+  margin: 0;
+  font-size: 1.1rem;
+  color: var(--fg);
+}
+
+.legato-detail-empty-copy {
+  margin: 0.5rem 0 0;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+/* ── The highlights lane (the L-8 seam stub) ───────────────────── */
+
+.legato-highlights-lane {
+  margin-top: 1.25rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--border);
+}
+
+.legato-highlights-empty {
+  margin: 0;
+  color: var(--muted);
+  font-style: italic;
+  font-size: 0.85rem;
+}
+
+.legato-highlight-block {
+  margin: 0.75rem 0;
+  padding: 0.5rem 0.75rem;
+  border-left: 3px solid var(--accent);
+  background: var(--surface);
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+}
+
+.legato-highlight-quote {
+  margin: 0;
+  font-style: italic;
+}
+
+.legato-highlight-note {
+  margin: 0.4rem 0 0;
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+.legato-highlight-meta {
+  margin: 0.3rem 0 0;
+  color: var(--muted);
+  font-size: 0.75rem;
+}
+
+/* ── The command palette overlay (the Ostinato dialog contract) ── */
+
+#legato-palette {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  padding: 0 1rem;
+  background: rgba(31, 35, 40, 0.45);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-scheme="light"]) #legato-palette {
+    background: rgba(1, 4, 9, 0.6);
+  }
+}
+
+.legato-palette-input,
+.legato-palette-list {
+  width: 100%;
+  max-width: 34rem;
+  margin-top: 15vh;
+}
+
+.legato-palette-input {
+  padding: 0.6rem 0.75rem;
+  font: inherit;
+  color: var(--fg);
+  background: var(--surface-raised);
+  border: 1px solid var(--border);
+  border-radius: var(--radius) var(--radius) 0 0;
+}
+
+.legato-palette-list {
+  list-style: none;
+  margin: 0;
+  padding: 0.5rem;
+  max-height: 60vh;
+  overflow-y: auto;
+  background: var(--surface-raised);
+  border: 1px solid var(--border);
+  border-radius: 0 0 var(--radius) var(--radius);
+  box-shadow: var(--shadow-overlay);
+}
+
+.legato-palette-group {
+  padding: 0.75rem 0.5rem 0.25rem;
+  color: var(--muted);
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.legato-palette-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.4rem 0.5rem;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+
+.legato-palette-label {
+  flex: 1;
+  min-width: 0;
+}
+
+.legato-palette-hint {
+  color: var(--muted);
+  font-family: ui-monospace, monospace;
+  font-size: 0.75rem;
+  padding: 0.1rem 0.4rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  margin-left: auto;
+  white-space: nowrap;
+}
+
+/* The active row: ring + background + weight (the DOM carries
+   aria-selected — the visual must not ride hue alone). */
+.legato-palette-selected {
+  background: var(--accent);
+  font-weight: 600;
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+
+.legato-palette-selected .legato-palette-label {
+  color: var(--accent-contrast);
+}
+
+.legato-palette-selected .legato-palette-hint {
+  color: var(--accent-contrast);
+  border-color: transparent;
+  background: transparent;
+}
+
+/* Disabled (stubbed) commands: dimmed by the muted token (≥4.5:1
+   at full opacity in both schemes), NEVER by opacity — opacity
+   blends toward the background and the contrast sinks (the Ostinato
+   B-9 live-axe receipt). The title attribute names the landing
+   ticket (the "not dead" honesty). */
+.legato-palette-disabled {
+  cursor: not-allowed;
+}
+
+.legato-palette-disabled .legato-palette-label,
+.legato-palette-disabled .legato-palette-hint {
+  color: var(--muted);
+}
+
+/* ── Reduced motion (the pin): any transition is disabled. This
+       file adds none by design — the rule is the pin, not a
+       precaution. ───────────────────────────────────────────────── */
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    transition: none !important;
+    animation: none !important;
+  }
+}
