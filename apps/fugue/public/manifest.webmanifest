@@ -1,0 +1,18 @@
+{
+  "name": "Fugue — engine console",
+  "short_name": "Fugue",
+  "description": "Author, observe and curate the engine's scheduled agent jobs and learning loop. Keyboard-first.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#2f4f3f",
+  "icons": [
+    {
+      "src": "./icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}

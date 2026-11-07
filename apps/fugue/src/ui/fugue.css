@@ -1,0 +1,274 @@
+/* Fugue — honest light + dark via prefers-color-scheme; no external
+ * fonts, no CDNs. The O-1 panel + grouped job list + command palette
+ * + compose dialog. */
+
+:root {
+  --fugue-bg: #f6f5f2;
+  --fugue-panel: #ffffff;
+  --fugue-ink: #1a1a1f;
+  --fugue-muted: #57606a;
+  --fugue-accent: #2f4f3f;
+  --fugue-accent-ink: #f4f1ea;
+  --fugue-border: #d8d5cf;
+  --fugue-error: #b42318;
+  color-scheme: light dark;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --fugue-bg: #14141a;
+    --fugue-panel: #1c1c24;
+    --fugue-ink: #e8e6e0;
+    --fugue-muted: #9a9aa5;
+    --fugue-accent: #5a8a6f;
+    --fugue-accent-ink: #0f1a14;
+    --fugue-border: #2e2e38;
+    --fugue-error: #f08a7a;
+  }
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: ui-monospace, "SF Mono", "JetBrains Mono", Menlo, Consolas, monospace;
+  background: var(--fugue-bg);
+  color: var(--fugue-ink);
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+#fugue-app {
+  max-width: 72rem;
+  margin: 0 auto;
+  padding: 1.5rem;
+}
+
+/* — the honest panels (O-1 never-blank) — */
+.fugue-panel {
+  background: var(--fugue-panel);
+  border: 1px solid var(--fugue-border);
+  border-radius: 8px;
+  padding: 1.25rem 1.5rem;
+  margin: 0.5rem 0;
+}
+.fugue-panel-heading {
+  margin: 0 0 0.5rem;
+  font-size: 1rem;
+  font-weight: 600;
+}
+.fugue-panel-body {
+  margin: 0;
+  color: var(--fugue-muted);
+}
+.fugue-panel-reason {
+  margin: 0.5rem 0 0;
+  color: var(--fugue-error);
+  font-size: 0.85rem;
+}
+.fugue-panel-action {
+  margin: 0.5rem 0 0;
+  color: var(--fugue-muted);
+  font-size: 0.85rem;
+}
+.fugue-panel-action kbd {
+  background: var(--fugue-bg);
+  border: 1px solid var(--fugue-border);
+  border-radius: 4px;
+  padding: 0 0.35em;
+  font-family: inherit;
+  font-size: 0.8em;
+}
+
+/* — the grouped job list — */
+.fugue-job-group {
+  margin: 0.75rem 0;
+}
+.fugue-job-group h3 {
+  margin: 0 0 0.35rem;
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--fugue-muted);
+}
+.fugue-jobs {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  border: 1px solid var(--fugue-border);
+  border-radius: 8px;
+  overflow: hidden;
+}
+.fugue-job-row {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  gap: 1rem;
+  padding: 0.5rem 0.9rem;
+  border-bottom: 1px solid var(--fugue-border);
+}
+.fugue-job-row:last-child {
+  border-bottom: none;
+}
+.fugue-job-row[data-state="paused"] {
+  opacity: 0.7;
+}
+.fugue-job-row.is-selected {
+  background: color-mix(in srgb, var(--fugue-accent) 14%, transparent);
+}
+.fugue-job-title {
+  font-weight: 600;
+}
+.fugue-job-sched {
+  color: var(--fugue-muted);
+  font-size: 0.85rem;
+}
+.fugue-job-status {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--fugue-muted);
+}
+
+/* — the command palette (Ctrl+K) — */
+.fugue-palette {
+  position: fixed;
+  inset: 0;
+  background: color-mix(in srgb, var(--fugue-bg) 70%, transparent);
+  display: none;
+  z-index: 50;
+}
+.fugue-palette.is-open {
+  display: block;
+}
+.fugue-palette-inner {
+  margin: 12vh auto 0;
+  max-width: 28rem;
+  background: var(--fugue-panel);
+  border: 1px solid var(--fugue-border);
+  border-radius: 10px;
+  overflow: hidden;
+}
+.fugue-palette-filter {
+  width: 100%;
+  padding: 0.75rem 1rem;
+  border: none;
+  border-bottom: 1px solid var(--fugue-border);
+  background: transparent;
+  color: var(--fugue-ink);
+  font: inherit;
+}
+.fugue-palette-list {
+  list-style: none;
+  margin: 0;
+  padding: 0.25rem 0;
+  max-height: 22rem;
+  overflow: auto;
+}
+.fugue-palette-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.4rem 1rem;
+  cursor: pointer;
+}
+.fugue-palette-row.is-selected {
+  background: color-mix(in srgb, var(--fugue-accent) 14%, transparent);
+}
+.fugue-palette-row.is-disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+.fugue-palette-hint {
+  color: var(--fugue-muted);
+  font-size: 0.8rem;
+}
+
+/* — the compose dialog (the ostinato dialog contract) — */
+.fugue-dialog {
+  position: fixed;
+  inset: 0;
+  background: color-mix(in srgb, var(--fugue-bg) 70%, transparent);
+  display: none;
+  z-index: 60;
+}
+.fugue-dialog.is-open {
+  display: block;
+}
+.fugue-dialog-inner {
+  margin: 8vh auto 0;
+  max-width: 32rem;
+  background: var(--fugue-panel);
+  border: 1px solid var(--fugue-border);
+  border-radius: 10px;
+  padding: 1rem 1.25rem 1.25rem;
+}
+.fugue-dialog-inner h2 {
+  margin: 0 0 0.75rem;
+  font-size: 1rem;
+}
+.fugue-field {
+  display: block;
+  margin-bottom: 0.65rem;
+}
+.fugue-field label {
+  display: block;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--fugue-muted);
+  margin-bottom: 0.15rem;
+}
+.fugue-field input,
+.fugue-field select {
+  width: 100%;
+  padding: 0.4rem 0.55rem;
+  border: 1px solid var(--fugue-border);
+  border-radius: 6px;
+  background: transparent;
+  color: var(--fugue-ink);
+  font: inherit;
+}
+.fugue-field .fugue-field-error {
+  color: var(--fugue-error);
+  font-size: 0.8rem;
+  margin: 0.15rem 0 0;
+}
+.fugue-dialog-actions {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+}
+.fugue-dialog-actions button {
+  padding: 0.4rem 0.9rem;
+  border: 1px solid var(--fugue-border);
+  border-radius: 6px;
+  background: transparent;
+  color: var(--fugue-ink);
+  font: inherit;
+  cursor: pointer;
+}
+.fugue-dialog-actions button[aria-label="submit"] {
+  background: var(--fugue-accent);
+  color: var(--fugue-accent-ink);
+  border-color: var(--fugue-accent);
+}
+.fugue-dialog-actions button:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+/* — the run / engine / dreams routes — */
+.fugue-runs,
+.fugue-engine-panel {
+  margin: 0.5rem 0;
+}
+.fugue-runs {
+  list-style: none;
+  padding: 0;
+}
+.fugue-runs li {
+  padding: 0.35rem 0.5rem;
+  border-bottom: 1px solid var(--fugue-border);
+}

@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
+  <!-- Fugue glyph: two intertwined counterpoint lines (an original mark, no
+       external assets). A solid field with a key-hold counter-form. -->
+  <rect width="64" height="64" rx="14" fill="#2f4f3f"/>
+  <g fill="none" stroke="#f4f1ea" stroke-width="4" stroke-linecap="round">
+    <path d="M14 40 C 24 20, 34 44, 44 24 S 54 28 54 28"/>
+    <path d="M14 28 C 24 46, 36 18, 46 38"/>
+  </g>
+  <circle cx="50" cy="24" r="3.5" fill="#f4f1ea"/>
+</svg>

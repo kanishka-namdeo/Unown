@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Fugue — engine console</title>
+  <meta name="description" content="Keyboard-first, offline-capable PWA console for the engine's automation + learning loop." />
+  <link rel="manifest" href="public/manifest.webmanifest" />
+  <link rel="icon" href="public/icon.svg" type="image/svg+xml" />
+  <meta name="theme-color" media="(prefers-color-scheme: light)" content="#ffffff" />
+  <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#1a1a1f" />
+  <link rel="stylesheet" href="src/ui/fugue.css" />
+</head>
+<body>
+  <div id="fugue-app"></div>
+  <noscript>Fugue needs JavaScript enabled — it is a PWA console.</noscript>
+  <script type="module" src="src/ui/app.ts"></script>
+  <script>
+    // The bolero/offline law: register the service worker when supported.
+    // /health and /api/* are NEVER cache-served (the sw.js fetch policy).
+    if ("serviceWorker" in navigator) {
+      window.addEventListener("load", () => {
+        navigator.serviceWorker.register("sw.js").catch(() => {
+          // Honest degradation: no offline shell, but the app still runs.
+        });
+      });
+    }
+  </script>
+</body>
+</html>
