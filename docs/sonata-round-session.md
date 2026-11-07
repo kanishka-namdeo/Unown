@@ -370,3 +370,59 @@ run either lands green first-try (the law working) or its failure class
 is NEW (not fixture-scale drift). The probe harness
 (`scripts/probe-live.mjs` + the compose probe) joins the a1 toolchain
 as the standing instrument (H-23's evidence lane).
+
+## Environment checkpoint (2026-11-07, the THIRTY-FIRST lineage — the third recycle bring-up)
+
+The sandbox was recycled after the F-6 close (the prior environment —
+bun, UNOWN_HOME, playwright browsers, the credential store — all gone;
+only the repo survived via the remote). Full re-bring-up per the
+standing checklist, one pass, on tree `a5e4a9fa` = origin/main (F-6
+CLOSED):
+
+- bun **1.4.3** re-fetched via the V-2 zip lane (GitHub release →
+  `/home/z/my-project/.bun/bin/bun`, symlinked into `/home/z/.bun/bin`)
+  · clone re-made at `/home/z/my-project/unown` @ `a5e4a9fa` · PAT
+  restored (remote URL + `/home/z/my-project/.secrets/`) · operator
+  toolchain re-mirrored `cp scripts/a1/* + scripts/a1-continue.py` →
+  `/home/z/my-project/.a1/scripts/` (the recycle tax: one `cp`)
+- install **7/7** (`UNOWN_NO_LINK=1 UNOWN_NO_ENGINE_SERVICE=1 bun
+  scripts/install.ts`, then `bun scripts/link.ts`) · `.env` authored
+  minimal + duplicate-free (audit 0 duplicates; the Agnes lane +
+  `UNOWN_HOME=/home/z/my-project/unown-home` +
+  `PI_ENGINE_MAX_TOKENS_HOUR=400000` — the V-13/V-23 raise carried
+  from line one this time) · stack up via `dispatch-bg.py stack`
+  (bridge :3031 upstream 200 `upstreamKeyIsSet:true`, engine :3030
+  v0.0.57 @ `a5e4a9fa` = HEAD, 9 router jobs, breaker closed, budget
+  limits 60/**400000** — the raise verified live in `engine status`)
+- **V-1 reconfirmed live (the stdin-slurp class)**: a raw
+  `unown -p "Reply with exactly: UNOWN_OK"` run from the operator's
+  shell harness hung past 300 s — the session file shows the child
+  slurped the harness's own trailing script (`__workspace_agent_exit_code=…`)
+  from the inherited stdin pipe; through `a1-dispatch.py` (stdin
+  DEVNULL) the identical smoke is clean. No new V-entry — Rondo's V-1
+  law is the receipt; every dispatch rides the tool, no exceptions.
+- Canaries green: C1 ×2 `UNOWN_OK`/1 turn (1085 ms / 810 ms, rc=0,
+  V-38 label intact — "524,288 ctx / 4,096 out (you entered it)") ·
+  C2 doctor ready (the honest ⚠ lsp-servers pair only) · C3 engine UP
+  v0.0.57 @ HEAD, 9 jobs, breaker closed · C4 fizzbuzz **3 turns /
+  8.0 s / exactly 2 files / 4/4 tests operator-verified** (session
+  `01a1b674-dd8c…`)
+- Chromium 1248 (headless shell) re-installed via the repo binary
+- **Battery on the recycled tree — every operative lane green**:
+  typecheck 0 · lint 0e/143w · Lane A **157/0/20 (511 expects — exact
+  F-6-close match)** · contract **9/0/50** (the F-6-close 8/0 + the
+  final commit's fixture addition) · fugue fixture e2e **7 passed +
+  1 live-skipped** · claims **62/62** · docs ok · blog 46/116 ·
+  benchmarks 6/6 · ostinato e2e **17/17** (9.7 s) · unit
+  **2550/0/199** (163.66 s)
+- **One anti-rot catch cured**: `check:changelog` FAILED on the clean
+  main tree — the F-6-close commit added a CHANGELOG entry (the V-15
+  close) without regenerating the landing rail; regenerated
+  (`changelog-data.ts`: 544→545 entries, Unreleased 35→36) and
+  re-verified green. Lands with this checkpoint commit.
+
+**Next: F-7** (the learning views — dreams journal, memory tiers, the
+skills-staged queue, the Manual-notes editor — **plus item 1: the
+runs-route render link (V-26, evidence in receipts/f6.md) + the
+live-lane re-run to green**), dispatched through A2 per the standing
+brief shape.
