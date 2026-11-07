@@ -76,6 +76,24 @@ def main() -> int:
     if "`" in args.brief:
         print("a1-dispatch: WARN — brief carries raw backticks (V-11 law: escape before "
               "embedding in template literals)")
+    # V-13 fix 3 (the pkill -f self-kill class): if the brief names
+    # processes/ports at all, the model may later try to clean up strays
+    # with pattern-based process kills — and this dispatch process's OWN
+    # argv carries the brief verbatim, so pkill -f <pattern> kills the
+    # session (three receipted deaths, F-5). Auto-append the port-scoped
+    # cleanup law whenever the brief is process-adjacent.
+    PROC_ADJ_RE = re.compile(r"\b(serve|server|daemon|port|boot|shutdown|cleanup|stop)\b", re.I)
+    CLEANUP_LAW = (
+        "\n\nPROCESS-CLEANUP LAW (binding): to stop or clean up any stray server "
+        "process, find its pid by PORT (ss -ltnp, then kill the numeric pid) — "
+        "NEVER kill processes by name pattern (no pattern-kill tools): your own "
+        "dispatch process's "
+        "command line carries this brief verbatim, and a pattern match will "
+        "terminate your own session mid-run (receipted three times this round)."
+    )
+    if PROC_ADJ_RE.search(args.brief) and "PROCESS-CLEANUP LAW" not in args.brief:
+        args.brief = args.brief + CLEANUP_LAW
+        print("a1-dispatch: process-adjacent brief — PROCESS-CLEANUP LAW appended (V-13)")
 
     # V-38 pin ride-along
     pin = str(A1 / "scripts" / "v38-pin.py")

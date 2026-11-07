@@ -115,6 +115,18 @@ def main() -> int:
     name = meta.get("name", "chunk")
     cwd = meta.get("cwd", os.getcwd())
     brief0 = meta.get("brief", "")
+    # V-13 fix 1: the envelope log's OWN cmd carries the brief that started
+    # the capped dispatch -- that is the operative "original brief" for a
+    # multi-brief session (the session's first user message is stale by
+    # chunk 2). Prefer it; fall back to meta.brief; the session's first
+    # message is the last resort.
+    cmd = d.get("cmd") or []
+    if not cmd:
+        cmd = meta.get("cmd") or []
+    for i, part in enumerate(cmd):
+        if part == "-p" and i + 1 < len(cmd):
+            brief0 = cmd[i + 1]
+            break
 
     if not session_id:
         print("a1-continue: no session_id in the envelope log")
@@ -124,7 +136,35 @@ def main() -> int:
         print(f"a1-continue: session file for {session_id} not found")
         return 1
     original_brief, census, files, commands, last_words = parse_session(sess)
-    original_brief = original_brief or brief0
+    # V-13 fix 1 (cont.): the envelope's own brief (brief0) WINS -- in a
+    # multi-brief session the first user message is the chunk-1 brief,
+    # which misdirects the continuation (receipted: three lucky survivals,
+    # one wrong-envelope generation).
+    if brief0:
+        original_brief = brief0
+    else:
+        original_brief = original_brief
+    # V-13 fix 2: stale-envelope guard. If a NEWER envelope log exists for
+    # the SAME session id, the operator fed an old one -- warn loudly (the
+    # dispatch still generates; the operator decides). Envelope filenames
+    # start with the dispatch UTC timestamp, so lexicographic newest wins.
+    try:
+        newest = None
+        for jf in LOGS.glob("*.json"):
+            try:
+                jd = json.load(open(jf))
+            except Exception:
+                continue
+            jenv = jd.get("envelope") or jd.get("meta", {})
+            if (jenv.get("session_id") or jd.get("meta", {}).get("session_id")) == session_id:
+                if newest is None or jf.name > newest.name:
+                    newest = jf
+        if newest is not None and str(Path(args.log).resolve()) != str(newest.resolve()):
+            print(f"a1-continue: WARNING -- stale envelope: {newest.name} is the NEWEST envelope "
+                  f"for session {session_id}; you passed {Path(args.log).name} (V-13 law: always "
+                  f"continue from the session's latest capped envelope)")
+    except Exception:
+        pass
 
     raised_cap = int(prior_turns) + args.chunk_budget
     ts = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")

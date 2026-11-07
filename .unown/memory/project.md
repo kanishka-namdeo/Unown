@@ -118,4 +118,14 @@
 
 ## Manual notes
 
+- Failed cycles auto-recover — do NOT restart engine to fix them. (Restored by hand 2026-11-07 during the 28th/29th-lineage F-5 reconciliation — SIXTH occurrence of the dream-render-prunes-landing-quoted-lines class, issue #46: this render pruned the restored durable lane AGAIN. The landing's loop.tsx memory preview quotes this line; the claims gate reddens without it. This Manual notes lane is its durable home.)
+- Stealth verification suite on bot.sannysoft.com: all 10 checks (webdriver, userAgent, platform, userAgentData, timezone, locale, screen, viewport, plugins, window.chrome) pass; 0 FAIL rows in Intoli tests. (Restored by hand 2026-11-07 — sixth occurrence, issue #46 class; durable home here.)
+- bin: Cross-platform CLI launcher (Unix shebang, Windows cmd/ps1) [note 1]. (Restored by hand 2026-11-07 — sixth occurrence, issue #46 class; the landing's loop.tsx quotes this line; durable home here.)
+- Remove unused variable declarations (e.g., `void seedStore;`) to keep builds clean. (Restored by hand 2026-11-07 — sixth occurrence, issue #46 class.)
+- For high-reliability frontend or browser-based CI steps, use Chromium with headless flags to ensure consistent rendering and testing in containerized environments. (Restored by hand 2026-11-07 — sixth occurrence, issue #46 class; the pair bullet of the Environment heading below.)
+
+## Environment
+
+- The `## Environment` heading itself is landing-quoted (loop.tsx:129) — restored by hand 2026-11-07, sixth occurrence of the issue #46 prune class; it lives in the Manual notes durable lane above and MUST survive every re-render.
+
 <!-- unown: rendered 110/115 memories via Mem0 (backend: lexical) · 5 oldest pruned at render (cap 110; hard-won rules immune) at 2026-11-07T09:15:53.374Z -->

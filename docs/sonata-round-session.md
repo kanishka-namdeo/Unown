@@ -319,3 +319,29 @@ Sonata-specific additions:
 - [The augmentation registry](a1-augmentation-registry.md) · [the ground truth](../A2_GROUND_TRUTH.md)
 - [The Rondo round log](rondo-round-session.md) — the prior round (Chaconne)
 - [SESSION.md](SESSION.md) — the cross-round index
+
+## The 29th lane's F-5 marathon (the parallel record, superseded — see receipts/f5-parallel-lane-29th.md)
+
+The 29th lineage (this lane) ran its own F-5 to a green close in parallel
+with the 28th: 27 dispatches / ~520 turns through FIVE operator-gate QA
+cycles, 18 files, Lane A/B 160/0/20, e2e 9/9 ×2 — then found the 28th's
+landing on origin/main at push time (the twelfth concurrent-lineage
+event). Reconciled per the ledger-arbiter law: the 28th's implementation
+governs; this lane's unique artifacts folded in — the §7 competition
+teardown ([TEARDOWN_2026-11-07_pi.md](TEARDOWN_2026-11-07_pi.md): the
+chassis moved to earendil-works/pi, the vendored npm line deprecated,
+upstream fixed the output-cap truncation class in #11227/#11233 +
+#10799 — the drift-audit Drive ticket routed, H-21/H-22/H-23 seeded at
+PROPOSE), the a1-continue generator fixes (envelope-cmd brief +
+stale-envelope guard), the PROCESS-CLEANUP auto-append in a1-dispatch,
+V-19..V-22 (the parallel lane's entries), and the SIXTH #46-prune hand
+restoration (claims 62/62 re-verified on the merged tree — H-22 is now
+the registry's most urgent PROPOSE row).
+
+The lane's own verdict on the marathon (preserved as the measurement
+record): the turns-to-done trend honestly inverted on its F-5
+(F-4 28 → ~520), decomposed in the parallel receipt — ~112 turns of
+planned work, ~40 to the V-19 truncation burn, ~90 to the three V-20
+process deaths, ~250 to the five QA cycles whose root cause (V-21) was
+a design conflict the PLAN row never surfaced. The probe-first law
+(H-23) is that lesson's cure.
