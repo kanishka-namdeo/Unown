@@ -139,7 +139,7 @@ export function renderRunRow(r: RunRecordView): string {
     r.status === "budget-throttled"
       ? `<span class="fugue-run-marker" data-marker="budget-throttled" title="budget-throttled">⏸</span>`
       : "";
-  return `<li class="fugue-run-row" data-run="${r.id}" data-status="${escapeHtml(r.status)}" data-task="${r.taskId}">${badge}${marker}<span class="fugue-run-tokens">${r.tokensIn}/${r.tokensOut} tok</span><span class="fugue-run-turns">${r.turns} turns</span><span class="fugue-run-duration">${escapeHtml(formatDuration(r))}</span></li>`;
+  return `<li class="fugue-run-row" data-run="${r.id}" data-status="${escapeHtml(r.status)}" data-task="${r.taskId}" tabindex="0">${badge}${marker}<span class="fugue-run-tokens">${r.tokensIn}/${r.tokensOut} tok</span><span class="fugue-run-turns">${r.turns} turns</span><span class="fugue-run-duration">${escapeHtml(formatDuration(r))}</span></li>`;
 }
 
 /** Render the full grouped view HTML. Zero runs → the honest no-runs

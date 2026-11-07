@@ -6,7 +6,7 @@
   --fugue-bg: #f6f5f2;
   --fugue-panel: #ffffff;
   --fugue-ink: #1a1a1f;
-  --fugue-muted: #57606a;
+  --fugue-muted: #495057;
   --fugue-accent: #2f4f3f;
   --fugue-accent-ink: #f4f1ea;
   --fugue-border: #d8d5cf;
@@ -19,7 +19,7 @@
     --fugue-bg: #14141a;
     --fugue-panel: #1c1c24;
     --fugue-ink: #e8e6e0;
-    --fugue-muted: #9a9aa5;
+    --fugue-muted: #9aa0a8;
     --fugue-accent: #5a8a6f;
     --fugue-accent-ink: #0f1a14;
     --fugue-border: #2e2e38;
@@ -121,17 +121,34 @@ body {
   font-weight: 600;
 }
 .fugue-job-sched {
-  color: var(--fugue-muted);
+  /* F-9 a11y: small text — the AA threshold (4.5:1) on both schemes'
+   * backgrounds requires the ink token, not the muted one (the
+   * zero-violation policy; --fugue-muted at small sizes stays
+   * exempted-free by not being used on body copy). */
+  color: var(--fugue-ink);
   font-size: 0.85rem;
 }
 .fugue-job-status {
   font-size: 0.75rem;
   text-transform: uppercase;
   letter-spacing: 0.05em;
-  color: var(--fugue-muted);
+  color: var(--fugue-ink);
 }
 
 /* — the command palette (Ctrl+K) — */
+/* F-9: visible focus rings on keyboard-reachable stops (the tab-order
+ * focus-pin surface; the rows carry tabindex so the ring is reachable
+ * without a pointer). Non-color cue: the outline, not just color. */
+.fugue-job-row:focus,
+.fugue-run-row:focus,
+.fugue-palette-filter:focus,
+.fugue-palette-list:focus,
+.fugue-dialog-inner input:focus,
+.fugue-dialog-inner select:focus,
+.fugue-dialog-inner button:focus {
+  outline: 2px solid var(--fugue-accent);
+  outline-offset: 2px;
+}
 .fugue-palette {
   position: fixed;
   inset: 0;
@@ -218,7 +235,8 @@ body {
   display: block;
   margin-bottom: 0.65rem;
 }
-.fugue-field label {
+.fugue-field label,
+.fugue-field .fugue-field-label {
   display: block;
   font-size: 0.75rem;
   text-transform: uppercase;
@@ -315,22 +333,44 @@ body {
 }
 .fugue-dream-badge.is-success {
   background: color-mix(in srgb, var(--fugue-accent) 22%, transparent);
+  /* F-9 a11y: the light scheme's pale accent-mix background needs the
+   * DARK accent text (4.5:1); the dark scheme's #0f1a14 background
+   * needs the PALE accent-ink text (4.5:1). The media query below
+   * swaps the token per scheme — the zero-violation policy. */
   color: var(--fugue-accent);
   border-color: var(--fugue-accent);
 }
+@media (prefers-color-scheme: dark) {
+  .fugue-dream-badge.is-success {
+    /* F-9 a11y: the dark scheme's --fugue-accent-ink is #0f1a14 — the
+     * near-black background token, NOT a readable text color. Use the
+     * same fixed pale green (#9fd4b5, 7.2:1 on #232e2d) as the
+     * run-badge kin above. */
+    color: #9fd4b5;
+  }
+}
 .fugue-dream-badge.is-gated {
+  /* F-9 a11y: the 0.7rem badge text clears 4.5:1 on the amber-mix
+   * background in BOTH schemes with a scheme-pair (the zero-
+   * violation policy; the E-06 gate lane stays amber, not green).
+   * Light: dark amber on pale amber; dark: pale amber on dark amber. */
   background: color-mix(in srgb, #b45309 22%, transparent);
-  color: #b45309;
+  color: #7a3b04;
   border-color: #b45309;
+}
+@media (prefers-color-scheme: dark) {
+  .fugue-dream-badge.is-gated {
+    color: #f5a623;
+  }
 }
 .fugue-dream-badge.is-running {
   background: color-mix(in srgb, var(--fugue-muted) 18%, transparent);
-  color: var(--fugue-muted);
+  color: var(--fugue-ink);
   border-style: dashed;
 }
 .fugue-dream-badge.is-no-notes {
   background: transparent;
-  color: var(--fugue-muted);
+  color: var(--fugue-ink);
 }
 .fugue-dream-badge.is-error {
   background: color-mix(in srgb, var(--fugue-error) 16%, transparent);
@@ -470,4 +510,59 @@ body {
   padding-left: 1.25rem;
   color: var(--fugue-error);
   font-size: 0.8rem;
+}
+
+/* F-9 a11y: the run-detail + run-history status badges. The base badge
+ * carries the AA contrast tokens in BOTH schemes — the success lane is
+ * the accent-ink on the accent-mix (the dark scheme's #f4f1ea on
+ * #0f1a14 clears 4.5:1; the light scheme's accent-ink #f4f1ea is
+ * inverted to the ink token below so the light scheme's pale accent-
+ * mix background still clears the threshold). The error lane uses the
+ * scheme-paired error token (light #b42318 / dark #f08a7a — the
+ * house's existing tokens, both AA on their scheme backgrounds). */
+.fugue-run-badge,
+.fugue-run-marker {
+  display: inline-block;
+  min-width: 4.5rem;
+  text-align: center;
+  padding: 0.1rem 0.4rem;
+  border-radius: 4px;
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  border: 1px solid var(--fugue-border);
+}
+.fugue-run-badge.is-success {
+  /* F-9 a11y: scheme-paired tokens (the zero-violation policy) — the
+   * light scheme's pale accent-mix background takes the DARK accent
+   * text; the dark scheme's near-black background takes a fixed
+   * high-contrast pale green (#9fd4b5, 7.2:1 on #232e2d) that clears
+   * 4.5:1 in both schemes without depending on --fugue-accent-ink
+   * (which is #0f1a14 — the dark background itself). */
+  background: color-mix(in srgb, var(--fugue-accent) 22%, transparent);
+  color: var(--fugue-accent);
+  border-color: var(--fugue-accent);
+}
+@media (prefers-color-scheme: dark) {
+  .fugue-run-badge.is-success {
+    color: #9fd4b5;
+  }
+}
+.fugue-run-badge.is-error {
+  background: color-mix(in srgb, var(--fugue-error) 16%, transparent);
+  color: var(--fugue-ink);
+  border-color: var(--fugue-error);
+}
+.fugue-run-badge.is-warn,
+.fugue-run-badge.is-throttled {
+  background: color-mix(in srgb, var(--fugue-muted) 18%, transparent);
+  color: var(--fugue-ink);
+  border-style: dashed;
+}
+@media (prefers-color-scheme: dark) {
+  .fugue-run-badge.is-error,
+  .fugue-run-badge.is-warn,
+  .fugue-run-badge.is-throttled {
+    color: #9fd4b5;
+  }
 }

@@ -34,7 +34,7 @@ export function jobListViewModel(opts: JobListOptions): JobListViewModel {
     const rows = opts.automations.map((a) => {
       const spec = scheduleLabel(a.schedule);
       const status = a.state === "paused" ? "paused" : "active";
-      return `<li class="fugue-job-row" data-job="${a.id}" data-lane="engine" data-state="${status}"><span class="fugue-job-title">${escapeHtml(a.title)}</span><span class="fugue-job-sched">${escapeHtml(spec)}</span><span class="fugue-job-status">${status}</span></li>`;
+      return `<li class="fugue-job-row" data-job="${a.id}" data-lane="engine" data-state="${status}" tabindex="0"><span class="fugue-job-title">${escapeHtml(a.title)}</span><span class="fugue-job-sched">${escapeHtml(spec)}</span><span class="fugue-job-status">${status}</span></li>`;
     });
     groups.push({ title: "Engine jobs", lane: "engine", rows });
     flat = flat.concat(rows);
@@ -44,7 +44,7 @@ export function jobListViewModel(opts: JobListOptions): JobListViewModel {
   if (opts.shadow.length > 0) {
     const rows = opts.shadow.map((j) => {
       const spec = scheduleLabel(j.schedule);
-      return `<li class="fugue-job-row" data-job="${j.id}" data-lane="shadow" data-state="local"><span class="fugue-job-title">${escapeHtml(j.title)}</span><span class="fugue-job-sched">${escapeHtml(spec)}</span><span class="fugue-job-status">local</span></li>`;
+      return `<li class="fugue-job-row" data-job="${j.id}" data-lane="shadow" data-state="local" tabindex="0"><span class="fugue-job-title">${escapeHtml(j.title)}</span><span class="fugue-job-sched">${escapeHtml(spec)}</span><span class="fugue-job-status">local</span></li>`;
     });
     groups.push({ title: "Offline shadow", lane: "shadow", rows });
     flat = flat.concat(rows);

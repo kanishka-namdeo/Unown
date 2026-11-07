@@ -56,6 +56,7 @@ import type { SpendReport, DreamRecord, MemoryView } from "../adapter/engine-ada
 import type { SkillRecord } from "../adapter/engine-adapter.js";
 import { makeJobCommands, runJobCommand, jobLifecycle } from "./jobs.js";
 import { exportBytes, importDocument, exportToastLine, importOkLine, refusalViewModel } from "./io-view.js";
+import { cycleFocusWithin, returnFocus, focusAfterAttach } from "./focus-trap.js";
 
 /* ------------------------------------------------------------------ */
 /* The Fugue UI state machine                                          */
@@ -376,17 +377,17 @@ function renderComposeDialog(d: JobEditorDraft): string {
     options?: readonly string[],
   ) => {
     if (type === "select") {
-      return `<label class="fugue-field" data-field="${name}"><span>${label}</span><select data-input="${name}" aria-label="${label}">${(options ?? [])
+      return `<div class="fugue-field" data-field="${name}"><label for="fugue-compose-${name}">${label}</label><select id="fugue-compose-${name}" data-input="${name}" aria-label="${label}">${(options ?? [])
         .map((o) => `<option value="${o}" ${String(d[name]) === o ? "selected" : ""}>${o}</option>`)
-        .join("")}</select>${errs[name] ? `<p class="fugue-field-error" data-error="${name}">${errs[name]}</p>` : ""}</label>`;
+        .join("")}</select>${errs[name] ? `<p class="fugue-field-error" data-error="${name}" role="alert">${errs[name]}</p>` : ""}</div>`;
     }
-    return `<label class="fugue-field" data-field="${name}"><span>${label}</span><input data-input="${name}" value="${escapeHtml(String(d[name]))}" aria-label="${label}" />${errs[name] ? `<p class="fugue-field-error" data-error="${name}">${errs[name]}</p>` : ""}</label>`;
+    return `<div class="fugue-field" data-field="${name}"><label for="fugue-compose-${name}">${label}</label><input id="fugue-compose-${name}" data-input="${name}" value="${escapeHtml(String(d[name]))}" aria-label="${label}" />${errs[name] ? `<p class="fugue-field-error" data-error="${name}" role="alert">${errs[name]}</p>` : ""}</div>`;
   };
   const valid = Object.keys(errs).length === 0;
   return [
-    `<div class="fugue-dialog is-open" role="dialog" aria-modal="true" data-dialog="compose">`,
+    `<div class="fugue-dialog is-open" role="dialog" aria-modal="true" aria-labelledby="fugue-compose-dialog-title" data-dialog="compose">`,
     `  <div class="fugue-dialog-inner">`,
-    `    <h2>New job</h2>`,
+    `    <h2 id="fugue-compose-dialog-title">New job</h2>`,
     `    <form data-compose-form aria-label="Compose a new job" novalidate>`,
     field("title", "Title"),
     field("prompt", "Prompt"),
@@ -514,10 +515,32 @@ function renderPalette(app: {
   const input = document.createElement("input");
   input.className = "fugue-palette-filter";
   input.setAttribute("aria-label", "Filter commands");
+  input.id = "fugue-palette-filter";
   const list = document.createElement("ul");
   list.className = "fugue-palette-list";
   list.setAttribute("role", "listbox");
   list.setAttribute("aria-label", "Commands");
+  list.id = "fugue-palette-list";
+  // The palette dialog contract (the compose kin): aria-labelledby anchors the
+  // filter input; the focus-trap module cycles Tab/Shift+Tab within the
+  // palette overlay and Esc returns focus to the invoking control.
+  overlay.setAttribute("aria-labelledby", "fugue-palette-filter");
+  // The focusable-content pin (the a11y battery's zero-violation law):
+  // a listbox without a focusable stop fails axe's focusable-content
+  // rule — the keyboard user needs a tab stop in the palette. The
+  // tabindex makes the listbox itself a stop (the rows are aria-disabled
+  // or plain spans, not focusable elements).
+  list.setAttribute("tabindex", "0");
+  const paletteInvoking = (document.activeElement as HTMLElement | null) ?? null;
+  const paletteDetach = cycleFocusWithin(overlay, { openFocus: input });
+  const paletteOnKey = (e: Event) => {
+    if ((e as KeyboardEvent).key !== "Escape") return;
+    paletteDetach();
+    overlay.removeEventListener("keydown", paletteOnKey);
+    document.body.removeChild(overlay);
+    returnFocus(paletteInvoking);
+  };
+  overlay.addEventListener("keydown", paletteOnKey);
   cmds.forEach((c) => {
     const enabled = isCommandEnabled(c.id, ctx);
     const li = document.createElement("li");
@@ -534,7 +557,10 @@ function renderPalette(app: {
     li.append(label, hint);
     if (enabled) {
       li.addEventListener("click", () => {
+        paletteDetach();
+        overlay.removeEventListener("keydown", paletteOnKey);
         document.body.removeChild(overlay!);
+        returnFocus(paletteInvoking);
         app.onCommand(c.id);
       });
     }
@@ -601,12 +627,27 @@ export function main(): void {
     persistAll(state, adapter2);
   }
 
+  let composeInvoking: HTMLElement | null = null;
   function openCompose() {
+    composeInvoking = (document.activeElement as HTMLElement | null) ?? null;
     app.state.composeDraft = { ...DEFAULT_DRAFT };
     app.state.dialog = "compose";
     rerender();
     const form = document.querySelector("[data-compose-form]") as HTMLFormElement | null;
     if (!form) return;
+    // The dialog contract: the overlay is attached (rendered above) BEFORE the
+    // first field receives focus; the focus-trap module cycles Tab/Shift+Tab
+    // within the dialog and Esc returns focus to the invoking control.
+    const dialogEl = document.querySelector('[data-dialog="compose"]') as HTMLElement | null;
+    // The open-focus target is the title INPUT (the first focusable
+    // field in the form) — the attach-before-focus pin (D11 kin):
+    // the overlay is in the document BEFORE the first field receives
+    // focus.
+    const openFocus = form.querySelector('[data-input="title"]') as HTMLElement | null;
+    if (dialogEl && openFocus) {
+      cycleFocusWithin(dialogEl, { openFocus });
+      focusAfterAttach(openFocus);
+    }
     // The inline-validation law: re-validate on every field change,
     // update the per-field error lines in place, and flip the submit
     // button's disabled state (the form never reflows; the user sees
@@ -906,6 +947,11 @@ export function main(): void {
     if (e.key === "Escape") {
       const palette = document.getElementById("fugue-palette");
       if (palette) {
+        // The palette's overlay-level keydown hook (renderPalette) owns
+        // the focus-return; stop the document handler from double-closing
+        // (the overlay-level hook removes it first via bubbling order:
+        // overlay keydown fires BEFORE document keydown — the palette is
+        // already gone by the time this branch runs).
         document.body.removeChild(palette);
         return;
       }
@@ -914,6 +960,8 @@ export function main(): void {
         app.state.dialog = "closed";
         app.state.composeDraft = null;
         rerender();
+        // The dialog contract: focus returns to the invoking control after Esc.
+        returnFocus(composeInvoking);
       }
     }
   });
