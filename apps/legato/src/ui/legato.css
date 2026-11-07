@@ -595,3 +595,206 @@ a:focus-visible,
     animation: none !important;
   }
 }
+
+/* ── L-7: the tag filter bar (the tag chips + combo display +
+   clear-all affordance) ─────────────────────────────────────────── */
+
+.legato-filter-group {
+  display: block;
+  margin: 0.5rem 0;
+  padding: 0.5rem 0.6rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+}
+
+.legato-filter-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin-bottom: 0.4rem;
+}
+
+.legato-filter-chip {
+  font: inherit;
+  font-size: 0.75rem;
+  padding: 0.15rem 0.55rem;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface-raised);
+  color: var(--fg);
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.legato-filter-chip:hover {
+  border-color: var(--accent);
+}
+
+/* The selected chip: ring + background + weight (the a11y pattern
+   the DOM carries aria-pressed; the visual cue is NOT color-only). */
+.legato-filter-chip-selected {
+  border-color: var(--accent);
+  background: var(--badge-bg);
+  color: var(--badge-ink);
+  font-weight: 600;
+}
+
+.legato-filter-combo {
+  margin: 0 0 0.4rem;
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+
+.legato-filter-clear {
+  font: inherit;
+  font-size: 0.8rem;
+  padding: 0.3rem 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface-raised);
+  color: var(--fg);
+  cursor: pointer;
+}
+
+.legato-filter-clear:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+/* ── L-7: the tag editor dialog (the Ostinato dialog contract) ── */
+
+#legato-tag-editor {
+  position: fixed;
+  inset: 0;
+  z-index: 110;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  padding: 0 1rem;
+  background: rgba(31, 35, 40, 0.45);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-scheme="light"]) #legato-tag-editor {
+    background: rgba(1, 4, 9, 0.6);
+  }
+}
+
+#legato-tag-editor .legato-tag-editor {
+  /* the overlay's inner surface */
+}
+
+.legato-tag-editor {
+  width: 100%;
+  max-width: 28rem;
+  margin-top: 12vh;
+  padding: 1.25rem 1.5rem;
+  background: var(--surface-raised);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-overlay);
+  color: var(--fg);
+}
+
+.legato-tag-editor-title {
+  margin: 0 0 0.75rem;
+  font-size: 1.1rem;
+  color: var(--fg);
+}
+
+.legato-tag-editor-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin-bottom: 0.75rem;
+  min-height: 1.5rem;
+}
+
+.legato-tag-editor-no-tags {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.85rem;
+  font-style: italic;
+}
+
+.legato-tag-editor-tag-chip {
+  font: inherit;
+  font-size: 0.8rem;
+  padding: 0.2rem 0.6rem;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--fg);
+  cursor: pointer;
+}
+
+.legato-tag-editor-tag-chip:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.legato-tag-editor-add {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+}
+
+.legato-tag-editor-input {
+  flex: 1;
+  min-width: 0;
+  padding: 0.4rem 0.6rem;
+  font: inherit;
+  color: var(--fg);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+}
+
+.legato-tag-editor-add-btn {
+  font: inherit;
+  font-weight: 600;
+  font-size: 0.85rem;
+  padding: 0.4rem 0.9rem;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: var(--accent);
+  color: var(--accent-contrast);
+  cursor: pointer;
+}
+
+.legato-tag-editor-cancel {
+  font: inherit;
+  font-size: 0.85rem;
+  padding: 0.4rem 0.9rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface-raised);
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.legato-tag-editor-cancel:hover {
+  color: var(--fg);
+  border-color: var(--accent);
+}
+
+/* ── L-7: the detail pane's "Edit tags" affordance ─────────────── */
+
+.legato-detail-edit-tags {
+  display: inline-block;
+  margin-top: 0.5rem;
+  font: inherit;
+  font-size: 0.8rem;
+  padding: 0.25rem 0.6rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--fg);
+  cursor: pointer;
+}
+
+.legato-detail-edit-tags:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}

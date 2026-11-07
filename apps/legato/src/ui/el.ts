@@ -78,6 +78,7 @@ export function el<K extends keyof HTMLElementTagNameMap>(
     html?: string;
     class?: string;
     "aria-label"?: string;
+    "aria-pressed"?: string;
     "aria-selected"?: string;
     "aria-current"?: string;
     "aria-controls"?: string;

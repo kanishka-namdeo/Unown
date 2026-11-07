@@ -40,18 +40,17 @@ test("PALETTE_BY_ID contains every row", () => {
   }
 });
 
-test("the L-5-wired commands are enabled: clip-url, search, theme", () => {
-  for (const id of ["clip-url", "search", "theme"]) {
+test("the L-5/L-7-wired commands are enabled: clip-url, search, theme, filter-tags", () => {
+  for (const id of ["clip-url", "search", "theme", "filter-tags"]) {
     expect(PALETTE_BY_ID[id].enabled).toBe(true);
   }
 });
 
 test("the L-6/L-7/L-9 commands are honestly stubbed: disabled + a ticket named", () => {
+  // L-6's commands land with the r/d/a/u keys in app.ts (L-6 close);
+  // L-7's filter-tags is now enabled (the filter bar landed);
+  // L-9's export/import remain stubbed.
   const stubbed: Array<[string, string]> = [
-    ["mark-reading", "L-6"],
-    ["mark-done", "L-6"],
-    ["archive", "L-6"],
-    ["filter-tags", "L-7"],
     ["export", "L-9"],
     ["import", "L-9"],
   ];
@@ -97,10 +96,10 @@ if (!hasDom) {
     // The command rows render (9 rows, in group sections).
     const rows = overlay!.querySelectorAll<HTMLElement>(".legato-palette-row");
     expect(rows.length).toBe(9);
-    // The L-6 stub row carries the honest disabled title.
-    const markReading = Array.from(rows).find((r) => r.getAttribute("data-cmd") === "mark-reading")!;
-    expect(markReading.getAttribute("aria-disabled")).toBe("true");
-    expect(markReading.title).toContain("L-6");
+    // The L-9 stub row carries the honest disabled title.
+    const exportRow = Array.from(rows).find((r) => r.getAttribute("data-cmd") === "export")!;
+    expect(exportRow.getAttribute("aria-disabled")).toBe("true");
+    expect(exportRow.title).toContain("L-9");
     // The L-5-wired row is enabled.
     const searchRow = Array.from(rows).find((r) => r.getAttribute("data-cmd") === "search")!;
     expect(searchRow.getAttribute("aria-disabled")).toBe("false");

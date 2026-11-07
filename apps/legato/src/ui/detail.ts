@@ -43,6 +43,10 @@ export interface DetailPaneOpts {
   /** position text ("3 of 12") — the app computes it from the
    *  queue state (L-6 owns the queue; L-5 owns the counter line) */
   positionLabel?: string;
+  /** L-7: the tag editor's open action (the app injects it; the
+   *  detail pane renders the "Edit tags" button when this is
+   *  provided — the visible affordance, not just the 't' key). */
+  onEditTags?: () => void;
   /** id prefix (tests run multiple panes) */
   idPrefix?: string;
 }
@@ -113,6 +117,20 @@ export function renderDetailPane(root: HTMLElement, opts: DetailPaneOpts): {
       "data-state": clip.state,
     }),
   );
+
+  // L-7: the tag editor's visible affordance (the "Edit tags"
+  // button — the 't' key shortcut's visible twin; the app wires
+  // onEditTags to openTagEditor + renderTagEditor, the Ostinato
+  // dialog contract).
+  if (opts.onEditTags !== undefined) {
+    const editTagsBtn = el("button", {
+      class: "legato-detail-edit-tags",
+      "aria-label": "Edit tags for this clip (press t)",
+      text: "Edit tags (t)",
+    }) as HTMLButtonElement;
+    editTagsBtn.addEventListener("click", () => opts.onEditTags!());
+    paneEl.append(editTagsBtn);
+  }
 
   // The tags lane (L-7 owns tag filtering; L-5 renders the tags
   // that exist on this clip).

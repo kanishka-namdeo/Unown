@@ -83,7 +83,7 @@ export const LEGATO_PALETTE_COMMANDS: PaletteCmd[] = [
   { id: "mark-done", label: "Mark done", hint: "D", group: "states", enabled: false, stubFor: "L-6" },
   { id: "archive", label: "Archive clip", hint: "A", group: "states", enabled: false, stubFor: "L-6" },
   // L-7's tag filter lane (stubbed):
-  { id: "filter-tags", label: "Filter by tag", hint: "T", group: "tags", enabled: false, stubFor: "L-7" },
+  { id: "filter-tags", label: "Filter by tag", hint: "T", group: "tags", enabled: true },
   // L-9's export/import (stubbed):
   { id: "export", label: "Export bundle (JSON)", hint: "Ctrl+E", group: "app", enabled: false, stubFor: "L-9" },
   { id: "import", label: "Import bundle (JSON)", hint: "Ctrl+O", group: "app", enabled: false, stubFor: "L-9" },
@@ -120,6 +120,12 @@ export interface PaletteState {
   actions: {
     clipUrl: () => void;
     focusSearch: () => void;
+    /** L-7: focus the tag filter bar's group element (the
+     *  "Filter by tag" palette command's action — the app
+     *  injects it so the palette module stays testable
+     *  without the app's full state, same as clipUrl /
+     *  focusSearch). */
+    focusFilterBar?: () => void;
   };
 }
 
@@ -292,6 +298,9 @@ export function dispatchPaletteCmd(cmd: PaletteCmd, state: PaletteState): void {
       return;
     case "theme":
       toggleTheme();
+      return;
+    case "filter-tags":
+      state.actions.focusFilterBar?.();
       return;
     default:
       // A disabled command's id — unreachable (Enter guards it),

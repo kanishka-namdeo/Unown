@@ -109,6 +109,7 @@ export function renderQueueEmpty(
   kind: QueueEmptyKind | null,
   onClearFilters?: () => void,
   onShowAll?: () => void,
+  tagFilterActive = false,
 ): HTMLElement | null {
   // Remove any existing panel first (idempotent re-render).
   root.querySelector<HTMLElement>("#legato-queue-empty")?.remove();
@@ -143,11 +144,18 @@ export function renderQueueEmpty(
     panel.append(showAll);
   } else {
     // "no-matches"
+    // L-7: the tag dimension — when `tagFilterActive` the copy
+    // names the active tag combo (the honest-panel law: it says
+    // WHICH filter found nothing, not just that a filter found
+    // nothing).
+    const copy = tagFilterActive
+      ? "Nothing in the library matches the active tag filter."
+      : "Nothing in the library matches the current filter.";
     panel.append(
       el("h2", { class: "legato-empty-title", text: "No matches" }),
       el("p", {
         class: "legato-empty-copy",
-        text: "Nothing in the library matches the current filter.",
+        text: copy,
       }),
     );
     const clear = el("button", {

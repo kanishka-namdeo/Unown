@@ -97,8 +97,15 @@ export interface ListRenderOpts {
   onClipFirst: () => void;
   /** L-6: the queue empty-state kind (Q-3): "no-clips" | "all-read" |
    *  "no-matches" | null. When set AND clips is empty, the panel
-   *  is chosen by this kind (not the L-5 blanket "No clips yet"). */
+   *  is chosen by this kind (not the L-5 blanket "No clips yet").
+   *  L-7: when `tagFilterActive` is true, the "no-matches" copy
+   *  names the active tag combo (the tag dimension, the brief's
+   *  item 5: the filtered-empty state gains the tag dimension). */
   queueEmpty?: "no-clips" | "all-read" | "no-matches" | null;
+  /** L-7: true when a tag filter combo is active — the "no-matches"
+   *  panel copy then names the combo (honest: it says WHICH filter
+   *  found nothing, not just that a filter found nothing). */
+  tagFilterActive?: boolean;
   /** L-6: called when the user clicks the "Show all clips" button
    *  (the "all-read" panel). */
   onShowAll?: () => void;
@@ -196,11 +203,17 @@ export function renderClipList(root: HTMLElement, opts: ListRenderOpts): {
       showAllBtn.addEventListener("click", () => opts.onShowAll?.());
       emptyPanel.append(showAllBtn);
     } else if (queueKind === "no-matches") {
+      // L-7: the tag dimension — when a tag combo is active the copy
+      // names it (the active-combo display lives in the filter bar;
+      // the panel echoes it so the state is never a bare "No matches").
+      const noMatchCopy = opts.tagFilterActive
+        ? "Nothing in the library matches the active tag filter."
+        : "Nothing in the library matches the current filter.";
       emptyPanel.append(
         el("h2", { class: "legato-empty-title", text: "No matches" }),
         el("p", {
           class: "legato-empty-copy",
-          text: "Nothing in the library matches the current filter.",
+          text: noMatchCopy,
         }),
       );
       const clearBtn = el("button", {

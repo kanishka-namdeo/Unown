@@ -44,6 +44,16 @@ import {
   ConflictError, QueueTransitionError,
   type QueueEmptyKind as QEmptyKind,
 } from "../domain/queue.js";
+import {
+  buildTagIndex, applyFilter, isFilterActive,
+  emptyCombo, type FilterCombo,
+} from "../domain/tags.js";
+import type { TagIndex } from "../domain/tags.js";
+import { renderFilterBar } from "./filterbar.js";
+import {
+  openTagEditor, closeTagEditor, renderTagEditor,
+  type TagEditorState,
+} from "./tag-editor.js";
 import type { StoragePort } from "../storage/storage-port.js";
 import type { LegatoData, Clip, ClipState } from "../domain/types.js";
 
@@ -76,6 +86,17 @@ export interface App {
     conflictNotice: string | null;
     /** the L-6 empty-state kind (Q-3): set by the queue lane */
     queueEmpty: QEmptyKind | null;
+    /** L-7: the filter combo (tag AND-dimension + state filter +
+     *  the text query). Composition law: the text query is the
+     *  ranked lane (search.ts owns its ordering); the tag + state
+     *  dimensions are the boolean predicate (applyFilter). */
+    filterCombo: FilterCombo;
+    /** L-7: the tag index (rebuilds on every re-render). */
+    tagIndex: TagIndex;
+    /** L-7: the tag editor's dialog state (Ostinato dialog
+     *  contract: role=dialog, aria-modal, focus trap, Esc
+     *  focus-return). */
+    tagEditor: TagEditorState;
   };
   palette: PaletteState;
   /** the live DOM handles (set after the first render). */
@@ -85,6 +106,14 @@ export interface App {
     detailPane: HTMLElement | null;
     /** the L-6 conflict notice panel (DOM element if mounted) */
     conflictNoticeEl: HTMLElement | null;
+    /** L-7: the filter bar's live handles (the tag chips +
+     *  active-combo display + clear-all affordance). */
+    filterBar: {
+      groupEl: HTMLElement;
+      chipEls: HTMLButtonElement[];
+      comboEl: HTMLElement;
+      clearBtn: HTMLButtonElement;
+    } | null;
   };
   /** the persist lane (Ostinato's every-transition rule). */
   persist: () => Promise<void>;
@@ -114,6 +143,9 @@ function makeApp(deps: AppDeps): App {
     queueView: "active" as "active" | "all",
     conflictNotice: null as string | null,
     queueEmpty: null as QEmptyKind | null,
+    filterCombo: emptyCombo() as FilterCombo,
+    tagIndex: { tags: [], byTag: new Map() } as TagIndex,
+    tagEditor: null as unknown as TagEditorState, // initialized after the app object is constructed
   };
   const app: App = {
     state,
@@ -129,14 +161,47 @@ function makeApp(deps: AppDeps): App {
           if (url && url.trim() !== "") deps.clipUrl?.(url.trim());
         },
         focusSearch: () => app.handles.searchInput?.focus(),
+        focusFilterBar: () => {
+          app.handles.filterBar?.groupEl.focus();
+        },
       },
     },
-    handles: { searchInput: null, rowEls: [], detailPane: null, conflictNoticeEl: null },
+    handles: {
+      searchInput: null,
+      rowEls: [],
+      detailPane: null,
+      conflictNoticeEl: null,
+      filterBar: null,
+    },
     persist: async () => {
       if (state.data === null) return;
       await deps.storage.save(state.data);
     },
     rerender: () => {},
+  };
+  // L-7: the tag editor's dialog state — the app owns `onCommit`
+  // (it persists through the StoragePort, the Ostinato
+  // every-transition rule) + the re-render lane.
+  state.tagEditor = {
+    open: false,
+    clipId: null,
+    tags: [],
+    draft: "",
+    invokingEl: null,
+    onCommit: (clipId: number, tags: string[]) => {
+      const data = state.data;
+      if (data === null) return;
+      const clip = data.clips.find((c) => c.id === clipId);
+      if (clip === undefined) return;
+      clip.tags = tags;
+      clip.updatedAt = new Date().toISOString();
+      // L-7: the store's tag index re-derives (the domain's law).
+      const union = new Set<string>();
+      for (const c of data.clips) for (const t of c.tags) union.add(t);
+      data.tags = [...union].sort();
+      void deps.storage.save(data).catch(() => {});
+      app.rerender();
+    },
   };
   return app;
 }
@@ -174,7 +239,7 @@ export async function main(deps: AppDeps, root?: HTMLElement): Promise<App> {
     el("h1", { class: "legato-title", text: "Legato" }),
     el("p", {
       class: "legato-header-hint",
-      text: "j/k move · Enter open · Esc close · / search · Ctrl+K palette · t theme",
+      text: "j/k move · Enter open · Esc close · / search · Ctrl+K palette · t theme / edit tags",
     }),
   );
   rootEl.append(header);
@@ -203,7 +268,9 @@ export async function main(deps: AppDeps, root?: HTMLElement): Promise<App> {
     const results = terms.length > 0 ? search(st.searchIndex, st.searchQuery) : null;
     let clips: readonly Clip[];
     if (results !== null) {
-      // search lane: the ranked results, unchanged
+      // L-5 search lane: the ranked results (the composition law —
+      // the search lane owns its ordering; the tag + state
+      // dimensions are composed OVER this set below, not instead).
       clips = results.map((r) => data.clips.find((c) => c.id === r.id)!).filter((c) => c);
     } else if (st.queueView === "all") {
       // L-6's "all" toggle: every clip, no state filter
@@ -212,11 +279,22 @@ export async function main(deps: AppDeps, root?: HTMLElement): Promise<App> {
       // L-6's default active queue: reading first, then unread
       clips = activeClips(data);
     }
+    // L-7: the tag AND-dimension composes over the result set
+    // (the composition law in tags.ts: the text query is the
+    // ranked lane; the tag + state dimensions are the boolean
+    // predicate applyFilter runs).
+    st.filterCombo.query = st.searchQuery;
+    clips = applyFilter(clips, st.filterCombo);
     if (st.selectedIdx >= clips.length) st.selectedIdx = Math.max(0, clips.length - 1);
+
+    // L-7: the tag index re-derives on every re-render (the
+    // domain's "the index derives from the store" ruling).
+    st.tagIndex = buildTagIndex(data.clips);
 
     // L-6 Q-3: the empty-state discrimination runs BEFORE the paint
     // so the panel is correct when the list is empty.
-    const filterActive = terms.length > 0;
+    // L-7: a tag combo (or state filter) counts as a filter too.
+    const filterActive = terms.length > 0 || isFilterActive(st.filterCombo);
     if (filterActive) {
       st.queueEmpty = filteredEmptyKind(clips as readonly Clip[], true);
     } else {
@@ -230,6 +308,7 @@ export async function main(deps: AppDeps, root?: HTMLElement): Promise<App> {
       onOpen: (idx) => openDetail(app, idx, clips),
       onSearch: (q) => {
         st.searchQuery = q;
+        st.filterCombo.query = q; // L-7: the text query rides in the combo too
         st.searchIndex = buildIndex(data.clips);
         st.selectedIdx = 0;
         st.detailOpen = false;
@@ -238,6 +317,9 @@ export async function main(deps: AppDeps, root?: HTMLElement): Promise<App> {
       onClipFirst: () => app.palette.actions.clipUrl(),
       // L-6 Q-3: the queue empty-state kind + the panel affordances.
       queueEmpty: st.queueEmpty,
+      // L-7: the tag dimension — the "no-matches" panel copy names
+      // the active tag combo when it is active (the brief's item 5).
+      tagFilterActive: st.filterCombo.tags.length > 0 || st.filterCombo.state !== null,
       onShowAll: () => {
         st.queueView = "all";
         st.selectedIdx = 0;
@@ -245,6 +327,7 @@ export async function main(deps: AppDeps, root?: HTMLElement): Promise<App> {
       },
       onClearFilters: () => {
         st.searchQuery = "";
+        st.filterCombo = emptyCombo(); // L-7: clear the whole combo (tags + state + query)
         st.selectedIdx = 0;
         app.rerender();
       },
@@ -252,6 +335,52 @@ export async function main(deps: AppDeps, root?: HTMLElement): Promise<App> {
     });
     app.handles.searchInput = handles.searchInput;
     app.handles.rowEls = handles.rowEls;
+
+    // L-7: the filter bar (the tag chips + active-combo display +
+    // clear-all affordance) renders in the list host, above the
+    // search input + list rows. Hidden when no clip has any tags
+    // (an honest empty state: the bar only appears when there is
+    // something to filter by).
+    if (st.tagIndex.tags.length > 0) {
+      const bar = renderFilterBar(listRoot, {
+        index: st.tagIndex,
+        combo: st.filterCombo,
+        onToggleTag: (tag: string) => {
+          const idx = st.filterCombo.tags.indexOf(tag);
+          if (idx >= 0) {
+            st.filterCombo.tags = st.filterCombo.tags.filter((_, i) => i !== idx);
+          } else {
+            st.filterCombo.tags = [...st.filterCombo.tags, tag].sort();
+          }
+          st.selectedIdx = 0;
+          app.rerender();
+        },
+        onClearAll: () => {
+          st.searchQuery = "";
+          st.filterCombo = emptyCombo();
+          st.selectedIdx = 0;
+          app.rerender();
+        },
+        idPrefix: "legato",
+      });
+      // The bar must render ABOVE the search input + list rows:
+      // move the group element to the front of listRoot's children.
+      const groupEl = bar.groupEl;
+      const searchInputEl = handles.searchInput!;
+      // The bar's group is already in listRoot (renderFilterBar
+      // appends it); reorder: the group goes before the search
+      // input, the search input before the list rows.
+      listRoot.insertBefore(groupEl, searchInputEl);
+      listRoot.insertBefore(bar.comboEl, groupEl.nextSibling);
+      listRoot.insertBefore(bar.clearBtn, bar.comboEl.nextSibling);
+      app.handles.filterBar = bar;
+    } else {
+      // No tags at all — hide the bar (remove any stale instance).
+      app.handles.filterBar?.groupEl.remove();
+      app.handles.filterBar?.comboEl.remove();
+      app.handles.filterBar?.clearBtn.remove();
+      app.handles.filterBar = null;
+    }
 
     // L-6 conflict notice (Q-1): if the state just threw a
     // ConflictError the app stores the notice and the panel
@@ -283,6 +412,18 @@ export async function main(deps: AppDeps, root?: HTMLElement): Promise<App> {
     const detailHandles = renderDetailPane(detailRoot, {
       clip: openClip,
       positionLabel: posLabel,
+      // L-7: the tag editor's visible affordance (the "Edit tags"
+      // button in the detail pane — the 't' key shortcut's visible
+      // twin; opens the Ostinato-contract dialog via the tag
+      // editor's onCommit lane, which persists through the
+      // StoragePort on every transition).
+      onEditTags: openClip !== null ? () => {
+        const c = st.data!.clips.find((x) => x.id === openClip.id);
+        if (c !== undefined) {
+          openTagEditor(st.tagEditor, c);
+          renderTagEditor(st.tagEditor);
+        }
+      } : undefined,
       idPrefix: "legato",
     });
     app.handles.detailPane = detailHandles.paneEl;
@@ -310,6 +451,11 @@ function onKey(e: KeyboardEvent, app: App, doc: Document, deps: AppDeps): void {
   const palette = app.palette;
 
   if (palette.open) return;
+  // L-7: when the tag editor's dialog is open, the overlay's own
+  // onkeydown handles the dialog keys (Esc, Tab trap, Enter in
+  // the input); the document-level handler must NOT re-route
+  // j/k/Enter/etc. over the dialog.
+  if (st.tagEditor.open) return;
 
   if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "k") {
     e.preventDefault();
@@ -324,7 +470,18 @@ function onKey(e: KeyboardEvent, app: App, doc: Document, deps: AppDeps): void {
 
   if (e.key === "t" && !e.ctrlKey && !e.metaKey && !e.altKey && !inInput) {
     e.preventDefault();
-    toggleTheme();
+    // L-7: in the detail view, 't' opens the tag editor (the
+    // Ostinato dialog contract); outside the detail, 't' toggles
+    // the theme (the L-5 lane, unchanged).
+    if (st.detailOpen && st.detailClipId !== null && st.data !== null) {
+      const clip = st.data.clips.find((c) => c.id === st.detailClipId);
+      if (clip !== undefined) {
+        openTagEditor(st.tagEditor, clip);
+        renderTagEditor(st.tagEditor);
+      }
+    } else {
+      toggleTheme();
+    }
     return;
   }
 
