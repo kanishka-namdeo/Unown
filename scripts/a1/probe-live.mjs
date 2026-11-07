@@ -270,6 +270,10 @@ async function main() {
       const hasMeter = /\d+\s*\/\s*4096|4096/i.test(editorText);
       const hasTextarea = (await page.locator('[data-route="manual-notes"] textarea').count()) > 0;
       // The idempotent PUT round-trip through the app's own server edge.
+      // V-28 hardening: byte-compare the REAL FILE before/after (a
+      // GET-to-GET comparison cannot catch an extractor bug — both reads
+      // return the same partial section while the file is clobbered).
+      const fileBefore = readFileSync(join(REPO, ".unown", "memory", "project.md"), "utf8");
       const before = await fetch(`http://127.0.0.1:${PORT}/manual-notes`).then((r) => r.json()).catch(() => null);
       let putOk = false, fileUnchanged = false;
       if (before && typeof before.section === "string") {
@@ -280,7 +284,8 @@ async function main() {
         }).catch(() => null);
         putOk = put?.ok === true;
         const after = await fetch(`http://127.0.0.1:${PORT}/manual-notes`).then((r) => r.json()).catch(() => null);
-        fileUnchanged = after?.section === before.section;
+        const fileAfter = readFileSync(join(REPO, ".unown", "memory", "project.md"), "utf8");
+        fileUnchanged = fileAfter === fileBefore && after?.section === before.section;
       }
       boundary(
         "learning-manual-notes-editor",

@@ -26,6 +26,10 @@
  *     rejected outright with 400). In-app edits are the human's
  *     edits — the app never writes through an agent session.
  *
+ * V-28 ISOLATION LAW: a route that can write a real file resolves its
+ * target from the FUGUE_NOTES_ROOT env var (default: the repo root,
+ * so the live lane is unchanged) — the test lane ALWAYS overrides it.
+ *
  * Runs under `bun` only (Bun.Transpiler is bun-only). ES2020+ plain
  * JS, no TypeScript syntax. Dev/test server: no caching headers, no
  * auth, bound to 127.0.0.1.
@@ -46,11 +50,14 @@ import {
 const ROOT = resolve(import.meta.dirname);
 const PORT = Number(process.env.FUGUE_PORT ?? 4015);
 
-// The repo root: two levels up from apps/fugue/ (the .unown surface
-// lives at <repo-root>/.unown/).
-const REPO_ROOT = resolve(ROOT, "..", "..");
-const SKILLS_STAGED_DIR = join(REPO_ROOT, ".unown", "skills-staged");
-const PROJECT_MD_PATH = join(REPO_ROOT, ".unown", "memory", "project.md");
+// V-28 ISOLATION LAW: a route that can write a real file resolves its
+// target from the FUGUE_NOTES_ROOT env var (default: the repo root —
+// the LIVE lane keeps working unchanged; the TEST lane always
+// overrides it with its own temp fixture dir, so no test-server boot
+// can write a real file).
+const FUGUE_NOTES_ROOT = resolve(process.env.FUGUE_NOTES_ROOT ?? resolve(ROOT, "..", ".."));
+const SKILLS_STAGED_DIR = join(FUGUE_NOTES_ROOT, ".unown", "skills-staged");
+const PROJECT_MD_PATH = join(FUGUE_NOTES_ROOT, ".unown", "memory", "project.md");
 // The 4096 cap now comes from the shared module (single source of
 // truth with the cap meter + the over-marker view model).
 void MANUAL_NOTES_CAP;
