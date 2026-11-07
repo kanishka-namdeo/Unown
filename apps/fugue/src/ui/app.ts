@@ -64,7 +64,9 @@ export interface FugueState {
   /** The run-detail + spend routes' data (adapter-fed; F-5 ticket 1/3). */
   runs?: RunRecordView[];
   jobs?: { id: number | string; title: string }[];
-  selectedRunId?: number | null;
+  /** The run id the cursor sits on (string | null — the F-7 ruling:
+   *  the raw string run id flows end-to-end, never a Number() collapse). */
+  selectedRunId?: string | null;
   spend?: SpendReport | null;
   /** The last job command's honest result (surfaced, never silent). */
   jobActionError?: string;
@@ -830,7 +832,10 @@ export function main(): void {
     }
     if (target.closest(".fugue-run-row")) {
       const runEl = target.closest(".fugue-run-row") as HTMLElement;
-      s.selectedRunId = Number(runEl.dataset.run);
+      // The raw string run id (the F-7 ruling) — the run-detail join
+      // compares by string equality; a Number() collapse here is the
+      // "Job 0" regression class.
+      s.selectedRunId = runEl.dataset.run ?? null;
       s.route = "run-detail";
       rerender();
       return;
@@ -850,7 +855,12 @@ export function main(): void {
     if (target.closest(".fugue-back")) {
       const backEl = target.closest(".fugue-back") as HTMLElement;
       s.route = "runs";
-      s.selectedJobId = Number(backEl.dataset.backTask) || null;
+      // Keep the RAW task ref (the F-7 ruling): the job's real id is a
+      // string ('auto-xxx'); a numeric collapse turns it into 0 and the
+      // group title reads "Job 0".
+      const backTask = backEl.dataset.backTask;
+      s.selectedJobId =
+        backTask !== null && backTask !== "" ? backTask : null;
       rerender();
     }
   });

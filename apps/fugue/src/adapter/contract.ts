@@ -54,8 +54,8 @@ export const CONTRACT_FIXTURES = {
   ],
   runs: [
     {
-      id: 11,
-      taskId: 1,
+      id: "11",
+      taskId: "1",
       kind: "cron",
       status: "ok" as const,
       startedAt: "2026-11-07T09:00:00Z",
@@ -67,8 +67,8 @@ export const CONTRACT_FIXTURES = {
       error: null,
     },
     {
-      id: 12,
-      taskId: 2,
+      id: "12",
+      taskId: "2",
       kind: "every",
       status: "failed" as const,
       startedAt: "2026-11-08T00:00:00Z",
@@ -371,10 +371,19 @@ export function assertRunRecord(payload: unknown): void {
       `startedAt: missing required field (neither startedAt nor started_at)`,
     );
   }
-  pin(payload, "kind", "string-or-null");
-  // trigger_kind is optional (the automation-run wire form).
-  if ("trigger_kind" in rec && rec.trigger_kind !== null) {
+  // Kind lane: the generic lane carries `kind`; the automation-scoped
+  // lane (GET /api/automations/:id/runs) carries `trigger_kind` and no
+  // `kind` at all (the operator-witnessed wire, live 2026-11-07). Either
+  // field satisfies the lane — the taskRef either-form pattern; at
+  // least one is required, the present one is pinned.
+  if ("kind" in rec) {
+    pin(payload, "kind", "string-or-null");
+  } else if ("trigger_kind" in rec) {
     pin(payload, "trigger_kind", "string");
+  } else {
+    throw new EngineDrift(
+      `run kind lane: missing required field (neither kind nor trigger_kind)`,
+    );
   }
   // status: the automation-run wire form (succeeded/failed/running/stopped)
   // plus the generic fixture statuses; anything else is drift.
@@ -387,12 +396,44 @@ export function assertRunRecord(payload: unknown): void {
       `status: must be one of [${[...RUN_STATUSES, ...autoStatuses].join("|")}] (got ${JSON.stringify(statusLane)})`,
     );
   }
-  pin(payload, "tokensIn", "number");
-  pin(payload, "tokensOut", "number");
-  pin(payload, "toolCalls", "number");
+  // Tokens lane: the generic lane carries camelCase tokensIn/tokensOut;
+  // the automation-scoped lane carries snake_case tokens_in/tokens_out
+  // (the operator-witnessed wire, live 2026-11-07). Either form is
+  // legal — require at least one of each, pin the present one.
+  if ("tokensIn" in rec) {
+    pin(payload, "tokensIn", "number");
+  } else if ("tokens_in" in rec) {
+    pin(payload, "tokens_in", "number");
+  } else {
+    throw new EngineDrift(
+      `run tokensIn: missing required field (neither tokensIn nor tokens_in)`,
+    );
+  }
+  if ("tokensOut" in rec) {
+    pin(payload, "tokensOut", "number");
+  } else if ("tokens_out" in rec) {
+    pin(payload, "tokens_out", "number");
+  } else {
+    throw new EngineDrift(
+      `run tokensOut: missing required field (neither tokensOut nor tokens_out)`,
+    );
+  }
+  // toolCalls: optional in BOTH lane forms (the automation-scoped wire
+  // omits it — the operator-witnessed row has no tool_calls). Pin only
+  // when present; the generic-lane F-2 fixture keeps its numeric pin.
+  if ("toolCalls" in rec) pin(payload, "toolCalls", "number");
+  if ("tool_calls" in rec) pin(payload, "tool_calls", "number");
+  // turns + error: required in both lane forms (the operator-witnessed
+  // row carries both).
   pin(payload, "turns", "number");
   pin(payload, "error", "string-or-null");
   if (dig(payload, "endedAt") !== undefined) pin(payload, "endedAt", "string-or-null");
+  // ended_at: the automation-scoped lane's ended timestamp (epoch ms or
+  // null); optional-pin when present.
+  if (dig(payload, "ended_at") !== undefined) {
+    const ev = dig(payload, "ended_at");
+    if (ev !== null) pinNumOrString(payload, "ended_at");
+  }
 }
 
 /** A "number-or-string" helper for run records (a finite number OR a

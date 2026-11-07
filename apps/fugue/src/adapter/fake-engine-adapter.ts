@@ -76,7 +76,7 @@ export class FakeEngineAdapter implements EngineAdapter {
   private memoriesState: MemoryView;
   private spendState: SpendReport;
   private nextAutomationId = 3;
-  private nextRunId = 13;
+  private nextRunId = 13; // the fixture lane's decimal string ids
   /** The canned engine overview (mutated via setOverview). */
   private overviewState: EngineStatusView;
 
@@ -219,8 +219,10 @@ export class FakeEngineAdapter implements EngineAdapter {
     // numbers come from the fake's own state, never invented live).
     const owner = this.automations.find((a) => String(a.id) === String(id));
     this.runsState.unshift({
-      id: this.nextRunId++,
-      taskId: owner ? Number(owner.id) : 0,
+      // The run view ids are STRINGS (the F-7 ruling): the fixture lane
+      // keeps its decimal string ids; the owner join is a String-equality.
+      id: String(this.nextRunId++),
+      taskId: owner ? String(owner.id) : "0",
       kind: this.automations.find((a) => String(a.id) === String(id))?.schedule.kind ?? "cron",
       status: "ok" as const,
       startedAt: this.clock(),
@@ -247,8 +249,11 @@ export class FakeEngineAdapter implements EngineAdapter {
   async history(id: number | string, limit?: number): Promise<RunRecordView[]> {
     this.requireAutomation(id);
     const rows = this.runsState
-      .filter((r) => String(r.taskId ?? 0) === String(id))
-      .sort((a, b) => b.id - a.id);
+      .filter((r) => String(r.taskId ?? "0") === String(id))
+      .sort((a, b) =>
+        Number(a.id) - Number(b.id) ||
+        (Number.isNaN(Number(a.id)) && !Number.isNaN(Number(b.id)) ? 1 : -1),
+      );
     return limit !== undefined ? rows.slice(0, limit) : rows;
   }
 

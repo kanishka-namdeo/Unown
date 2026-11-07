@@ -66,10 +66,13 @@ export interface Job {
   updatedAt: number;
 }
 
-/** One engine run, as the console renders it (engine accounting only). */
+/** One engine run, as the console renders it (engine accounting only).
+ * The engine-facing run view ids are STRINGS (the automation-scoped lane
+ * carries qualified 'auto-xxx:manual:yyy' run ids and string task refs);
+ * the fixture lane's numeric rows map to their decimal string form. */
 export interface RunRecordView {
-  id: number;
-  taskId: number;
+  id: string;
+  taskId: string;
   kind: string;
   status: RunStatus;
   startedAt: number;

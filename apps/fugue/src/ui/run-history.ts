@@ -12,11 +12,16 @@
  *     partial run (tokens in, zero out) is NEVER rendered as success.
  *   - the empty state is per-group: a job with zero runs gets its own
  *     honest "no runs yet" group line, never a fake row.
+ *
+ * Ids are STRINGS end-to-end (the F-7 ruling): the engine's qualified
+ * run ids ('auto-xxx:manual:yyy') and string task ids group by
+ * String-equality on the raw values — never a Number() collapse (the
+ * "Job 0" regression class).
  */
 import type { RunRecordView } from "../domain/types.js";
 
 export interface RunGroup {
-  taskId: number | null; // null = unattributed (the global lane)
+  taskId: string | null; // null = unattributed (the global lane)
   title: string;
   rows: RunRecordView[]; // newest first
 }
@@ -25,48 +30,62 @@ export interface RunHistoryOptions {
   runs: RunRecordView[];
   /** Job titles for `taskId`s that have runs; unknown ids fall back to
    *  a bare id label. Omit for the global (ungrouped) lane. */
-  jobTitles?: Record<number, string>;
+  jobTitles?: Record<string, string>;
   /** The global lane: one group, no per-job empty states. */
   groupByJob?: boolean;
   /** Jobs with zero runs still get an honest empty group line.
    *  The id is the RAW task id (the engine's string 'auto-xxx' ids or
-   *  the fixture's numeric ones) — String()-equality everywhere. */
+   *  the fixture's decimal-string ones) — String()-equality everywhere. */
   jobs?: { id: number | string; title: string }[];
-  selected?: number | null; // the run id the cursor sits on (optional: null when unselected)
+  /** The run id the cursor sits on (optional: null when unselected). */
+  selected?: string | null;
 }
 
 export interface RunHistoryViewModel {
-  groups: { title: string; taskId: number | null; rows: string[]; empty: boolean }[];
+  groups: { title: string; taskId: string | null; rows: string[]; empty: boolean }[];
   totalRows: number;
-  runIds: number[]; // flat order matching the rendered rows
+  runIds: string[]; // flat order matching the rendered rows
   selectedIndex: number;
 }
 
 /** Group the runs by job (newest first within a group; groups in the
- *  caller's job order, the global lane first when mixed). Pure. */
-export function groupRuns(runs: RunRecordView[], jobs?: { id: number | string; title: string }[]): RunGroup[] {
-  const titleOf = (taskId: number): string =>
-    jobs?.find((j) => String(j.id) === String(taskId))?.title ?? `Job ${taskId}`;
-  const byTask = new Map<number, RunRecordView[]>();
+ *  caller's job order, the global lane first when mixed). Pure.
+ *  The Map keys are String(taskId) consistently — the engine's string
+ *  task ids group under their RAW value, and the group title resolves
+ *  by String()-equality, never a numeric collapse. */
+export function groupRuns(
+  runs: RunRecordView[],
+  jobs?: { id: number | string; title: string }[],
+): RunGroup[] {
+  const titleOf = (taskKey: string): string =>
+    jobs?.find((j) => String(j.id) === taskKey)?.title ?? `Job ${taskKey}`;
+  const byTask = new Map<string, RunRecordView[]>();
   for (const r of runs) {
-    const rows = byTask.get(r.taskId) ?? [];
+    const key = String(r.taskId);
+    const rows = byTask.get(key) ?? [];
     rows.push(r);
-    byTask.set(r.taskId, rows);
+    byTask.set(key, rows);
   }
-  byTask.forEach((rows) => rows.sort((a, b) => b.id - a.id));
+  byTask.forEach((rows) =>
+    rows.sort(
+      (a, b) =>
+        Number(b.id) - Number(a.id) ||
+        (Number.isNaN(Number(a.id)) && !Number.isNaN(Number(b.id)) ? 1 : -1),
+    ),
+  );
   // The known jobs in the caller's order, then any unknown task ids
-  // that have runs, in ascending order (stable, honest). The engine's
-  // string task ids group under their coerced numeric key (0) — the
-  // group title resolves by String()-equality (O-4), never a crash.
-  const orderedTasks: number[] = [...(jobs ?? [])].map((j) => Number(j.id) || 0);
-  for (const id of byTask.keys()) {
-    if (!orderedTasks.includes(id)) orderedTasks.push(id);
+  // that have runs, in ascending order (stable, honest). The key is the
+  // String-normalized task id — the engine's string ids keep their RAW
+  // value; the fixture lane's numeric ids use their decimal form.
+  const orderedTasks: string[] = [...(jobs ?? [])].map((j) => String(j.id));
+  for (const key of byTask.keys()) {
+    if (!orderedTasks.includes(key)) orderedTasks.push(key);
   }
-  const groupJobs = orderedTasks.map((id) => ({ id: Number(id), title: titleOf(id) }));
+  const groupJobs = orderedTasks.map((key) => ({ key, title: titleOf(key) }));
   return groupJobs.map((j) => ({
-    taskId: j.id,
+    taskId: j.key,
     title: j.title,
-    rows: byTask.get(j.id) ?? [],
+    rows: byTask.get(j.key) ?? [],
   }));
 }
 
@@ -108,7 +127,9 @@ export function statusClass(status: RunRecordView["status"]): string {
 }
 
 /** One run row's HTML. The badge shows the RAW status word — a failed
- *  run with partial tokens renders `failed`, never a success badge. */
+ *  run with partial tokens renders `failed`, never a success badge.
+ *  data-run / data-task carry the RAW string ids (the F-7 ruling —
+ *  the run-detail join and the back-navigation compare by string). */
 export function renderRunRow(r: RunRecordView): string {
   const badge =
     r.status === "ok"
@@ -136,14 +157,14 @@ export function renderRunHistory(opts: RunHistoryOptions): string {
         : `<div class="fugue-run-group" data-task="${g.taskId}" aria-label="${escapeHtml(g.title)}"><h3>${escapeHtml(g.title)}</h3><ul class="fugue-runs">${g.rows.map(renderRunRow).join("")}</ul></div>`,
     )
     .join("\n");
-  const sel = selected !== null ? ` data-selected="${selected}"` : "";
+  const sel = selected !== null ? ` data-selected="${escapeHtml(selected)}"` : "";
   return `<section class="fugue-route" data-route="runs" aria-label="Run history"${sel}><h2>Runs</h2>${groupsHtml}</section>`;
 }
 
 /** Build the view model (the job-list.ts kin: flat ids + selection). */
 export function runHistoryViewModel(opts: RunHistoryOptions): RunHistoryViewModel {
   const groups = groupRuns(opts.runs, opts.jobs?.map((j) => ({ id: j.id, title: j.title })));
-  const runIds: number[] = [];
+  const runIds: string[] = [];
   let selectedIndex = -1;
   const groupRows = groups.map((g) => {
     const rows = g.rows.map(renderRunRow);
@@ -151,7 +172,8 @@ export function runHistoryViewModel(opts: RunHistoryOptions): RunHistoryViewMode
     return { title: g.title, taskId: g.taskId, rows, empty: g.rows.length === 0 };
   });
   runIds.forEach((id, i) => {
-    if (opts.selected !== null && id === opts.selected) selectedIndex = i;
+    if (opts.selected !== null && opts.selected !== undefined && id === opts.selected)
+      selectedIndex = i;
   });
   return {
     groups: groupRows,

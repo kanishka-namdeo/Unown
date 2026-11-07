@@ -104,7 +104,9 @@ export interface EngineAutomationRow {
   updated_at: number;
 }
 
-/** The engine's wire run record (snake_case, the pinned fields). */
+/** The engine's wire run record (snake_case, the pinned fields).
+ *  The run view ids are STRINGS (the F-7 ruling) — the RAW string run
+ *  id and RAW task reference flow through uncoerced. */
 export interface EngineRunRecord {
   id: string;
   task_id: string;
@@ -359,11 +361,28 @@ export function mapRuns(rows: unknown): RunRecordView[] {
     // automation_id + trigger_kind + string ids + automation statuses;
     // the generic lane carries task_id + numeric ids + generic statuses.
     // Both forms are normalized here at the adapter boundary (F-1 law).
+    // The run view ids are STRINGS (the operator ruling, F-7): the RAW
+    // string run id ('auto-xxx:manual:yyy' or a uuid) and the RAW task
+    // reference flow through uncoerced — the groupRuns String-equality
+    // join needs the raw values, never a Number() collapse.
     const rawTask = (r.automation_id ?? r.task_id ?? r.taskId ?? null) as
       | string
       | number
       | null;
+    const rawId = (r.id ?? null) as string | number | null;
     const numTask = rawTask !== null ? Number(rawTask) : NaN;
+    const taskId =
+      rawTask !== null
+        ? String(rawTask)
+        : numTask > 0
+          ? String(numTask)
+          : "0";
+    const runId =
+      typeof rawId === "number" && Number.isFinite(rawId) && rawId > 0
+        ? String(rawId)
+        : typeof rawId === "string" && rawId !== ""
+          ? rawId
+          : String(i + 1);
     // status map: succeeded->ok, failed->failed, stopped->capped,
     // running->ok (the open-run label renders via the null endedAt below).
     const rawStatus = String(r.status ?? "ok");
@@ -388,10 +407,9 @@ export function mapRuns(rows: unknown): RunRecordView[] {
       typeof r.trigger_kind === "string" && r.trigger_kind !== ""
         ? r.trigger_kind
         : String(r.kind ?? "manual");
-    const numId = Number(r.id);
     return {
-      id: Number.isFinite(numId) && numId > 0 ? numId : i + 1,
-      taskId: Number.isFinite(numTask) && numTask > 0 ? numTask : 0,
+      id: runId,
+      taskId,
       kind,
       status: status as RunRecordView["status"],
       startedAt: String(toEpochMs(r.startedAt ?? r.started_at)),
@@ -404,6 +422,7 @@ export function mapRuns(rows: unknown): RunRecordView[] {
     };
   });
 }
+
 
 /** Epoch-ms normalization: a finite number stays; an ISO-8601 string
  *  parses to its epoch; a bare numeric string coerces; missing -> 0. */

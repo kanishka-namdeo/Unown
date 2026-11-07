@@ -22,14 +22,11 @@ import { expect, test } from "@playwright/test";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 
-const FUGUE_LIVE = process.env.FUGUE_LIVE === "1";
+test.describe.configure({ mode: "serial" });
 test.skip(
-  !FUGUE_LIVE,
+  process.env.FUGUE_LIVE !== "1",
   "live engine lane only — run with FUGUE_LIVE=1 (a strict subset of FUGUE_E2E)",
 );
-
-test.describe.configure({ mode: "serial" });
-
 const ENGINE_URL = process.env.FUGUE_ENGINE_URL ?? "http://127.0.0.1:3030";
 const LIVE_MARKER = "FUGUE_LIVE_OK";
 const LIVE_TITLE = "Fugue live loop probe";
@@ -63,6 +60,7 @@ async function probeEngine(): Promise<string> {
   return token;
 }
 
+/** Cleanup: delete a routine by id (RULING 3 — the spec owns the cleanup). */
 async function deleteAutomation(token: string, id: string): Promise<void> {
   const res = await fetch(`${ENGINE_URL}/api/automations/${encodeURIComponent(id)}`, {
     method: "DELETE",
@@ -119,8 +117,9 @@ async function createRoutineViaUi(page: import("@playwright/test").Page): Promis
   ).toBeVisible({ timeout: 30_000 });
 }
 
-/** The run-now-via-palette + run-row await (V-15: no bare sleeps). */
-async function runNowAndAwaitRunRow(page: import("@playwright/test").Page, baseline: number): Promise<void> {
+/** The run-now-via-palette + run-row await (V-15: no bare sleeps).
+ *  Returns the group title so the caller can report it in the handoff. */
+async function runNowAndAwaitRunRow(page: import("@playwright/test").Page, baseline: number): Promise<string> {
   await page.keyboard.press("Control+k");
   const palette = page.locator(".fugue-palette");
   await expect(palette).toBeVisible();
@@ -132,6 +131,14 @@ async function runNowAndAwaitRunRow(page: import("@playwright/test").Page, basel
   // ceiling; if a real run exceeds it, FAIL honestly.
   const row = page.locator(".fugue-run-row").first();
   await expect(row).toBeVisible({ timeout: 90_000 });
+  // The group title must be the routine's real title, NOT "Job 0".
+  const group = page.locator(".fugue-run-group").first();
+  const titleText = (await group.locator("h3").textContent()) ?? "";
+  if (titleText.trim() === "Job 0")
+    throw new Error(
+      `live lane: group title is "Job 0" (the string-id collapse regression); expected "${LIVE_TITLE}"`,
+    );
+  return titleText.trim();
 }
 
 test("live loop: create routine, run-now x3, cold boot, note lands", async ({ page }) => {
@@ -165,12 +172,22 @@ test("live loop: create routine, run-now x3, cold boot, note lands", async ({ pa
     // SELECT the engine-lane routine row -> runs view (baseline 0 runs).
     // The enable-rule refinement (shadow-vs-engine selection) rides F-7;
     // the live lane pins the engine lane explicitly.
-    await page.locator(`.fugue-job-row[data-lane="engine"]:has-text("${LIVE_TITLE}")`).first().click();
+    const engineRow = page.locator(`.fugue-job-row[data-lane="engine"]:has-text("${LIVE_TITLE}")`).first();
+    await engineRow.click();
     await expect(page.locator('[data-route="runs"]').first()).toBeVisible();
 
+    // F-7: the group title MUST be the routine's real title, NOT "Job 0"
+    // (the string-id collapse regression). Pin the observable before any
+    // run-now — this is the acceptance gate for the render link.
+    const preTitle = (await page.locator(".fugue-run-group h3").first().textContent()) ?? "";
+    if (preTitle.trim() === "Job 0")
+      throw new Error(
+        `live lane: pre-run-now group title reads "Job 0" (the string-id collapse regression); expected "${LIVE_TITLE}"`,
+      );
+
     // RUN-NOW #1 via the palette + await the run row (V-15 observable).
-    const baseline = (await page.locator(".fugue-run-row").count()) ?? 0;
-    await runNowAndAwaitRunRow(page, baseline);
+    const baseline = await page.locator(".fugue-run-row").count();
+    const title1 = await runNowAndAwaitRunRow(page, baseline);
 
     // COLD BOOT (>=1): full reload re-bootstraps from the engine
     // (E-03 duplicate-free: exactly ONE engine-lane row for the routine).
@@ -185,13 +202,22 @@ test("live loop: create routine, run-now x3, cold boot, note lands", async ({ pa
     await engineRows.first().click();
     await expect(page.locator('[data-route="runs"]').first()).toBeVisible();
     await expect(page.locator(".fugue-run-row").first()).toBeVisible(); // run #1 survived
+    // The cold-boot group title must also be the real title.
+    const coldBootTitle = (await page.locator(".fugue-run-group h3").first().textContent()) ?? "";
+    if (coldBootTitle.trim() === "Job 0")
+      throw new Error(
+        `live lane: cold-boot group title is "Job 0" (the string-id collapse regression); expected "${LIVE_TITLE}"`,
+      );
 
     // RUN-NOW #2 and #3: two more consecutive runs (3 total).
-    await runNowAndAwaitRunRow(page, 1);
-    await runNowAndAwaitRunRow(page, 2);
+    const title2 = await runNowAndAwaitRunRow(page, 1);
+    const title3 = await runNowAndAwaitRunRow(page, 2);
 
     // The session note lands (RULING 2: 120s honest poll, Node-side).
     await awaitLiveNote(token, 120_000);
+
+    // F-7 evidence: capture the routine id + run titles for the handoff.
+    console.log(`FUGUE_LIVE_EVIDENCE routine=${routineId} title1="${title1}" title2="${title2}" title3="${title3}" coldBootTitle="${coldBootTitle}"`);
   } finally {
     // RULING 3: cleanup the routine (even on assertion failure).
     if (routineId !== null) {

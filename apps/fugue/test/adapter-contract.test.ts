@@ -32,6 +32,7 @@ import {
   assertRuns,
 } from "../src/adapter/contract.js";
 import { mapRuns } from "../src/adapter/rest-adapter.js";
+import { groupRuns } from "../src/ui/run-history.js";
 import type { RunRecordView } from "../src/domain/types.js";
 
 const PORT = 4132;
@@ -95,9 +96,12 @@ test("F-3: engine happy path — every endpoint round-trips the real adapter", a
   expect(autos[1].id).toBe(2);
 
   // runs / dreams / notes / memories / spend: the canned fixtures.
+  // (F-7: the run view ids are STRINGS — the fixture lane's decimal
+  // string ids round-trip through mapRuns.)
   const runs = await adapter.runs();
   expect(runs.length).toBe(2);
-  expect(runs[0].id).toBe(11);
+  expect(runs[0].id).toBe("11");
+  expect(runs[0].taskId).toBe("1");
   expect(runs[0].status).toBe("ok");
   expect(runs[0].tokensIn).toBe(1200);
 
@@ -340,6 +344,47 @@ test("F-3: an automation-run history response (string ids + automation statuses)
   };
   // The automation-run shape passes the history assert (no drift).
   expect(() => assertRuns(autoRunShape)).not.toThrow();
+
+  // F-7 contract pin: the operator-witnessed automation-scoped row
+  // (captured live 2026-11-07) carries trigger_kind, NOT kind — the
+  // kind lane accepts exactly one of kind | trigger_kind (the taskRef
+  // either-form pattern). Embedded VERBATIM; must pass assertRuns.
+  const WITNESSED_AUTOMATION_RUN_ROW = {
+    id: "auto-mw6h7exg-z1js3r:manual:66xgor",
+    automation_id: "auto-mw6h7exg-z1js3r",
+    trigger_kind: "manual",
+    scheduled_at: null,
+    status: "succeeded",
+    started_at: 1794060343831,
+    ended_at: 1794060345580,
+    exit_code: 0,
+    output: "LANE_OK",
+    error: null,
+    turns: 1,
+    tokens_in: 6091,
+    tokens_out: 4,
+    delivered: null,
+    attempt: 1,
+    retry_of: null,
+  };
+  expect(() => assertRuns({ runs: [WITNESSED_AUTOMATION_RUN_ROW] })).not.toThrow();
+  // F-7 mapping test: the RAW string id + RAW task ref pass through
+  // uncoerced (no array-index fallback, no taskId 0 collapse).
+  const mappedWit = mapRuns([WITNESSED_AUTOMATION_RUN_ROW]);
+  expect(mappedWit.length).toBe(1);
+  expect(mappedWit[0].id).toBe("auto-mw6h7exg-z1js3r:manual:66xgor");
+  expect(mappedWit[0].taskId).toBe("auto-mw6h7exg-z1js3r");
+  expect(mappedWit[0].status).toBe("ok"); // succeeded -> ok
+  expect(mappedWit[0].kind).toBe("manual"); // trigger_kind -> kind
+  // The groupRuns 'Job 0' title regression: the group title is the
+  // job's REAL title (String-equality join on the raw string id).
+  const groups = groupRuns(mappedWit, [
+    { id: "auto-mw6h7exg-z1js3r", title: "lane-probe" },
+  ]);
+  expect(groups.length).toBe(1);
+  expect(groups[0].taskId).toBe("auto-mw6h7exg-z1js3r");
+  expect(groups[0].title).toBe("lane-probe");
+  expect(groups[0].title).not.toContain("Job 0");
   // It maps correctly: a succeeded row -> status ok; a running row ->
   // status ok + a null endedAt (the 'running' duration label renders).
   const mapped = mapRuns(autoRunShape.runs);
