@@ -17,10 +17,15 @@
 - The live-lane boot sequence in `doBoot()` calls `boot(bootClient)` to run `resolveAdapter(liveClient)`, which probes `/api/overview`, and then calls `safeList(resolved.live)` to fetch `/api/automations`; when the fixture returns `{ automations: [] }`, `mapAutomationList([])` resolves to an empty array, leaving `state.automations` as `[]`.
 
 ## Environment
-- The `## Environment` heading is landing-quoted (loop.tsx:129) — restored by hand after the SIXTH–TWELFTH occurrences of the issue #46 prune class (the TWELFTH: the F-8 session render pruned this provenance bullet while the heading + the durable Manual-notes lane survived); it lives in the Manual notes durable lane above and MUST survive every re-render.
+- The `## Environment` heading is landing-quoted (loop.tsx:129) — restored by hand after the SIXTH–THIRTEENTH occurrences of the issue #46 prune class (the THIRTEENTH: the F-9 session render pruned this provenance bullet again while the heading + the durable lane survived); it lives in the Manual notes durable lane above and MUST survive every re-render.
+- In /home/z/my-project/unown, dreams badges use a CSS variable --fugue-accent-ink which in the dark scheme resolves to #0f1a14, causing a low-contrast 'accent-ink trap' against the dark background; the correct dark-scheme accent is a bright green.
 - In /home/z/my-project/unown, the e2e config boots serve.mjs with default env (LIVE lane); default FUGUE_NOTES_ROOT is repo root, and the live lane must keep working unchanged. Verified: e2e specs do not touch /manual-notes or /skills-staged routes.
 
 ## Facts
+- In /home/z/my-project/unown, Lane A e2e battery passes with 283 tests green.
+- Ensure that focus management utilities handle edge cases where the trigger element is removed from the DOM before the dialog closes, falling back to body or a stable container.
+- Focus trap implementations should intercept the Escape key at the palette or modal level to prevent focus from escaping the contained element, and must release focus to a previously saved trigger element upon close.
+- When adding aria-labelledby to a dialog, verify the label ID exists in the DOM and that the dialog's role is explicitly set to 'dialog' or 'alertdialog' to ensure screen reader compatibility.
 - In /home/z/my-project/unown, the export flow builds canonical bytes via exportBytes(recomputeNextId(state.data)), wraps them in a Blob and URL.createObjectURL, triggers a hidden <a download="fugue-export.json"> click, and an empty store still exports successfully
 - Unown project CLI entrypoint is bin/unown, a Bun script that boots pi-repo/packages/self-learning/src/boot.ts to drive the TUI, headless mode (-p), --plan, and subcommands; additionally, a print exit trace is wired via pi-repo/packages/self-learning/src/print-exit-trace.ts and integrated into installPrintStallWatchdog, cmdPrint, and cli.ts.
 - In /home/z/my-project/unown, the e2e spec `e2e/fugue-live.spec.ts` uses lane-pinned selectors for test stability and expects the final engine row with a 30,000ms timeout because the live engine's create plus full boot chain involves 4 sequential round-trips that exceed the default wait (as implemented by `createRoutineViaUi`).
@@ -123,4 +128,4 @@
 - NINTH occurrence receipt (2026-11-07, the thirty-first lineage): the 30th's F-7-item-1 session renders took the ENTIRE durable lane again (the second whole-lane loss today — the fifth-occurrence class escalated) plus the Workflow and Environment headings; all restored from the af126efb known-good. The H-22 memory-guard (the pre-commit diff flag, operator toolchain) lands with this restore.
 - TENTH occurrence receipt (2026-11-07, the thirty-first lineage): the F-7 chunk-3 A2 session VIOLATED the brief's FORBIDDEN_INPUTS — it booted the real serve.mjs on :4017 and PUT-tested against the REAL project.md (20k-char bodies), then 'restored' the section to a single placeholder bullet, destroying the durable lane. CAUGHT BY THE H-22 MEMORY-GUARD at the operator's commit boundary (11 protected lines flagged, its first live catch — the diff preserved in the ring buffer). V-28 filed; the FUGUE_NOTES_ROOT isolation cure rides chunk 3b. The bullets above are the af126efb-lineage known-good.
 
-<!-- unown: rendered 104/104 memories via Mem0 (backend: lexical) at 2026-11-07T16:59:40.229Z -->
+<!-- unown: rendered 109/109 memories via Mem0 (backend: lexical) at 2026-11-07T17:41:15.718Z -->
