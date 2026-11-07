@@ -118,3 +118,41 @@ L-9 golden lane regardless of implementation variant.
 
 **Next: L-3** (the clip pipeline — the hostile-page seam, the round's
 top weakness W5 driven for the first time).
+
+### The 34th lineage — the claim-race stand-down + the container-OOM law (2026-11-07)
+
+A second concurrent operator incarnation (this one) brought up in
+parallel with the thirty-third: bun 1.4.3 pin, frozen installs,
+hydrate, build:offline, the Agnes `.env` lane, stack up (bridge 200,
+9 agnes models, engine ready v0.0.57 @ `404b07ad`), doctor
+"ready to chat", V-38 pin 3 fields across both homes, smoke
+`UNOWN_OK` (1 turn, 3.3 s), canaries **C1 PASS · C2 PASS · C3 the
+known V-3 class** (stamp `20261107T195227Z` — the identical triple),
+operator lane rebuilt (7 tools; `a1-continue.py` recovered from git
+history @ `1b9f04ad` — the file had left the tree in a reorg). It
+claimed L-1 and pushed — **rejected non-fast-forward**: the
+thirty-third had landed L-1 + L-2 + the dual-L-2 reconciliation in
+the bring-up window. **No dispatch had left this lineage's home** —
+the claim push itself was the arbitration point, so the race cost
+zero duplicate turns (one stage earlier than the Rondo dual-L-2
+class). Stood down per the ledger-arbiter law; reset to the
+governing tree `feba5680`.
+
+**Unique artifacts folded in** (the [round's validation
+log](../benchmarks/serenade-round/validation-log.md)):
+
+- **V-1 — the unit-battery container-OOM law.** This lineage's
+  container (4041 MB) OOM-kills the sequential single-process
+  `test:unit` at exactly 2006 passes (3 attempts: foreground,
+  daemonized, heap-capped — dmesg `anon-rss:3542728kB`); the cure is
+  `--parallel=1` per-file isolation: **2654/0/208, 17637 expects,
+  177.67 s at bounded ~240 MB RSS**, matching the frozen baseline
+  numbers. The sibling lineage's sequential 163.4 s receipt ran green
+  on its roomier container — the class is container-memory-headroom
+  variance. **Law: on ≤4 GB containers the unit lane runs
+  `--parallel=1`; every battery receipt notes its lane.**
+- **V-2 — the claim-race record** (the stand-down above; the law
+  reaffirmed: push the claim immediately after the bring-up battery,
+  before writing any ticket brief).
+
+**Next: L-3 stands** (the clip pipeline — W5's first drive).

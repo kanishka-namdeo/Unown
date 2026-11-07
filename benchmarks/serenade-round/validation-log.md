@@ -1,0 +1,13 @@
+# The Serenade round — validation log
+
+> The round's V-ledger. Every meaningful event gets a row: description,
+> reproduction, class (prompt-brittleness · infra-flake · operator-procedure
+> · genuine-gap · receipt · upstream-change · operator-harness ·
+> infra-instability), disposition. Round-scoped numbering; the prior
+> rounds' laws (Rondo V-1..V-43, Scherzo/Sonata/round-scoped ledgers) are
+> inherited by reference.
+
+| ID | Event (dated) | Class | Disposition |
+|---|---|---|---|
+| V-1 | **Unit-battery container OOM (the 34th lineage's bring-up, folded in post-reconciliation).** The root `bun run test:unit` lane (2654 tests / 208 files) was SIGKILLed by the kernel OOM killer at exactly **2006 passes** on three consecutive attempts — foreground, daemonized, and daemonized with `BUN_JSC_forceRAMSize=1500` (2026-11-07; dmesg: `Out of memory: Killed process (bun) anon-rss:3542728kB` on a 4041 MB container). The sequential single-process lane accumulates ~3.5 GB across the landing suite's happy-dom/React tests. The sibling 33rd lineage's 163.4 s sequential receipt (and the 32nd's) both ran green — the class is **container-memory-headroom variance**, not a repo defect. | infra-instability (container class) | **CURED**: `bun test src --path-ignore-patterns="data/self-learning/**" --parallel=1` (per-file worker processes, isolation implied) completes **2654 pass / 0 fail / 208 files / 17637 expects / 177.67 s** at bounded ~240 MB RSS — every number matching the frozen baseline (the 17637-vs-17638 expect delta is the known conditional-expect microvariance, per the 33rd's bring-up receipt). **LAW (34th lineage)**: on containers ≤4 GB the unit lane runs `--parallel=1`; the receipt notes the lane. `battery.sh`'s test:unit lane and the round's close batteries inherit this law. |
+| V-2 | **The duplicate-dispatch stand-down (34th lineage, L-1 claim).** This lineage claimed L-1 and pushed; the push was rejected non-fast-forward — the sibling 33rd lineage had landed L-1 CLOSED (`6718d2c7`) + L-2 CLOSED (`5a4fffe2`) + the dual-L-2 reconciliation (`feba5680`) in the window between this lineage's bring-up and its claim push (2026-11-07). No dispatch had left this lineage's home yet — the ledger-arbiter law resolved the claim race BEFORE any duplicate work burned turns (the Rondo dual-L-2 class, caught one stage earlier this time). | operator-procedure (the concurrent-lineage class) | **STOOD DOWN**: local claim reset to the governing tree `feba5680`; this lineage's unique artifacts folded in (this V-ledger); the stale claim commit preserved in reflog. **LAW reaffirmed**: the claim push is the arbitration point — always push the claim IMMEDIATELY after the bring-up battery, before writing any ticket brief. |
