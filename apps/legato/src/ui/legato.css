@@ -798,3 +798,109 @@ a:focus-visible,
   border-color: var(--accent);
   color: var(--accent);
 }
+
+/* ── L-8: the highlight spans (the body's inline marks) ─────────
+   Both schemes: the mark background is a badge-bg surface, the
+   text color is --fg (the scheme-paired pair — never the fugue
+   accent-ink trap). The mark is a <mark> element with the
+   .legato-highlight-span class; it is focusable (tabindex=-1)
+   so the 'x' key can target it when focused. */
+
+.legato-highlight-span {
+  background: var(--badge-bg);
+  color: var(--fg);
+  border-radius: 2px;
+  padding: 0 0.1rem;
+  cursor: pointer;
+}
+
+.legato-highlight-span:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 1px;
+}
+
+/* The dark-scheme pair: badge-bg is the accent-mix surface,
+   fg is the light foreground — contrast is guaranteed by the
+   token pair (the fugue cure by construction). */
+
+/* ── L-8: the highlights panel (the lane under the body) ────────
+   The panel is a list of rows; each row carries:
+     - a jump-to button (→) that scrolls + focuses the body mark
+     - the blockquote (quote + note + drift flag + anchor)
+     - a delete button (×) — the 'x' key's visible twin
+   The drift flag is a distinct visual cue (⚠ + the class) so
+   the user knows the quote no longer appears in the current text. */
+
+.legato-highlights-panel {
+  margin-top: 0.5rem;
+}
+
+.legato-highlights-panel-title {
+  margin: 0 0 0.5rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.legato-highlight-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  padding: 0.4rem 0.5rem;
+  margin-bottom: 0.35rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+}
+
+.legato-highlight-row + .legato-highlight-row {
+  margin-top: 0.25rem;
+}
+
+.legato-highlight-drifted {
+  border-color: var(--accent);
+  background: var(--badge-bg);
+}
+
+.legato-highlight-jump {
+  flex-shrink: 0;
+  margin-top: 0.15rem;
+  padding: 0.15rem 0.4rem;
+  font-size: 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface-raised);
+  color: var(--fg);
+  cursor: pointer;
+}
+
+.legato-highlight-jump:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.legato-highlight-delete {
+  flex-shrink: 0;
+  margin-top: 0.15rem;
+  padding: 0.15rem 0.4rem;
+  font-size: 0.85rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface-raised);
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.legato-highlight-delete:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.legato-highlight-drift-flag {
+  margin: 0.3rem 0 0;
+  color: var(--accent);
+  font-size: 0.75rem;
+  font-style: italic;
+}

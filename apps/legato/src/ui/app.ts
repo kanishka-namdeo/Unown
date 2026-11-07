@@ -424,6 +424,25 @@ export async function main(deps: AppDeps, root?: HTMLElement): Promise<App> {
           renderTagEditor(st.tagEditor);
         }
       } : undefined,
+      // L-8: the highlight create/delete persist lane (Ostinato
+      // every-transition rule — persist through the StoragePort
+      // on every mutation, then re-render).
+      onHighlightCreated: openClip !== null ? (clipId: number) => {
+        const c = st.data!.clips.find((x) => x.id === clipId);
+        if (c !== undefined) {
+          c.updatedAt = new Date().toISOString();
+          void deps.storage.save(st.data!).catch(() => {});
+          app.rerender();
+        }
+      } : undefined,
+      onHighlightDeleted: openClip !== null ? (clipId: number) => {
+        const c = st.data!.clips.find((x) => x.id === clipId);
+        if (c !== undefined) {
+          c.updatedAt = new Date().toISOString();
+          void deps.storage.save(st.data!).catch(() => {});
+          app.rerender();
+        }
+      } : undefined,
       idPrefix: "legato",
     });
     app.handles.detailPane = detailHandles.paneEl;
