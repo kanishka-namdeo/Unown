@@ -59,7 +59,7 @@ export interface FixtureServer {
   setAuth(locked: boolean): void;
   setFailure(code: FailureMode): void;
   setPayload(
-    endpoint: "automations" | "runs" | "overview" | "dreams" | "notes" | "memories" | "spend",
+    endpoint: "automations" | "runs" | "overview" | "dreams" | "notes" | "memories" | "spend" | "skills",
     payload: { status: number; body: unknown },
   ): void;
   handle(method: string, path: string, url: URL, req: Request): Promise<{ status: number; body: unknown }>;
@@ -121,6 +121,10 @@ export function startFixtureServer(opts: FixtureServerOpts = {}): FixtureServer 
       payloadEndpoint = null;
       if (ep === "automations" && path === "/api/automations" && method === "GET") return out;
       if (ep === "overview" && path === "/api/overview" && method === "GET") return out;
+      // F-7 chunk 3: the skills lane (asserted against the contract
+      // at the adapter boundary — a malformed script throws there,
+      // the fake-adapter kin).
+      if (ep === "skills" && path === "/api/skills" && method === "GET") return out;
     }
     return route(method, path, url, req);
   }
@@ -303,6 +307,14 @@ async function route(
     const limit = Number(url.searchParams.get("limit") ?? 40);
     return { status: 200, body: { notes: structuredClone(NOTE_FIXTURE).slice(0, limit) } };
   }
+  // F-7 chunk 3: the engine's skills table — the LIVE wire truth
+  // (operator-captured 2026-11-07): a fresh engine home has zero DB
+  // skills, so the fixture answers the honest empty { skills: [] }
+  // (the V-41 law: no fake data). The SkillRow shape when non-empty
+  // is the engine's snake_case row (id, project_slug, created_at,
+  // updated_at) — the contract pin admits it permissively.
+  if (method === "GET" && path === "/api/skills")
+    return { status: 200, body: { skills: [] } };
   return { status: 404, body: { error: `no fixture route ${method} ${path}` } };
 }
 

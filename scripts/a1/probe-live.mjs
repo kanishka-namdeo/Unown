@@ -237,6 +237,58 @@ async function main() {
       );
     }
 
+    // THE SKILLS VIEW (F-7 chunk 3): the engine's DB skills (honest empty
+    // on a fresh home) + the REAL staged queue (the fs candidates) + the
+    // promote hint (a human mv, never automated).
+    await page.keyboard.press("Control+k");
+    await page.waitForSelector(".fugue-palette");
+    await page.click(".fugue-palette li[data-cmd='open-skills']");
+    {
+      await page.waitForSelector('[data-route="skills"]', { timeout: 10_000 });
+      const skillsText = (await page.locator('[data-route="skills"]').textContent().catch(() => "")) ?? "";
+      const stagedRows = await page.locator("[data-staged]").count();
+      const hasHint = /mv \.unown\/skills-staged\//.test(skillsText);
+      const honestEmpty = /no skills/i.test(skillsText) || stagedRows > 0;
+      boundary(
+        "learning-skills-view",
+        honestEmpty && hasHint,
+        `staged rows: ${stagedRows}; the promote hint ${hasHint ? "present (the human mv)" : "MISSING"}; engine skills lane ${/no skills/i.test(skillsText) ? "honest-empty" : "rendered"}`,
+      );
+    }
+
+    // THE MANUAL-NOTES EDITOR (F-7 chunk 3): the real section, the budget
+    // meter, the unverified label, and a SAFE idempotent PUT round-trip
+    // (PUT the identical section back — zero net change, the write lane
+    // proven; byte-compare before/after).
+    await page.keyboard.press("Control+k");
+    await page.waitForSelector(".fugue-palette");
+    await page.click(".fugue-palette li[data-cmd='open-manual-notes']");
+    {
+      await page.waitForSelector('[data-route="manual-notes"]', { timeout: 10_000 });
+      const editorText = (await page.locator('[data-route="manual-notes"]').textContent().catch(() => "")) ?? "";
+      const hasUnverified = /unverified/i.test(editorText);
+      const hasMeter = /\d+\s*\/\s*4096|4096/i.test(editorText);
+      const hasTextarea = (await page.locator('[data-route="manual-notes"] textarea').count()) > 0;
+      // The idempotent PUT round-trip through the app's own server edge.
+      const before = await fetch(`http://127.0.0.1:${PORT}/manual-notes`).then((r) => r.json()).catch(() => null);
+      let putOk = false, fileUnchanged = false;
+      if (before && typeof before.section === "string") {
+        const put = await fetch(`http://127.0.0.1:${PORT}/manual-notes`, {
+          method: "PUT",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ section: before.section }),
+        }).catch(() => null);
+        putOk = put?.ok === true;
+        const after = await fetch(`http://127.0.0.1:${PORT}/manual-notes`).then((r) => r.json()).catch(() => null);
+        fileUnchanged = after?.section === before.section;
+      }
+      boundary(
+        "learning-manual-notes-editor",
+        hasUnverified && hasMeter && hasTextarea && putOk && fileUnchanged,
+        `unverified label: ${hasUnverified}; meter: ${hasMeter}; textarea: ${hasTextarea}; the idempotent PUT round-trip: ${putOk ? "200" : "FAILED"}, section byte-stable: ${fileUnchanged}`,
+      );
+    }
+
     // The session note lands (the real wire shape {content, created_at, run_id}).
     let noteSeen = false;
     const noteDeadline = Date.now() + 120_000;

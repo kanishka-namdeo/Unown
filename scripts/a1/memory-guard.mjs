@@ -54,12 +54,15 @@ function memoryDiff() {
   }
 }
 
-/** Is this deleted line protected? (the landing-quoted set) */
+/** Is this deleted line protected? (the durable + known-restored set; the
+ *  claims gate remains the real arbiter of landing-quoted literals — the
+ *  guard protects the DURABLE lane and the receipts' restored lines, not
+ *  every line that mentions a component) */
 function isProtected(line) {
   const t = line.trim();
   if (t === "") return false;
   if (t === "## Environment" || t === "## Workflow" || t === "## Manual notes") return true;
-  if (/landing-quoted|loop\.tsx|claims gate reddens|durable home|issue #46/i.test(t)) return true;
+  if (/landing-quoted|claims gate reddens|durable home|issue #46|occurrence receipt/i.test(t)) return true;
   // The durable-lane bullets (their stable first words)
   if (/^-\s*(Failed cycles auto-recover|Stealth verification suite|bin: Cross-platform CLI launcher|Remove unused variable declarations|For high-reliability frontend)/.test(t)) return true;
   return false;
@@ -100,6 +103,12 @@ if (mode === "--record") {
 // --check: flag protected deletions BEFORE the commit
 const deleted = [];
 let inManualNotes = false;
+// A deleted line that still EXISTS in the new file is a MOVE, not a
+// deletion (the Environment heading's durable-home relocation class) —
+// the guard never flags a move.
+let newText = "";
+try { newText = readFileSync(join(process.cwd(), MEMORY_PATH), "utf8"); } catch { /* absent */ }
+const moved = (line) => line.trim() !== "" && newText.includes(line.trim());
 for (const line of diff.split("\n")) {
   if (line.startsWith("@@") || line.startsWith("diff ") || line.startsWith("index ")) continue;
   if (line.startsWith("+")) {
@@ -113,8 +122,8 @@ for (const line of diff.split("\n")) {
     // see forward reliably; treat Manual-notes-body deletions as protected
     // whenever the last Manual-notes marker seen is still in force and no new
     // heading appeared since (handled below).
-    if (inManualNotes) deleted.push(body);
-    else if (isProtected(body)) deleted.push(body);
+    if (inManualNotes) { if (!moved(body)) deleted.push(body); }
+    else if (isProtected(body) && !moved(body)) deleted.push(body);
   } else if (line.startsWith(" ")) {
     if (line.trim() === "## Manual notes") inManualNotes = true;
     // any other heading ends the Manual-notes body

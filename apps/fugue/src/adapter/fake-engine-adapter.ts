@@ -28,6 +28,7 @@ import {
   type NoteRecord,
   type MemoryView,
   type SpendReport,
+  type SkillRecord,
 } from "./engine-adapter.js";
 import {
   EngineLocked,
@@ -79,6 +80,11 @@ export class FakeEngineAdapter implements EngineAdapter {
   private notesState: NoteRecord[];
   private memoriesState: MemoryView;
   private spendState: SpendReport;
+  /** The engine's skills table — a FRESH engine home has zero DB
+   *  skills (the honest empty state, operator-captured 2026-11-07).
+   *  Seeded rows are admitted through the seed knob; the default
+   *  lane is the honest empty. */
+  private skillsState: SkillRecord[];
   private nextAutomationId = 3;
   private nextRunId = 13; // the fixture lane's decimal string ids
   /** The canned engine overview (mutated via setOverview). */
@@ -105,6 +111,7 @@ export class FakeEngineAdapter implements EngineAdapter {
       memories?: MemoryView;
       spend?: SpendReport;
       overview?: EngineStatusView;
+      skills?: SkillRecord[];
     },
   ) {
     this.automations = structuredClone(
@@ -141,6 +148,9 @@ export class FakeEngineAdapter implements EngineAdapter {
         : liveMemory;
     this.spendState = { ...(seed?.spend ?? CONTRACT_FIXTURES.spend) };
     this.overviewState = { ...(seed?.overview ?? CONTRACT_FIXTURES.overview) };
+    // The honest empty engine skills table (a fresh engine home has
+    // zero DB skills — never a seeded fake row, the V-41 law).
+    this.skillsState = structuredClone(seed?.skills ?? []);
   }
 
   /* — scriptable knobs (test hooks) — */
@@ -325,6 +335,15 @@ export class FakeEngineAdapter implements EngineAdapter {
     const p = this.nextPayload("spend");
     if (p !== undefined) return p as SpendReport;
     return this.spendState;
+  }
+
+  async skills(): Promise<SkillRecord[]> {
+    const p = this.nextPayload("skills");
+    if (p !== undefined) {
+      const rows = (p as { skills: SkillRecord[] }).skills;
+      return rows;
+    }
+    return this.skillsState;
   }
 
   /* — internals — */

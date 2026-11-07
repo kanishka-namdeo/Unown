@@ -2,9 +2,10 @@
  * palette.ts — the Fugue command palette (Ctrl+K, the ostinato kin).
  *
  * DOM-free command table + filter semantics; the DOM wiring (open /
- * close / key handling) lives in app.ts. 11 commands covering every
- * P0 action: new job, run now, pause, resume, skip, snooze, refresh,
- * export, import, theme, help.
+ * close / key handling) lives in app.ts.
+ * 15 commands covering every P0 action: new job, run now, pause,
+ * resume, skip, snooze, refresh, export, import, theme, help, and the
+ * learning band's routes (dreams, memory, skills, manual-notes).
  */
 
 /** One palette command (the closed P0 action set + the meta actions). */
@@ -22,7 +23,7 @@ export interface PaletteCtx {
   hasData: boolean;
 }
 
-/** The 11-command table (one per P0 action). */
+/** The 15-command table (one per P0 action + the learning band). */
 export const PALETTE_COMMANDS: readonly PaletteCommand[] = [
   {
     id: "new-job",
@@ -104,6 +105,23 @@ export const PALETTE_COMMANDS: readonly PaletteCommand[] = [
     id: "open-memory",
     label: "Open memory view",
     hint: "the tiered memory + health card",
+    enabled: () => true,
+  },
+  // F-7 chunk 3: the learning band's second half — the skills view
+  // (the staged queue, read-only + the engine's skills) and the
+  // Manual-notes editor (the ONE hand-edit lane, marked unverified in
+  // the render). Both are always enabled, like their dreams/memory
+  // kin: the load helper's honest catch surfaces a failed lane.
+  {
+    id: "open-skills",
+    label: "Open skills",
+    hint: "the staged queue (read-only) + the engine's skills",
+    enabled: () => true,
+  },
+  {
+    id: "open-manual-notes",
+    label: "Open manual notes",
+    hint: "the hand-edited memory lane (unverified in the render)",
     enabled: () => true,
   },
 ];

@@ -166,6 +166,17 @@ export interface MemoryView {
   health: MemoryHealthView;
 }
 
+/** The engine's skills-table row (GET /api/skills `skills[]` — the
+ *  engine-managed SkillRow; a FRESH engine home has zero DB skills,
+ *  the honest empty state). The RAW string id passes through
+ *  uncoerced (the F-7 raw-string-id ruling). */
+export interface SkillRecord {
+  id: string;
+  projectSlug: string; // "" when the engine omits project_slug
+  createdAt: number; // epoch ms (0 when omitted)
+  updatedAt: number; // epoch ms (0 when omitted)
+}
+
 /** The engine's spend-meter view (governor accounting, E-04's
  *  `budget-throttled` state is surfaced by `throttled`). */
 export interface SpendReport {
@@ -202,5 +213,6 @@ export interface EngineAdapter {
   notes(limit?: number): Promise<NoteRecord[]>;
   memories(): Promise<MemoryView>;
   spend(): Promise<SpendReport>;
+  skills(): Promise<SkillRecord[]>;
 }
 

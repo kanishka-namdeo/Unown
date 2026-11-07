@@ -30,6 +30,7 @@ import {
   type MemoryTier,
   type MemoryHealthView,
   type SpendReport,
+  type SkillRecord,
   EngineLocked,
   EngineDown,
   EngineDrift,
@@ -412,6 +413,13 @@ export class RestAdapter implements EngineAdapter {
     ) as Promise<SpendReport>;
   }
 
+  async skills(): Promise<SkillRecord[]> {
+    const raw = (await this.checked("skills", () =>
+      this.client.call("GET", "/api/skills"),
+    )) as { skills: unknown };
+    return mapSkills(raw.skills);
+  }
+
   /** Call + `assertContract` (the F-2 pins; drift throws EngineDrift
    *  with the dotted-path message) before the raw JSON is returned. */
   private async checked<T>(endpoint: ContractEndpoint, call: () => Promise<unknown>): Promise<T> {
@@ -695,4 +703,35 @@ function mapNotes(rows: unknown, limit?: number): NoteRecord[] {
     };
   });
   return limit !== undefined ? mapped.slice(0, limit) : mapped;
+}
+
+/** Rows (LIVE snake_case SkillRow form OR camelCase fixture form,
+ *  mixed) -> SkillRecord[]. The RAW string id passes through
+ *  uncoerced; the optional slug/timestamp fields are honest
+ *  defaults ("" / 0) when the engine omits them — a fresh engine
+ *  home's {"skills":[]} answers as an honest empty array. */
+export function mapSkills(rows: unknown): SkillRecord[] {
+  if (!Array.isArray(rows))
+    throw new EngineDrift("skills: expected array, got " + typeof rows);
+  return (rows as Record<string, unknown>[]).map((r, i) => {
+    const rawId = r.id;
+    const id =
+      typeof rawId === "string" && rawId !== ""
+        ? rawId
+        : typeof rawId === "number" && Number.isFinite(rawId)
+          ? String(rawId)
+          : String(i + 1);
+    const slug =
+      typeof r.project_slug === "string"
+        ? r.project_slug
+        : typeof r.projectSlug === "string"
+          ? r.projectSlug
+          : "";
+    return {
+      id,
+      projectSlug: slug,
+      createdAt: toEpochMs(r.created_at ?? r.createdAt),
+      updatedAt: toEpochMs(r.updated_at ?? r.updatedAt),
+    };
+  });
 }

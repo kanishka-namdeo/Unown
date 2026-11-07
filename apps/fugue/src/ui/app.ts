@@ -34,7 +34,13 @@ import type {
 import { EngineDown, EngineLocked, EngineDrift } from "../adapter/engine-adapter.js";
 import { FakeEngineAdapter, makeFakeClock } from "../adapter/fake-engine-adapter.js";
 import { RestAdapter, type RestAdapterClient } from "../adapter/rest-adapter.js";
-import { PALETTE_COMMANDS, filterCommands, isCommandEnabled, type PaletteCommand, type PaletteCtx } from "./palette.js";
+import {
+  PALETTE_COMMANDS,
+  filterCommands,
+  isCommandEnabled,
+  type PaletteCommand,
+  type PaletteCtx,
+} from "./palette.js";
 import { DEFAULT_DRAFT, validateDraft, draftToScheduleSpec, type JobEditorDraft } from "./job-editor.js";
 import { renderJobList, jobListViewModel, moveSelection, type JobListOptions } from "./job-list.js";
 import { renderEmptyPanel, type EmptyPanelKind } from "./empty.js";
@@ -44,7 +50,10 @@ import { renderRunDetail } from "./run-detail.js";
 import { renderSpendMeter } from "./spend.js";
 import { renderDreams, dreamsViewModel, moveDreamSelection } from "./dreams.js";
 import { renderMemory, memoryViewModel, moveTierSelection } from "./memory.js";
+import { renderSkills } from "./skills.js";
+import { renderManualNotes } from "./manual-notes.js";
 import type { SpendReport, DreamRecord, MemoryView } from "../adapter/engine-adapter.js";
+import type { SkillRecord } from "../adapter/engine-adapter.js";
 import { makeJobCommands, runJobCommand, jobLifecycle } from "./jobs.js";
 
 /* ------------------------------------------------------------------ */
@@ -56,7 +65,16 @@ export interface FugueState {
   automations: AutomationRecord[];
   engineLane: "live" | "down" | "locked";
   engineDownReason?: string;
-  route: "jobs" | "runs" | "run-detail" | "spend" | "engine" | "dreams" | "memory";
+  route:
+    | "jobs"
+    | "runs"
+    | "run-detail"
+    | "spend"
+    | "engine"
+    | "dreams"
+    | "memory"
+    | "skills"
+    | "manual-notes";
   selectedJobId: number | string | null;
   dialog: "closed" | "compose";
   /** The live compose draft (30th-lineage law, 2026-11-08): a
@@ -76,6 +94,18 @@ export interface FugueState {
   dreamsError?: string;
   memory?: MemoryView | null;
   memoryError?: string;
+  /** F-7 chunk 3: the skills view's lanes (the engine's skills table +
+   *  the app server's read-only staged queue). */
+  skills?: SkillRecord[];
+  skillsError?: string;
+  staged?: { name: string; title: string }[];
+  stagedError?: string;
+  /** F-7 chunk 3: the Manual-notes editor state (the ONE hand-edit
+   *  lane — the wire row + the in-flight draft + the save result). */
+  manualNotes?: { section: string; chars: number; cap: number; path: string } | null;
+  manualNotesError?: string;
+  manualNotesDraft?: string;
+  manualNotesSavedAt?: number;
   /** The last job command's honest result (surfaced, never silent). */
   jobActionError?: string;
 }
@@ -96,6 +126,14 @@ export const initialState: FugueState = {
   dreamsError: undefined,
   memory: null,
   memoryError: undefined,
+  skills: [],
+  skillsError: undefined,
+  staged: [],
+  stagedError: undefined,
+  manualNotes: null,
+  manualNotesError: undefined,
+  manualNotesDraft: undefined,
+  manualNotesSavedAt: 0,
 };
 
 /* ------------------------------------------------------------------ */
@@ -299,6 +337,26 @@ export function render(state: FugueState): string {
     } else {
       parts.push(renderMemory({ memory: state.memory ?? null }));
     }
+  } else if (state.route === "skills") {
+    // F-7 chunk 3: the engine's skills + the read-only staged queue.
+    parts.push(
+      renderSkills({
+        skills: state.skills ?? [],
+        staged: state.staged ?? [],
+        skillsError: state.skillsError,
+        stagedError: state.stagedError,
+      }),
+    );
+  } else if (state.route === "manual-notes") {
+    // F-7 chunk 3: the ONE hand-edit lane (the human's editor).
+    parts.push(
+      renderManualNotes({
+        wire: state.manualNotes,
+        draft: state.manualNotesDraft,
+        saveError: state.manualNotesError,
+        savedAt: state.manualNotesSavedAt,
+      }),
+    );
   }
 
   if (state.dialog === "compose" && state.composeDraft !== null) {
@@ -704,6 +762,101 @@ export function main(): void {
     rerender();
   }
 
+  // F-7 chunk 3: the skills view's two lanes. The engine lane goes
+  // through the adapter seam (the /api/skills contract pin); the
+  // staged lane is the APP server's read-only route (same origin —
+  // the dev/test server serves both the app and its API routes; in
+  // the live lane the app is served by the same Bun.serve edge). A
+  // failed lane surfaces the honest catch, never a silent substitute.
+  async function loadSkills() {
+    const s = app.state;
+    s.route = "skills";
+    s.skillsError = undefined;
+    s.stagedError = undefined;
+    let skillsOk = true;
+    try {
+      s.skills = await appAdapter.skills();
+    } catch (e) {
+      skillsOk = false;
+      s.skills = [];
+      s.skillsError = e instanceof Error ? e.message : String(e);
+    }
+    let stagedOk = true;
+    try {
+      const res = await fetch("/skills-staged");
+      if (!res.ok) throw new Error(`staged queue ${res.status}`);
+      const body = (await res.json()) as { staged?: { name: string; title: string }[] };
+      s.staged = Array.isArray(body.staged) ? body.staged : [];
+    } catch (e) {
+      stagedOk = false;
+      s.staged = [];
+      s.stagedError = e instanceof Error ? e.message : String(e);
+    }
+    void skillsOk;
+    void stagedOk;
+    rerender();
+  }
+
+  // F-7 chunk 3: the Manual-notes editor (the ONE hand-edit lane).
+  // Read: the app server's GET /manual-notes. Save: the PUT splice +
+  // atomic write, then a RE-READ (the file is authoritative; the
+  // draft resyncs from disk after every save).
+  async function loadManualNotes() {
+    const s = app.state;
+    s.route = "manual-notes";
+    s.manualNotesError = undefined;
+    try {
+      const res = await fetch("/manual-notes");
+      if (!res.ok) throw new Error(`manual notes read ${res.status}`);
+      const body = (await res.json()) as {
+        section: string;
+        chars: number;
+        cap: number;
+        path: string;
+      };
+      s.manualNotes = { section: body.section ?? "", chars: body.chars, cap: body.cap, path: body.path ?? ".unown/memory/project.md" };
+      s.manualNotesDraft = s.manualNotes.section;
+    } catch (e) {
+      s.manualNotes = null;
+      s.manualNotesError = e instanceof Error ? e.message : String(e);
+    }
+    rerender();
+  }
+
+  async function saveManualNotes() {
+    const s = app.state;
+    s.manualNotesError = undefined;
+    const draft = s.manualNotesDraft;
+    if (typeof draft !== "string") {
+      s.manualNotesError = "no draft to save (the read lane failed first?)";
+      rerender();
+      return;
+    }
+    try {
+      const res = await fetch("/manual-notes", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ section: draft }),
+      });
+      if (!res.ok) {
+        const errBody = await res.json().catch(() => null);
+        const reason = errBody && typeof errBody.error === "string" ? errBody.error : `save ${res.status}`;
+        s.manualNotesError = reason;
+        rerender();
+        return;
+      }
+      // Re-read: the file is the source of truth (the renderer's
+      // verbatim-preservation law) — never trust the client draft.
+      await loadManualNotes();
+      s.manualNotesSavedAt = Date.now();
+      s.manualNotesError = undefined;
+      rerender();
+    } catch (e) {
+      s.manualNotesError = e instanceof Error ? e.message : String(e);
+      rerender();
+    }
+  }
+
   async function doBoot() {
     const s = await boot(bootClient);
     // The 30th-lineage law: a background refresh must NEVER close the
@@ -717,6 +870,14 @@ export function main(): void {
     s.dreamsError = app.state.dreamsError;
     s.memory = app.state.memory;
     s.memoryError = app.state.memoryError;
+    s.skills = app.state.skills;
+    s.skillsError = app.state.skillsError;
+    s.staged = app.state.staged;
+    s.stagedError = app.state.stagedError;
+    s.manualNotes = app.state.manualNotes;
+    s.manualNotesError = app.state.manualNotesError;
+    s.manualNotesDraft = app.state.manualNotesDraft;
+    s.manualNotesSavedAt = app.state.manualNotesSavedAt;
     app.state = s;
     rerender();
     // A refresh must land the fresh history in view: when the user is
@@ -852,6 +1013,12 @@ export function main(): void {
       case "open-memory":
         void loadMemory();
         break;
+      case "open-skills":
+        void loadSkills();
+        break;
+      case "open-manual-notes":
+        void loadManualNotes();
+        break;
     }
   }
 
@@ -899,6 +1066,68 @@ export function main(): void {
         s.route = "jobs";
         rerender();
       }
+    } else if (s.route === "skills") {
+      // F-7 chunk 3: the skills view's cursor lane (the runs kin).
+      if (e.key === "Escape") {
+        s.route = "jobs";
+        rerender();
+      }
+    } else if (s.route === "manual-notes") {
+      // F-7 chunk 3: the Manual-notes editor — Escape returns to
+      // jobs WITHOUT saving (a discard, surfaced by the re-render;
+      // a failed/unsaved draft simply stays in the textarea on
+      // re-entry through the load lane).
+      if (e.key === "Escape") {
+        s.route = "jobs";
+        s.manualNotesDraft = undefined;
+        s.manualNotesError = undefined;
+        rerender();
+      }
+    }
+  });
+
+  // F-7 chunk 3: the Manual-notes editor's live input + save wiring.
+  // The textarea keeps the in-flight draft in app.state (a background
+  // rerender re-renders FROM state, the 30th-lineage law); the
+  // budget meter + over-cap block update in place on every keystroke
+  // (no full re-render while the user is typing).
+  container.addEventListener("input", (e) => {
+    const target = e.target as HTMLTextAreaElement;
+    if (target.dataset.mnInput !== undefined) {
+      app.state.manualNotesDraft = target.value;
+      const meter = document.querySelector("[data-mn-chars]") as HTMLElement | null;
+      const over = document.querySelector("[data-mn-overcap]");
+      const chars = target.value.length;
+      const cap = 4096;
+      if (meter) {
+        meter.dataset.mnChars = String(chars);
+        meter.dataset.mnOver = chars > cap ? "1" : "0";
+        meter.textContent = chars > cap
+          ? `${chars} / ${cap} chars — over cap: the renderer will drop the tail`
+          : `${chars} / ${cap} chars`;
+      }
+      if (over) {
+        const tailEl = over.querySelector(".fugue-mn-dropped-tail");
+        if (chars > cap) {
+          if (!tailEl) {
+            const block = document.createElement("div");
+            block.className = "fugue-mn-overcap";
+            block.dataset.mnOvercap = "";
+            block.innerHTML = `<p class="fugue-mn-marker"><code>&lt;!-- unown: manual notes over cap --&gt;</code> (appended by the renderer when the section is over cap)</p><pre class="fugue-mn-dropped-tail"></pre>`;
+            meter?.after(block);
+          } else {
+            block.textContent = target.value.slice(cap);
+          }
+        } else {
+          over.remove();
+        }
+      }
+    }
+  });
+  container.addEventListener("click", (e) => {
+    const target = e.target as HTMLElement;
+    if (target.closest?.("[data-mn-save]")) {
+      void saveManualNotes();
     }
   });
 

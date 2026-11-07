@@ -712,6 +712,35 @@ export function assertMemoryProjects(payload: unknown): void {
   }
 }
 
+/** GET /api/skills — the engine-managed skills table (the live wire,
+ *  operator-captured 2026-11-07: a fresh engine home answers
+ *  {"skills":[]}). The row shape when non-empty is the engine's
+ *  SkillRow {id, project_slug, created_at, updated_at} (snake_case,
+ *  RAW string ids) — pinned permissively: an array of objects with
+ *  string ids; the optional fields are pinned only when present.
+ *  Both wire forms (the live snake_case row + a camelCase fixture
+ *  lane's hypothesis shape) are admitted; the mapper normalizes. */
+export function assertSkills(payload: unknown): void {
+  pin(payload, "skills", "array");
+  const arr = (payload as { skills: unknown[] }).skills;
+  for (let i = 0; i < arr.length; i++) {
+    const p = `skills[${i}]`;
+    pin(payload, `${p}.id`, "string", "skill id (raw string)");
+    const row = dig(payload, p);
+    if (row != null && typeof row === "object" && !Array.isArray(row)) {
+      const r = row as Record<string, unknown>;
+      // The optional SkillRow fields — pinned only when present
+      // (a row that sends a bad type is still drift).
+      if ("project_slug" in r) pin(payload, `${p}.project_slug`, "string");
+      if ("projectSlug" in r) pin(payload, `${p}.projectSlug`, "string");
+      if ("created_at" in r) pin(payload, `${p}.created_at`, "number-or-string");
+      if ("createdAt" in r) pin(payload, `${p}.createdAt`, "number-or-string");
+      if ("updated_at" in r) pin(payload, `${p}.updated_at`, "number-or-string");
+      if ("updatedAt" in r) pin(payload, `${p}.updatedAt`, "number-or-string");
+    }
+  }
+}
+
 export function assertSpend(payload: unknown): void {
   pin(payload, "tokensIn", "number");
   pin(payload, "tokensOut", "number");
@@ -730,6 +759,7 @@ export type ContractEndpoint =
   | "notes"
   | "memories"
   | "spend"
+  | "skills"
   | "memory"
   | "memory-health"
   | "memory-projects";
@@ -765,6 +795,9 @@ export function assertContract(endpoint: ContractEndpoint, payload: unknown): vo
       return;
     case "spend":
       assertSpend(payload);
+      return;
+    case "skills":
+      assertSkills(payload);
       return;
     case "memory":
       assertMemories(payload);
