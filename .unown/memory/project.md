@@ -118,4 +118,12 @@
 
 ## Manual notes
 
+- Failed cycles auto-recover — do NOT restart engine to fix them. (Restored by hand 2026-11-07 during the 28th/29th-lineage F-5 reconciliation — SIXTH occurrence of the dream-render-prunes-landing-quoted-lines class, issue #46: this render pruned the restored durable lane AGAIN. The landing's loop.tsx memory preview quotes this line; the claims gate reddens without it. This Manual notes lane is its durable home.)
+- Stealth verification suite on bot.sannysoft.com: all 10 checks (webdriver, userAgent, platform, userAgentData, timezone, locale, screen, viewport, plugins, window.chrome) pass; 0 FAIL rows in Intoli tests. (Restored by hand 2026-11-07 — sixth occurrence, issue #46 class; durable home here.)
+- bin: Cross-platform CLI launcher (Unix shebang, Windows cmd/ps1) [note 1]. (Restored by hand 2026-11-07 — sixth occurrence, issue #46 class; the landing's loop.tsx quotes this line; durable home here.)
+- Remove unused variable declarations (e.g., `void seedStore;`) to keep builds clean. (Restored by hand 2026-11-07 — sixth occurrence, issue #46 class.)
+- For high-reliability frontend or browser-based CI steps, use Chromium with headless flags to ensure consistent rendering and testing in containerized environments. (Restored by hand 2026-11-07 — sixth occurrence, issue #46 class; the pair bullet of the Environment heading below.)
+- NINTH occurrence receipt (2026-11-07, the thirty-first lineage): the 30th's F-7-item-1 session renders took the ENTIRE durable lane again (the second whole-lane loss today — the fifth-occurrence class escalated) plus the Workflow and Environment headings; all restored from the af126efb known-good. The H-22 memory-guard (the pre-commit diff flag, operator toolchain) lands with this restore.
+
 <!-- unown: rendered 110/111 memories via Mem0 (backend: lexical) · 1 oldest pruned at render (cap 110; hard-won rules immune) at 2026-11-07T14:56:33.911Z -->
+
