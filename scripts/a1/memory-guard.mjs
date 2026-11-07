@@ -112,9 +112,25 @@ let inManualNotes = false;
 // A deleted line that still EXISTS in the new file is a MOVE, not a
 // deletion (the Environment heading's durable-home relocation class) —
 // the guard never flags a move.
+// The heading refinement (the 35th lineage's recycle-test edge, 2026-11-07):
+// the three protected headings match EXACTLY (trimmed line equality) —
+// their literal bytes are landing-quoted (loop.tsx:129 quotes "##
+// Environment"), so an append-only rename (## Environment ->
+// ## EnvironmentX) changes the quoted bytes without deleting a line,
+// and the substring form read that as a "move" (verified live: the
+// rename passed clean). Bullets keep the tolerant substring form (a
+// render may reflow their whitespace; their content is the identity).
+const HEADING_EXACT = new Set(["## Environment", "## Workflow", "## Manual notes"]);
 let newText = "";
 try { newText = readFileSync(join(process.cwd(), MEMORY_PATH), "utf8"); } catch { /* absent */ }
-const moved = (line) => line.trim() !== "" && newText.includes(line.trim());
+const moved = (line) => {
+  const t = line.trim();
+  if (t === "") return false;
+  if (HEADING_EXACT.has(t)) {
+    return newText.split("\n").some((l) => l.trim() === t);
+  }
+  return newText.includes(t);
+};
 for (const line of diff.split("\n")) {
   if (line.startsWith("@@") || line.startsWith("diff ") || line.startsWith("index ")) continue;
   if (line.startsWith("+")) {
