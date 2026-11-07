@@ -30,10 +30,10 @@ export interface ChangelogStop {
   groups: ChangelogGroup[];
 }
 
-export const CHANGELOG_TOTAL_ENTRIES = 545;
+export const CHANGELOG_TOTAL_ENTRIES = 546;
 
 export const CHANGELOG_TOTALS: Record<ChangelogBucket, number> = {
-  "Added": 259,
+  "Added": 260,
   "Changed": 32,
   "Deprecated": 0,
   "Removed": 3,
@@ -46,9 +46,9 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
   {
     "label": "Unreleased",
     "date": null,
-    "total": 36,
+    "total": 37,
     "counts": {
-      "Added": 28,
+      "Added": 29,
       "Changed": 0,
       "Deprecated": 0,
       "Removed": 0,
@@ -60,6 +60,10 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
       {
         "bucket": "Added",
         "items": [
+          {
+            "title": "The Sonata round's V-27 — the F-7 render link closed through A2 (the V-26 open link from F-6, 2026-11-07)",
+            "behavior": false
+          },
           {
             "title": "The Sonata round's V-15 closes — the F-5 flow-spec pick-gap race…",
             "behavior": false

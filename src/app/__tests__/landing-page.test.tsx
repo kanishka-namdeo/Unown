@@ -45,7 +45,7 @@ const LandingPage = (await import("../page")).default;
 // only inside its own render container, so a tree left mounted cannot make
 // another test's anchor check pass on a borrowed id.
 
-const SECTION_COUNT = 14;
+const SECTION_COUNT = 15;
 
 describe("landing composition root", () => {
   test(`renders ${SECTION_COUNT} bands with the rail between the FAQ and the finale`, () => {
@@ -70,10 +70,11 @@ describe("landing composition root", () => {
     expect(at("built-improved")).toBe(5);
     expect(at("coda")).toBe(6); // the Coda band (2026-11-03) — between built-improved and ostinato
     expect(at("ostinato")).toBe(7); // the Ostinato band (2026-11-04) — between coda and chaconne
-    expect(at("chaconne")).toBe(8); // the Chaconne band (2026-11-06, C-10) — between ostinato and proof
-    expect(at("proof")).toBe(9);
-    expect(at("alphabet")).toBe(10);
-    expect(at("faq")).toBeGreaterThan(10);
+    expect(at("chaconne")).toBe(8); // the Chaconne band (2026-11-06, C-10) — between ostinato and fugue
+    expect(at("fugue")).toBe(9); // the Fugue band (2026-11-07, F-10) — between chaconne and proof
+    expect(at("proof")).toBe(10);
+    expect(at("alphabet")).toBe(11);
+    expect(at("faq")).toBeGreaterThan(11);
     expect(at("changelog")).toBe(SECTION_COUNT - 2); // finale is the last band
     expect(rail).toBe(faq + 1);
     expect(rail).toBe(SECTION_COUNT - 2);
@@ -106,6 +107,14 @@ describe("landing composition root", () => {
     // magma after; leaf is the learning-loop family, and spaced
     // repetition is literally a returning loop). (The Ostinato band's own
     // pin test carries the leaf hue.)
+    // The Chaconne band (2026-11-06, C-10) joins between the leaf Ostinato
+    // and the proof — aqua keeps its neighbours honest there (leaf before,
+    // magma after).
+    // The Fugue band (2026-11-07, F-10) joins between the aqua Chaconne
+    // and the magma proof — gold keeps its neighbours honest there (aqua
+    // before, magma after; gold is the showcase/family hue, consistent with
+    // the built-improved and faq bands). (The Fugue band's own pin test
+    // carries the gold hue.)
     expect(hues).toEqual([
       "psychic", // hero
       "leaf", // loop — how it learns
@@ -115,7 +124,8 @@ describe("landing composition root", () => {
       "gold", // built & improved — the measured improvement receipts
       "aqua", // Coda — the first user product (the Coda round's artifact)
       "leaf", // Ostinato — the second user product (the Ostinato round's artifact)
-      "aqua", // Chaconne — the third user product (the Rondo round's C-10 band; aqua keeps its neighbours honest there — leaf before, magma after)
+      "aqua", // Chaconne — the third user product (the Rondo round's C-10 band; aqua keeps its neighbours honest there — leaf before, gold after)
+      "gold", // Fugue — the fourth user product (the Sonata round's F-10 band; gold keeps its neighbours honest there — aqua before, magma after)
       "magma", // proof — benchmarks | integrity | models
       "psychic", // alphabet — the identity (+ field notes)
       "gold", // faq
