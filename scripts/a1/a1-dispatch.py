@@ -95,16 +95,37 @@ def claim_gate(cwd: str, brief: str, expiry_min: int, own_claim: bool) -> int:
         return 0
     last_claim_ts = None
     closed_after_claim = False
+    # The state machine fix (the 35th lineage's recycle-test catch, V-6):
+    # iterate newest-first and let the FIRST event naming this ticket
+    # (claim OR close) decide its latest state. The original logic only
+    # marked closed-after-claim when the CLOSE was seen AFTER a recorded
+    # claim — but newest-first iteration meets the CLOSE (the newer
+    # commit) BEFORE the claim in the normal claim->close order, so the
+    # close was skipped (last_claim_ts still None) and every CLOSED
+    # ticket with its claim inside the -80 window was refused as ACTIVE
+    # (the L-6 live catch, 2026-11-07; the authoring receipt's L-2
+    # "closed-path proceeds" test was vacuously green — its claim sat
+    # outside the -80 window). A close NEWER than the newest claim =
+    # closed; a claim newer than every close = ACTIVE (age-checked).
     for line in lines:  # newest first
         ts, _, subject = line.partition(" ")
-        if CLOSE_RE.search(subject):
-            closed = CLOSE_RE.search(subject).group(1)
-            if closed == ticket and last_claim_ts is not None:
-                closed_after_claim = True
-                break
         cm = CLAIM_RE.search(subject)
-        if cm and cm.group(1) == ticket and last_claim_ts is None:
+        ce = CLOSE_RE.search(subject)
+        claim_hit = cm if (cm and cm.group(1) == ticket) else None
+        close_hit = ce if (ce and ce.group(1) == ticket) else None
+        if claim_hit and close_hit:
+            # both events named in one subject: the leftmost token is the
+            # subject's primary event (the house commit style)
+            if close_hit.start() < claim_hit.start():
+                claim_hit = None  # the close is the primary event
+            else:
+                close_hit = None  # the claim is the primary event
+        if close_hit:
+            closed_after_claim = True
+            break  # the newest event for this ticket is a CLOSE -> closed
+        if claim_hit:
             last_claim_ts = ts
+            break  # the newest event for this ticket is a CLAIM -> ACTIVE
     if last_claim_ts is None or closed_after_claim:
         return 0  # no active claim — zero overhead, proceed
     # An ACTIVE claim exists. Check age vs the expiry window.

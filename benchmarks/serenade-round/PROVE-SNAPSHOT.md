@@ -75,5 +75,9 @@
 - The retained-improvement re-verification on a FRESH lineage (the
   recycle test: the pins, the holdout, the guard all fire without the
   authoring lineage's context)
+  — **DELIVERED 2026-11-07 by the 35th lineage**
+  ([the receipt](receipts/recycle-test-35th.md)): 5 of 6 improvements
+  fired/held green with zero authoring context; the H-26 gate's
+  closed-ticket false refusal caught + fixed + paired A/B (V-6)
 - The evidence packet assembly (§8) and the competition cycle #2 if
   the round runs past it
