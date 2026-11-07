@@ -1,19 +1,22 @@
 # Project Memory
 
 ## Known pitfalls
+- Prefer simplified, straightforward function implementations over overly complex regex-based approaches that are error-prone.
 - In /home/z/my-project/unown, a live-wire pin test was written to assert the `passed` status; it initially failed because the live spelling differs from the expected value.
-- In /home/z/my-project/unown, fix GAP 1 in `apps/fugue/src/ui/app.ts` `loadJobRuns`: the catch block (~line 631) must show an error panel and set `s.route =
 - In /home/z/my-project/unown, fix apps/fugue/src/adapter/contract.ts time-lane to accept ISO strings; F-3 failure root cause is that assertRunRecord rejects the live automation-run wire form (trigger_kind + snake_case tokens/timestamps, no kind/toolCalls fields) because pin(payload, "kind", ...) throws on missing required 'kind'.
 - The `## Environment` heading itself is landing-quoted (loop.tsx:129) — restored by hand 2026-11-07 (SEVENTH occurrence of the issue #46 prune class — the render during the F-6 marathon took the heading again while the Manual-notes bullets survived); it lives in the Manual notes durable lane above and MUST survive every re-render.
 - In /home/z/my-project/unown, after F-5 Chunk 3, the project passes `bun run typecheck` with zero fugue errors and 156 tests pass
-- In /home/z/my-project/unown, the e2e fugue-flow spec was rewritten with hard assertions to replace prior soft assertions, ensuring deterministic pass/fail outcomes for the runs-route flow
-- In /home/z/my-project/unown, running `bunx tsc` produces noise from the no-@types/bun environment that does not represent real errors; verify type-checking with `bun run typecheck` from the project root instead
-- Type-checking error: RunRecordView.taskId is number, but a test fake sets taskId: owner ? owner.id : 0 where owner.id is AutomationRecord.id = number | string, so the fake does not type-check unless taskId accepts string
 
 ## Task playbooks
 - The live-lane boot sequence in `doBoot()` calls `boot(bootClient)` to run `resolveAdapter(liveClient)`, which probes `/api/overview`, and then calls `safeList(resolved.live)` to fetch `/api/automations`; when the fixture returns `{ automations: [] }`, `mapAutomationList([])` resolves to an empty array, leaving `state.automations` as `[]`.
 
+## Environment
+- The `## Environment` heading is landing-quoted (loop.tsx:129) — restored by hand after the SIXTH/SEVENTH/EIGHTH/NINTH/TENTH occurrences of the issue #46 prune class; it lives in the Manual notes durable lane above and MUST survive every re-render. (ELEVENTH event 2026-11-07: the render MOVED the heading back to this canonical slot with a session-learning bullet — a move, not a prune; the provenance line restored here.)
+- In /home/z/my-project/unown, the e2e config boots serve.mjs with default env (LIVE lane); default FUGUE_NOTES_ROOT is repo root, and the live lane must keep working unchanged. Verified: e2e specs do not touch /manual-notes or /skills-staged routes.
+
 ## Facts
+- In /home/z/my-project/unown, use Bun.spawn to run the e2e server process.
+- Resolve the `.unown/` directory root by going two levels up from the `apps/fugue` subdirectory.
 - Playwright webServer and flow spec fixture processes auto-tear-down via their configs after test runs; verified clean exit with no stray server processes in /home/z/my-project/unown.
 - In /home/z/my-project/unown, V-15 pin permits modifying `runner/fixture-server.ts` to align canned JSON with both-forms contract despite it being outside ALLOWED_INPUTS
 - In /home/z/my-project/unown, e2e smoke spec palette assertion count was updated from 11 to 13 in `e2e/fugue-smoke.spec.ts`
@@ -126,8 +129,4 @@
 - NINTH occurrence receipt (2026-11-07, the thirty-first lineage): the 30th's F-7-item-1 session renders took the ENTIRE durable lane again (the second whole-lane loss today — the fifth-occurrence class escalated) plus the Workflow and Environment headings; all restored from the af126efb known-good. The H-22 memory-guard (the pre-commit diff flag, operator toolchain) lands with this restore.
 - TENTH occurrence receipt (2026-11-07, the thirty-first lineage): the F-7 chunk-3 A2 session VIOLATED the brief's FORBIDDEN_INPUTS — it booted the real serve.mjs on :4017 and PUT-tested against the REAL project.md (20k-char bodies), then 'restored' the section to a single placeholder bullet, destroying the durable lane. CAUGHT BY THE H-22 MEMORY-GUARD at the operator's commit boundary (11 protected lines flagged, its first live catch — the diff preserved in the ring buffer). V-28 filed; the FUGUE_NOTES_ROOT isolation cure rides chunk 3b. The bullets above are the af126efb-lineage known-good.
 
-## Environment
-
-- The `## Environment` heading is landing-quoted (loop.tsx:129) — restored by hand after the SIXTH/SEVENTH/EIGHTH/NINTH/TENTH occurrences of the issue #46 class; it lives in the Manual notes durable lane above and MUST survive every re-render.
-
-<!-- unown: rendered 110/111 memories via Mem0 (backend: lexical) · 1 oldest pruned at render (cap 110; hard-won rules immune) at 2026-11-07T14:56:33.911Z -->
+<!-- unown: rendered 110/119 memories via Mem0 (backend: lexical) · 9 oldest pruned at render (cap 110; hard-won rules immune) at 2026-11-07T16:20:19.767Z -->
