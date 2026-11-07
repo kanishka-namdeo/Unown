@@ -189,11 +189,22 @@ one pass, on tree `6cc078dd` = origin/main (F-4 CLOSED):
   **3 passed** (1.5 s) · V-9's chunk-shape error signature reproduced
   unchanged (ECONNREFUSED :3100, 338/0/29 — filed, not blocking)
 
-**Next: F-5 (run history + job detail) — the §0.9.5 reconciliation
-checkpoint.** Exposure to date: 10 V-entries (3 genuine-gap flavored),
-the F-1 spiral cured through the V-18 lane, F-4 closed with ZERO
-operator gate-catches — the turns-to-done trend 61 → (F-3) → 28 is the
-improvement signal the round must hold or extend.
+**The 28th/29th-lineage reconciliation (the V-42 merged-tree duty).**
+The 29th lineage's bring-up receipted "Next: F-5" — meanwhile the 28th
+(the lineage that closed F-4) had ALREADY completed F-5 through A2 on
+its own tree when the push collided. Reconciled per the
+ledger-arbiter law: the 29th's landed bring-up + V-11 (the v38-pin
+enum fix) + dream-render commits govern the base; the 28th's F-5
+CLOSED (a816ec06) rebases on top — its V-entries renumbered clear of
+the collision (throttle trap → V-13, stalled-stream hang → V-14); the
+merged tree re-verified green (Lane A/B, claims, the e2e fixture lane,
+the unit chunk) before the push. Exposure to date: 14 V-entries (5
+genuine-gap flavored), the F-1 spiral cured through the V-18 lane, F-4
+closed with ZERO operator gate-catches, F-5 closed with TWO (a NEW
+catch class: the forward-looking e2e pin). **Next: F-6 (the LIVE
+loop) — the first tickets of the learning-views band; the
+turns-to-done trend 61 → 28 → ~120(F-5, environment-inflated; ~60
+like-for-like) is the signal the round must interpret honestly.
 
 ## Environment checkpoint (2026-11-07, the twenty-eighth lineage — the RECYCLE bring-up)
 
