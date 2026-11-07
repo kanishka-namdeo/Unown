@@ -258,3 +258,61 @@ Phase-2/3 teardown duty instead: the SDLC_CAPABILITY_MATRIX refresh**
 (docs-only, zero collision with the 33rd's code lanes) — the Legato
 lanes + the round's coverage, the standing duty the Sonata close
 left open.
+
+### The every-3-tickets playbook review #1 (L-1/L-2/L-3 — the 34th lineage, 2026-11-07)
+
+> The §4 cadence audit, overdue by two tickets (the concurrency
+> management crowded it out — itself a finding). Data: the receipts
+> l1/l2/l3 + the parallel-lane record.
+
+**The economics table (ground truth, session-file turns):**
+
+| Ticket | Turns | Dispatches | Class | The notable |
+|---|---|---|---|---|
+| L-1 | 54 | 2 | scaffold | dual review; the write gate denied A2 twice (held) |
+| L-2 | 57 | 2 | domain | the dual-L-2 raced; PLAN-as-authority held (jsWalled from PLAN over the brief's omission) |
+| L-3 | 135 | 3 | pipeline | the keystone; the mid-chunk parser wrinkle; the parallel 113-turn duplicate |
+| (L-4 | 102 | 3 | domain | forward data — review #2's) |
+| (L-5 | 145 | 3 | UI shell | forward data — the heaviest yet; the boundary pin's mid-run catch) |
+
+**What the protocol did right (keep):**
+
+1. **The capped-chunk chain is the completing lane** — every first
+   chunk caps (30–40 turns), every continuation completes; zero lost
+   work at boundaries (the split-write law held through L-3's mid-fix
+   boundary, the round's hardest test of it).
+2. **The honest-deviation protocol earns its keep** — L-2's three
+   concerns, L-3's three ruling requests: every one became an operator
+   ruling or an accepted-verbatim note; ZERO silent deviations
+   discovered at operator verification.
+3. **The ruling-refinement chunk** (L-3's +24 turns) — the round's
+   cheapest high-value dispatch: the operator rules on the handoff's
+   deviations, the refinement rides a resume chunk on the same
+   session. **Adopted as the standing close pattern.**
+4. **The boundary pin caught real drift mid-run** (L-5's comment-text
+   DOM_GLOBS catch) — the enforcement lane works as designed.
+
+**What underperformed (fix):**
+
+1. **The dual-L-3 duplicate — 113 turns wasted** (the round's biggest
+   single cost, ~15% of all engine turns to date). Cure already
+   landed: H-26 (the claim gate, CANARY) + V-3's manual law. **RULE:
+   every dispatch rides the gate; a claim push accepted ≠ ownership —
+   fetch + re-check the queue head before EVERY dispatch.**
+2. **The class-blind chunk budget** — domain tickets (L-1/L-2)
+   complete in 2 dispatches at 54–57 turns; pipeline/UI tickets
+   (L-3/L-4/L-5) need 3 at 102–145. The 40-turn first chunk caps
+   mid-flight on the heavy class every time. **RULE (review #2 will
+   verify): the first-chunk budget scales by ticket class — 40 for
+   domain-class, 45–50 for pipeline/UI-class — the marginal turns are
+   cheaper than the dispatch-boundary re-orientation (~5–10 turns per
+   boundary).**
+3. **The receipts-late pattern** — L-5's close commit references
+   `receipts/l5.md` before the file is in the tree. **RULE: the
+   receipt lands IN the close commit's tree** (the commit message is
+   the summary, the file is the record).
+
+**Forward (review #2 at L-6 close):** verify the class-scaled budget
+rule on L-6; the claim-gate's first full-ticket test (L-6's chunks
+ride it); the H-21 truncation-aware continuation's first live fire if
+a chunk hits the output-cap signature.
