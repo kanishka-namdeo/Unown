@@ -426,3 +426,39 @@ skills-staged queue, the Manual-notes editor — **plus item 1: the
 runs-route render link (V-26, evidence in receipts/f6.md) + the
 live-lane re-run to green**), dispatched through A2 per the standing
 brief shape.
+
+## The 31st-lane reconciliation (2026-11-07 — the THIRTEENTH concurrent-lineage event, a CONVERGENT DUAL on F-7 item 1)
+
+The 31st lineage (the third-recycle bring-up above) closed V-26 in
+parallel with the 30th's landed close (`ac6ce04e`, V-27): the same root
+causes found from different instruments (the 30th: three operator
+probes — the route-flip click, the unit isolation, the Number() join
+collapse; the 31st: the rebuilt in-repo probe harness's failState
+capture — `{route:"jobs", DOM rows:0, history 200 + run JSON}` — the
+smoking gun the F-6 trace lacked). Per the ledger-arbiter law the
+30th's landing governs; the 31st's unique artifacts folded through A2
+(chunk 1b, session `01a1b68c…`, test-first): **the E-02 honest-catch
+panel** in loadJobRuns (the silent route-flip catch — an open E-02
+violation on the governing tree), **the `passed` status admission**
+(the live global-lane spelling — operator-proven EngineDrift on the
+governing tree via the unit throw, a latent V-24-class drift the 30th's
+flows never tripped), and **the live-wire pin file**
+(`live-wire.test.ts`, the verbatim probe bodies). The convergent trail
+preserved at
+[receipts/f7-parallel-lane-31st.md](../benchmarks/sonata-round/receipts/f7-parallel-lane-31st.md);
+the merged tree re-verified green this push (Lane A 164/0/21 · contract
+9/0 · fixture e2e 7+1 · the live probe 7/7 · the live lane 8 passed).
+The 31st's operator-lane contributions landed before the collision
+stand: the probe harness rebuilt in-repo (`4ad45e30`, the H-23 standing
+instrument) and the **V-16 deep cure** (`0fae5348`,
+`a1-dispatch --brief-file` — the brief rides a file, never argv; the
+pattern-kill class can no longer match the harness cmdline).
+
+The turns-to-done series, honest: F-7 item 1 — the 30th 5 dispatches /
+32 turns, the 31st 3 / 39 (labelled dual); chunk 1b 2 / 22. Both
+first-post-cure live runs green first-try (the V-25 law doubly
+measured).
+
+**Next: F-7's learning views** (dreams journal, memory tiers + health,
+skills-staged queue, Manual-notes editor) — the W2 surface, the round's
+keystone exposure.
