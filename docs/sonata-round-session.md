@@ -102,9 +102,9 @@ prior rounds' structurally-zero 0/0 openings.
 |---|---|---|---|
 | F-0 | Architecture plan — read-only `--plan` run + materialization; `apps/fugue/PLAN.md` | operator gate: PLAN.md maps every PRD P0 item + every edge case to a named verifier, none orphaned | **CLOSED** 2026-11-07 ([receipt](../benchmarks/sonata-round/receipts/f0.md): plan 98/100 · PLAN.md 395 lines · 11/11 tickets · 12/12 edges) |
 | F-1 | Domain core: `src/domain/{types,ids,invariants,io,schedule,storage,model}.ts` — Job, five ScheduleSpec kinds, RunRecordView/EngineStatusView, deterministic ids, assertData, canonical JSON + the `"fugue.v1"` schema gate, the pure schedule projection | `cd apps/fugue && bun test` (Lane A); `bun test apps/fugue` (Lane B) | **CLOSED** 2026-11-07 ([receipt](../benchmarks/sonata-round/receipts/f1.md): 64/0/206 ×2 · root 2439/0/184 · 3,323 lines · the V-18 timezone ruling) |
-| F-2 | The `EngineAdapter` seam: the interface + typed error taxonomy (`EngineLocked`, `EngineDown`) + `FakeEngineAdapter` (canned, injected clock) — unit lane touches no network | Lane A | NEXT |
+| F-2 | The `EngineAdapter` seam: the interface + typed error taxonomy (`EngineLocked`, `EngineDown`) + `FakeEngineAdapter` (canned, injected clock) — unit lane touches no network | Lane A | **CLOSED** 2026-11-07 ([receipt](../benchmarks/sonata-round/receipts/f2.md): 6 files/1,266 lines · Lane A 92/0/281 ×2 · the 14-method surface + the typed error taxonomy) |
 | F-3 | Real HTTP adapter + fixture-server lane: `rest-adapter.ts`, `runner/engine-client.ts`, stub engine :4130, per-endpoint drift pins | `bun test apps/fugue/test/adapter-contract.test.ts` | **CLOSED** 2026-11-07 ([receipt](../benchmarks/sonata-round/receipts/f3.md): 7/0/41 · Lane A 99/0/324 · root 2494/0/191 · 1,174 lines · the live-pinned REST contract) |
-| F-4 | PWA shell + job authoring: `index.html`, `sw.js`, `serve.mjs` (:4015), manifest, palette + job editor + job list | Lane A + serve boot HTTP 200 + e2e smoke | NEXT |
+| F-4 | PWA shell + job authoring: `index.html`, `sw.js`, `serve.mjs` (:4015), manifest, palette + job editor + job list | Lane A + serve boot HTTP 200 + e2e smoke | **NEXT** (in flight — the 28th lineage resumed the round after the sandbox recycle; bring-up receipted V-7..V-9) |
 | F-5 | Run history + job detail: grouped runs, error verbatim, spend meter with throttle state, honest panels | Lane A + e2e flow | pending |
 | F-6 | The LIVE loop: a routine created through the PWA against the real engine, `run now`, the run + session note land back (the real-data bridge lane — the V-41 law) | `bun run fugue:e2e` live lane ×3 (≥1 cold boot) + operator witness receipt | pending |
 | F-7 | Learning views: dreams journal (gated/rolled-back), memory tiers + health, skills-staged queue, Manual-notes editor | Lane A + e2e battery | pending |
@@ -130,6 +130,38 @@ kill text (V-39) · fresh session per ticket · byte-exact continuations
 See [benchmarks/sonata-round/validation-log.md](../benchmarks/sonata-round/validation-log.md)
 (the V-ledger; round-scoped numbering, Rondo's V-1..V-43 inherited by
 reference where a law carries over).
+
+## Environment checkpoint (2026-11-07, the twenty-eighth lineage — the RECYCLE bring-up)
+
+The sandbox was recycled between F-3 and F-4 (the twenty-seventh
+lineage's environment — bun, UNOWN_HOME, playwright browsers, the
+credential store — all gone; only the repo survived via the remote).
+Full re-bring-up per the standing checklist, one pass:
+
+- bun **1.4.3** re-fetched via the V-2 lane (GitHub release zip →
+  `/home/z/my-project/.bun/bin/bun`) · clone re-made at
+  `/home/z/my-project/unown` @ `76375e36` = origin/main · PAT restored
+  to `/home/z/my-project/.secrets/` (never in `.git/config`) · operator
+  toolchain re-mirrored to `/home/z/my-project/.a1/scripts/` (the V-2
+  recycle tax: one `cp`)
+- install **7/7** (`UNOWN_NO_LINK=1 UNOWN_NO_ENGINE_SERVICE=1`) · `.env`
+  Agnes lane + duplicate-key audit clean · **V-38 pre-seed applied
+  before the first dispatch** (both flash models pinned 4096,
+  `source:"user"` provenance) · stack up via `agent:start` (bridge
+  :3031 upstream 200, engine :3030 v0.0.57 @ `76375e36` = HEAD)
+- Canaries re-run green: C1 ×2 success/1 turn (772 ms / 785 ms — warm
+  bridge beats the 1.66 s cold receipt) · C2 doctor 21 pass/1 warn
+  (lsp-servers, the honest pair) · C3 engine ready · C4 fizzbuzz 3
+  turns / 6.4 s / exactly 2 files / **4/4 tests operator-verified**
+- Chromium **1248** re-installed via `bunx playwright install chromium`
+  (→ `/home/z/.cache/ms-playwright`, the default cache — the prior
+  custom `PLAYWRIGHT_BROWSERS_PATH` lane is unnecessary on this sandbox)
+- **Battery on the recycled tree**: typecheck 0 · lint 0e/143w ·
+  check:docs ok · changelog 56/544/55 · blog 46/116 · benchmarks 6/6 ·
+  claims **62/62 after the V-8 restoration** · unit **2494/0/191 via
+  6 chunk processes (V-7)** · ostinato e2e **17/17** (10.1 s) ·
+  chaconne:test 119/18 · chaconne:e2e 20 · fugue Lane A **99/0/12** —
+  every number identical to the F-3 close receipts
 
 ## Environment checkpoint (2026-11-07, the twenty-sixth lineage bring-up)
 

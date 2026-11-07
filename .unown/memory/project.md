@@ -116,7 +116,10 @@
 
 ## Manual notes
 
+## Environment
 - bin: Cross-platform CLI launcher (Unix shebang, Windows cmd/ps1) [note 1]. (Restored by hand 2026-11-02 during the Coda app round — third occurrence of the dream-render-prunes-landing-quoted-lines class, issue #46: the 110-cap render pruned it while the C2 session ran. The landing's loop.tsx memory preview quotes this line; the claims gate reddens without it. Moved to this durable lane.)
+- For high-reliability frontend or browser-based CI steps, use Chromium with headless flags to ensure consistent rendering and testing in containerized environments.
+- Remove unused variable declarations (e.g., `void seedStore;`) to keep builds clean. (The "## Environment" heading + these two lines restored by hand 2026-11-07 during the Sonata recycle bring-up — fourth occurrence of the dream-render-prunes-landing-quoted-lines class, issue #46: the F-1..F-3 dream re-renders pruned the heading from the dream-rendered area; the claims gate caught it at the recycled-tree battery. The heading now lives in this durable lane verbatim; the landing quotes it.)
 - Failed cycles auto-recover — do NOT restart engine to fix them. (Restored by hand 2026-11-01 during the browser autonomy round after a dream render pruned it at the 110-memory cap; the landing page's loop.tsx memory preview quotes this line, so the claims gate reddens when it disappears. The Manual notes lane survives every re-render — this is its durable home.)
 - Stealth verification suite on bot.sannysoft.com: all 10 checks (webdriver, userAgent, platform, userAgentData, timezone, locale, screen, viewport, plugins, window.chrome) pass; 0 FAIL rows in Intoli tests. (Restored by hand 2026-11-01 — second occurrence of the dream-render-prunes-landing-quoted-lines class, issue #46; moved here to the durable lane.)
 - Parley password hashing: scrypt N=16384 r=8 p=1 (src/lib/parley/password.ts). Restored by hand 2026-10-29 after AutoDream reconciles twice erased the fact (upstream 79->66 render, then the F1/F2 bcrypt poison round). Never let a memory answer overwrite this without reading the source.
