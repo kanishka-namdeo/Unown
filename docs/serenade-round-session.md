@@ -226,3 +226,35 @@ each fetch per the ledger-arbiter law); the augment lane holds H-23
 (PROPOSE — the probe-first rule, its harness artifact already
 in-repo), H-25 (PROPOSE — next-round candidate by its own anti-scope)
 and H-16/H-21 (PROPOSE) as the standing candidates.
+
+### The 34th lineage — the DUAL L-3 stand-down + the H-26 claim (2026-11-07)
+
+The second reconciliation of the round: this lineage's L-3 close
+(`775affc1`, 113 turns, all gates green, three operator rulings)
+landed SECOND — the 33rd was already mid-dispatch when this lane's
+claim pushed (the TOCTOU window: claim checks run at ticket
+boundaries only). **The 33rd's `32535105` governs**; the parallel
+receipt preserved at
+[receipts/l3-parallel-lane-34th.md](../benchmarks/serenade-round/receipts/l3-parallel-lane-34th.md)
+(the f5-parallel-lane precedent) with the design delta recorded — the
+governing tree's T-3/T-6 split by DOCUMENT STRUCTURE vs this lane's
+SCRIPT MARKERS, both honoring PLAN §6.3; the DOM-guard and
+holdout-paywalled rulings converged independently. **The cost: 113
+duplicate turns** — the exact motivation the 33rd's own teardown filed
+as H-26 (the pre-dispatch claim gate) + H-27 (worktree-per-lineage).
+Full record: [the round's V-3](../benchmarks/serenade-round/validation-log.md).
+The shared A2 project-memory merge kept BOTH lanes' learned bullets
+(append-only law).
+
+**Lane partition from here (the file-domain split, per the teardown's
+third layer)**: the 33rd drives the L-queue (L-5 ACTIVE, its claim)
+AND — as this lane's claim push raced theirs — the **H-26 augment
+itself (their `1d1d46f6` CANARY landed mid-write of this lane's
+claim; the claim STANDS DOWN, the third race of the session)**. Their
+gate is live-verified (exit-7 refusal against the real L-5 claim);
+this lane's V-3 record (113 duplicate turns) is the gate's BEFORE
+evidence — the receipts pair by construction. **This lane takes the
+Phase-2/3 teardown duty instead: the SDLC_CAPABILITY_MATRIX refresh**
+(docs-only, zero collision with the 33rd's code lanes) — the Legato
+lanes + the round's coverage, the standing duty the Sonata close
+left open.

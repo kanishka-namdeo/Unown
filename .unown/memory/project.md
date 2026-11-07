@@ -2,8 +2,9 @@
 
 ## Known pitfalls
 - In /home/z/my-project/unown, a live-wire pin test was written to assert the `passed` status; it initially failed because the live spelling differs from the expected value.
+- L-3 pipeline implementation in /home/z/my-project/Unown apps/legato/src/pipeline/ wrote fetcher.ts (315 lines), extractor.ts (286 lines), error-taxonomy.ts (177 lines), orchestrates.ts (237 lines), and fetcher.test.ts (243 lines)
+- When editing Unown pipeline files, replacing the entire file cleanly avoids duplicate insertion of the extract function
 - In /home/z/my-project/unown, fix apps/fugue/src/adapter/contract.ts time-lane to accept ISO strings; F-3 failure root cause is that assertRunRecord rejects the live automation-run wire form (trigger_kind + snake_case tokens/timestamps, no kind/toolCalls fields) because pin(payload, "kind", ...) throws on missing required 'kind'.
-- The `## Environment` heading itself is landing-quoted (loop.tsx:129) — restored by hand 2026-11-07 (SEVENTH occurrence of the issue #46 prune class — the render during the F-6 marathon took the heading again while the Manual-notes bullets survived); it lives in the Manual notes durable lane above and MUST survive every re-render.
 
 ## Environment
 - In /home/z/my-project/unown, the e2e config boots serve.mjs with default env (LIVE lane); default FUGUE_NOTES_ROOT is repo root, and the live lane must keep working unchanged. Verified: e2e specs do not touch /manual-notes or /skills-staged routes.
@@ -28,6 +29,24 @@
 - C-7 changes in /home/z/my-project/unown involved `apps/chaconne/public/offline.html`, `apps/chaconne/scripts/{verify-precache.ts, verify-precache.test.ts, capture-usage.mjs}`, `e2e/chaconne-resilience.spec.ts`, and `apps/chaconne/runner/store.ts`.
 - benchmarks/local-llm/lib: Cross-platform llama-server lifecycle, OpenAI-compatible clients
 - Unown palette commands movePaletteSelection and runSelectedPaletteCommand verified gap-free after D10 rerender fix
+- In /home/z/my-project/Unown, all L-3 pipeline verifiers pass
+- Guard habit-sync effects with a `sessionHabitsRef` to prevent unnecessary re-renders or sync conflicts.
+- In /home/z/my-project/unown, CLI entrypoint is `bin/unown`, a Bun script that boots `pi-repo/packages/self-learning/src/boot.ts`; print exit trace is wired via `print-exit-trace.ts` into `installPrintStallWatchdog`, `cmdPrint`, and `cli.ts`.
+- In /home/z/my-project/unown, landing page structure test expects SECTION_COUNT of 15; 'fugue' band is at index 9, between Chaconne (index 8) and Proof (index 10).
+- In /home/z/my-project/unown, F-9 a11y lane is complete: zero WCAG2AA violations in light and dark schemes across jobs, runs, dreams, memory, palette-open, and compose-open views, verified via axe-core scans (wcag2a + wcag2aa).
+- In /home/z/my-project/unown, Playwright webServer and flow spec fixture processes auto-tear-down via their configs after test runs.
+- In /home/z/my-project/unown, Chunk 2 landed in `apps/fugue/src/ui/app.ts` by adding the seam read: the `FugueEngineConfig` interface, a `Window.__FUGUE_ENGINE__` declaration, and an `engineConfig()` helper, integrating with both client constructions including `appAdapter` at line ~552 and the `bootClient` path.
+- In /home/z/my-project/unown, F-5 chunk 4 scope gap: the runs-route e2e flow was unreachable because main() exposed no tab control and no job-row selection hook; per layer ruling, route tab bar and selection hooks are F-5 shell completion, not F-6
+- In /home/z/my-project/unown, the live e2e spec for the run-history view awaits the presence of the .fugue-run-row element rather than the grouped title, so numeric taskId grouping does not block the spec
+- In /home/z/my-project/unown, the real blockers for completing the run-history work are the adapter seam and app.ts, not the taskId type constraint
+- When fixing UI re-render defects triggered by user actions (like 'run-now'), ensure the fix addresses the specific re-render cause rather than just the symptom, validating that state updates do not trigger unintended full re-renders.
+- In /home/z/my-project/unown, the id-model mismatch between the engine seam and selection surface is resolved by keeping `RunRecordView.taskId` as `number` per the operator's scope ruling, curing the mismatch without widening the domain type.
+- When adding a new CI gate job to a GitHub Actions workflow, place it after existing dependent jobs to maintain logical build order.
+- benchmarks/polyglot: Aider polyglot benchmark with 50-exercise Exercism subset
+- C-7 changes in /home/z/my-project/unown involved `apps/chaconne/public/offline.html`, `apps/chaconne/scripts/{verify-precache.ts, verify-precache.test.ts, capture-usage.mjs}`, `e2e/chaconne-resilience.spec.ts`, and `apps/chaconne/runner/store.ts`.
+- The C-7 handoff in /home/z/my-project/unown verified that the `corrupt-quarantine` label was applied in `apps/chaconne/runner/store.ts` and its test `store-c7.test.ts`.
+- In /home/z/my-project/unown, F-5 module run-history.ts contains a `groupRuns` function that groups data by `taskId` and sorts newest-first
+- Split-write cap in /home/z/my-project/Unown can truncate files mid-write, leaving unterminated strings that hook flags; complete cut-off files by extending them with follow-up edits
 - In /home/z/my-project/Unown, `bun test apps/ostinato` runs the Lane B unit test suite from the project root and currently reports 93 passing tests across 7 files with 377 expectations.
 - Ticket A2H-2 in Unown: V-9 hardening landed in `scripts/tui-capture/pty_common.py` — added private `_send_drained()` helper where a reader thread pumps `self.pump(0.05)` until a stop event, joined in `finally` so `pump()` never runs concurrently with itself; wired into `send()`, `key()`, and `type_prompt()` (char loop and Esc/Enter tail) with caller semantics unchanged (same delays).
 - The e2e/chaconne-a11y.spec.ts file was extended to 7 test blocks / 10 tests, covering the dialog contract editor (role=dialog, aria-modal, attach-before-focus, Tab trap, Esc + focus restoration) at L243
@@ -42,12 +61,22 @@
 - benchmarks/selfimprove: Repeat-task efficiency experiments measuring memory impact
 - e2e: Playwright-based dashboard and landing page tests with axe-core accessibility
 - blueprint/sandbox/scenarios: Integration tests for tiered memory, hooks, AutoDream, self-improvement loop
+- In /home/z/my-project/Unown, the CI workflow for ostinato is configured in `.github/workflows/ci.yml`; the ostinato job's action pins were byte-copied from the coda job to keep them in sync.
+- In Unown's runner-core, the phase type for test verification accepts values 'front', 'revealed', and 'done'.
+- benchmarks/nonllm/lib: LexRank, MinHash-LSH, BM25+RRF, memory activation scoring
+- In Unown's ostinato app, Chunk 3 of the O-4 implementation landed app.ts changes including the CreateActions type, AppState fields, notice refactor, create actions, onKey branch, dispatch cases, renderBoot tail, advanceSession clear, and four form functions, along with `.ostin` CSS updates.
+- benchmarks/local-llm/lib: Cross-platform llama-server lifecycle, OpenAI-compatible clients
+- Unown palette commands movePaletteSelection and runSelectedPaletteCommand verified gap-free after D10 rerender fix
 - Place Playwright e2e test files (specs and configs) at the repository root, not in app-specific directories, following the 'Coda precedent' architecture.
 - benchmarks/local-llm: llama.cpp + GGUF experiments against production remote model
 - pi-repo/packages/agent/test: E2E integration tests with faux providers, proxy streaming tests
 - pi-repo/packages/ai/scripts: Build-time model catalog fetchers (models.dev, OpenRouter, Vercel, NVIDIA NIM)
 - pi-repo/packages/agent/scripts: Telemetry schema documentation generator
 - agent-service: Mini-service wrapper (port 3030) booting self-learning layer with REST+SSE API
+- zai-upstream: Local HTTP shim exposing sandbox's z-ai-web-dev-sdk for bridge routing
+- In Unown's GitHub light color scheme, contrast ratios are verified as: foreground #1f2328 on #ffffff is ~14.5:1, and muted #57606a on #ffffff is ~6.5:1, both exceeding the 4.5:1 threshold for regular text.
+- In /home/z/my-project/Unown, the O-4 receipt workflow uses incremental chunk appends (chunks 3 and 7 explicitly referenced) with a cap on heredoc length, landing each chunk at the end of the previous turn's output before the cap.
+- Unown ticket O-4 chunk 1: `apps/ostinato/sw.js` updated to bump CACHE_NAME from v0 to v1, define a module-level PRECACHE_LIST with 15 entries, and rewrite the install handler to loop that list via Promise.all; activate/fetch handlers remain unchanged.
 - benchmarks/mpbench: MPBench dataset adapter for poisoning defense measurement
 - benchmarks/longhorizon: Multi-file refactoring task benchmark using clippad fixture
 - benchmarks/nonllm: Local ONNX models (bge-small/MiniLM, ms-marco) and symbolic lanes
@@ -55,6 +84,10 @@
 - The engine serves routines under /api/automations (REST) in pi-repo/packages/self-learning/src/server.ts handleApi; there is no /api/routines route; CLI alias `unown routines` maps to the automations endpoints.
 - benchmarks/poison-corpus: Adversarial memory poisoning defense evaluation
 - blueprint/dreams: Auto-dreaming driver consolidating session notes via headless Claude
+- Wire answer_flushed through the answer-watch extension, and wire drain start/done events plus final exit events into cmdPrint in Unown's cli.ts.
+- benchmarks/selfimprove: Repeat-task efficiency experiments measuring memory impact
+- e2e: Playwright-based dashboard and landing page tests with axe-core accessibility
+- blueprint/sandbox/scenarios: Integration tests for tiered memory, hooks, AutoDream, self-improvement loop
 - benchmarks/memory-eval/recall-qa: LongMemEval-adapted multi-session QA-recall benchmark
 - clippad: Note-taking domain module with Notebook, UserDirectory, search, formatting
 - llm-bridge: OpenAI-compatible gateway proxying to Dashscope with model allow-list
@@ -63,11 +96,16 @@
 - Save screenshots to specific benchmark directories like benchmarks/browser-autonomy-round/screenshots/ for warm-start scenarios.
 - Unown's SM-2 scheduler in scheduler.ts had an inverted Wozniak formula; the correct interval computation is EF' = EF + (0.1 - (5-q) * (0.08 + (5-q) * 0.02)) with q mapped as g-1
 - Unown project in /home/z/my-project/Unown has a known editor flaw where write mode body editing is not properly captured; this was identified and fixed during a session
+- pi-repo/packages/agent/scripts: Telemetry schema documentation generator
+- agent-service: Mini-service wrapper (port 3030) booting self-learning layer with REST+SSE API
 - v3-fixture/tests: membench benchmark fixture tests for calc, stats, format, persist, search
 - blueprint/harness: Self-improving evaluation harness with golden tasks and weakness clustering
 - Unown Coda (`apps/coda/`) architecture: self-contained static vanilla-TS PWA, no workspaces, zero root deps, reuses `marked`/`fuse.js`/`@playwright/test`/`@axe-core/playwright` via upward resolution from root node_modules
 - Fleet journal persists to .unown/fleet/journal.jsonl via appendFleetJournal/readFleetJournal (recordFleetChildSpawn, recordSyncSubagentSpawn, recordFleetChildFinish for finished; sweep outcomes for reaped/abandoned). FleetJournalEntry (pi-repo/packages/self-learning/src/fleet-reaper.ts:137) defines five ops: spawned (lane 'fleet' or 'sync'), worktree, finished, reaped, abandoned. Op discriminants recorded by recordFleetChildFinish (finished) and sweep outcomes (reaped/abandoned).
 - After DOM mutations or page changes, browser snapshot refs become stale; re-snapshot the page before acting on the new state.
+- The engine serves routines under /api/automations (REST) in pi-repo/packages/self-learning/src/server.ts handleApi; there is no /api/routines route; CLI alias `unown routines` maps to the automations endpoints.
+- benchmarks/poison-corpus: Adversarial memory poisoning defense evaluation
+- blueprint/dreams: Auto-dreaming driver consolidating session notes via headless Claude
 - The Unown syntax-checker hook cannot parse TypeScript; run an inline Node-style script via `bun` instead and keep the script as a test file for reproducibility (the hook excludes it from its own scan).
 - blueprint/sandbox: Disposable keyless test rig with synthetic HOME, offline operation
 - benchmarks/longhorizon/task/tests: clippad test suite for store, CLI, author, notebook
@@ -120,6 +158,34 @@
 - In /home/z/my-project/unown, Playwright webServer and flow spec fixture processes auto-tear-down via their configs after test runs; verify clean exit with no stray server processes when results look wrong.
 - In /home/z/my-project/unown, dreams badges use a CSS variable --fugue-accent-ink which in the dark scheme resolves to #0f1a14, causing a low-contrast 'accent-ink trap' against the dark background; the correct dark-scheme accent is a bright green.
 - In /home/z/my-project/unown, the real blockers for completing the run-history work are the adapter seam and app.ts, not the taskId type constraint
+- Save screenshots to specific benchmark directories like benchmarks/browser-autonomy-round/screenshots/ for warm-start scenarios.
+- Unown's SM-2 scheduler in scheduler.ts had an inverted Wozniak formula; the correct interval computation is EF' = EF + (0.1 - (5-q) * (0.08 + (5-q) * 0.02)) with q mapped as g-1
+- Phantom settings drift (8 interface items) occurs when declared default fields are written from the pi selector's row states instead of the vendored settings-manager getters, causing /settings diff to show 8 phantom drift rows on every fresh install; the remedy is to align each declared default with the resolver's value and add provenance comments.
+- When editing `src/domain/*.ts` files, natural prose containing words like 'document.' is permitted because the DOM global verifier only bans actual global object member access, not incidental text matches.
+- The six landing-page benchmark suites are defined in the TRACKS array at scripts/landing_benchmarks.mjs:79, which writes to src/components/landing/benchmarks-data.ts; the authoritative contract is documented in benchmarks/AGENTS.md under "The landing-page feed".
+- Pin the no-phantom-drift invariant with test/settings-defaults-drift.test.ts plus the BM-8 guard on a pristine home: run the test in a subprocess because some settings getters resolve through term.ts's module-scope UNOWN_HOME snapshot and an in-process run can read earlier tests' leftovers.
+- A probe that sets a setting to its current value produces no detectable drift; construct targets as current plus offset, and load-time validation flags any task whose diskCheck.expect equals the item's declared default as diff-inert (BM-2 hook-depth task is honest about this).
+- In src/lib/review.ts, parseReviewOutput (lines 455-475) uses static regexes over model output so treated data cannot become code injection, and the git() helper (lines 114-121) calls spawnSync with array args and shell:false; a security review of the /cadence diff (since commit 94d7cb1d) confirmed no new injection surface.
+- Rule of thumb: a declared default is a contract against the real resolver; always pin it in a test or it will drift.
+- pi-repo/packages/pi-protocol: Protocol types and encoding.
+- Cadence domain layer lives at `src/lib/cadence/` mirroring bazaar/sigil sibling conventions: pure domain code, bun:test for tests, localStorage shim in tests, and happy-dom preload configured via bunfig.
+- pi-repo/packages/self-learning/src/delegation.ts owns renderDelegationCard (line 170), renderDelegationChip, deriveWorthLine, and the delegation ledger; it is imported by tools.ts at lines 78 and 3736 to notify the TUI.
+- Frame-hardening headers (Content-Security-Policy frame-ancestors 'self' and X-Frame-Options SAMEORIGIN) were added to the `/encore/:path*` route in `next.config.ts`, matching the pattern already established for sibling routes `/nocturne`, `/cadence`, `/aria`, and others.
+- In /home/z/my-project/unown, e2e smoke spec palette assertion count was updated from 11 to 13 in `e2e/fugue-smoke.spec.ts`
+- Resolve the `.unown/` directory root by going two levels up from the `apps/fugue` subdirectory.
+- In /home/z/my-project/unown, V-15 pin permits modifying `runner/fixture-server.ts` to align canned JSON with both-forms contract despite it being outside ALLOWED_INPUTS
+- In /home/z/my-project/unown, use Bun.spawn to run the e2e server process.
+- In /home/z/my-project/unown, the Manual-notes over-cap [data-mn-overcap] block is only created by the input handler if it already exists (updating in place), so the e2e test pins edge 11 via the always-rendered meter over-cap line (`4097 / 4096 chars — over cap…`) with data-mn-over="1" and uses a conditional assert on the block
+- In /home/z/my-project/unown, e2e test isolation must not write to the real .unown directory; verify by asserting byte-identical files before and after test runs
+- Focus trap implementations should intercept the Escape key at the palette or modal level to prevent focus from escaping the contained element, and must release focus to a previously saved trigger element upon close.
+- When adding aria-labelledby to a dialog, verify the label ID exists in the DOM and that the dialog's role is explicitly set to 'dialog' or 'alertdialog' to ensure screen reader compatibility.
+- In /home/z/my-project/unown, the export flow builds canonical bytes via exportBytes(recomputeNextId(state.data)), wraps them in a Blob and URL.createObjectURL, triggers a hidden <a download="fugue-export.json"> click, and an empty store still exports successfully
+- In /home/z/my-project/unown, the e2e spec `e2e/fugue-live.spec.ts` uses lane-pinned selectors for test stability and expects the final engine row with a 30,000ms timeout because the live engine's create plus full boot chain involves 4 sequential round-trips that exceed the default wait (as implemented by `createRoutineViaUi`).
+- In /home/z/my-project/unown, add tabindex="0" to .fugue-palette-list (role=listbox) to prevent axe flagging focusable-content violations
+- Ensure that focus management utilities handle edge cases where the trigger element is removed from the DOM before the dialog closes, falling back to body or a stable container.
+- In /home/z/my-project/unown, compose dialog's aria-labelledby must point at the h2's id (fugue-compose-dialog-title), not the title input's id
+- In /home/z/my-project/unown, root package.json scripts are additive-only: `fugue:dev`, `fugue:test`, and `fugue:e2e` were added to mirror the existing chaconne and ostinato patterns.
+- In /home/z/my-project/unown Fugue CI, the live lane is intentionally excluded from the workflow (noted as the operator's off-peak witness lane) and flagged via a comment.
 
 ## Manual notes
 
@@ -132,3 +198,4 @@
 - TENTH occurrence receipt (2026-11-07, the thirty-first lineage): the F-7 chunk-3 A2 session VIOLATED the brief's FORBIDDEN_INPUTS — it booted the real serve.mjs on :4017 and PUT-tested against the REAL project.md (20k-char bodies), then 'restored' the section to a single placeholder bullet, destroying the durable lane. CAUGHT BY THE H-22 MEMORY-GUARD at the operator's commit boundary (11 protected lines flagged, its first live catch — the diff preserved in the ring buffer). V-28 filed; the FUGUE_NOTES_ROOT isolation cure rides chunk 3b. The bullets above are the af126efb-lineage known-good.
 
 <!-- unown: rendered 110/112 memories via Mem0 (backend: lexical) · 2 oldest pruned at render (cap 110; hard-won rules immune) at 2026-11-07T19:54:15.964Z -->
+<!-- unown: rendered 95/95 memories via Mem0 (backend: lexical) at 2026-11-07T20:21:46.853Z -->
