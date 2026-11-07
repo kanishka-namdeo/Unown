@@ -8,7 +8,42 @@ archaeology. When a round completes, its log graduates to a round-specific
 
 ---
 
-## ACTIVE ROUND — the Scherzo round (2026-11-07, OPENED by the twenty-sixth lineage)
+## ACTIVE ROUND — the Serenade round (2026-11-07, OPENED by the thirty-second lineage)
+
+A FRESH A1 directive (**DRIVE A2 × AUGMENT A2 × PROVE IT**):
+`docs/serenade-round-session.md` — the **Serenade round**, vehicle
+**Legato** (the offline-first read-later / web-clip PWA at
+`apps/legato/` — the Vivace round's §0.9.5 pre-registered fallback,
+selected at E×G×V 8 per [the §0.9 receipt](../benchmarks/serenade-round/README.md);
+the L-0 architecture plan scored 100/100, 13 tickets L-1..L-13, 22
+edge rows, ports 4017/4018, the B-16 holdout freeze law). Baseline
+frozen at `6e3579bb`: typecheck 0 · unit 2654/0/208 · canaries
+C1/C2 PASS + C3 the known V-3 class. **The L-queue through L-3
+CLOSED** (L-1 the scaffold 54 turns · L-2 the storage core 57 · L-3
+the clip pipeline + the B-16 holdout FREEZE, 135 session turns — the
+dual-dispatch events V-42-class receipted in the round log: first
+landing governs, the stood-down variants preserved as evidence);
+**L-4 (the search core) CLAIMED ACTIVE**. **The AUGMENT lane's
+session**: **H-24 (the live-traffic fixture refresh) PROMOTED** — the
+engagement's fifth promotion, the full lifecycle in one sitting: the
+record mode + the refreshed-fixture lane + the paired A/B gate
+MEASURED (the false-confidence delta: stale lane GREEN wire-blind vs
+refreshed lane RED at the pin on the same deliberate wire change) +
+THREE dormant fiction pins caught live (the spend panel was silently
+dead against the real engine) — [the receipt](../benchmarks/serenade-round/receipts/h24.md);
+**H-21 (the truncation-aware continuation) at CANARY** (the V-40
+split-write law now auto-injects on the k≥2 tail signature; the
+deterministic A/B 8/8; promotion awaits a genuine capped-chunk fire).
+The round log: `docs/serenade-round-session.md`; the receipts:
+`benchmarks/serenade-round/receipts/`. **Next: L-4 close → L-5 (the
+UI shell, the every-5-tickets teardown cycle due at its close) → … →
+L-13 → the round-close Phase 2/3 (the absorbed Sonata teardown
+duties: GT refresh, matrix refresh, competition cycle, registry
+gates, validation-report refresh, evidence packet).**
+
+---
+
+## PARKED ROUND — the Scherzo round (2026-11-07, OPENED by the twenty-sixth lineage; PARKED at S-5 by the round's supersession)
 
 A FRESH A1 directive (**DRIVE A2 × AUGMENT A2 × PROVE IT** — the app and
 the proof as twin deliverables; a new task, not a resumption of Rondo):
@@ -48,9 +83,18 @@ rebase with merged-tree verification each time. **Next: S-5 (the
 dashboard PWA) → S-6 (deploy + supervision) → S-7/S-8 (batteries) →
 S-9 (docs/landing/blog) → S-10 (closeout).**
 
+**PARKED 2026-11-07 (the honest state)**: S-0..S-5 CLOSED (receipts
+s0..s5 — the Bolero vehicle built through the dashboard PWA);
+**S-6..S-10 never landed** — the round was overtaken by the event
+stream (the parallel Sonata round CLOSED its full F-0..F-11 queue,
+then the fresh Serenade directive opened as the governing round).
+Bolero's deploy/supervision lane (S-6) is the named carry-over for a
+future round; the vehicle's landed surface (domain+runner+server+
+scheduler+PWA, bolero:test/bolero:e2e green) stands as receipted.
+
 ---
 
-## PARALLEL ENGAGEMENT — the Sonata track (2026-11-07, OPENED by the twenty-seventh lineage, non-overlapping with the Scherzo round)
+## COMPLETED ROUND — the Sonata track (2026-11-07, OPENED by the twenty-seventh, CLOSED with the FUGUE QUEUE COMPLETE)
 
 A SECOND fresh A1 directive (the same DRIVE × AUGMENT × PROVE charter)
 opened in parallel on the same base tree `ae8a73d`. This lane's
