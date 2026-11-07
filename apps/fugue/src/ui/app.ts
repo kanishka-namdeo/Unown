@@ -55,11 +55,15 @@ export interface FugueState {
   engineLane: "live" | "down" | "locked";
   engineDownReason?: string;
   route: "jobs" | "runs" | "run-detail" | "spend" | "engine" | "dreams";
-  selectedJobId: number | null;
+  selectedJobId: number | string | null;
   dialog: "closed" | "compose";
+  /** The live compose draft (30th-lineage law, 2026-11-08): a
+   *  background rerender re-renders FROM state, so the draft must
+   *  live here or a slow doBoot() wipes the in-progress form. */
+  composeDraft: JobEditorDraft | null;
   /** The run-detail + spend routes' data (adapter-fed; F-5 ticket 1/3). */
   runs?: RunRecordView[];
-  jobs?: { id: number; title: string }[];
+  jobs?: { id: number | string; title: string }[];
   selectedRunId?: number | null;
   spend?: SpendReport | null;
   /** The last job command's honest result (surfaced, never silent). */
@@ -73,6 +77,7 @@ export const initialState: FugueState = {
   route: "jobs",
   selectedJobId: null,
   dialog: "closed",
+  composeDraft: null,
   runs: [],
   jobs: [],
   selectedRunId: null,
@@ -118,6 +123,24 @@ export function createLocalStorageAdapter() {
 /* ------------------------------------------------------------------ */
 /* The browser fetch client (the RestAdapterClient injection point)    */
 /* ------------------------------------------------------------------ */
+
+/** The live-loop seam (NOTES-F6 §2, RULING 1): the spec injects this
+ *  via page.addInitScript BEFORE the app module executes. When absent
+ *  the fixture default (4130, no token) stays. */
+export interface FugueEngineConfig {
+  url?: string;
+  token?: string;
+}
+
+declare global {
+  interface Window {
+    __FUGUE_ENGINE__?: FugueEngineConfig;
+  }
+}
+
+function engineConfig(): FugueEngineConfig {
+  return (typeof window !== "undefined" ? window.__FUGUE_ENGINE__ : undefined) ?? {};
+}
 
 export function createFetchClient(
   baseUrl: string,
@@ -245,8 +268,8 @@ export function render(state: FugueState): string {
     parts.push(renderEmptyPanel("no-dreams"));
   }
 
-  if (state.dialog === "compose") {
-    parts.push(renderComposeDialog(DEFAULT_DRAFT));
+  if (state.dialog === "compose" && state.composeDraft !== null) {
+    parts.push(renderComposeDialog(state.composeDraft));
   }
 
   return parts.join("\n");
@@ -460,23 +483,41 @@ export function main(): void {
 
   function rerender() {
     const state = app.state;
+    // The dialog-DOM-stability guard: while the compose dialog is open,
+    // its DOM is owned by the in-place input/submit handlers (the draft
+    // lives in state). Swapping container.innerHTML out from under an
+    // in-flight interaction (e.g. Playwright's fill mid-way) breaks the
+    // validation sequence, so a background refresh must NOT re-render
+    // the route sections while the dialog is open. The route data
+    // refresh lands on the next dialog-less rerender (the refresh
+    // command / palette close / dialog submit all re-render).
+    // persistAll keeps the every-transition law.
+    if (state.dialog === "compose" && document.querySelector("[data-compose-form]")) {
+      const adapter = createLocalStorageAdapter();
+      adapter.recover();
+      persistAll(state, adapter);
+      return;
+    }
     container.innerHTML = render(state);
     // The every-transition law: every transition ends in persistAll.
-    const adapter = createLocalStorageAdapter();
-    adapter.recover();
-    persistAll(state, adapter);
+    const adapter2 = createLocalStorageAdapter();
+    adapter2.recover();
+    persistAll(state, adapter2);
   }
 
   function openCompose() {
+    app.state.composeDraft = { ...DEFAULT_DRAFT };
     app.state.dialog = "compose";
     rerender();
     const form = document.querySelector("[data-compose-form]") as HTMLFormElement | null;
     if (!form) return;
-    const draft: JobEditorDraft = { ...DEFAULT_DRAFT };
     // The inline-validation law: re-validate on every field change,
     // update the per-field error lines in place, and flip the submit
     // button's disabled state (the form never reflows; the user sees
-    // each field's error as they type).
+    // each field's error as they type). The draft lives in
+    // app.state.composeDraft — a background rerender re-renders FROM
+    // state, so the in-progress values survive (30th-lineage law).
+    const draft: JobEditorDraft = app.state.composeDraft;
     form.addEventListener("input", (e) => {
       const target = e.target as HTMLInputElement | HTMLSelectElement;
       const name = target.dataset.input;
@@ -522,6 +563,7 @@ export function main(): void {
         );
         app.state.data = res.data;
         app.state.dialog = "closed";
+        app.state.composeDraft = null;
         rerender();
         // The live lane: create on the engine when the lane is live.
         if (app.state.engineLane === "live") {
@@ -532,15 +574,25 @@ export function main(): void {
               schedule: spec,
               mode: draft.mode,
             });
-          } catch {
+            // A successful live create must land the engine row in view
+            // (the Engine jobs group, data-lane="engine"); the shadow row
+            // stays (F-1 local-first). A refresh re-reads the engine lane.
+            void doBoot();
+          } catch (createErr) {
             // The outbox surfaces the failure (E-02), never a silent
-            // success.
+            // success — an empty catch swallows drift/EngineDown errors.
+            const msg = createErr instanceof Error ? createErr.message : String(createErr);
+            const notice = document.createElement("div");
+            notice.textContent = `create failed: ${msg}`;
+            notice.className = "fugue-panel fugue-panel-error";
+            container.append(notice);
           }
         }
       });
       const cancel = f.querySelector('button[aria-label="cancel"]');
       cancel?.addEventListener("click", () => {
         app.state.dialog = "closed";
+        app.state.composeDraft = null;
         rerender();
       });
     }
@@ -549,24 +601,56 @@ export function main(): void {
 
   // The live adapter (fixture server on 4130 in dev; the runner's
   // engine-client in production, injected through the same seam).
+  const cfg = engineConfig();
+  const engineUrl = cfg.url ?? "http://127.0.0.1:4130";
+  const engineToken = cfg.token;
   const appAdapter: EngineAdapter =
     "fetch" in globalThis
-      ? new RestAdapter(createFetchClient("http://127.0.0.1:4130"))
+      ? new RestAdapter(createFetchClient(engineUrl, engineToken))
       : new FakeEngineAdapter(makeFakeClock(0).now);
 
   // Boot the app state (the live-lane probe + the degrade lane).
   const bootClient =
     "fetch" in globalThis
-      ? createFetchClient("http://127.0.0.1:4130")
+      ? createFetchClient(engineUrl, engineToken)
       : undefined;
   const resolved = awaitBoot(bootClient);
   app.state = { ...initialState };
   void resolved;
 
+  // The job-selection history load (the honest catch lane: a failed
+  // refresh falls back to the jobs route, never a crash / blank).
+  async function loadJobRuns(id: number | string) {
+    const s = app.state;
+    try {
+      s.runs = await appAdapter.history(id);
+      s.jobs = s.automations.map((j) => ({ id: j.id, title: j.title }));
+      rerender();
+    } catch {
+      s.route = "jobs";
+      rerender();
+    }
+  }
+
   async function doBoot() {
     const s = await boot(bootClient);
+    // The 30th-lineage law: a background refresh must NEVER close the
+    // user's dialog, drop the in-progress draft, or flip the route.
+    s.route = app.state.route;
+    s.selectedJobId = app.state.selectedJobId;
+    s.selectedRunId = app.state.selectedRunId;
+    s.dialog = app.state.dialog;
+    s.composeDraft = app.state.composeDraft;
     app.state = s;
     rerender();
+    // A refresh must land the fresh history in view: when the user is
+    // looking at a job's runs, the new boot state's runs field holds
+    // the global lane, not the selected job's — re-load it so the run
+    // row re-renders after a run-now (cycle-3 DEFECT 1 cure).
+    if (app.state.route === "runs" && app.state.selectedJobId !== null) {
+      const id = app.state.selectedJobId;
+      await loadJobRuns(id);
+    }
   }
   void doBoot();
 
@@ -586,6 +670,7 @@ export function main(): void {
       const dialog = document.querySelector('[data-dialog="compose"]');
       if (dialog) {
         app.state.dialog = "closed";
+        app.state.composeDraft = null;
         rerender();
       }
     }
@@ -632,6 +717,16 @@ export function main(): void {
       // lane (the O-1 law: never a silent failure).
       app.state.jobActionError = res.error.message;
       app.state.automations = res.jobs;
+    }
+    // The cycle-9 cure: when the user is on the selected job's runs
+    // runs route, the global-runs assignment above (res.runs) would
+    // show the learning-loop global lane, NOT the selected automation's
+    // history — so re-load the selected job's own history before the
+    // final render. The non-runs routes keep the global-runs effect
+    // (the spend/jobs panels consume it).
+    if (app.state.route === "runs" && app.state.selectedJobId !== null) {
+      await loadJobRuns(app.state.selectedJobId);
+      return; // loadJobRuns re-renders with the fresh history in view.
     }
     rerender();
   }
@@ -719,22 +814,17 @@ export function main(): void {
     const s = app.state;
     if (target.closest(".fugue-job-row")) {
       const jobEl = target.closest(".fugue-job-row") as HTMLElement;
-      const jobId = Number(jobEl.dataset.job);
-      if (!Number.isNaN(jobId)) {
+      // Engine ids are strings ('auto-xxx'); local shadow ids are numeric.
+      // Keep the RAW dataset.job — a string id must NEVER be coerced to NaN.
+      const rawJob = jobEl.dataset.job;
+      const isNumeric = rawJob !== null && rawJob !== "" && Number.isNaN(Number(rawJob)) === false;
+      const jobId = rawJob !== null && rawJob !== "" ? (isNumeric ? Number(rawJob) : rawJob) : null;
+      if (jobId !== null) {
         s.selectedJobId = jobId;
         s.route = "runs";
         s.selectedRunId = null;
         // Load the job's runs through the adapter seam.
-        void (async () => {
-          try {
-            s.runs = await appAdapter.history(jobId);
-            s.jobs = s.automations.map((j) => ({ id: j.id, title: j.title }));
-            rerender();
-          } catch {
-            s.route = "jobs";
-            rerender();
-          }
-        })();
+        void loadJobRuns(jobId);
       }
       return;
     }

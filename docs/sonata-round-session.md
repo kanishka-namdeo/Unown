@@ -106,8 +106,8 @@ prior rounds' structurally-zero 0/0 openings.
 | F-3 | Real HTTP adapter + fixture-server lane: `rest-adapter.ts`, `runner/engine-client.ts`, stub engine :4130, per-endpoint drift pins | `bun test apps/fugue/test/adapter-contract.test.ts` | **CLOSED** 2026-11-07 ([receipt](../benchmarks/sonata-round/receipts/f3.md): 7/0/41 · Lane A 99/0/324 · root 2494/0/191 · 1,174 lines · the live-pinned REST contract) |
 | F-4 | PWA shell + job authoring: `index.html`, `sw.js`, `serve.mjs` (:4015), manifest, palette + job editor + job list | Lane A + serve boot HTTP 200 + e2e smoke | **CLOSED** 2026-11-07 ([receipt](../benchmarks/sonata-round/receipts/f4.md): 19 files/~2,475 lines · Lane A/B 134/0/17 · smoke 3 passed · the spike: proxy path CONFIRMED · 28 turns/4 dispatches, zero gate-catches) |
 | F-5 | Run history + job detail: grouped runs, error verbatim, spend meter with throttle state, honest panels | Lane A + e2e flow | **CLOSED** 2026-11-07 ([receipt](../benchmarks/sonata-round/receipts/f5.md): ~1,300 lines · Lane A/B 155/0/20 · e2e 7 passed w/ the fixture lane firing · 2 gate-catches cured (the forward-looking-pin class) · V-11/V-12 filed) |
-| F-6 | The LIVE loop: a routine created through the PWA against the real engine, `run now`, the run + session note land back (the real-data bridge lane — the V-41 law) | `bun run fugue:e2e` live lane ×3 (≥1 cold boot) + operator witness receipt | **NEXT** |
-| F-7 | Learning views: dreams journal (gated/rolled-back), memory tiers + health, skills-staged queue, Manual-notes editor | Lane A + e2e battery | pending |
+| F-6 | The LIVE loop: a routine created through the PWA against the real engine, `run now`, the run + session note land back (the real-data bridge lane — the V-41 law) | `bun run fugue:e2e` live lane ×3 (≥1 cold boot) + operator witness receipt | **CLOSED** (receipt f6.md — the operator witness: the full live loop network-traced through the PWA's own UI, 10 cure cycles, V-23..V-26; the runs-route render link routed to F-7 item 1) |
+| F-7 | Learning views: dreams journal (gated/rolled-back), memory tiers + health, skills-staged queue, Manual-notes editor — **PLUS item 1: the runs-route render link (V-26, evidence in f6.md) + the live-lane re-run to green** | Lane A + e2e battery | **NEXT** |
 | F-8 | Import/export + schema-gate e2e: byte-stable goldens, foreign-schema dry-run refusal | e2e io battery | pending |
 | F-9 | a11y lane: axe wcag2a/2aa light+dark, tab order, Esc focus-return | e2e a11y battery | pending |
 | F-10 | Docs + landing band: `docs/fugue.md`, README section, REAL captures + PROVENANCE | `bun run check:docs` | pending |
@@ -345,3 +345,28 @@ planned work, ~40 to the V-19 truncation burn, ~90 to the three V-20
 process deaths, ~250 to the five QA cycles whose root cause (V-21) was
 a design conflict the PLAN row never surfaced. The probe-first law
 (H-23) is that lesson's cure.
+
+## The F-6 checkpoint (2026-11-07, the 29th lane — the live loop closed on the witness)
+
+F-6 CLOSED per the receipt (f6.md): the live loop is network-traced
+end-to-end through the PWA's own UI — create (real id) → engine row →
+selection (real id) → palette run-now → the engine executes the routine
+(manual/succeeded, ~1.6 s) → the history re-fetch returns the run to the
+browser → the cold boot survives (E-03) → the notes land (the real
+shape). Ten cure cycles, each a real probe-proven defect; four of them
+the fixture-masks-the-wire class (V-24) — the deepest finding of the
+round: **the F-3 contract fixtures pinned a fiction of the engine**, and
+every fixture-green gate certified that fiction. The one open render
+link routes to F-7 with the evidence (V-26). The live lane's spec, the
+cures, and all fixture gates are green (157/0/20 · typecheck 0 ·
+fixture e2e 7 ×2).
+
+**The every-3-tickets playbook review (F-4/F-5/F-6 — ONE rule change,
+measured):** the amendment is the **live-scale verification law**
+(V-25): every live-lane await names its scale; the operator witnesses
+the live lane personally; no fixture-green gate certifies live behavior
+(the fixture is a hypothesis — V-24). Measure: F-7's first live-lane
+run either lands green first-try (the law working) or its failure class
+is NEW (not fixture-scale drift). The probe harness
+(`scripts/probe-live.mjs` + the compose probe) joins the a1 toolchain
+as the standing instrument (H-23's evidence lane).

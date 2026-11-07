@@ -73,7 +73,7 @@ import type { EngineStatusView, RunRecordView, ScheduleSpec } from "../domain/ty
 /** The engine's automation row — adapter-native; typed engine fields.
  *  (F-3 maps engine REST JSON onto this before `assertContract`.) */
 export interface AutomationRecord {
-  id: number;
+  id: number | string; // engine ids are strings ('auto-xxx'); fixture ids numeric.
   title: string;
   prompt: string;
   /** Engine-native schedule spec (five kinds, per domain ScheduleSpec). */
@@ -139,12 +139,12 @@ export interface EngineAdapter {
   /* — automation lifecycle — */
   listAutomations(): Promise<AutomationRecord[]>;
   createAutomation(input: CreateAutomationInput): Promise<AutomationRecord>;
-  pauseAutomation(id: number): Promise<void>;
-  resumeAutomation(id: number): Promise<void>;
-  runNow(id: number): Promise<void>;
-  skip(id: number): Promise<void>;
-  snooze(id: number, minutes: number): Promise<void>;
-  history(id: number, limit?: number): Promise<RunHistory>;
+  pauseAutomation(id: number | string): Promise<void>;
+  resumeAutomation(id: number | string): Promise<void>;
+  runNow(id: number | string): Promise<void>;
+  skip(id: number | string): Promise<void>;
+  snooze(id: number | string, minutes: number): Promise<void>;
+  history(id: number | string, limit?: number): Promise<RunHistory>;
 
   /* — engine views — */
   overview(): Promise<EngineStatusView>;

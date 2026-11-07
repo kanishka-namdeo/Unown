@@ -204,7 +204,7 @@ export function mapAutomationRow(
   const r = row as Partial<EngineAutomationRow> & Partial<WireAutomationRow>;
   const numId = Number(r.id);
   return {
-    id: Number.isFinite(numId) && numId > 0 ? numId : fallbackId,
+    id: Number.isFinite(numId) && numId > 0 ? numId : (typeof r.id === "string" && r.id !== "" ? r.id : fallbackId),
     title: String(r.title ?? ""),
     prompt: String(r.prompt ?? ""),
     schedule: mapScheduleToSpec(r, nowMs),
@@ -258,27 +258,27 @@ export class RestAdapter implements EngineAdapter {
     return mapAutomationList(raw.automation ? [raw.automation] : [raw])[0];
   }
 
-  async pauseAutomation(id: number): Promise<void> {
+  async pauseAutomation(id: number | string): Promise<void> {
     await this.lifecyclePatch(id, "paused");
   }
 
-  async resumeAutomation(id: number): Promise<void> {
+  async resumeAutomation(id: number | string): Promise<void> {
     await this.lifecyclePatch(id, "active");
   }
 
-  async runNow(id: number): Promise<void> {
+  async runNow(id: number | string): Promise<void> {
     await this.client.call("POST", `/api/automations/${id}/run`);
   }
 
-  async skip(id: number): Promise<void> {
+  async skip(id: number | string): Promise<void> {
     await this.client.call("POST", `/api/automations/${id}/skip`);
   }
 
-  async snooze(id: number, minutes: number): Promise<void> {
+  async snooze(id: number | string, minutes: number): Promise<void> {
     await this.client.call("POST", `/api/automations/${id}/snooze`, { minutes });
   }
 
-  async history(id: number, limit?: number): Promise<RunRecordView[]> {
+  async history(id: number | string, limit?: number): Promise<RunRecordView[]> {
     const raw = (await this.checked("runs", () =>
       this.client.call("GET", `/api/automations/${id}/runs${limit ? `?limit=${limit}` : ""}`),
     )) as { runs: unknown };
@@ -334,7 +334,7 @@ export class RestAdapter implements EngineAdapter {
 
   /** pause/resume: the engine has no dedicated /pause /resume route —
    *  they are lifecycle PATCHes (pinned from server.ts's PATCH body). */
-  private async lifecyclePatch(id: number, lifecycle: "active" | "paused"): Promise<void> {
+  private async lifecyclePatch(id: number | string, lifecycle: "active" | "paused"): Promise<void> {
     await this.checked("single-automation", () =>
       this.client.call("PATCH", `/api/automations/${id}`, { lifecycle }),
     );
@@ -355,15 +355,47 @@ export function mapRuns(rows: unknown): RunRecordView[] {
   if (!Array.isArray(rows))
     throw new EngineDrift("runs: expected array, got " + typeof rows);
   return (rows as Record<string, unknown>[]).map((r, i) => {
+    // The automation-run wire form (GET /api/automations/:id/runs) carries
+    // automation_id + trigger_kind + string ids + automation statuses;
+    // the generic lane carries task_id + numeric ids + generic statuses.
+    // Both forms are normalized here at the adapter boundary (F-1 law).
+    const rawTask = (r.automation_id ?? r.task_id ?? r.taskId ?? null) as
+      | string
+      | number
+      | null;
+    const numTask = rawTask !== null ? Number(rawTask) : NaN;
+    // status map: succeeded->ok, failed->failed, stopped->capped,
+    // running->ok (the open-run label renders via the null endedAt below).
+    const rawStatus = String(r.status ?? "ok");
+    let status: string;
+    switch (rawStatus) {
+      case "succeeded":
+      case "running":
+        status = "ok";
+        break;
+      case "stopped":
+        status = "capped";
+        break;
+      default:
+        status = rawStatus;
+        break;
+    }
+    // A running automation-run has no ended_at (the '…' duration label).
+    let endedAt = (r.endedAt ?? r.ended_at ?? null) as RunRecordView["endedAt"];
+    if (rawStatus === "running") endedAt = null;
+    // trigger_kind -> kind (fallback to the generic r.kind ?? "manual").
+    const kind =
+      typeof r.trigger_kind === "string" && r.trigger_kind !== ""
+        ? r.trigger_kind
+        : String(r.kind ?? "manual");
     const numId = Number(r.id);
-    const numTask = Number(r.taskId ?? r.task_id);
     return {
       id: Number.isFinite(numId) && numId > 0 ? numId : i + 1,
       taskId: Number.isFinite(numTask) && numTask > 0 ? numTask : 0,
-      kind: String(r.kind ?? "cron"),
-      status: r.status as RunRecordView["status"],
-      startedAt: String(r.startedAt ?? r.started_at ?? ""),
-      endedAt: (r.endedAt ?? r.ended_at ?? null) as RunRecordView["endedAt"],
+      kind,
+      status: status as RunRecordView["status"],
+      startedAt: String(toEpochMs(r.startedAt ?? r.started_at)),
+      endedAt,
       tokensIn: Number(r.tokensIn ?? r.tokens_in ?? 0),
       tokensOut: Number(r.tokensOut ?? r.tokens_out ?? 0),
       toolCalls: Number(r.toolCalls ?? r.tool_calls ?? 0),
@@ -371,6 +403,18 @@ export function mapRuns(rows: unknown): RunRecordView[] {
       error: (r.error ?? null) as RunRecordView["error"],
     };
   });
+}
+
+/** Epoch-ms normalization: a finite number stays; an ISO-8601 string
+ *  parses to its epoch; a bare numeric string coerces; missing -> 0. */
+export function toEpochMs(v: unknown): number {
+  if (typeof v === "number" && Number.isFinite(v)) return v;
+  if (typeof v === "string" && v !== "") {
+    const t = Date.parse(v);
+    if (!Number.isNaN(t)) return t;
+    return Number(v) || 0;
+  }
+  return 0;
 }
 
 function mapDreams(rows: unknown, limit?: number): DreamRecord[] {

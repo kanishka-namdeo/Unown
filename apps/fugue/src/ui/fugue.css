@@ -195,6 +195,12 @@ body {
 }
 .fugue-dialog.is-open {
   display: block;
+  /* 2026-11-08 micro-fix: the open dialog must SCROLL — the fixed
+   * inset:0 container has no scroll, so on short viewports the 10-field
+   * form's submit button lands outside the viewport and is unreachable
+   * (a REAL a11y bug: keyboard + small-viewport users hit the same wall).
+   * overflow-y: auto makes the form scroll within the overlay. */
+  overflow-y: auto;
 }
 .fugue-dialog-inner {
   margin: 8vh auto 0;

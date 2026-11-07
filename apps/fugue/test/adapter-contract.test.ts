@@ -28,7 +28,10 @@ import { EngineDrift, type AutomationRecord } from "../src/adapter/engine-adapte
 import {
   CONTRACT_FIXTURES,
   OVERVIEW_FIXTURE,
+  assertSingleAutomation,
+  assertRuns,
 } from "../src/adapter/contract.js";
+import { mapRuns } from "../src/adapter/rest-adapter.js";
 import type { RunRecordView } from "../src/domain/types.js";
 
 const PORT = 4132;
@@ -257,6 +260,94 @@ test("F-3: E-03 — re-sync by routine id after the fixture restarts", async () 
   // The store carried the routine across the restart (no reseed).
   expect(storeBefore.automations[String(survivorId)]).toBeDefined();
   await fixture.close();
+});
+
+test("F-3: a string-id automation response PASSES the single-automation assert, and a numeric-id one still passes", () => {
+  // The real engine's automation ids are strings ('auto-xxx'); the fixture
+  // lane keeps numeric ids. Both wire forms are legal —
+  // assertSingleAutomation must accept either (the cycle-5 id-model cure),
+  // and the schedule field may be either a domain object ({ kind, ... })
+  // or the engine's string descriptor.
+  const stringRow = {
+    automation: {
+      id: "auto-mw6dlgq2-k622cn",
+      title: "Contract assert probe",
+      prompt: "Reply with exactly: ASSERT_PROBE_OK",
+      schedule: "every 1 day",
+      mode: "read-only",
+      lifecycle: "active",
+      created_at: 1794054278377,
+      updated_at: 1794054278377,
+    },
+  };
+  // The string-id row passes (the engine-native wire shape).
+  expect(() => assertSingleAutomation(stringRow)).not.toThrow();
+
+  // The numeric-id row (the fixture lane) still passes — both forms legal.
+  const numericRow = {
+    automation: { ...CONTRACT_FIXTURES.automations[0] },
+  };
+  expect(() => assertSingleAutomation(numericRow)).not.toThrow();
+
+  // A non-numeric/non-string id is drift (the anti-rot law is preserved).
+  expect(() =>
+    assertSingleAutomation({
+      automation: { ...CONTRACT_FIXTURES.automations[0], id: ["bogus"] },
+    }),
+  ).toThrow(EngineDrift);
+});
+
+test("F-3: an automation-run history response (string ids + automation statuses) passes the runs assert and maps correctly", () => {
+  // The engine's automation-run wire shape (GET /api/automations/:id/runs):
+  // string run ids, automation_id task ref, trigger_kind, automation
+  // statuses (succeeded/running), and the running row's ended_at null.
+  // The fixture's generic shape must keep passing (the fixture keeps working).
+  const autoRunShape = {
+    runs: [
+      {
+        id: "auto-mw6dlgq2-k622cn:manual:001",
+        automation_id: "auto-mw6dlgq2-k622cn",
+        trigger_kind: "manual",
+        scheduled_at: "2026-11-08T09:00:00Z",
+        status: "succeeded",
+        started_at: "2026-11-08T09:00:02Z",
+        ended_at: "2026-11-08T09:00:04Z",
+        exit_code: 0,
+        kind: "manual",
+        tokensIn: 0,
+        tokensOut: 0,
+        toolCalls: 0,
+        turns: 0,
+        error: null,
+      },
+      {
+        id: "auto-mw6dlgq2-k622cn:manual:002",
+        automation_id: "auto-mw6dlgq2-k622cn",
+        trigger_kind: "manual",
+        scheduled_at: "2026-11-08T09:00:00Z",
+        status: "running",
+        started_at: "2026-11-08T09:00:05Z",
+        ended_at: null,
+        exit_code: null,
+        kind: "manual",
+        tokensIn: 0,
+        tokensOut: 0,
+        toolCalls: 0,
+        turns: 0,
+        error: null,
+      },
+    ],
+  };
+  // The automation-run shape passes the history assert (no drift).
+  expect(() => assertRuns(autoRunShape)).not.toThrow();
+  // It maps correctly: a succeeded row -> status ok; a running row ->
+  // status ok + a null endedAt (the 'running' duration label renders).
+  const mapped = mapRuns(autoRunShape.runs);
+  expect(mapped.length).toBe(2);
+  expect(mapped[0].status).toBe("ok");
+  expect(mapped[0].kind).toBe("manual"); // trigger_kind -> kind
+  expect(mapped[1].status).toBe("ok"); // running -> ok
+  expect(mapped[1].endedAt).toBeNull(); // the open-run label
 });
 
 test("F-3: the raw client maps a 401 to EngineLocked at the wire", async () => {

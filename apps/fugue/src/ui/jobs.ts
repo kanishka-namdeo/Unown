@@ -22,11 +22,11 @@ export type JobAction =
 
 /** The adapter methods a job-scoped command needs. */
 export interface JobCommands {
-  runNow(id: number): Promise<void>;
-  pause(id: number): Promise<void>;
-  resume(id: number): Promise<void>;
-  skip(id: number): Promise<void>;
-  snooze(id: number, minutes: number): Promise<void>;
+  runNow(id: number | string): Promise<void>;
+  pause(id: number | string): Promise<void>;
+  resume(id: number | string): Promise<void>;
+  skip(id: number | string): Promise<void>;
+  snooze(id: number | string, minutes: number): Promise<void>;
 }
 
 /** Build the command surface over an EngineAdapter (the app's seam). */
@@ -46,7 +46,7 @@ export function makeJobCommands(adapter: EngineAdapter): JobCommands {
  *  error is the source of truth. */
 export async function runJobCommand(
   cmd: keyof JobCommands,
-  id: number,
+  id: number | string,
   extra: { minutes?: number },
   commands: JobCommands,
   adapter: Pick<EngineAdapter, "listAutomations" | "runs" | "spend">,
@@ -122,9 +122,9 @@ async function safeSpend(a: Pick<EngineAdapter, "spend">): Promise<SpendReport |
  *  paused). */
 export function jobLifecycle(
   jobs: AutomationRecord[],
-  id: number | null,
+  id: number | string | null,
 ): "active" | "paused" | null {
   if (id === null) return null;
-  const j = jobs.find((x) => x.id === id);
+  const j = jobs.find((x) => String(x.id) === String(id));
   return j?.state ?? null;
 }

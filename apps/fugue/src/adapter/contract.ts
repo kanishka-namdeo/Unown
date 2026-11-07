@@ -172,8 +172,10 @@ function pin(
     | "boolean"
     | "object"
     | "array"
+    | "object-or-string"
     | "string-or-null"
-    | "number-or-null",
+    | "number-or-null"
+    | "number-or-string",
   label?: string,
 ): void {
   const v = dig(payload, path);
@@ -187,6 +189,16 @@ function pin(
       if (typeof v !== "string")
         throw new EngineDrift(`${path}: expected string, got ${typeOf(v)}`);
       break;
+    case "number-or-string":
+      // Engine automation ids are strings ('auto-xxx'); the fixture lane
+      // keeps numeric ids. Both wire forms are legal; anything else is
+      // drift. (F-6 cycle-5: the id-model cure's contract side.)
+      if (
+        (typeof v !== "number" || !Number.isFinite(v)) &&
+        typeof v !== "string"
+      )
+        throw new EngineDrift(`${path}: expected number or string, got ${typeOf(v)}`);
+      break;
     case "number":
       if (typeof v !== "number" || !Number.isFinite(v))
         throw new EngineDrift(`${path}: expected number, got ${typeOf(v)}`);
@@ -198,6 +210,14 @@ function pin(
     case "object":
       if (v === null || typeof v !== "object" || Array.isArray(v))
         throw new EngineDrift(`${path}: expected object, got ${typeOf(v)}`);
+      break;
+    case "object-or-string":
+      // A schedule descriptor: an object (the domain form { kind, ... })
+      // OR a string (the engine's describeRoutineSchedule lane, e.g.
+      // "every 1 day"). Both wire forms are legal; the kind enum is
+      // pinned only for the object form (drift stays drift).
+      if (v !== null && typeof v !== "object" && typeof v !== "string")
+        throw new EngineDrift(`${path}: expected object or string, got ${typeOf(v)}`);
       break;
     case "array":
       if (!Array.isArray(v))
@@ -228,20 +248,34 @@ function pinEnum(payload: unknown, path: string, values: readonly string[]): voi
 /** Pin one AutomationRecord (used per-row in the automations endpoint). */
 function pinAutomation(payload: unknown, base: string, i: number): void {
   const p = `${base}[${i}]`;
-  pin(payload, `${p}.id`, "number", "automation id");
+  pin(payload, `${p}.id`, "number-or-string", "automation id");
   pin(payload, `${p}.title`, "string");
   pin(payload, `${p}.prompt`, "string");
-  pin(payload, `${p}.schedule`, "object");
-  pinEnum(payload, `${p}.schedule.kind`, ["cron", "every", "after", "once", "event"]);
+  pin(payload, `${p}.schedule`, "object-or-string");
+  const schedList = dig(payload, `${p}.schedule`);
+  if (schedList !== null && typeof schedList === "object" && !Array.isArray(schedList)) {
+    pinEnum(payload, `${p}.schedule.kind`, ["cron", "every", "after", "once", "event"]);
+  }
   pinEnum(payload, `${p}.mode`, ["read-only", "standard"]);
-  pin(payload, `${p}.state`, "string");
-  pinEnum(payload, `${p}.state`, ["active", "paused"]);
-  // Optional fields, pinned only when present (the engine may omit them).
+  // State lane: the engine-native wire carries "lifecycle" instead of a
+  // camelCase "state" (exactly one required); the pin accepts either.
   const row = dig(payload, p);
   if (row != null && typeof row === "object" && !Array.isArray(row)) {
     const r = row as Record<string, unknown>;
+    if ("state" in r || "lifecycle" in r) {
+      const stateLane = ("state" in r ? r.state : r.lifecycle) as unknown;
+      if (typeof stateLane !== "string" || !["active", "paused"].includes(stateLane)) {
+        throw new EngineDrift(
+          `${p} state lane: expected string active|paused, got ${JSON.stringify(stateLane)}`,
+        );
+      }
+    } else {
+      throw new EngineDrift(`${p}.state: missing required field (neither state nor lifecycle)`);
+    }
+    // Optional fields, pinned only when present (the engine may omit them).
+    // The engine-native wire sends null for optional fields — string-or-null.
     for (const f of ["model", "timezone", "rolledBackTo"] as const) {
-      if (f in r) pin(payload, `${p}.${f}`, "string");
+      if (f in r) pin(payload, `${p}.${f}`, "string-or-null");
     }
     if ("spendCap" in r) pin(payload, `${p}.spendCap`, "number");
     if ("nextRunAt" in r) pin(payload, `${p}.nextRunAt`, "string-or-null");
@@ -265,35 +299,114 @@ export function assertSingleAutomation(payload: unknown): void {
   const row = dig(payload, "automation") as Record<string, unknown>;
   const r: Record<string, unknown> = {};
   for (const [k, v] of Object.entries(row)) r[k] = v;
-  pin(payload, "automation.id", "number");
+  pin(payload, "automation.id", "number-or-string", "automation id");
   pin(payload, "automation.title", "string");
   pin(payload, "automation.prompt", "string");
-  pin(payload, "automation.schedule", "object");
-  pinEnum(payload, "automation.schedule.kind", ["cron", "every", "after", "once", "event"]);
+  // The schedule field: the fixture lane sends a camelCase domain object
+  // ({ kind, ... }); the engine-native wire may carry it as a STRING
+  // descriptor (describeRoutineSchedule, e.g. "every 1 day"). Both
+  // forms are legal; anything else is drift.
+  pin(payload, "automation.schedule", "object-or-string");
+  const sched = dig(payload, "automation.schedule");
+  if (sched !== null && typeof sched === "object" && !Array.isArray(sched)) {
+    pinEnum(payload, "automation.schedule.kind", ["cron", "every", "after", "once", "event"]);
+  }
   pinEnum(payload, "automation.mode", ["read-only", "standard"]);
-  pin(payload, "automation.state", "string");
-  pinEnum(payload, "automation.state", ["active", "paused"]);
-  // Optional fields pinned when present.
-  if ("model" in r) pin(payload, "automation.model", "string");
-  if ("timezone" in r) pin(payload, "automation.timezone", "string");
+  // State lane: the engine-native snake_case shape carries "lifecycle" instead
+  // of a camelCase "state" (the wire drift the fixture masked). Exactly one
+  // is required; the pin accepts either (an active|paused string).
+  if ("state" in r || "lifecycle" in r) {
+    const stateLane = ("state" in r ? r.state : r.lifecycle) as unknown;
+    if (typeof stateLane !== "string" || !["active", "paused"].includes(stateLane)) {
+      throw new EngineDrift(
+        `automation state lane: expected string active|paused, got ${JSON.stringify(stateLane)}`,
+      );
+    }
+  } else {
+    throw new EngineDrift(`automation.state: missing required field (neither state nor lifecycle)`);
+  }
+  // Optional fields pinned when present. The engine-native wire sends null
+  // for optional fields (model, timezone); the fixture lane omits them.
+  // Both wire forms are legal — string-or-null.
+  if ("model" in r) pin(payload, "automation.model", "string-or-null");
+  if ("timezone" in r) pin(payload, "automation.timezone", "string-or-null");
   if ("lifecycle" in r) pin(payload, "automation.lifecycle", "string");
   if ("created_at" in r) pin(payload, "automation.created_at", "number-or-null");
   if ("updated_at" in r) pin(payload, "automation.updated_at", "number-or-null");
 }
 
 export function assertRunRecord(payload: unknown): void {
-  pin(payload, "id", "number");
-  pin(payload, "taskId", "number");
-  pin(payload, "kind", "string");
+  // Task reference: the generic runs lane carries task_id/taskId; the
+  // automation-run wire form (GET /api/automations/:id/runs) carries
+  // automation_id. All three are legal; exactly one required.
+  const rec = payload as Record<string, unknown>;
+  const taskRef = "taskId" in rec ? rec.taskId
+    : "task_id" in rec ? rec.task_id
+    : "automation_id" in rec ? rec.automation_id
+    : undefined;
+  if (taskRef === undefined) {
+    throw new EngineDrift(
+      `run task reference: missing required field (neither taskId, task_id, nor automation_id)`,
+    );
+  }
+  // id: the generic lane carries numeric ids; the automation-run wire form
+  // carries string ids ("auto-xxx:manual:yyy"). Both are legal.
+  pinNumOrString(payload, "id");
+  // startedAt / started_at: epoch ms (number) OR ISO-8601 (string) — both
+  // wire forms are legal, in either camelCase or snake_case spelling.
+  // The adapter's toEpochMs normalizes.
+  if ("startedAt" in rec) {
+    pinNumOrString(payload, "startedAt");
+  } else if ("started_at" in rec) {
+    // The snake_case lane carries the run's start in `started_at` — but
+    // the fixture's generic lane always carries `startedAt`. For the
+    // generic wire form, the camelCase field is REQUIRED; the automation-run
+    // wire form (the live lane) carries `started_at` exclusively. Honor
+    // the per-row contract: if the row has `started_at` but NOT `startedAt`,
+    // pin `started_at`; otherwise `startedAt` is required (a generic-form
+    // row missing `startedAt` is drift — the F-2 pin).
+    pinNumOrString(payload, "started_at");
+  } else {
+    throw new EngineDrift(
+      `startedAt: missing required field (neither startedAt nor started_at)`,
+    );
+  }
+  pin(payload, "kind", "string-or-null");
+  // trigger_kind is optional (the automation-run wire form).
+  if ("trigger_kind" in rec && rec.trigger_kind !== null) {
+    pin(payload, "trigger_kind", "string");
+  }
+  // status: the automation-run wire form (succeeded/failed/running/stopped)
+  // plus the generic fixture statuses; anything else is drift.
   pin(payload, "status", "string");
-  pinEnum(payload, "status", RUN_STATUSES);
-  pin(payload, "startedAt", "string");
+  const statusLane = rec.status;
+  const autoStatuses = ["succeeded", "failed", "running", "stopped"];
+  if (!RUN_STATUSES.includes(statusLane as RunRecordView["status"]) &&
+      !autoStatuses.includes(statusLane as string)) {
+    throw new EngineDrift(
+      `status: must be one of [${[...RUN_STATUSES, ...autoStatuses].join("|")}] (got ${JSON.stringify(statusLane)})`,
+    );
+  }
   pin(payload, "tokensIn", "number");
   pin(payload, "tokensOut", "number");
   pin(payload, "toolCalls", "number");
   pin(payload, "turns", "number");
   pin(payload, "error", "string-or-null");
   if (dig(payload, "endedAt") !== undefined) pin(payload, "endedAt", "string-or-null");
+}
+
+/** A "number-or-string" helper for run records (a finite number OR a
+ *  string is legal; anything else is drift). The id/scheduling fields of
+ *  the automation-run wire form carry string values the generic lane
+ *  omits; the fixture lane's numeric values keep working. */
+function pinNumOrString(payload: unknown, path: string): void {
+  const v = dig(payload, path);
+  if (v === undefined) {
+    throw new EngineDrift(`${path}: missing required field`);
+  }
+  if (typeof v === "number" && Number.isFinite(v)) return;
+  if (typeof v === "string") return;
+  throw new EngineDrift(`${path}: expected number or string, got ${JSON.stringify(v)}`);
 }
 
 export function assertRuns(payload: unknown): void {

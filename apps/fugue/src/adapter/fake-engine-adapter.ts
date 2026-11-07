@@ -203,24 +203,25 @@ export class FakeEngineAdapter implements EngineAdapter {
     return rec;
   }
 
-  async pauseAutomation(id: number): Promise<void> {
+  async pauseAutomation(id: number | string): Promise<void> {
     this.requireAutomation(id);
     this.setState(id, "paused");
   }
 
-  async resumeAutomation(id: number): Promise<void> {
+  async resumeAutomation(id: number | string): Promise<void> {
     this.requireAutomation(id);
     this.setState(id, "active");
   }
 
-  async runNow(id: number): Promise<void> {
+  async runNow(id: number | string): Promise<void> {
     this.requireAutomation(id);
     // The fake records a synthetic run (E-12's accounting honesty: the
     // numbers come from the fake's own state, never invented live).
+    const owner = this.automations.find((a) => String(a.id) === String(id));
     this.runsState.unshift({
       id: this.nextRunId++,
-      taskId: id,
-      kind: this.automations.find((a) => a.id === id)?.schedule.kind ?? "cron",
+      taskId: owner ? Number(owner.id) : 0,
+      kind: this.automations.find((a) => String(a.id) === String(id))?.schedule.kind ?? "cron",
       status: "ok" as const,
       startedAt: this.clock(),
       endedAt: this.clock(),
@@ -232,21 +233,21 @@ export class FakeEngineAdapter implements EngineAdapter {
     });
   }
 
-  async skip(id: number): Promise<void> {
+  async skip(id: number | string): Promise<void> {
     this.requireAutomation(id);
   }
 
-  async snooze(id: number, minutes: number): Promise<void> {
+  async snooze(id: number | string, minutes: number): Promise<void> {
     this.requireAutomation(id);
     if (minutes < 1) {
       throw new DomainInvariantError(`snooze: minutes must be >= 1 (got ${minutes})`);
     }
   }
 
-  async history(id: number, limit?: number): Promise<RunRecordView[]> {
+  async history(id: number | string, limit?: number): Promise<RunRecordView[]> {
     this.requireAutomation(id);
     const rows = this.runsState
-      .filter((r) => r.taskId === id)
+      .filter((r) => String(r.taskId ?? 0) === String(id))
       .sort((a, b) => b.id - a.id);
     return limit !== undefined ? rows.slice(0, limit) : rows;
   }
@@ -300,17 +301,17 @@ export class FakeEngineAdapter implements EngineAdapter {
 
   /* — internals — */
 
-  private requireAutomation(id: number): void {
+  private requireAutomation(id: number | string): void {
     this.nextPayload("automations"); // honor a forced error, if any
-    if (!this.automations.some((a) => a.id === id)) {
+    if (!this.automations.some((a) => String(a.id) === String(id))) {
       throw new DomainInvariantError(
         `automation ${id}: unknown automation id (the engine owns the id space)`,
       );
     }
   }
 
-  private setState(id: number, state: "active" | "paused"): void {
-    const a = this.automations.find((x) => x.id === id);
+  private setState(id: number | string, state: "active" | "paused"): void {
+    const a = this.automations.find((x) => String(x.id) === String(id));
     if (a) a.state = state;
   }
 }

@@ -28,8 +28,10 @@ export interface RunHistoryOptions {
   jobTitles?: Record<number, string>;
   /** The global lane: one group, no per-job empty states. */
   groupByJob?: boolean;
-  /** Jobs with zero runs still get an honest empty group line. */
-  jobs?: { id: number; title: string }[];
+  /** Jobs with zero runs still get an honest empty group line.
+   *  The id is the RAW task id (the engine's string 'auto-xxx' ids or
+   *  the fixture's numeric ones) — String()-equality everywhere. */
+  jobs?: { id: number | string; title: string }[];
   selected?: number | null; // the run id the cursor sits on (optional: null when unselected)
 }
 
@@ -42,9 +44,9 @@ export interface RunHistoryViewModel {
 
 /** Group the runs by job (newest first within a group; groups in the
  *  caller's job order, the global lane first when mixed). Pure. */
-export function groupRuns(runs: RunRecordView[], jobs?: { id: number; title: string }[]): RunGroup[] {
+export function groupRuns(runs: RunRecordView[], jobs?: { id: number | string; title: string }[]): RunGroup[] {
   const titleOf = (taskId: number): string =>
-    jobs?.find((j) => j.id === taskId)?.title ?? `Job ${taskId}`;
+    jobs?.find((j) => String(j.id) === String(taskId))?.title ?? `Job ${taskId}`;
   const byTask = new Map<number, RunRecordView[]>();
   for (const r of runs) {
     const rows = byTask.get(r.taskId) ?? [];
@@ -53,12 +55,14 @@ export function groupRuns(runs: RunRecordView[], jobs?: { id: number; title: str
   }
   byTask.forEach((rows) => rows.sort((a, b) => b.id - a.id));
   // The known jobs in the caller's order, then any unknown task ids
-  // that have runs, in ascending order (stable, honest).
-  const orderedTasks = [...(jobs ?? [])].map((j) => j.id);
+  // that have runs, in ascending order (stable, honest). The engine's
+  // string task ids group under their coerced numeric key (0) — the
+  // group title resolves by String()-equality (O-4), never a crash.
+  const orderedTasks: number[] = [...(jobs ?? [])].map((j) => Number(j.id) || 0);
   for (const id of byTask.keys()) {
     if (!orderedTasks.includes(id)) orderedTasks.push(id);
   }
-  const groupJobs = orderedTasks.map((id) => ({ id, title: titleOf(id) }));
+  const groupJobs = orderedTasks.map((id) => ({ id: Number(id), title: titleOf(id) }));
   return groupJobs.map((j) => ({
     taskId: j.id,
     title: j.title,

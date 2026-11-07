@@ -14,7 +14,7 @@ import type { AutomationRecord } from "../adapter/engine-adapter.js";
 export interface JobListOptions {
   automations: AutomationRecord[];
   shadow: Job[];
-  selected: number | null;
+  selected: number | string | null;
 }
 
 export interface JobListViewModel {
@@ -27,7 +27,7 @@ export interface JobListViewModel {
 export function jobListViewModel(opts: JobListOptions): JobListViewModel {
   const groups: JobListViewModel["groups"] = [];
   let flat: string[] = [];
-  const allRows: { row: string; id: number }[] = [];
+  const allRows: { row: string; id: number | string }[] = [];
   let selectedIndex = -1;
 
   if (opts.automations.length > 0) {
@@ -52,7 +52,7 @@ export function jobListViewModel(opts: JobListOptions): JobListViewModel {
   }
 
   allRows.forEach((r, i) => {
-    if (opts.selected !== null && r.id === opts.selected) selectedIndex = i;
+    if (opts.selected !== null && String(r.id) === String(opts.selected)) selectedIndex = i;
   });
 
   return { groups, totalRows: flat.length, selectedIndex };
