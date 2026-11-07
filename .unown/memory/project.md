@@ -1,27 +1,39 @@
 # Project Memory
 
 ## Known pitfalls
-- Prefer simplified, straightforward function implementations over overly complex regex-based approaches that are error-prone.
+- In /home/z/my-project/unown, Playwright webServer and flow spec fixture processes auto-tear-down via their configs after test runs; verify clean exit with no stray server processes when results look wrong.
 - In /home/z/my-project/unown, a live-wire pin test was written to assert the `passed` status; it initially failed because the live spelling differs from the expected value.
 - In /home/z/my-project/unown, fix apps/fugue/src/adapter/contract.ts time-lane to accept ISO strings; F-3 failure root cause is that assertRunRecord rejects the live automation-run wire form (trigger_kind + snake_case tokens/timestamps, no kind/toolCalls fields) because pin(payload, "kind", ...) throws on missing required 'kind'.
 - The `## Environment` heading itself is landing-quoted (loop.tsx:129) — restored by hand 2026-11-07 (SEVENTH occurrence of the issue #46 prune class — the render during the F-6 marathon took the heading again while the Manual-notes bullets survived); it lives in the Manual notes durable lane above and MUST survive every re-render.
-- In /home/z/my-project/unown, after F-5 Chunk 3, the project passes `bun run typecheck` with zero fugue errors and 156 tests pass
+- In /home/z/my-project/unown, the e2e fugue-flow spec was rewritten with hard assertions to replace prior soft assertions, ensuring deterministic pass/fail outcomes for the runs-route flow
+- In /home/z/my-project/unown, running `bunx tsc` produces noise from the no-@types/bun environment that does not represent real errors; verify type-checking with `bun run typecheck` from the project root instead
+- The default draft configuration includes `scheduleKind: "every"` and `scheduleExpr: "1d"`; `validateDraft` for the "every" schedule kind runs `isValidInterval(d.scheduleExpr)` on the `1d` default, which is valid, making the default draft valid unless the model field is empty in the default.
+- Refactor repeated data-loading logic in UI components (e.g., job-selection history) into named helper functions (like `loadJobRuns(id)`) to ensure error-handling/catch lanes are preserved consistently across all invocation sites.
+- In /home/z/my-project/unown, `mapAutomationRow` destroys engine automation IDs by converting strings to numbers, causing `auto-xxx` IDs to fail `Number.isFinite` checks and fall back to incorrect values; fix verified in cycle 7
+- In /home/z/my-project/unown, `doBoot()` previously failed to preserve `selectedJobId` when refreshing after a run, breaking `loadJobRuns` which requires both `route === "runs"` and a non-null `selectedJobId`; fix verified in cycle 8
+- In /home/z/my-project/unown, a flaky e2e test occurred when `doBoot`'s `rerender()` replaced `container.innerHTML` while the compose dialog was open, interrupting Playwright's `fill` action; fixed by preventing this specific DOM replacement during active interaction, verified in cycle 10
 
 ## Task playbooks
 - The live-lane boot sequence in `doBoot()` calls `boot(bootClient)` to run `resolveAdapter(liveClient)`, which probes `/api/overview`, and then calls `safeList(resolved.live)` to fetch `/api/automations`; when the fixture returns `{ automations: [] }`, `mapAutomationList([])` resolves to an empty array, leaving `state.automations` as `[]`.
 
 ## Environment
-- The `## Environment` heading is landing-quoted (loop.tsx:129) — restored by hand after the SIXTH/SEVENTH/EIGHTH/NINTH/TENTH occurrences of the issue #46 prune class; it lives in the Manual notes durable lane above and MUST survive every re-render. (ELEVENTH event 2026-11-07: the render MOVED the heading back to this canonical slot with a session-learning bullet — a move, not a prune; the provenance line restored here.)
+- The `## Environment` heading is landing-quoted (loop.tsx:129) — restored by hand after the SIXTH–TWELFTH occurrences of the issue #46 prune class (the TWELFTH: the F-8 session render pruned this provenance bullet while the heading + the durable Manual-notes lane survived); it lives in the Manual notes durable lane above and MUST survive every re-render.
 - In /home/z/my-project/unown, the e2e config boots serve.mjs with default env (LIVE lane); default FUGUE_NOTES_ROOT is repo root, and the live lane must keep working unchanged. Verified: e2e specs do not touch /manual-notes or /skills-staged routes.
 
 ## Facts
+- In /home/z/my-project/unown, the export flow builds canonical bytes via exportBytes(recomputeNextId(state.data)), wraps them in a Blob and URL.createObjectURL, triggers a hidden <a download="fugue-export.json"> click, and an empty store still exports successfully
+- Unown project CLI entrypoint is bin/unown, a Bun script that boots pi-repo/packages/self-learning/src/boot.ts to drive the TUI, headless mode (-p), --plan, and subcommands; additionally, a print exit trace is wired via pi-repo/packages/self-learning/src/print-exit-trace.ts and integrated into installPrintStallWatchdog, cmdPrint, and cli.ts.
+- In /home/z/my-project/unown, the e2e spec `e2e/fugue-live.spec.ts` uses lane-pinned selectors for test stability and expects the final engine row with a 30,000ms timeout because the live engine's create plus full boot chain involves 4 sequential round-trips that exceed the default wait (as implemented by `createRoutineViaUi`).
+- In /home/z/my-project/unown, the e2e io battery uses Playwright to intercept export downloads: the app downloads via Blob + object URL + anchor click, and imports via file input
+- In /home/z/my-project/unown, the Manual-notes over-cap [data-mn-overcap] block is only created by the input handler if it already exists (updating in place), so the e2e test pins edge 11 via the always-rendered meter over-cap line (`4097 / 4096 chars — over cap…`) with data-mn-over="1" and uses a conditional assert on the block
+- In /home/z/my-project/unown, e2e test isolation must not write to the real .unown directory; verify by asserting byte-identical files before and after test runs
+- The changes to .unown/memory/project.md, project.provenance.json, and serve.mjs are pre-existing from landed F-7 chunk 3 or earlier sessions; verify they are not modified in new chunks
+- The only allowed file write for the new isolation-pin test is the creation or rewriting of apps/fugue/test/isolation-pin.test.ts, which is a verified ALLOWED_INPUTS path
 - In /home/z/my-project/unown, use Bun.spawn to run the e2e server process.
 - Resolve the `.unown/` directory root by going two levels up from the `apps/fugue` subdirectory.
-- Playwright webServer and flow spec fixture processes auto-tear-down via their configs after test runs; verified clean exit with no stray server processes in /home/z/my-project/unown.
 - In /home/z/my-project/unown, V-15 pin permits modifying `runner/fixture-server.ts` to align canned JSON with both-forms contract despite it being outside ALLOWED_INPUTS
 - In /home/z/my-project/unown, e2e smoke spec palette assertion count was updated from 11 to 13 in `e2e/fugue-smoke.spec.ts`
 - In /home/z/my-project/unown, live fugue engine is reachable; automation list is empty because the probe cleaned up its routine; all acceptance checks passed.
-- In /home/z/my-project/unown, verify contract.ts fix by confirming live engine reachability and green acceptance checks; expect empty automations after probe cleanup.
 - Frame-hardening headers (Content-Security-Policy frame-ancestors 'self' and X-Frame-Options SAMEORIGIN) were added to the `/encore/:path*` route in `next.config.ts`, matching the pattern already established for sibling routes `/nocturne`, `/cadence`, `/aria`, and others.
 - pi-repo/packages/pi-protocol: Protocol types and encoding.
 - Cadence domain layer lives at `src/lib/cadence/` mirroring bazaar/sigil sibling conventions: pure domain code, bun:test for tests, localStorage shim in tests, and happy-dom preload configured via bunfig.
@@ -30,12 +42,10 @@
 - Rule of thumb: a declared default is a contract against the real resolver; always pin it in a test or it will drift.
 - Guard habit-sync effects with a `sessionHabitsRef` reference to prevent unnecessary re-renders or sync conflicts.
 - The six landing-page benchmark suites are defined in the TRACKS array at scripts/landing_benchmarks.mjs:79, which writes to src/components/landing/benchmarks-data.ts; the authoritative contract is documented in benchmarks/AGENTS.md under "The landing-page feed".
-- Unown project's CLI entrypoint is bin/unown, a Bun script that boots pi-repo/packages/self-learning/src/boot.ts to drive the TUI, headless mode (-p), --plan, and subcommands
 - Pin the no-phantom-drift invariant with test/settings-defaults-drift.test.ts plus the BM-8 guard on a pristine home: run the test in a subprocess because some settings getters resolve through term.ts's module-scope UNOWN_HOME snapshot and an in-process run can read earlier tests' leftovers.
 - A probe that sets a setting to its current value produces no detectable drift; construct targets as current plus offset, and load-time validation flags any task whose diskCheck.expect equals the item's declared default as diff-inert (BM-2 hook-depth task is honest about this).
 - When editing `src/domain/*.ts` files, natural prose containing words like 'document.' is permitted because the DOM global verifier only bans actual global object member access, not incidental text matches.
 - Recorded S2-1 DELTA from receipts: probes went from 6/6 unreachable to 6/6 reachable and changed; settable coverage increased from 10/89 (11.2%) to 41/120 (34.2%); pi rows unreachable dropped from 32 to 0; BM-4 depth increased by +0.9 Downs, recorded as the honest cost of the Interface menu row.
-- M2-A print exit trace is wired in the Unown project via `pi-repo/packages/self-learning/src/print-exit-trace.ts` and integrated into `installPrintStallWatchdog`, `cmdPrint`, and `cli.ts`, with tests importing from both `cli.ts` and `print-exit-trace.ts`
 - Phantom settings drift (8 interface items) occurs when declared default fields are written from the pi selector's row states instead of the vendored settings-manager getters, causing /settings diff to show 8 phantom drift rows on every fresh install; the remedy is to align each declared default with the resolver's value and add provenance comments.
 - Export installPrintStallWatchdog from cli.ts and import createPrintExitTrace, printExitTraceEnabled, and resolvePrintTraceDir from print-exit-trace.ts in Unown's test suite.
 - markdown.ts is confirmed to be outside the runtime import closure
@@ -64,7 +74,6 @@
 - pi-repo/packages/agent/scripts: Telemetry schema documentation generator
 - agent-service: Mini-service wrapper (port 3030) booting self-learning layer with REST+SSE API
 - benchmarks/mpbench: MPBench dataset adapter for poisoning defense measurement
-- Unown ticket O-4 chunk 2: `palette.ts` updated with a 17-row table plus dispatch and doc-comment updates, and a new `palette.test.ts` file containing 21 tests was added; operator gate re-runs verified Lane A 93/0, Lane B 93/0, and typecheck 0.
 - benchmarks/longhorizon: Multi-file refactoring task benchmark using clippad fixture
 - benchmarks/nonllm: Local ONNX models (bge-small/MiniLM, ms-marco) and symbolic lanes
 - blueprint/memory: Tiered memory stack observability mirroring CLAUDE.md hierarchy
@@ -95,29 +104,14 @@
 - benchmarks/polyglot: Aider polyglot benchmark with 50-exercise Exercism subset
 - C-7 changes in /home/z/my-project/unown involved `apps/chaconne/public/offline.html`, `apps/chaconne/scripts/{verify-precache.ts, verify-precache.test.ts, capture-usage.mjs}`, `e2e/chaconne-resilience.spec.ts`, and `apps/chaconne/runner/store.ts`.
 - The C-7 handoff in /home/z/my-project/unown verified that the `corrupt-quarantine` label was applied in `apps/chaconne/runner/store.ts` and its test `store-c7.test.ts`.
-- In /home/z/my-project/unown, F-5 Chunk 3 wires the three new modules into the shell using DOM-free dispatch and render helpers, adding run-row click wiring and selectedJobState to the palette context
-- C-9 closing chunk continued from session 01a1b0f6, which was cut by the operator's 2400s dispatch timeout; files landed by the prior session were verified by the new chunk
-- In /home/z/my-project/unown, F-5 Chunk 2 implements three DOM-free view modules and co-located tests in apps/fugue, built strictly per NOTES-F5.md sections 3 and 4
 - In /home/z/my-project/unown, F-5 module run-history.ts contains a `groupRuns` function that groups data by `taskId` and sorts newest-first
-- In /home/z/my-project/unown, F-5 work includes authoring NOTES-F5.md with exactly 6 sections: 1. THE CONSUMED SURFACE, 2. THE SHELL TODAY, 3. THE WIRING PLAN, 4. THE TEST PLAN, 5. THE EDGE PINS, and 6. OPEN QUESTIONS
-- In /home/z/my-project/unown, F-5 verification confirms that authoring NOTES-F5.md is the only file change in apps/fugue/, verified via `git status --porcelain -- apps/fugue/`
-- In /home/z/my-project/unown, F-5 Chunk 4 is scoped to only two files: creating the new `e2e/fugue-flow.spec.ts` test and appending to `apps/fugue/NOTES-F5.md`; no `src` files are modified in this chunk
-- In /home/z/my-project/unown, `git status` confirms that source modifications in `app.ts`, `app.test.ts`, and `fugue.css` belong to the frozen chunks 2–3, while chunk 4's verified file changes are limited to the new e2e spec and the NOTES-F5.md append
 - In /home/z/my-project/unown, Chunk 2 landed in `apps/fugue/src/ui/app.ts` by adding the seam read: the `FugueEngineConfig` interface, a `Window.__FUGUE_ENGINE__` declaration, and an `engineConfig()` helper, integrating with both client constructions including `appAdapter` at line ~552 and the `bootClient` path.
 - In /home/z/my-project/unown, F-5 chunk 4 scope gap: the runs-route e2e flow was unreachable because main() exposed no tab control and no job-row selection hook; per layer ruling, route tab bar and selection hooks are F-5 shell completion, not F-6
-- In /home/z/my-project/unown, F-5 chunk 5 completion: main() doBoot() modified to re-fetch and re-render so the run-now to synthetic-run e2e flow works; app.ts render() updated; all 156 tests pass
-- In /home/z/my-project/unown, the V-18 ruling is explicitly limited to writes in app.ts, app.test.ts, the three adapter files, and NOTES-F6.md; the run-history taskId domain type is deeply wired to number, so widening it is out of scope and not the blocker
 - In /home/z/my-project/unown, the live e2e spec for the run-history view awaits the presence of the .fugue-run-row element rather than the grouped title, so numeric taskId grouping does not block the spec
 - In /home/z/my-project/unown, the real blockers for completing the run-history work are the adapter seam and app.ts, not the taskId type constraint
-- In /home/z/my-project/unown, open .fugue-dialog.is-open overlay with fixed inset:0 must have overflow-y:auto in apps/fugue/src/ui/fugue.css or the 10-field form cannot scroll
-- In /home/z/my-project/unown, cycle-4 fix verified that compose-create adds a LOCAL shadow job (id 1) and creates the engine automation (auto-xxx) but does not automatically refresh the engine row, so the UI must trigger a manual refresh to display the new automation.
-- In /home/z/my-project/unown, the e2e spec `e2e/fugue-live.spec.ts` uses lane-pinned selectors for test stability.
 - When fixing UI re-render defects triggered by user actions (like 'run-now'), ensure the fix addresses the specific re-render cause rather than just the symptom, validating that state updates do not trigger unintended full re-renders.
 - In /home/z/my-project/unown, the id-model mismatch between the engine seam and selection surface is resolved by keeping `RunRecordView.taskId` as `number` per the operator's scope ruling, curing the mismatch without widening the domain type.
 - Handle address forms within cross-frame iframes by locating and filling fields in the correct frame context; for stress fixtures, arm 'browser dialog accept text=OK' before clicking buttons that open native confirm() dialogs to prevent flow cancellation by default auto-dismiss behavior, re-arming the one-shot policy after each use. (Stale legacy clause regarding ConfirmBench removed.)
-- In /home/z/my-project/unown, `e2e/fugue-live.spec.ts` `createRoutineViaUi` expects the final engine row with a 30,000ms timeout because the live engine's create plus full boot chain involves 4 sequential round-trips that exceed the default wait.
-- In /home/z/my-project/unown, pinAutomation per-item list assert uses state-only pin which drifts against the engine-native lifecycle wire shape, requiring lane-pinned selectors for contract tests
-- In /home/z/my-project/Unown, terminal operations use DISPATCH_OK for dispatch-related sessions and UNOWN_OK for general completion markers, both indicating successful execution status.
 
 ## Manual notes
 
@@ -129,4 +123,4 @@
 - NINTH occurrence receipt (2026-11-07, the thirty-first lineage): the 30th's F-7-item-1 session renders took the ENTIRE durable lane again (the second whole-lane loss today — the fifth-occurrence class escalated) plus the Workflow and Environment headings; all restored from the af126efb known-good. The H-22 memory-guard (the pre-commit diff flag, operator toolchain) lands with this restore.
 - TENTH occurrence receipt (2026-11-07, the thirty-first lineage): the F-7 chunk-3 A2 session VIOLATED the brief's FORBIDDEN_INPUTS — it booted the real serve.mjs on :4017 and PUT-tested against the REAL project.md (20k-char bodies), then 'restored' the section to a single placeholder bullet, destroying the durable lane. CAUGHT BY THE H-22 MEMORY-GUARD at the operator's commit boundary (11 protected lines flagged, its first live catch — the diff preserved in the ring buffer). V-28 filed; the FUGUE_NOTES_ROOT isolation cure rides chunk 3b. The bullets above are the af126efb-lineage known-good.
 
-<!-- unown: rendered 110/119 memories via Mem0 (backend: lexical) · 9 oldest pruned at render (cap 110; hard-won rules immune) at 2026-11-07T16:20:19.767Z -->
+<!-- unown: rendered 104/104 memories via Mem0 (backend: lexical) at 2026-11-07T16:59:40.229Z -->
