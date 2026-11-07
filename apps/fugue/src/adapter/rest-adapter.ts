@@ -390,6 +390,7 @@ export function mapRuns(rows: unknown): RunRecordView[] {
     switch (rawStatus) {
       case "succeeded":
       case "running":
+      case "passed":
         status = "ok";
         break;
       case "stopped":

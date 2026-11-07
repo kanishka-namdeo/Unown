@@ -628,8 +628,17 @@ export function main(): void {
       s.runs = await appAdapter.history(id);
       s.jobs = s.automations.map((j) => ({ id: j.id, title: j.title }));
       rerender();
-    } catch {
-      s.route = "jobs";
+    } catch (e) {
+      // The E-02 honest-catch law: the history lane must SURFACE the
+      // failure, never swallow it — the route STAYS on 'runs' so the
+      // user sees the error panel (the create lane's E-02 pattern),
+      // not a silent bounce back to jobs.
+      const msg = e instanceof Error ? e.message : String(e);
+      const notice = document.createElement("div");
+      notice.textContent = `history load failed: ${msg}`;
+      notice.className = "fugue-panel fugue-panel-error";
+      container.append(notice);
+      s.route = "runs"; // stay on runs (the user sees the failed history, not a bounce)
       rerender();
     }
   }

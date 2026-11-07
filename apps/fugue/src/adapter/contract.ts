@@ -386,10 +386,13 @@ export function assertRunRecord(payload: unknown): void {
     );
   }
   // status: the automation-run wire form (succeeded/failed/running/stopped)
-  // plus the generic fixture statuses; anything else is drift.
+  // plus the generic fixture statuses; 'passed' is the learning loop's
+  // success spelling on the global /api/runs lane (the live fix-fizzbuzz
+  // row carries it, 2026-11-07) and maps to 'ok' in mapRuns. Anything
+  // else is drift.
   pin(payload, "status", "string");
   const statusLane = rec.status;
-  const autoStatuses = ["succeeded", "failed", "running", "stopped"];
+  const autoStatuses = ["succeeded", "failed", "running", "stopped", "passed"];
   if (!RUN_STATUSES.includes(statusLane as RunRecordView["status"]) &&
       !autoStatuses.includes(statusLane as string)) {
     throw new EngineDrift(
