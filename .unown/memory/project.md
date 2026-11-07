@@ -1,28 +1,26 @@
 # Project Memory
 
 ## Known pitfalls
+- Fugue a11y (F-9) contrast pitfall: `--fugue-accent-ink` in the DARK scheme resolves to `#0f1a14` (the near-black background token), not a readable text color, causing wcag2aa contrast failures on badges and mixed-bg text (the 'accent-ink trap'). Cure: scheme-pair the badge text — light scheme uses `--fugue-accent`/`--fugue-ink`, dark scheme uses a fixed bright green.
 - In /home/z/my-project/unown, Playwright webServer and flow spec fixture processes auto-tear-down via their configs after test runs; verify clean exit with no stray server processes when results look wrong.
 - In /home/z/my-project/unown, a live-wire pin test was written to assert the `passed` status; it initially failed because the live spelling differs from the expected value.
 - In /home/z/my-project/unown, fix apps/fugue/src/adapter/contract.ts time-lane to accept ISO strings; F-3 failure root cause is that assertRunRecord rejects the live automation-run wire form (trigger_kind + snake_case tokens/timestamps, no kind/toolCalls fields) because pin(payload, "kind", ...) throws on missing required 'kind'.
 - The `## Environment` heading itself is landing-quoted (loop.tsx:129) — restored by hand 2026-11-07 (SEVENTH occurrence of the issue #46 prune class — the render during the F-6 marathon took the heading again while the Manual-notes bullets survived); it lives in the Manual notes durable lane above and MUST survive every re-render.
-- In /home/z/my-project/unown, the e2e fugue-flow spec was rewritten with hard assertions to replace prior soft assertions, ensuring deterministic pass/fail outcomes for the runs-route flow
-- In /home/z/my-project/unown, running `bunx tsc` produces noise from the no-@types/bun environment that does not represent real errors; verify type-checking with `bun run typecheck` from the project root instead
-- The default draft configuration includes `scheduleKind: "every"` and `scheduleExpr: "1d"`; `validateDraft` for the "every" schedule kind runs `isValidInterval(d.scheduleExpr)` on the `1d` default, which is valid, making the default draft valid unless the model field is empty in the default.
-- Refactor repeated data-loading logic in UI components (e.g., job-selection history) into named helper functions (like `loadJobRuns(id)`) to ensure error-handling/catch lanes are preserved consistently across all invocation sites.
-- In /home/z/my-project/unown, `mapAutomationRow` destroys engine automation IDs by converting strings to numbers, causing `auto-xxx` IDs to fail `Number.isFinite` checks and fall back to incorrect values; fix verified in cycle 7
-
-## Task playbooks
-- The live-lane boot sequence in `doBoot()` calls `boot(bootClient)` to run `resolveAdapter(liveClient)`, which probes `/api/overview`, and then calls `safeList(resolved.live)` to fetch `/api/automations`; when the fixture returns `{ automations: [] }`, `mapAutomationList([])` resolves to an empty array, leaving `state.automations` as `[]`.
 
 ## Environment
-- The `## Environment` heading is landing-quoted (loop.tsx:129) — restored by hand through the FOURTEENTH occurrence of the issue #46 prune class (the render prunes this provenance bullet while the heading + the durable lane survive); it lives in the Manual notes durable lane above and MUST survive every re-render.
 - In /home/z/my-project/unown, dreams badges use a CSS variable --fugue-accent-ink which in the dark scheme resolves to #0f1a14, causing a low-contrast 'accent-ink trap' against the dark background; the correct dark-scheme accent is a bright green.
 - In /home/z/my-project/unown, the e2e config boots serve.mjs with default env (LIVE lane); default FUGUE_NOTES_ROOT is repo root, and the live lane must keep working unchanged. Verified: e2e specs do not touch /manual-notes or /skills-staged routes.
 
 ## Facts
+- In /home/z/my-project/unown, the landing page structure test (src/app/__tests__/landing-page.test.tsx) expects SECTION_COUNT of 15 and a specific band-order where 'fugue' is at index 9, positioned between Chaconne (index 8) and Proof (index 10).
+- In /home/z/my-project/unown, the landing page hue-walk test expects the 'gold' hue (associated with Fugue) at position 9, situated between the 'aqua' hue of Chaconne and the 'magma' hue of Proof, ensuring no color clashes.
+- Fugue CI job in /home/z/my-project/unown mirrors chaconne and ostinato: checkout, setup-bun, frozen-lockfile, zero-dep hash assert, Lane A via `cd apps/fugue && bun test` (283 tests), Chromium install, e2e battery (23+1 specs), and artifact upload.
+- In /home/z/my-project/unown, root package.json scripts are additive-only: `fugue:dev`, `fugue:test`, and `fugue:e2e` were added to mirror the existing chaconne and ostinato patterns.
+- In /home/z/my-project/unown Fugue CI, the live lane is intentionally excluded from the workflow (noted as the operator's off-peak witness lane) and flagged via a comment.
+- F-9 accessibility lane in /home/z/my-project/unown enforces a zero-violation policy with scans per scheme (light and dark) covering wcag2a and wcag2aa across jobs, runs, dreams, memory, palette-open, and compose-open views; all gates are green on completion.
+- F-10 deliverables in /home/z/my-project/unown include `docs/fugue.md`, structured following the `docs/chaconne.md` pattern, with sections covering: What it is, Run it, Test it, architecture story, engine-adapter seam ruling, learning-views story, PWA story, dependency ruling, a11y lane, FUGUE_NOTES_ROOT law, landing band's stills, and Related pages.
 - In /home/z/my-project/unown, the F-9 a11y lane is complete: all e2e gates pass with zero WCAG2AA violations across both light and dark schemes for the jobs, runs, dreams, memory, palette-open, and compose-open views, verified via axe-core scans (wcag2a + wcag2aa). The remaining dark-scheme verification was closed out in this lane; no outstanding contrast checks remain for these views. (Supersedes per-scheme status notes.) Reason: Merged the lane-complete status (80299131), the policy+views description (87f03ba2), the fixed-12-violations record (f92ff7bf), and the per-scheme status notes (75c4753e, 828826f7, 3c8facb6) into one coherent, forward-looking fact; preserved the durable policy and the verification method; kept the reference to f92ff7bf as a supporting fact. Deleted the transient/complete-state notes as they add no value to future sessions and were redundant with this consolidated statement.
 - In /home/z/my-project/unown, compose dialog's aria-labelledby must point at the h2's id (fugue-compose-dialog-title), not the title input's id
-- F-9 a11y lane in /home/z/my-project/unown verifies zero WCAG2AA violations per scheme across jobs, runs, dreams, memory, palette-open, and compose-open states
 - Fix F-9 a11y accent-ink trap in /home/z/my-project/unown by scheme-pairing badge text: light uses --fugue-accent/--fugue-ink, dark uses fixed #9fd4b5 (pale green, 7.2:1 contrast on accent-mix bg); do not use --fugue-accent-ink for dark-scheme badges
 - In /home/z/my-project/unown, add tabindex="0" to .fugue-palette-list (role=listbox) to prevent axe flagging focusable-content violations
 - Ensure that focus management utilities handle edge cases where the trigger element is removed from the DOM before the dialog closes, falling back to body or a stable container.
@@ -117,7 +115,6 @@
 - In /home/z/my-project/unown, the real blockers for completing the run-history work are the adapter seam and app.ts, not the taskId type constraint
 - When fixing UI re-render defects triggered by user actions (like 'run-now'), ensure the fix addresses the specific re-render cause rather than just the symptom, validating that state updates do not trigger unintended full re-renders.
 - In /home/z/my-project/unown, the id-model mismatch between the engine seam and selection surface is resolved by keeping `RunRecordView.taskId` as `number` per the operator's scope ruling, curing the mismatch without widening the domain type.
-- Handle address forms within cross-frame iframes by locating and filling fields in the correct frame context; for stress fixtures, arm 'browser dialog accept text=OK' before clicking buttons that open native confirm() dialogs to prevent flow cancellation by default auto-dismiss behavior, re-arming the one-shot policy after each use. (Stale legacy clause regarding ConfirmBench removed.)
 
 ## Manual notes
 
@@ -129,4 +126,4 @@
 - NINTH occurrence receipt (2026-11-07, the thirty-first lineage): the 30th's F-7-item-1 session renders took the ENTIRE durable lane again (the second whole-lane loss today — the fifth-occurrence class escalated) plus the Workflow and Environment headings; all restored from the af126efb known-good. The H-22 memory-guard (the pre-commit diff flag, operator toolchain) lands with this restore.
 - TENTH occurrence receipt (2026-11-07, the thirty-first lineage): the F-7 chunk-3 A2 session VIOLATED the brief's FORBIDDEN_INPUTS — it booted the real serve.mjs on :4017 and PUT-tested against the REAL project.md (20k-char bodies), then 'restored' the section to a single placeholder bullet, destroying the durable lane. CAUGHT BY THE H-22 MEMORY-GUARD at the operator's commit boundary (11 protected lines flagged, its first live catch — the diff preserved in the ring buffer). V-28 filed; the FUGUE_NOTES_ROOT isolation cure rides chunk 3b. The bullets above are the af126efb-lineage known-good.
 
-<!-- unown: rendered 110/112 memories via Mem0 (backend: lexical) · 2 oldest pruned at render (cap 110; hard-won rules immune) at 2026-11-07T17:52:36.798Z -->
+<!-- unown: rendered 110/119 memories via Mem0 (backend: lexical) · 9 oldest pruned at render (cap 110; hard-won rules immune) at 2026-11-07T18:48:38.734Z -->
