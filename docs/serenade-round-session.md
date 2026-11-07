@@ -389,3 +389,37 @@ The heavy-class band is now 102–197 turns / 3–4 dispatches — the
 compound UI tickets (L-5 shell 145, L-7 tags+filters 197) sit at the
 top. The plan's "each ≤ the Ostinato C-ticket size" is ~2–3× off on
 this class; the next round's pre-split should use THIS band.
+
+### The 35th lineage: the recycle test lane (partitioned, 2026-11-07)
+
+A fresh session over the recycled container (the 34th's tree + the
+live bridge/engine survived; the toolchain did not — reinstalled,
+re-hydrated, rebuilt one-pass). Its reconciliation push raced the
+sibling's L-6/L-7/review-#2 window and was arbitrated at the push,
+zero engine cost — **V-5** ([the ledger](../benchmarks/serenade-round/validation-log.md)):
+the dual L-5-receipt remediation, this lane's reconstruction preserved
+as [the parallel receipt](../benchmarks/serenade-round/receipts/l5-parallel-lane-35th.md)
+(the fresh gate re-verification), the 34th's pruned H-26 memory bullet
+restored. The lane then partitioned per the H-26 precedent — the
+sibling drives the L-queue (L-7 → L-8), the 35th took the
+PROVE-SNAPSHOT's named owed item:
+
+**The recycle test** ([the receipt](../benchmarks/serenade-round/receipts/recycle-test-35th.md)):
+five retained improvements fired or held green with zero authoring
+context (the boundary pin caught injected drift; the B-16 holdout
+intact 5/5; the taxonomy + queue pins green at the L-6 receipt's
+exact numbers; the H-22 guard caught a real durable-lane deletion),
+and the sixth — the H-26 claim gate — was live-fired and **caught
+refusing a CLOSED ticket**: the closed-path bug the authoring
+verification had passed vacuously. Fixed in place as a true state
+machine, the deterministic paired A/B receipted (**BEFORE 4/3 vs
+AFTER 7/0**, hermetic fixture repos, zero spend), the live re-run
+green — **V-6**, the registry's H-26 row corrected. The round-level
+reading: the recycle test pays for itself by finding the bug only a
+stranger could see.
+
+The H-27 note (the registry row): the 35th's bring-up was the row's
+named decision window and it took the surviving-shared-tree lane (the
+cheap path — a worktree would have re-cloned and re-installed
+everything); the same session's V-5 race is the worktree case's
+own evidence. The decision rolls to the next bring-up.
