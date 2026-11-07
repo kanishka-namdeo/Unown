@@ -57,6 +57,74 @@ def resolve_bin(name: str, env_var: str) -> str:
     raise SystemExit(f"a1-dispatch: cannot resolve '{name}' (set {env_var})")
 
 
+# H-26: the pre-dispatch claim gate. The ledger-arbiter law mechanized at
+# the ONLY point it saves engine turns: BEFORE a duplicate dispatch burns
+# them. A ticket's claim state is read from the git log (the claim
+# protocol's own medium): '<ticket> CLAIMED (ACTIVE)' commits vs
+# '<ticket> CLOSED' commits. A CLAIM not followed by a CLOSE, younger than
+# the expiry window, refuses the dispatch (exit 7, CLAIM-CONFLICT) unless
+# the operator explicitly owns it (--own-claim, for the claiming lineage's
+# own chunk chain).
+TICKET_RE = re.compile(r"\bTICKET\s+([A-Z]-\d+)\b")
+CLAIM_RE = re.compile(r"\b([A-Z]-\d+)\s+CLAIMED\s*\(ACTIVE\)")
+CLOSE_RE = re.compile(r"\b([A-Z]-\d+)\s+CLOSED\b")
+
+
+def claim_gate(cwd: str, brief: str, expiry_min: int, own_claim: bool) -> int:
+    """H-26: returns 0 to proceed, 7 to refuse (CLAIM-CONFLICT).
+    Zero overhead by design: no ticket in the brief -> immediate 0."""
+    m = TICKET_RE.search(brief)
+    if not m:
+        return 0
+    ticket = m.group(1)
+    if own_claim:
+        print(f"a1-dispatch: H-26 claim gate — ticket {ticket} claimed by THIS lineage (--own-claim); proceed")
+        return 0
+    try:
+        subprocess.run(["git", "fetch", "origin", "--quiet"], cwd=cwd,
+                       capture_output=True, timeout=60)
+        log = subprocess.run(["git", "log", "--format=%cI %s", "origin/main", "-80"],
+                             cwd=cwd, capture_output=True, text=True, timeout=30)
+        lines = log.stdout.splitlines()
+    except Exception as e:  # noqa: BLE001
+        # The gate is best-effort on transport errors: a fetch failure must
+        # not brick dispatches (the offline lane still works) — but it is
+        # NAMED, never silent.
+        print(f"a1-dispatch: H-26 claim gate — transport error ({type(e).__name__}); "
+              "proceeding WITHOUT the claim check (best-effort law)")
+        return 0
+    last_claim_ts = None
+    closed_after_claim = False
+    for line in lines:  # newest first
+        ts, _, subject = line.partition(" ")
+        if CLOSE_RE.search(subject):
+            closed = CLOSE_RE.search(subject).group(1)
+            if closed == ticket and last_claim_ts is not None:
+                closed_after_claim = True
+                break
+        cm = CLAIM_RE.search(subject)
+        if cm and cm.group(1) == ticket and last_claim_ts is None:
+            last_claim_ts = ts
+    if last_claim_ts is None or closed_after_claim:
+        return 0  # no active claim — zero overhead, proceed
+    # An ACTIVE claim exists. Check age vs the expiry window.
+    try:
+        from datetime import datetime, timezone as _tz
+        claimed = datetime.fromisoformat(last_claim_ts)
+        age_min = (datetime.now(_tz.utc) - claimed).total_seconds() / 60
+    except Exception:  # noqa: BLE001
+        age_min = 0.0
+    if age_min > expiry_min:
+        print(f"a1-dispatch: H-26 claim gate — ticket {ticket}'s ACTIVE claim is "
+              f"{age_min:.0f} min old (> {expiry_min} expiry): EXPIRED per the V-9 window; proceed")
+        return 0
+    print(f"a1-dispatch: CLAIM-CONFLICT (H-26, exit 7) — ticket {ticket} carries an "
+          f"ACTIVE claim ({age_min:.0f} min old, within the {expiry_min}-min window) "
+          "on origin/main. Per the ledger-arbiter law: first landing governs — "
+          "stand down, or pass --own-claim if THIS lineage made that claim.")
+    return 7
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--name", required=True, help="ticket/chunk name, e.g. c4-chunk1")
@@ -69,6 +137,15 @@ def main() -> int:
     ap.add_argument("--brief-file", default=None,
                     help="read the brief from this file instead of argv (the V-16 deep cure: "
                          "no pattern A2 can run matches the harness cmdline)")
+    ap.add_argument("--claim-expiry", type=int, default=45,
+                    help="H-26: minutes an ACTIVE claim binds before expiry (default 45)")
+    ap.add_argument("--own-claim", action="store_true",
+                    help="H-26: this lineage made the ticket's ACTIVE claim (the chunk-chain "
+                         "exception); skip the claim gate")
+    ap.add_argument("--dry-run", action="store_true",
+                    help="print the resolved command + the gate verdicts and exit 0 WITHOUT "
+                         "dispatching (the gate-test lane — the accidental-spend cure, "
+                         "receipted 2026-11-07: two gate tests burned 16 real turns)")
     ap.add_argument("brief", nargs="?", default=None)
     args = ap.parse_args()
 
@@ -114,6 +191,11 @@ def main() -> int:
         print("a1-dispatch: process-adjacent brief — PROCESS-CLEANUP LAW appended (V-13)")
 
     # V-38 pin ride-along
+    # H-26: the pre-dispatch claim gate (before any engine spend).
+    rc_claim = claim_gate(args.cwd, args.brief, args.claim_expiry, args.own_claim)
+    if rc_claim != 0:
+        return rc_claim
+
     pin = str(A1 / "scripts" / "v38-pin.py")
     r = subprocess.run([sys.executable, pin], capture_output=True, text=True)
     if "verified OK" not in r.stdout:
@@ -121,6 +203,12 @@ def main() -> int:
         return 1
 
     unown = resolve_bin("unown", "UNOWN_BIN")
+    if args.dry_run:
+        print(f"a1-dispatch: DRY-RUN — gates passed, command resolved, NO dispatch:")
+        print(f"  unown -p <brief {len(args.brief)} chars> --output-format json "
+              f"--max-turns {args.max_turns} --resume {args.resume or '-'} "
+              f"--model {args.model or '(default)'} --cwd {args.cwd}")
+        return 0
     cmd = [unown]
     if args.resume:
         cmd += ["--resume", args.resume]
