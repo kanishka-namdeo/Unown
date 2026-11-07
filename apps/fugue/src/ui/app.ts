@@ -55,6 +55,7 @@ import { renderManualNotes } from "./manual-notes.js";
 import type { SpendReport, DreamRecord, MemoryView } from "../adapter/engine-adapter.js";
 import type { SkillRecord } from "../adapter/engine-adapter.js";
 import { makeJobCommands, runJobCommand, jobLifecycle } from "./jobs.js";
+import { exportBytes, importDocument, exportToastLine, importOkLine, refusalViewModel } from "./io-view.js";
 
 /* ------------------------------------------------------------------ */
 /* The Fugue UI state machine                                          */
@@ -473,6 +474,10 @@ async function safeList(a: EngineAdapter): Promise<AutomationRecord[]> {
 
 function escapeHtml(s: string): string {
   return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+}
+
+function escapeAttr(s: string): string {
+  return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
 }
 
 export { DomainInvariantError, addJob, updateJob, parseFugue, recordEngine };
@@ -968,6 +973,111 @@ export function main(): void {
     rerender();
   }
 
+  /* ---------------------------------------------------------------- */
+  /* F-8: the IO lane (export download + the schema-gated import)      */
+  /* ---------------------------------------------------------------- */
+
+  /** The export: the store's CANONICAL bytes (the domain's `exportFugue`,
+   *  byte-stable by construction) flow through a Blob → object URL →
+   *  a temporary anchor click (the zero-dep browser APIs — no library).
+   *  The toast is honest: an empty store still exports (schema + empty
+   *  arrays), so the command stays enabled and says so. */
+  function triggerExport(): void {
+    const s = app.state;
+    const bytes = exportBytes(recomputeNextId(s.data));
+    const blob = new Blob([bytes], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "fugue-export.json";
+    a.style.display = "none";
+    document.body.append(a);
+    a.click();
+    // The toast: the honest summary (N jobs, M runs; empty-lane line).
+    const notice = document.createElement("div");
+    notice.textContent = exportToastLine(recomputeNextId(s.data));
+    notice.className = "fugue-panel";
+    notice.setAttribute("data-io-toast", "export");
+    container.append(notice);
+    a.remove();
+    URL.revokeObjectURL(url);
+  }
+
+  /** The import: a hidden file input + click (the zero-dep browser
+   *  APIs). On read, the text is parsed through the domain's
+   *  `parseFugue` (the schema gate + `assertData`). On ok the store is
+   *  REPLACED through the F-1 commit-swap lane (`persistAll`) and the
+   *  view re-renders + a toast. On a structured REFUSAL the DRY-RUN
+   *  panel is rendered (reason + the offending schema literal + the
+   *  details, verbatim) and the store STAYS byte-identical — no
+   *  persist. On a corrupt fugue.v1 document (a DomainInvariantError)
+   *  the SAME panel surfaces the error honestly — never a crash. */
+  function triggerImport(): void {
+    const s = app.state;
+    const input = document.createElement("input");
+    input.type = "file";
+    input.accept = "application/json";
+    input.style.display = "none";
+    input.setAttribute("data-io-file", "");
+    document.body.append(input);
+    input.addEventListener("change", () => {
+      const file = input.files?.[0];
+      if (!file) {
+        input.remove();
+        return;
+      }
+      const reader = new FileReader();
+      reader.onload = () => {
+        input.remove();
+        const text = typeof reader.result === "string" ? reader.result : "";
+        const outcome = importDocument(text);
+        if (outcome.ok) {
+          // The ok lane: replace the store through the commit-swap,
+          // re-render + the honest summary toast.
+          const adapter = createLocalStorageAdapter();
+          adapter.recover();
+          app.state.data = outcome.data;
+          persistAll(app.state, adapter);
+          app.state.dialog = "closed";
+          app.state.route = "jobs";
+          rerender();
+          const toast = document.createElement("div");
+          toast.textContent = importOkLine(outcome.data);
+          toast.className = "fugue-panel";
+          toast.setAttribute("data-io-toast", "import");
+          container.append(toast);
+        } else {
+          // The REFUSAL lane (a structured DryRunRefusal): the dry-run
+          // panel, the store unchanged (byte-identical — the caller
+          // persists NOTHING on ok:false).
+          const panel = document.createElement("div");
+          panel.className = "fugue-panel fugue-panel-error";
+          panel.setAttribute("data-panel", "import-refusal");
+          panel.setAttribute("data-io-refusal", "");
+          const vm = outcome.refusal;
+          panel.innerHTML =
+            `<h2>Import refused</h2>` +
+            `<p class="fugue-panel-reason">${escapeHtml(vm.reason)}</p>` +
+            (vm.schemaLiteral !== "absent"
+              ? `<p class="fugue-panel-schema" data-io-schema="${escapeAttr(vm.schemaLiteral)}">schema: ${escapeHtml(vm.schemaLiteral)}</p>`
+              : `<p class="fugue-panel-schema" data-io-schema="">schema: absent</p>`) +
+            `<pre class="fugue-panel-details" data-io-details="">${escapeHtml(vm.details)}</pre>` +
+            `<p class="fugue-panel-action"><kbd>Esc</kbd> close · the store is unchanged (no partial import)</p>`;
+          container.append(panel);
+        }
+      };
+      reader.onerror = () => {
+        input.remove();
+        const notice = document.createElement("div");
+        notice.textContent = `import: file read failed (${reader.error?.message ?? "unknown"})`;
+        notice.className = "fugue-panel fugue-panel-error";
+        container.append(notice);
+      };
+      reader.readAsText(file);
+    });
+    input.click();
+  }
+
   function dispatchCommand(id: string) {
     const s = app.state;
     switch (id) {
@@ -998,14 +1108,10 @@ export function main(): void {
         void dispatchJobCommand(id as "run-now" | "pause" | "resume" | "skip" | "snooze");
         break;
       case "export":
+        triggerExport();
+        break;
       case "import":
-        // F-8 owns the IO battery; the toast stays honest for now.
-        {
-          const s2 = document.createElement("div");
-          s2.textContent = `${id}: wired (F-8 lane)`;
-          s2.className = "fugue-panel";
-          container.append(s2);
-        }
+        triggerImport();
         break;
       case "open-dreams":
         void loadDreams();
