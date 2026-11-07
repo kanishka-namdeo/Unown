@@ -111,7 +111,7 @@ prior rounds' structurally-zero 0/0 openings.
 | F-8 | Import/export + schema-gate e2e: byte-stable goldens, foreign-schema dry-run refusal | e2e io battery | **CLOSED** 2026-11-07 (session 01a1b6e5, 3/38 turns: the export downloads the EXACT canonical bytes, the import's refusal panel renders the dry-run report verbatim with the store NEVER touched; the 5-test io battery incl. the byte-stable re-export + the round-trip + the fugue.v999 refusal; Lane A 283/0/31, the battery 18+1; the close's live probe caught V-29 — the call-ceiling trap, 99 throttle events, cured 240/h, re-run 11/11 with 30 dreams + 4 staged candidates) |
 | F-9 | a11y lane: axe wcag2a/2aa light+dark, tab order, Esc focus-return | e2e a11y battery | pending |
 | F-10 | Docs + landing band: `docs/fugue.md`, README section, REAL captures + PROVENANCE | `bun run check:docs` | **CLOSED** 2026-11-07 (session 01a1b721, 4/72 turns: the doc + 8 REAL keyboard-first stills + PROVENANCE + the band + its 5-test suite + the README section; check:docs ok · claims 62/62 · typecheck 0 · the captures pixel-verified) |
-| F-11 | CI gate + root wiring: root scripts, ci.yml fugue job, runbook, honest-scope statement | `bun run fugue:test` + `fugue:e2e` + `typecheck` on a clean tree | pending |
+| F-11 | CI gate + root wiring: root scripts, ci.yml fugue job, runbook, honest-scope statement | `bun run fugue:test` + `fugue:e2e` + `typecheck` on a clean tree | **CLOSED** 2026-11-07 (session 01a1b73b, 2/17 turns: the fugue:dev/test/e2e root scripts, the CI fugue job — the sibling shape, the live lane NEVER in CI, artifact upload — the runbook + honest-scope append; clean-tree 283/0 · 23+1 · typecheck 0 · check:docs ok) |
 
 Satellites: **A2H-15** = the H-12 generator rebuild (DONE — Phase 0 commit) ·
 the #30 watcher armed through all dispatch churn (the A2H-7 pattern) ·
@@ -462,3 +462,55 @@ measured).
 **Next: F-7's learning views** (dreams journal, memory tiers + health,
 skills-staged queue, Manual-notes editor) — the W2 surface, the round's
 keystone exposure.
+
+## The FUGUE QUEUE COMPLETE — the round-close checkpoint (2026-11-07, the 31st lane)
+
+**F-0 through F-11: ALL CLOSED.** The Sonata round's DRIVE vehicle —
+Fugue, the engine-native automation console — is shipped end-to-end:
+the domain core, the adapter seam, the live HTTP adapter, the PWA
+shell + authoring, the run history + spend, THE LIVE LOOP (the
+operator-witnessed create→run→cold-boot→note chain through the PWA's
+own UI), THE LEARNING VIEWS (the round's W2 keystone: the dreams
+journal rendering the engine's real dreams — 30+ accumulated through
+the round's own workload — the memory tiers + health, the skills
+staged queue with the human-mv hint, the Manual-notes editor with the
+4k over-cap law), the import/export with the schema-gate refusal, the
+a11y battery (13 axe violations found AND fixed), the docs + the
+landing band with 8 REAL captures, and the CI wiring.
+
+**The round-close battery (every standing lane, the closing tree):**
+typecheck 0 · lint 0e/143w · **unit 2654/0/208 (17,638 expects)** ·
+claims 62/62 · docs ok · blog 46/116 · benchmarks 6/6 · changelog rail
+546 · **Lane A 283/0/31 (912 expects)** · the fixture battery **23
+passed + 1 live-skipped** · ostinato e2e **17/17** · chaconne e2e
+**20/20** · **the live probe 11/11 boundaries** (the full live loop +
+all four learning views against the real engine) · the engine's
+learning loop compounding through it all (43+ runs, 30+ dreams, 4
+staged skill candidates — the W2 exercise that no prior round ever
+fired).
+
+**The round's V-ledger growth (this lane): V-26 closed (the convergent
+dual), V-27 (the 30th's item-1), V-28 (the forbidden-inputs violation
++ the FUGUE_NOTES_ROOT isolation law), V-29 (the call-ceiling trap —
+the V-13/V-23 twin). The #46 prune class: occurrences 8–14 (two
+entire-lane losses), EVERY one caught and restored — the H-22
+memory-guard landed mid-round and caught the TENTH live at the commit
+boundary (its first live catch, 20 minutes after landing).**
+
+**The operator toolchain hardened this lane:** the probe harness
+rebuilt in-repo (probe-live.mjs — the H-23 standing instrument, now
+covering 11 boundaries), the V-16 deep cure (a1-dispatch --brief-file),
+the memory-guard (H-22 at GATE).
+
+**The F-10 gate miss, receipted:** the landing unit lane (the band
+count + hue walk) was not in F-10's acceptance set — the ripple was
+caught by the round-close battery and fixed through A2 (session
+01a1b74c); the close battery ALWAYS runs the full test:unit now.
+
+**The standing next steps (the teardown duties):** the
+A2_GROUND_TRUTH.md refresh (the anti-rot law: every round teardown),
+the SDLC_CAPABILITY_MATRIX.md refresh, the §7 competition cycle, the
+augmentation registry's promotion gates (H-22's paired A/B measure),
+the learning-system validation report's refresh (the W2 loop NOW has
+live evidence: the dreams/minting/staged queue all fired on real
+workload), and the evidence packet assembly (§8).
