@@ -316,3 +316,55 @@ left open.
 rule on L-6; the claim-gate's first full-ticket test (L-6's chunks
 ride it); the H-21 truncation-aware continuation's first live fire if
 a chunk hits the output-cap signature.
+
+### The every-3-tickets playbook review #2 (L-4/L-5/L-6 — the 34th lineage, 2026-11-07)
+
+> Review #1's forward note comes due at the L-6 close. Data: the
+> receipts l4/l6 + the L-5 close-commit record (the receipt debt
+> remediated this same push — see l5.md's header).
+
+**The economics table (L-4/L-5/L-6):**
+
+| Ticket | Turns | Dispatches | Notable |
+|---|---|---|---|
+| L-4 | 102 | 3 | the search core; the report-only final chunk pattern |
+| L-5 | 145 | 3 | the heaviest; the boundary pin's comment-drift catch; the receipt-late debt (now remediated) |
+| L-6 | 126 | 3 | queue + states; the aria-live el() seam extension (the third seam-extension of the round); receipt landed IN the close commit |
+
+**Review #1's three rules — the honest scorecard:**
+
+1. **Every dispatch rides the claim gate — HELD.** The 33rd's L-6
+   chunks rode the H-26 gate; zero duplicate-dispatch events in the
+   L-5→L-7 window (the metric's promotion evidence accrues green).
+2. **The class-scaled first-chunk budget — NOT ADOPTED, honestly
+   unconvinced.** L-6's first chunk capped at 34 turns (budget 40);
+   the ticket completed at 126/3 — inside the class band. The rule's
+   marginal benefit is unproven and the 33rd's cadence is
+   self-consistent; the rule retires to the register (revisit only if
+   a UI-class ticket exceeds ~160 turns).
+3. **The receipt lands in the close commit — ADOPTED from L-6.**
+   L-6's receipt is in-tree at its close; the L-5 debt is remediated
+   this push (l5.md, reconstructed from the close commit's own data,
+   the remediation marked in its header).
+
+**New findings (L-4..L-6):**
+
+1. **The seam-extension pattern** — three tickets running have each
+   extended a landed module's type surface honestly (aria-live into
+   `el()`; the L-3 refinement's `hasScriptMarkers`; L-2's
+   emptyDoc). None violated the "no grammar edits" law (all
+   additive, all receipted). **RULE (standing, no change needed):
+   additive seam extensions land IN the ticket that needs them, with
+   the receipt naming them** — the pattern is working.
+2. **The empty-state discipline** — L-6's three distinct honest
+   panels (all-read vs no-clips vs filtered-empty) match the PLAN's
+   Q-3 row exactly; L-5's palette stubs were honest too. The
+   never-a-blank law is now tested surface, not aspiration.
+3. **The report-only final chunk** (L-4's pattern) — when the work is
+   done but the handoff is unpaid, a cheap report-only chunk closes
+   cleanly. Worth noting as the standard third-chunk shape.
+
+**Forward (review #3 at L-9 close, the io/export ticket — or at the
+round close if the cadence outruns the reviews):** the L-9 golden
+lane is the round's byte-stability keystone; the B-16 holdout re-run
+rides L-11; the H-26 promotion measure needs L-7..L-13 clean.
