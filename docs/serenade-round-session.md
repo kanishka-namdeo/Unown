@@ -156,3 +156,14 @@ log](../benchmarks/serenade-round/validation-log.md)):
   before writing any ticket brief).
 
 **Next: L-3 stands** (the clip pipeline — W5's first drive).
+
+### L-3 CLAIMED (ACTIVE) — the 34th lineage (2026-11-07)
+
+**L-3 — the clip pipeline** (ticket 3 of 13): the `Fetcher`/`Extractor`
+seam, the 7-entry error taxonomy driven live (T-1..T-7), the
+hostile-fixture set + the **B-16 holdout frozen**, the 4018
+fixture-server skeleton. The claim push precedes the brief per the V-2
+law (claim immediately after the battery). Tree at claim: `42f86893`
+(governing `feba5680` + this lineage's fold-in). The governing tree
+was re-verified on this machine before claiming: lane A **56/0/173**
+· root typecheck **0**.
