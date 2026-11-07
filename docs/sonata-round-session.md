@@ -131,6 +131,70 @@ See [benchmarks/sonata-round/validation-log.md](../benchmarks/sonata-round/valid
 (the V-ledger; round-scoped numbering, Rondo's V-1..V-43 inherited by
 reference where a law carries over).
 
+## Environment checkpoint (2026-11-07, the TWENTY-NINTH lineage — the second recycle bring-up)
+
+The sandbox was recycled after the F-4 close (a fresh directive, not a
+resumption: the twenty-eighth lineage's environment — bun, UNOWN_HOME,
+playwright browsers, the credential store — all gone; only the repo
+survived via the remote). Full re-bring-up per the standing checklist,
+one pass, on tree `6cc078dd` = origin/main (F-4 CLOSED):
+
+- bun **1.4.3** re-fetched via the V-2 zip lane
+  (`bun-v1.4.3` GitHub release → `/home/z/my-project/.bun/bin/bun`,
+  symlinked into `/home/z/.bun/bin` so the a1 toolchain resolves it;
+  system bun is 1.3.14 — never used) · operator toolchain re-mirrored
+  `cp scripts/a1/* + scripts/a1-continue.py` → `/home/z/my-project/.a1/scripts/`
+  (the V-2 recycle tax: one `cp`)
+- install **7/7** (`UNOWN_NO_LINK=1 UNOWN_NO_ENGINE_SERVICE=1`, then
+  `bun scripts/link.ts` → `/home/z/.local/bin/unown`) · `.env` Agnes lane
+  set (duplicate-key audit CLEAN) · stack up via `dispatch-bg.py stack`
+  (bridge :3031 upstream 200 `upstreamKeyIsSet:true`, engine :3030
+  v0.0.57 @ `6cc078dd` = HEAD, 9 router jobs, breaker closed, memory
+  platform live, lexical-ml fallback noted)
+- V-38 pre-seed on the fresh home (0 fields — nothing seeded yet), then
+  the C1 smokes seeded the home and the ride-along pin landed 3 fields
+  (models.json 2 + model-specs.json 1) — **V-11 FILED** (see the
+  V-ledger): the C2 canary CRASHED — the committed `scripts/a1/v38-pin.py`
+  writes `source:"operator"` when it pins, `"operator"` is NOT a member
+  of the engine's `SpecSource` enum, and doctor's `formatSpecShort`
+  (`model-spec-detect.ts:879`) does `SOURCE_LABELS[unknown].split` →
+  TypeError. The 28th-lineage receipt says `source:"user"` — the
+  committed code had drifted from its own receipt. **CURED at the
+  operator-tooling layer**: the pin now writes `source:"user"` (the
+  receipted value; provenance rides `operatorPin`) + a post-pin enum
+  guard (a dispatch can never leave home with a source doctor cannot
+  render); the home sidecar repaired; doctor re-run GREEN **21 pass /
+  1 warn (lsp-servers, the honest pair)** with the V-38 label intact
+  ("524,288 ctx / 4,096 out (you entered it)"). Upstream robustness
+  issue **#48** filed (diagnostics must fail open on a malformed sidecar —
+  doctor hard-crashed on a bad enum value).
+- Canaries re-run green: C1 ×2 `UNOWN_OK`/1 turn (rc=0) · C2 doctor
+  21/1 · C3 engine UP v0.0.57 @ HEAD, 9 jobs, breaker closed · C4
+  fizzbuzz **3 turns / 7.5 s / exactly 2 files / 4/4 tests
+  operator-verified** (session `01a1b4f7…`)
+- Chromium **1248** re-installed via the repo binary
+  (`node_modules/.bin/playwright install chromium` →
+  `/home/z/.cache/ms-playwright`, the default cache)
+- **Battery on the recycled tree — every number IDENTICAL to the F-4
+  close receipts**: typecheck 0 · lint 0e/143w · check:docs ok ·
+  changelog 56/544/55 · blog 46/116 · benchmarks 6/6 · claims **62/62** ·
+  unit **2529/0/196 via 6 chunk processes (V-7; the chunk map
+  byte-confirmed — lib 1283/81 · app 461/35 · components 338/29 ·
+  next-config 2/1 · bolero+chaconne+coda 190/24 · fugue+ostinato
+  255/26, src-scoped; the unscoped shape also runs green 258/33 +
+  262/27 picking up the golden/contract files outside src/)** ·
+  ostinato e2e **17/17** (8.8 s) · chaconne:test 119/18 · chaconne:e2e
+  20 · fugue Lane A **134/0/17** · Lane B **134/0/17** · contract lane
+  7/0/41 · serve boot 200 + `{"ok":true,"port":4015}` · e2e smoke
+  **3 passed** (1.5 s) · V-9's chunk-shape error signature reproduced
+  unchanged (ECONNREFUSED :3100, 338/0/29 — filed, not blocking)
+
+**Next: F-5 (run history + job detail) — the §0.9.5 reconciliation
+checkpoint.** Exposure to date: 10 V-entries (3 genuine-gap flavored),
+the F-1 spiral cured through the V-18 lane, F-4 closed with ZERO
+operator gate-catches — the turns-to-done trend 61 → (F-3) → 28 is the
+improvement signal the round must hold or extend.
+
 ## Environment checkpoint (2026-11-07, the twenty-eighth lineage — the RECYCLE bring-up)
 
 The sandbox was recycled between F-3 and F-4 (the twenty-seventh

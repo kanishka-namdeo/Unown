@@ -53,13 +53,22 @@ def pin_model_specs(path: str) -> int:
         if model in MODELS and isinstance(node, dict) and "maxTokens" in node:
             if node["maxTokens"] != PIN:
                 node["maxTokens"] = PIN
-                node["source"] = "operator"
+                # V-11 (sonata): SpecSource is a closed enum
+                # (curated|models-dev|litellm|endpoint|user|learned) —
+                # "operator" is NOT a member and bricks doctor's
+                # formatSpecShort (SOURCE_LABELS[unknown] -> undefined).
+                # The receipted value is "user" ("you entered it");
+                # provenance rides the operatorPin field.
+                node["source"] = "user"
                 node["operatorPin"] = PROVENANCE
                 changed += 1
     if changed:
         with open(path, "w") as f:
             json.dump(d, f, indent=2)
     return changed
+
+
+VALID_SOURCES = {"curated", "models-dev", "litellm", "endpoint", "user", "learned"}
 
 
 def main() -> int:
@@ -81,6 +90,17 @@ def main() -> int:
                 for m in p.get("models", []):
                     if m.get("id") in MODELS:
                         assert m.get("maxTokens") == PIN, f"pin failed for {m['id']} in {h}"
+        # V-11 guard: no spec may carry a source outside the engine's
+        # SpecSource enum — an invalid value bricks doctor (formatSpecShort).
+        sp = os.path.join(agent, "model-specs.json")
+        if os.path.exists(sp):
+            with open(sp) as f:
+                specs = json.load(f).get("specs", {})
+            bad = [k for k, v in specs.items()
+                   if isinstance(v, dict) and v.get("source") not in VALID_SOURCES]
+            if bad:
+                raise SystemExit(f"v38-pin: INVALID spec source in {h} for {bad} — "
+                                 "repair to a SpecSource member before dispatch")
     print(f"v38-pin: verified OK across {len(homes)} homes ({total} fields pinned)")
     return 0
 
