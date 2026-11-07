@@ -161,3 +161,62 @@ runs on every push.
 - **Per-skill evaluation** and **recall-time citations beyond the guide's
   prompt contract** — the round's competitor research records both as the
   field's next frontier and this repo's next work.
+
+## The W2 verdict — the learning loop on sustained real workload (refreshed 2026-11-07)
+
+> The refresh the Sonata round-close named as a standing teardown duty:
+> the W2 weakness ("learning-loop accumulation") NOW has live evidence
+> — this section renders the honest verdict from the receipted runs,
+> not from a fresh engine DB (the sandbox-recycle limit honestly
+> restated: this lineage's engine booted 0 runs / 0 dreams; the
+> evidence below lives in the git-tracked round receipts).
+
+**The loop compounds — receipted, not claimed.** The Fugue round's
+runtime (the Sonata round's vehicle, closed at `123a861c`) drove the
+learning loop harder than any prior round: **43+ engine runs, 30
+dreams, 4 staged skill candidates** accumulated on real workload (the
+W2 exercise no prior round ever fired), with the live probe verifying
+all **11 boundaries** of the loop + the four learning views against
+the real engine (receipts: `benchmarks/sonata-round/receipts/f7.md`,
+`f8.md`, the round-close battery paragraph in
+`docs/sonata-round-session.md`).
+
+**The accumulation has a loss mode — and a guard that catches it.**
+The #46 prune class (the render-cap evicting load-bearing memory
+bullets) fired occurrences **8–14** during the round — two
+entire-lane losses — **every one caught and restored**; the H-22
+memory-guard (`scripts/a1/memory-guard.mjs`) landed mid-round and
+caught the tenth occurrence live at a commit boundary, **20 minutes
+after landing** (its first live catch). Accumulation is therefore
+*guarded*, not *safe by construction* — the guard is now a standing
+gate.
+
+**Skill generation graduated from null to minted-on-real-work.** The
+cold-start round's honest null ("no procedure recurred") is closed:
+`.unown/skills/` now carries **13 project skills**, several minted
+from recurring real procedures (e.g. `hostile-page-checkout`,
+`recover-failed-cycle`, `pin-settings-defaults`); the staged queue
+peaked at 4 real candidates under the human-`mv` promotion gate —
+**zero auto-promotions: the quarantine law held through the heaviest
+minting period yet**.
+
+**Retention, honestly split.** What survives a sandbox recycle: the
+git-tracked tiers (project memory, receipts, this report, the skills
+minted into the repo tree). What does not: the engine DB's
+dreams/staged queue/PLM (the known lineage limit — this lineage's
+fresh engine booted empty). The Fugue evidence above is therefore the
+*receipted* form of the loop's compounding; the *live* form re-fires
+on every new lineage's workload.
+
+**The Serenade continuation (the same day):** the loop's outputs fed
+the augment lane — the H-24 promotion (the live-traffic fixture
+refresh) was minted from a §7 teardown insight and caught three
+fiction pins live; the concurrent lineages' shared project-memory
+merges (two same-day reconciliations, keep-both) exercised the
+tracked tier's append-only law under real coordination pressure.
+
+**Verdict: W2 = exercised and compounding, with two named caveats**
+(the recycle limit on the engine-DB tiers; the render-cap loss mode
+now guarded by H-22). The weeks-scale retention axis (W8) remains
+open — the read-later vehicle (Legato) is the round designed to
+exercise it.
