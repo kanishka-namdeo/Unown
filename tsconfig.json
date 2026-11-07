@@ -38,6 +38,7 @@
     "apps/coda/**/*.ts",
     "apps/ostinato/**/*.ts",
     "apps/chaconne/**/*.ts",
+    "apps/legato/**/*.ts",
     ".next/types/**/*.ts",
     ".next/dev/types/**/*.ts"
   ],

@@ -1,0 +1,7 @@
+{
+  "name": "@unown/legato",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Keyboard-first, offline-first read-later / web-clip PWA (vanilla TS, zero dependencies)."
+}

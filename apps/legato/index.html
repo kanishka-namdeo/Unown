@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Legato</title>
+    <meta
+      name="description"
+      content="Keyboard-first, offline-first read-later / web-clip PWA. Clip a URL, read it offline; your data stays in this browser."
+    />
+    <link rel="stylesheet" href="src/ui/legato.css" />
+  </head>
+  <body>
+    <main id="legato-root">
+      <p id="legato-status">Booting…</p>
+    </main>
+    <!-- L-1 scaffold: this is the shell only. L-5 lands the UI entry
+         (src/ui/app.ts, the keyboard-first list/detail surface),
+         L-10 lands the manifest + service worker + offline fallback. -->
+    <script type="module" src="/src/ui/app.ts"></script>
+  </body>
+</html>
