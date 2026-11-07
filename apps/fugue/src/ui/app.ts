@@ -38,6 +38,12 @@ import { PALETTE_COMMANDS, filterCommands, isCommandEnabled, type PaletteCommand
 import { DEFAULT_DRAFT, validateDraft, draftToScheduleSpec, type JobEditorDraft } from "./job-editor.js";
 import { renderJobList, jobListViewModel, moveSelection, type JobListOptions } from "./job-list.js";
 import { renderEmptyPanel, type EmptyPanelKind } from "./empty.js";
+import { renderRunHistory, runHistoryViewModel, moveRunSelection } from "./run-history.js";
+import type { RunRecordView } from "../domain/types.js";
+import { renderRunDetail } from "./run-detail.js";
+import { renderSpendMeter } from "./spend.js";
+import type { SpendReport } from "../adapter/engine-adapter.js";
+import { makeJobCommands, runJobCommand, jobLifecycle } from "./jobs.js";
 
 /* ------------------------------------------------------------------ */
 /* The Fugue UI state machine                                          */
@@ -48,9 +54,16 @@ export interface FugueState {
   automations: AutomationRecord[];
   engineLane: "live" | "down" | "locked";
   engineDownReason?: string;
-  route: "jobs" | "runs" | "engine" | "dreams";
+  route: "jobs" | "runs" | "run-detail" | "spend" | "engine" | "dreams";
   selectedJobId: number | null;
   dialog: "closed" | "compose";
+  /** The run-detail + spend routes' data (adapter-fed; F-5 ticket 1/3). */
+  runs?: RunRecordView[];
+  jobs?: { id: number; title: string }[];
+  selectedRunId?: number | null;
+  spend?: SpendReport | null;
+  /** The last job command's honest result (surfaced, never silent). */
+  jobActionError?: string;
 }
 
 export const initialState: FugueState = {
@@ -60,6 +73,10 @@ export const initialState: FugueState = {
   route: "jobs",
   selectedJobId: null,
   dialog: "closed",
+  runs: [],
+  jobs: [],
+  selectedRunId: null,
+  spend: null,
 };
 
 /* ------------------------------------------------------------------ */
@@ -196,17 +213,24 @@ export function render(state: FugueState): string {
       );
     }
   } else if (state.route === "runs") {
-    if (state.data.runs.length === 0) {
-      parts.push(renderEmptyPanel("no-runs"));
-    } else {
+    // F-5 ticket 1: the grouped runs view through the adapter seam.
+    parts.push(renderRunHistory({ runs: state.runs ?? [], jobs: state.jobs, selected: state.selectedRunId ?? null }));
+  } else if (state.route === "run-detail") {
+    // F-5 ticket 2: every field + the VERBATIM error (E-05).
+    const sel = state.runs?.find((r) => r.id === state.selectedRunId);
+    parts.push(
+      sel !== undefined
+        ? renderRunDetail(sel)
+        : renderEmptyPanel("no-runs"),
+    );
+  } else if (state.route === "spend") {
+    // F-5 ticket 3: the spend meter (E-04 throttle honesty).
+    if (state.spend === null || state.spend === undefined) {
       parts.push(
-        `<section class="fugue-route" data-route="runs" aria-label="Run history">
-           <h2>Runs</h2>
-           <ul class="fugue-runs">${state.data.runs
-             .map((r) => `<li data-run="${r.id}" data-status="${r.status}">${escapeHtml(r.status)}</li>`)
-             .join("")}</ul>
-         </section>`,
+        `<section class="fugue-route" data-route="spend" aria-label="Spend meter"><div class="fugue-panel" data-panel="no-spend"><h2>No spend data</h2></div></section>`,
       );
+    } else {
+      parts.push(renderSpendMeter(state.spend));
     }
   } else if (state.route === "engine") {
     parts.push(
@@ -306,6 +330,10 @@ export async function boot(
     route: "jobs",
     selectedJobId: null,
     dialog: "closed",
+    runs: [],
+    jobs: [],
+    selectedRunId: null,
+    spend: null,
   };
   // The every-transition persistAll law: guarded so the DOM-free Lane A
   // (no localStorage global — the Fugue app's bunfig has no DOM
@@ -356,7 +384,7 @@ function renderPalette(app: {
   }
     const ctx: PaletteCtx = {
     selectedJobId: app.state.selectedJobId,
-    selectedJobState: null,
+    selectedJobState: jobLifecycle(app.state.automations, app.state.selectedJobId),
     hasData: true, // the palette's enumeration: 11 commands, all shown;
   }
   // Enumerate ALL commands (disabled rows stay visible, dimmed — the
@@ -563,6 +591,51 @@ export function main(): void {
     }
   });
 
+  const jobCommands = makeJobCommands(appAdapter);
+
+  /** F-5 ticket 4: the job-scoped palette commands, wired for real.
+   *  Optimistic-free honest refresh: re-read the engine lane AFTER
+   *  the call; typed errors surface through the honest panels —
+   *  never a silent failure, never a crash. */
+  async function dispatchJobCommand(cmd: "run-now" | "pause" | "resume" | "skip" | "snooze") {
+    const s = app.state;
+    if (s.selectedJobId === null) {
+      // No job selected: the command is a no-op, surfaced honestly.
+      const n = document.createElement("div");
+      n.textContent = `${cmd}: no job selected`;n.className = "fugue-panel";
+      container.append(n);
+      return;
+    }
+    const map: Record<string, "runNow" | "pause" | "resume" | "skip" | "snooze"> = {
+      "run-now": "runNow",
+      "pause": "pause",
+      "resume": "resume",
+      "skip": "skip",
+      "snooze": "snooze",
+    };
+    const res = await runJobCommand(
+      map[cmd] ?? "runNow",
+      s.selectedJobId,
+      { minutes: 1 },
+      jobCommands,
+      appAdapter,
+    );
+    if (res.ok) {
+      // Honest refresh: the engine's authoritative lane state.
+      app.state.automations = res.jobs;
+      app.state.runs = res.runs;
+      app.state.spend = res.spend;
+      app.state.jobs = res.jobs.map((j) => ({ id: j.id, title: j.title }));
+      app.state.jobActionError = undefined;
+    } else {
+      // The typed error, surfaced through the existing honest panel
+      // lane (the O-1 law: never a silent failure).
+      app.state.jobActionError = res.error.message;
+      app.state.automations = res.jobs;
+    }
+    rerender();
+  }
+
   function dispatchCommand(id: string) {
     const s = app.state;
     switch (id) {
@@ -577,7 +650,6 @@ export function main(): void {
           document.documentElement.style.colorScheme === "dark" ? "light" : "dark";
         break;
       case "help":
-        // The key surface hint.
         const notice = document.createElement("div");
         notice.textContent =
           "Ctrl+K palette · ↑/↓ navigate jobs · Enter select · Esc close · j/k scroll";
@@ -589,20 +661,109 @@ export function main(): void {
       case "resume":
       case "skip":
       case "snooze":
+        // F-5 ticket 4: wired for real (the adapter methods + honest
+        // refresh). F-8 owns export/import.
+        void dispatchJobCommand(id as "run-now" | "pause" | "resume" | "skip" | "snooze");
+        break;
       case "export":
       case "import":
-        // The job-scoped + io commands: the F-5/F-8 tickets own the
-        // live implementations; F-4 wires the command to a no-op
-        // toast so the palette is never a dead end.
+        // F-8 owns the IO battery; the toast stays honest for now.
         {
           const s2 = document.createElement("div");
-          s2.textContent = `${id}: wired (F-5/F-8 lanes)`;
+          s2.textContent = `${id}: wired (F-8 lane)`;
           s2.className = "fugue-panel";
           container.append(s2);
         }
         break;
     }
   }
+
+  // F-5 keyboard navigation: the runs / run-detail / spend routes.
+  document.addEventListener("keydown", (e) => {
+    const s = app.state;
+    if (s.route === "runs") {
+      if (e.key === "ArrowDown") {
+        const vm = runHistoryViewModel({ runs: s.runs ?? [], jobs: s.jobs, selected: s.selectedRunId });
+        s.selectedRunId = vm.runIds[moveRunSelection(vm.selectedIndex === -1 ? 0 : vm.selectedIndex, vm.totalRows, 1)] ?? null;
+        if (vm.runIds.length === 0) s.selectedRunId = null;
+        rerender();
+      } else if (e.key === "ArrowUp") {
+        const vm = runHistoryViewModel({ runs: s.runs ?? [], jobs: s.jobs, selected: s.selectedRunId });
+        s.selectedRunId = vm.runIds[moveRunSelection(vm.selectedIndex === -1 ? 0 : vm.selectedIndex, vm.totalRows, -1)] ?? null;
+        if (vm.runIds.length === 0) s.selectedRunId = null;
+        rerender();
+      } else if (e.key === "Enter") {
+        if (s.selectedRunId !== null && s.selectedRunId !== undefined) {
+          s.route = "run-detail";
+          rerender();
+        }
+      } else if (e.key === "Escape") {
+        s.route = "jobs";
+        s.selectedRunId = null;
+        rerender();
+      }
+    } else if (s.route === "run-detail") {
+      if (e.key === "Escape") {
+        // Back navigation restores focus to the owning job.
+        s.route = "runs";
+        rerender();
+        const back = document.querySelector(`[data-back-task="${s.selectedRunId}"]`) as HTMLElement | null;
+        back?.focus();
+      }
+    }
+  });
+
+  // Route entry points: open a job's run history / the spend view.
+  container.addEventListener("click", (e) => {
+    const target = e.target as HTMLElement;
+    const s = app.state;
+    if (target.closest(".fugue-job-row")) {
+      const jobEl = target.closest(".fugue-job-row") as HTMLElement;
+      const jobId = Number(jobEl.dataset.job);
+      if (!Number.isNaN(jobId)) {
+        s.selectedJobId = jobId;
+        s.route = "runs";
+        s.selectedRunId = null;
+        // Load the job's runs through the adapter seam.
+        void (async () => {
+          try {
+            s.runs = await appAdapter.history(jobId);
+            s.jobs = s.automations.map((j) => ({ id: j.id, title: j.title }));
+            rerender();
+          } catch {
+            s.route = "jobs";
+            rerender();
+          }
+        })();
+      }
+      return;
+    }
+    if (target.closest(".fugue-run-row")) {
+      const runEl = target.closest(".fugue-run-row") as HTMLElement;
+      s.selectedRunId = Number(runEl.dataset.run);
+      s.route = "run-detail";
+      rerender();
+      return;
+    }
+    if (target.closest('[data-route="spend"]') || target.closest(".fugue-spend-link")) {
+      s.route = "spend";
+      void (async () => {
+        try {
+          s.spend = await appAdapter.spend();
+        } catch {
+          s.spend = null;
+        }
+        rerender();
+      })();
+      return;
+    }
+    if (target.closest(".fugue-back")) {
+      const backEl = target.closest(".fugue-back") as HTMLElement;
+      s.route = "runs";
+      s.selectedJobId = Number(backEl.dataset.backTask) || null;
+      rerender();
+    }
+  });
 
   void rerender;
 }

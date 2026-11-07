@@ -72,7 +72,7 @@ export function renderJobList(_state: unknown, opts: JobListOptions): string {
         `<div class="fugue-job-group" data-lane="${g.lane}" aria-label="${escapeHtml(g.title)}"><h3>${escapeHtml(g.title)}</h3><ul class="fugue-jobs">${g.rows.join("")}</ul></div>`,
     )
     .join("\n");
-  return `<section class="fugue-route" data-route="jobs" aria-label="Jobs">${groupsHtml}</section>`;
+  return `<section class="fugue-route" data-route="jobs" aria-label="Jobs">${groupsHtml}\n<div class="fugue-route-actions"><a class="fugue-spend-link" data-spend-link="" role="button" tabindex="0" href="#spend" aria-label="Open the spend meter">Spend</a></div></section>`;
 }
 
 /** Move the cursor one step (the arrow-key navigation, DOM-free). */
