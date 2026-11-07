@@ -23,6 +23,8 @@ import {
   type DreamRecord,
   type NoteRecord,
   type MemoryView,
+  type MemoryTier,
+  type MemoryHealthView,
   type SpendReport,
 } from "./engine-adapter.js";
 
@@ -120,6 +122,99 @@ export const CONTRACT_FIXTURES = {
   },
 };
 
+/* ------------------------------------------------------------------ */
+/* The LIVE wire fixtures (operator captures, 2026-11-07)            */
+/* ------------------------------------------------------------------ */
+
+/** GET /api/dreams — the live row shape (snake_case, raw string ids,
+ *  epoch ms, the engine's DreamStatus vocabulary): a done row, a
+ *  gated row (E-06: never a success badge), and a running row
+ *  (ended_at null — an open run, never a fake 0). */
+export const DREAMS_LIVE_FIXTURE = {
+  dreams: [
+    {
+      id: "project-85ebe9ad-36eb-48e2-ac09-369231b6caea",
+      started_at: 1794063969594,
+      ended_at: 1794064145248,
+      status: "done",
+      notes_in: 3,
+      entries_merged: 0,
+      entries_pruned: 2,
+      entries_added: 3,
+      output: "# Project Memory\n\n## Known pitfalls\n- ...",
+    },
+    {
+      id: "8f2b1c0e-1234-4abc-9def-85ebe9ad0002",
+      started_at: 1794063000000,
+      ended_at: 1794063000000,
+      status: "gated",
+      notes_in: 1,
+      entries_merged: 0,
+      entries_pruned: 0,
+      entries_added: 0,
+      output: "Gated: proposed edit to instruction set (deny-queue).",
+    },
+    {
+      id: "c0ffee00-0000-4abc-9def-85ebe9ad0003",
+      started_at: 1794064500000,
+      ended_at: null,
+      status: "running",
+      notes_in: 2,
+      entries_merged: 0,
+      entries_pruned: 0,
+      entries_added: 0,
+      output: null,
+    },
+  ],
+};
+
+/** GET /api/memory — the live tiers array (one object per tier:
+ *  tier name string, version integer, content markdown). */
+export const MEMORY_LIVE_FIXTURE = {
+  tiers: [
+    {
+      tier: "policy",
+      version: 1,
+      content: "# Tier 0 — Policy (non-negotiable guardrails)\n\n- Never delete...",
+    },
+  ],
+};
+
+/** GET /api/memory/health — the live health + platform objects. */
+export const MEMORY_HEALTH_LIVE_FIXTURE = {
+  health: {
+    scope: "unown-engine",
+    lastReconcile: 1794064205283,
+    duplicateCount: 0,
+    conflictCount: 0,
+    warnings: [],
+    memoryCount: 5,
+  },
+  platform: {
+    available: true,
+    backend: "lexical",
+    embedderRequested: "auto",
+    reconcile: true,
+    dir: "/home/z/.unown",
+    model: "agnes-3.0-flash",
+    collection: "unown",
+    maxRendered: 110,
+  },
+};
+
+/** GET /api/memory/projects — the live terminal project tiers. */
+export const MEMORY_PROJECTS_LIVE_FIXTURE = {
+  projects: [
+    {
+      slug: "agent-service-c5ccfe",
+      tier: "project:agent-service-c5ccfe",
+      version: 1,
+      chars: 1663,
+      updatedAt: 1794064205286,
+    },
+  ],
+};
+
 type Fixtures = typeof CONTRACT_FIXTURES;
 
 export const RUN_FIXTURE: RunRecordView[] = CONTRACT_FIXTURES.runs as unknown as RunRecordView[];
@@ -128,6 +223,10 @@ export const DREAM_FIXTURE: DreamRecord[] = CONTRACT_FIXTURES.dreams;
 export const NOTE_FIXTURE: NoteRecord[] = CONTRACT_FIXTURES.notes;
 export const MEMORIES_FIXTURE: MemoryView = CONTRACT_FIXTURES.memories;
 export const SPEND_FIXTURE: SpendReport = CONTRACT_FIXTURES.spend;
+export const DREAMS_LIVE_FIXTURE_ROWS: Record<string, unknown>[] =
+  DREAMS_LIVE_FIXTURE.dreams as unknown as Record<string, unknown>[];
+export const MEMORY_LIVE_FIXTURE_TIERS: Record<string, unknown>[] =
+  MEMORY_LIVE_FIXTURE.tiers as unknown as Record<string, unknown>[];
 
 /* ------------------------------------------------------------------ */
 /* The per-endpoint shape pins (dotted-path drift messages)           */
@@ -468,18 +567,58 @@ export function assertOverview(payload: unknown): void {
   if (dig(payload, "dreams") !== undefined) pin(payload, "dreams", "number");
 }
 
+/** The dual-lane dream rows (F-7 chunk 2, the V-24 law): the LIVE
+ *  wire form (snake_case — started_at/ended_at epoch or null,
+ *  notes_in + the consolidation ledger, output) and the F-2 fixture
+ *  form (camelCase — a single `at`, `summary`, numeric ids). A row
+ *  must carry AT LEAST one timestamp lane (started_at OR at);
+ *  status is pinned to the closed DreamStatus vocabulary PLUS the
+ *  fixture lane's hypothesis spellings (applied/rolled-back — the
+ *  V-24 pre-registered class), nothing else. */
+const DREAM_LIVE_STATUSES = ["done", "running", "no-notes", "error", "gated"];
+const DREAM_FIXTURE_STATUSES = ["applied", "rolled-back"];
+
 export function assertDreams(payload: unknown): void {
   pin(payload, "dreams", "array");
   const arr = (payload as { dreams: unknown[] }).dreams;
   for (let i = 0; i < arr.length; i++) {
     const p = `dreams[${i}]`;
-    pin(payload, `${p}.id`, "number");
+    pin(payload, `${p}.id`, "number-or-string", "dream id (raw string uuid / project-<uuid> live, numeric fixture)");
     pin(payload, `${p}.status`, "string");
-    pinEnum(payload, `${p}.status`, ["applied", "gated", "rolled-back"]);
-    pin(payload, `${p}.summary`, "string");
-    pin(payload, `${p}.at`, "string");
-    if (dig(payload, `${p}.rolledBackTo`) !== undefined)
-      pin(payload, `${p}.rolledBackTo`, "number");
+    pinEnum(payload, `${p}.status`, [...DREAM_LIVE_STATUSES, ...DREAM_FIXTURE_STATUSES]);
+    const row = dig(payload, p) as Record<string, unknown> | undefined;
+    if (row != null && typeof row === "object" && !Array.isArray(row)) {
+      // Timestamp lane: the live row carries started_at; the fixture
+      // row carries `at`. Exactly one lane required (the pinTs law:
+      // epoch numbers and ISO strings both accepted).
+      if ("started_at" in row) {
+        pin(payload, `${p}.started_at`, "number-or-string");
+        if ("ended_at" in row) {
+          const ev = dig(payload, `${p}.ended_at`);
+          // A running dream's ended_at is null (an open run — never a fake 0).
+          if (ev !== null) pin(payload, `${p}.ended_at`, "number-or-string");
+        }
+      } else if ("at" in row) {
+        pin(payload, `${p}.at`, "string");
+        if ("rolledBackTo" in row) pin(payload, `${p}.rolledBackTo`, "number");
+      } else {
+        throw new EngineDrift(
+          `${p} timestamp lane: missing required field (neither started_at nor at)`,
+        );
+      }
+      // The consolidation ledger: live fields, optional-pinned when
+      // present (the fixture lane omits them — honest zeros at the mapper).
+      for (const f of ["notes_in", "entries_merged", "entries_pruned", "entries_added"] as const) {
+        if (f in row) pin(payload, `${p}.${f}`, "number");
+      }
+      // Output lane: the live `output` (markdown, null when open) or
+      // the fixture's `summary` (the preview text). Either when present.
+      if ("output" in row) {
+        const ov = dig(payload, `${p}.output`);
+        if (ov !== null) pin(payload, `${p}.output`, "string");
+      }
+      if ("summary" in row) pin(payload, `${p}.summary`, "string");
+    }
   }
 }
 
@@ -494,10 +633,83 @@ export function assertNotes(payload: unknown): void {
   }
 }
 
+/** GET /api/memory — the DUAL-LANE pin (the V-24 law): the LIVE wire
+ *  form ({ tiers: [{ tier, version, content, chars?, updatedAt? }] })
+ *  and the F-2 fixture form ({ tiers: number, version, number, healthy
+ *  boolean }). A body with a tier-list object lane where the tier rows
+ *  are objects is drift, and a body with a numeric `tiers` is the
+ *  fixture lane — both accepted, nothing else. */
 export function assertMemories(payload: unknown): void {
-  pin(payload, "tiers", "number");
-  pin(payload, "version", "number");
-  pin(payload, "healthy", "boolean");
+  const t = dig(payload, "tiers");
+  if (Array.isArray(t)) {
+    // The live wire lane: the tiers array (one object per tier).
+    for (let i = 0; i < t.length; i++) {
+      const p = `tiers[${i}]`;
+      pin(payload, `${p}.tier`, "string");
+      pin(payload, `${p}.version`, "number");
+      pin(payload, `${p}.content`, "string");
+      // The engine's MemoryTierInfo also carries chars + updatedAt —
+      // optional-pinned when present (the brief's minimal row omits
+      // both; a row that sends a bad type is still drift).
+      if (dig(payload, `${p}.chars`) !== undefined) pin(payload, `${p}.chars`, "number");
+      if (dig(payload, `${p}.updatedAt`) !== undefined) {
+        const ev = dig(payload, `${p}.updatedAt`);
+        if (ev !== null) pin(payload, `${p}.updatedAt`, "number-or-string");
+      }
+    }
+  } else if (typeof t === "number") {
+    // The F-2 fixture lane (the pre-registered V-24 hypothesis shape).
+    pin(payload, "tiers", "number");
+    pin(payload, "version", "number");
+    pin(payload, "healthy", "boolean");
+  } else {
+    throw new EngineDrift(`tiers: expected array (live lane) or number (fixture lane), got ${typeOf(t)}`);
+  }
+}
+
+/** GET /api/memory/health — the live health + platform objects (the
+ *  brief's verbatim capture). */
+export function assertMemoryHealth(payload: unknown): void {
+  const h = dig(payload, "health");
+  if (h !== null && typeof h === "object" && !Array.isArray(h)) {
+    pin(payload, "health.memoryCount", "number");
+    pin(payload, "health.duplicateCount", "number");
+    pin(payload, "health.conflictCount", "number");
+    pin(payload, "health.lastReconcile", "number-or-string");
+    pin(payload, "health.warnings", "array");
+    for (let i = 0; i < (dig(payload, "health.warnings") as unknown[]).length; i++) {
+      pin(payload, `health.warnings[${i}]`, "string");
+    }
+    if (dig(payload, "health.scope") !== undefined) pin(payload, "health.scope", "string");
+  }
+  const p = dig(payload, "platform");
+  if (p !== null && typeof p === "object" && !Array.isArray(p)) {
+    pin(payload, "platform.available", "boolean");
+    pin(payload, "platform.backend", "string");
+    pin(payload, "platform.maxRendered", "number");
+    if (dig(payload, "platform.model") !== undefined) pin(payload, "platform.model", "string");
+  }
+  if (h === undefined && p === undefined) {
+    throw new EngineDrift("health+platform: missing required fields (neither health nor platform)");
+  }
+}
+
+/** GET /api/memory/projects — the live terminal project tiers
+ *  (the brief's verbatim capture). */
+export function assertMemoryProjects(payload: unknown): void {
+  pin(payload, "projects", "array");
+  const arr = (payload as { projects: unknown[] }).projects;
+  for (let i = 0; i < arr.length; i++) {
+    const p = `projects[${i}]`;
+    pin(payload, `${p}.slug`, "string");
+    pin(payload, `${p}.tier`, "string");
+    pin(payload, `${p}.version`, "number");
+    pin(payload, `${p}.chars`, "number");
+    if (dig(payload, `${p}.updatedAt`) !== undefined) {
+      const ev = dig(payload, `${p}.updatedAt`);
+      if (ev !== null) pin(payload, `${p}.updatedAt`, "number-or-string");
+    }
+  }
 }
 
 export function assertSpend(payload: unknown): void {
@@ -517,7 +729,10 @@ export type ContractEndpoint =
   | "dreams"
   | "notes"
   | "memories"
-  | "spend";
+  | "spend"
+  | "memory"
+  | "memory-health"
+  | "memory-projects";
 
 /**
  * The single entrypoint F-3's real adapter calls on every response.
@@ -542,7 +757,7 @@ export function assertContract(endpoint: ContractEndpoint, payload: unknown): vo
     case "dreams":
       assertDreams(payload);
       return;
-    case "notes":
+      case "notes":
       assertNotes(payload);
       return;
     case "memories":
@@ -550,6 +765,15 @@ export function assertContract(endpoint: ContractEndpoint, payload: unknown): vo
       return;
     case "spend":
       assertSpend(payload);
+      return;
+    case "memory":
+      assertMemories(payload);
+      return;
+    case "memory-health":
+      assertMemoryHealth(payload);
+      return;
+    case "memory-projects":
+      assertMemoryProjects(payload);
       return;
     default:
       // Unreachable: `endpoint` is the closed ContractEndpoint set.

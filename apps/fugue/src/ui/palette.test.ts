@@ -1,5 +1,5 @@
 /**
- * palette.test.ts — the 11-command table + filter + enable pins
+ * palette.test.ts — the 13-command table + filter + enable pins
  * (Lane A, DOM-free).
  */
 import { describe, test, expect } from "bun:test";
@@ -16,8 +16,8 @@ const activeJob: PaletteCtx = { selectedJobId: 1, selectedJobState: "active", ha
 const pausedJob: PaletteCtx = { selectedJobId: 2, selectedJobState: "paused", hasData: true };
 
 describe("palette table", () => {
-  test("the table has 11 commands (the P0 action set)", () => {
-    expect(PALETTE_COMMANDS.length).toBe(11);
+  test("the table has 13 commands (the P0 action set + the learning band)", () => {
+    expect(PALETTE_COMMANDS.length).toBe(13);
   });
 
   test("every P0 action is covered", () => {
@@ -25,6 +25,7 @@ describe("palette table", () => {
     for (const id of [
       "new-job", "run-now", "pause", "resume", "skip", "snooze",
       "refresh", "export", "import", "theme", "help",
+      "open-dreams", "open-memory",
     ]) {
       expect(ids).toContain(id);
       expect(PALETTE_BY_ID[id]).toBeDefined();
@@ -55,6 +56,13 @@ describe("palette table", () => {
   test("export is gated on hasData", () => {
     expect(isCommandEnabled("export", noJob)).toBe(false);
     expect(isCommandEnabled("export", activeJob)).toBe(true);
+  });
+
+  test("the learning-band commands are always enabled (the honest catch lane)", () => {
+    for (const id of ["open-dreams", "open-memory"]) {
+      expect(isCommandEnabled(id, noJob)).toBe(true);
+      expect(isCommandEnabled(id, activeJob)).toBe(true);
+    }
   });
 
   test("the substring filter matches label + id", () => {

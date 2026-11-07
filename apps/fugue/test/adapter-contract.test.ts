@@ -105,17 +105,44 @@ test("F-3: engine happy path — every endpoint round-trips the real adapter", a
   expect(runs[0].status).toBe("ok");
   expect(runs[0].tokensIn).toBe(1200);
 
+  // F-7 chunk 2: the fixture now serves the LIVE wire form (the
+  // operator's verbatim capture) — the adapter maps it onto the
+  // DreamRecord view (raw string ids, the closed DreamStatus
+  // vocabulary, epoch ms). The fixture lane's camelCase rows are
+  // still admitted by the pins, but the fixture server itself has
+  // moved to the live truth (the V-24 law).
   const dreams = await adapter.dreams();
-  expect(dreams.length).toBe(2);
-  expect(dreams[1].status).toBe("gated");
+  expect(dreams.length).toBeGreaterThanOrEqual(3);
+  // mapDreams orders newest first — the RUNNING row (started_at
+  // 1794064500000) leads, then the done row, then the gated row.
+  const done = dreams.find((d) => d.id === "project-85ebe9ad-36eb-48e2-ac09-369231b6caea")!;
+  expect(done.status).toBe("done");
+  expect(done.startedAt).toBe(1794063969594);
+  expect(done.endedAt).toBe(1794064145248);
+  expect(done.notesIn).toBe(3);
+  expect(done.entriesPruned).toBe(2);
+  expect(done.entriesAdded).toBe(3);
+  const running = dreams.find((d) => d.status === "running")!;
+  expect(running.endedAt).toBeNull(); // the open run — never a fake 0
+  const gated = dreams.find((d) => d.status === "gated")!;
+  expect(gated.id).toBe("8f2b1c0e-1234-4abc-9def-85ebe9ad0002");
+  expect(dreams[0].id).toBe(running.id); // newest first
 
   const notes = await adapter.notes();
   expect(notes.length).toBe(2);
   expect(notes[0].text).toBe("Pinned the no-phantom-drift invariant.");
 
+  // The memories lane now merges /api/memory (the live tiers array)
+  // + /api/memory/health (the health/platform objects) into the
+  // MemoryView — the fixture's live tiers carry the version stamp.
   const memories = await adapter.memories();
-  expect(memories.healthy).toBe(true);
-  expect(memories.tiers).toBe(4);
+  expect(Array.isArray(memories.tiers)).toBe(true);
+  expect(memories.tiers.length).toBeGreaterThan(0);
+  expect(memories.tiers[0].tier).toBe("policy");
+  expect(memories.tiers[0].version).toBe(1);
+  expect(memories.health.backend).toBe("lexical");
+  expect(memories.health.maxRendered).toBe(110);
+  expect(memories.health.memoryCount).toBe(5);
 
   const spend = await adapter.spend();
   expect(spend.calls).toBe(41);

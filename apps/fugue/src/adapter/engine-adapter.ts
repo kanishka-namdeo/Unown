@@ -93,14 +93,36 @@ export type CreateAutomationInput = Pick<
 > &
   Partial<Pick<AutomationRecord, "model" | "timezone">>;
 
-/** One consolidated dream record (F-7 renders the journal; E-06 pins
- *  the `gated` + rollback-pointer fields). */
+/** One consolidated dream record (F-7 chunk 2 renders the journal).
+ *
+ * The type carries the LIVE engine wire truth (the V-24 law — the F-2
+ * seam types were hypotheses; the operator-probed GET /api/dreams body
+ * is the governing shape, pi-repo .../dashboard-types.ts `Dream`):
+ *   - `id` is a RAW STRING: "project-<uuid>" or a bare uuid, never a
+ *     number (no Number() coercion — the raw-passthrough law).
+ *   - `status` is the engine's closed DreamStatus vocabulary; a gated
+ *     dream renders GATED (E-06), never a success badge.
+ *   - `startedAt`/`endedAt` are epoch-ms numbers (a running dream has
+ *     `endedAt === null` — it is still open, never a fake zero).
+ *   - the consolidation ledger: `notesIn` in, `entriesMerged` merged,
+ *     `entriesPruned` pruned, `entriesAdded` added; `output` is the
+ *     rendered memory markdown the view previews (expandable).
+ *
+ * The fixture lane (F-2's canned rows) keeps its camelCase shape and
+ * the pins in contract.ts accept BOTH forms — neither is deleted; the
+ * mapper normalizes both onto this view. */
+export type DreamStatus = "done" | "running" | "no-notes" | "error" | "gated";
+
 export interface DreamRecord {
-  id: number;
-  status: "applied" | "gated" | "rolled-back";
-  summary: string;
-  rolledBackTo?: number; // dream id the rollback restored, when status is "rolled-back"
-  at: string; // ISO-8601 string (the domain stores no Date objects)
+  id: string; // raw string id (uuid or "project-<uuid>"), uncoerced
+  status: DreamStatus; // the engine's closed vocabulary, passed through honestly
+  startedAt: number; // epoch ms
+  endedAt: number | null; // epoch ms; null = still running (or open)
+  notesIn: number;
+  entriesMerged: number;
+  entriesPruned: number;
+  entriesAdded: number;
+  output: string; // the rendered memory markdown ("" when the engine omits it)
 }
 
 /** One session note record. */
@@ -110,11 +132,38 @@ export interface NoteRecord {
   at: string; // ISO-8601 string
 }
 
-/** The engine's tiered-memory health view. */
+/** One memory tier (GET /api/memory `tiers[]` — the engine's
+ *  MemoryTierInfo; the F-2 fixture's camelCase rows map onto the same
+ *  view via mapMemory). */
+export interface MemoryTier {
+  tier: string; // "policy" | "project" | "user" | "local" | "project:<slug>"
+  version: number;
+  content: string; // the tier's markdown body
+  chars: number;
+  updatedAt: number | null; // epoch ms (null = never stamped)
+}
+
+/** The engine's tiered-memory health view (GET /api/memory/health —
+ *  the `health` + `platform` objects flattened to the fields the view
+ *  renders; the F-2 fixture lane keeps its { tiers, version, healthy }
+ *  shape, admitted by the pin and mapped with honest defaults). */
+export interface MemoryHealthView {
+  memoryCount: number;
+  duplicateCount: number;
+  conflictCount: number;
+  warnings: string[];
+  lastReconcile: number; // epoch ms (0 = unknown / not reconciled)
+  available: boolean;
+  backend: string; // "lexical" | "embeddings" | … (the platform's lane)
+  model: string; // the reconciler model ("" when the platform omits it)
+  maxRendered: number; // the render cap (0 = the platform did not report one)
+}
+
+/** The engine's tiered-memory view (the live wire: the tiers array +
+ *  the flattened health object). */
 export interface MemoryView {
-  tiers: number; // how many memory tiers are present
-  version: number; // the current memory version stamp
-  healthy: boolean;
+  tiers: MemoryTier[];
+  health: MemoryHealthView;
 }
 
 /** The engine's spend-meter view (governor accounting, E-04's

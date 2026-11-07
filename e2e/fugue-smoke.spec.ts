@@ -66,10 +66,11 @@ test("Ctrl+K opens the command palette", async ({ page }) => {
   await page.keyboard.press("Control+k");
   const palette = page.locator(".fugue-palette");
   await expect(palette).toBeVisible();
-  // The 11 P0 commands are enumerated (all rows render; disabled rows
-  // stay visible, just dimmed).
+  // The 13 commands are enumerated (all rows render; disabled rows
+  // stay visible, just dimmed). F-7 chunk 2 added the learning band's
+  // two routes (open-dreams + open-memory) to the P0 table.
   const rows = palette.locator("li[data-cmd]");
-  expect(await rows.count()).toBe(11);
+  expect(await rows.count()).toBe(13);
 });
 
 test("the compose dialog validates invalid input inline", async ({

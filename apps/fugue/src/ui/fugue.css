@@ -278,3 +278,196 @@ body {
   padding: 0.35rem 0.5rem;
   border-bottom: 1px solid var(--fugue-border);
 }
+
+/* — the F-7 chunk 2 learning band: the dreams journal + memory view — */
+/* The journal: one row per dream, newest first. */
+.fugue-dreams {
+  list-style: none;
+  margin: 0.5rem 0;
+  padding: 0;
+  border: 1px solid var(--fugue-border);
+  border-radius: 8px;
+  overflow: hidden;
+}
+.fugue-dream-row {
+  display: grid;
+  grid-template-columns: auto auto 1fr;
+  gap: 0.5rem 1rem;
+  padding: 0.5rem 0.9rem;
+  border-bottom: 1px solid var(--fugue-border);
+  align-items: baseline;
+}
+.fugue-dream-row:last-child {
+  border-bottom: none;
+}
+/* The five status badges — each visually distinct (E-06: gated is
+   NEVER the success green; it gets its own warn amber lane). */
+.fugue-dream-badge {
+  display: inline-block;
+  min-width: 5.5rem;
+  text-align: center;
+  padding: 0.1rem 0.5rem;
+  border-radius: 4px;
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  border: 1px solid var(--fugue-border);
+}
+.fugue-dream-badge.is-success {
+  background: color-mix(in srgb, var(--fugue-accent) 22%, transparent);
+  color: var(--fugue-accent);
+  border-color: var(--fugue-accent);
+}
+.fugue-dream-badge.is-gated {
+  background: color-mix(in srgb, #b45309 22%, transparent);
+  color: #b45309;
+  border-color: #b45309;
+}
+.fugue-dream-badge.is-running {
+  background: color-mix(in srgb, var(--fugue-muted) 18%, transparent);
+  color: var(--fugue-muted);
+  border-style: dashed;
+}
+.fugue-dream-badge.is-no-notes {
+  background: transparent;
+  color: var(--fugue-muted);
+}
+.fugue-dream-badge.is-error {
+  background: color-mix(in srgb, var(--fugue-error) 16%, transparent);
+  color: var(--fugue-error);
+  border-color: var(--fugue-error);
+}
+.fugue-dream-duration {
+  color: var(--fugue-muted);
+  font-size: 0.8rem;
+}
+.fugue-dream-ledger {
+  color: var(--fugue-muted);
+  font-size: 0.8rem;
+}
+/* The output preview + the expandable full view. */
+.fugue-dream-preview {
+  color: var(--fugue-muted);
+  font-size: 0.8rem;
+  cursor: pointer;
+}
+.fugue-dream-output[open] .fugue-dream-preview {
+  cursor: default;
+}
+.fugue-dream-output-full {
+  margin: 0.4rem 0 0;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--fugue-border);
+  border-radius: 6px;
+  background: var(--fugue-bg);
+  font-size: 0.75rem;
+  white-space: pre-wrap;
+  word-break: break-word;
+  max-height: 20rem;
+  overflow: auto;
+}
+
+/* The memory view: the tiers list + the health card. */
+.fugue-memory-meta {
+  color: var(--fugue-muted);
+  font-size: 0.8rem;
+}
+.fugue-tiers {
+  list-style: none;
+  margin: 0.5rem 0;
+  padding: 0;
+  border: 1px solid var(--fugue-border);
+  border-radius: 8px;
+  overflow: hidden;
+}
+.fugue-tier-row {
+  display: grid;
+  grid-template-columns: auto auto 1fr;
+  gap: 0.5rem 1rem;
+  padding: 0.5rem 0.9rem;
+  border-bottom: 1px solid var(--fugue-border);
+  align-items: baseline;
+}
+.fugue-tier-row:last-child {
+  border-bottom: none;
+}
+.fugue-tier-name {
+  font-weight: 600;
+}
+.fugue-tier-version {
+  color: var(--fugue-muted);
+  font-size: 0.8rem;
+}
+.fugue-tier-chars {
+  color: var(--fugue-muted);
+  font-size: 0.75rem;
+}
+.fugue-tier-preview {
+  color: var(--fugue-muted);
+  font-size: 0.8rem;
+  cursor: pointer;
+}
+.fugue-tier-output[open] .fugue-tier-preview {
+  cursor: default;
+}
+.fugue-tier-output-full {
+  margin: 0.4rem 0 0;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--fugue-border);
+  border-radius: 6px;
+  background: var(--fugue-bg);
+  font-size: 0.75rem;
+  white-space: pre-wrap;
+  word-break: break-word;
+  max-height: 20rem;
+  overflow: auto;
+}
+.fugue-tier-empty {
+  color: var(--fugue-muted);
+  font-size: 0.85rem;
+}
+/* The health card. */
+.fugue-health-card {
+  margin: 0.75rem 0;
+  padding: 0.75rem 1rem;
+  border: 1px solid var(--fugue-border);
+  border-radius: 8px;
+  background: var(--fugue-panel);
+}
+.fugue-health-card h3 {
+  margin: 0 0 0.5rem;
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--fugue-muted);
+}
+.fugue-health-degraded {
+  color: var(--fugue-error);
+  font-size: 0.8rem;
+}
+.fugue-health-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(8rem, 1fr));
+  gap: 0.4rem 1rem;
+  margin: 0;
+}
+.fugue-health-stats div {
+  display: flex;
+  gap: 0.5rem;
+}
+.fugue-health-stats dt {
+  color: var(--fugue-muted);
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.fugue-health-stats dd {
+  margin: 0;
+  font-size: 0.8rem;
+}
+.fugue-memory-warnings {
+  margin: 0.5rem 0 0;
+  padding-left: 1.25rem;
+  color: var(--fugue-error);
+  font-size: 0.8rem;
+}

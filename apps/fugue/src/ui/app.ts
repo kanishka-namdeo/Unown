@@ -42,7 +42,9 @@ import { renderRunHistory, runHistoryViewModel, moveRunSelection } from "./run-h
 import type { RunRecordView } from "../domain/types.js";
 import { renderRunDetail } from "./run-detail.js";
 import { renderSpendMeter } from "./spend.js";
-import type { SpendReport } from "../adapter/engine-adapter.js";
+import { renderDreams, dreamsViewModel, moveDreamSelection } from "./dreams.js";
+import { renderMemory, memoryViewModel, moveTierSelection } from "./memory.js";
+import type { SpendReport, DreamRecord, MemoryView } from "../adapter/engine-adapter.js";
 import { makeJobCommands, runJobCommand, jobLifecycle } from "./jobs.js";
 
 /* ------------------------------------------------------------------ */
@@ -54,7 +56,7 @@ export interface FugueState {
   automations: AutomationRecord[];
   engineLane: "live" | "down" | "locked";
   engineDownReason?: string;
-  route: "jobs" | "runs" | "run-detail" | "spend" | "engine" | "dreams";
+  route: "jobs" | "runs" | "run-detail" | "spend" | "engine" | "dreams" | "memory";
   selectedJobId: number | string | null;
   dialog: "closed" | "compose";
   /** The live compose draft (30th-lineage law, 2026-11-08): a
@@ -68,6 +70,12 @@ export interface FugueState {
    *  the raw string run id flows end-to-end, never a Number() collapse). */
   selectedRunId?: string | null;
   spend?: SpendReport | null;
+  /** The dreams + memory views' data (the F-7 chunk 2 learning band;
+   *  null = the load failed, the honest catch surfaces the error panel). */
+  dreams?: DreamRecord[];
+  dreamsError?: string;
+  memory?: MemoryView | null;
+  memoryError?: string;
   /** The last job command's honest result (surfaced, never silent). */
   jobActionError?: string;
 }
@@ -84,6 +92,10 @@ export const initialState: FugueState = {
   jobs: [],
   selectedRunId: null,
   spend: null,
+  dreams: [],
+  dreamsError: undefined,
+  memory: null,
+  memoryError: undefined,
 };
 
 /* ------------------------------------------------------------------ */
@@ -267,7 +279,26 @@ export function render(state: FugueState): string {
        </section>`,
     );
   } else if (state.route === "dreams") {
-    parts.push(renderEmptyPanel("no-dreams"));
+    // F-7 chunk 2: the dreams journal (newest first, the E-06
+    // status badges, the honest empty + error lanes).
+    if (state.dreamsError !== undefined) {
+      parts.push(
+        `<section class="fugue-route" data-route="dreams" aria-label="Dreams journal"><div class="fugue-panel fugue-panel-error" data-panel="dreams-load-failed"><h2>Dreams load failed</h2><p class="fugue-panel-reason">${escapeHtml(state.dreamsError)}</p><p class="fugue-panel-action"><kbd>Esc</kbd> back to jobs · Ctrl+K → "refresh"</p></div></section>`,
+      );
+    } else if ((state.dreams ?? []).length === 0) {
+      parts.push(renderEmptyPanel("no-dreams"));
+    } else {
+      parts.push(renderDreams({ dreams: state.dreams ?? [] }));
+    }
+  } else if (state.route === "memory") {
+    // F-7 chunk 2: the tiered-memory view (tiers + the health card).
+    if (state.memoryError !== undefined) {
+      parts.push(
+        `<section class="fugue-route" data-route="memory" aria-label="Memory"><div class="fugue-panel fugue-panel-error" data-panel="memory-load-failed"><h2>Memory load failed</h2><p class="fugue-panel-reason">${escapeHtml(state.memoryError)}</p><p class="fugue-panel-action"><kbd>Esc</kbd> back to jobs · Ctrl+K → "refresh"</p></div></section>`,
+      );
+    } else {
+      parts.push(renderMemory({ memory: state.memory ?? null }));
+    }
   }
 
   if (state.dialog === "compose" && state.composeDraft !== null) {
@@ -643,6 +674,36 @@ export function main(): void {
     }
   }
 
+  // The learning-band load helpers (F-7 chunk 2): the E-02 honest
+  // catch — a failed load surfaces the typed message in the route's
+  // error panel (the state.dreamsError / state.memoryError lanes),
+  // never a silent bounce back to jobs.
+  async function loadDreams() {
+    const s = app.state;
+    s.route = "dreams";
+    s.dreamsError = undefined;
+    try {
+      s.dreams = await appAdapter.dreams();
+    } catch (e) {
+      s.dreams = [];
+      s.dreamsError = e instanceof Error ? e.message : String(e);
+    }
+    rerender();
+  }
+
+  async function loadMemory() {
+    const s = app.state;
+    s.route = "memory";
+    s.memoryError = undefined;
+    try {
+      s.memory = await appAdapter.memories();
+    } catch (e) {
+      s.memory = null;
+      s.memoryError = e instanceof Error ? e.message : String(e);
+    }
+    rerender();
+  }
+
   async function doBoot() {
     const s = await boot(bootClient);
     // The 30th-lineage law: a background refresh must NEVER close the
@@ -652,6 +713,10 @@ export function main(): void {
     s.selectedRunId = app.state.selectedRunId;
     s.dialog = app.state.dialog;
     s.composeDraft = app.state.composeDraft;
+    s.dreams = app.state.dreams;
+    s.dreamsError = app.state.dreamsError;
+    s.memory = app.state.memory;
+    s.memoryError = app.state.memoryError;
     app.state = s;
     rerender();
     // A refresh must land the fresh history in view: when the user is
@@ -781,6 +846,12 @@ export function main(): void {
           container.append(s2);
         }
         break;
+      case "open-dreams":
+        void loadDreams();
+        break;
+      case "open-memory":
+        void loadMemory();
+        break;
     }
   }
 
@@ -815,6 +886,18 @@ export function main(): void {
         rerender();
         const back = document.querySelector(`[data-back-task="${s.selectedRunId}"]`) as HTMLElement | null;
         back?.focus();
+      }
+    } else if (s.route === "dreams") {
+      // F-7 chunk 2: the dreams journal's cursor lane (the runs kin).
+      if (e.key === "Escape") {
+        s.route = "jobs";
+        rerender();
+      }
+    } else if (s.route === "memory") {
+      // F-7 chunk 2: the memory view's cursor lane (the runs kin).
+      if (e.key === "Escape") {
+        s.route = "jobs";
+        rerender();
       }
     }
   });

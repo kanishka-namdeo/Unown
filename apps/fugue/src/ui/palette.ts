@@ -90,6 +90,22 @@ export const PALETTE_COMMANDS: readonly PaletteCommand[] = [
     hint: "show the key surface",
     enabled: () => true,
   },
+  // F-7 chunk 2: the learning band's two routes (the dreams journal
+  // + the tiered-memory view). Both are always enabled — the
+  // load helper's honest catch surfaces a failed lane, the palette
+  // itself never gates them on job selection.
+  {
+    id: "open-dreams",
+    label: "Open dreams journal",
+    hint: "the AutoDream consolidation log (newest first)",
+    enabled: () => true,
+  },
+  {
+    id: "open-memory",
+    label: "Open memory view",
+    hint: "the tiered memory + health card",
+    enabled: () => true,
+  },
 ];
 
 export const PALETTE_BY_ID: Record<string, PaletteCommand> = Object.fromEntries(

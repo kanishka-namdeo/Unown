@@ -27,6 +27,8 @@ import {
   type DreamRecord,
   type NoteRecord,
   type MemoryView,
+  type MemoryTier,
+  type MemoryHealthView,
   type SpendReport,
   EngineLocked,
   EngineDown,
@@ -119,6 +121,76 @@ export interface EngineRunRecord {
   tool_calls: number;
   turns: number;
   error: string | null;
+}
+
+/** The engine's live wire dream row (GET /api/dreams, the operator's
+ *  verbatim capture 2026-11-07 — pi-repo .../dashboard-types.ts
+ *  `Dream`). snake_case, raw string ids, epoch ms, the closed
+ *  DreamStatus vocabulary. */
+export interface EngineDreamRow {
+  id: string;
+  started_at: number;
+  ended_at: number | null;
+  status: string;
+  notes_in: number;
+  entries_merged: number;
+  entries_pruned: number;
+  entries_added: number;
+  output: string | null;
+}
+
+/** The F-2 fixture's camelCase dream row (the pre-registered V-24
+ *  hypothesis shape — kept in the pins; the mapper normalizes both
+ *  forms onto the live DreamRecord). */
+export interface FixtureDreamRow {
+  id: number | string;
+  status: string;
+  summary: string;
+  at: string; // ISO-8601 or epoch-string
+  rolledBackTo?: number;
+}
+
+/** The engine's live wire memory tier (GET /api/memory `tiers[]`,
+ *  the operator's verbatim capture 2026-11-07 — the brief's form:
+ *  tier / version / content; the engine's MemoryTierInfo also carries
+ *  chars + updatedAt, admitted when present). */
+export interface EngineMemoryTierRow {
+  tier: string;
+  version: number;
+  content: string;
+  chars?: number;
+  updatedAt?: number | null;
+}
+
+/** The engine's live wire memory health (GET /api/memory/health —
+ *  the `health` + `platform` objects). */
+export interface EngineMemoryHealthRow {
+  health: {
+    scope: string;
+    lastReconcile: number;
+    duplicateCount: number;
+    conflictCount: number;
+    warnings: string[];
+    memoryCount: number;
+  };
+  platform: {
+    available: boolean;
+    backend: string;
+    embedderRequested?: string;
+    reconcile?: boolean;
+    dir?: string;
+    model?: string;
+    collection?: string;
+    maxRendered: number;
+  };
+}
+
+/** The F-2 fixture's memories view ({ tiers: number, version, healthy })
+ *  — the pre-registered V-24 hypothesis, kept in the pins. */
+export interface FixtureMemoryRow {
+  tiers: number;
+  version: number;
+  healthy: boolean;
 }
 
 /** Map the engine's schedule columns to the domain's five-kind
@@ -300,7 +372,7 @@ export class RestAdapter implements EngineAdapter {
     return mapRuns(raw.runs);
   }
 
-  async dreams(limit?: number): Promise<DreamRecord[]> {
+    async dreams(limit?: number): Promise<DreamRecord[]> {
     const raw = (await this.checked("dreams", () =>
       this.client.call("GET", `/api/dreams${limit ? `?limit=${limit}` : ""}`),
     )) as { dreams: unknown };
@@ -315,9 +387,23 @@ export class RestAdapter implements EngineAdapter {
   }
 
   async memories(): Promise<MemoryView> {
-    return this.checked("memories", () =>
-      this.client.call("GET", "/api/memories"),
-    ) as Promise<MemoryView>;
+    // Two calls, both asserted (the anti-rot law): /api/memory's tier
+    // array + /api/memory/health's health/platform objects, merged by
+    // mapMemory into the single MemoryView the views consume. A failed
+    // health call degrades honestly: the tiers stay, health gets the
+    // zeroed defaults (the view renders them, never a crash).
+    const rawMemory = (await this.checked("memory", () =>
+      this.client.call("GET", "/api/memory"),
+    )) as { tiers?: unknown };
+    let rawHealth: unknown;
+    try {
+      rawHealth = await this.checked("memory-health", () =>
+        this.client.call("GET", "/api/memory/health"),
+      );
+    } catch {
+      rawHealth = undefined;
+    }
+    return mapMemory(rawMemory?.tiers, rawHealth);
   }
 
   async spend(): Promise<SpendReport> {
@@ -437,21 +523,165 @@ export function toEpochMs(v: unknown): number {
   return 0;
 }
 
-function mapDreams(rows: unknown, limit?: number): DreamRecord[] {
+export { EngineLocked, EngineDown, EngineDrift };
+
+function num(obj: unknown, key: string): number {
+  const v = (obj as Record<string, unknown>)?.[key];
+  return typeof v === "number" && Number.isFinite(v) ? v : 0;
+}
+
+/* — the dreams + memory mappers (the F-7 chunk 2 dual-form bridge) — */
+
+const DREAM_STATUSES: readonly string[] = ["done", "running", "no-notes", "error", "gated"];
+
+/** One wire dream row (LIVE snake_case form OR F-2 camelCase fixture
+ *  form) -> the adapter-native DreamRecord. The mapper passes the
+ *  RAW string id through uncoerced (a fixture's numeric id stringifies
+ *  — the raw-passthrough law); status is validated against the closed
+ *  DreamStatus vocabulary; a fixture-form `summary` rides into `output`
+ *  when no `output` field exists, so the journal's preview stays honest.
+ *  Timestamps normalize to epoch ms (the toEpochMs law). */
+export function mapDream(d: Record<string, unknown>, i: number): DreamRecord {
+  const rawId = d.id;
+  const id =
+    typeof rawId === "string" && rawId !== ""
+      ? rawId
+      : typeof rawId === "number" && Number.isFinite(rawId)
+        ? String(rawId)
+        : String(i + 1);
+  const rawStatus = String(d.status ?? "error");
+  // Live wire: closed vocabulary. Fixture lane: the pre-registered
+  // hypothesis statuses map onto the live spelling honestly —
+  // applied -> done (the success badge), rolled-back -> error,
+  // everything else (gated / running / no-notes) passes through as-is
+  // (E-06: gated NEVER becomes done).
+  const status =
+    DREAM_STATUSES.includes(rawStatus)
+      ? (rawStatus as DreamRecord["status"])
+      : rawStatus === "applied"
+        ? "done"
+        : rawStatus === "rolled-back"
+          ? "error"
+          : "error";
+  // Timestamps: the live wire carries snake_case epoch-ms pairs (the
+  // running dream's ended_at is null — an open run, never a fake 0).
+  // The fixture lane carries a single camelCase `at` (ISO or epoch
+  // string) — it becomes both start and end.
+  let startedAt: number;
+  let endedAt: number | null;
+  if ("started_at" in d) {
+    startedAt = toEpochMs(d.started_at);
+    endedAt = d.ended_at == null ? null : toEpochMs(d.ended_at);
+  } else {
+    const at = toEpochMs(d.at);
+    startedAt = at;
+    endedAt = at > 0 ? at : null;
+  }
+  // The consolidation ledger: live fields when present; the fixture's
+  // ledger-less rows stay honest zeros (no invented numbers).
+  const ledger = (
+    v: unknown,
+    fallback = 0,
+  ) => (typeof v === "number" && Number.isFinite(v) ? v : fallback);
+  // The output: live `output` (markdown, null -> ""); the fixture's
+  // `summary` rides in as the preview text.
+  const output =
+    typeof d.output === "string"
+      ? d.output
+      : typeof d.summary === "string"
+        ? d.summary
+        : "";
+  return {
+    id,
+    status,
+    startedAt,
+    endedAt,
+    notesIn: ledger(d.notes_in),
+    entriesMerged: ledger(d.entries_merged),
+    entriesPruned: ledger(d.entries_pruned),
+    entriesAdded: ledger(d.entries_added),
+    output,
+  };
+}
+
+/** Rows (LIVE form OR F-2 fixture form, mixed) -> DreamRecord[],
+ *  newest first (the journal's ordering). `limit` trims AFTER the
+ *  sort, the way the engine's own lane would page. */
+export function mapDreams(rows: unknown, limit?: number): DreamRecord[] {
   if (!Array.isArray(rows))
     throw new EngineDrift("dreams: expected array, got " + typeof rows);
-  const mapped = (rows as Record<string, unknown>[]).map((d, i) => {
-    const numId = Number(d.id);
-    return {
-      id: Number.isFinite(numId) && numId > 0 ? numId : i + 1,
-      status: d.status as DreamRecord["status"],
-      summary: String(d.summary ?? ""),
-      at: String(d.at ?? ""),
-      ...(d.rolledBackTo != null ? { rolledBackTo: Number(d.rolledBackTo) } : {}),
-    };
-  });
+  const mapped = (rows as Record<string, unknown>[]).map((d, i) => mapDream(d, i));
+  mapped.sort((a, b) => b.startedAt - a.startedAt || a.id.localeCompare(b.id));
   return limit !== undefined ? mapped.slice(0, limit) : mapped;
 }
+
+/** The zeroed health defaults (the honest-degradation lane: a failed
+ *  /api/memory/health call degrades to these — the view renders them,
+ *  a missing health object NEVER reads as a healthy one). */
+const EMPTY_MEMORY_HEALTH: MemoryHealthView = {
+  memoryCount: 0,
+  duplicateCount: 0,
+  conflictCount: 0,
+  warnings: [],
+  lastReconcile: 0,
+  available: false,
+  backend: "",
+  model: "",
+  maxRendered: 0,
+};
+
+/** Merge /api/memory (the tiers array — live OR F-2 fixture form) and
+ *  /api/memory/health (the health + platform objects) into the single
+ *  MemoryView the views consume. Fixture-lane rows ({ tiers: number,
+ *  version, healthy }) map to an honest empty tier list + the degraded
+ *  health defaults (no invented tiers, no fake counts). */
+export function mapMemory(rawTiers: unknown, rawHealth?: unknown): MemoryView {
+  // — the tiers lane —
+  let tiers: MemoryTier[] = [];
+  if (Array.isArray(rawTiers)) {
+    tiers = (rawTiers as Record<string, unknown>[]).map((t) => ({
+      tier: String(t.tier ?? ""),
+      version: typeof t.version === "number" ? t.version : 0,
+      content: typeof t.content === "string" ? t.content : "",
+      chars: typeof t.chars === "number" ? t.chars : 0,
+      updatedAt: t.updatedAt == null ? null : toEpochMs(t.updatedAt),
+    }));
+  } else if (rawTiers !== null && typeof rawTiers === "object") {
+    // The F-2 fixture lane: { tiers: 4, version: 3, healthy: true } —
+    // the V-24 hypothesis shape. Honest mapping: zero tiers (the
+    // fixture carries no tier content), the version stamp rides into
+    // lastReconcile = 0 (no reconcile is known); no invented tiers.
+    tiers = [];
+  }
+  // — the health lane —
+  let health = { ...EMPTY_MEMORY_HEALTH };
+  const h = (rawHealth ?? {}) as Record<string, unknown>;
+  const healthObj = h.health;
+  const platformObj = h.platform;
+  if (healthObj !== null && typeof healthObj === "object") {
+    const w = (healthObj as Record<string, unknown>).warnings;
+    health = {
+      ...health,
+      memoryCount: num(healthObj, "memoryCount"),
+      duplicateCount: num(healthObj, "duplicateCount"),
+      conflictCount: num(healthObj, "conflictCount"),
+      lastReconcile: toEpochMs((healthObj as Record<string, unknown>).lastReconcile),
+      warnings: Array.isArray(w) ? w.filter((x): x is string => typeof x === "string") : [],
+    };
+  }
+  if (platformObj !== null && typeof platformObj === "object") {
+    const p = platformObj as Record<string, unknown>;
+    health = {
+      ...health,
+      available: p.available === true,
+      backend: typeof p.backend === "string" ? p.backend : "",
+      model: typeof p.model === "string" ? p.model : "",
+      maxRendered: num(p, "maxRendered"),
+    };
+  }
+  return { tiers, health };
+}
+
 
 function mapNotes(rows: unknown, limit?: number): NoteRecord[] {
   if (!Array.isArray(rows))
@@ -466,5 +696,3 @@ function mapNotes(rows: unknown, limit?: number): NoteRecord[] {
   });
   return limit !== undefined ? mapped.slice(0, limit) : mapped;
 }
-
-export { EngineLocked, EngineDown, EngineDrift };

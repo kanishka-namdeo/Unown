@@ -39,7 +39,11 @@ import {
   assertContract,
   type ContractEndpoint,
   CONTRACT_FIXTURES,
+  DREAMS_LIVE_FIXTURE,
+  MEMORY_LIVE_FIXTURE,
+  MEMORY_HEALTH_LIVE_FIXTURE,
 } from "./contract.js";
+import { mapDreams, mapMemory } from "./rest-adapter.js";
 import type { EngineStatusView, RunRecordView } from "../domain/types.js";
 import { DomainInvariantError } from "../domain/types.js";
 
@@ -109,13 +113,32 @@ export class FakeEngineAdapter implements EngineAdapter {
     this.runsState = structuredClone(
       (seed?.runs ?? CONTRACT_FIXTURES.runs) as unknown as RunRecordView[],
     );
-    this.dreamsState = structuredClone(
-      (seed?.dreams ?? CONTRACT_FIXTURES.dreams) as unknown as DreamRecord[],
-    );
+    // The canned lane serves BOTH wire forms (the V-24 law): the live
+    // rows (done + gated + running, snake_case) through the dual-form
+    // mapper, plus the F-2 fixture's camelCase rows — the dreams()
+    // answer carries the live forms first (the journal's ordering),
+    // the fixture forms after (neither lane deleted).
+    this.dreamsState = structuredClone([
+      ...mapDreams((DREAMS_LIVE_FIXTURE as unknown as { dreams: Record<string, unknown>[] }).dreams),
+      ...mapDreams(CONTRACT_FIXTURES.dreams as unknown as Record<string, unknown>[]),
+    ]);
+    if (seed?.dreams) this.dreamsState = structuredClone(seed.dreams);
     this.notesState = structuredClone(
       (seed?.notes ?? CONTRACT_FIXTURES.notes) as unknown as NoteRecord[],
     );
-    this.memoriesState = { ...(seed?.memories ?? CONTRACT_FIXTURES.memories) };
+    // The memories canned state: the live tiers + health (mapped), with
+    // the F-2 fixture's numbers folded in honestly (the fixture's
+    // `version` stamp rides into lastReconcile via mapMemory's
+    // degraded lane only when no health object is present).
+    const liveMemory = mapMemory(
+      (MEMORY_LIVE_FIXTURE as unknown as { tiers: Record<string, unknown>[] }).tiers,
+      MEMORY_HEALTH_LIVE_FIXTURE as unknown,
+    );
+    const fixMemory = seed?.memories ?? (CONTRACT_FIXTURES.memories as unknown as MemoryView);
+    this.memoriesState =
+      "tiers" in (fixMemory as object) && Array.isArray((fixMemory as MemoryView).tiers)
+        ? fixMemory
+        : liveMemory;
     this.spendState = { ...(seed?.spend ?? CONTRACT_FIXTURES.spend) };
     this.overviewState = { ...(seed?.overview ?? CONTRACT_FIXTURES.overview) };
   }

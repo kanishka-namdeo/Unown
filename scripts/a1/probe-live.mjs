@@ -202,6 +202,41 @@ async function main() {
       .locator(`.fugue-job-row[data-lane="engine"]:has-text("${TITLE}")`).count();
     boundary("cold-boot-engine-row", rowsAfterReload > 0, `${rowsAfterReload} engine row(s) after reload`);
 
+    // THE LEARNING VIEWS (F-7 chunk 2): the dreams journal + the memory
+    // view against the REAL engine's own learning loop (W2 — the round's
+    // keystone surface). Real data only (V-41): the engine holds real
+    // dreams/tiers at this point in the loop.
+    await page.keyboard.press("Control+k");
+    await page.waitForSelector(".fugue-palette");
+    await page.click(".fugue-palette li[data-cmd='open-dreams']");
+    {
+      await page.waitForSelector('[data-route="dreams"]', { timeout: 10_000 });
+      const dreamRows = await page.locator("[data-dream]").count();
+      const noDreams = await page.locator('[data-panel="no-dreams"]').count();
+      const dreamBodies = await page.locator('[data-route="dreams"] .fugue-dream-status, [data-route="dreams"] [class*="is-"]').count();
+      boundary(
+        "learning-dreams-view",
+        dreamRows > 0 || noDreams > 0,
+        dreamRows > 0
+          ? `the REAL dreams rendered: ${dreamRows} row(s), ${dreamBodies} status marker(s) (the engine's live journal — no fake data)`
+          : noDreams > 0 ? "the honest no-dreams panel (0 dreams on the engine)" : "neither rows nor the honest empty panel",
+      );
+    }
+    await page.keyboard.press("Control+k");
+    await page.waitForSelector(".fugue-palette");
+    await page.click(".fugue-palette li[data-cmd='open-memory']");
+    {
+      await page.waitForSelector('[data-route="memory"]', { timeout: 10_000 });
+      const tierRows = await page.locator("[data-tier]").count();
+      const health = await page.locator('[data-route="memory"]').textContent().catch(() => "");
+      const hasHealth = /backend/i.test(health ?? "") && /model/i.test(health ?? "");
+      boundary(
+        "learning-memory-view",
+        (tierRows > 0 || /no tiers/i.test(health ?? "")) && hasHealth,
+        `tiers rendered: ${tierRows}; the health card ${hasHealth ? "present (backend + model)" : "MISSING"}`,
+      );
+    }
+
     // The session note lands (the real wire shape {content, created_at, run_id}).
     let noteSeen = false;
     const noteDeadline = Date.now() + 120_000;

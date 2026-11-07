@@ -18,8 +18,11 @@
  */
 import {
   CONTRACT_FIXTURES,
+  DREAMS_LIVE_FIXTURE,
   DREAM_FIXTURE,
   MEMORIES_FIXTURE,
+  MEMORY_LIVE_FIXTURE,
+  MEMORY_HEALTH_LIVE_FIXTURE,
   NOTE_FIXTURE,
   OVERVIEW_FIXTURE,
   RUN_FIXTURE,
@@ -284,14 +287,22 @@ async function route(
     return { status: 200, body: { runs: structuredClone(RUN_FIXTURE).slice(0, limit) } };
   }
   if (method === "GET" && path === "/api/dreams")
-    return { status: 200, body: { dreams: structuredClone(DREAM_FIXTURE) } };
+    // F-7 chunk 2 (V-24): the fixture now serves the LIVE wire form
+    // (the operator's verbatim capture, done + gated + running) — the
+    // real engine's shape. The fixture lane's camelCase rows stay
+    // admitted in the pins; the server's answer is the live truth.
+    return { status: 200, body: { dreams: structuredClone(DREAMS_LIVE_FIXTURE.dreams) } };
+  // The F-7 chunk 2 memory lane: /api/memory (the tiers array) and
+  // /api/memory/health (the health + platform objects) — the rest
+  // adapter's memories() merges both into the MemoryView.
+  if (method === "GET" && path === "/api/memory")
+    return { status: 200, body: structuredClone(MEMORY_LIVE_FIXTURE) };
+  if (method === "GET" && path === "/api/memory/health")
+    return { status: 200, body: structuredClone(MEMORY_HEALTH_LIVE_FIXTURE) };
   if (method === "GET" && path === "/api/notes") {
     const limit = Number(url.searchParams.get("limit") ?? 40);
     return { status: 200, body: { notes: structuredClone(NOTE_FIXTURE).slice(0, limit) } };
   }
-  if (method === "GET" && path === "/api/memories")
-    return { status: 200, body: structuredClone(MEMORIES_FIXTURE) };
-
   return { status: 404, body: { error: `no fixture route ${method} ${path}` } };
 }
 

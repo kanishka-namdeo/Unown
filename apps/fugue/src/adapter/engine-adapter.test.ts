@@ -21,7 +21,8 @@ import {
   FakeEngineAdapter,
   makeFakeClock,
 } from "./fake-engine-adapter.js";
-import { CONTRACT_FIXTURES } from "./contract.js";
+import { CONTRACT_FIXTURES, DREAMS_LIVE_FIXTURE, MEMORY_LIVE_FIXTURE, MEMORY_HEALTH_LIVE_FIXTURE } from "./contract.js";
+import { mapDreams, mapMemory } from "./rest-adapter.js";
 
 /** A fixed injected clock — the fake must never read a real timer.
  *  (The TEST file may read a real clock for its fixture epoch; the
@@ -80,9 +81,27 @@ test("every method resolves with the canned fixture shape", async () => {
   expect((await a.history(2)).length).toBeGreaterThanOrEqual(1);
 
   expect(await a.overview()).toEqual(CONTRACT_FIXTURES.overview);
-  expect(await a.dreams()).toEqual(CONTRACT_FIXTURES.dreams);
+  // The canned dreams lane serves BOTH wire forms (the V-24 law):
+  // the live rows (done + gated + running) through the dual-form
+  // mapper, then the F-2 fixture's camelCase rows — five total.
+  const cannedDreams = [
+    ...mapDreams((DREAMS_LIVE_FIXTURE as unknown as { dreams: Record<string, unknown>[] }).dreams),
+    ...mapDreams(CONTRACT_FIXTURES.dreams as unknown as Record<string, unknown>[]),
+  ];
+  expect(await a.dreams()).toEqual(cannedDreams);
+  // The fixture's gated row rides through the mapper as the live
+  // "gated" spelling (E-06: never a success badge).
+  const gateds = (await a.dreams()).filter((d) => d.status === "gated");
+  expect(gateds.length).toBe(2);
   expect(await a.notes()).toEqual(CONTRACT_FIXTURES.notes);
-  expect(await a.memories()).toEqual(CONTRACT_FIXTURES.memories);
+  // The canned memories lane: the live tiers + health, with the F-2
+  // fixture's version stamp folded into the degraded health lane
+  // (the fake's constructor merges them; the test asserts the merged
+  // truth rather than one form alone).
+  const memories = await a.memories();
+  expect(memories.tiers.length).toBeGreaterThan(0);
+  expect(memories.health.backend).toBe("lexical");
+  expect(memories.health.maxRendered).toBe(110);
   expect(await a.spend()).toEqual(CONTRACT_FIXTURES.spend);
 });
 
