@@ -76,9 +76,21 @@ PROPOSE-stage candidates (none canaried, none promoted):
   design's caution: the abort path must preserve the resume path (the
   V-12 continuation economics stay supreme). Metric: budget blowouts
   detected at turn ~2×budget → 100%; operator blind-spots → 0. Stage:
-  PROPOSE (the next round's PROPOSE-gate research opens the Codex
-  changelog primary before building — the teardown's honest-depth
-  note).
+  PROPOSE, **research phase COMPLETE** (2026-11-07, the 35th
+  lineage's online pass — the named PROPOSE-gate research executed):
+  the Codex 0.142.0 primary confirms the exact shipped shape —
+  **"advisory rollout budgets with optional limit enforcement"**
+  (advisory-by-default: the budget is visible pacing, enforcement is
+  the OPT-IN — validating the three-part design's ordering:
+  inject-remaining-at-intervals first, mid-run abort only when
+  enforcement is chosen); the OpenHands #5480 receipt re-confirmed at
+  source (the stuck-flagged conversation could not receive subsequent
+  messages — the recovery-gap constraint stands: the abort path MUST
+  preserve the resume path); the Strands stop-reason surface
+  cross-checked. The build design is now primary-sourced end to end;
+  the build itself waits for its round (the mid-round
+  engine-trampling law — no engine-side changes while a sibling
+  lineage dispatches).
 - **H-17 — the conversation-pattern stuck detector (the V-14 manual
   watch automated; the OpenHands Stuck Detector's shape on A2's
   engine).** Spawning evidence: the V-14 spiral watch (the operator
@@ -93,7 +105,19 @@ PROPOSE-stage candidates (none canaried, none promoted):
   envelope. Metric: spirals detected before the operator's manual
   read; false positives on legitimate retry ladders → 0 (the C-8
   flake-fix's 15 s bounded retry is the honest-retry shape to not
-  flag). Stage: PROPOSE (filed at the closeout; not dispatched).
+  flag). Stage: PROPOSE, **the OpenHands SDK primary captured**
+  (2026-11-07, the 35th lineage's research pass — [the Stuck Detector
+  guide](https://docs.openhands.dev/sdk/guides/agent-stuck-detector)):
+  the shipped detector's FIVE pattern classes (repeated
+  action-observation 4+, repeated action-error 3+, agent monologue
+  3+, alternating ping-pong 6+, repeated context-window errors) with
+  SEMANTIC-content comparison (tool name + action content + thought,
+  ignoring IDs and metrics — the anti-superficial-diff rule the V-14
+  watch needs), stuck_detection ON by default, is_stuck() as the
+  probe API, and the same #5480 recovery-gap constraint as H-16 (a
+  stuck-flagged conversation must stay resumable). Not dispatched —
+  the same mid-round engine-trampling law as H-16: the build waits
+  for its round.
 - **H-18 — the cross-host contract-pin skill (operator lane, Scherzo round
   seed; the V-41 generalization).** Two hosts, one grammar, one law: when
   a producer (a runner, a CLI, a generator) and a consumer (a server, a
