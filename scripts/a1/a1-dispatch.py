@@ -5,6 +5,8 @@ Every A2 dispatch rides this tool. Laws encoded:
 
 - V-1  stdin guard: the child's stdin is DEVNULL (a -p run that inherits
        a pipe slurps it and never exits).
+- V-16 brief-via-file: pass --brief-file PATH and the harness argv never
+       carries the brief text (a pattern-kill cannot match the cmdline).
 - V-38 pin ride-along: v38-pin.py runs first; a dispatch never leaves
        home with maxTokens=65536 seeded.
 - V-39 brief sanitizer: briefs never carry literal kill-command text
@@ -64,8 +66,24 @@ def main() -> int:
     ap.add_argument("--resume", default=None, help="session id to resume")
     ap.add_argument("--model", default=None)
     ap.add_argument("--home", default="/home/z/my-project/unown-home")
-    ap.add_argument("brief")
+    ap.add_argument("--brief-file", default=None,
+                    help="read the brief from this file instead of argv (the V-16 deep cure: "
+                         "no pattern A2 can run matches the harness cmdline)")
+    ap.add_argument("brief", nargs="?", default=None)
     args = ap.parse_args()
+
+    # V-16 deep cure: the brief rides a FILE, never argv, whenever the
+    # operator passes --brief-file. The harness cmdline then carries only
+    # the file PATH — a pattern-kill can no longer match the brief text.
+    if args.brief_file:
+        try:
+            args.brief = Path(args.brief_file).read_text()
+        except OSError as e:
+            print(f"a1-dispatch: cannot read --brief-file {args.brief_file}: {e}")
+            return 1
+    if not args.brief or not args.brief.strip():
+        print("a1-dispatch: no brief (pass a positional brief or --brief-file PATH)")
+        return 1
 
     # V-39 sanitizer
     hits = KILL_RE.findall(args.brief)
