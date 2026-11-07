@@ -4,21 +4,26 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Legato</title>
+    <meta name="theme-color" media="(prefers-color-scheme: light)" content="#ffffff" />
+    <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#0d1117" />
     <meta
       name="description"
       content="Keyboard-first, offline-first read-later / web-clip PWA. Clip a URL, read it offline; your data stays in this browser."
     />
+    <link rel="manifest" href="./public/manifest.webmanifest" />
+    <link rel="icon" type="image/svg+xml" href="./public/icon.svg" />
     <link rel="stylesheet" href="./src/ui/legato.css" />
   </head>
   <body>
     <main id="legato-root">
       <p id="legato-status">Booting…</p>
     </main>
-    <!-- L-5: the UI shell (the keyboard-first list/detail surface, the
-         Ctrl+K command palette, light/dark theming). L-10 lands the
-         manifest + service worker + offline fallback — not wired here
-         yet (the zero-dep law: no faked manifest link, no faked SW
-         registration). -->
+    <!-- L-5 lands the UI shell (the keyboard-first list/detail surface,
+         the Ctrl+K command palette, light/dark theming). L-10 lands the
+         manifest + service worker + the offline fallback: the SW
+         registration is the fail-soft module-scope call in src/ui/app.ts
+         (the Ostinato O-4 pattern); the install-time precache of the
+         enumerated runtime closure is sw.js's PRECACHE_LIST. -->
     <script type="module" src="./src/ui/app.ts"></script>
   </body>
 </html>

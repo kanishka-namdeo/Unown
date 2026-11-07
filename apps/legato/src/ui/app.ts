@@ -640,7 +640,10 @@ function browserEntry(): void {
   const idb = w["indexedDB"] as
     | (import("../storage/idb-storage.js").IDBFactoryLike & object)
     | undefined;
-  if (idb) {
+  if (idb && "open" in idb) {
+    // The app passes its OWN two-arg factory.open to the adapter
+    // (the IDBFactoryLike contract) — the browser's indexedDB global
+    // IS the factory, so this works without any wrapper.
     import("../storage/idb-storage.js")
       .then(({ createIdbStorage }) =>
         main({ storage: createIdbStorage(idb), clipUrl: (url) => clipUrlBrowser(url) }),
@@ -648,6 +651,10 @@ function browserEntry(): void {
       .catch((err) => {
         const s = w.document?.getElementById("legato-status");
         if (s) s.textContent = "Boot failed: " + String(err);
+        const log = (globalThis as Record<string, unknown>)["console"] as
+          | { error: (...args: unknown[]) => void }
+          | undefined;
+        log?.error("[legato] boot failed:", err);
       });
   } else {
     import("../storage/fake-storage.js").then(({ FakeStorage }) => {
@@ -661,5 +668,25 @@ function clipUrlBrowser(url: string): void {
   const log = (globalThis as Record<string, unknown>)["console"] as { info: (s: string) => void } | undefined;
   log?.info("[legato] clip pipeline lands at L-11 — URL queued: " + url);
 }
+
+// ─── The service-worker registration (L-10 offline lane; the Ostinato
+// O-4 / Coda main.ts pattern — fail-soft, relative scope, never a boot
+// dependency) ────────────────────────────────────────────────────────────
+function registerServiceWorker(): void {
+  const n = (globalThis as Record<string, unknown>)["navigator"] as Navigator | undefined;
+  if (!n || !("serviceWorker" in n)) return;
+  const w = (globalThis as Record<string, unknown>)["window"] as Window | undefined;
+  w?.addEventListener("load", () => {
+    n.serviceWorker
+      .register("./sw.js", { scope: "./" })
+      .catch((err) => {
+        const log = (globalThis as Record<string, unknown>)["console"] as
+          | { warn: (...args: unknown[]) => void }
+          | undefined;
+        log?.warn("[legato] service worker registration failed:", err);
+      });
+  });
+}
+registerServiceWorker();
 
 void browserEntry();

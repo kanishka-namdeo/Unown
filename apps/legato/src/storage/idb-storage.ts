@@ -42,23 +42,25 @@ import type { StoragePort } from "./storage-port.js";
  * the rest of StoragePort.
  */
 export type IDBFactoryLike = {
-  open(
-    name: string,
-    version: number,
-    onupgradeneeded?: (event: { oldVersion: number; newVersion: number }) => void,
-  ): IDBOpenRequestLike;
+  open(name: string, version: number): IDBOpenRequestLike;
 };
 
-/** The structural IDBOpenRequest surface the adapter consumes. */
+/** The structural IDBOpenRequest surface the adapter consumes.
+ * NOTE: the `onupgradeneeded` event's `.target` is the IDBOpenRequest
+ * (per the IDB spec, IDBVersionChangeEvent targets the request — NOT
+ * the database). The database is at `event.target.result`.
+ * The `onsuccess` event's `.target` is also the IDBOpenRequest;
+ * the database is at `event.target.result`. */
 export type IDBOpenRequestLike = {
-  onupgradeneeded: ((event: { oldVersion: number; newVersion: number }) => void) | null;
-  onsuccess: ((event: { target: IDBDatabaseLike }) => void) | null;
+  onupgradeneeded: ((event: { oldVersion: number; newVersion: number; target: { result?: IDBDatabaseLike } }) => void) | null;
+  onsuccess: ((event: { target: { result: IDBDatabaseLike } }) => void) | null;
   onerror: ((event: unknown) => void) | null;
 };
 
 /** The structural IDBDatabase surface the adapter consumes. */
 export type IDBDatabaseLike = {
   close(): void;
+  createObjectStore(name: string): IDBObjectStoreLike;
   transaction(storeNames: string | string[], mode?: "readonly" | "readwrite"): IDBTransactionLike;
 };
 
@@ -134,18 +136,29 @@ export function createIdbStorage(factory: IDBFactoryLike): StoragePort {
   async function getDB(): Promise<IDBDatabaseLike> {
     if (!db) {
       db = await new Promise<IDBDatabaseLike>((resolve, reject) => {
-        const req = factory.open(DB_NAME, DB_VERSION, (event) => {
-          // v1 upgrade handler: create the object stores
-          if (event.oldVersion === 0) {
-            const d = (event as unknown as { target: IDBDatabaseLike }).target;
-            d.transaction(STORE_DATA, "readwrite")
-              .objectStore(STORE_DATA)
-              .createIndex("url", "url");
-            d.transaction(STORE_TMP, "readwrite").objectStore(STORE_TMP);
-            d.transaction(STORE_META, "readwrite").objectStore(STORE_META);
+        // The real browser open() takes TWO arguments
+        // (name, version); the upgrade listener is set on the
+        // returned request, never as a third positional arg.
+        const req = factory.open(DB_NAME, DB_VERSION);
+        req.onupgradeneeded = (event) => {
+          // v1 upgrade handler: create the object stores.
+          // The onupgradeneeded event's target is the IDBOpenRequest;
+          // the database is at event.target.result (per the IDB spec).
+          // Guard: create stores whenever the DB was opened at a
+          // version LOWER than DB_VERSION (covers both fresh DBs at
+          // oldVersion 0 AND re-opens that created the v1 shell
+          // without stores on a prior failed boot).
+          if (event.oldVersion < event.newVersion) {
+            const d = (event as unknown as { target: { result?: IDBDatabaseLike } }).target?.result;
+            if (d) {
+              d.createObjectStore(STORE_DATA).createIndex("url", "url");
+              d.createObjectStore(STORE_TMP);
+              d.createObjectStore(STORE_META);
+            }
           }
-        });
-        req.onsuccess = (e) => resolve((e.target as unknown as IDBDatabaseLike));
+        };
+        req.onsuccess = (e) =>
+          resolve((e.target as unknown as { result: IDBDatabaseLike }).result);
         req.onerror = () => reject(new Error("IDB open failed"));
       });
     }
