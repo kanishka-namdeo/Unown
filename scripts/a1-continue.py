@@ -20,6 +20,12 @@ What it does (the spec, encoded):
   pre-test must re-land with the pin set, not just the state)
 - computes the V-5(a) raised cap (prior session turns + chunk budget —
   --max-turns is CUMULATIVE across a resumed session)
+- **H-21 (2026-11-07): truncation-aware continuation** — scans the
+  session tail for k>=2 CONSECUTIVE output-limit tool-call refusals
+  (the V-40 loop-burn signature); when present, the V-40 SPLIT-WRITE
+  law AUTO-INJECTS into the continuation brief (the exact pin that
+  cured V-12, fired by evidence instead of operator memory). k<2 or
+  a clean tail -> zero injection (the SHOULD-NOT law).
 - emits the continuation brief and (with --exec) runs it through
   a1-dispatch.py --resume <id>
 
@@ -29,6 +35,7 @@ import argparse
 import glob
 import json
 import os
+import re
 import subprocess
 import sys
 from datetime import datetime, timezone
@@ -37,10 +44,43 @@ from pathlib import Path
 A1 = Path(os.environ.get("A1_HOME", "/home/z/my-project/.a1"))
 LOGS = A1 / "logs"
 
+# H-21: the V-40 loop-burn signature (agent-loop.ts's exact refusal
+# text — 'Tool call "<name>" was not executed: the response hit the
+# output token limit, so its arguments may be truncated.').
+REFUSAL_RE = re.compile(
+    r'Tool call "[^"]*" was not executed: the response hit the output token limit',
+    re.I,
+)
+
+# H-21: the auto-injected pin (the V-40 split-write law, verbatim from
+# the C-10 receipt — the mechanism that cured the V-12 8-turn burn).
+SPLIT_WRITE_LAW = """SPLIT-WRITE LAW (V-40 — AUTO-INJECTED by evidence, the H-21 fire: the
+prior chunk's tail shows {k} consecutive output-limit refusals — the
+loop-burn signature): the pinned maxTokens caps every turn's OUTPUT;
+a large new-file write exceeds it, and re-issuing the same oversized
+write burns turns with ZERO tree change. BINDING for this chunk:
+large new-file writes are SPLIT — the first write carries ~60-80
+lines, subsequent edit/append calls add the next section, and every
+turn's emitted text stays under ~3000 tokens. NEVER re-issue the same
+oversized write unchanged."""
+
 
 def esc(fragment: str) -> str:
     """V-11 law: never carry raw backticks into a continuation brief."""
     return fragment.replace("`", "'")
+
+
+def tail_refusal_run(results: list) -> int:
+    """H-21: the count of CONSECUTIVE output-limit refusals at the
+    session tail (the V-40 signature). A clean tail or a single refusal
+    returns 0 or 1 — the fire threshold is k>=2."""
+    run = 0
+    for text in reversed(results):
+        if REFUSAL_RE.search(text):
+            run += 1
+        else:
+            break
+    return run
 
 
 def find_session(session_id: str, cwd: str) -> Path | None:
@@ -61,6 +101,7 @@ def parse_session(path: Path):
     files: list[str] = []
     commands: list[str] = []
     last_words = ""
+    results: list[str] = []  # H-21: the ordered toolResult texts
     with open(path) as f:
         for line in f:
             try:
@@ -93,7 +134,14 @@ def parse_session(path: Path):
                             commands.append(cmd)
                     elif c.get("type") == "text" and c.get("text", "").strip():
                         last_words = c["text"]
-    return original_brief, census, files, commands, last_words
+            # H-21: toolResult messages carry the refusal signature.
+            if role == "toolResult":
+                parts = []
+                for c in m.get("content") or []:
+                    if isinstance(c, dict) and c.get("type") == "text":
+                        parts.append(c.get("text", ""))
+                results.append("\n".join(parts))
+    return original_brief, census, files, commands, last_words, results
 
 
 def main() -> int:
@@ -135,7 +183,16 @@ def main() -> int:
     if sess is None:
         print(f"a1-continue: session file for {session_id} not found")
         return 1
-    original_brief, census, files, commands, last_words = parse_session(sess)
+    original_brief, census, files, commands, last_words, results = parse_session(sess)
+    # H-21: the truncation-aware fire — k>=2 consecutive tail refusals
+    # auto-inject the V-40 split-write law (evidence-triggered, not
+    # operator-memory-triggered).
+    refusal_run = tail_refusal_run(results)
+    split_write_section = ""
+    if refusal_run >= 2:
+        split_write_section = SPLIT_WRITE_LAW.format(k=refusal_run)
+        print(f"a1-continue: H-21 FIRE — {refusal_run} consecutive output-limit refusals "
+              f"in the session tail; the V-40 SPLIT-WRITE law auto-injects")
     # V-13 fix 1 (cont.): the envelope's own brief (brief0) WINS -- in a
     # multi-brief session the first user message is the chunk-1 brief,
     # which misdirects the continuation (receipted: three lucky survivals,
@@ -199,7 +256,7 @@ LAST SETTLED WORDS of the prior chunk (may be mid-thought):
 
 OPERATOR PINS (V-15 — these carry forward, verify against them before declaring Done):
 {pins}
-
+{split_write_section}
 TASK: Continue exactly where the prior chunk stopped. Complete the ORIGINAL BRIEF's remaining work. Before declaring Done: re-run every check the original brief names (quote the output), confirm every acceptance item, and finish with the brief's handoff line. If you are genuinely blocked, say BLOCKED: <what you need> instead of padding."""
 
     out.write_text(cont)
