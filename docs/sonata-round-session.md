@@ -206,6 +206,43 @@ loop) — the first tickets of the learning-views band; the
 turns-to-done trend 61 → 28 → ~120(F-5, environment-inflated; ~60
 like-for-like) is the signal the round must interpret honestly.
 
+## The 30th-lineage reconciliation (2026-11-07 — the TWELFTH concurrent-lineage event)
+
+A THIRD parallel incarnation (the 30th lineage, a fresh directive on
+the same charter) rebuilt its environment at `76375e36` and drove F-4
+to a full local close (main session `01a1b4a4…`, 9 dispatches / 88
+turns + completion session `01a1b509…`, 6 dispatches — Lane A 119/0,
+Lane B 121/0, e2e 3× 5/5, root 2516/0/197, its own spike-CONFIRMED
+implementation) WITHOUT seeing the 28th's landing. The push revealed
+`6cc078dd`..`a1d46bf1` already on main: **the 28th's F-4 governs**
+(first-landing); the 30th's implementation is stashed as the
+convergent dual (the V-23 precedent) and its UNIQUE evidence folds in:
+
+- **V-15** — the 30th's cross-machine verification of the a1d46bf1
+  tree found the F-5 flow spec's pick-gap race (deterministic 3/3 on
+  the slower machine, invisible on the 28th/29th's faster runs);
+  CURED through A2 (session `01a1b547…`) — the spec now polls the
+  honest refresh's observable effect between picks. The merged tree
+  re-verified by the 30th: flow file 3× 4/4, full suite 2× 7/7,
+  Lane A/B 155/0/20, contract 7/0/41, typecheck 0. The slower machine
+  is the better oracle — green there means green anywhere.
+- **V-16/V-17** — the harness pattern-kill class (the V-39 mechanism
+  observed live: a pattern-kill matched the dispatch argv's brief text
+  and silently killed the tree thrice) + the GUARD-KILL self-reference
+  trap; both cured with laws (pid-file-only termination; token-clean
+  pins + history scrubbing).
+- **V-18** — the W2 minting receipt: the 30th's F-4 churn fired the
+  task-minting lane on real repeated patterns (`write-large-files-chunked`,
+  `fix-boundary-test-glob-conflict` — STAGED, promotion stays a human
+  mv); the first genuinely-earned skill candidates in any round.
+- **V-13 restored** — the 28th/29th renumbering pass had duplicated
+  the V-11 text into V-13, losing the throttle-trap entry the f5
+  receipt cites; restored from the receipt's own paragraph (noted
+  inline).
+
+The 28th/29th/30th trio is now ONE lane going forward: **Next: F-6
+(the LIVE loop)**.
+
 ## Environment checkpoint (2026-11-07, the twenty-eighth lineage — the RECYCLE bring-up)
 
 The sandbox was recycled between F-3 and F-4 (the twenty-seventh

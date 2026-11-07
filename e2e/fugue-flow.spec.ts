@@ -239,18 +239,104 @@ test("the palette run-now / pause / resume change the UI state honestly", async 
       await expect(palette).toHaveCount(0, { timeout: 4000 });
     }
 
+    // OBSERVED refresh (the principled cure): the palette's job-scoped
+    // commands are enabled from the app's re-read engine lane, so
+    // polling the palette's enablement IS polling the refresh's
+    // visible effect. Open the palette (it renders closed-state
+    // rows honestly), read the aria-disabled pair, close on the
+    // keyboard path (Esc — the house law). ~100 ms poll, 5 s cap;
+    // no sleeps as the mechanism — the real signal is the
+    // DOM enablement flipping.
+    async function waitForJobState(
+      expected: "active" | "paused",
+      timeoutMs = 5000,
+    ) {
+      const deadline = Date.now() + timeoutMs;
+      for (;;) {
+        await page.keyboard.press("Control+k");
+        const palette = page.locator(".fugue-palette");
+        await expect(palette).toBeVisible({ timeout: 4000 });
+        const pauseDisabled = await palette
+          .locator('li[data-cmd="pause"]')
+          .getAttribute("aria-disabled");
+        const resumeDisabled = await palette
+          .locator('li[data-cmd="resume"]')
+          .getAttribute("aria-disabled");
+        await page.keyboard.press("Escape");
+        const satisfied =
+          expected === "paused"
+            ? pauseDisabled === "true" && resumeDisabled === "false"
+            : pauseDisabled === "false" && resumeDisabled === "true";
+        if (satisfied) return;
+        if (Date.now() >= deadline) {
+          throw new Error(
+            `job state never reached ${expected} (pause=${pauseDisabled}, resume=${resumeDisabled})`,
+          );
+        }
+        await page.waitForTimeout(100);
+      }
+    }
+
+    async function waitForRouteRerender(timeoutMs = 5000) {
+      const deadline = Date.now() + timeoutMs;
+      const runs = page.locator('[data-route="runs"]');
+      const runsCount = await runs.count();
+      if (runsCount === 0) return;
+      // Poll until the runs section re-renders (the refresh updates
+      // state.jobs, which re-groups the runs view). The stable
+      // observable: the runs route is visible and at least one run
+      // group is present (or the no-runs panel — still a valid
+      // re-render). ~100 ms poll.
+      for (;;) {
+        const section = page.locator('[data-route="runs"]');
+        const groups = await section.locator(".fugue-run-group").count();
+        const noRuns = await section.locator('[data-panel="no-runs"]').count();
+        if (groups > 0 || noRuns > 0) return;
+        if (Date.now() >= deadline) {
+          throw new Error("runs route never re-rendered after refresh");
+        }
+        await page.waitForTimeout(100);
+      }
+    }
+
+    async function waitForJobStateRowStatus(
+      expected: "active" | "paused",
+      timeoutMs = 5000,
+    ) {
+      const deadline = Date.now() + timeoutMs;
+      for (;;) {
+        const row = page.locator(
+          `.fugue-job-row[data-lane="engine"][data-state="${expected}"]`,
+        );
+        if ((await row.count()) > 0) return;
+        if (Date.now() >= deadline) {
+          throw new Error(`job row state never reached ${expected}`);
+        }
+        await page.waitForTimeout(100);
+      }
+    }
+
     // run-now: the adapter's runNow re-reads the lane (optimistic-free).
+    // Observed settle: the runs route refreshes from the re-read lane
+    // (renderRunHistory groups from state.jobs), so poll the runs
+    // surface's re-render — the refresh's visible effect. ~100 ms
+    // poll, 5 s cap; no sleep-as-mechanism.
     await pick("run-now");
+    await waitForRouteRerender();
     await expect(page.locator("#fugue-app")).toBeVisible();
 
     // pause: flips the selected job's state to paused in the re-read
     // engine lane (the honest refresh — the UI shows what the engine
-    // says, not what the UI guessed).
+    // says, not what the UI guessed). The refresh must be OBSERVED:
+    // poll until the palette's resume row is enabled (pause row
+    // disabled) — the state the engine lane actually carries.
     await pick("pause");
-    await expect(page.locator("#fugue-app")).toBeVisible();
+    await waitForJobState("paused");
 
-    // resume: flips it back to active.
+    // resume: flips it back to active (the same observed-refresh
+    // principle: poll until pause is enabled and resume disabled).
     await pick("resume");
+    await waitForJobState("active");
     await expect(page.locator("#fugue-app")).toBeVisible();
   } else {
     // The degraded lane: the palette commands are honest no-ops (the
