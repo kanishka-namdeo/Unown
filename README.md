@@ -522,3 +522,17 @@ The six **learning-integrity gates** that police self-modification (ship gate, m
 ## License
 
 MIT — see [LICENSE](LICENSE).
+
+## Fugue — the engine-native automation console
+
+The repo's fourth self-contained user app: **Fugue**, a keyboard-first, offline-capable PWA console for the engine's own automation + learning loop at `apps/fugue/` — author, pause, resume, skip, snooze and run-now the engine's scheduled agent jobs, watch their runs back with honest status/tokens/turns, and curate the learning loop the engine is already running (the AutoDream journal, the tiered memory + health card, the staged-skills queue, and the Manual-notes editor — the one hand-edit lane). Vanilla TypeScript, **zero package dependencies** (the app's own `package.json` declares none; the one deliberate exception is the Node edge `runner/`, which imports the repo root's Playwright — [the PLAN §1 seam ruling](apps/fugue/PLAN.md)); all engine-side facts are fetched live through the `EngineAdapter` seam and rendered as the engine's authoritative rows (the "Engine jobs" lane above the "Offline shadow" lane in the job list) — the app NEVER opens the engine's SQLite, NEVER writes `.unown/memory/**` outside the Manual-notes lane, and NEVER spawns agents itself. The round's honest scope is Chromium-desktop-only; the live lane is the off-peak proof lane, operator-witnessed, not a capture lane. The commands (the F-11 root wiring lands the `fugue:dev`/`fugue:test`/`fugue:e2e` entries; until then, the direct paths):
+
+```sh
+bun apps/fugue/serve.mjs                 # transpiling static server → http://127.0.0.1:4015 (FUGUE_PORT to override)
+bun apps/fugue/runner/fixture-serve.mjs   # the F-3 fixture engine on 4130 (the lane the e2e battery drives)
+cd apps/fugue && bun test                 # Lane A (DOM-free enforcement)
+bun test apps/fugue                       # Lane B (the compatibility form, root bunfig happy-dom)
+FUGUE_E2E=1 bunx playwright test -c playwright.fugue.config.ts  # the isolated e2e battery (fixture lane)
+```
+
+The full story — the architecture, the engine-adapter seam ruling, the learning-views story, the PWA/offline layer, the two test lanes + the e2e battery, the FUGUE_NOTES_ROOT isolation law (the V-28 seam), and the F-11 CI gate — is in [docs/fugue.md](docs/fugue.md); the app's own contracts live in `apps/fugue/PLAN.md` (the F-0 architecture plan, APPROVED 2026-11-07, the seam ruling + the module tree + the ticket queue), and the round's receipted record lives in [docs/sonata-round-session.md](docs/sonata-round-session.md) + the receipts under `benchmarks/sonata-round/receipts/`.

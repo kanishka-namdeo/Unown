@@ -16,6 +16,7 @@ import { BuiltImprovedSection } from "@/components/landing/built-improved";
 import { CodaSection } from "@/components/landing/coda";
 import { OstinatoSection } from "@/components/landing/ostinato";
 import { ChaconneSection } from "@/components/landing/chaconne";
+import { FugueSection } from "@/components/landing/fugue";
 import { LiveDemoSection } from "@/components/landing/live-demo";
 import { LoopSection } from "@/components/landing/loop";
 import { ProofSection } from "@/components/landing/proof";
@@ -30,7 +31,8 @@ import { Footer, LandingMotion, Nav } from "@/components/landing/shell";
  *
  * Thirteen bands (the live demo joined 2026-10-28; the built & improved
  * showcase followed it 2026-10-29; the Coda band joined 2026-11-03,
- * the Ostinato band 2026-11-04, and the Chaconne band 2026-11-06). The page ran fourteen sections / 21.5 viewports / 5,488 words
+ * the Ostinato band 2026-11-04, the Chaconne band 2026-11-06, and the
+ * Fugue band 2026-11-07). The page ran fourteen sections / 21.5 viewports / 5,488 words
  * (2026-10-20), and visitors scrolled past most of it (see
  * docs/landing-research.md: ~57% of attention lands above the fold, 74%
  * within two screenfuls). The redesign kept every checkable claim and cut the
@@ -85,6 +87,15 @@ import { Footer, LandingMotion, Nav } from "@/components/landing/shell";
  *                                                     round's C-10 lane); no
  *                                                     figure yet — its battery is
  *                                                     C-11's CI gate
+ *   fugue (the fourth user product)                   Fugue, the repo's fourth
+ *                                                     self-contained PWA — a
+ *                                                     keyboard-first, offline-capable
+ *                                                     PWA console for the engine's
+ *                                                     own automation + learning
+ *                                                     loop, real captured stills
+ *                                                     (the Sonata round's F-10
+ *                                                     lane); no figure yet — its
+ *                                                     battery is F-11's CI gate
  *   proof (benchmarks + integrity + models)           the receipts, one tabbed band
  *   alphabet (+ field notes)                          the identity: the wall, the
  *                                                     decode panel, the lexicon
@@ -152,6 +163,7 @@ export default function LandingPage() {
             <CodaSection />
             <OstinatoSection />
             <ChaconneSection />
+            <FugueSection />
             <ProofSection />
             <AlphabetSection />
             <FaqSection />
