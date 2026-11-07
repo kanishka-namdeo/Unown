@@ -1,0 +1,37 @@
+{
+  "round": "serenade",
+  "lineage": "the thirty-second (fresh directive: DRIVE A2 x AUGMENT A2 x PROVE IT)",
+  "tree": "6e3579bb",
+  "captured_utc": "2026-11-07T19:02:02Z",
+  "bring_up": {
+    "bun": "1.4.3 (user-dir install; container 1.3.14 cannot parse the 1.4 lockfile)",
+    "install": "root 400 pkgs + pi-repo 340 pkgs frozen; hydrate:model-data; build:offline full chain",
+    "stack": "bridge :3031 upstream 200 (6 agnes models live), engine :3030 ready v0.0.57, 9 router jobs",
+    "doctor": "ready to chat; warns: LSP-servers (container), model-specs (healed first session)",
+    "v38_pin": "3 fields pinned to 4096 (models.json 2, model-specs.json 1) before any dispatch"
+  },
+  "canaries": {
+    "rig": "benchmarks/vivace-round/run-canaries.sh stamp 20261107T184451Z",
+    "c1_codegen_run": "PASS (rc 0, hello.py output 4)",
+    "c2_test_fix": "PASS (rc 0, tests green, test file untouched)",
+    "c3_delegation_schema": "SCHEMA-FAIL rc=3 (the known V-3 prose-wrapped class; counts correct)",
+    "c4_dispatch_harness": "PASS via 2 dispatches / 10+7 turns (capped chunk -> a1-continue -> DONE; fizzbuzz.py output verified lines 3/5/7/15 = Fizz/Buzz/7/FizzBuzz; fizzbuzz.test.py 4 tests OK direct-run; the -m unittest dotted-module wrinkle was the BRIEF's filename ask, reported honestly by A2)"
+  },
+  "battery": {
+    "typecheck": "0 errors",
+    "unit": "2654 pass / 0 fail / 17638 expects / 208 files (163.4s) at 6e3579bb",
+    "note": "the stale-clone 2-fail (landing 14-vs-15 band) was the F-10 ripple, fixed upstream in 4fa89232 before this lineage's first dispatch; the close-battery law (full test:unit at every close) born of it stands"
+  },
+  "standing_context": {
+    "prior_round": "Sonata (vehicle Fugue) CLOSED F-0..F-11 at 123a861c; round-close battery 2654/0/208",
+    "teardown_duties_open": [
+      "A2_GROUND_TRUTH refresh",
+      "SDLC_CAPABILITY_MATRIX refresh",
+      "competition cycle",
+      "augmentation registry promotion gates (H-22)",
+      "learning-system validation report refresh (W2 now has live evidence)",
+      "evidence packet (S8)"
+    ],
+    "selected_vehicle": "Legato (per S0.9.5 pre-registered fallback; receipt in README.md)"
+  }
+}
