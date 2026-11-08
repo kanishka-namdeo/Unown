@@ -35,12 +35,11 @@ Node `runner/` edge — the Chaconne precedent reshaped).
   (extends the root — the Fugue sibling convention), the `fixtures/`
   hostile-page dir + `scripts/fixture-server.mjs` (L-3+), `sw.js` +
   `public/` (L-10), `scripts/verify-precache.ts` (L-10).
-- Does NOT own: the root `package.json`'s `legato:*` scripts, the CI
-  `legato` job (both are L-13 — the fugue F-11 precedent: root wiring
-  lands as its own ticket, last of all), the benchmark lane
+- Owns (the L-13 root wiring, landed last and separate — the fugue F-11 precedent): the root `package.json`'s `legato:dev` / `legato:test` / `legato:e2e` scripts + the `legato` job in `.github/workflows/ci.yml` (frozen-lockfile + the zero-dep hash assert, Lane A unit step, the isolated e2e battery, the artifact upload).
+- Does NOT own: the benchmark lane
   `benchmarks/serenade-round/` (operator-owned measurement surface), the
   e2e specs at the repo root (`e2e/legato-*.spec.ts` +
-  `playwright.legato.config.ts`, L-10/L-11), and the PRD/round docs
+  `playwright.legato.config.ts`), and the PRD/round docs
   under `docs/` (operator lane).
 
 ## Local Contracts

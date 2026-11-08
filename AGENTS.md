@@ -36,7 +36,7 @@ Repo layout:
 - `blueprint/` — frozen Unown v1 (Claude Code harness) reference material
 - `.unown/` — per-project agent surface (memory, skills, receipts, repomap cache)
 - `e2e/` — Playwright specs (landing a11y, scroll budget, dex video, SEO)
-- `apps/` — self-contained user products; `apps/coda/` is Coda, a local-first markdown notes + task-board PWA (vanilla TS, zero deps, offline-first, installable; DOX at `apps/coda/AGENTS.md`); `apps/ostinato/` is Ostinato, a keyboard-first, offline-first spaced-repetition flashcard PWA (SM-2 scheduling, markdown decks, zero deps, crash-safe mid-review resume; DOX at `apps/ostinato/AGENTS.md`)
+- `apps/` — self-contained user products; `apps/coda/` is Coda, a local-first markdown notes + task-board PWA (vanilla TS, zero deps, offline-first, installable; DOX at `apps/coda/AGENTS.md`); `apps/ostinato/` is Ostinato, a keyboard-first, offline-first spaced-repetition flashcard PWA (SM-2 scheduling, markdown decks, zero deps, crash-safe mid-review resume; DOX at `apps/ostinato/AGENTS.md`); `apps/legato/` is Legato, an offline-first read-later / web-clip PWA (the legato.v1 clip grammar, the 7-lane error taxonomy, IndexedDB behind a StoragePort, browser-side Fetcher/Extractor seam, full-text search with CJK bigram hybrid, byte-stable JSON import/export, SW offline; DOX at `apps/legato/AGENTS.md`)
 
 ## Root Contracts
 

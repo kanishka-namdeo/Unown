@@ -1104,6 +1104,70 @@ jobs:
           if-no-files-found: ignore
           retention-days: 7
 
+  legato:
+    name: Legato app (unit + e2e)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
+        with:
+          bun-version: "1.4.3"
+      - name: Install dependencies (frozen lockfile)
+        # Legato is the repo's FIFTH zero-dependency app (apps/legato/
+        # package.json declares NO dependencies/devDependencies) — the same
+        # frozen-lockfile + hash-assert contract the coda/ostinato/chaconne/
+        # fugue jobs pin for their siblings.
+        run: bun install --frozen-lockfile
+      - name: Lockfile unchanged assert (Legato's zero-dep invariant)
+        shell: bash
+        run: |
+          set -euo pipefail
+          expected=$(git show HEAD:bun.lock | sha256sum | cut -d' ' -f1)
+          actual=$(sha256sum bun.lock | cut -d' ' -f1)
+          echo "bun.lock: expected=$expected actual=$actual"
+          if [ "$expected" != "$actual" ]; then
+            echo "::error::bun.lock drifted after a --frozen-lockfile install: Legato added a dependency? (apps/legato must stay zero-dep; record a new root dep in the lockfile instead)"
+            exit 1
+          fi
+          echo "lockfile byte-identical: Legato's zero-dep invariant holds"
+      - name: Legato unit tests — Lane A (app-dir, DOM-free enforcement)
+        # `cd apps/legato && bun test`: the app directory carries NO
+        # bunfig.toml, so the DOM-free runtime enforces the domain's
+        # DOM-free boundary; the FakeStorage + FakeFetcher lane rides here.
+        # 222 tests / 26 files (207 pass / 15 skip / 0 fail, 884 expects —
+        # the L-11 close numbers, receipted in
+        # benchmarks/serenade-round/receipts/l11.md).
+        run: cd apps/legato && bun test
+      - name: Chromium for Playwright
+        run: bunx playwright install chromium --with-deps
+      - name: "Legato e2e battery (isolated, self-skip-guarded, Chromium-desktop-only)"
+        # The Legato e2e battery (14 specs across 7 files: flow, queue,
+        # hostile-clip, io, offline, a11y, cross-browser-smoke) runs against
+        # the LOCAL fixture lane only: the hostile fixture server on 4018
+        # (canned static + dynamic hostile HTML, zero live network) + the
+        # app's own transpiling dev server (bun apps/legato/serve.mjs) as the
+        # config's webServer on 127.0.0.1:4017. The LEGATO_E2E marker arms in
+        # the legato config ONLY, so the specs self-skip under the root
+        # landing lane — it stays green and untouched by construction.
+        #
+        # THE BROWSER-CLIP LANE NEVER RUNS IN CI: RealFetcher's real-world
+        # clipping (window.fetch against arbitrary user-supplied URLs) is a
+        # live-network path — no live-network test ever runs in CI (the PRD's
+        # P0 honesty law, the chaconne fixture-honesty pattern). The 4018
+        # fixture server stands in for the hostile web in every test lane.
+        run: LEGATO_E2E=1 bunx playwright test -c playwright.legato.config.ts
+      - name: Upload Legato report + traces
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: playwright-report-legato
+          path: |
+            download/playwright-report-legato
+            download/test-results-legato
+          if-no-files-found: ignore
+          retention-days: 7
+
 # NOT in CI yet, on purpose:
 # - Lighthouse (testing-strategy.md §12 criterion 6's second half) — needs a
 #   LHCI collect run against the same standalone + mock-engine pair the e2e

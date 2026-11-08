@@ -11,6 +11,7 @@ Legato is the repo's fifth user-facing app, at `apps/legato/`: **a keyboard-firs
 - [The PWA story](#the-pwa-story)
 - [The dependency ruling](#the-dependency-ruling)
 - [The honest scope](#the-honest-scope)
+- [The root wiring (L-13)](#the-root-wiring-l-13)
 - [The landing band's stills](#the-landing-bands-stills)
 - [Related pages](#related-pages)
 
@@ -37,7 +38,7 @@ It is the Coda/Ostinato/Chaconne/Fugue pattern: plain files + on-the-fly `.ts` t
 - **The fixture lane (everything in this doc's test story)** — the fixture server on 4018 serves the committed static hostile HTML (`fixtures/`: `clean.html`, `wrong-charset.html`, `paywall-excerpt.html`, `huge.html`, `empty-article.html`, sha256-frozen at L-3 per `fixtures/B16-HOLDOUT.md`) + the dynamic routes (`/redirect-chain`, `/redirect-loop`, `/walled-403`, `/walled-429`, `/slow`). CORS headers are pinned on every route (the G-4 receipted gap's standing cure). No live network: the fixture server IS the hostile web for every test lane.
 - **The browser clip lane (real-world use)** — the `RealFetcher` + the clip orchestrator (`src/pipeline/clip.ts`) run inside the PWA closure against whatever URL the user types; the 4018 fixture server is the e2e/capture stand-in, not a host edge the app ships with (PLAN §1.2 seam ruling, [below](#the-architecture-story)).
 
-The root `legato:dev` / `legato:test` / `legato:e2e` script wiring is L-13 (the Fugue F-11 precedent — the CI gate lands last, separate); until it lands, the commands above are the run surface.
+The root `legato:dev` / `legato:test` / `legato:e2e` script wiring landed at L-13 (the Fugue F-11 precedent — [The root wiring (L-13)](#the-root-wiring-l-13)); before it, the commands above were the run surface.
 
 ## Test it
 
@@ -90,6 +91,29 @@ The service worker (`apps/legato/sw.js`) pins the versioned cache `legato-v<N>` 
 ## The honest scope
 
 The round's platform scope is **Chromium-desktop-only** — the PRD's own non-goal #3 (no Firefox/WebKit full parity; the cross-browser lane is a SMOKE, run under a second engine if the lane allows, the gap otherwise stays a named `[U]`). No live-network test ever runs in CI or the capture lane — the 4018 fixture server stands in for the hostile web (the static + dynamic routes, the G-4 CORS-pinned headers, zero CDNs). The P1 backlog (post-freeze, out of L-1..L-13): browser-extension quick capture, reading-time estimates, per-tag digests, WebDAV file sync, Firefox/WebKit full batteries. No AI features in the app itself — the agent built it; the app is deterministic.
+
+## The root wiring (L-13)
+
+L-13 (the Fugue F-11 precedent — root wiring lands last, separate, on a green tree) wired the three root surfaces. One dedicated `legato` job in `.github/workflows/ci.yml` (the gate ledger entry: [docs/testing-strategy.md](testing-strategy.md) §6), mirroring the coda/ostinato/chaconne/fugue job shape with Legato's own counts and honest-scope comment. It is **Chromium-desktop-only** — the PRD's own platform scope statement. Three proofs in the one job:
+
+1. **Frozen lockfile + the zero-dep invariant** — `bun install --frozen-lockfile` followed by a lockfile-drift assert (`sha256sum bun.lock` against `git show HEAD:bun.lock`). `apps/legato/package.json` declares no dependency fields at all (the seven-line whole-file invariant, [The dependency ruling](#the-dependency-ruling)), so any Legato dep pulled in at the root moves the hash and reds the job.
+2. **Lane A** (`cd apps/legato && bun test` — 222 tests / 26 files, 207 pass / 15 skip / 0 fail, 884 expects; the L-11 close numbers receipted in [`benchmarks/serenade-round/receipts/l11.md`](../benchmarks/serenade-round/receipts/l11.md)) — the app directory carries no `bunfig.toml`, so the DOM-free runtime IS the enforcement of the domain's DOM-free boundary; the FakeStorage + FakeFetcher lane rides here.
+3. **The isolated e2e battery** (`bunx playwright test -c playwright.legato.config.ts` — 14 specs across 7 files) with its own Chromium install and its own artifact (`playwright-report-legato`); the `LEGATO_E2E` marker arms in the legato config ONLY, so the specs self-skip under the root landing lane — it stays green and untouched by construction.
+
+The root `package.json` gained the three `legato:*` scripts (after the `fugue:*` block):
+
+```sh
+bun run legato:dev   # bun apps/legato/serve.mjs                    → http://127.0.0.1:4017
+bun run legato:test  # cd apps/legato && bun test                   (Lane A)
+bun run legato:e2e   # LEGATO_E2E=1 bunx playwright test -c playwright.legato.config.ts
+```
+
+**Port discipline** (the `PLAN.md` §5.1 ops contract, restated as CI law):
+
+- **4017** — the reserved dev port. `serve.mjs`'s default `LEGATO_PORT`; the e2e config's first `webServer` boots it (`http://127.0.0.1:4017/health` liveness probe). CI reuses it via `reuseExistingServer: !process.env.CI` — a stale dev server reds the job rather than silently driving against it.
+- **4018** — the hostile fixture lane. `scripts/fixture-server.mjs` serves the committed static hostile HTML + the dynamic routes (`/redirect-chain`, `/redirect-loop`, `/walled-403`, `/walled-429`, `/slow`); the e2e config's second `webServer` boots it. Never a live target — the fixture server IS the hostile web for every test lane.
+
+**Honest-scope statement — what this job runs, and what it never runs:** the fixture lane and the e2e battery, Chromium-desktop only. It never runs **the browser-clip lane against the live web**: `RealFetcher`'s real-world clipping (window.fetch against arbitrary user-supplied URLs) is a live-network path, and no live-network test ever runs in CI (the PRD's P0 honesty law, the chaconne fixture-honesty pattern) — the 4018 fixture server stands in for the hostile web. The `LEGATO_E2E` self-skip marker keeps the root landing lane's `bunx playwright test` collecting-but-skipping the legato specs, untouched by construction.
 
 ## The landing band's stills
 
