@@ -423,3 +423,47 @@ named decision window and it took the surviving-shared-tree lane (the
 cheap path — a worktree would have re-cloned and re-installed
 everything); the same session's V-5 race is the worktree case's
 own evidence. The decision rolls to the next bring-up.
+
+## Phase 1 — THE DRIVE (L-0..L-13, ALL CLOSED 2026-11-07/08)
+
+The ticket ledger (turns = session-file assistant-message ground truth;
+dispatches = the a1-dispatch chunks incl. cap/wall boundaries):
+
+| Ticket | Deliverable | Dispatches | Turns | Genuine gaps |
+|---|---|---|---|---|
+| L-0 | The architecture plan (scored 100/100; PLAN.md 657 lines, 13 tickets + 22 edges none orphaned) | 3 | 49 | — |
+| L-1 | The scaffold (zero-dep, 4017, the boundary scanner) | 2 | 54 | — (the AGENTS.md write-gate = the guard working) |
+| L-2 | The storage core + grammar (StoragePort, FakeStorage, migration frame) | 2 | 57 | — |
+| L-3 | The clip pipeline + THE B-16 FREEZE (7-lane taxonomy, fixtures, 4018 server) | 3 | 135 | — |
+| L-4 | The search core (CJK bigram hybrid, the ranking formula) | 3 | 102 | — |
+| L-5 | The UI shell (el() law, dialog contract, keyboard-first) | 3 | 145 | the DOM_GLOBS comment-drift catch |
+| L-6 | The queue (4-state machine, concurrent-flip guard) | 3 | 126 | — |
+| L-7 | Tags + filter combos (the combo algebra) | 4 | 197 | one error-cap recovered |
+| L-8 | Highlights (the no-silent-truncation law) | 3 | 141 | — |
+| L-9 | The byte-stable io (3 goldens, the refusal gate) | 2 | 87 | — |
+| L-10 | The PWA offline (SW, manifest, verify-precache, offline e2e) | 5 | 296 | **G-IDB**: the 3-arg open() (PLAN App.B risk #2 fired) |
+| L-11 | The e2e battery + THE B-16 RE-RUN (14 specs) | 8 | 501 | **G-4..G-9** (CORS, aria-pressed, the mid-write syntax break, the opaque-redirect reality, the stale stub tests, the missing Esc branch) |
+| L-12 | Docs + landing + 6 REAL captures + README + CHANGELOG | 3 | 124 | — (the F-10 ripple done RIGHT) |
+| L-13 | The root wiring (legato:* scripts, the CI job, the runbook) | 2 | 48 | — |
+
+Totals: **47 dispatches, 1962 assistant turns** through A2. The app:
+`apps/legato/` — 267 unit tests (Lane A), 14 e2e specs, the 6-still
+capture lane, the landing band, the CI job. All green at the close
+battery: **typecheck 0 · unit 2934/0/18799 expects (208→234 files) ·
+legato:e2e 14/14 · check:docs/changelog/claims/blog/benchmarks ok ·
+verify-precache 25/0**.
+
+The §5 reflection ledger (every genuine gap, root-caused + fixed at
+the right layer + re-verified): G-IDB, G-4 (CORS), G-5 (aria), G-6
+(the wall-timeout mid-write syntax break — the repair receipt), G-7
+(the browser-redirect opacity), G-8 (stale stub contracts), G-9 (the
+palette Esc coverage gap) + the filterbar propagation/focus/order
+trio. Full narratives in the l10/l11 receipts.
+
+The engine's learning loop over the same workload (the W2 axis,
+live-probed at close): **66 total runs / 33 dreams / 125 notes (6
+pending) / 20 project-memory versions / 0 auto-promoted skills** (the
+quarantine held; the mint candidates — hostile-fixture-server-setup,
+hostile-clip e2e authoring, byte-stable-export golden pinning — are
+exercised with receipts and await the human mv, per the staged-skills
+law).
