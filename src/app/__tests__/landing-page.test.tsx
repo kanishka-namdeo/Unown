@@ -45,7 +45,7 @@ const LandingPage = (await import("../page")).default;
 // only inside its own render container, so a tree left mounted cannot make
 // another test's anchor check pass on a borrowed id.
 
-const SECTION_COUNT = 15;
+const SECTION_COUNT = 16;
 
 describe("landing composition root", () => {
   test(`renders ${SECTION_COUNT} bands with the rail between the FAQ and the finale`, () => {
@@ -71,10 +71,11 @@ describe("landing composition root", () => {
     expect(at("coda")).toBe(6); // the Coda band (2026-11-03) — between built-improved and ostinato
     expect(at("ostinato")).toBe(7); // the Ostinato band (2026-11-04) — between coda and chaconne
     expect(at("chaconne")).toBe(8); // the Chaconne band (2026-11-06, C-10) — between ostinato and fugue
-    expect(at("fugue")).toBe(9); // the Fugue band (2026-11-07, F-10) — between chaconne and proof
-    expect(at("proof")).toBe(10);
-    expect(at("alphabet")).toBe(11);
-    expect(at("faq")).toBeGreaterThan(11);
+    expect(at("fugue")).toBe(9); // the Fugue band (2026-11-07, F-10) — between chaconne and legato
+    expect(at("legato")).toBe(10); // the Legato band (2026-11-08, L-12) — between fugue and proof
+    expect(at("proof")).toBe(11);
+    expect(at("alphabet")).toBe(12);
+    expect(at("faq")).toBeGreaterThan(12);
     expect(at("changelog")).toBe(SECTION_COUNT - 2); // finale is the last band
     expect(rail).toBe(faq + 1);
     expect(rail).toBe(SECTION_COUNT - 2);
@@ -125,7 +126,8 @@ describe("landing composition root", () => {
       "aqua", // Coda — the first user product (the Coda round's artifact)
       "leaf", // Ostinato — the second user product (the Ostinato round's artifact)
       "aqua", // Chaconne — the third user product (the Rondo round's C-10 band; aqua keeps its neighbours honest there — leaf before, gold after)
-      "gold", // Fugue — the fourth user product (the Sonata round's F-10 band; gold keeps its neighbours honest there — aqua before, magma after)
+      "gold", // Fugue — the fourth user product (the Sonata round's F-10 band; gold keeps its neighbours honest there — aqua before, leaf after)
+      "leaf", // Legato — the fifth user product (the Serenade round's L-12 band; leaf keeps its neighbours honest there — gold before, magma after)
       "magma", // proof — benchmarks | integrity | models
       "psychic", // alphabet — the identity (+ field notes)
       "gold", // faq

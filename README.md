@@ -536,3 +536,18 @@ FUGUE_E2E=1 bunx playwright test -c playwright.fugue.config.ts  # the isolated e
 ```
 
 The full story — the architecture, the engine-adapter seam ruling, the learning-views story, the PWA/offline layer, the two test lanes + the e2e battery, the FUGUE_NOTES_ROOT isolation law (the V-28 seam), and the F-11 CI gate — is in [docs/fugue.md](docs/fugue.md); the app's own contracts live in `apps/fugue/PLAN.md` (the F-0 architecture plan, APPROVED 2026-11-07, the seam ruling + the module tree + the ticket queue), and the round's receipted record lives in [docs/sonata-round-session.md](docs/sonata-round-session.md) + the receipts under `benchmarks/sonata-round/receipts/`.
+
+## Legato — the offline-first read-later PWA
+
+The repo's fifth self-contained user app: **Legato**, a keyboard-first, offline-first, installable read-later / web-clip PWA at `apps/legato/` — clip any URL and get a clean readable copy stored locally, find it again with full-text search + tags, read it in a keyboard-driven queue, highlight what mattered, and carry everything in a byte-stable JSON bundle (the same bundle out that went in) — offline-first, no account, no server. Vanilla TypeScript, **zero package dependencies** (the app's own `package.json` declares none; the one deliberate omission is the Node edge `runner/` — the clip pipeline is browser-side, `window.fetch` + `DOMParser` inside the PWA closure, [the PLAN §1.2 seam ruling](apps/legato/PLAN.md)); every clip is a `legato.v1` record persisted in **IndexedDB** behind the `StoragePort` seam (the deliberate departure from the house localStorage pattern: clip bodies exceed its quota). The error taxonomy (the 7-entry `ClipError` set) is product surface — every hostile-clip lane degrades honestly, never silently; the B-16 holdout (frozen at L-3, re-run at L-11 green) is the counterweight against extraction over-fit. The round's honest scope is Chromium-desktop-only; the P1 backlog (Firefox/WebKit full batteries, the browser-extension capture) stays a named `[U]`. The commands (L-13's root wiring lands the `legato:dev`/`legato:test`/`legato:e2e` entries + the CI job; until then, the direct paths):
+
+```sh
+bun apps/legato/serve.mjs                        # transpiling static server → http://127.0.0.1:4017 (LEGATO_PORT to override)
+bun apps/legato/scripts/fixture-server.mjs        # the B-16 hostile fixture server → http://127.0.0.1:4018 (LEGATO_FIXTURE_PORT)
+cd apps/legato && bun test                         # Lane A (DOM-free enforcement, 222 tests)
+bun test apps/legato                               # Lane B (the compatibility form, root bunfig happy-dom, 267 tests)
+LEGATO_E2E=1 bunx playwright test -c playwright.legato.config.ts  # the 14-spec isolated e2e battery (fixture lane)
+bun apps/legato/scripts/verify-precache.ts         # the precache derivation proof (29 URLs, 0 missing)
+```
+
+The full story — the architecture (the five layers, the browser-side seam ruling, the boundary pin), the error taxonomy as product surface, the B-16 holdout law, the PWA/offline layer, the two test lanes + the 14-spec e2e battery, and the honest scope — is in [docs/legato.md](docs/legato.md); the app's own contracts live in `apps/legato/PLAN.md` (the L-0 scored plan, 100/100, the seam ruling + the module tree + the ticket queue), and the round's receipted record lives in [docs/serenade-round-session.md](docs/serenade-round-session.md) + the receipts under `benchmarks/serenade-round/receipts/`.

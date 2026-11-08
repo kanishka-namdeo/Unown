@@ -17,6 +17,7 @@ import { CodaSection } from "@/components/landing/coda";
 import { OstinatoSection } from "@/components/landing/ostinato";
 import { ChaconneSection } from "@/components/landing/chaconne";
 import { FugueSection } from "@/components/landing/fugue";
+import { LegatoSection } from "@/components/landing/legato";
 import { LiveDemoSection } from "@/components/landing/live-demo";
 import { LoopSection } from "@/components/landing/loop";
 import { ProofSection } from "@/components/landing/proof";
@@ -164,6 +165,7 @@ export default function LandingPage() {
             <OstinatoSection />
             <ChaconneSection />
             <FugueSection />
+            <LegatoSection />
             <ProofSection />
             <AlphabetSection />
             <FaqSection />
