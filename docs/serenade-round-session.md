@@ -467,3 +467,34 @@ quarantine held; the mint candidates — hostile-fixture-server-setup,
 hostile-clip e2e authoring, byte-stable-export golden pinning — are
 exercised with receipts and await the human mv, per the staged-skills
 law).
+
+## The round-close CI finding (the honest hand-off, 2026-11-08)
+
+The final push's CI (e8f6e399) is RED — **but the red predates this
+round's app work and none of it is the Legato lane**:
+
+- **The Legato CI job: GREEN on its first run** (unit + e2e + the
+  zero-dep hash assert) — as are Build+test (ubuntu), Typecheck,
+  Production build, Fugue app, Ostinato, Coda, the security scans.
+- The failing jobs (reproduced identically on f17d91a7 — the L-9
+  close, which touched ONLY `apps/legato/**` + receipts): **Unit
+  tests (landing)** (the fugue `auth.test.ts` ECONNREFUSED `:3100`
+  signature + Baseline receipt-card chips + Finale h2/blockquote +
+  DexSection arrow-walk), **E2E + a11y (landing)**, **Chaconne app
+  (Lane A)**, **Landing palette contract** (the changelog rail),
+  **Changed-line coverage (src/)**.
+- The breakage window: the last green CI = `c2673283` (2026-11-06
+  15:11); the first observed failure = `f17d91a7` (2026-11-07 21:41);
+  everything between was cancelled-before-completion (the rapid-push
+  pattern). The window contains the Fugue round's F-6..F-11 close +
+  the 31st/33rd/34th lineages' augment landings + this round's
+  L-1..L-9 — the failing surfaces are the former's, not the latter's
+  (apps/legato-only commits cannot break chaconne's Lane A or the
+  fugue landing tests).
+- Local contradiction worth noting: the FULL battery is green on this
+  exact tree in THIS container (2934/0/18799) — the CI failures are
+  runner-environment-shaped (the `:3100` fixture-server boot race is
+  the likely shared root for the landing-unit failures; the chaconne
+  Lane A + rail failures need their own look).
+- Filed for the owning lanes per the non-overlap law; this round's
+  surfaces stand verified green in CI, locally, and by the receipts.
