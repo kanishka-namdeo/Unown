@@ -99,6 +99,13 @@ test("the module graph is closed (static + dynamic imports all listed)", () => {
     "src/domain/ids.js",
     "src/domain/io.js",
     "src/domain/invariants.js",
+    // The L-11 pipeline closure (the browser-edge dynamic imports
+    // that app.ts's pipeline lane pulls in — fetcher + clip +
+    // extractor + error-taxonomy, the RealFetcher lane).
+    "src/pipeline/fetcher.js",
+    "src/pipeline/clip.js",
+    "src/pipeline/extractor.js",
+    "src/pipeline/error-taxonomy.js",
   ];
   for (const g of graph) {
     expect(urls.has(g), `module not in PRECACHE_LIST: ${g}`).toBe(true);

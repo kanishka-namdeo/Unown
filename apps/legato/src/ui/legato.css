@@ -194,6 +194,31 @@ a:focus-visible,
 
 /* ── The clip list (the j/k + / surface) ───────────────────────── */
 
+/* THE LIST HOST'S FLEX COLUMN LANE (the "the bar's above-the-
+   search" visual layout's CSS-order half, the Ostinato "the tab
+   order's DOM-source contract" law's "the visual layout's CSS-
+   order" executable form): the `list-host`'s `display: flex;
+   flex-direction: column` makes the filter group's `order: -1`
+   CSS property the visual-reorder-without-DOM-reorder lane
+   (the "the CSS order's visual-reorder" contract: the DOM
+   order stays search-first [the tab order's source-order — the
+   "the '/'-focused search is the home position" contract's
+   executable form: the tab walk's logical order is the DOM's
+   source order], the CSS order flips the visual layout [the bar's
+   visually above the search], the two lanes' independence, the
+   Ostinato "the tab order's DOM-source contract" law's "the
+   visual layout's CSS-order" half). Without the flex column, the
+   `order: -1` on the filter group would be a no-op (the `order`
+   property only takes effect in a flex/grid context — the "the
+   CSS order's flex-context" contract: the `display: flex;
+   flex-direction: column` is the `order` property's "the CSS
+   order's visual-reorder" lane's prerequisite, the "the visual
+   layout's CSS-order" law's executable form). */
+.legato-list-host {
+  display: flex;
+  flex-direction: column;
+}
+
 .legato-search {
   width: 100%;
   padding: 0.45rem 0.75rem;
@@ -601,6 +626,34 @@ a:focus-visible,
 
 .legato-filter-group {
   display: block;
+  /* THE VISUAL LAYOUT'S CSS-ORDER LANE (the Ostinato "the tab
+   * order's DOM-source contract" law's "the visual layout's CSS-
+   * order" half): the DOM order is search-first (the "the tab
+   * order's source-order" contract — the '/'-focused search's
+   * home position, the L-5/L-7 lane's documented "search-first
+   * tab order" law: the tab walk's logical order is the DOM's
+   * source order, the search input precedes the filter bar in
+   * the DOM). The visual layout's "the bar's above-the-search"
+   * lane is the CSS's job — the `list-host`'s flex column's
+   * `order` property flips the filter group to the top of the
+   * visual layout WITHOUT reordering the DOM (the "the CSS
+   * order's visual-reorder-without-DOM-reorder" contract: the
+   * DOM order stays search-first [the tab order's source-order],
+   * the CSS order flips the visual layout [the bar's visually
+   * above the search], the two lanes' independence, the
+   * Ostinato "the tab order's DOM-source contract" law's "the
+   * visual layout's CSS-order" half). The `list-host`'s
+   * `display: flex; flex-direction: column` + the filter group's
+   * `order: -1`'s "the CSS order's visual-reorder" lane: the
+   * negative `order` value places the filter group BEFORE the
+   * search input in the visual layout (the "the bar's above-the-
+   * search" design), while the DOM order stays search-first
+   * (the "the tab order's source-order" contract's executable
+   * form: Tab walks the DOM's source order, not the visual
+   * layout's CSS order — the "the tab order's DOM-source
+   * contract" law's "the tab walk's source-order" half).
+   */
+  order: -1;
   margin: 0.5rem 0;
   padding: 0.5rem 0.6rem;
   border: 1px solid var(--border);

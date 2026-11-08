@@ -78,15 +78,37 @@ export const LEGATO_PALETTE_COMMANDS: PaletteCmd[] = [
   { id: "clip-url", label: "Clip URL", hint: "C", group: "clips", enabled: true },
   { id: "search", label: "Search clips", hint: "/", group: "search", enabled: true },
   { id: "theme", label: "Toggle theme", hint: "t", group: "app", enabled: true },
-  // L-6's state machine (stubbed, disabled, titled):
+  // L-6's state machine (L-6's queue lane landed with the r/d/a/u
+  // keys in app.ts — the palette's M/D/A rows are HONEST STUBS:
+  // the keyboard-first lane is the queue's runner, the palette
+  // rows are the "the queue's state flips are keyboard-driven,
+  // not palette-driven" contract's executable form. They stay
+  // disabled + a ticket named (the Ostinato "never a dead row
+  // that looks clickable" law — the "honestly stubbed"
+  // requirement: the row renders dimmed + aria-disabled + a
+  // title naming the landing ticket, the dispatch checks
+  // `enabled` first so a disabled row is INERT, not dead)).
   { id: "mark-reading", label: "Mark reading", hint: "M", group: "states", enabled: false, stubFor: "L-6" },
   { id: "mark-done", label: "Mark done", hint: "D", group: "states", enabled: false, stubFor: "L-6" },
   { id: "archive", label: "Archive clip", hint: "A", group: "states", enabled: false, stubFor: "L-6" },
-  // L-7's tag filter lane (stubbed):
+  // L-7's tag filter lane (landed: the filter bar's tag chips +
+  // the "Filter by tag" palette command's focusFilterBar action
+  // — the L-7 close).
   { id: "filter-tags", label: "Filter by tag", hint: "T", group: "tags", enabled: true },
-  // L-9's export/import (stubbed):
-  { id: "export", label: "Export bundle (JSON)", hint: "Ctrl+E", group: "app", enabled: false, stubFor: "L-9" },
-  { id: "import", label: "Import bundle (JSON)", hint: "Ctrl+O", group: "app", enabled: false, stubFor: "L-9" },
+  // L-9's export/import (L-11's io lane: the app's wireExport /
+  // wireImport closures land the "export via the palette →
+  // import round-trip" flow step — the Ostinato O-4 download-
+  // lane + file-chooser-lane precedent, the Fugue F-8 lane. The
+  // commands are ENABLED (the L-11 lane supersedes L-9's stub —
+  // the brief's "export via the palette" step needs the ENABLED
+  // row; the `stubFor` field stays as the L-9 ticket name, the
+  // row's "lands at" title lane — the enabled row's subtle
+  // suffix, the PaletteCmd's doc comment's "the ticket that
+  // lands the action (shown in the title when disabled; also
+  // shown as a subtle suffix in the row when enabled but the
+  // action is still L-5's placeholder)" contract).
+  { id: "export", label: "Export bundle (JSON)", hint: "Ctrl+E", group: "app", enabled: true, stubFor: "L-9" },
+  { id: "import", label: "Import bundle (JSON)", hint: "Ctrl+O", group: "app", enabled: true, stubFor: "L-9" },
 ];
 
 export const PALETTE_CMD_COUNT = LEGATO_PALETTE_COMMANDS.length;
@@ -126,6 +148,12 @@ export interface PaletteState {
      *  without the app's full state, same as clipUrl /
      *  focusSearch). */
     focusFilterBar?: () => void;
+    /** L-11: the io module's export lane (exportData → JSON
+     *  download event; the Ostinato O-4 / Fugue F-8 lane). */
+    export?: () => void;
+    /** L-11: the io module's import lane (importData + the
+     *  file-chooser event, the Fugue F-8 lane). */
+    import?: () => void;
   };
 }
 
@@ -235,6 +263,38 @@ export function renderPalette(state: PaletteState): void {
       .filter((e) => e.offsetParent !== null || e === doc.activeElement);
 
   overlay.onkeydown = (e: KeyboardEvent) => {
+    // THE ESCAPE LANE (the Ostinato P0 #9 focus-return contract —
+    // the "Esc closes the palette and focus returns to the
+    // invoking control" law's executable form): the overlay's
+    // own onkeydown handles Esc BEFORE the printable-char branch
+    // (the printable branch's `e.key.length === 1` check would
+    // swallow the Escape key as a query character — the Escape
+    // key's `key` value is "Escape" (length 6), so the printable
+    // branch's `!e.ctrlKey && !e.metaKey && !e.altKey` +
+    // `e.key.length === 1` guards already exclude it, but the
+    // explicit branch is the "the Escape key's activation lane"
+    // contract's honest form: the Ostinato "never a dead key
+    // that looks inert" law — a key that the user expects to
+    // close the dialog must NOT be silently consumed by the
+    // query-filter lane). The `closePalette` call is the
+    // "the Esc lane's closure" contract: the overlay's removal +
+    // the focus-return to `state.invokingEl` (the Ostinato P0 #9
+    // focus-recovery lane — the "focus never wanders to body"
+    // law's executable form). The `preventDefault` is the
+    // "the document-level handler's "not re-route over the
+    // dialog" contract's twin: the Esc's default action (the
+    // browser's "close the active modal" lane) is suppressed —
+    // the palette's own `closePalette` lane is the activation's
+    // target, NOT the browser's native modal-close (the Ostinato
+    // "the affordance's keyboard lane's activation fires the
+    // same callback as the click lane" law's executable form:
+    // the Esc's activation lane is the `closePalette` callback,
+    // not the browser's native lane).
+    if (e.key === "Escape") {
+      e.preventDefault();
+      closePalette(state);
+      return;
+    }
     if (e.key === "Tab") {
       e.preventDefault();
       const stops = focusable();
@@ -301,6 +361,12 @@ export function dispatchPaletteCmd(cmd: PaletteCmd, state: PaletteState): void {
       return;
     case "filter-tags":
       state.actions.focusFilterBar?.();
+      return;
+    case "export":
+      state.actions.export?.();
+      return;
+    case "import":
+      state.actions.import?.();
       return;
     default:
       // A disabled command's id — unreachable (Enter guards it),

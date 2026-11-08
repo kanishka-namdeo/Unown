@@ -83,7 +83,7 @@ export function renderDetailPane(root: HTMLElement, opts: DetailPaneOpts): {
       id: P + "-detail",
       class: "legato-detail",
       "aria-label": "Clip detail",
-      tabindex: "-1", // programmatic focus target on detail-close return
+      tabindex: "-1", // programmatic focus target on detail-open + detail-close return (the B-12 cure; NOT a tab stop — tabindex=-1 is reachable via .focus() only, the L-11 a11y battery's tab-order pin's "the reading lane is keyboard-reachable via Enter on a focused row + Esc to return, NOT via Tab" contract)
     }) as unknown as HTMLElement;
     root.append(paneEl);
   }

@@ -55,6 +55,15 @@ const PRECACHE_LIST = [
   "src/storage/fake-storage.js",
   "src/domain/types.js",
   "src/domain/search.js",
+  // ── the L-11 clip pipeline closure (REALFETCHER lane) ─────
+  // The L-11 pipeline closure: the browser-edge dynamic imports
+  // (fetcher + clip + extractor + error-taxonomy) are in the
+  // runtime closure that the offline lane's install precache
+  // must cover (the L-10 law).
+  "src/pipeline/fetcher.js",
+  "src/pipeline/clip.js",
+  "src/pipeline/extractor.js",
+  "src/pipeline/error-taxonomy.js",
   "src/domain/queue.js",
   "src/domain/tags.js",
   "src/domain/highlights.js",

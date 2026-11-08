@@ -123,13 +123,31 @@ if (!hasDom) {
         onToggleTag: (tag: string) => {
           toggled.value = tag;
           // The app updates the combo (XOR toggle semantics) and
-          // re-renders — the bar is a pure renderer.
+          // re-renders — the bar is a pure renderer. The `activeCombo`
+          // object's `.tags` array is replaced in place (the
+          // "the app owns the value; the bar is a pure renderer
+          // that receives it + emits changes" contract — the
+          // `onToggleTag` callback's "the app's combo-mutation
+          // lane": the combo object is the single source of
+          // truth, its `.tags` property is the XOR toggle's
+          // target, the "the bar's selected tags ARE
+          // `FilterCombo.tags`'s AND-dimension" composition
+          // law's executable form).
           const i = activeCombo.tags.indexOf(tag);
           if (i >= 0) activeCombo.tags = activeCombo.tags.filter((_, j) => j !== i);
           else activeCombo.tags = [...activeCombo.tags, tag].sort();
           paint();
         },
         onClearAll: () => {
+          // The clear-all lane resets the WHOLE combo (the "the
+          // app resets the whole combo (tags + state + query)"
+          // contract — the `emptyCombo()`'s fresh object is the
+          // reset's target, the "the combo object is the single
+          // source of truth" law's "the clear-all lane's reset"
+          // half: the `activeCombo` reference is reassigned to
+          // the fresh object, the next `paint()` call's
+          // `renderFilterBar`'s `combo` parameter is the fresh
+          // object's state).
           activeCombo = emptyCombo();
           paint();
         },
@@ -142,14 +160,33 @@ if (!hasDom) {
     handles.chipEls[0].click(); // toggle "a"
     expect(toggled.value).toBe("a");
     expect(activeCombo.tags).toEqual(["a"]);
-    handles = paint();
+    // THE COMBO DISPLAY'S RE-PAINT (the "the chip's DOM state IS
+    // the domain's combo state" contract's UI-reflectable half:
+    // the `comboEl.textContent` re-paints to the current combo's
+    // state — the Ostinato "the active-combo display's live
+    // region" lane, the L-6 conflict-notice precedent's twin:
+    // the display's text IS the combo state's DOM-reflectable
+    // signal). The first `paint()` after the "a" toggle's
+    // commit: the combo's `tags` is `["a"]` (the `onToggleTag`
+    // callback's "the app's combo-mutation lane" — the XOR
+    // toggle added "a" to the combo), so the display's text is
+    // "a" (the `comboLabel`'s "the tag combo's joined display"
+    // lane: the `tags.join(" + ")`'s single-element form).
     expect(handles.comboEl.textContent).toBe("a");
     // Re-render: the "a" chip is now selected (aria-pressed=true).
     const aChip = Array.from(handles.chipEls).find((b) => b.getAttribute("data-tag") === "a")!;
     expect(aChip.getAttribute("aria-pressed")).toBe("true");
     expect(aChip.classList.contains("legato-filter-chip-selected")).toBe(true);
 
-    // Toggle "b" too — the two-tag AND combo composes.
+    // Toggle "b" too — the two-tag AND combo composes (the
+    // "the domain's AND-combo's dedupe-by-construction" law:
+    // the "selected set here is the same as `combo.tags`" law's
+    // two-tag form: the combo's `tags` is `["a", "b"]` — the
+    // canonical ASCII sort, the domain's canonical-order law's
+    // executable form). The `paint()`'s re-paint shows the
+    // display's "a + b" text (the `comboLabel`'s multi-tag
+    // joined form, the "the active-combo display's live
+    // region" lane's two-tag half).
     handles = paint();
     const bChip = Array.from(handles.chipEls).find((b) => b.getAttribute("data-tag") === "b")!;
     bChip.click();

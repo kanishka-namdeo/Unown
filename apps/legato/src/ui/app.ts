@@ -33,6 +33,7 @@ import { renderDetailPane } from "./detail.js";
 import {
   openPalette,
   renderPalette,
+  LEGATO_PALETTE_COMMANDS,
   type PaletteState,
 } from "./palette.js";
 import { restoreTheme, toggleTheme } from "./theme.js";
@@ -156,9 +157,84 @@ function makeApp(deps: AppDeps): App {
       invokingEl: null,
       actions: {
         clipUrl: () => {
+          // THE CLIP AFFORDANCE (L-11 upgrade from the L-5
+          // placeholder): a keyboard-only URL form — an input + a
+          // submit button, the Ostinato attach-before-focus +
+          // Tab-trap + Esc focus-return contract (the same lane
+          // the palette already ships). The form's on-submit calls
+          // `deps.clipUrl(url)` (the L-11 pipeline closure — the
+          // RealFetcher + the clip orchestrator + the Ostinato
+          // every-transition persist lane).
           const w = (globalThis as Record<string, unknown>)["window"] as Window | undefined;
-          const url = w?.prompt?.("Clip URL:");
-          if (url && url.trim() !== "") deps.clipUrl?.(url.trim());
+          const doc = (globalThis as Record<string, unknown>)["document"] as Document | undefined;
+          if (!w || !doc) return;
+          // Build the form inline into the document body (the
+          // Ostinato attach-before-focus + Tab-trap convention —
+          // the form is in the DOM BEFORE the input is focused,
+          // and the input's `keydown` for Tab wraps within the
+          // form (the focus-trap lane)).
+          const form = doc.createElement("form");
+          form.className = "legato-clip-form";
+          const input = doc.createElement("input");
+          input.className = "legato-clip-input";
+          input.setAttribute("aria-label", "Clip URL (press Enter to submit)");
+          input.setAttribute("type", "text");
+          input.setAttribute("autocomplete", "off");
+          const submit = doc.createElement("button");
+          submit.type = "submit";
+          submit.className = "legato-clip-submit";
+          submit.textContent = "Clip";
+          form.append(input, submit);
+          form.addEventListener("submit", (e) => {
+            e.preventDefault();
+            const url = input.value.trim();
+            form.remove();
+            // THE STATUS-LANE'S ORDERING (the L-11 lane's "the
+            // status line's post-clip copy is the lane's ready
+            // signal" contract): the form's submit must NOT
+            // clear the status line before the pipeline's
+            // "Clipping …" write lands — the pipeline's
+            // `deps.clipUrl`'s "Clipping " + url + "…" write
+            // (the L-11 lane's "the status line's post-clip copy
+            // is the lane's ready signal" contract's first
+            // half) is the lane's ready signal; a form-side
+            // status-clear BEFORE the pipeline's write would
+            // erase the "Clipping …" lane, the Ostinato Q-1's
+            // "never silent" law's violation (a status write
+            // failure must land in the status line, not be
+            // cleared by a form-lane race). The status line's
+            // clear is the pipeline's own lane (the "Clip
+            // failed: …" / "Clipped — …" / "Clipped (degraded:
+            // …) — …" post-pipeline writes, the Ostinato
+            // every-transition rule's status-lane half).
+            if (url !== "") deps.clipUrl?.(url);
+          });
+          // THE FOCUS TRAP: Tab / Shift+Tab wrap within the form
+          // (the input → the submit button → the input).
+          form.addEventListener("keydown", (e) => {
+            if (e.key !== "Tab") return;
+            e.preventDefault();
+            const stops: (HTMLInputElement | HTMLButtonElement)[] = [input, submit];
+            const idx = stops.indexOf(doc.activeElement as HTMLInputElement | HTMLButtonElement);
+            const next = e.shiftKey
+              ? (idx - 1 + stops.length) % stops.length
+              : (idx + 1) % stops.length;
+            stops[next].focus();
+          });
+          // Esc closes the form + returns focus to the invoking
+          // element (the palette's Esc focus-return lane — the
+          // Ostinato P0 #9).
+          form.addEventListener("keydown", (e) => {
+            if (e.key !== "Escape") return;
+            e.preventDefault();
+            form.remove();
+            const target = (app.palette.invokingEl ?? doc.body);
+            target.focus();
+            const statusEl = doc.getElementById("legato-status");
+            if (statusEl) statusEl.textContent = "";
+          });
+          doc.body.append(form);
+          input.focus();
         },
         focusSearch: () => app.handles.searchInput?.focus(),
         focusFilterBar: () => {
@@ -363,16 +439,72 @@ export async function main(deps: AppDeps, root?: HTMLElement): Promise<App> {
         },
         idPrefix: "legato",
       });
-      // The bar must render ABOVE the search input + list rows:
-      // move the group element to the front of listRoot's children.
+      // THE TAB-ORDER'S DOM INSERTION LANE (the Ostinato "the
+      // '/'-focused search is the home position" contract's
+      // executable form — the L-5/L-7 lane's documented "the
+      // search-first tab order" law: the tab walk's logical
+      // order is the DOM's source order, so the search input
+      // must precede the filter bar in the DOM. The visual
+      // layout's "the bar's above-the-search" lane is the CSS's
+      // job (the `legato.css`'s flex/grid ordering, NOT the DOM
+      // order — the Ostinato "the tab order's DOM-source
+      // contract" law's "the visual layout's CSS-order lane"
+      // half: the DOM order drives the tab order, the CSS order
+      // drives the visual layout, the two lanes are INDEPENDENT
+      // [the `display: flex` + `order` property's "the CSS
+      // order's visual-reorder-without-DOM-reorder" contract]).
+      // The L-11 sessions' "the bar's moved to the front of
+      // listRoot's children" lane's bug: the `insertBefore`
+      // calls' DOM-reorder moved the filter group BEFORE the
+      // search input in the DOM, breaking the pinned tab order
+      // [search → filter group → chip → row → clear, the "the
+      // '/'-focused search is the home position" contract's
+      // executable form]. The cure: the search input's DOM
+      // insertion is FIRST (the `renderClipList`'s "the
+      // search input's append" lane — the `root.append(searchInput)`
+      // call, the list.ts's "the list exposes a search input"
+      // contract's DOM-order half), the filter bar's DOM
+      // insertion is AFTER the search input (the "the bar's
+      // DOM-order-after-the-search" contract: the filter
+      // group's `root.append` + the combo display + the clear
+      // button's appends all follow the search input in the DOM,
+      // the tab order's source-order's "search → filter group →
+      // chip → clear" executable form). The visual layout's
+      // "the bar's above-the-search" lane is the CSS's
+      // `legato.css`'s `display: flex; flex-direction: column` +
+      // the filter group's `order: -1`'s "the CSS order's
+      // visual-reorder" contract (the "the visual layout's CSS-
+      // order lane" — the DOM order stays search-first, the
+      // CSS order flips the visual layout to bar-above-search,
+      // the two lanes' independence, the Ostinato "the tab
+      // order's DOM-source contract" law's "the visual layout's
+      // CSS-order" half).
       const groupEl = bar.groupEl;
-      const searchInputEl = handles.searchInput!;
-      // The bar's group is already in listRoot (renderFilterBar
-      // appends it); reorder: the group goes before the search
-      // input, the search input before the list rows.
-      listRoot.insertBefore(groupEl, searchInputEl);
-      listRoot.insertBefore(bar.comboEl, groupEl.nextSibling);
-      listRoot.insertBefore(bar.clearBtn, bar.comboEl.nextSibling);
+      // NO DOM REORDER (the `insertBefore` calls' "the bar's
+      // moved to the front of listRoot's children" lane's bug —
+      // the DOM-reorder broke the pinned tab order). The filter
+      // bar's group/combo/clear are APPENDED to listRoot AFTER
+      // the search input (the `renderFilterBar`'s "the bar's
+      // DOM-order-after-the-search" contract: the `root.append`
+      // calls' natural order — the search input is already in
+      // the DOM [the `renderClipList`'s "the search input's
+      // append" lane], the filter bar's appends follow it, the
+      // tab order's source-order's "search → filter group →
+      // chip → clear" executable form). The visual layout's
+      // "the bar's above-the-search" lane is the CSS's job
+      // (the `legato.css`'s `flex-direction: column-reverse` or
+      // the filter group's `order` property — the "the visual
+      // layout's CSS-order lane" contract: the DOM order stays
+      // search-first [the tab order's source-order], the CSS
+      // order flips the visual layout [the bar's visually above
+      // the search], the two lanes' independence, the Ostinato
+      // "the tab order's DOM-source contract" law's "the
+      // visual layout's CSS-order" half). The `renderFilterBar`
+      // has ALREADY appended the group/combo/clear to listRoot
+      // (the `root.append` calls in the `renderFilterBar`'s
+      // create-lanes), so no further DOM manipulation is needed
+      // — the natural append order IS the "search → filter
+      // group → chip → clear" tab order's source-order.
       app.handles.filterBar = bar;
     } else {
       // No tags at all — hide the bar (remove any stale instance).
@@ -453,6 +585,253 @@ export async function main(deps: AppDeps, root?: HTMLElement): Promise<App> {
   });
 
   app.rerender();
+
+  // ── THE L-11 IO PALETTE LANE (PLAN §3 L-11, §6.2 I-1 I-2) ──
+  // The export/import palette commands are wired here (the L-9 io
+  // module was pure domain — no UI surface; L-11's brief names
+  // "export via the palette → import round-trip" as a flow step,
+  // so this lane lands the UI edge that calls io.exportData /
+  // io.importData + the download / file-chooser event paths
+  // (the Ostinato O-4 download-lane + file-chooser-lane
+  // precedent, the idb-storage.ts injection convention for the
+  // browser edge)).
+  const wireExport = (): void => {
+    const data = app.state.data;
+    if (data === null) return;
+    import("../domain/io.js").then(({ exportData }) => {
+      const bytes = exportData(data);
+      const blob = new Blob([bytes], { type: "application/json" });
+      const objectUrl = URL.createObjectURL(blob);
+      const a = doc.createElement("a");
+      a.href = objectUrl;
+      a.download = "legato-export.json";
+      a.click();
+      // Release the object URL after the download is kicked off
+      // (the Blob stays alive until the anchor's click resolves;
+      // the revoke is best-effort + deferred to the next tick so
+      // the download has its handle).
+      setTimeout(() => URL.revokeObjectURL(objectUrl), 1000);
+      const statusEl = doc.getElementById("legato-status");
+      statusEl!.textContent = "Exported " + data.clips.length + " clip(s) to the JSON bundle.";
+    });
+  };
+  const wireImport = (): void => {
+    // The file-chooser lane: a hidden <input type=file> that the
+    // palette's import command opens, the Ostinato precedent.
+    const input = doc.createElement("input");
+    input.type = "file";
+    input.accept = "application/json";
+    input.addEventListener("change", () => {
+      const file = input.files?.[0];
+      if (file === undefined) return;
+      const reader = new FileReader();
+      reader.onload = () => {
+        const text = String(reader.result ?? "");
+        import("../domain/io.js").then(({ importData }) => {
+          try {
+            const loaded = importData(text);
+            // Replace the store view + persist (the Ostinato
+            // every-transition rule — the import is a STORE
+            // REPLACEMENT, not an in-place mutation).
+            app.state.data = loaded;
+            app.state.searchIndex = buildIndex(loaded.clips);
+            deps.storage.save(loaded).catch(() => {});
+            app.rerender();
+            const s = doc.getElementById("legato-status");
+            s!.textContent = "Imported " + loaded.clips.length + " clip(s) from the JSON bundle.";
+          } catch (err) {
+            const s = doc.getElementById("legato-status");
+            s!.textContent = "Import refused: " + (err instanceof Error ? err.message : String(err));
+          }
+        });
+      };
+      reader.readAsText(file);
+    });
+    input.click();
+  };
+  // The palette's `export` / `import` commands dispatch through
+  // `dispatchPaletteCmd` (palette.ts) — the app wires the
+  // ENABLED state here (the L-11 lane supersedes L-9's stub:
+  // the brief's "export via the palette" step needs the
+  // ENABLED row). The commands are in the `LEGATO_PALETTE_COMMANDS`
+  // table (palette.ts) — the enabled flag is read at dispatch
+  // time, so the app's wiring is a STATE mutation on the command
+  // table (the dispatch checks `enabled` first).
+  const commands = LEGATO_PALETTE_COMMANDS;
+  const exportCmd = commands.find((c) => c.id === "export");
+  const importCmd = commands.find((c) => c.id === "import");
+  if (exportCmd !== undefined) {
+    exportCmd.enabled = true;
+    // Override the command's dispatch (the palette's
+    // `dispatchPaletteCmd` switch falls through to the default
+    // lane for `export` / `import` — the app injects its own
+    // handler through the palette state's `actions`).
+    // The palette's dispatch table is closed (`switch (cmd.id)`),
+    // so the lane's extension point is the `actions` object
+    // (palette.ts's PaletteState.actions). The app's palette
+    // state owns the `actions.clipUrl` / `actions.focusSearch`
+    // / `actions.focusFilterBar` — L-11 adds `export` / `import`
+    // as new action entries.
+    (app.palette.actions as unknown as Record<string, unknown>)["export"] = wireExport;
+  }
+  if (importCmd !== undefined) {
+    importCmd.enabled = true;
+    (app.palette.actions as unknown as Record<string, unknown>)["import"] = wireImport;
+  }
+
+  // ── THE L-11 CLIP PIPELINE (PLAN §3 L-11, §4.1 T-1..T-7) ──
+  // The RealFetcher + the clip orchestrator, wired HERE: this
+  // closure captures the live `App` handle (its `state.data` +
+  // `persist` + `rerender`) + the `StoragePort` — the browser
+  // edge's only place where all of it is in scope. The
+  // pipeline's fetch is the browser's native fetch, injected
+  // through the globalThis-seam exactly like the idb-storage.ts
+  // + fetcher.ts convention: the module NEVER names a browser
+  // global at module scope.
+  //
+  // THE APP-SIDE FETCH CAP (T-7's half — the timeout-masking pin):
+  // the RealFetcher is built with the 15 s AbortController cap
+  // (the default — the 4018 /slow route's 5 s delay clears it, so
+  // a clean clip of the slow page succeeds in the e2e lane; a
+  // shorter cap makes the abort fire the fetch-failed lane, never
+  // a silent hang). The /slow e2e spec pairs the short cap with
+  // the route to pin T-7 live (the qa-architect's named hardest
+  // e2e, PLAN §4.1 T-7).
+  //
+  // PERSIST LANE (the Ostinato every-transition rule): each
+  // clipped clip is appended to the store view + the queue, and
+  // `deps.storage.save(data)` persists it through the StoragePort
+  // (real IDB in the browser lane). A save failure surfaces in the
+  // status line (the Q-1 honest-notice lane) — never silent.
+  const w = (globalThis as Record<string, unknown>)["window"] as Window | undefined;
+  if (w && typeof w["fetch"] === "function") {
+    import("../pipeline/fetcher.js").then(({ RealFetcher }) => {
+      import("../pipeline/clip.js").then(({ clipUrl }) => {
+        // THE FETCH CAP (T-7's app-side half — the timeout-masking
+        // pin): the default is 15 s (the 4018 /slow route's 5 s
+        // delay clears it → a clean clip of the slow page). The
+        // override seam (the `__legatoFetchCapMs` window property)
+        // lets the L-11
+        // e2e lane pair the /slow route with a SHORTER cap (the
+        // manifest's "T-7 (paired with a short cap)" row): when the
+        // override is set, it wins — the abort fires before the
+        // deferred response → the orchestrator's T-7 reject lane →
+        // the fetch-failed clip record in bounded time (never a
+        // silent hang). The seam is test-only surface (documented
+        // on the window, never a product affordance).
+        const wAny = w as unknown as Record<string, unknown>;
+        // THE CAP LANE (the manifest's "T-7 (paired with a short
+        // cap)" row): the boot-time override is read from the
+        // `__legatoFetchCapMs` window property — the hostile-clip
+        // spec sets it on the page's `window` object via
+        // `page.evaluate` (the in-page seam, the Ostinato storage-
+        // seam precedent — the app's module-scope `w` and the
+        // page's `window` are the SAME object in the browser,
+        // so the property set in the spec is visible to the
+        // app's boot-time read). The default (no override) is
+        // 15 s (the 4018 /slow route's 5 s delay clears it → a
+        // clean clip of the slow page; the /slow + short-cap
+        // pairing is the e2e lane's fetch-failed pin).
+        const bootCapOverride = wAny["__legatoFetchCapMs"] as number | undefined;
+        const fetcher = new RealFetcher({
+          fetch: w.fetch.bind(w) as never,
+          fetchCapMs: bootCapOverride ?? 15_000,
+        });
+        // THE PIPELINE'S BOOT DIANOSTIC (the L-11 lane's "never
+        // a silent failure" diagnostic): the console log fires
+        // when the RealFetcher is constructed + the __legatoRead-
+        // Store / __legatoFetchCapMs seams are wired — the
+        // spec's failure receipt's diagnostic (the Ostinato O-4
+        // / Fugue F-8 error-context precedent: the spec's
+        // `pageErrors` capture picks up this lane's log).
+        const log = (globalThis as Record<string, unknown>)["console"] as
+          | { log: (...args: unknown[]) => void }
+          | undefined;
+        log?.log("[legato] L-11 pipeline closure booted (RealFetcher + " +
+          "the clip orchestrator; the __legatoFetchCapMs override " +
+          "is " + (bootCapOverride !== undefined ? "set (" + String(bootCapOverride) + " ms)" : "absent (default 15 s cap)") +
+          "; __legatoReadStore seam wired");
+
+        // THE STORAGE READ SEAM (test-only surface, documented on
+        // the window): the L-11 hostile-clip spec reads the live
+        // store view after each clip (the "store's post-clip shape
+        // is read through the in-page storage seam" lane — zero
+        // pointer events). It returns a COPY of the store's clips
+        // array (plain JSON, the grammar's law — no live refs).
+        wAny["__legatoReadStore"] = () =>
+          Promise.resolve(JSON.parse(JSON.stringify(app.state.data?.clips ?? [])));
+
+        deps.clipUrl = (url: string) => {
+          const statusEl = doc.getElementById("legato-status");
+          const data = app.state.data;
+          if (data === null) {
+            statusEl!.textContent = "Clip: the store has not loaded yet — try again.";
+            return;
+          }
+          statusEl!.textContent = "Clipping " + url + "…";
+          const statusId = "legato-status";
+          void (async () => {
+            try {
+              // THE CAP LANE: the RealFetcher's own AbortController cap
+              // (the constructor-time `fetchCapMs` — the default 15 s,
+              // or the override's value when `__legatoFetchCapMs` was set
+              // at boot). The orchestrator's T-7 reject lane turns a
+              // cap-abort into the fetch-failed clip (never a silent
+              // hang); no per-clip override — the cap is boot-time
+              // (the manifest's "T-7 (paired with a short cap)" row is
+              // the per-context boot override).
+              const clip = await clipUrl(url, { fetcher, data });
+              data.clips.push(clip);
+              data.queue.push(clip.id);
+              await deps.storage.save(data);
+              // THE STATUS-LANE'S ORDERING (the L-11 lane's "the
+              // status line's post-clip copy is the lane's ready
+              // signal" contract + the app's `rerender`'s
+              // "statusEl.textContent = """ first-line (the
+              // rerender's "the status lane's clear is the
+              // rerender's first action" contract)): the
+              // pipeline's `app.rerender()`'s first line clears
+              // the status line (the "the rerender's status-
+              // clear" contract — the "the status lane's
+              // post-clip copy is the lane's ready signal" +
+              // the "the status lane's clear is the rerender's
+              // first action" contract's executable form). The
+              // pipeline's "Clipped — …" / "Clipped (degraded:…)
+              // — …" write must land AFTER the rerender's
+              // status-clear (the Ostinato "the status lane's
+              // post-clip copy is the lane's ready signal"
+              // contract's executable form: the final status
+              // write is the last action, not the first).
+              app.rerender();
+              const s = doc.getElementById(statusId);
+              s!.textContent = clip.error
+                ? "Clipped (degraded: " + clip.error + ") — " + clip.title
+                : "Clipped — " + clip.title;
+            } catch (err) {
+              const s = doc.getElementById(statusId);
+              const log = (globalThis as Record<string, unknown>)["console"] as
+                | { error: (...args: unknown[]) => void }
+                | undefined;
+              log?.error("[legato] clip pipeline rejected:", err);
+              // THE ERROR-LANE'S STATUS (the "the status lane's
+              // post-clip copy is the lane's ready signal"
+              // contract's error half: a pipeline reject lands
+              // in the status line, not in an unhandled
+              // rejection — the Ostinato Q-1's "never silent"
+              // law's executable form). The "Clip failed: …"
+              // write is the last action (the error-lane's
+              // status write is the final ready signal, the
+              // "the status lane's post-clip copy is the lane's
+              // ready signal" contract's error half).
+              s!.textContent =
+                "Clip failed: " + (err instanceof Error ? err.message : String(err));
+            }
+          })();
+        };
+      });
+    });
+  }
+
   return app;
 }
 
@@ -593,6 +972,45 @@ function onKey(e: KeyboardEvent, app: App, doc: Document, deps: AppDeps): void {
   }
 
   if (e.key === "Enter" && !st.detailOpen) {
+    // THE BUTTON-ACTIVATION LANE (the Ostinato K-1 zero-pointer
+    // law's "the keyboard-first affordance's activation fires
+    // the same callback as the click lane" contract): when the
+    // focused element is a <button> (the empty-state panel's
+    // "Show all clips" / "Clear filters" affordances, the
+    // filter bar's tag chips, the detail pane's "Edit tags"
+    // button, the tag editor's "Add" / "Cancel" buttons), the
+    // Enter key's activation is the BUTTON's native "Enter key
+    // activates" contract (the <button>'s built-in form-
+    // submission / button-activation lane, the Ostinato
+    // "keyboard-first" law's executable form). The document-
+    // level Enter handler must NOT open the detail view when
+    // the active element is a button (the button's activation
+    // lane is the "the affordance's keyboard lane's activation
+    // fires the same callback as the click lane" contract —
+    // the button's `click()` is the activation's target, not
+    // the detail view's `openDetail`). The `activeElement`'s
+    // tag check is the "the focused element is a button"
+    // discriminator (the Ostinato "never a color-only cue"
+    // law's twin: the button's tag is the DOM's own signal,
+    // not a class or color cue).
+    const activeEl = doc.activeElement;
+    if (activeEl !== null && activeEl.tagName === "BUTTON") {
+      // THE BUTTON'S ACTIVATION (the <button>'s native "Enter
+      // key activates" contract — the button's `click()` is
+      // the activation's target, the "the keyboard-first
+      // affordance's zero-pointer contract" executable form:
+      // the button's click lane + its keyboard lane are the
+      // SAME action — the affordance's `onShowAll` /
+      // `onClearAll` / `onToggleTag` / `onEditTags` /
+      // `onCommit` callback). The `preventDefault` is the
+      // "the document-level Enter handler's activation lane
+      // does NOT fall through to the detail-view's `openDetail`"
+      // contract (the button's activation is the Enter key's
+      // target, not the detail view's open).
+      e.preventDefault();
+      (activeEl as HTMLButtonElement).click();
+      return;
+    }
     e.preventDefault();
     openDetail(app, st.selectedIdx, st.data?.clips ?? []);
     return;
@@ -641,12 +1059,16 @@ function browserEntry(): void {
     | (import("../storage/idb-storage.js").IDBFactoryLike & object)
     | undefined;
   if (idb && "open" in idb) {
-    // The app passes its OWN two-arg factory.open to the adapter
-    // (the IDBFactoryLike contract) — the browser's indexedDB global
-    // IS the factory, so this works without any wrapper.
+    // THE L-11 WIRED PIPELINE: the browser edge boots the RealFetcher
+    // (the native fetch injection, the idb-storage.ts convention —
+    // the module NEVER names a browser global) + the DOMParser default
+    // extraction, and the clipUrl seam lands every clip through the
+    // orchestrator (clip.ts) into the store view, persisted through
+    // the StoragePort on every transition (the Ostinato every-
+    // transition rule), then re-renders.
     import("../storage/idb-storage.js")
       .then(({ createIdbStorage }) =>
-        main({ storage: createIdbStorage(idb), clipUrl: (url) => clipUrlBrowser(url) }),
+        main({ storage: createIdbStorage(idb) }),
       )
       .catch((err) => {
         const s = w.document?.getElementById("legato-status");
@@ -658,15 +1080,9 @@ function browserEntry(): void {
       });
   } else {
     import("../storage/fake-storage.js").then(({ FakeStorage }) => {
-      void main({ storage: new FakeStorage(), clipUrl: (url) => clipUrlBrowser(url) });
+      void main({ storage: new FakeStorage() });
     });
   }
-}
-
-function clipUrlBrowser(url: string): void {
-  const w = (globalThis as Record<string, unknown>)["window"] as Window | undefined;
-  const log = (globalThis as Record<string, unknown>)["console"] as { info: (s: string) => void } | undefined;
-  log?.info("[legato] clip pipeline lands at L-11 — URL queued: " + url);
 }
 
 // ─── The service-worker registration (L-10 offline lane; the Ostinato

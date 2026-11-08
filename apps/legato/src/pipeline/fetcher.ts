@@ -246,9 +246,24 @@ export class FakeFetcher implements Fetcher {
  * pairs this cap with the 4018 `/slow` route at L-11.
  */
 export type RealFetcherOptions = {
-  /** the browser's fetch-like handle (injected, never named here) */
-  fetch: (url: string, init?: { signal?: unknown }) => Promise<
-    { ok: boolean; status: number; headers: { get(name: string): string | null }; url: string; arrayBuffer(): Promise<ArrayBuffer> }
+  /** the browser's fetch-like handle (injected, never named here).
+   *  The init's `redirect` field ("manual" / "follow") is the T-2
+   *  redirect-lane's seam: the manual probe (a chain-exists signal)
+   *  + the follow walk (the browser's own chain-follow, the cycle
+   *  reject → the redirect-loop lane). */
+  fetch: (url: string, init?: { signal?: unknown; redirect?: "manual" | "follow" }) => Promise<
+    {
+      ok: boolean;
+      status: number;
+      /** the response's `type` (the manual-redirect lane's "a
+       *  chain exists" signal — "opaqueredirect" = the browser
+       *  answered a 3xx without following it, the WHATWG fetch
+       *  spec's manual-redirect response type). */
+      type: string;
+      headers: { get(name: string): string | null };
+      url: string;
+      arrayBuffer(): Promise<ArrayBuffer>;
+    }
   >;
   /** the app-side fetch cap in milliseconds (default 15_000) */
   fetchCapMs?: number;
@@ -264,26 +279,144 @@ export class RealFetcher implements Fetcher {
   }
 
   async fetch(url: string, _data: LegatoData): Promise<FetchOutcome> {
-    let res: Awaited<ReturnType<typeof this.doFetch>>;
+    // THE REDIRECT LANE (the T-2 "no infinite follow" law's
+    // executable form, the L-11 operator-diagnosed browser-
+    // reality fix):
+    //
+    //   STEP 1 — THE MANUAL PROBE: `fetch(url, {redirect:
+    //   "manual"})`. The browser answers the FIRST response
+    //   without following the chain:
+    //     - a non-3xx (2xx/4xx/5xx) → the terminal response
+    //       (the normal pipeline — no redirect chain exists; the
+    //       `redirects` array is empty, the `finalUrl` is the
+    //       requested URL).
+    //     - an `opaqueredirect` response (`response.type ===
+    //       "opaqueredirect"`, the WHATWG fetch spec's manual-
+    //       redirect response type) → a redirect chain EXISTS
+    //       (the browser answered a 3xx without following it; the
+    //       `location` header is UNREADABLE cross-origin, so the
+    //       fetcher does NOT walk the hops itself — the browser's
+    //       own follow-walk is the chain's walker, step 2).
+    //
+    //   STEP 2 — THE FOLLOW WALK (only when step 1 found a
+    //   chain): `fetch(url, {redirect: "follow"})`. The browser
+    //   walks the chain itself:
+    //     - RESOLVES → the chain TERMINATED (the terminal
+    //       response's `url` is the `finalUrl`; the `redirects`
+    //       array carries the single terminal hop — the
+    //       orchestrator's cycle detector sees a non-cycling hop
+    //       → the clean / degraded lane per the terminal status).
+    //     - REJECTS (the browser's `ERR_TOO_MANY_REDIRECTS` —
+    //       the cycle) → the CYCLE lane: the `redirects` array
+    //       carries `[url]` (the terminal hop re-entering the
+    //       ORIGIN — the orchestrator's cycle detector's seed,
+    //       the `FakeFetcher.redirectLoop` shape's twin: a
+    //       terminal hop that re-enters the seen set → the
+    //       `cycle` flag → the `redirect-loop` clip, NEVER the
+    //       T-7 fetch-failed lane (the reject is NOT a network
+    //       failure — it is the browser's own redirect-follow
+    //       budget, the "no infinite follow" law's executable
+    //       form). The orchestrator's cycle detector turns this
+    //       into the `redirect-loop` ClipError (the B-16
+    //       manifest's "/redirect-loop → redirect-loop" row).
+    //
+    //   THE CAP LANE (T-7's half — the timeout-masking pin): the
+    //   AbortController's timer fires the abort; the reject's
+    //   `name === "TimeoutError"` is the cap signal (the
+    //   orchestrator's T-7 reject lane → the fetch-failed clip,
+    //   never a silent hang). The cap is per-REQUEST (the
+    //   manual probe + the follow walk share the cap's budget —
+    //   the /slow route's 5 s delay clears the default 15 s cap;
+    //   the hostile-clip spec's short-cap override makes the
+    //   abort fire → the fetch-failed lane).
+    const { signal } = this.makeAbortSignal(this.capMs);
+
+    // STEP 1 — the manual probe.
+    let probe: Awaited<ReturnType<typeof this.doFetch>>;
     try {
-      const { signal } = this.makeAbortSignal(this.capMs);
-      res = await this.doFetch(url, { signal });
+      probe = await this.doFetch(url, { signal, redirect: "manual" });
     } catch (e: unknown) {
-      // A cap-timeout abort is a fetch cap (T-7): typed, honest,
-      // never a silent hang.
+      // The probe's reject: a cap-timeout abort (the T-7 lane)
+      // OR a network failure (the T-7 lane). Both are honest
+      // rejects — the orchestrator's catch sets `rejected = true`
+      // → the fetch-failed clip (never a silent hang).
       if ((e as { name?: string })?.name === "TimeoutError") {
         throw new Error("fetch cap exceeded");
       }
       throw e instanceof Error ? e : new Error(String(e));
     }
-    const body = await res.arrayBuffer();
-    const finalUrl = res.url || url;
+
+    // A non-opaqueredirect response is the terminal (the manual
+    // probe's normal lane — the 2xx/4xx/5xx responses, the 3xx
+    // responses that are NOT cross-origin opaqueredirects).
+    if (probe.type !== "opaqueredirect") {
+      const body = await probe.arrayBuffer();
+      return {
+        url,
+        finalUrl: probe.url || url,
+        redirects: [],
+        status: probe.status,
+        headers: { "content-type": probe.headers.get("content-type") ?? "" },
+        body,
+      };
+    }
+
+    // STEP 2 — the follow walk (a chain exists; the browser's
+    // own redirect-follow is the chain's walker).
+    let follow: Awaited<ReturnType<typeof this.doFetch>>;
+    try {
+      follow = await this.doFetch(url, { signal, redirect: "follow" });
+    } catch (e: unknown) {
+      // The follow walk's reject: the CYCLE lane (the browser's
+      // `ERR_TOO_MANY_REDIRECTS` — the chain did not terminate
+      // within the browser's own redirect budget, the "no
+      // infinite follow" law's executable form) OR a cap-timeout
+      // abort (the T-7 lane). The CYCLE is signalled via the
+      // `redirects` array's `[url]` hop (the terminal hop
+      // re-entering the ORIGIN — the orchestrator's cycle
+      // detector's seed, the `FakeFetcher.redirectLoop` shape's
+      // twin: a terminal hop that re-enters the seen set → the
+      // `cycle` flag → the `redirect-loop` clip). The CAP is
+      // signalled via the reject (the orchestrator's T-7 lane →
+      // the fetch-failed clip). The distinction: a `TimeoutError`
+      // is the cap (the abort fired); any OTHER reject on the
+      // follow walk is the cycle (the browser's redirect-budget
+      // reject, the `ERR_TOO_MANY_REDIRECTS` form).
+      if ((e as { name?: string })?.name === "TimeoutError") {
+        throw new Error("fetch cap exceeded");
+      }
+      // THE CYCLE LANE: the follow walk rejected (the browser's
+      // redirect-budget reject — the chain did not terminate).
+      // The `redirects` array's `[url]` hop is the terminal hop
+      // re-entering the ORIGIN (the orchestrator's cycle
+      // detector's seed, the `FakeFetcher.redirectLoop` shape's
+      // twin: a terminal hop that re-enters the seen set → the
+      // `cycle` flag → the `redirect-loop` clip, NEVER the T-7
+      // fetch-failed lane — the reject is the browser's own
+      // redirect-follow budget, not a network failure).
+      return {
+        url,
+        finalUrl: url,
+        redirects: [url], // the cycle signal (the orchestrator's detector's seed)
+        status: 0,
+        headers: {},
+        body: new ArrayBuffer(0),
+      };
+    }
+    const body = await follow.arrayBuffer();
+    const finalUrl = follow.url || url;
     return {
       url,
       finalUrl,
+      // THE TERMINAL HOP (the follow walk's chain terminated at
+      // `finalUrl`; the `redirects` array carries the single
+      // terminal hop — the orchestrator's cycle detector sees a
+      // non-cycling hop (a single hop, not re-entering the seen
+      // set) → the clean / degraded lane per the terminal
+      // status).
       redirects: finalUrl === url ? [] : [finalUrl],
-      status: res.status,
-      headers: { "content-type": res.headers.get("content-type") ?? "" },
+      status: follow.status,
+      headers: { "content-type": follow.headers.get("content-type") ?? "" },
       body,
     };
   }

@@ -51,6 +51,31 @@ try {
   cleanBody = "<html><body>clean</body></html>";
 }
 
+
+// THE CORS LANE (the L-11 e2e battery's cross-origin clip
+// precondition): the app's origin (http://127.0.0.1:4017) is
+// cross-origin against the fixture server's origin
+// (http://127.0.0.1:4018) — without Access-Control-Allow-Origin
+// the browser blocks the RealFetcher's fetch, the pipeline never
+// completes, the status line never renders. The headers are
+// pinned on EVERY route (the static fixtures + the dynamic
+// routes + the not-found lane), and the OPTIONS preflight lane
+// (Access-Control-Request-Method: GET) answers 204 with the
+// allow-methods + allow-headers. The chaconne / fugue fixture-
+// server precedent: "the CORS headers are pinned".
+const CORS = {
+  "access-control-allow-origin": "*",
+  "access-control-allow-methods": "GET, HEAD, OPTIONS",
+  "access-control-allow-headers": "Content-Type",
+};
+
+function withCors(headers = {}, status = 200, body) {
+  return new Response(body, {
+    status,
+    headers: { ...CORS, ...headers },
+  });
+}
+
 Bun.serve({
   port: PORT,
   hostname: "127.0.0.1",
@@ -58,11 +83,23 @@ Bun.serve({
     const url = new URL(req.url);
     const path = url.pathname;
 
+    // ---- THE OPTIONS PREFLIGHT LANE (the cross-origin fetch's
+    //      preflight request; answers 204 + the CORS allow-set)
+    // ----
+    if (req.method === "OPTIONS") {
+      return new Response(null, {
+        status: 204,
+        headers: {
+          ...CORS,
+          "access-control-max-age": "86400",
+        },
+      });
+    }
+
     // ---- the cheap liveness probe (L-11's webServer waits on this) ----
     if (req.method === "GET" && path === "/health") {
-      return new Response(JSON.stringify({ ok: true, port: PORT }), {
-        headers: { "content-type": "application/json" },
-      });
+      return withCors({ "content-type": "application/json" }, 200,
+        JSON.stringify({ ok: true, port: PORT }));
     }
 
     // ---- static fixtures: serve any fixtures/*.html at /fixtures/<name> ----
@@ -70,14 +107,14 @@ Bun.serve({
       const filename = path.slice("/fixtures/".length);
       // Path-traversal guard: only allow .html files in the dir.
       if (filename.includes("..") || filename.includes("/")) {
-        return new Response("not found", { status: 404 });
+        return withCors({}, 404, "not found");
       }
       try {
         const buf = await readFile(resolve(FIXTURES_DIR, filename));
         const ct = MIME[extname(filename)] ?? "application/octet-stream";
-        return new Response(buf, { headers: { "content-type": ct } });
+        return withCors({ "content-type": ct }, 200, buf);
       } catch {
-        return new Response("not found", { status: 404 });
+        return withCors({}, 404, "not found");
       }
     }
 
@@ -86,62 +123,40 @@ Bun.serve({
     // T-2: the 3-hop chain ending in a clean page.
     //   /redirect-chain → 302 /hop-1 → 302 /hop-2 → 302 /fixtures/clean.html
     if (req.method === "GET" && path === "/redirect-chain") {
-      return new Response(null, {
-        status: 302,
-        headers: { location: "/hop-1" },
-      });
+      return withCors({ location: "/hop-1" }, 302, null);
     }
     if (req.method === "GET" && path === "/hop-1") {
-      return new Response(null, {
-        status: 302,
-        headers: { location: "/hop-2" },
-      });
+      return withCors({ location: "/hop-2" }, 302, null);
     }
     if (req.method === "GET" && path === "/hop-2") {
-      return new Response(null, {
-        status: 302,
-        headers: { location: "/fixtures/clean.html" },
-      });
+      return withCors({ location: "/fixtures/clean.html" }, 302, null);
     }
 
     // T-2: the 2-hop cycle (the redirect-loop pin).
     //   /redirect-loop → 302 /loop-a → 302 /loop-b → 302 /loop-a (cycle)
     if (req.method === "GET" && path === "/redirect-loop") {
-      return new Response(null, {
-        status: 302,
-        headers: { location: "/loop-a" },
-      });
+      return withCors({ location: "/loop-a" }, 302, null);
     }
     if (req.method === "GET" && path === "/loop-a") {
-      return new Response(null, {
-        status: 302,
-        headers: { location: "/loop-b" },
-      });
+      return withCors({ location: "/loop-b" }, 302, null);
     }
     if (req.method === "GET" && path === "/loop-b") {
-      return new Response(null, {
-        status: 302,
-        headers: { location: "/loop-a" }, // cycles back — no infinite follow
-      });
+      return withCors({ location: "/loop-a" }, 302, null); // cycles back — no infinite follow
     }
 
     // T-3: the 403 wall.
     if (req.method === "GET" && path === "/walled-403") {
-      return new Response("<html><body>403 forbidden</body></html>", {
-        status: 403,
-        headers: { "content-type": "text/html" },
-      });
+      return withCors({ "content-type": "text/html" }, 403,
+        "<html><body>403 forbidden</body></html>");
     }
 
     // T-3: the 429 wall.
     if (req.method === "GET" && path === "/walled-429") {
-      return new Response("<html><body>429 too many requests</body></html>", {
-        status: 429,
-        headers: {
-          "content-type": "text/html",
-          "retry-after": "60",
-        },
-      });
+      return withCors(
+        { "content-type": "text/html", "retry-after": "60" },
+        429,
+        "<html><body>429 too many requests</body></html>",
+      );
     }
 
     // T-7: the slow route (the timeout-masking pin).
@@ -151,13 +166,11 @@ Bun.serve({
     //   pin the fetch-failed lane.
     if (req.method === "GET" && path === "/slow") {
       await new Promise((r) => setTimeout(r, 5000));
-      return new Response(cleanBody, {
-        headers: { "content-type": "text/html" },
-      });
+      return withCors({ "content-type": "text/html" }, 200, cleanBody);
     }
 
-    return new Response("not found", { status: 404 });
+    return withCors({}, 404, "not found");
   },
 });
 
-console.log(`[legato fixture] B-16 substrate at http://127.0.0.1:${PORT}`);
+console.log(`[legato fixture] B-16 substrate at http://127.0.0.1:${PORT} (CORS: Access-Control-Allow-Origin *)`);

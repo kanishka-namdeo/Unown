@@ -196,11 +196,39 @@ export function renderClipList(root: HTMLElement, opts: ListRenderOpts): {
           text: "Every clip is done or archived — the active queue is empty.",
         }),
       );
+      // THE KEYBOARD-FIRST AFFORDANCE (the Ostinato K-1 zero-
+      // pointer law: the "Show all clips" affordance is keyboard-
+      // reachable — the button's `tabindex` is native (the
+      // <button> element is natively focusable), and the app's
+      // `onKey` lane's Enter key (the "Enter on the focused
+      // button" contract) + the button's own "submit"-form
+      // "Enter-submit" lane make the affordance keyboard-operable.
+      // The button's "Enter-submit" lane: when the button is
+      // focused and Enter is pressed, the button's native
+      // "activation" lane fires (the <button>'s "Enter key
+      // activates the button" contract — the Ostinato "keyboard-
+      // first" law's executable form: the affordance is
+      // keyboard-operable via Enter, not just click). The
+      // `addEventListener("click")` lane is the "the click lane
+      // is the keyboard lane's visible twin" contract (the
+      // Ostinato "never a color-only cue" law's twin: the
+      // affordance's click lane + its keyboard lane are the SAME
+      // action — the `onShowAll` callback).
       const showAllBtn = el("button", {
         class: "legato-queue-empty-showall",
         text: "Show all clips",
-      });
+      }) as HTMLButtonElement;
       showAllBtn.addEventListener("click", () => opts.onShowAll?.());
+      // THE KEYBOARD-FIRST AFFORDANCE (the Ostinato K-1 zero-
+      // pointer law): the button is natively focusable + the
+      // native "Enter key activates" contract is the keyboard
+      // lane (the app's `onKey` lane's Enter handler defers to
+      // the button's activation when the active element is a
+      // <button> — the "the keyboard-first affordance's
+      // activation fires the same callback as the click lane"
+      // contract, the Ostinato "never a color-only cue" law's
+      // twin: the affordance's click lane + its keyboard lane
+      // are the SAME action — the `onShowAll` callback).
       emptyPanel.append(showAllBtn);
     } else if (queueKind === "no-matches") {
       // L-7: the tag dimension — when a tag combo is active the copy
