@@ -964,29 +964,44 @@ async function runDirectSetup(
         }
         // --- the model-specs gate (ask BEFORE the config is written) ---
         // Interactive: the model step's own /models fetch is reused. The
-        // non-interactive lane lets the cascade fetch the endpoint itself.
+        // non-interactive lane probes ONCE here and every downstream consumer
+        // (the gate's detection cascade, the extra-spec pass, the catalog
+        // registration below and the reachability print) reuses that probe.
         const gateKey =
                 keyDecision?.apiKeyInAuthJson ??
                 keyDecision?.apiKeyInModelsJson ??
                 (keyDecision?.apiKeyEnvRef ? (process.env[keyDecision.apiKeyEnvRef] ?? "") : undefined) ??
                 (apiKey || undefined) ??
                 (flags.keyEnv ? process.env[flags.keyEnv] : undefined);
+        // The 2026-11-09 catalog fix: the NON-INTERACTIVE lane used to skip
+        // model discovery entirely — models.json was written with exactly one
+        // entry while the same command's own output said "serves 6 models".
+        // /model, --model, subagent fallbackModels and --plan-model could
+        // never resolve a sibling. Probe here (the interactive wizard already
+        // did it in runModelStep) and register the discovered catalog like
+        // the bridge preset has since M4.
+        const preProbe = dialog ? undefined : await probeProviderEndpoint(baseUrl, gateKey, { timeoutMs: 4000, api: preset.api });
+        const probeEntries =
+                modelDecision?.probe?.modelEntries ?? preProbe?.modelEntries ?? undefined;
         const gate = await runSpecGateStep(
                 dialog,
                 { providerId, modelId, baseUrl, apiKey: gateKey, api: preset.api },
                 { contextWindow: flags.contextWindow, maxTokens: flags.maxTokens },
-                modelDecision?.probe?.modelEntries ? { data: modelDecision.probe.modelEntries } : undefined,
+                probeEntries ? { data: probeEntries } : undefined,
         );
         if (gate.abort) return 1;
         // Best-effort specs for the discovered extras (the chosen model's
         // numbers must not leak onto its siblings — a heterogeneous catalog
         // has different limits per id).
-        const extraIds = dialog && modelDecision?.extraModelIds?.length ? modelDecision.extraModelIds : [];
+        const extraIds =
+                (dialog && modelDecision?.extraModelIds?.length
+                        ? modelDecision.extraModelIds
+                        : (preProbe?.models ?? []).filter((m) => m !== modelId).slice(0, 24)) ?? [];
         const extraSpecs = gate.spec
                 ? await detectExtraSpecs(
                                 { providerId, baseUrl, apiKey: gateKey, api: preset.api },
                                 extraIds,
-                                modelDecision?.probe?.modelEntries ? { data: modelDecision.probe.modelEntries } : undefined,
+                                probeEntries ? { data: probeEntries } : undefined,
                         )
                 : {};
         const modelSpecs = {
@@ -1013,8 +1028,10 @@ async function runDirectSetup(
                                 }),
                 // The discovered catalog registers alongside the chosen model so
                 // /model and --model can route without a manual models.json edit
-                // (the bridge preset has done exactly this since M4).
-                ...(dialog && modelDecision?.extraModelIds?.length ? { extraModelIds: modelDecision.extraModelIds } : {}),
+                // (the bridge preset has done exactly this since M4). BOTH lanes:
+                // the wizard passes its own list; the non-interactive lane passes
+                // the pre-probe list (same contract, 2026-11-09).
+                ...(extraIds.length ? { extraModelIds: extraIds } : {}),
                 ...(Object.keys(modelSpecs).length > 0 ? { modelSpecs } : {}),
                 ...(flags.force ? { reset: true } : {}),
         });
@@ -1026,7 +1043,10 @@ async function runDirectSetup(
                 (keyDecision?.apiKeyEnvRef ? (process.env[keyDecision.apiKeyEnvRef] ?? "") : undefined) ??
                 (apiKey || undefined) ??
                 (flags.keyEnv ? process.env[flags.keyEnv] : undefined);
-        const probe = await probeProviderEndpoint(baseUrl, verifyKey, { timeoutMs: 4000, api: preset.api });
+        // The non-interactive lane already probed milliseconds ago with the
+        // same key shape (gateKey === verifyKey there) — reusing that answer
+        // keeps one network round-trip instead of two back-to-back GETs.
+        const probe = preProbe ?? await probeProviderEndpoint(baseUrl, verifyKey, { timeoutMs: 4000, api: preset.api });
         let verified: SetupOutcome["verified"] = "unreachable";
         if (probe.ok) {
                 verified = "ok";

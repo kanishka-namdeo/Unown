@@ -99,7 +99,11 @@ const agentItems: SettingsItem[] = [
                 name: "Session permission mode",
                 risk: "med",
                 summary: "The effective permission envelope for THIS session",
-                help: "Shows the session's permission mode (default / acceptEdits / plan / bypassPermissions). Session-scoped: it does not persist. Change it with /permissions mode <m>; the launch flag --permission-mode pins it. bypassPermissions is refused under strict hooks.",
+                // 2026-11-09 drift fix: "plan" is NOT a permission mode (the
+                // PermissionMode union is default|acceptEdits|bypassPermissions)
+                // — it is the plan-mode overlay toggled by /plan, Ctrl+Alt+P and
+                // the Shift+Tab cycle. The help text used to list it here.
+                help: "Shows the session's permission mode (default / acceptEdits / bypassPermissions — plan mode is a separate overlay: /plan, Ctrl+Alt+P, Shift+Tab). Session-scoped: it does not persist. Change it with /permissions mode <m>; the launch flag --permission-mode pins it. bypassPermissions is refused under strict hooks.",
                 related: ["/permissions", "docs/permissions.md"],
                 env: "UNOWN_PERMISSIONS_MODE (flag)",
                 get: () => process.env.UNOWN_PERMISSION_MODE ?? "default (session-scoped — /permissions mode to change)",

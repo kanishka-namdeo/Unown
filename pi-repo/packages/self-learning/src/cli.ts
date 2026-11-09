@@ -190,13 +190,15 @@ Usage:
   unown sessions resume    the same resume as a subcommand (Codex muscle
                            memory): bare = the picker, or pass <id|name|path>;
                            composes with -p "..." like the flag lane
-  unown --plan [...]       start (print or TUI) in plan mode (V2): read-only exploration,
-                           the plan file + scored plan doc (0-100 rubric), then the approval
-                           gate — execute auto-accept/manual, edit in $EDITOR, or send
+  unown --plan [...]       start (print or TUI) in plan mode (V3 orchestrator by
+                           default; UNOWN_PLAN_MODE_V3=0 restores V2): read-only
+                           exploration, the plan file + scored plan doc (0-100
+                           rubric), then the approval gate — execute
+                           auto-accept/manual, edit in the in-TUI editor, or send
                            feedback (also /plan [description|open|show|off], Ctrl+Alt+P,
                            Shift+Tab cycles default -> acceptEdits -> plan)
   unown --plan-model <id>  the opusplan lane: use <id> while planning; the session model
-                           returns on approval/exit
+                           returns on approval/exit (also PI_PLAN_MODEL_ID)
   unown --goal "objective"  start with a durable goal: evidence-verified completion,
                            unfinished todos block it (also /goal <objective>)
   unown setup              connect a model provider — interactive wizard
@@ -3235,6 +3237,17 @@ async function cmdPrint(prompt: string | undefined, args: CliArgs, verbose: bool
 		permissionMode: args.permissionMode,
 		addDirs: args.addDirs,
 	});
+	// The 2026-11-09 diagnostics fix: pi's applyExtensionFlagValues drops
+	// unregistered extension flags into error diagnostics ("Unknown
+	// option: --x") — the runtime collects them but the unown lanes never
+	// read them, so a dead flag died silently (the --plan-model lane
+	// shipped broken for nine days before anyone noticed). Print them on
+	// stderr exactly like pi's own main.ts reportDiagnostics — print mode
+	// must never swallow a boot error.
+	for (const d of runtime.diagnostics ?? []) {
+		const prefix = d.type === "error" ? "unown: error:" : d.type === "warning" ? "unown: warning:" : "unown:";
+		console.error(`${prefix} ${d.message}`);
+	}
 	// F3 (2026-10-29, the parley round): the last-resort envelope lane.
 	// The watchdog's forced exits (stall guard, post-answer hard-exit
 	// grace) call the current closure BEFORE process.exit so an
@@ -3653,6 +3666,12 @@ async function cmdTui(prompt: string | undefined, verbose: boolean, bootOpts: Bo
 		// Brand the interactive TUI as unown (header, terminal title); suppress pi's own update check.
 		appName: "unown",
 		appVersion: VERSION,
+		// The 2026-11-09 diagnostics fix: pi's InteractiveMode already
+		// renders startupDiagnostics (showError/showWarning/showStatus)
+		// — the unown lane just never passed them, so an unknown
+		// extension flag died silently at boot. Same treatment as the
+		// print lane's stderr lines.
+		...(runtime.diagnostics?.length ? { startupDiagnostics: [...runtime.diagnostics] } : {}),
 		// The exit hint must spell THIS launcher's resume grammar. pi's
 		// default (`pi --session-dir <dir> --session <id>`) fails the
 		// copy-paste test three ways for an unown user: it names a command

@@ -93,6 +93,7 @@ import {
         subagentJournalDir,
 } from "./fleet-reaper.ts";
 import { FleetManager, type FleetSpawnRequest, registerFleetSurface } from "./fleet-runtime.ts";
+import { FOOTER_PRIORITY, footerClassicMode } from "./footer-mode.ts";
 import { registerGitTools } from "./gittools.ts";
 import {
         appendGoalHistory,
@@ -252,7 +253,6 @@ import {
 } from "./subagent-routing.ts";
 import { deliverTerminalNote, ENGINE_URL, terminalMemoryForAgentDetailed, UNOWN_AGENT_DIR } from "./term.ts";
 import { emitTerminalHookEvent } from "./termhooks.ts";
-import { FOOTER_PRIORITY, footerClassicMode } from "./footer-mode.ts";
 import { compactTokens, estimateSessionCostUsd, formatCostChip, formatTurnMeter } from "./turn-meter.ts";
 import {
         cheapInstallStatus,
@@ -1484,12 +1484,7 @@ export function isSafeCommand(command: string): boolean {
  * mode has no ui, older builds may lack setStatus), so a missing or throwing
  * setStatus degrades to no status line — never a crash.
  */
-const setStatusLine = (
-        ctx: any,
-        key: string,
-        text: string | undefined,
-        opts?: { priority?: number },
-): void => {
+const setStatusLine = (ctx: any, key: string, text: string | undefined, opts?: { priority?: number }): void => {
         try {
                 if (!ctx?.hasUI || typeof ctx.ui?.setStatus !== "function") return;
                 ctx.ui.setStatus(key, text, opts);
@@ -1604,9 +1599,7 @@ const PLAN_SAFE_AGENT_TOOLS = new Set(["read", "grep", "find", "ls"]);
  *  specialist-review phase). Exported for the extension tests. */
 export function isPlanSafeAgent(agent: { tools?: string[] }): boolean {
         return (
-                Array.isArray(agent.tools) &&
-                agent.tools.length > 0 &&
-                agent.tools.every((t) => PLAN_SAFE_AGENT_TOOLS.has(t))
+                Array.isArray(agent.tools) && agent.tools.length > 0 && agent.tools.every((t) => PLAN_SAFE_AGENT_TOOLS.has(t))
         );
 }
 const PLAN_MANAGED_TOOLS = new Set([
@@ -1901,30 +1894,57 @@ export function createUnownToolsExtension(opts: UnownToolsOptions) {
                  * nudges per planning episode) until the plan file exists or the model
                  * genuinely asks the user a question. */
                 let planNudges = 0;
-                const planTurnBudget = (() => {
-                        const envBudget = Number(process.env.UNOWN_PLAN_TURN_BUDGET ?? "");
+                const planTurnBudget = (): number => {
+                        // The env knob only counts when EXPLICITLY set —
+                        // `Number("" ?? "")` is 0, so an unset variable must
+                        // not fall into the "0 disables" branch (the same
+                        // raw/NaN pattern planThreshold uses).
+                        const rawEnv = process.env.UNOWN_PLAN_TURN_BUDGET;
+                        const envBudget = rawEnv !== undefined && rawEnv.trim() !== "" ? Number(rawEnv) : NaN;
+                        // An explicit 0 disables the pressure entirely (the
+                        // documented .env.example contract — previously
+                        // unreachable: the value fell back to 15 before the
+                        // <= 0 guard could ever see a zero).
+                        if (Number.isFinite(envBudget) && envBudget === 0) return 0;
                         const base = Number.isFinite(envBudget) && envBudget > 0 ? envBudget : 15;
+                        // Read the run cap at CALL time: extension flag values
+                        // are applied after the factory runs, so a factory-time
+                        // getFlag("max-turns") always saw "" and the documented
+                        // "60% of --max-turns" cap never engaged.
                         const capRaw = Number(pi.getFlag("max-turns") ?? "");
                         const cap = Number.isFinite(capRaw) && capRaw > 0 ? Math.floor(capRaw * 0.6) : base;
                         return Math.max(3, Math.min(base, cap));
-                })();
+                };
                 const planBudgetLine = (): string => {
-                        if (planTurnBudget <= 0) return "";
+                        const budget = planTurnBudget();
+                        if (budget <= 0) return "";
                         const used = planningTurns;
-                        if (used >= planTurnBudget) {
-                                return `\n[BUDGET EXCEEDED: ${used}/${planTurnBudget} planning turns] Your ONLY remaining actions: write the complete plan with plan_write, then call exit_plan_mode. Do NOT explore further — use what you already know.`;
+                        if (used >= budget) {
+                                return `\n[BUDGET EXCEEDED: ${used}/${budget} planning turns] Your ONLY remaining actions: write the complete plan with plan_write, then call exit_plan_mode. Do NOT explore further — use what you already know.`;
                         }
-                        if (used >= Math.ceil(planTurnBudget * 0.75)) {
-                                return `\n[PLAN BUDGET: ${used}/${planTurnBudget} turns] Stop exploring. Write the plan file NOW with plan_write from what you know, then call exit_plan_mode.`;
+                        if (used >= Math.ceil(budget * 0.75)) {
+                                return `\n[PLAN BUDGET: ${used}/${budget} turns] Stop exploring. Write the plan file NOW with plan_write from what you know, then call exit_plan_mode.`;
                         }
-                        if (used >= Math.ceil(planTurnBudget * 0.5)) {
-                                return `\n[PLAN BUDGET: ${used}/${planTurnBudget} turns used] Wrap up exploration and start drafting the plan file.`;
+                        if (used >= Math.ceil(budget * 0.5)) {
+                                return `\n[PLAN BUDGET: ${used}/${budget} turns used] Wrap up exploration and start drafting the plan file.`;
                         }
                         return "";
                 };
                 /** Set when exit_plan_mode ran this turn — the agent_end fallback
                  * gate stays quiet because the in-tool gate already resolved. */
                 let suppressAgentEndGate = false;
+                /** Set when the approval dialog resolved as STAYED (dismissed or
+                 * empty keep-planning feedback) — the user explicitly declined,
+                 * so the agent_end fallback gate must NOT re-offer the same plan
+                 * for the rest of this agent run. Re-arms on the next run
+                 * (agent_start). The 2026-11-09 stay-loop fix: measured live, the
+                 * model's post-stay continuation turn fired turn_start (resetting
+                 * suppressAgentEndGate), the run ended, and the fallback gate
+                 * re-opened within seconds — detaching the user's editor while
+                 * they typed their next command. Rejected-with-feedback stays
+                 * re-arming per turn on purpose: the fallback gate rescues a
+                 * model that revises the plan but forgets to re-offer it. */
+                let planGateStayedForRun = false;
                 const planThreshold = (() => {
                         const rawEnv = process.env.UNOWN_PLAN_SCORE_THRESHOLD;
                         const raw = rawEnv !== undefined && rawEnv.trim() !== "" ? Number(rawEnv) : NaN;
@@ -2354,10 +2374,7 @@ export function createUnownToolsExtension(opts: UnownToolsOptions) {
                                 ? new Set([...PLAN_MODE_DISABLED_TOOLS].filter((n) => n !== "task"))
                                 : PLAN_MODE_DISABLED_TOOLS;
                         const extras = planV3Mode ? [...PLAN_MODE_TOOLS, "task"] : PLAN_MODE_TOOLS;
-                        return uniqueTools([
-                                ...active.filter((n) => !disabled.has(n) && n !== "plan_retrospective"),
-                                ...extras,
-                        ]);
+                        return uniqueTools([...active.filter((n) => !disabled.has(n) && n !== "plan_retrospective"), ...extras]);
                 };
                 const normalTools = (active: string[]) =>
                         uniqueTools([...active.filter((n) => !PLAN_MANAGED_TOOLS.has(n)), "read", "bash", "edit", "write"]);
@@ -2375,11 +2392,9 @@ export function createUnownToolsExtension(opts: UnownToolsOptions) {
                         if (!ctx?.hasUI) return;
                         if (executionMode && planItems.length > 0) {
                                 const completed = planItems.filter((t) => t.completed).length;
-                                ctx.ui.setStatus(
-                                        "plan-mode",
-                                        ctx.ui.theme.fg("accent", `plan ${completed}/${planItems.length}`),
-                                        { priority: FOOTER_PRIORITY.active },
-                                );
+                                ctx.ui.setStatus("plan-mode", ctx.ui.theme.fg("accent", `plan ${completed}/${planItems.length}`), {
+                                        priority: FOOTER_PRIORITY.active,
+                                });
                                 // The todo unification round: the seeded todo overlay (unown-todos)
                                 // is the ONE checklist above the editor — the legacy plan-steps
                                 // widget is retired. It survives ONLY as the fallback for a todo
@@ -2453,6 +2468,13 @@ export function createUnownToolsExtension(opts: UnownToolsOptions) {
                                         if (!found) {
                                                 if (ctx?.hasUI) {
                                                         ctx.ui.notify(`Plan model '${wanted}' not found — staying on ${current.id}.`, "warning");
+                                                } else {
+                                                        // Print mode has no notify surface — the
+                                                        // not-found fallback used to be invisible
+                                                        // there (2026-11-09: the --plan-model flag
+                                                        // lane itself was dead the same week; both
+                                                        // halves are fixed together).
+                                                        console.error(`unown: plan model '${wanted}' not found — staying on ${current.id}.`);
                                                 }
                                                 return;
                                         }
@@ -2474,6 +2496,25 @@ export function createUnownToolsExtension(opts: UnownToolsOptions) {
                         }
                 };
 
+                /** The entry notice, shared by every ON lane so the boot flag and
+                 * the /\plan command can never drift (the 2026-11-09 parity fix:
+                 * `--plan` boots used to arm the toolset silently — no notice,
+                 * and the todo overlay was never suspended). */
+                const planModeOnNotice = (ctx: any): void => {
+                        if (!ctx?.hasUI) return;
+                        ctx.ui.notify(
+                                planV3Mode
+                                        ? `Plan mode ON (V3 orchestrator) — capability audit → specialist review → scored plan; plan_write is the only writable path (${planFilePath(
+                                                        PLANS_DIR,
+                                                        planSeed || "objective",
+                                                )}). Score ≥ ${planThreshold}, then exit_plan_mode.`
+                                        : `Plan mode ON — read-only exploration; plan_write is the only writable path (${planFilePath(
+                                                        PLANS_DIR,
+                                                        planSeed || "objective",
+                                                )}). Score ≥ ${planThreshold}, then exit_plan_mode.`,
+                        );
+                };
+
                 const enterPlanMode = async (ctx: any, seed?: string) => {
                         if (planModeEnabled) return;
                         planModeEnabled = true;
@@ -2488,19 +2529,7 @@ export function createUnownToolsExtension(opts: UnownToolsOptions) {
                         // (data kept) so a stale or leftover list never sits next to the
                         // plan's step checklist while the PLAN chip is on.
                         setForegroundTodoSuspended(true);
-                        if (ctx?.hasUI) {
-                                ctx.ui.notify(
-                                        planV3Mode
-                                                ? `Plan mode ON (V3 orchestrator) — capability audit → specialist review → scored plan; plan_write is the only writable path (${planFilePath(
-                                                          PLANS_DIR,
-                                                          planSeed || "objective",
-                                                  )}). Score ≥ ${planThreshold}, then exit_plan_mode.`
-                                                : `Plan mode ON — read-only exploration; plan_write is the only writable path (${planFilePath(
-                                                          PLANS_DIR,
-                                                          planSeed || "objective",
-                                                  )}). Score ≥ ${planThreshold}, then exit_plan_mode.`,
-                                );
-                        }
+                        planModeOnNotice(ctx);
                         updateStatus(ctx);
                         persistPlanState();
                 };
@@ -2689,24 +2718,29 @@ export function createUnownToolsExtension(opts: UnownToolsOptions) {
                                 const head =
                                         kind === "retrospective" && retro
                                                 ? `plan retrospective: "${doc.objective}" — outcome ${retro.outcome}${
-                                                          retro.failureClass && retro.failureClass !== "none" ? `, failure class ${retro.failureClass}` : ""
-                                                  }${score ? `, plan score ${score.score}/100` : ""}`
+                                                                retro.failureClass && retro.failureClass !== "none"
+                                                                        ? `, failure class ${retro.failureClass}`
+                                                                        : ""
+                                                        }${score ? `, plan score ${score.score}/100` : ""}`
                                                 : `plan ${kind}: "${doc.objective}" — ${doc.steps.length} steps${score ? `, score ${score.score}/100` : ""}${todos > 0 ? `, ${todos} todos seeded` : ""}`;
                                 const files = [...new Set(doc.steps.flatMap((s) => s.files))].slice(0, 8).join(", ");
                                 const retroBlock =
                                         kind === "retrospective" && retro
                                                 ? [
-                                                          retro.learnings.length > 0
-                                                                  ? `learnings: ${retro.learnings.map((c) => `${c.kind}: ${c.what}`).join(" | ")}`
-                                                                  : "",
-                                                          retro.improvements.length > 0
-                                                                  ? `improvements: ${retro.improvements.join(" | ")}`
-                                                                  : "",
-                                                          retro.rootCause ? `root cause: ${retro.rootCause}` : "",
-                                                          retro.prevention ? `prevention: ${retro.prevention}` : "",
-                                                  ].filter((l) => l.length > 0)
+                                                                retro.learnings.length > 0
+                                                                        ? `learnings: ${retro.learnings.map((c) => `${c.kind}: ${c.what}`).join(" | ")}`
+                                                                        : "",
+                                                                retro.improvements.length > 0 ? `improvements: ${retro.improvements.join(" | ")}` : "",
+                                                                retro.rootCause ? `root cause: ${retro.rootCause}` : "",
+                                                                retro.prevention ? `prevention: ${retro.prevention}` : "",
+                                                        ].filter((l) => l.length > 0)
                                                 : [];
-                                const body = [head, files ? `files: ${files}` : "", ...retroBlock, feedback ? `user feedback: ${feedback}` : ""]
+                                const body = [
+                                        head,
+                                        files ? `files: ${files}` : "",
+                                        ...retroBlock,
+                                        feedback ? `user feedback: ${feedback}` : "",
+                                ]
                                         .filter((l) => l.length > 0)
                                         .join("\n");
                                 await deliverTerminalNote({ content: body, projectPath: opts.cwd, ts: Date.now() });
@@ -2902,7 +2936,28 @@ export function createUnownToolsExtension(opts: UnownToolsOptions) {
                                                         ],
                                                 };
                                         }
+                                        // The stay-loop fix's second half (2026-11-09): the MODEL
+                                        // itself may re-offer seconds after a stay — measured live,
+                                        // a re-offer landed 17s after dismissal, ignoring the stayed
+                                        // text's "end your turn" instruction, and the reopened dialog
+                                        // detached the user's editor mid-typing. While the stayed
+                                        // latch is set the in-tool gate answers SOFTLY (no dialog);
+                                        // agent_start — the user's next message — re-arms it.
+                                        if (planGateStayedForRun) {
+                                                return {
+                                                        content: [
+                                                                {
+                                                                        type: "text",
+                                                                        text: `The user dismissed the approval dialog earlier in this run and has not sent a new message since — do NOT re-offer the plan now. End your turn and wait. Call exit_plan_mode again only after the user's next message (or a substantive revision they asked for). Current score: ${score.summary}.`,
+                                                                },
+                                                        ],
+                                                };
+                                        }
                                         const outcome = await runPlanApprovalDialog(ctx, doc, score, file);
+                                        // The stay-loop fix: a STAYED outcome (dismissed dialog /
+                                        // empty keep-planning) keeps the fallback gate quiet for
+                                        // the rest of the run — the user declined.
+                                        if (outcome.kind === "stayed") planGateStayedForRun = true;
                                         if (outcome.kind === "approved") {
                                                 const todos = seedForegroundTodos(doc.steps.map((s) => s.text));
                                                 void deliverPlanNote("approved", doc, score, todos);
@@ -2911,7 +2966,14 @@ export function createUnownToolsExtension(opts: UnownToolsOptions) {
                                                         content: [
                                                                 {
                                                                         type: "text",
-                                                                        text: `User has approved your plan. You can now start coding. Start with step 1, mark each completed step with a [DONE:n] tag${todos > 0 ? ` and flip the matching todo task (${todos} were created for you)` : " and track progress with the todo tool"}.\n\nYour plan has been saved to: ${file}\n\n## Approved Plan\n\n${renderPlanMarkdown(doc)}`,
+                                                                        // The 2026-11-09 todo-flip fix: "flip the matching
+                                                                        // todo task" was too subtle for flash models —
+                                                                        // measured live, the model created three DUPLICATE
+                                                                        // todos instead of flipping the seeded ones, so
+                                                                        // no plan step ever completed and "Plan complete"
+                                                                        // never fired. The instruction now names the
+                                                                        // discipline explicitly.
+                                                                        text: `User has approved your plan. You can now start coding. Start with step 1, mark each completed step with a [DONE:n] tag${todos > 0 ? ` and flip the seeded todo tasks by id (${todos} were created from these exact steps — update THOSE tasks; do not create new todos for the same work)` : " and track progress with the todo tool"}.\n\nYour plan has been saved to: ${file}\n\n## Approved Plan\n\n${renderPlanMarkdown(doc)}`,
                                                                 },
                                                         ],
                                                 };
@@ -2932,7 +2994,16 @@ export function createUnownToolsExtension(opts: UnownToolsOptions) {
                                                 content: [
                                                         {
                                                                 type: "text",
-                                                                text: `The user chose to keep planning without feedback. Stay in plan mode, refine the plan file if needed, and call exit_plan_mode again when ready. Current score: ${score.summary}.`,
+                                                                // The 2026-11-09 stay-loop fix: an immediate
+                                                                // re-offer re-opens the approval dialog within
+                                                                // seconds, detaching the user's editor while
+                                                                // they type (measured live: consecutive
+                                                                // re-offers ate a queued "/plan off" and a
+                                                                // planning prompt). The model must end its
+                                                                // turn and wait — the agent_end fallback gate
+                                                                // is suppressed for this turn, so ending is
+                                                                // safe.
+                                                                text: `The user chose to keep planning without feedback. Stay in plan mode and end your turn now — do NOT immediately call exit_plan_mode again; the approval dialog detaches the user's editor, and an instant re-offer can eat what they are typing. Wait for the user's next message, or call exit_plan_mode again only after a substantive change they asked for. Current score: ${score.summary}.`,
                                                         },
                                                 ],
                                         };
@@ -3025,7 +3096,9 @@ export function createUnownToolsExtension(opts: UnownToolsOptions) {
                                                 writeFileSync(file, mergeRetrospectiveIntoMarkdown(markdown, retro!), "utf-8");
                                         } catch (err) {
                                                 return {
-                                                        content: [{ type: "text", text: `Error: cannot write the retrospective to ${file}: ${String(err)}` }],
+                                                        content: [
+                                                                { type: "text", text: `Error: cannot write the retrospective to ${file}: ${String(err)}` },
+                                                        ],
                                                         isError: true,
                                                 };
                                         }
@@ -4307,8 +4380,13 @@ export function createUnownToolsExtension(opts: UnownToolsOptions) {
                 registerSettingsCommand(pi, { cwd: opts.cwd });
 
                 pi.registerCommand("plan", {
+                        // The 2026-11-09 label fix: the description still said
+                        // "(V2)" while V3 is the default (UNOWN_PLAN_MODE_V3=0
+                        // restores V2), and "in $EDITOR" while the command
+                        // opens the in-TUI editor (the keyboard round fixed the
+                        // approval dialog's label; this one was missed).
                         description:
-                                "Plan mode (V2): bare = toggle · <description> = enter + seed the objective · open = edit the plan file in $EDITOR · show = plan status + score · off = leave plan mode",
+                                "Plan mode: bare = toggle · <description> = enter + seed the objective · open = edit the plan file in the in-TUI editor · show = plan status + score · off = leave plan mode (V3 orchestrator by default; UNOWN_PLAN_MODE_V3=0 restores V2)",
                         handler: async (args, ctx) => {
                                 const arg = (args ?? "").trim();
                                 if (arg === "off") {
@@ -5125,7 +5203,8 @@ export function createUnownToolsExtension(opts: UnownToolsOptions) {
                 });
 
                 pi.registerCommand("goal", {
-                        description: "Durable goal with evidence-verified completion: /goal <objective> | pause | resume | clear | history | verify <cmd>",
+                        description:
+                                "Durable goal with evidence-verified completion: /goal <objective> | pause | resume | clear | history | verify <cmd>",
                         handler: async (args, ctx) => {
                                 const { action, text } = parseGoalCommand(args ?? "");
                                 switch (action) {
@@ -5180,7 +5259,7 @@ export function createUnownToolsExtension(opts: UnownToolsOptions) {
                                                         );
                                                         if (!replace) {
                                                                 ctx.ui.notify("Goal unchanged.", "info");
-                                                                        return;
+                                                                return;
                                                         }
                                                         appendGoalHistory({
                                                                 text: goal.text,
@@ -6115,6 +6194,30 @@ export function createUnownToolsExtension(opts: UnownToolsOptions) {
                         default: "",
                 });
 
+                // The 2026-11-09 plan-mode × TUI round: `--plan-model <id>` and
+                // `--max-turns N` are parsed by cli.ts and handed to pi as
+                // extension flag values — but pi's loader only answers
+                // getFlag() for flags THIS extension registered, and
+                // applyExtensionFlagValues drops unregistered names into an
+                // "Unknown option" error diagnostic that nothing printed. Net:
+                // the opusplan lane was a silent no-op (measured live: every
+                // planning turn stayed on the session model) and the plan-turn
+                // budget's "--max-turns caps planning at 60%" read never fired.
+                // Registering both makes the flags live AND removes the
+                // swallowed diagnostic.
+                pi.registerFlag("plan-model", {
+                        description:
+                                "Model id used while plan mode is active (the opusplan lane); the session model returns on approval/exit",
+                        type: "string",
+                        default: "",
+                });
+
+                pi.registerFlag("max-turns", {
+                        description: "The headless run cap; the plan-turn budget reads it so planning never eats the whole allowance",
+                        type: "string",
+                        default: "",
+                });
+
                 pi.on("tool_call", async (event: any) => {
                         if (!planModeEnabled || event?.toolName !== "bash") return undefined;
                         const command = String(event?.input?.command ?? "");
@@ -6447,6 +6550,15 @@ Execute the steps in order. The seeded todo tasks ARE these steps — complete e
                         }
                 });
 
+                pi.on("agent_start", async (_event: any) => {
+                        // The stay-loop fix (2026-11-09): a NEW agent run (the user
+                        // sent a message) re-arms both fallback-gate suppressions.
+                        // suppressAgentEndGate re-arms per TURN as before; the
+                        // stayed-latch spans the whole post-stay run.
+                        planGateStayedForRun = false;
+                        suppressAgentEndGate = false;
+                });
+
                 pi.on("turn_start", async (_event: any) => {
                         // Plan Mode V2: a fresh turn re-arms the agent_end fallback
                         // gate — exit_plan_mode suppresses it only for ITS turn.
@@ -6542,15 +6654,15 @@ Execute the steps in order. The seeded todo tasks ARE these steps — complete e
                                         meter.enabled
                                                 ? undefined
                                                 : formatCostChip(
-                                                          {
-                                                                  tokensIn: rollup.tokensIn,
-                                                                  tokensOut: rollup.tokensOut,
-                                                                  cacheRead: rollup.cacheRead,
-                                                                  model: typeof msgModel === "string" && msgModel ? msgModel : rollup.models[0],
-                                                          },
-                                                          resolveModelPrice,
-                                                          process.env,
-                                                  ),
+                                                                {
+                                                                        tokensIn: rollup.tokensIn,
+                                                                        tokensOut: rollup.tokensOut,
+                                                                        cacheRead: rollup.cacheRead,
+                                                                        model: typeof msgModel === "string" && msgModel ? msgModel : rollup.models[0],
+                                                                },
+                                                                resolveModelPrice,
+                                                                process.env,
+                                                        ),
                                         { priority: FOOTER_PRIORITY.active },
                                 );
                                 // ---- observability round: the confidence chip rides the
@@ -6689,8 +6801,8 @@ Execute the steps in order. The seeded todo tasks ARE these steps — complete e
                                                         };
                                                         persistGoal();
                                                         setStatusLine(ctx, "goal", goalFooterLine(goal, missionPanelLive()), {
-                                                        priority: FOOTER_PRIORITY.active,
-                                                });
+                                                                priority: FOOTER_PRIORITY.active,
+                                                        });
                                                         refreshObservability(ctx);
                                                         if (ctx?.hasUI) {
                                                                 ctx.ui.notify(
@@ -6769,7 +6881,7 @@ Execute the steps in order. The seeded todo tasks ARE these steps — complete e
                         // suppresses this for its own turn (suppressAgentEndGate). Print
                         // mode has no dialog — the same extraction records the envelope
                         // report and writes the plan-file artifact.
-                        if (!planModeEnabled || suppressAgentEndGate) return;
+                        if (!planModeEnabled || suppressAgentEndGate || planGateStayedForRun) return;
 
                         const messages = Array.isArray(event?.messages) ? event.messages : [];
                         const lastAssistant = [...messages]
@@ -6818,6 +6930,10 @@ Execute the steps in order. The seeded todo tasks ARE these steps — complete e
                         if (!ctx?.hasUI) return; // print mode: report recorded, no dialog
 
                         const outcome = await runPlanApprovalDialog(ctx, fallbackDoc, planScore, resolvePlanFile());
+                        // Same stay-loop contract at the fallback gate itself: a
+                        // dismissal here must not chain straight into another
+                        // fallback re-offer when the next run ends.
+                        if (outcome.kind === "stayed") planGateStayedForRun = true;
                         if (outcome.kind === "approved") {
                                 const todos = seedForegroundTodos(fallbackDoc.steps.map((s) => s.text));
                                 void deliverPlanNote("approved", fallbackDoc, planScore, todos);
@@ -6836,7 +6952,7 @@ Execute the steps in order. The seeded todo tasks ARE these steps — complete e
                                 pi.sendMessage(
                                         {
                                                 customType: "unown-plan-execute",
-                                                content: `Execute the approved plan.\n\nRemaining steps:\n${remainingList}\n\nStart with: ${planItems[0]?.text ?? ""}\nAfter completing a step, include a [DONE:n] tag in your response.${todos > 0 ? `\n${todos} todo tasks were created from the plan — flip each as you complete it.` : ""}`,
+                                                content: `Execute the approved plan.\n\nRemaining steps:\n${remainingList}\n\nStart with: ${planItems[0]?.text ?? ""}\nAfter completing a step, include a [DONE:n] tag in your response.${todos > 0 ? `\n${todos} todo tasks were created from the plan — flip those tasks by id as you complete each step (do not create duplicate todos for the same work).` : ""}`,
                                                 // The todo unification round: the user already saw the approved
                                                 // plan once (the echo above) and the seeded Todos panel is the
                                                 // live checklist — this model-facing instruction no longer
@@ -7065,6 +7181,15 @@ Execute the steps in order. The seeded todo tasks ARE these steps — complete e
                                 enablePlanTools();
                                 // The model split re-applies on resume (gap P-07).
                                 await applyPlanModel(ctx, true);
+                                // The 2026-11-09 parity fix: the boot/resume lane
+                                // now runs the same side effects as the /plan lane
+                                // — the todo overlay suspends (one progress surface
+                                // while the PLAN chip is on) and the entry notice
+                                // renders. A `--plan` boot used to arm the toolset
+                                // silently, leaving a stale todo list riding above
+                                // the editor with no explanation of what changed.
+                                setForegroundTodoSuspended(true);
+                                if (!executionMode) planModeOnNotice(ctx);
                         }
                         updateStatus(ctx);
                         setStatusLine(ctx, "goal", goalFooterLine(goal, missionPanelLive()), {
