@@ -5,7 +5,7 @@ The Plan Mode V2 round's governing artefact. Every gap follows the round's loop:
 
 Research base: the 2026-10-31 competitor sweep (Claude Code, Gemini CLI, Roo Code, OpenHands/OpenDevin, Cline, Codex CLI, Aider — sources in `docs/plan-mode-competitor-research.md` and the round session log) plus the live baseline reproductions below (receipts: `results/baseline/`).
 
-Scoring: every plan is scored by the deterministic rubric in `score-plan.mjs` (0–100; dimensions: objective, context, approach, steps, risks, verification, clarity — the same scorer the product's `plan_write` tool returns, single source of truth in `pi-repo/packages/self-learning/src/plan.ts`).
+Scoring: every plan is scored by the deterministic rubric in `pi-repo/packages/self-learning/src/plan.ts` (`scorePlanDoc`/`scorePlanDocV3`, 0–100) as surfaced by the product's own `plan_write`/`exit_plan_mode` critique lane and the print-mode JSON envelope's `plan` block (single source of truth; the standalone `score-plan.mjs` helper of the V2 round was folded into the CLI envelope — the 2026-11-09 drift fix for this line).
 
 ## Baseline (v0.0.48, 2026-10-31, agnes-3.0-flash via bridge :3031)
 

@@ -114,6 +114,16 @@ V3 is the default plan mode (`UNOWN_PLAN_MODE_V3=0` restores the exact V2 behavi
 
 Pinned by: `test/plan-v3.test.ts` (the data model — parser/scorer/retrospective contract, V2 back-compat), `test/plan-mode-v3.test.ts` (the extension — delegation guard, V3 scoring, the retrospective lanes), `test/subagent-builtins.test.ts` (the bench), plus the updated V2 pins (todo-unification M3 + the kill-switch lane, acp setMode, golden `--plan` + the kill-switch lane). First live receipts: 98/100 headless; the full interactive loop (plan 100/100 → approval → real execution with passing tests → retrospective merged → engine note delivered) in `benchmarks/plan-mode/RESULTS.md`.
 
+## Plan-mode stay-loop + boot parity (2026-11-09)
+
+The combination round's behavior contracts (session log: [plan-mode-tui-combo-round-session.md](plan-mode-tui-combo-round-session.md)); pinned by `test/plan-mode-flags.test.ts` and live-verified through the PTY lane:
+
+- **A STAYED approval outcome is binding for the rest of the agent run.** When the user dismisses the approval gate (Esc/Ctrl+C) or picks keep-planning with empty feedback, the outcome sets a run-scoped latch: the model's own next `exit_plan_mode` call in the same run answers with a soft "do NOT re-offer now — end your turn and wait" result (no dialog opens, so the user's editor stays attached), and the agent_end fallback gate stays quiet. `agent_start` — the user's next message — re-arms both gates. REJECTED-with-feedback deliberately re-arms per turn: the fallback gate still rescues a model that revises the plan but forgets to re-offer it.
+- **Every entry lane runs the same side effects.** A `--plan` boot (and a resume into planning) renders the "Plan mode ON" notice and suspends the todo overlay exactly like the `/plan` command — one entry contract, not two.
+- **The approved-plan execution instruction names the todo discipline**: flip the SEEDED todo tasks by id; do not create new todos for the same work. The `[DONE:n]` tags and the seeded-todo flips are the two completion signals that drive "Plan complete".
+- **Extension flags are live contracts**: `--plan-model` and `--max-turns` are registered extension flags (pi's loader answers `getFlag()` only for registered flags — an unregistered flag is dead-on-arrival AND leaves an "Unknown option" error diagnostic in the runtime, which the unown boot lanes now surface: stderr in print mode, startup notices in the TUI). `UNOWN_PLAN_TURN_BUDGET=0` disables the planning pressure entirely (an unset variable keeps the default 15); the budget reads `--max-turns` at call time so planning stays ≤ 60% of the run cap.
+- **Non-interactive `unown setup` registers the discovered catalog**: the flag lane probes the endpoint once and writes models.json with the chosen model plus every served sibling (chosen first, best-effort specs for extras), so `/model`, `--model`, subagent `fallbackModels` and `--plan-model` resolve without a hand edit — the bridge preset's contract since M4, now both lanes.
+
 ## Model-spec verification (2026-10-30)
 
 A model's context window and max output tokens drive auto-compaction and the

@@ -30,36 +30,40 @@ export interface ChangelogStop {
   groups: ChangelogGroup[];
 }
 
-export const CHANGELOG_TOTAL_ENTRIES = 546;
+export const CHANGELOG_TOTAL_ENTRIES = 551;
 
 export const CHANGELOG_TOTALS: Record<ChangelogBucket, number> = {
-  "Added": 260,
+  "Added": 261,
   "Changed": 32,
   "Deprecated": 0,
   "Removed": 3,
-  "Fixed": 199,
+  "Fixed": 202,
   "Security": 5,
-  "Behavior": 47
+  "Behavior": 48
 };
 
 export const CHANGELOG_STOPS: ChangelogStop[] = [
   {
     "label": "Unreleased",
     "date": null,
-    "total": 37,
+    "total": 42,
     "counts": {
-      "Added": 29,
+      "Added": 30,
       "Changed": 0,
       "Deprecated": 0,
       "Removed": 0,
-      "Fixed": 6,
+      "Fixed": 9,
       "Security": 0,
-      "Behavior": 2
+      "Behavior": 3
     },
     "groups": [
       {
         "bucket": "Added",
         "items": [
+          {
+            "title": "The Serenade round closes L-12 — the Legato landing: docs + landing band + REAL captures + README + CHANGELOG…",
+            "behavior": false
+          },
           {
             "title": "The Sonata round's V-27 — the F-7 render link closed through A2 (the V-26 open link from F-6, 2026-11-07)",
             "behavior": false
@@ -182,6 +186,10 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
         "bucket": "Behavior",
         "items": [
           {
+            "title": "Plan mode's stay-loop respects the user's decline for the rest of the run (the plan-mode × TUI combination…",
+            "behavior": true
+          },
+          {
             "title": "The tool-time browser-memory hint digest is category-balanced (the hints-ranking round)",
             "behavior": true
           },
@@ -194,6 +202,18 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
       {
         "bucket": "Fixed",
         "items": [
+          {
+            "title": "--plan-model was a silent no-op — the opusplan lane never switched models (the plan-mode × TUI combination…",
+            "behavior": false
+          },
+          {
+            "title": "Non-interactive unown setup wrote a single-model models.json while its own output said \"serves 6 models\" (same…",
+            "behavior": false
+          },
+          {
+            "title": "Plan-mode label + lane drift cleaned up (same round)",
+            "behavior": false
+          },
           {
             "title": "A Ctrl+C exit during a running turn no longer loses the whole session",
             "behavior": false
