@@ -7,6 +7,16 @@
     <description>How each feature and release works, what it does, and the receipts behind it — the longhand record of the self-improving terminal coding agent Unown.</description>
     <language>en</language>
     <item>
+      <title>&quot;The combination round: the flag that never worked, and the gate that wouldn&apos;t stay closed&quot;</title>
+      <link>https://unown-nine.vercel.app/blog/2026-11-09-the-plan-mode-combo-round</link>
+      <guid isPermaLink="true">https://unown-nine.vercel.app/blog/2026-11-09-the-plan-mode-combo-round</guid>
+      <pubDate>Mon, 09 Nov 2026 00:00:00 GMT</pubDate>
+      <description>&quot;A full pass over every plan-mode combination found a flagship flag that silently did nothing, an approval gate that re-opened while you typed, and more.&quot;</description>
+      <category>planning</category>
+      <category>tui</category>
+      <category>release</category>
+    </item>
+    <item>
       <title>Ostinato: the round where the hardening came first</title>
       <link>https://unown-nine.vercel.app/blog/2026-11-04-the-ostinato-round</link>
       <guid isPermaLink="true">https://unown-nine.vercel.app/blog/2026-11-04-the-ostinato-round</guid>
