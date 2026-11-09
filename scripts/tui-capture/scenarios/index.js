@@ -124,12 +124,14 @@ const s2 = {
       cps: 30,
     },
     // the plan card + approval selector appears when the agent's turn ends
-    { t: "wait", include: ["Plan ready ("], timeout: 420_000, desc: "plan approval overlay" },
+    // (2026-11-09 drift fix: the title renders "Plan ready — <score.summary>" with
+    // an em-dash since the keyboard round; the old "(" anchor hung the lane)
+    { t: "wait", include: ["Plan ready — "], timeout: 420_000, desc: "plan approval overlay" },
     { t: "linger", ms: 2000 },
     { t: "still", name: "03-plan-approval-overlay" },
-    // "Execute the plan (track progress)" is pre-selected — press Enter
+    // "1. Execute — auto-accept edits" is pre-selected — press Enter
     { t: "key", k: "Enter" },
-    { t: "wait", include: ["Execute the plan"], timeout: 60_000, desc: "execution started" },
+    { t: "wait", include: ["User has approved your plan", "Approved plan ("], mode: "any", timeout: 60_000, desc: "execution started" },
     // wait for the first step to complete (checkbox flips) or footer progress
     { t: "fn", desc: "capture mid-execution", fn: async (s) => {
       await s.wait({ include: ["[DONE:1]", "[x]"], mode: "any", timeout: 300_000, desc: "first step done" }).catch(() => {});
