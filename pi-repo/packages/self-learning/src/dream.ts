@@ -645,6 +645,20 @@ export async function runProjectDream(opts: DreamOpts = {}): Promise<ProjectDrea
                         initProjectMemory(group.projectPath);
                         current = readFileSync(projectMemoryPath(group.projectPath), "utf8");
                 } catch (err: any) {
+                        // R1 (2026-11-10 memory-engine combination round's review): the
+                        // manual dream trigger (/api/dreams/run) fire-and-forgets this
+                        // lane and used to discard these results entirely — a project
+                        // whose memory file cannot be read answered {started:true} at
+                        // the trigger and left NO observable trace (no row, no event).
+                        // The result rows still ride the runner's return value (the
+                        // router's job result); the event makes the outcome visible on
+                        // the SSE feed the dashboard consumes.
+                        emit("dream:finished", {
+                                status: "error",
+                                project: group.slug,
+                                notesIn: notes.length,
+                                reason: `cannot read project memory: ${err instanceof Error ? err.message : String(err)}`,
+                        });
                         results.push({
                                 slug: group.slug,
                                 projectPath: group.projectPath,
@@ -662,6 +676,19 @@ export async function runProjectDream(opts: DreamOpts = {}): Promise<ProjectDrea
                 // UNCONDITIONAL on pending existence: turning review mode back off
                 // does not auto-ship what was parked.
                 if (hasPendingDream(group.projectPath)) {
+                        // R1 (the same review): the already-parked gate is the ONE
+                        // project-dream outcome that produced neither a row NOR an
+                        // event — the manual trigger's {started:true} was a silent
+                        // no-op exactly here (the review-mode park at the dream's
+                        // later stage emits its own `pending` event; this earlier
+                        // gate did not). Emit the same shape so the SSE feed and
+                        // the Dreams screen see WHY nothing shipped.
+                        emit("dream:finished", {
+                                status: "pending",
+                                project: group.slug,
+                                notesIn: notes.length,
+                                reason: "a dream is parked for review — approve or discard it before this project dreams again",
+                        });
                         results.push({
                                 slug: group.slug,
                                 projectPath: group.projectPath,

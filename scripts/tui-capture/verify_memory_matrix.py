@@ -42,6 +42,15 @@ The target project defaults to a fresh scratch dir (the lane works anywhere);
 point MEMORY_PROJECT at a project with dreamed memories to also see content.
 The engine must be up (bun run agent:start); AGNES_API_KEY must be exported
 for the provider preflight.
+
+Ordering dependency (R11, the round's review): the `manual` and `new` phases
+plant markers into `<project>/.unown/memory/project.md`'s `## Manual notes`
+section — the scaffold (with that section) is created by the FIRST TUI boot
+in the project. On a fresh scratch dir the DEFAULT phase order works (boot/
+learning scaffold it first); running `--phases manual` alone against an
+uninitialized project fails loudly at the plant step (a lane precondition,
+not a product defect). Receipts default to the repo's gitignored
+`.run/mem-matrix-stills/` (OUT env override).
 """
 from __future__ import annotations
 
@@ -54,6 +63,16 @@ import uuid
 
 _SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, _SCRIPT_DIR)
+
+# R10 (the round's review): the receipts default to the REPO's gitignored
+# runtime state (`.run/mem-matrix-stills/`) instead of inheriting pty_common's
+# operator-machine absolute default — the lane stays portable across
+# machines/users, and the stills live beside the engine logs they receipts.
+# OUT env override preserved (set BEFORE importing pty_common, which reads it
+# at module load).
+_REPO_ROOT = os.path.dirname(os.path.dirname(_SCRIPT_DIR))
+os.environ.setdefault("OUT", os.path.join(_REPO_ROOT, ".run", "mem-matrix-stills"))
+
 import pty_common as pc  # noqa: E402
 
 ENGINE_URL = os.environ.get("UNOWN_ENGINE_URL", "http://127.0.0.1:3030")
@@ -277,23 +296,34 @@ def phase_search(log, cwd) -> bool:
     try:
         s.wait_ready()
         pc.dismiss_first_flights(s, log)
-        s.type_prompt("/note")  # bare command: the usage line (no network)
-        s.pump(1.0)
-        s.type_prompt("/memory search BOM-aware reader")
+        # R3 (the round's review): the query and the scope vocabulary are
+        # env-driven — the phase must pass on ANY engine (the honest empty
+        # answer included), never only one that happens to carry the round's
+        # own learned memories. The no-match notify ("no learned memory matches
+        # ... across N scope(s)") is an ANSWER, not a failure.
+        query = os.environ.get("MEMORY_SEARCH_QUERY", "memory")
+        s.type_prompt(f"/memory search {query}")
         try:
             pane = s.wait_for(
-                ["cross-project memory search", "memory search failed", "memory search unreachable"],
+                [
+                    "cross-project memory search",
+                    "no learned memory matches",
+                    "memory search failed",
+                    "memory search unreachable",
+                ],
                 mode="any",
                 timeout=45,
             )
-            ok = "cross-project memory search" in pane
+            ok = "cross-project memory search" in pane or "no learned memory matches" in pane
             check("/memory search answers through the cross-scope lane", ok)
         except pc.PaneTimeout:
             check("/memory search answers through the cross-scope lane", False, "timeout")
             pane = s.pane_text()
-        # results (when any) must be scope-tagged
+        # results (when any) must be scope-tagged — by the result row's own
+        # shape (the scope label rides every result line), not by a
+        # hardcoded project name
         if "match(es) across" in pane:
-            check("results are scope-tagged", "alpha" in pane or "engine" in pane or "scope" in pane)
+            check("results are scope-tagged", "(" in pane and ")" in pane)
         else:
             check("results are scope-tagged", True, "(no matches — scope tags n/a)")
         s.still("mem-search", ["memory search"], mode="any")
@@ -373,6 +403,16 @@ def phase_exit(log, cwd) -> bool:
         note(log, "exit", name, ok, extra)
 
     marker = f"EXIT-NOTE-{uuid.uuid4().hex[:8]}"
+    # R2 (the round's review): snapshot the exit-note count for THIS project
+    # BEFORE the session — a pre-existing exit note (a previous lane run's, an
+    # earlier user session's) must never satisfy the phase; only a NEW row
+    # written after this session's quit does. Bounded by the 40-row /api/notes
+    # window: a flooded engine can scroll the row out within the poll — the
+    # 30 s window is the honest trade (the alternative, a full-table query, is
+    # not exposed by the API).
+    exit_before = len(
+        [n for n in engine_notes() if "Terminal session outcome" in n.get("content", "") and cwd in (n.get("project_path") or "")]
+    )
     s = pc.UnownPty(log, cwd=cwd)
     try:
         s.wait_ready()
@@ -390,17 +430,17 @@ def phase_exit(log, cwd) -> bool:
             s.wait_for(["OK"], timeout=90)
         except pc.PaneTimeout:
             pass
-        s.still("mem-exit-pre", ["matrix/alpha", "esc-esc tree"], mode="any")
+        s.still("mem-exit-pre", [os.path.basename(cwd.rstrip("/")), "esc-esc tree"], mode="any")
     finally:
         s.close()
     # The session ended (close) → the exit note must land within a grace window
     deadline = time.time() + 30
     landed = False
     while time.time() < deadline and not landed:
-        rows = [n for n in engine_notes() if "Terminal session outcome" in n.get("content", "")]
-        landed = len(rows) > 0 and any(cwd in (n.get("project_path") or "") for n in rows)
+        rows = [n for n in engine_notes() if "Terminal session outcome" in n.get("content", "") and cwd in (n.get("project_path") or "")]
+        landed = len(rows) > exit_before
         time.sleep(1)
-    check("a clean quit delivers the exit note (Terminal session outcome)", landed)
+    check("a clean quit delivers a NEW exit note (Terminal session outcome)", landed, f"before={exit_before}")
     return all(ok for _, ok in steps)
 
 

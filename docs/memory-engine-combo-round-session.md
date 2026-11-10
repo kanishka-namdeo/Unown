@@ -68,12 +68,12 @@ setups T1–T5 × lifecycle L1–L6. Full enumeration and the adversarial rows:
 | (verified green) | The engine-side live loop on a fresh environment: injection marker VERBATIM in the upstream request, tier blocks + `<project_instructions` wrapper present, real dream + canary + SSE events, write/history/rollback, crash-consistency self-heal, size hygiene — all green before AND after the round's fixes (receipts under `benchmarks/memory-eval/results/memory-live-receipt-*.json`). The poison gates live: PROBE A (poisoned benchmark note through the canary-gated dream) and PROBE B (poisoned terminal note through the project dream) — poison never ships (`memory-poison-receipt-*.json`). The busy mutex itself is SOUND (synchronous check-acquire, no TOCTOU — the probe's flake was lane-side). | — | none |
 | F3 | **The scoped HTTP search lane dropped the `project:` prefix.** `GET /api/memories?agent_id=<slug>` constructed the scope `{agentId: <slug>}` verbatim — but a terminal project's platform scope is `{agentId: "project:<slug>"}` (memzero.ts `projectScope`; "the tier key IS the agent_id"). Measured live: the alpha scope listed **0/2 memories** through the raw slug and **2/2** through the prefixed form — a caller scoping by the slug every other surface prints got a silent empty set. The across lane and the in-session `/memory search` were unaffected (they resolve through `projectScope()`); the engine scope was unaffected. | `src/server.ts` (`/api/memories` handler) | medium (engine) |
 | F5 | **`/learning`'s transparency lines were the first casualties of a long stack.** The notify renders its TAIL; the engine-state header and the injection-budget line were emitted FIRST, so on the default 36-row pane with alpha's dreamed stack (the pane dump is the receipt: the visible window started mid-project-tier) the two most load-bearing lines — the never-silent-truncation budget mechanism and the staleness frame — scrolled off the top exactly when the stack got long enough to matter. | `src/tools.ts` (`/learning` notify order) | medium (UX) |
-| (documented non-defect) | **A clone cloned from a LOCAL PATH gets its own scope** (L6): the worktree correctly shares the repo scope (the gitdir/commondir hop works — `alpha-a45747`), but `git clone <local-path>` sets the clone's origin to the filesystem path, which normalizes to a different identity than the canonical remote (`alpha-ae1fe2` vs `alpha-a45747`, measured live). Git never propagates the source's own remote, so no engine-side key can bridge it; the documented contract is remote-keyed identity and the workaround is `git remote set-url origin <canonical>`. The README's "one repository = one memory across clones" holds for every clone of the same remote. | `src/project-identity.ts` (by design) | none |
+| F4 (non-defect, documented) | **A clone cloned from a LOCAL PATH gets its own scope** (L6): the worktree correctly shares the repo scope (the gitdir/commondir hop works — `alpha-a45747`), but `git clone <local-path>` sets the clone's origin to the filesystem path, which normalizes to a different identity than the canonical remote (`alpha-ae1fe2` vs `alpha-a45747`, measured live). Git never propagates the source's own remote, so no engine-side key can bridge it; the documented contract is remote-keyed identity and the workaround is `git remote set-url origin <canonical>`. The README's "one repository = one memory across clones" holds for every clone of the same remote. | `src/project-identity.ts` (by design) | none |
 | (documented non-defect) | The `-p` print lane inherits the operator harness's stdin (the rondo-round V-1 class, re-measured): the wrapper's exit-code lines slurp into the prompt and the process outlives its answer. The AGENTS.md law holds — run `-p` with `< /dev/null`; with the guard the print lane is 2 s, exit 0, both learned memories recalled verbatim. | operator runbook | none |
 
 ## Fixes
 
-1. **F2 (the manual trigger honors explicit intent)**: the `/api/dreams/run` engine lane now runs `runDream()` for ANY benchmark-note count ≥1 — the ≥3 threshold stays the AUTO lanes' (router `auto-dream` / `dream-check`) cost policy. The zero-note junk row stays guarded (`>= 1`). `{started:true}` is now always true when notes exist (any pending note feeds at least one lane); `{skipped: "no undreamed notes"}` unchanged. Pinned by the new benchmark-lane test in `test/dreams-run-projects.test.ts` (single benchmark note → a real engine dream row that RAN, `notes_in=1`, no junk row — against the dead bridge the honest `'error'` status).
+1. **F2 (the manual trigger honors explicit intent)**: the `/api/dreams/run` engine lane now runs `runDream()` for ANY benchmark-note count ≥1 — the ≥3 threshold stays the AUTO lanes' (router `auto-dream` / `dream-check`) cost policy. The zero-note junk row stays guarded (`>= 1`). Any pending note feeds at least one lane — with the one honest exception the M5 review closed (a project with a dream parked for review skips, visibly — see below); `{skipped: "no undreamed notes"}` unchanged. Pinned by the new benchmark-lane test in `test/dreams-run-projects.test.ts` (single benchmark note → a real engine dream row that RAN, `notes_in=1`, no junk row — against the dead bridge the honest `'error'` status).
 2. **F1 (the deterministic probe)**: the live suite's concurrency probe now (a) polls for FULL idle first — no running dream, `router.activeJob() === ""`, `pendingEventJobs()` empty (in-process router introspection), (b) asserts the mutex-winning trigger produced a NEW dream row with `notes_in >= 1` (a skipped trigger can no longer pass vacuously), and (c) keeps the started-dream finish poll for clean afterAll state. The probe's own note is real fuel post-F2 — the first trigger holds the mutex through a real LLM dream, the second deterministically 409s.
 3. **F3 (the scoped search resolves the slug)**: the `/api/memories` handler resolves a raw `agent_id` that names a known dreamed project scope (memory.ts `knownProjectScopes()`) to its prefixed platform scope; the explicit `project:<slug>` form and genuinely foreign agent ids pass through unchanged. Pinned by two new tests in `test/cross-scope-search.test.ts` (the slug → prefixed scope + its memories; the pass-through forms). Verified live: `?agent_id=alpha-a45747` now returns 2/2 memories with `scope: project:alpha-a45747`.
 4. **F5 (the transparency tail)**: `/learning`'s notify now renders the tier stack first and the engine-state header + injection-budget line LAST (with the deep-dive hint) — the notify's tail is the always-visible window, so the budget line survives every geometry. Verified live in the 36-row pane (the mem-learning pane dump shows the header + budget line at the tail).
@@ -107,6 +107,50 @@ setups T1–T5 × lifecycle L1–L6. Full enumeration and the adversarial rows:
   (landing e2e/unit, Chaconne, the Live production check — failing across
   rounds, untouched by this round) would hold the release workflow's
   ci-green gate).
+
+## The independent review (M5) and its hardening
+
+A fresh-eyes review of the pushed diff (11 findings, R1–R11; the soundness
+ledger verified the F2/F3/F5 cores, both pin files as true pins, the F1
+structure, the lane mechanics and every doc claim against the receipts —
+including a live 10/10 re-run of the two pin files). Fixed this pass:
+
+- **R1 (medium, engine + docs)**: the manual trigger's `{started:true}` was
+  still a silent no-op in ONE state — a project with a dream **parked for
+  review** (the `hasPendingDream` gate returned `pending-review` and the
+  fire-and-forget discarded it: no row, no event) and the unreadable-memory
+  error path (same shape). Both now emit `dream:finished` events (`pending`
+  / `error` + project + reason) so the SSE feed shows WHY nothing shipped;
+  BEHAVIOR.md's and memory.md's "always true when notes exist" claim
+  softened to name the exception.
+- **R2 (medium, lane)**: `phase_exit` never snapshotted before — any
+  pre-existing exit note for the project satisfied it (the second
+  end-to-end run's exit phase could not fail by construction). Now a
+  before-snapshot: only a NEW row counts; the 40-row `/api/notes` window is
+  the honest bound.
+- **R3 (medium, lane)**: `phase_search` graded the honest empty answer as a
+  timeout FAIL and pinned the phase to the round's own engine state (the
+  hardcoded query and `alpha` scope check). The no-match notify is now an
+  anchor; the query is `MEMORY_SEARCH_QUERY` env-driven; the scope-tag check
+  matches the result rows' own shape.
+- **R4 (medium-low, test)**: the concurrency probe's idle poll read
+  `activeJob()` — which `withBusy`/`startFireAndForget` never set; an
+  API-triggered dream holds the mutex while reading idle on all three old
+  signals. `isBusy()` joined the poll (the honest signal).
+- **R5 (low, test)**: the winner assertion now requires a status that
+  consolidated (`done|gated` — an `error` row keeps `notes_in` from the
+  running-row INSERT and would have passed a dead upstream as a "real"
+  dream); the `?? true` dead assertion replaced by a strict `toBe(true)`.
+- **R7 (low, engine)**: `idx_memory_versions_tier` — `knownProjectScopes()`
+  GROUP BYs the tier column on every scoped search (and every across
+  fan-out) over a precious, never-pruned table.
+- **R6/R8/R9/R10/R11 (docs + lane portability)**: memory.md names the
+  legacy-slug pass-through; resilience.md's "the header" wording updated
+  for the tail order; the F-numbering gap closed (the local-path-clone row
+  is F4); the lane's receipts default to the repo's gitignored
+  `.run/mem-matrix-stills/` instead of an operator-machine absolute path
+  (OUT env preserved); the `manual`/`new` phases' ordering dependency on
+  the default phase order documented in the lane docstring.
 
 ## Checkpoints
 
@@ -152,7 +196,6 @@ setups T1–T5 × lifecycle L1–L6. Full enumeration and the adversarial rows:
   `scripts/tui-capture/verify_memory_matrix.py` (8 phases, 16 steps) run
   twice end-to-end — **ALL GREEN** (stills + pane dumps under
   `download/unown-mem-matrix/stills/`). Milestone M3 pushed.
-
 - **CP3 (docs + release)**: this session doc closed (findings/fixes/tests
   receipted); CHANGELOG's Unreleased entry; `docs/memory.md` (the scoped
   search's slug resolution + dream-now intent + the /learning tail);
@@ -163,6 +206,19 @@ setups T1–T5 × lifecycle L1–L6. Full enumeration and the adversarial rows:
   service paragraphs carry the round's contracts); **v0.0.60** in
   package.json (`bun bin/unown --version` verified) — the tag not cut, the
   honest hand-off. Milestone M4 pushed.
+
+- **CP4 (the independent review + hardening)**: the fresh-eyes review (11
+  findings, R1–R11, with the soundness ledger) — R1/R7 fixed in the engine
+  (`dream.ts`'s parked-review and unreadable-memory outcomes now emit
+  events; the `memory_versions(tier)` index), R4/R5 hardened in the live
+  suite's probe (`isBusy()` in the idle poll; the winner must have
+  consolidated), R2/R3/R10/R11 hardened in the matrix lane (the exit-phase
+  before-snapshot; the honest-empty-answer anchor + env-driven query; the
+  repo-relative receipts default; the ordering-dependency docstring), the
+  docs softened/extended (BEHAVIOR.md, memory.md, resilience.md, the
+  F-numbering). Re-verified: the pin files, the full self-learning suite,
+  the live suite re-run green, the PTY lane re-run green. Milestone M5
+  pushed.
 
 ## Hand-off notes
 
@@ -176,9 +232,10 @@ setups T1–T5 × lifecycle L1–L6. Full enumeration and the adversarial rows:
   (alpha + alpha-clone + alpha-worktree, outside the repo) with dreamed
   memory in the engine's platform — the F3 lane's receipts (0/2 vs 2/2)
   reproduce there until the engine's data is wiped.
-- The matrix lane's stills + pane dumps live under
-  `download/unown-mem-matrix/stills/` (outside the repo, per the PTY-lane
-  receipt convention); the lane regenerates them anywhere via
+- The matrix lane's stills + pane dumps live under the repo's gitignored
+  `.run/mem-matrix-stills/` (the R10 hardening — portable across machines;
+  the round's first receipts under `download/unown-mem-matrix/stills/`);
+  the lane regenerates them anywhere via
   `MEMORY_PROJECT=<dir> python3 scripts/tui-capture/verify_memory_matrix.py`.
 - The hoist (C5) was NOT driven live this round: it is opt-in
   (`PI_USER_TIER_HOIST=1`), needs ≥2 projects abstracting the same rule plus

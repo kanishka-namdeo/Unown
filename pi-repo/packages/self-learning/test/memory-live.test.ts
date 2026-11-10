@@ -435,16 +435,26 @@ describe.skipIf(!GATE)("memory live loop (scratch engine + real bridge)", () => 
                         //       terminal notes) that acquired and released the mutex
                         //       in ~1ms, faster than the second request arrived.
                         // The fix is deterministic on both axes: wait for FULL idle
-                        // first (no running dream, no active router job, no queued
-                        // event jobs — in-process router introspection), and let the
-                        // manual trigger's own note be real fuel (the engine lane
-                        // now runs on any benchmark count >= 1 — the manual-intent
-                        // contract pinned in dreams-run-projects.test.ts), so the
-                        // first trigger holds the mutex through a real LLM dream.
+                        // first — no running dream, no active router job, no queued
+                        // event jobs — AND the busy MUTEX itself released
+                        // (R4, the round's review: withBusy()/startFireAndForget()
+                        // hold `busy` WITHOUT setting activeJobId — an API-triggered
+                        // dream (the previous test's) reads idle on all three of
+                        // those signals while still holding the mutex; isBusy() is
+                        // the honest signal) — then let the manual trigger's own
+                        // note be real fuel (the engine lane now runs on any
+                        // benchmark count >= 1 — the manual-intent contract pinned
+                        // in dreams-run-projects.test.ts), so the first trigger
+                        // holds the mutex through a real LLM dream.
                         await pollUntil("engine fully idle before the concurrency probe", 300_000, async () => {
                                 const dreams = await api("GET", "/api/dreams");
                                 const running = dreams.json.dreams.find((d: any) => d.status === "running");
-                                return !running && routerMod.router.activeJob() === "" && routerMod.router.pendingEventJobs().length === 0;
+                                return (
+                                        !running &&
+                                        routerMod.router.activeJob() === "" &&
+                                        routerMod.router.pendingEventJobs().length === 0 &&
+                                        !routerMod.router.isBusy()
+                                );
                         });
                         const dreamIdsBefore = new Set((await api("GET", "/api/dreams")).json.dreams.map((d: any) => d.id));
                         notesMod.createNote(randomUUID(), "Benchmark note for the concurrency probe: benign observation about test discipline.", "benchmark");
@@ -456,20 +466,25 @@ describe.skipIf(!GATE)("memory live loop (scratch engine + real bridge)", () => 
                         expect(statuses[0]).toBe(200);
                         expect(statuses[1]).toBe(409);
                         const started = [a, b].find((r) => r.status === 200)!;
-                        expect(started.json.started ?? true).toBeTruthy();
+                        expect(started.json.started).toBe(true);
                         const busy = [a, b].find((r) => r.status === 409)!;
                         expect(busy.json.error).toContain("busy");
                         // The winning trigger must have started a REAL dream — a
                         // NEW dream row with notes_in >= 1 (the note is fuel; a
-                        // skipped or no-op trigger would be a vacuous 200 — the
-                        // pre-round behavior measured live).
+                        // skipped trigger would be a vacuous 200 — the
+                        // pre-round behavior measured live) AND a status that
+                        // actually consolidated (R5, the round's review: an
+                        // 'error' row keeps notes_in from the running-row INSERT —
+                        // a dead upstream mid-suite would previously satisfy this
+                        // assertion without proving the dream consolidated).
                         let winner: any = null;
-                        await pollUntil("the mutex-winning dream row to appear", 120_000, async () => {
+                        await pollUntil("the mutex-winning dream row to appear (and finish)", 300_000, async () => {
                                 const dreams = await api("GET", "/api/dreams");
                                 winner = dreams.json.dreams.find((d: any) => !dreamIdsBefore.has(d.id));
-                                return Boolean(winner);
+                                return Boolean(winner && winner.status !== "running");
                         });
                         expect(winner.notes_in).toBeGreaterThanOrEqual(1);
+                        expect(["done", "gated"]).toContain(winner.status);
                         // Let the started dream finish so afterAll state is clean.
                         await pollUntil("concurrent dream to finish", 300_000, async () => {
                                 const dreams = await api("GET", "/api/dreams");

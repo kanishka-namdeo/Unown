@@ -76,7 +76,7 @@ The other status lines, verbatim: `status: UP (pid 4242) · busy on 'auto-dream'
 
 ### `/learning` staleness headers
 
-With the engine down the memory stack still serves the last-written files — so `/learning` says how old each tier is instead of letting a weeks-stale `project.md` read as fresh. The header names the engine state (`memory engine: down — files below are the last engine writes; new notes queue locally and sync when it returns`; a `paused (won't start)` variant when the circuit gave up), and every tier gets an age: `── PROJECT · ~/code/app/.unown/memory/project.md (updated 5m ago) ──`, with `<1m`, minutes, hours and days as the scales grow.
+With the engine down the memory stack still serves the last-written files — so `/learning` says how old each tier is instead of letting a weeks-stale `project.md` read as fresh. The engine-state line names the state (`memory engine: down — files below are the last engine writes; new notes queue locally and sync when it returns`; a `paused (won't start)` variant when the circuit gave up), and every tier gets an age: `── PROJECT · ~/code/app/.unown/memory/project.md (updated 5m ago) ──`, with `<1m`, minutes, hours and days as the scales grow. (Since the 2026-11-10 memory-engine round the tier stack renders first and the engine-state + injection-budget lines ride the notice's tail — the tail is what a terminal shows when the stack outgrows the pane.)
 
 ### `unown doctor`
 
