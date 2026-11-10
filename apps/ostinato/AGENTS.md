@@ -5,8 +5,8 @@ operator at the round closeout 2026-11-04 per the instruction-set gate:
 the draft-and-operator-land workflow; the in-session write gate is
 final). Updated the same way at the R-1-e2e ticket close 2026-11-05:
 A2's chunk-8 draft landed by the fifteenth lineage's operator, with the
-gate's count corrections (Lane B 105 tests; the battery six spec files /
-14 tests — the draft's "102"/"13 spec files" were mis-counts).
+gate's count corrections (Lane B 105 tests; the battery seven spec files /
+17 tests (the 2026-11-10 re-measure; six/14 was the R-1 close) — the draft's "102"/"13 spec files" were mis-counts).
 
 ## Purpose
 
@@ -173,9 +173,11 @@ brace pair plus exactly five fields). The DOM-free domain core under
 
 ## Verification
 
-- Lane A: `cd apps/ostinato && bun test` — 101 tests + 1 skipped stub
-  (the el pin's honest DOM-guard skip) green, 0 fail.
-- Lane B: `bun test apps/ostinato` — 105 tests green, 0 fail (the el
+- Lane A: `cd apps/ostinato && bun test` — 119 pass + 2 honest DOM-guard
+  skips (the el pin's class) green, 0 fail (the 2026-11-10 end-user combo
+  round re-measure; the standing R-2/R-1 rounds grew the battery past the
+  101-test close).
+- Lane B: `bun test apps/ostinato` — 121 tests green, 0 fail (the el
   pin's 4 real tests run here under the root happy-dom preload).
 - App typecheck: the ROOT `bun run typecheck` (the root tsconfig's
   include covers `apps/ostinato/**/*.ts` — there is no local tsconfig).

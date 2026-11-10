@@ -1,6 +1,6 @@
 # unown, product overview (verified)
 
-Everything below was re-checked against the repository at `v0.0.55`+unreleased (`main`; the plan-mode V3 round re-verified the subagent-roster and plan-mode rows on 2026-11-01) with the code as the authority wherever the README or the docs disagreed with it. Appendix A lists every claim the earlier draft got wrong, each with its file and line; Appendix B lists what it missed. Where a number could not be backed by a committed receipt or a source file, it was cut.
+Everything below was re-checked against the repository at `v0.0.61`+unreleased (`main`; the plan-mode V3 round re-verified the subagent-roster and plan-mode rows on 2026-11-01; the end-user combination round re-verified the management-command and blog/landing rows on 2026-11-10) with the code as the authority wherever the README or the docs disagreed with it. Appendix A lists every claim the earlier draft got wrong, each with its file and line; Appendix B lists what it missed. Where a number could not be backed by a committed receipt or a source file, it was cut.
 
 This file's maintenance contract lives in the root `AGENTS.md` under Root Contracts: it is refreshed in the same change that moves anything it counts, and re-stamped with the version, commit, and date it was verified against. No counted surface has moved since the stamp above.
 
@@ -136,7 +136,7 @@ This file's maintenance contract lives in the root `AGENTS.md` under Root Contra
 - Engine state in SQLite via better-sqlite3 (runs, cycles, dreams, memory versions, hook log, processes, delegations, webcache), Mem0 (`mem0ai` 3.3.1) as the in-process memory platform, web-tree-sitter for the repomap, and TypeBox for schemas. Both the engine and the bridge serve over bare `Bun.serve`, with no HTTP framework in the dependency tree.
 - Service map: engine `:3030` (bearer-token gated), llm-bridge `:3031`, an optional `zai-upstream` shim `:3032`, landing page `:3000`.
 - Public repo, MIT license, Code of Conduct, contributing guide, security policy, support doc, and nine CI workflows.
-- Snapshot as of 2026-11-01: 900 commits on `main`, v0.0.55 latest release, repo created 2026-08-26, 2 open issues (a headless-exit hang and engine-versus-interactive bridge contention) and 0 open dependabot PRs (the security round cleared the advisory queue and closed the last seven PRs — five applied, one superseded by the five-surface regen, one declined on its peer contract).
+- Snapshot as of 2026-11-10: 1,206 commits on `main`, v0.0.57 latest release (0.0.58–0.0.61 shipped from `main` without a release tag — the site's install lane serves 0.0.57 until the next tag is cut), repo created 2026-08-26, 7 open issues (all self-filed dogfooding bugs: #29 engine-starved print sessions, #30 print-mode exit hang, #43 iframe form-fill loss, #44 JPEG/PNG mismatch, #45 proactive dialog hints, #46 AutoDream pruning quoted lines, #48 doctor crash on a malformed spec sidecar — the end-user round re-verified each against current `main`) (a headless-exit hang and engine-versus-interactive bridge contention) and 0 open dependabot PRs (the security round cleared the advisory queue and closed the last seven PRs — five applied, one superseded by the five-surface regen, one declined on its peer contract).
 
 ## Appendix A: corrections against the earlier draft
 

@@ -145,8 +145,28 @@ research).
 - [x] CP0 — environment up, smokes green
 - [x] CP1 — research records committed (M1, ef5e7ede)
 - [x] CP2 — matrix lanes A–J driven, findings ledger filled (M2)
-- [x] CP3 — fixes landed, lanes re-run green (M3 — this push; suite
-  receipts: engine 5,512/0/105, landing 2,093/0, budget e2e GREEN,
+- [x] CP3 — fixes landed, lanes re-run green (M3, 458af8c9; suite
+  receipts: engine 5,512/0/105, landing 2,094/0, budget e2e GREEN,
   chaconne armed smokes 3/0, all six doc gates green)
-- [ ] CP4 — round close: records, contracts, blog, version bump (M4)
+  - **The CI verdict on 458af8c9 (the F0 close-out): the four
+    previously-red lanes ALL GREEN** (Unit tests landing, Changed-line
+    coverage, E2E+a11y landing, Chaconne app) — the red main is cured;
+    14/14 legato e2e green locally; the one CI red (Legato T-7, a
+    30 s timing pin) is a runner flake — re-verified locally green on
+    the same tree, rerun requested.
+- [x] CP4 — round close: records, contracts, blog, version bump (M4)
+  - package.json **0.0.60 → 0.0.61**; the round's blog post
+    (`content/blog/2026-11-10-the-end-user-combo-round.md`, 50 posts
+    regenerated); CHANGELOG's Added + Agent Behavior entries; BEHAVIOR.md's
+    new CLI-usage-error section; usage.md's note/repomap rows; the root
+    Child DOX Index gains apps/chaconne + apps/fugue + apps/bolero +
+    apps/legato; the three apps' own AGENTS.md files created (the
+    DOX-tree gaps the audit found); ostinato/legato AGENTS.md counts
+    re-measured; testing-strategy.md's src row re-stamped (2,094/148);
+    unown-overview.md re-stamped to v0.0.61 + the 2026-11-10 snapshot;
+    SESSION.md graduated.
+  - An undocumented rider caught and reverted: the failed delegation's
+    `legato.tsx` layout tweak rode the M3 commit — reverted at M4 (the
+    amendment receipt names the ledes only; unreviewed layout edits do
+    not ride).
 - [ ] CP5 — review hardening: full gate re-run, receipts (M5)

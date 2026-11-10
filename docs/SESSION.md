@@ -8,7 +8,21 @@ archaeology. When a round completes, its log graduates to a round-specific
 
 ---
 
-## ACTIVE ROUND — the end-user combination round (2026-11-10, OPENED)
+## ACTIVE ROUND — none (2026-11-10)
+
+The end-user combination round is the last graduated round (see below).
+The next session opens a round here per the checkpoint discipline.
+
+---
+## GRADUATED — the end-user combination round (2026-11-10, CLOSED at M4)
+
+The round closed with v0.0.61: the red main cured (the substring-filter
+battery, the chaconne browser lane, the scroll budget's fifteenth
+amendment), the blog quote marks, /blog's og card, agent:start's preflight
+honesty, and the CLI craft gaps. Records:
+`docs/end-user-combo-round-session.md` (the round log, CP0..CP4 receipts)
++ `docs/end-user-standards-2026-11.md` (the grounding research). The M5
+review-hardening pass rides the round log's CP5 row.
 
 `docs/end-user-combo-round-session.md` — the **end-user combination
 round**, the fourth in the 2026-11-09/10 combination series (plan-mode

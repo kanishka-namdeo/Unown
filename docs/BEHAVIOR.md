@@ -373,6 +373,31 @@ The detached engine now exposes an explicit lifecycle that agents and supervisor
 
 Filed under the 2026-10-26 hardening round ([decision record](detached-engine-hardening.md)); pinned by `test/engine-health.test.ts`, `test/note-delivery-retry.test.ts`, `test/outbox-deadletter.test.ts`, `test/engine-token-mirror.test.ts`.
 
+## CLI usage-error class + subcommand-scoped help (2026-11-10)
+
+The end-user combination round aligned the shell surface's error classes and
+help routing with the contract the docs already describe:
+
+- **`unown -p` with no prompt exits 2** (usage class) — not the generic
+  error 1. `unown note` with no text exits 2 the same way.
+- **`unown repomap <non-git>` exits 1** — a warning-level result means the
+  map was NOT produced; scripts could not detect the silent no-op before.
+  Info-level state answers (`clear`, disabled, no tracked files) stay 0.
+- **Subcommand-scoped help**: a `-h`/`--help` that follows a first positional
+  with its own help page routes to that page (`unown note --help` → the
+  note page; `unown models --help` → the models overview+verify page;
+  `unown help models` / `unown help note` resolve as commands). The root
+  HELP remains the page for unscoped `--help`.
+- **`unown models <unknown-subcommand>` exits 2 with a did-you-mean** — the
+  silent overview fallthrough (`models verifyn` printed the model list,
+  exit 0) was the worst craft gap the live audit found.
+- **`unown update --check`** says "ahead of the latest release" when the
+  checkout is newer than the newest tag (source checkouts and pre-release
+  builds), not "up to date".
+
+Pinned 8 ways in
+`pi-repo/packages/self-learning/test/cli/end-user-craft.test.ts`.
+
 ## Behavior-change policy
 
 Any change to prompts, default models, routing, guard rules, hook policy, or memory injection must land with all three:

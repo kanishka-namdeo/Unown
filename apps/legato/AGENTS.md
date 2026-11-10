@@ -89,15 +89,18 @@ Node `runner/` edge — the Chaconne precedent reshaped).
   capture, reading-time estimates, per-tag digests, WebDAV file sync,
   Firefox/WebKit full batteries.
 
-## Verification (at this L-1 close)
+## Verification
 
-- Lane A: `cd apps/legato && bun test` — 1 test (the boundary pin)
-  green, 0 fail.
+- Lane A: `cd apps/legato && bun test` — 222 tests (207 pass + 15 honest
+  DOM-guard skips) green, 0 fail (the 2026-11-10 end-user combo round
+  re-measure; the L-1 close's "1 test" was the scaffold-era snapshot —
+  the L-queue grew the battery).
 - App typecheck: the ROOT `bun run typecheck` (the root tsconfig's
   include covers `apps/legato/**/*.ts`; the app-local tsconfig extends
   the root per the Fugue convention).
 - `curl -s http://127.0.0.1:4017/health` → `{"ok":true,"port":4017}`.
-- The receipts: `benchmarks/serenade-round/receipts/l1.md`.
+- `bun apps/legato/scripts/verify-precache.ts` (29/0).
+- The receipts: `benchmarks/serenade-round/receipts/` (L-1..L-13).
 
 ## Child DOX Index
 
