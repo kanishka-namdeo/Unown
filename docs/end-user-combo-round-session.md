@@ -169,4 +169,21 @@ research).
     `legato.tsx` layout tweak rode the M3 commit — reverted at M4 (the
     amendment receipt names the ledes only; unreviewed layout edits do
     not ride).
-- [ ] CP5 — review hardening: full gate re-run, receipts (M5)
+- [x] CP5 — review hardening: full gate re-run, receipts (M5)
+  - The plan-mode TUI matrix lane (`scripts/tui-capture/
+    verify_plan_mode_matrix.py`) **ALL GREEN** through the real PTY
+    (diag/v2/narrow 80x24 + 60x20/options/plan-model/budget).
+  - The sessions lifecycle as a real user: `sessions list` → `-c`
+    continue (RESUMED_OK) → resume by id with a prompt (BY_ID_OK) →
+    `sessions export --format md` (684 bytes) — all exit 0.
+  - The note lane live: `unown note` delivered to the engine ("✓ note
+    delivered"); the engine's `/api/overview` answers
+    `self-learning v0.0.61` with the bridge at 391 requests / 0 errors.
+  - The M3 CI run **completed success on the rerun** (the Legato T-7
+    30 s timing pin was the flake — 14/14 green locally on the same
+    tree); the M4 run re-queued after the concurrency-group cancel
+    (the rerun request collided with it — recorded so the next round
+    waits for a run to complete before rerunning).
+  - Final gates at the M5 tree: docs/changelog/blog/benchmarks/claims
+    all ok, typecheck 0, the landing battery 2,094/0, the engine suite
+    5,512/0/105.
