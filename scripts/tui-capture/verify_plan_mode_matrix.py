@@ -119,12 +119,40 @@ def scratch_dir() -> str:
     return d
 
 
-def latest_session() -> str:
-    files = sorted(glob.glob(os.path.expanduser("~/.unown/agent/sessions/*.jsonl")),
-                   key=os.path.getmtime)
+def latest_session(since: float | None = None) -> str:
+    """The newest session file — optionally bounded to files written AFTER a
+    phase started (the review hardening: an unattributed read could score a
+    PREVIOUS phase's session when the current spawn died before writing
+    one, silently greening a census step it never measured)."""
+    files = glob.glob(os.path.expanduser("~/.unown/agent/sessions/*.jsonl"))
+    if since is not None:
+        files = [f for f in files if os.path.getmtime(f) >= since - 5]
     if not files:
         return ""
-    return files[-1]
+    return max(files, key=os.path.getmtime)
+
+
+def plan_phase_turns(path: str):
+    """(planning, executing) assistant turns — split at the approval marker."""
+    planning = executing = 0
+    approved = False
+    try:
+        for line in open(path, encoding="utf-8", errors="replace"):
+            try:
+                m = json.loads(line)
+            except Exception:
+                continue
+            if "User has approved" in json.dumps(m):
+                approved = True
+            msg = m.get("message") if isinstance(m.get("message"), dict) else None
+            if msg and msg.get("role") == "assistant":
+                if approved:
+                    executing += 1
+                else:
+                    planning += 1
+    except OSError:
+        pass
+    return planning, executing
 
 
 def todo_census(path: str):
@@ -247,7 +275,10 @@ def phase_p1(log, cwd) -> bool:
         try:
             s.type_prompt("/plan show")
             s.pump(1.2)
-            check("/plan show answers", "plan" in s.pane_text().lower())
+            # The concrete no-plan anchor (the review hardening: the old
+            # `"plan" in pane` check could never fail — the echoed command
+            # itself satisfies it). The v2/narrow lanes always used this.
+            check("/plan show answers", NO_PLAN_YET in s.pane_text())
         except Exception:
             check("/plan show answers", False)
         try:
@@ -432,6 +463,7 @@ def phase_narrow(log, cwd) -> bool:
 
 def phase_gate(log, cwd) -> bool:
     steps: list[tuple[str, bool]] = []
+    started = time.time()
 
     def check(name, ok, extra=""):
         steps.append((name, ok))
@@ -507,10 +539,10 @@ def phase_gate(log, cwd) -> bool:
             check("user message re-arms the gate", False, s.pane_text()[-300:])
 
         # --- the seeded-todo discipline (the 2026-11-09 instruction fix) ---
-        session = latest_session()
+        session = latest_session(since=started)
         seeds, creates, updates = todo_census(session)
         check(f"todo discipline (seeds={seeds} creates={creates} updates={updates})",
-              seeds >= 1 and creates == 0)
+              session != "" and seeds >= 1 and creates == 0)
     finally:
         s.close()
     return all(ok for _, ok in steps)
@@ -657,6 +689,7 @@ def phase_options_c(log, cwd) -> bool:
     """Option 2 (approve each edit): the mode switch, the per-edit ask census
     (the 2026-11-10 seedSessionAsk fix's live lane), Plan complete, todos."""
     steps: list[tuple[str, bool]] = []
+    started = time.time()
 
     def check(name, ok, extra=""):
         steps.append((name, ok))
@@ -687,10 +720,10 @@ def phase_options_c(log, cwd) -> bool:
             check(f"ask-dialog census during execution ({exc}; per-edit approval fires", False)
             check("option 2 execution reaches Plan complete", False)
 
-        session = latest_session()
+        session = latest_session(since=started)
         seeds, creates, updates = todo_census(session)
         check(f"todo discipline (seeds={seeds} creates={creates} updates={updates})",
-              seeds >= 1 and creates == 0)
+              session != "" and seeds >= 1 and creates == 0)
     finally:
         s.close()
     return all(ok for _, ok in steps)
@@ -710,6 +743,7 @@ def phase_options(log, cwd) -> bool:
 
 def phase_plan_model(log, cwd) -> bool:
     steps: list[tuple[str, bool]] = []
+    started = time.time()
 
     def check(name, ok, extra=""):
         steps.append((name, ok))
@@ -739,7 +773,7 @@ def phase_plan_model(log, cwd) -> bool:
             check("plan-model: gate opens on the sibling", False, s.pane_text()[-300:])
             check("plan-model: approve → execute → Plan complete", False)
 
-        total, by_model = assistant_turns(latest_session())
+        total, by_model = assistant_turns(latest_session(since=started))
         sibling_turns = sum(n for m, n in by_model.items() if sibling in m)
         check(f"planning turns on the sibling ({sibling_turns}/{total} total assistant turns)",
               sibling_turns >= 3 and total > sibling_turns)
@@ -766,6 +800,7 @@ def phase_plan_model(log, cwd) -> bool:
 
 def phase_budget(log, cwd) -> bool:
     steps: list[tuple[str, bool]] = []
+    started = time.time()
 
     def check(name, ok, extra=""):
         steps.append((name, ok))
@@ -791,10 +826,17 @@ def phase_budget(log, cwd) -> bool:
             check("budget lane: gate opens (the cap did not wedge planning)", False, s.pane_text()[-300:])
             check("budget lane: approve → execute → Plan complete", False)
 
-        total, _by_model = assistant_turns(latest_session())
+        # The honest receipt (the review hardening: the budget is a SOFT
+        # pressure — planning may legitimately exceed it while specialists
+        # run — so the assertion is the sanity BAND, not the cap: planning
+        # turns ≥ 1 (planning actually ran) and ≤ 20 (a dead budget with a
+        # runaway model is caught), with the split printed as the receipt.
+        session = latest_session(since=started)
+        planning, executing = plan_phase_turns(session)
         budget = max(3, (8 * 6) // 10)  # max(3, floor(0.6 × 8)) = 4
-        check(f"budget receipt: {total} assistant turns under --max-turns 8 "
-              f"(budget = max(3, floor(0.6 × 8)) = {budget})", total >= 1)
+        check(f"budget receipt: {planning} planning + {executing} executing turns "
+              f"under --max-turns 8 (budget = max(3, floor(0.6 × 8)) = {budget}, soft)",
+              session != "" and 1 <= planning <= 20)
     finally:
         s.close()
 
@@ -841,6 +883,12 @@ def main() -> int:
             selected = [p.strip() for p in sys.argv[i + 1].split(",") if p.strip()]
     if selected is None:
         selected = [p for p in PHASES if live or p not in LIVE_PHASES]
+    # The review hardening: `options` is an explicit umbrella selector — the
+    # DEFAULT live run must not execute the three sub-lanes AND the umbrella
+    # (six specialist-spawning planning passes on a metered upstream instead
+    # of three). Selecting both explicitly still honors the operator's hand.
+    if selected == [p for p in PHASES if live or p not in LIVE_PHASES] and "options" in selected:
+        selected = [p for p in selected if p != "options"]
     unknown = [p for p in selected if p not in RUNNERS]
     if unknown:
         log(f"unknown phases: {unknown} (valid: {PHASES})")

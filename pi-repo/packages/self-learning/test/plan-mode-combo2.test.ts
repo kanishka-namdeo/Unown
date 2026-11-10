@@ -21,7 +21,7 @@ import { afterAll, describe, expect, test } from "bun:test";
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { createPermissionGate } from "../src/permissions.ts";
+import { createPermissionGate, renderPermissionsStatus } from "../src/permissions.ts";
 import { createUnownToolsExtension } from "../src/tools.ts";
 import { TEST_TMP } from "./_env.ts";
 
@@ -33,99 +33,99 @@ const CLEAN_ENV: Record<string, string | undefined> = {};
 
 const LOADED: string[] = [];
 function freshScope() {
-        const dir = mkdtempSync(join(TEST_TMP, "combo2-"));
-        LOADED.push(dir);
-        const cwd = join(dir, "proj");
-        const agentDir = join(dir, "agent");
-        mkdirSync(join(cwd, ".unown"), { recursive: true });
-        mkdirSync(agentDir, { recursive: true });
-        return { cwd, agentDir, statePath: join(agentDir, "trusted-configs.json") };
+	const dir = mkdtempSync(join(TEST_TMP, "combo2-"));
+	LOADED.push(dir);
+	const cwd = join(dir, "proj");
+	const agentDir = join(dir, "agent");
+	mkdirSync(join(cwd, ".unown"), { recursive: true });
+	mkdirSync(agentDir, { recursive: true });
+	return { cwd, agentDir, statePath: join(agentDir, "trusted-configs.json") };
 }
 afterAll(() => {
-        for (const d of LOADED) rmSync(d, { recursive: true, force: true });
-        const holders = globalThis as unknown as Record<symbol, { lastAt: number; turnActive: boolean }>;
-        const key = Symbol.for("unown-fleet-activity");
-        if (holders[key]) holders[key].turnActive = false;
+	for (const d of LOADED) rmSync(d, { recursive: true, force: true });
+	const holders = globalThis as unknown as Record<symbol, { lastAt: number; turnActive: boolean }>;
+	const key = Symbol.for("unown-fleet-activity");
+	if (holders[key]) holders[key].turnActive = false;
 });
 
 function writeUser(scope: ReturnType<typeof freshScope>, doc: unknown): string {
-        const file = join(scope.agentDir, "permissions.json");
-        writeFileSync(file, `${JSON.stringify(doc, null, 2)}\n`);
-        return file;
+	const file = join(scope.agentDir, "permissions.json");
+	writeFileSync(file, `${JSON.stringify(doc, null, 2)}\n`);
+	return file;
 }
 
 describe("gate.seedSessionAsk — the approve-each-edit session rules", () => {
-        test("the measured defect: a default-config session never prompts on edit (mode alone is not a rule)", () => {
-                const s = freshScope();
-                const gate = createPermissionGate({ cwd: s.cwd, agentDir: s.agentDir, env: CLEAN_ENV, statePath: s.statePath });
-                gate.setSessionMode("default");
-                const res = gate.check("edit", { path: "app.py" });
-                expect(res.blocked).toBe(false);
-                expect((res as { needsAsk?: boolean }).needsAsk).toBeFalsy(); // the zero-dialog census
-        });
+	test("the measured defect: a default-config session never prompts on edit (mode alone is not a rule)", () => {
+		const s = freshScope();
+		const gate = createPermissionGate({ cwd: s.cwd, agentDir: s.agentDir, env: CLEAN_ENV, statePath: s.statePath });
+		gate.setSessionMode("default");
+		const res = gate.check("edit", { path: "app.py" });
+		expect(res.blocked).toBe(false);
+		expect((res as { needsAsk?: boolean }).needsAsk).toBeFalsy(); // the zero-dialog census
+	});
 
-        test("seeding turns every edit/write call into a prompt; other tools stay free", () => {
-                const s = freshScope();
-                const gate = createPermissionGate({ cwd: s.cwd, agentDir: s.agentDir, env: CLEAN_ENV, statePath: s.statePath });
-                gate.setSessionMode("default");
-                gate.seedSessionAsk(["edit", "write"]);
-                const edit = gate.check("edit", { path: "app.py" }) as { blocked: boolean; needsAsk?: boolean };
-                const write = gate.check("write", { path: "new.py" }) as { blocked: boolean; needsAsk?: boolean };
-                const read = gate.check("read", { path: "app.py" }) as { blocked: boolean; needsAsk?: boolean };
-                expect(edit.needsAsk).toBe(true);
-                expect(write.needsAsk).toBe(true);
-                expect(read.needsAsk).toBeFalsy();
-        });
+	test("seeding turns every edit/write call into a prompt; other tools stay free", () => {
+		const s = freshScope();
+		const gate = createPermissionGate({ cwd: s.cwd, agentDir: s.agentDir, env: CLEAN_ENV, statePath: s.statePath });
+		gate.setSessionMode("default");
+		gate.seedSessionAsk(["edit", "write"]);
+		const edit = gate.check("edit", { path: "app.py" }) as { blocked: boolean; needsAsk?: boolean };
+		const write = gate.check("write", { path: "new.py" }) as { blocked: boolean; needsAsk?: boolean };
+		const read = gate.check("read", { path: "app.py" }) as { blocked: boolean; needsAsk?: boolean };
+		expect(edit.needsAsk).toBe(true);
+		expect(write.needsAsk).toBe(true);
+		expect(read.needsAsk).toBeFalsy();
+	});
 
-        test("repeat seeding dedupes — a re-approved plan never stacks rules", () => {
-                const s = freshScope();
-                const gate = createPermissionGate({ cwd: s.cwd, agentDir: s.agentDir, env: CLEAN_ENV, statePath: s.statePath });
-                gate.seedSessionAsk(["edit", "write"]);
-                gate.seedSessionAsk(["edit", "write"]);
-                gate.seedSessionAsk(["edit", "write"]);
-                expect(gate.status().sessionRuleCount).toBe(2);
-        });
+	test("repeat seeding dedupes — a re-approved plan never stacks rules", () => {
+		const s = freshScope();
+		const gate = createPermissionGate({ cwd: s.cwd, agentDir: s.agentDir, env: CLEAN_ENV, statePath: s.statePath });
+		gate.seedSessionAsk(["edit", "write"]);
+		gate.seedSessionAsk(["edit", "write"]);
+		gate.seedSessionAsk(["edit", "write"]);
+		expect(gate.status().sessionRuleCount).toBe(2);
+	});
 
-        test("a MORE SPECIFIC config allow still wins on its own subject (the user's own carve-out stands)", () => {
-                const s = freshScope();
-                writeUser(s, { version: 1, rules: [{ tool: "edit", effect: "allow", pattern: "app.py" }] });
-                const gate = createPermissionGate({ cwd: s.cwd, agentDir: s.agentDir, env: CLEAN_ENV, statePath: s.statePath });
-                gate.setSessionMode("default");
-                gate.seedSessionAsk(["edit", "write"]);
-                const carved = gate.check("edit", { path: "app.py" }) as { blocked: boolean; needsAsk?: boolean };
-                const other = gate.check("edit", { path: "other.py" }) as { blocked: boolean; needsAsk?: boolean };
-                expect(carved.needsAsk).toBeFalsy(); // specificity beats the pattern-less session ask
-                expect(other.needsAsk).toBe(true);
-        });
+	test("a MORE SPECIFIC config allow still wins on its own subject (the user's own carve-out stands)", () => {
+		const s = freshScope();
+		writeUser(s, { version: 1, rules: [{ tool: "edit", effect: "allow", pattern: "app.py" }] });
+		const gate = createPermissionGate({ cwd: s.cwd, agentDir: s.agentDir, env: CLEAN_ENV, statePath: s.statePath });
+		gate.setSessionMode("default");
+		gate.seedSessionAsk(["edit", "write"]);
+		const carved = gate.check("edit", { path: "app.py" }) as { blocked: boolean; needsAsk?: boolean };
+		const other = gate.check("edit", { path: "other.py" }) as { blocked: boolean; needsAsk?: boolean };
+		expect(carved.needsAsk).toBeFalsy(); // specificity beats the pattern-less session ask
+		expect(other.needsAsk).toBe(true);
+	});
 
-        test("a config deny still beats the session ask — the safety floor holds", () => {
-                const s = freshScope();
-                writeUser(s, { version: 1, rules: [{ tool: "edit", effect: "deny" }] });
-                const gate = createPermissionGate({ cwd: s.cwd, agentDir: s.agentDir, env: CLEAN_ENV, statePath: s.statePath });
-                gate.setSessionMode("default");
-                gate.seedSessionAsk(["edit", "write"]);
-                const res = gate.check("edit", { path: "app.py" });
-                expect(res.blocked).toBe(true);
-        });
+	test("a config deny still beats the session ask — the safety floor holds", () => {
+		const s = freshScope();
+		writeUser(s, { version: 1, rules: [{ tool: "edit", effect: "deny" }] });
+		const gate = createPermissionGate({ cwd: s.cwd, agentDir: s.agentDir, env: CLEAN_ENV, statePath: s.statePath });
+		gate.setSessionMode("default");
+		gate.seedSessionAsk(["edit", "write"]);
+		const res = gate.check("edit", { path: "app.py" });
+		expect(res.blocked).toBe(true);
+	});
 
-        test("acceptEdits auto-approves the seeded asks for in-project paths (the mode adjustment contract)", () => {
-                const s = freshScope();
-                const gate = createPermissionGate({ cwd: s.cwd, agentDir: s.agentDir, env: CLEAN_ENV, statePath: s.statePath });
-                gate.seedSessionAsk(["edit", "write"]);
-                gate.setSessionMode("acceptEdits");
-                const inProject = gate.check("edit", { path: "src/a.ts" }) as { blocked: boolean; needsAsk?: boolean };
-                const outProject = gate.check("edit", { path: "../outside.ts" }) as { blocked: boolean; needsAsk?: boolean };
-                expect(inProject.needsAsk).toBeFalsy();
-                expect(outProject.needsAsk).toBe(true);
-        });
+	test("acceptEdits auto-approves the seeded asks for in-project paths (the mode adjustment contract)", () => {
+		const s = freshScope();
+		const gate = createPermissionGate({ cwd: s.cwd, agentDir: s.agentDir, env: CLEAN_ENV, statePath: s.statePath });
+		gate.seedSessionAsk(["edit", "write"]);
+		gate.setSessionMode("acceptEdits");
+		const inProject = gate.check("edit", { path: "src/a.ts" }) as { blocked: boolean; needsAsk?: boolean };
+		const outProject = gate.check("edit", { path: "../outside.ts" }) as { blocked: boolean; needsAsk?: boolean };
+		expect(inProject.needsAsk).toBeFalsy();
+		expect(outProject.needsAsk).toBe(true);
+	});
 
-        test("the seeded rules die with the gate — nothing is written to disk", () => {
-                const s = freshScope();
-                const userFile = writeUser(s, { version: 1, rules: [] });
-                const gate = createPermissionGate({ cwd: s.cwd, agentDir: s.agentDir, env: CLEAN_ENV, statePath: s.statePath });
-                gate.seedSessionAsk(["edit", "write"]);
-                expect(readFileSync(userFile, "utf-8")).toBe(`${JSON.stringify({ version: 1, rules: [] }, null, 2)}\n`);
-        });
+	test("the seeded rules die with the gate — nothing is written to disk", () => {
+		const s = freshScope();
+		const userFile = writeUser(s, { version: 1, rules: [] });
+		const gate = createPermissionGate({ cwd: s.cwd, agentDir: s.agentDir, env: CLEAN_ENV, statePath: s.statePath });
+		gate.seedSessionAsk(["edit", "write"]);
+		expect(readFileSync(userFile, "utf-8")).toBe(`${JSON.stringify({ version: 1, rules: [] }, null, 2)}\n`);
+	});
 });
 
 // ---------------------------------------------------------------------------
@@ -156,125 +156,215 @@ type Handler = (event: any, ctx?: any) => any;
 
 /** A fake pi in the shape plan-mode-flags.test.ts established. */
 function makeFakePi(flags: Record<string, boolean | string> = {}) {
-        const handlers = new Map<string, Handler[]>();
-        const commands = new Map<string, { description: string; handler: Handler }>();
-        const tools = new Map<string, any>();
-        const activeTools: string[] = ["read", "bash", "edit", "write", "todo", "task"];
-        const pi: any = {
-                on: (event: string, handler: Handler) => {
-                        if (!handlers.has(event)) handlers.set(event, []);
-                        handlers.get(event)!.push(handler);
-                },
-                registerCommand: (name: string, def: { description: string; handler: Handler }) => commands.set(name, def),
-                registerFlag: () => {},
-                registerTool: (tool: any) => tools.set(tool.name, tool),
-                registerShortcut: () => {},
-                appendEntry: () => {},
-                getFlag: (name: string) => flags[name],
-                getActiveTools: () => [...activeTools],
-                setActiveTools: (next: string[]) => {
-                        activeTools.length = 0;
-                        activeTools.push(...next);
-                },
-                sendMessage: () => {},
-                sendUserMessage: () => {},
-                setModel: async () => true,
-                setSessionName: () => {},
-        };
-        const emit = async (event: string, payload: any, ctx?: any) => {
-                let result: any;
-                for (const h of handlers.get(event) ?? []) {
-                        const r = await h(payload, ctx);
-                        if (r !== undefined) result = r;
-                }
-                return result;
-        };
-        const entries: any[] = [];
-        const ctx = {
-                hasUI: true,
-                ui: {
-                        notify: () => {},
-                        setStatus: () => {},
-                        setWidget: () => {},
-                        theme: { fg: (_n: string, t: string) => t },
-                },
-                sessionManager: { getEntries: () => entries, getSessionId: () => "s1", getBranch: () => [...entries] },
-        };
-        return { pi, emit, commands, tools, ctx };
+	const handlers = new Map<string, Handler[]>();
+	const commands = new Map<string, { description: string; handler: Handler }>();
+	const tools = new Map<string, any>();
+	const activeTools: string[] = ["read", "bash", "edit", "write", "todo", "task"];
+	const entries: any[] = [];
+	const pi: any = {
+		on: (event: string, handler: Handler) => {
+			if (!handlers.has(event)) handlers.set(event, []);
+			handlers.get(event)!.push(handler);
+		},
+		registerCommand: (name: string, def: { description: string; handler: Handler }) => commands.set(name, def),
+		registerFlag: () => {},
+		registerTool: (tool: any) => tools.set(tool.name, tool),
+		registerShortcut: () => {},
+		appendEntry: (customType: string, data: any) => entries.push({ type: "custom", customType, data }),
+		getFlag: (name: string) => flags[name],
+		getActiveTools: () => [...activeTools],
+		setActiveTools: (next: string[]) => {
+			activeTools.length = 0;
+			activeTools.push(...next);
+		},
+		sendMessage: () => {},
+		sendUserMessage: () => {},
+		setModel: async () => true,
+		setSessionName: () => {},
+	};
+	const emit = async (event: string, payload: any, ctx?: any) => {
+		let result: any;
+		for (const h of handlers.get(event) ?? []) {
+			const r = await h(payload, ctx);
+			if (r !== undefined) result = r;
+		}
+		return result;
+	};
+	const ctx = {
+		hasUI: true,
+		ui: {
+			notify: () => {},
+			setStatus: () => {},
+			setWidget: () => {},
+			theme: { fg: (_n: string, t: string) => t },
+		},
+		sessionManager: { getEntries: () => entries, getSessionId: () => "s1", getBranch: () => [...entries] },
+	};
+	return { pi, emit, commands, tools, ctx };
 }
 
 async function wireApproval() {
-        const dir = mkdtempSync(join(tmpdir(), "unown-combo2-ext-"));
-        const modeCalls: string[] = [];
-        const seeded: string[][] = [];
-        const ext = createUnownToolsExtension({
-                cwd: dir,
-                engineUrl: "http://127.0.0.1:9",
-                setPermissionMode: (mode) => {
-                        modeCalls.push(mode);
-                        return { applied: true, effectiveMode: mode };
-                },
-                seedSessionAsk: (tools) => seeded.push([...tools]),
-        });
-        const fake = makeFakePi();
-        ext.factory(fake.pi as any);
+	const dir = mkdtempSync(join(tmpdir(), "unown-combo2-ext-"));
+	const modeCalls: string[] = [];
+	const seeded: string[][] = [];
+	const ext = createUnownToolsExtension({
+		cwd: dir,
+		engineUrl: "http://127.0.0.1:9",
+		setPermissionMode: (mode) => {
+			modeCalls.push(mode);
+			return { applied: true, effectiveMode: mode };
+		},
+		seedSessionAsk: (tools) => seeded.push([...tools]),
+	});
+	const fake = makeFakePi();
+	ext.factory(fake.pi as any);
 
-        // enter plan mode with a description (seeds the plan file identity)
-        await fake.commands.get("plan")!.handler("add the clamp helper", fake.ctx);
-        // write a plan that clears the score threshold through the real tool
-        const planWrite = fake.tools.get("plan_write")!;
-        await planWrite.execute("t1", { content: GOOD_PLAN }, undefined, undefined, fake.ctx);
+	// enter plan mode with a description (seeds the plan file identity)
+	await fake.commands.get("plan")!.handler("add the clamp helper", fake.ctx);
+	// write a plan that clears the score threshold through the real tool
+	const planWrite = fake.tools.get("plan_write")!;
+	await planWrite.execute("t1", { content: GOOD_PLAN }, undefined, undefined, fake.ctx);
 
-        /** ctx whose ui.select answers a scripted option sequence. */
-        const selecting = (script: Array<string | undefined>) => {
-                const selects: Array<{ title: string; options: string[] }> = [];
-                let call = 0;
-                return {
-                        ctx: {
-                                ...fake.ctx,
-                                ui: {
-                                        ...fake.ctx.ui,
-                                        select: async (title: string, options: string[]) => {
-                                                selects.push({ title, options });
-                                                return script[call++];
-                                        },
-                                        editor: async () => GOOD_PLAN,
-                                        input: async () => "",
-                                },
-                        },
-                        selects,
-                };
-        };
-        return { fake, dir, modeCalls, seeded, selecting };
+	/** ctx whose ui.select answers a scripted option sequence. */
+	const selecting = (script: Array<string | undefined>) => {
+		const selects: Array<{ title: string; options: string[] }> = [];
+		let call = 0;
+		return {
+			ctx: {
+				...fake.ctx,
+				ui: {
+					...fake.ctx.ui,
+					select: async (title: string, options: string[]) => {
+						selects.push({ title, options });
+						return script[call++];
+					},
+					editor: async () => GOOD_PLAN,
+					input: async () => "",
+				},
+			},
+			selects,
+		};
+	};
+	return { fake, dir, modeCalls, seeded, selecting };
 }
 
 describe("the approval dialog's manual lane (the 2026-11-10 fix)", () => {
-        test("'Execute — approve each edit' switches to default AND seeds session ask rules for edit/write", async () => {
-                const w = await wireApproval();
-                const sel = w.selecting(["Execute — approve each edit"]);
-                const exit = w.fake.tools.get("exit_plan_mode")!;
-                await exit.execute("t2", {}, undefined, undefined, sel.ctx);
-                expect(w.modeCalls).toContain("default");
-                expect(w.seeded).toEqual([["edit", "write"]]);
-                expect(sel.selects).toHaveLength(1); // approved — the dialog does not loop
-        });
+	test("'Execute — approve each edit' switches to default AND seeds session ask rules for edit/write", async () => {
+		const w = await wireApproval();
+		const sel = w.selecting(["Execute — approve each edit"]);
+		const exit = w.fake.tools.get("exit_plan_mode")!;
+		await exit.execute("t2", {}, undefined, undefined, sel.ctx);
+		expect(w.modeCalls).toContain("default");
+		expect(w.seeded).toEqual([["edit", "write"]]);
+		expect(sel.selects).toHaveLength(1); // approved — the dialog does not loop
+	});
 
-        test("'Execute — auto-accept edits' switches to acceptEdits and does NOT seed ask rules", async () => {
-                const w = await wireApproval();
-                const sel = w.selecting(["Execute — auto-accept edits"]);
-                const exit = w.fake.tools.get("exit_plan_mode")!;
-                await exit.execute("t3", {}, undefined, undefined, sel.ctx);
-                expect(w.modeCalls).toContain("acceptEdits");
-                expect(w.seeded).toEqual([]);
-        });
+	test("'Execute — auto-accept edits' switches to acceptEdits and does NOT seed ask rules", async () => {
+		const w = await wireApproval();
+		const sel = w.selecting(["Execute — auto-accept edits"]);
+		const exit = w.fake.tools.get("exit_plan_mode")!;
+		await exit.execute("t3", {}, undefined, undefined, sel.ctx);
+		expect(w.modeCalls).toContain("acceptEdits");
+		expect(w.seeded).toEqual([]);
+	});
 
-        test("the edit lane (option 3) never seeds — only a real execution approval arms the per-edit prompts", async () => {
-                const w = await wireApproval();
-                const sel = w.selecting(["Edit the plan", "Execute — auto-accept edits"]);
-                const exit = w.fake.tools.get("exit_plan_mode")!;
-                await exit.execute("t4", {}, undefined, undefined, sel.ctx);
-                expect(w.seeded).toEqual([]);
-        });
+	test("the edit lane (option 3) never seeds — only a real execution approval arms the per-edit prompts", async () => {
+		const w = await wireApproval();
+		const sel = w.selecting(["Edit the plan", "Execute — auto-accept edits"]);
+		const exit = w.fake.tools.get("exit_plan_mode")!;
+		await exit.execute("t4", {}, undefined, undefined, sel.ctx);
+		expect(w.seeded).toEqual([]);
+	});
+
+	test("the manual posture rides the session entry — a resumed execution re-seeds (the review hardening)", async () => {
+		// Crash mid-execution after a manual approval, then resume: the
+		// zero-dialog defect must not survive the resume. The approval
+		// writes an unown-plan-mode entry carrying approvalMode, and the
+		// restore path re-seeds when it sees executing + manual.
+		const w = await wireApproval();
+		const sel = w.selecting(["Execute — approve each edit"]);
+		const exit = w.fake.tools.get("exit_plan_mode")!;
+		await exit.execute("t5", {}, undefined, undefined, sel.ctx);
+		expect(w.seeded).toEqual([["edit", "write"]]);
+		// harvest the persisted entry the approval wrote (the LAST one —
+		// entering plan mode persists an earlier posture-free entry)
+		const entries = w.fake.ctx.sessionManager.getEntries() as any[];
+		const planEntry = [...entries].reverse().find((e: any) => e?.customType === "unown-plan-mode");
+		expect(planEntry?.data?.approvalMode).toBe("manual");
+		expect(planEntry?.data?.executing).toBe(true);
+
+		// a FRESH session (the resume) restores from those entries
+		const seeded2: string[][] = [];
+		const dir2 = mkdtempSync(join(tmpdir(), "unown-combo2-res-"));
+		const ext2 = createUnownToolsExtension({
+			cwd: dir2,
+			engineUrl: "http://127.0.0.1:9",
+			seedSessionAsk: (tools) => seeded2.push([...tools]),
+		});
+		const fake2 = makeFakePi();
+		ext2.factory(fake2.pi as any);
+		const ctx2 = {
+			...fake2.ctx,
+			sessionManager: { getEntries: () => entries, getSessionId: () => "s2", getBranch: () => [...entries] },
+		};
+		await fake2.emit("session_start", {}, ctx2);
+		expect(seeded2).toEqual([["edit", "write"]]); // the posture survived the resume
+	});
+
+	test("the auto posture resumes WITHOUT re-seeding (no phantom prompts)", async () => {
+		const entries = [
+			{
+				type: "custom",
+				customType: "unown-plan-mode",
+				data: { enabled: false, executing: true, approvalMode: "auto", steps: [] },
+			},
+		];
+		const seeded: string[][] = [];
+		const dir = mkdtempSync(join(tmpdir(), "unown-combo2-res2-"));
+		const ext = createUnownToolsExtension({
+			cwd: dir,
+			engineUrl: "http://127.0.0.1:9",
+			seedSessionAsk: (tools) => seeded.push([...tools]),
+		});
+		const fake = makeFakePi();
+		ext.factory(fake.pi as any);
+		const ctx = {
+			...fake.ctx,
+			sessionManager: { getEntries: () => entries, getSessionId: () => "s3", getBranch: () => [...entries] },
+		};
+		await fake.emit("session_start", {}, ctx);
+		expect(seeded).toEqual([]);
+	});
+});
+
+// ---------------------------------------------------------------------------
+// The status render: seeded ask rules are named as what they are
+// (the review hardening: one total line rendered "2 always-allow rule(s)
+// confirmed" — the exact inversion of the per-edit posture)
+// ---------------------------------------------------------------------------
+
+describe("the /permissions status render names the seeded asks", () => {
+	test("ask rules render as seeded (per-edit approval active), allow rules as confirmed", () => {
+		const s = freshScope();
+		const gate = createPermissionGate({ cwd: s.cwd, agentDir: s.agentDir, env: CLEAN_ENV, statePath: s.statePath });
+		gate.seedSessionAsk(["edit", "write"]);
+		const status = gate.status();
+		expect(status.sessionRuleCount).toBe(2);
+		expect(status.sessionAskCount).toBe(2);
+		expect(status.sessionAllowCount).toBe(0);
+		const rendered = renderPermissionsStatus(status);
+		expect(rendered).toContain("2 ask rule(s) seeded");
+		expect(rendered).not.toContain("2 always-allow");
+	});
+
+	test("a confirmed always-allow still renders as confirmed (the classic lane is untouched)", () => {
+		const s = freshScope();
+		const gate = createPermissionGate({ cwd: s.cwd, agentDir: s.agentDir, env: CLEAN_ENV, statePath: s.statePath });
+		gate.rememberSessionAllow("bash", "bun test*");
+		const rendered = renderPermissionsStatus(gate.status());
+		expect(rendered).toContain("1 always-allow rule(s) confirmed");
+		expect(rendered).not.toContain("ask rule(s) seeded");
+	});
 });
 
 // ---------------------------------------------------------------------------
@@ -282,44 +372,44 @@ describe("the approval dialog's manual lane (the 2026-11-10 fix)", () => {
 // ---------------------------------------------------------------------------
 
 describe("the main TUI boot lane delivers --plan-model and --max-turns (L4)", () => {
-        const src = readFileSync(join(import.meta.dir, "../src/cli.ts"), "utf-8");
+	const src = readFileSync(join(import.meta.dir, "../src/cli.ts"), "utf-8");
 
-        /** Every `cmdTui(args.prompt, args.verbose, { … })` call block in cli.ts,
-         * extracted by BALANCED-BRACE matching (the worktree lane's call ends in
-         * `}),` inside a callback — a naive "});" scan overruns it). */
-        function cmdTuiCalls(): string[] {
-                const calls: string[] = [];
-                const marker = "cmdTui(args.prompt, args.verbose, {";
-                let at = src.indexOf(marker);
-                while (at !== -1) {
-                        const open = src.indexOf("{", at + marker.length - 1);
-                        let depth = 0;
-                        let i = open;
-                        for (; i < src.length; i++) {
-                                if (src[i] === "{") depth++;
-                                else if (src[i] === "}") {
-                                        depth--;
-                                        if (depth === 0) break;
-                                }
-                        }
-                        calls.push(src.slice(at, i + 1));
-                        at = src.indexOf(marker, i);
-                }
-                return calls;
-        }
+	/** Every `cmdTui(args.prompt, args.verbose, { … })` call block in cli.ts,
+	 * extracted by BALANCED-BRACE matching (the worktree lane's call ends in
+	 * `}),` inside a callback — a naive "});" scan overruns it). */
+	function cmdTuiCalls(): string[] {
+		const calls: string[] = [];
+		const marker = "cmdTui(args.prompt, args.verbose, {";
+		let at = src.indexOf(marker);
+		while (at !== -1) {
+			const open = src.indexOf("{", at + marker.length - 1);
+			let depth = 0;
+			let i = open;
+			for (; i < src.length; i++) {
+				if (src[i] === "{") depth++;
+				else if (src[i] === "}") {
+					depth--;
+					if (depth === 0) break;
+				}
+			}
+			calls.push(src.slice(at, i + 1));
+			at = src.indexOf(marker, i);
+		}
+		return calls;
+	}
 
-        test("the main boot lane carries planModel and maxTurns (the dropped-field regression)", () => {
-                const calls = cmdTuiCalls();
-                expect(calls.length).toBeGreaterThanOrEqual(2); // the worktree lane + the main lane
-                const main = calls[calls.length - 1]; // the main lane follows the worktree branch
-                expect(main).toContain("planModel: args.planModel");
-                expect(main).toContain("maxTurns: args.maxTurns");
-        });
+	test("the main boot lane carries planModel and maxTurns (the dropped-field regression)", () => {
+		const calls = cmdTuiCalls();
+		expect(calls.length).toBeGreaterThanOrEqual(2); // the worktree lane + the main lane
+		const main = calls[calls.length - 1]; // the main lane follows the worktree branch
+		expect(main).toContain("planModel: args.planModel");
+		expect(main).toContain("maxTurns: args.maxTurns");
+	});
 
-        test("every cmdTui call site delivers both plan-mode flags — the boots cannot drift", () => {
-                for (const call of cmdTuiCalls()) {
-                        expect(call).toContain("planModel: args.planModel");
-                        expect(call).toContain("maxTurns: args.maxTurns");
-                }
-        });
+	test("every cmdTui call site delivers both plan-mode flags — the boots cannot drift", () => {
+		for (const call of cmdTuiCalls()) {
+			expect(call).toContain("planModel: args.planModel");
+			expect(call).toContain("maxTurns: args.maxTurns");
+		}
+	});
 });

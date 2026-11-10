@@ -256,7 +256,11 @@ pattern-less ask rules for `edit`/`write`** through the gate's
 session:
 
 - The seeded rules are `source: "session"` — they die with the session and
-  are never written to disk (the config files stay untouched).
+  are never written to disk (the config files stay untouched). One
+  user-driven exception: choosing **"Always allow (this session)"** on a
+  per-edit prompt persists a learned allow rule for that exact path when
+  `UNOWN_PERMISSIONS_LEARN=1` is on (the pre-existing learn behavior, off
+  by default — your confirmation is the write).
 - A **more specific** `allow` rule in your config still wins on its own
   subject (an exact-path allow the user wrote themselves carves out its
   paths); a config `deny` still beats everything — the safety floor holds.
@@ -264,6 +268,14 @@ session:
   like config-file ask rules (the mode adjustment is uniform).
 - Repeat approvals dedupe — a re-approved plan never stacks rules.
 - The auto-accept option ("Execute — auto-accept edits") seeds nothing.
+- The posture is one-way for the session (there is no un-seed): switching
+  to `acceptEdits` afterwards auto-approves in-project edits, but
+  out-of-project edit/write paths keep asking — exactly the documented
+  behavior for config-file ask rules under `acceptEdits`.
+- The posture **survives a resume**: the plan-mode session entry carries
+  the approval mode, and a resumed mid-execution session re-seeds (a crash
+  after "approve each edit" no longer silently re-opens the zero-dialog
+  defect); a plan that COMPLETED restores no posture.
 
 ## Additional working directories (`--add-dir` / `/add-dir`, 2026-10-24)
 

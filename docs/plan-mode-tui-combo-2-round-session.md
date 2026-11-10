@@ -54,6 +54,10 @@ the working tree is not a checkpoint.
 | L4 | **The MAIN TUI boot lane dropped both plan-mode flag values at the call site.** The worktree lane and the print lane delivered `planModel`/`maxTurns` to `cmdTui`/`cmdPrint`, but the ordinary `unown --plan --plan-model <id> --max-turns <n>` boot passed neither — **measured live (the first lifetime): 0/11 planning turns on the sibling model, no not-found warning either** (the value never reached `getFlag`, which answers the registered default `""`). Round 1's F1 fix made the flag LANE work; the main boot lane still dropped it one call later. | `self-learning/src/cli.ts` (runCli's main cmdTui call) | critical |
 | L5 | **The options phase cannot fit one tool window.** A specialist-spawning V3 planning pass alone ran past 8 minutes under the metered upstream (3 specialists × ~6 turns each, ttft ~8 s); the first lifetime's single-process options phase was unrunnable in a ~10-minute window. The lane splits into three bounded sub-lanes (options-a/b/c), each re-planning on a fresh scratch project. | `scripts/tui-capture/verify_plan_mode_matrix.py` | lane design |
 | L6 | **A 60-col pane keeps none of the old ready anchors.** The hints row is fully dropped at 60 cols (whole-chip degradation) and the startup block scrolls off a 20-row pane — the narrow lane needs an ANY-of anchor set that includes the always-rendered memory footer row. | `pty_common.py` + the narrow lane | low (lane) |
+| R1 | **The `/permissions` status render inverted the seeded rules' meaning** (the post-M4 independent review): one total line said "N always-allow rule(s) confirmed this session" — after "approve each edit" seeds two ASK rules, the only surface that mentioned them asserted the opposite ("2 always-allow rules **confirmed**"). | `self-learning/src/permissions.ts` (renderPermissionsStatus) | low (render) |
+| R2 | **The per-edit posture did not survive a session resume while the execution state did** (same review): `persistPlanState` carried `executing` but not the approval posture — a crash mid-execution then `unown --resume` restored the approved plan's execution with an empty `sessionRules`: the zero-dialog defect, silently re-opened. | `self-learning/src/tools.ts` (persistPlanState / session_start restore) | medium |
+| R3-R6 | **Vacuous/false-pass classes in the new lane** (same review): the budget receipt asserted only `turns >= 1`; p1's `/plan show answers` matched the echoed command itself; `latest_session()` could score a PREVIOUS phase's session after a spawn crash; `--live` ran the options family TWICE (umbrella + sub-lanes — six metered planning passes instead of three). | `scripts/tui-capture/verify_plan_mode_matrix.py` | low (lane) |
+| R7/R8 | Documented non-defects (same review): the seeded posture is one-way within a session (acceptEdits' documented ask-rule semantics; no un-seed); the one disk-write path is the user's own "Always allow (this session)" confirmation under `UNOWN_PERMISSIONS_LEARN=1` (pre-existing learn behavior, off by default). | `docs/permissions.md` | none |
 | (non-findings worth recording) | The 2026-10-31 keyboard round's PageUp fix holds: the first lifetime saw one `PageUp → 1` FAIL at 05:32 that never reproduced (this lifetime: gate phase 17/17 with PageUp green; the nav set is also pinned by the extension-selector's own matrix). The stay-loop latch, the digit quick-select inertness beyond the option count, the 6-round editor cap notice, the V2 kill switch, both narrow geometries, the print-lane envelope and `/plan open`'s no-plan-file answer all verified green. | — | none |
 
 ## Fixes (all shipped this round)
@@ -91,6 +95,27 @@ the working tree is not a checkpoint.
    options-a/b/c, plan-model, budget; the narrow lanes wait on the ANY-of
    anchor set that covers every width (block / hints lead / memory row).
    `UnownPty` logs its geometry, and `--phases` selects any subset.
+6. **R1 (the status render)**: `status()` splits `sessionAskCount` /
+   `sessionAllowCount` and the render names each — "N ask rule(s) seeded
+   (per-edit approval active)" vs "N always-allow rule(s) confirmed".
+7. **R2 (the resume posture)**: the plan-mode session entry carries
+   `approvalMode` ("manual"/"auto"), `session_start` restores it, and a
+   resumed mid-execution manual session RE-SEEDS the per-edit ask rules
+   (the entry is cleared at plan completion and at a fresh entry into plan
+   mode). **Live-verified through the new
+   `scripts/tui-capture/verify_approve_each_edit_resume.py` lane**: kill
+   mid-execution right after answering one per-edit dialog, resume with
+   `-c` → `/permissions` renders "ask rule(s) seeded (per-edit approval
+   active)" AND a direct trivial edit in the resumed session prompts
+   again (ALL GREEN; the r1/r2 stills).
+8. **R3-R6 (the lane honesty)**: the budget receipt now splits
+   planning/executing turns at the approval marker and asserts the sanity
+   band (1..20 planning turns — a soft pressure cannot be pinned to the
+   cap, and the name says so); p1's `/plan show` asserts the concrete
+   `No plan yet in this session.` anchor; `latest_session(since=…)` bounds
+   every census read to files written after the phase started; the default
+   live selection no longer runs the options umbrella AND its sub-lanes
+   (an explicit `--phases options` still honors the umbrella).
 
 ## Tests
 
@@ -111,6 +136,11 @@ the working tree is not a checkpoint.
   diag 1/1 · v2 7/7 · narrow 6/6 · gate 17/17 · options-a 5/5 · options-b
   3/3 · options-c 5/5 · plan-model 6/6 · budget 6/6 — 66 steps ALL GREEN**
   (stills + pane dumps under `download/unown-addon-captures/stills/`).
+- The review-hardening pins (post-M4, `test/plan-mode-combo2.test.ts` now
+  16): the manual posture rides the session entry and a resumed execution
+  re-seeds (with the auto posture resuming WITHOUT phantom prompts), and
+  the `/permissions` render names ask rules as seeded while the classic
+  always-allow lane is untouched.
 
 ## Checkpoints
 
@@ -146,6 +176,12 @@ the working tree is not a checkpoint.
   flaky CI lanes (landing e2e/unit, Chaconne, Live production check —
   failing across rounds, untouched by this round) would hold the release
   workflow's ci-green gate; same honest hand-off as the v0.0.58 bump.
+- **CP5 (the independent review + hardening)**: a fresh-eyes review of the
+  pushed engine diff (8 findings, R1-R8 above) → R1/R2 fixed in the engine
+  with 4 new pins, R3-R6 fixed in the lane, R7/R8 documented; the new
+  resume lane live-verified ALL GREEN; full suite re-run **5501/0/105**;
+  typecheck delta vs baseline = 0 (776 = 776, line-shifted only); biome
+  clean on the changed files.
 
 ## Hand-off notes
 

@@ -1875,6 +1875,13 @@ export function createUnownToolsExtension(opts: UnownToolsOptions) {
 
                 let planModeEnabled = false;
                 let executionMode = false;
+                // The approval posture that armed this execution (the 2026-11-10
+                // round 2's review hardening): "manual" = "Execute — approve each
+                // edit" (the seedSessionAsk rules must survive a resume — the
+                // execution state does, so the posture must too, or the crash
+                // mid-execution silently re-opens the zero-dialog defect);
+                // "auto" = auto-accept. Undefined until an approval arms it.
+                let planApprovalMode: "manual" | "auto" | undefined;
                 let planItems: PlanStep[] = [];
                 let toolsBeforePlanMode: string[] | undefined;
                 // ---- Plan Mode V2 state (the 2026-10-31 planning round,
@@ -2453,6 +2460,11 @@ export function createUnownToolsExtension(opts: UnownToolsOptions) {
                                         // resumed session re-resolves it — this records which
                                         // mode WROTE the plan).
                                         v3: planV3Mode,
+                                        // The 2026-11-10 round 2's review hardening: the
+                                        // approval posture rides the entry so a resume can
+                                        // re-seed the per-edit ask rules (the zero-dialog
+                                        // defect must not survive a crash mid-execution).
+                                        approvalMode: planApprovalMode,
                                 });
                         } catch {
                                 /* persistence is best-effort */
@@ -2530,6 +2542,7 @@ export function createUnownToolsExtension(opts: UnownToolsOptions) {
                         planningTurns = 0;
                         planNudges = 0;
                         executionMode = false;
+                        planApprovalMode = undefined;
                         if (seed?.trim()) planSeed = seed.trim();
                         enablePlanTools();
                         await applyPlanModel(ctx, true);
@@ -2683,6 +2696,7 @@ export function createUnownToolsExtension(opts: UnownToolsOptions) {
                 const approvePlanExecution = async (ctx: any, doc: PlanDoc, mode: "acceptEdits" | "default"): Promise<void> => {
                         planModeEnabled = false;
                         executionMode = true;
+                        planApprovalMode = mode === "default" ? "manual" : "auto";
                         planItems = doc.steps.map((s) => ({ ...s }));
                         restoreNormalTools();
                         // The todo unification round: approval lifts the planning suspension
@@ -6847,6 +6861,7 @@ Execute the steps in order. The seeded todo tasks ARE these steps — complete e
                                 if (planItems.every((t) => t.completed)) {
                                         const completedDoc = planDoc;
                                         executionMode = false;
+                                        planApprovalMode = undefined;
                                         planItems = [];
                                         clearPlanFile();
                                         updateStatus(ctx);
@@ -7098,6 +7113,7 @@ Execute the steps in order. The seeded todo tasks ARE these steps — complete e
                                                                 planFile?: string | null;
                                                                 planModelId?: string | null;
                                                                 sessionModelBeforePlan?: string | null;
+                                                                approvalMode?: "manual" | "auto" | null;
                                                         };
                                           }
                                         | undefined;
@@ -7110,6 +7126,21 @@ Execute the steps in order. The seeded todo tasks ARE these steps — complete e
                                         planFileAbs = planEntry.data.planFile ?? planFileAbs;
                                         planModelId = planEntry.data.planModelId ?? planModelId;
                                         sessionModelBeforePlan = planEntry.data.sessionModelBeforePlan ?? sessionModelBeforePlan;
+                                        planApprovalMode = planEntry.data.approvalMode ?? undefined;
+                                        // The 2026-11-10 round 2's review hardening: a resumed
+                                        // execution keeps its approval posture — a crash
+                                        // mid-execution must not silently re-open the
+                                        // zero-dialog defect the round measured and fixed.
+                                        // The gate dedupes, and the seam is optional
+                                        // (headless restores are read-only anyway).
+                                        if (executionMode && planApprovalMode === "manual") {
+                                                try {
+                                                        opts.seedSessionAsk?.(["edit", "write"]);
+                                                        log("resumed manual-approval execution — per-edit ask rules re-seeded");
+                                                } catch {
+                                                        /* optional seam — never block the resume */
+                                                }
+                                        }
                                 }
                                 // Gap P-10 (crash-tail recovery): re-scan [DONE:n] from the
                                 // assistant messages after the last plan-execute marker — a

@@ -30,14 +30,14 @@ export interface ChangelogStop {
   groups: ChangelogGroup[];
 }
 
-export const CHANGELOG_TOTAL_ENTRIES = 554;
+export const CHANGELOG_TOTAL_ENTRIES = 555;
 
 export const CHANGELOG_TOTALS: Record<ChangelogBucket, number> = {
   "Added": 261,
   "Changed": 32,
   "Deprecated": 0,
   "Removed": 3,
-  "Fixed": 205,
+  "Fixed": 206,
   "Security": 5,
   "Behavior": 48
 };
@@ -46,13 +46,13 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
   {
     "label": "Unreleased",
     "date": null,
-    "total": 45,
+    "total": 46,
     "counts": {
       "Added": 30,
       "Changed": 0,
       "Deprecated": 0,
       "Removed": 0,
-      "Fixed": 12,
+      "Fixed": 13,
       "Security": 0,
       "Behavior": 3
     },
@@ -202,6 +202,10 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
       {
         "bucket": "Fixed",
         "items": [
+          {
+            "title": "The review hardening: the approve-each-edit posture survives a session resume…",
+            "behavior": false
+          },
           {
             "title": "\"Execute — approve each edit\" never approved each edit — the manual option's promise was silent vapor (the…",
             "behavior": false

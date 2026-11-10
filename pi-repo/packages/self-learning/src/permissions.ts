@@ -708,6 +708,11 @@ export interface PermissionsStatus {
         user: PermissionScopeStatus;
         rules: SourcedRule[];
         sessionRuleCount: number;
+        /** The session rules split by effect (the 2026-11-10 round 2: the
+         *  approve-each-edit lane seeds ASK rules — a single count rendered
+         *  as "always-allow rules confirmed" inverted their meaning). */
+        sessionAskCount: number;
+        sessionAllowCount: number;
         warnings: string[];
 }
 
@@ -914,6 +919,8 @@ export function createPermissionGate(opts: PermissionGateOptions): PermissionGat
                                 user: loaded.user,
                                 rules: loaded.rules,
                                 sessionRuleCount: sessionRules.length,
+                                sessionAskCount: sessionRules.filter((r) => r.effect === "ask").length,
+                                sessionAllowCount: sessionRules.filter((r) => r.effect === "allow").length,
                                 warnings: loaded.warnings,
                         };
                 },
@@ -985,7 +992,17 @@ export function renderPermissionsStatus(status: PermissionsStatus): string {
         lines.push(describeScope(status.project, "project"));
         lines.push(describeScope(status.user, "user   "));
         lines.push(`  learn: ${status.learn ? "ON (UNOWN_PERMISSIONS_LEARN=1 — passed bash commands append allow rules to the user config)" : "off (set UNOWN_PERMISSIONS_LEARN=1 to enable)"}`);
-        if (status.sessionRuleCount > 0) lines.push(`  session: ${status.sessionRuleCount} always-allow rule(s) confirmed this session`);
+        if (status.sessionRuleCount > 0) {
+                // Render by effect: seeded ask rules (the approve-each-edit lane)
+                // and confirmed allow rules ("Always allow (this session)") are
+                // different facts — one total line inverted both before.
+                const parts: string[] = [];
+                if (status.sessionAskCount > 0)
+                        parts.push(`${status.sessionAskCount} ask rule(s) seeded (per-edit approval active)`);
+                if (status.sessionAllowCount > 0)
+                        parts.push(`${status.sessionAllowCount} always-allow rule(s) confirmed`);
+                lines.push(`  session: ${parts.join(" · ")}`);
+        }
         if (status.rules.length === 0) {
                 lines.push("  rules: (none — the hard-coded guardrails alone are active)");
         } else {
