@@ -8,40 +8,29 @@ archaeology. When a round completes, its log graduates to a round-specific
 
 ---
 
-## ACTIVE ROUND — the Serenade round (2026-11-07, OPENED by the thirty-second lineage)
+## ACTIVE ROUND — the end-user combination round (2026-11-10, OPENED)
 
-A FRESH A1 directive (**DRIVE A2 × AUGMENT A2 × PROVE IT**):
-`docs/serenade-round-session.md` — the **Serenade round**, vehicle
-**Legato** (the offline-first read-later / web-clip PWA at
-`apps/legato/` — the Vivace round's §0.9.5 pre-registered fallback,
-selected at E×G×V 8 per [the §0.9 receipt](../benchmarks/serenade-round/README.md);
-the L-0 architecture plan scored 100/100, 13 tickets L-1..L-13, 22
-edge rows, ports 4017/4018, the B-16 holdout freeze law). Baseline
-frozen at `6e3579bb`: typecheck 0 · unit 2654/0/208 · canaries
-C1/C2 PASS + C3 the known V-3 class. **The L-queue through L-3
-CLOSED** (L-1 the scaffold 54 turns · L-2 the storage core 57 · L-3
-the clip pipeline + the B-16 holdout FREEZE, 135 session turns — the
-dual-dispatch events V-42-class receipted in the round log: first
-landing governs, the stood-down variants preserved as evidence);
-**L-4 (the search core) CLAIMED ACTIVE**. **The AUGMENT lane's
-session**: **H-24 (the live-traffic fixture refresh) PROMOTED** — the
-engagement's fifth promotion, the full lifecycle in one sitting: the
-record mode + the refreshed-fixture lane + the paired A/B gate
-MEASURED (the false-confidence delta: stale lane GREEN wire-blind vs
-refreshed lane RED at the pin on the same deliberate wire change) +
-THREE dormant fiction pins caught live (the spend panel was silently
-dead against the real engine) — [the receipt](../benchmarks/serenade-round/receipts/h24.md);
-**H-21 (the truncation-aware continuation) at CANARY** (the V-40
-split-write law now auto-injects on the k≥2 tail signature; the
-deterministic A/B 8/8; promotion awaits a genuine capped-chunk fire).
-The round log: `docs/serenade-round-session.md`; the receipts:
-`benchmarks/serenade-round/receipts/`. **Next: L-4 close → L-5 (the
-UI shell, the every-5-tickets teardown cycle due at its close) → … →
-L-13 → the round-close Phase 2/3 (the absorbed Sonata teardown
-duties: GT refresh, matrix refresh, competition cycle, registry
-gates, validation-report refresh, evidence packet).**
+`docs/end-user-combo-round-session.md` — the **end-user combination
+round**, the fourth in the 2026-11-09/10 combination series (plan-mode
+TUI ×2, memory-engine, now the whole user surface): drive every
+combination of entry lane × management command × service × platform
+artifact live, as a real user against the real Agnes upstream, and fix
+whatever is below the late-2026 floor
+(`docs/end-user-standards-2026-11.md` — the round's grounding research).
+Baseline: v0.0.60 @ f8302387, fresh clone, install 7/7 green, doctor
+green, print-mode smoke green (4.1 s round trip). Open flags: **F0**
+(main's CI is red — runs #1102–#1107, the e2e lanes; reproduce locally
+and fix), **F1** (engine DOWN on the `bun install`-only path — the
+quickstart lane), plus the 7 open self-filed issues re-verified against
+current main (#29 #30 #43 #44 #45 #46 #48). Push per milestone; version
+bump at M4.
 
----
+## GRADUATED — the Serenade round (2026-11-07 → closed by lineage 32+)
+
+The Serenade round's ACTIVE section moved to
+`docs/serenade-round-session.md` (L-1..L-3 closed, L-4 active at the last
+recorded checkpoint; the later combination rounds carried main forward —
+resume from the round log's own latest checkpoint, not this index).
 
 ## PARKED ROUND — the Scherzo round (2026-11-07, OPENED by the twenty-sixth lineage; PARKED at S-5 by the round's supersession)
 
