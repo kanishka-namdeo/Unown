@@ -287,10 +287,16 @@ KEYS = {
     "CtrlC": b"\x03",
 }
 
-# The LAST section of the TUI's startup resource block (── Themes ──) — the
-# v0.0.8-era "unown v" first line was retired when the startup banner became
-# the loaded-resources block, so that anchor hangs every fresh boot on the
-# current build (same fix as driver.js waitReady).
+# The TUI's readiness anchors (2026-11-10, the combination round 2's L1 fix):
+# the startup resource block's LAST section (── Themes ──) used to be the only
+# default — but on a 36-row pane the plan entry notice + the first-flights
+# catalog can push that line off-screen while the TUI is fully live (the
+# v0.0.8-era "unown v" first line had the same hang problem when the banner
+# changed shape). The default is now an ANY-of set: the Themes section OR the
+# always-rendered status footer's stable token (the resume lane's established
+# contract — the footer only draws once the interactive loop is live).
+READY_ANCHORS = ["── Themes ──", "esc-esc tree"]
+# Kept for callers that want the block itself (same fix as driver.js waitReady).
 READY_ANCHOR = "── Themes ──"
 
 # The first-flights catalog (flights-core.ts) — a FOCUSED component riding
@@ -373,16 +379,21 @@ class StillRecord:
 class UnownPty:
     """One `unown` TUI process inside a pty, parsed live by pyte."""
 
-    def __init__(self, log, cwd=UNOWN_ROOT, extra_args=None, env_extra=None):
+    def __init__(self, log, cwd=UNOWN_ROOT, extra_args=None, env_extra=None, rows=None, cols=None):
+        """Spawn the TUI. ``rows``/``cols`` override the module geometry
+        (the combination round 2's narrow-terminal lanes: 80x24 and 60x20)
+        — everything downstream (pyte screen, render) follows the override."""
         import pexpect
 
         self.log = log
         self.cwd = cwd
         self.extra_args = list(extra_args or [])
+        self.rows = int(rows or ROWS)
+        self.cols = int(cols or COLS)
         env = dict(os.environ)
         env["TERM"] = "xterm-256color"
-        env["LINES"] = str(ROWS)
-        env["COLUMNS"] = str(COLS)
+        env["LINES"] = str(self.rows)
+        env["COLUMNS"] = str(self.cols)
         # Truthful color: strip CI color-suppression env (same rule as the
         # tmux lane's driver.js).
         for k in ("NO_COLOR", "CLICOLOR", "CLICOLOR_FORCE", "COLORTERM"):
@@ -394,17 +405,17 @@ class UnownPty:
         env.pop("UNOWN_HOME", None)
         env.update(env_extra or {})
         args = ["bun", UNOWN_BIN] + self.extra_args
-        self.log(f"spawn: {' '.join(args)} (cwd={cwd})")
+        self.log(f"spawn: {' '.join(args)} (cwd={cwd}, {self.cols}x{self.rows})")
         self.child = pexpect.spawn(
             args[0],
             args[1:],
             cwd=cwd,
             env=env,
-            dimensions=(ROWS, COLS),
+            dimensions=(self.rows, self.cols),
             timeout=5,
             encoding=None,
         )
-        self.screen = pyte.Screen(COLS, ROWS)
+        self.screen = pyte.Screen(self.cols, self.rows)
         self.stream = pyte.ByteStream(self.screen)
         self.raw_bytes = 0
         self.dead = False
@@ -543,18 +554,23 @@ class UnownPty:
         what = desc or ("any of " + " | ".join(anchors) if mode == "any" else " | ".join(anchors))
         raise PaneTimeout(f"timeout ({timeout:.0f}s) waiting for {what!r}")
 
-    def wait_ready(self, timeout: float = 90.0, anchors=None):
+    def wait_ready(self, timeout: float = 240.0, anchors=None):
         """Wait until the TUI is interactive.
 
-        Default anchor: the startup resource block's last section (fresh
-        sessions). Pass ``anchors`` for boots where that block is not on the
-        pane — a RESUMED session's chat history pushes the block off the
-        36-row pane, so the resume lane waits on the always-rendered status
-        footer instead (same readiness: the footer only draws once the
-        interactive loop is live).
+        Default anchors (the 2026-11-10 L1+L2 lane fixes): ANY of the startup
+        resource block's last section (── Themes ──) or the always-rendered
+        status footer token — a 36-row pane can scroll the block off-screen
+        (the plan entry notice + the first-flights catalog) while the TUI is
+        fully live, which used to hang the lane. The default timeout is 240 s:
+        a COLD first boot pays bun's transpile-cache cost once (measured
+        past 90 s exactly once, ~1-2 s ever after) — a lane's first spawn in
+        a fresh environment must not die on that. Pass ``anchors`` for boots
+        where neither surface applies (a RESUMED session's chat history
+        pushes the block off the pane — the resume lane waits on its own
+        footer tokens instead; same readiness either way).
         """
         if anchors is None:
-            return self.wait_for([READY_ANCHOR], timeout=timeout, desc="TUI header")
+            return self.wait_for(READY_ANCHORS, mode="any", timeout=timeout, desc="TUI ready")
         if isinstance(anchors, str):
             anchors = [anchors]
         return self.wait_for(list(anchors), timeout=timeout, desc="TUI ready")
