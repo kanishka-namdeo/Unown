@@ -30,14 +30,14 @@ export interface ChangelogStop {
   groups: ChangelogGroup[];
 }
 
-export const CHANGELOG_TOTAL_ENTRIES = 551;
+export const CHANGELOG_TOTAL_ENTRIES = 554;
 
 export const CHANGELOG_TOTALS: Record<ChangelogBucket, number> = {
   "Added": 261,
   "Changed": 32,
   "Deprecated": 0,
   "Removed": 3,
-  "Fixed": 202,
+  "Fixed": 205,
   "Security": 5,
   "Behavior": 48
 };
@@ -46,13 +46,13 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
   {
     "label": "Unreleased",
     "date": null,
-    "total": 42,
+    "total": 45,
     "counts": {
       "Added": 30,
       "Changed": 0,
       "Deprecated": 0,
       "Removed": 0,
-      "Fixed": 9,
+      "Fixed": 12,
       "Security": 0,
       "Behavior": 3
     },
@@ -202,6 +202,18 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
       {
         "bucket": "Fixed",
         "items": [
+          {
+            "title": "\"Execute — approve each edit\" never approved each edit — the manual option's promise was silent vapor (the…",
+            "behavior": false
+          },
+          {
+            "title": "The MAIN TUI boot lane silently dropped --plan-model and --max-turns at the call site (same round)",
+            "behavior": false
+          },
+          {
+            "title": "The combination matrix lane expanded to the cells round 1 never drove — and grew the PTY harness contracts it…",
+            "behavior": false
+          },
           {
             "title": "--plan-model was a silent no-op — the opusplan lane never switched models (the plan-mode × TUI combination…",
             "behavior": false

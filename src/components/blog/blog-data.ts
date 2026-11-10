@@ -31,11 +31,30 @@ export interface BlogPost {
   html: string;
 }
 
-export const BLOG_TOTAL_POSTS = 47;
+export const BLOG_TOTAL_POSTS = 48;
 
 export const BLOG_TAGS: string[] = ["agent-driven","benchmark","benchmarks","beta","browser","cli","critique","demo","dependencies","design","engine","gallery","governance","hardening","keyboard","landing","learning","local-first","media","memory","meta","observability","planning","plm","providers","pwa","release","security","sessions","settings","stress","subagents","testing","tui","ux","verification","website-excellence"];
 
 export const BLOG_POSTS: BlogPost[] = [
+  {
+    "slug": "2026-11-10-the-plan-mode-combo-round-2",
+    "title": "\"The combination round 2: the approval option that never asked\"",
+    "description": "\"The second pass over every plan-mode × TUI combination found an approval option whose promise was silent vapor — and a boot lane still dropping its flags.\"",
+    "date": "2026-11-10",
+    "lastmod": "2026-11-10",
+    "tags": [
+      "planning",
+      "tui",
+      "release"
+    ],
+    "type": "feature",
+    "readingMinutes": 3,
+    "media": [
+      "/landing/tui/plan-mode/stills/03-plan-approval-overlay.png",
+      "/landing/tui/plan-mode/stills/04-plan-executing.png"
+    ],
+    "html": "<p>The first combination round tested every plan-mode lane it could reach and\nfixed what it found — a dead flagship flag, a gate that wouldn&#39;t stay\nclosed, five more. This round&#39;s directive was the same sentence again:\n<strong>test all possible combinations of plan mode functionality and TUI\nexperience, fix whatever is not up to the latest standards.</strong> The second\npass went after the cells the first round never drove: the approval\noptions 2/3/4 individually, digit quick-select, Ctrl+C cancel, the V2 kill\nswitch in a real terminal, the live model split, the turn budget, narrow\nterminals down to 60 columns.</p>\n<p>What it found is a lesson in how a <em>label</em> can outlive its <em>behavior</em>.</p>\n<h2>The option that never asked</h2>\n<p>The approval gate offers four options. One of them makes a promise:\n<strong>&quot;Execute — approve each edit.&quot;</strong> You pick it, the plan runs, and every\nfile change comes back to you for a yes.</p>\n<p>Except it didn&#39;t. The option maps to permission mode <code>default</code> — and\n<code>default</code> alone only triggers <code>ask</code> RULES. A default-config session has\nnone. The measurement is unambiguous: <strong>a zero-dialog census while an\napproved plan executed freely.</strong> Two file mutations. Zero prompts. The\noption&#39;s label promised per-edit approval and the session never asked\nonce.</p>\n<p>The fix gives the manual lane its teeth: approving with &quot;approve each\nedit&quot; now <strong>seeds session-scoped ask rules for <code>edit</code> and <code>write</code></strong> —\nevery file mutation prompts for the rest of the session. The rules die\nwith the session (nothing is written to disk), a more-specific <code>allow</code>\nrule in your own config still carves out its paths, and a <code>deny</code> still\nbeats everything, exactly as before. Pick &quot;auto-accept edits&quot; and nothing\nis seeded — that option keeps meaning what it says too.</p>\n<p><img src=\"/landing/tui/plan-mode/stills/03-plan-approval-overlay.png\" alt=\"The approval gate\"></p>\n<h2>The boot lane that still dropped the flag</h2>\n<p>Round 1 fixed <code>--plan-model</code> — the flag was dead on arrival because pi\nonly answers registered flags — and verified the fix live: the plan model\nswitched. But the verification rode the worktree and print lanes, and the\nround never asked the simplest question: what does the <strong>ordinary</strong> boot\ndo?</p>\n<p><code>unown --plan --plan-model agnes-2.5-flash</code> — the main TUI lane —\nsilently dropped both flag values at the <code>cmdTui</code> call site. Measured\nlive: 0 of 11 planning turns on the sibling model, and no warning either,\nbecause the value never reached the flag registry at all. The flag lane\nworked; the default road into it didn&#39;t.</p>\n<p>The main lane&#39;s call now carries the same fields as the worktree lane,\nand a source-contract test pins every <code>cmdTui</code> call site in the file so\nthe three boots can never drift again. Live receipt: the footer rides the\nsibling, 5 of 11 assistant turns on the sibling during planning, and the\nsession model returns for execution.</p>\n<h2>The matrix that grew</h2>\n<p>The combination lane itself — <code>verify_plan_mode_matrix.py</code> — grew from 3\nphases to 9: the unknown-flag guard, the V2 kill-switch matrix with its\nown wordings, terminals at 80x24 and 60x20, the full approval-options\nstate machine (digit quick-select with digit-5 inertness beyond the\noption count, the in-TUI editor&#39;s six-round cap notice, Ctrl+C cancel\nhonoring the binding-stay contract, feedback → revise → re-offer), the\nlive model split counted turn-by-turn in the transcript, and the turn\nbudget. Sixty-six steps, all green, every one through the real TUI in a\nreal PTY against the live model.</p>\n<p><img src=\"/landing/tui/plan-mode/stills/04-plan-executing.png\" alt=\"Execution\"></p>\n<p>The round also has an honest scar worth recording: the first drive of\nthis matrix found and fixed both defects, verified everything green — and\nthen lost the working tree to a recycled sandbox before the push. The\nround you are reading about is the <em>recovery</em>: re-clone, byte-exact\nre-application of the fixes, twelve new unit pins, the matrix lane rebuilt\nfrom its receipts, and the whole thing re-verified live. A fix is not done\nuntil it is pushed. That is now written down where the next round will\nread it.</p>\n<p>Full suite: 5497 tests, 0 failures. Receipts, as always, in\n<a href=\"https://github.com/kanishka-namdeo/Unown/blob/main/docs/plan-mode-tui-combo-2-round-session.md\">the round log</a>,\nwith the grounding research in\n<a href=\"https://github.com/kanishka-namdeo/Unown/blob/main/docs/plan-mode-standards-2026-11.md\">the standards brief</a>.</p>\n"
+  },
   {
     "slug": "2026-11-09-the-plan-mode-combo-round",
     "title": "\"The combination round: the flag that never worked, and the gate that wouldn't stay closed\"",

@@ -245,6 +245,26 @@ every competitor ships this; the 2026-10-24 research round closed it).
   (project-relative). Additional working directories (below) still ask once
   — use "Always allow (this session)" there.
 
+### Session-scoped ask seeding (2026-11-10, the approve-each-edit promise)
+
+The plan-approval option **"Execute — approve each edit"** (see
+[usage.md](usage.md#plan-mode)) maps to mode `default` —
+but `default` alone only triggers `ask` RULES, and a default-config session
+has none. The approval lane therefore also seeds **session-scoped,
+pattern-less ask rules for `edit`/`write`** through the gate's
+`seedSessionAsk` seam, so every file mutation prompts for the rest of the
+session:
+
+- The seeded rules are `source: "session"` — they die with the session and
+  are never written to disk (the config files stay untouched).
+- A **more specific** `allow` rule in your config still wins on its own
+  subject (an exact-path allow the user wrote themselves carves out its
+  paths); a config `deny` still beats everything — the safety floor holds.
+- `acceptEdits` auto-approves the seeded asks for in-project paths exactly
+  like config-file ask rules (the mode adjustment is uniform).
+- Repeat approvals dedupe — a re-approved plan never stacks rules.
+- The auto-accept option ("Execute — auto-accept edits") seeds nothing.
+
 ## Additional working directories (`--add-dir` / `/add-dir`, 2026-10-24)
 
 The write jail is the project dir + the system temp dir by default. For

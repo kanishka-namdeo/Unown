@@ -7,6 +7,16 @@
     <description>How each feature and release works, what it does, and the receipts behind it — the longhand record of the self-improving terminal coding agent Unown.</description>
     <language>en</language>
     <item>
+      <title>&quot;The combination round 2: the approval option that never asked&quot;</title>
+      <link>https://unown-nine.vercel.app/blog/2026-11-10-the-plan-mode-combo-round-2</link>
+      <guid isPermaLink="true">https://unown-nine.vercel.app/blog/2026-11-10-the-plan-mode-combo-round-2</guid>
+      <pubDate>Tue, 10 Nov 2026 00:00:00 GMT</pubDate>
+      <description>&quot;The second pass over every plan-mode × TUI combination found an approval option whose promise was silent vapor — and a boot lane still dropping its flags.&quot;</description>
+      <category>planning</category>
+      <category>tui</category>
+      <category>release</category>
+    </item>
+    <item>
       <title>&quot;The combination round: the flag that never worked, and the gate that wouldn&apos;t stay closed&quot;</title>
       <link>https://unown-nine.vercel.app/blog/2026-11-09-the-plan-mode-combo-round</link>
       <guid isPermaLink="true">https://unown-nine.vercel.app/blog/2026-11-09-the-plan-mode-combo-round</guid>

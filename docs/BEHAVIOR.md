@@ -124,6 +124,13 @@ The combination round's behavior contracts (session log: [plan-mode-tui-combo-ro
 - **Extension flags are live contracts**: `--plan-model` and `--max-turns` are registered extension flags (pi's loader answers `getFlag()` only for registered flags — an unregistered flag is dead-on-arrival AND leaves an "Unknown option" error diagnostic in the runtime, which the unown boot lanes now surface: stderr in print mode, startup notices in the TUI). `UNOWN_PLAN_TURN_BUDGET=0` disables the planning pressure entirely (an unset variable keeps the default 15); the budget reads `--max-turns` at call time so planning stays ≤ 60% of the run cap.
 - **Non-interactive `unown setup` registers the discovered catalog**: the flag lane probes the endpoint once and writes models.json with the chosen model plus every served sibling (chosen first, best-effort specs for extras), so `/model`, `--model`, subagent `fallbackModels` and `--plan-model` resolve without a hand edit — the bridge preset's contract since M4, now both lanes.
 
+## Plan-mode approval semantics + boot-lane delivery (2026-11-10)
+
+The combination round 2's behavior contracts (session log: [plan-mode-tui-combo-2-round-session.md](plan-mode-tui-combo-2-round-session.md)); pinned by `test/plan-mode-combo2.test.ts` and live-verified through the expanded PTY matrix:
+
+- **"Execute — approve each edit" REALLY approves each edit.** The manual approval option maps to permission mode `default` AND seeds session-scoped ask rules for `edit`/`write` through the gate's `seedSessionAsk` seam — mode `default` alone only triggers ask RULES, and a default-config session has none (the round measured a zero-dialog census while an approved plan executed freely). The seeded rules are pattern-less, session-scoped and never written to disk; a more-specific config `allow` still carves out its own subject (the user's own rules stand), a config `deny` still beats everything (the safety floor), and `acceptEdits` auto-approves the seeded asks for in-project paths exactly like config-file ask rules. The auto-accept option seeds nothing.
+- **The three TUI boot lanes deliver the plan-mode flags together.** The main `unown --plan --plan-model <id> --max-turns <n>` boot, the `--worktree` lane and the print lane all pass `planModel`/`maxTurns` to their boot calls — pinned as a source contract (every `cmdTui(args.prompt, …)` call site carries both fields), because the main boot lane silently dropped them at the call site while the sibling lanes worked (measured: 0/11 planning turns on the sibling, no warning either).
+
 ## Model-spec verification (2026-10-30)
 
 A model's context window and max output tokens drive auto-compaction and the
