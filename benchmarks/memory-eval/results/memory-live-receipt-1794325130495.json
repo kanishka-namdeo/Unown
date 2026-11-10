@@ -1,0 +1,144 @@
+{
+  "suite": "memory-live",
+  "startedAt": "2026-11-10T15:37:57.177Z",
+  "env": {
+    "enginePort": 3035,
+    "proxyPort": 3036,
+    "bridge": "http://127.0.0.1:3031",
+    "model": "agnes-3.0-flash"
+  },
+  "tests": [
+    {
+      "name": "boot+seed",
+      "ok": true,
+      "evidence": {
+        "tiers": [
+          [
+            "policy",
+            1
+          ],
+          [
+            "project",
+            1
+          ],
+          [
+            "user",
+            1
+          ],
+          [
+            "local",
+            1
+          ]
+        ],
+        "resolvedChars": 2339
+      },
+      "ts": "2026-11-10T15:37:57.874Z"
+    },
+    {
+      "name": "write/history/rollback",
+      "ok": true,
+      "evidence": {
+        "writeVersion": 2,
+        "rollbackVersion": 3,
+        "provenanceSample": "<!-- provenance: v1 · seed · 2026-11-10 -->"
+      },
+      "ts": "2026-11-10T15:37:57.877Z"
+    },
+    {
+      "name": "self-heal",
+      "ok": true,
+      "evidence": {
+        "marker": "self-heal-4da67199",
+        "version": 2
+      },
+      "ts": "2026-11-10T15:37:57.878Z"
+    },
+    {
+      "name": "real-run-injection",
+      "ok": true,
+      "evidence": {
+        "runId": "216f73ba-6d76-42c5-908c-0dd412ef2e89",
+        "runStatus": "passed",
+        "tokensIn": 6608,
+        "tokensOut": 462,
+        "markerPresentInRequests": 5,
+        "capturedRequests": 5,
+        "sessionStartReason": "session started (memory v1)"
+      },
+      "ts": "2026-11-10T15:38:20.435Z"
+    },
+    {
+      "name": "dream+canary+SSE",
+      "ok": true,
+      "evidence": {
+        "dreamId": "130c2a01-5ffe-43f6-9e7e-0aa7acfa0d5e",
+        "dreamStatus": "done",
+        "dreamNote": "project memory -> v2 · canaries: fix-fizzbuzz: passed (runners: bun) · guard: clean (1 unprovenanced new line(s))",
+        "notesIn": 3,
+        "projectVersion": 2,
+        "dreamedMemoryChars": 378,
+        "sseEvents": [
+          "memory:changed",
+          "memory:changed",
+          "memory:changed",
+          "memory:changed",
+          "dream:started",
+          "memory:changed",
+          "dream:finished",
+          "dream:finished"
+        ]
+      },
+      "ts": "2026-11-10T15:38:50.493Z"
+    },
+    {
+      "name": "size-hygiene",
+      "ok": true,
+      "evidence": {
+        "totalChars": 2343,
+        "tiers": [
+          [
+            "policy",
+            639
+          ],
+          [
+            "project",
+            378
+          ],
+          [
+            "user",
+            134
+          ],
+          [
+            "local",
+            40
+          ]
+        ]
+      },
+      "ts": "2026-11-10T15:38:50.495Z"
+    }
+  ],
+  "finishedAt": "2026-11-10T15:38:50.495Z",
+  "capturedChatRequests": 15,
+  "sseEventNames": [
+    "hello",
+    "memory:changed",
+    "cycle:started",
+    "process:created",
+    "run:started",
+    "hook",
+    "run:tool",
+    "tool:invocation",
+    "ping",
+    "run:text",
+    "checkpoint:created",
+    "process:transition",
+    "process:finished",
+    "note:created",
+    "run:finished",
+    "cycle:finished",
+    "dream:started",
+    "dream:finished",
+    "mem0:extraction-retry",
+    "mem0:extraction-miss"
+  ]
+}

@@ -1023,20 +1023,33 @@ export async function handleApi(req: ApiRequest): Promise<Response> {
                 if (method === "POST" && path === "/api/dreams/run") {
                         const pending = store.get<any>(`SELECT COUNT(*) AS c FROM notes WHERE dream_id IS NULL`)?.c ?? 0;
                         if (pending < 1) return json({ skipped: "no undreamed notes" });
-                        // The manual trigger mirrors the auto-dream job exactly (router.ts
-                        // `case "auto-dream"`): the ENGINE dream consolidates benchmark
-                        // notes (needs >= 3 — below that threshold runDream() would just
-                        // insert a junk no-notes row), and runProjectDream() consolidates
-                        // pending TERMINAL notes into their own projects' memory. Before
-                        // this mirror, a project note alone reported {started:true} and
-                        // then silently consolidated nothing — the dashboard's "dream now"
-                        // key was a no-op for the most common note kind a real user
-                        // produces (terminal session notes).
+                        // The manual trigger is an EXPLICIT user intent (the dashboard's
+                        // "dream now" key): the ENGINE dream consolidates benchmark
+                        // notes, and runProjectDream() consolidates pending TERMINAL
+                        // notes into their own projects' memory. The lanes themselves
+                        // mirror the auto-dream job (router.ts `case "auto-dream"`),
+                        // with ONE deliberate divergence — the engine lane's >=3
+                        // benchmark-note threshold is the AUTO lanes' cost policy (do
+                        // not wake the extraction LLM for fewer than three notes when
+                        // nobody asked), not a correctness requirement: runDream()
+                        // consolidates any count >= 1 fine (its junk no-notes row only
+                        // exists at exactly zero), and canaryCheck skips itself
+                        // gracefully when no task has ever passed. The 2026-11-10
+                        // memory-engine combination round measured the mirror's cost
+                        // live: with 1-2 benchmark notes and no terminal notes the
+                        // trigger answered {started:true} and the fire-and-forget body
+                        // consolidated NOTHING (benchmark < 3 skipped runDream,
+                        // runProjectDream had no terminal notes) — a silent no-op for
+                        // the dashboard's most visible learning key, the same defect
+                        // class the 26641dec fix closed for terminal notes (a project
+                        // note alone reporting started and consolidating nothing).
+                        // Manual intent runs the engine lane for ANY benchmark notes;
+                        // the zero-note junk row stays guarded against (>= 1).
                         try {
                                 router
                                         .startFireAndForget(async () => {
                                                 const pendingBenchmark = undreamedNotes(50, "benchmark").length;
-                                                if (pendingBenchmark >= 3) await runDream();
+                                                if (pendingBenchmark >= 1) await runDream();
                                                 await runProjectDream();
                                         })
                                         .catch((e) => emit("router:error", { error: e instanceof Error ? e.message : String(e) }));

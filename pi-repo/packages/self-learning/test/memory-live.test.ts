@@ -423,6 +423,30 @@ describe.skipIf(!GATE)("memory live loop (scratch engine + real bridge)", () => 
         test(
                 "concurrent dream triggers are serialized by the busy mutex (409, no false start)",
                 async () => {
+                        // F1 (2026-11-10 round, measured live twice): the probe's
+                        // outcome used to be decided by unrelated router activity,
+                        // not by the mutex under test. Two failure modes, both real:
+                        //   (a) both 409 — a dream-check queued while the previous
+                        //       test's API dream ran drains on the next router tick
+                        //       and holds the mutex when the pair fires;
+                        //   (b) both 200 — the triggered dream was a NO-OP (1
+                        //       benchmark note, the pre-round engine lane skipped
+                        //       runDream below the auto lanes' >=3 policy, no
+                        //       terminal notes) that acquired and released the mutex
+                        //       in ~1ms, faster than the second request arrived.
+                        // The fix is deterministic on both axes: wait for FULL idle
+                        // first (no running dream, no active router job, no queued
+                        // event jobs — in-process router introspection), and let the
+                        // manual trigger's own note be real fuel (the engine lane
+                        // now runs on any benchmark count >= 1 — the manual-intent
+                        // contract pinned in dreams-run-projects.test.ts), so the
+                        // first trigger holds the mutex through a real LLM dream.
+                        await pollUntil("engine fully idle before the concurrency probe", 300_000, async () => {
+                                const dreams = await api("GET", "/api/dreams");
+                                const running = dreams.json.dreams.find((d: any) => d.status === "running");
+                                return !running && routerMod.router.activeJob() === "" && routerMod.router.pendingEventJobs().length === 0;
+                        });
+                        const dreamIdsBefore = new Set((await api("GET", "/api/dreams")).json.dreams.map((d: any) => d.id));
                         notesMod.createNote(randomUUID(), "Benchmark note for the concurrency probe: benign observation about test discipline.", "benchmark");
                         const [a, b] = await Promise.all([
                                 api("POST", "/api/dreams/run", {}),
@@ -435,15 +459,26 @@ describe.skipIf(!GATE)("memory live loop (scratch engine + real bridge)", () => 
                         expect(started.json.started ?? true).toBeTruthy();
                         const busy = [a, b].find((r) => r.status === 409)!;
                         expect(busy.json.error).toContain("busy");
+                        // The winning trigger must have started a REAL dream — a
+                        // NEW dream row with notes_in >= 1 (the note is fuel; a
+                        // skipped or no-op trigger would be a vacuous 200 — the
+                        // pre-round behavior measured live).
+                        let winner: any = null;
+                        await pollUntil("the mutex-winning dream row to appear", 120_000, async () => {
+                                const dreams = await api("GET", "/api/dreams");
+                                winner = dreams.json.dreams.find((d: any) => !dreamIdsBefore.has(d.id));
+                                return Boolean(winner);
+                        });
+                        expect(winner.notes_in).toBeGreaterThanOrEqual(1);
                         // Let the started dream finish so afterAll state is clean.
                         await pollUntil("concurrent dream to finish", 300_000, async () => {
                                 const dreams = await api("GET", "/api/dreams");
                                 const running = dreams.json.dreams.find((d: any) => d.status === "running");
                                 return !running;
                         });
-                        recordTest("busy-mutex-409", { a: a.status, b: b.status }, true);
+                        recordTest("busy-mutex-409", { a: a.status, b: b.status, winnerDreamId: winner.id, winnerNotesIn: winner.notes_in }, true);
                 },
-                330_000,
+                660_000,
         );
 
         test(
