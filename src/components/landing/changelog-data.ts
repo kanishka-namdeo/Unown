@@ -30,10 +30,10 @@ export interface ChangelogStop {
   groups: ChangelogGroup[];
 }
 
-export const CHANGELOG_TOTAL_ENTRIES = 555;
+export const CHANGELOG_TOTAL_ENTRIES = 556;
 
 export const CHANGELOG_TOTALS: Record<ChangelogBucket, number> = {
-  "Added": 261,
+  "Added": 262,
   "Changed": 32,
   "Deprecated": 0,
   "Removed": 3,
@@ -46,9 +46,9 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
   {
     "label": "Unreleased",
     "date": null,
-    "total": 46,
+    "total": 47,
     "counts": {
-      "Added": 30,
+      "Added": 31,
       "Changed": 0,
       "Deprecated": 0,
       "Removed": 0,
@@ -60,6 +60,10 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
       {
         "bucket": "Added",
         "items": [
+          {
+            "title": "The memory-engine combination round — every write lane × consolidation × read lane × tier × lifecycle…",
+            "behavior": false
+          },
           {
             "title": "The Serenade round closes L-12 — the Legato landing: docs + landing band + REAL captures + README + CHANGELOG…",
             "behavior": false

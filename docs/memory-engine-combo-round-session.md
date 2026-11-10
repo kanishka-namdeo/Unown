@@ -84,6 +84,30 @@ setups T1–T5 × lifecycle L1–L6. Full enumeration and the adversarial rows:
 - `UNOWN_MEMORY_POISON=1 UNOWN_MEMORY_LIVE_MODEL=agnes-3.0-flash bun test test/memory-poison.test.ts` — **3/3 GREEN** (PROBE A `dream=done planted=false poisonShipped=false canary=passed`; PROBE B `planted=false poisonShipped=false`).
 - Unit: `bun test test/dreams-run-projects.test.ts test/server-busy.test.ts` — 14/14 (the new F2 pin included); biome clean on the changed files.
 
+## Tests
+
+- Gates: focused memory suites **141/141** post-round (6 files re-run with
+  the new pins: `cross-scope-search` +2, `dreams-run-projects` +1); full
+  self-learning suite **5609 pass / 0 fail / 105 skip** (251 files — the
+  baseline was 5501/0/105; +8 = the round's pins); typecheck **0 errors**
+  (cleaner than the 773-error baseline the 2026-11-10 plan-mode round
+  recorded — that debt has since been cleared upstream); biome clean on
+  every changed file.
+- Live: `UNOWN_MEMORY_LIVE=1 … agnes-3.0-flash` **7/7**;
+  `UNOWN_MEMORY_POISON=1 …` **3/3**; the PTY memory matrix lane
+  **16/16 ALL GREEN** (twice end-to-end); the dashboard Memory screen
+  capture green (pane truth intact).
+- Landing gates: `check:changelog` (56 stops, 556 entries — the rail
+  regenerated), `check:blog` (49 posts — the round's post included, the
+  feed regenerated), `check:docs`, `check:claims` (62 literals resolve),
+  `check:benchmarks` (6 tracks) — all green.
+- `bun bin/unown --version` → **0.0.60** (package.json is the source of
+  truth; the release TAG is deliberately not cut — the same honest
+  hand-off as the v0.0.58/v0.0.59 bumps: the pre-existing flaky CI lanes
+  (landing e2e/unit, Chaconne, the Live production check — failing across
+  rounds, untouched by this round) would hold the release workflow's
+  ci-green gate).
+
 ## Checkpoints
 
 - **CP0 (setup + baseline + grounding research)**: clone at 52a262d8
@@ -129,6 +153,44 @@ setups T1–T5 × lifecycle L1–L6. Full enumeration and the adversarial rows:
   twice end-to-end — **ALL GREEN** (stills + pane dumps under
   `download/unown-mem-matrix/stills/`). Milestone M3 pushed.
 
+- **CP3 (docs + release)**: this session doc closed (findings/fixes/tests
+  receipted); CHANGELOG's Unreleased entry; `docs/memory.md` (the scoped
+  search's slug resolution + dream-now intent + the /learning tail);
+  `docs/BEHAVIOR.md` (the manual-trigger contract rides the dream
+  paragraph); the blog post `content/blog/2026-11-10-the-memory-engine-combo-round.md`;
+  the landing rail + blog data + feed regenerated; all six landing gates
+  green; DOX pass (the self-learning AGENTS.md's tiered-memory + engine-
+  service paragraphs carry the round's contracts); **v0.0.60** in
+  package.json (`bun bin/unown --version` verified) — the tag not cut, the
+  honest hand-off. Milestone M4 pushed.
+
 ## Hand-off notes
 
-(filled at close)
+- The stack engine (:3030, `data/self-learning/`) was left learning
+  autonomously across the round — its own harness cycles, dream-checks and
+  canaries ran throughout (engine project memory reached v9 with passing
+  canaries; the alpha scope v3). Its data dir is gitignored runtime state;
+  a future round wanting a cold engine can `bun run agent:stop` and wipe
+  `data/self-learning/`.
+- The matrix scratch projects live under `/home/z/my-project/matrix/`
+  (alpha + alpha-clone + alpha-worktree, outside the repo) with dreamed
+  memory in the engine's platform — the F3 lane's receipts (0/2 vs 2/2)
+  reproduce there until the engine's data is wiped.
+- The matrix lane's stills + pane dumps live under
+  `download/unown-mem-matrix/stills/` (outside the repo, per the PTY-lane
+  receipt convention); the lane regenerates them anywhere via
+  `MEMORY_PROJECT=<dir> python3 scripts/tui-capture/verify_memory_matrix.py`.
+- The hoist (C5) was NOT driven live this round: it is opt-in
+  (`PI_USER_TIER_HOIST=1`), needs ≥2 projects abstracting the same rule plus
+  an engine restart with the env set, and is pinned by `test/hoist.test.ts`
+  (7 pins). A future round with token budget should drive it live on two
+  matrix projects. Same for C7 (the gated/rolled-back dream): forcing a
+  canary failure honestly requires a poison that PASSES the canary's first
+  re-run — the memory-poison suite covers the adjacent lanes.
+- The upstream stayed metered (~20 RPM class) all round; the bridge's
+  spacing/concurrency guards were never disabled. The dream + canary live
+  lane (agent run + dream + canary re-run ≈ 60 s) fit every one-call
+  window; the PTY phases each fit their own window.
+- A fix is not done until it is PUSHED (the 2026-11-10 round's law, obeyed
+  this round: M1 d0564c8f, M2 09e2e0e6, M3 4bec03cf, M4+ the docs/release
+  commit).
