@@ -741,6 +741,17 @@ export interface PermissionGate {
          *  under UNOWN_STRICT_HOOKS=1 exactly like a config-file declaration.
          *  The config files are NOT written — the override dies with the session. */
         setSessionMode(mode: PermissionMode | null): { applied: boolean; effectiveMode: PermissionMode; note?: string };
+        /** Seed session-scoped ask rules for the named tools (the 2026-11-10
+         *  combination round 2): "Execute — approve each edit" maps to permission
+         *  mode `default`, but `default` alone only triggers ask RULES — a
+         *  default-config session has none, so the promised per-edit approval
+         *  never fired (measured live: a zero-dialog census while the plan
+         *  executed freely). This pushes pattern-less ask rules (source:
+         *  session — never written to disk, they die with the session) so every
+         *  call of those tools prompts; a MORE SPECIFIC config rule (an exact
+         *  path allow the user wrote themselves) still wins on its own subject,
+         *  and a config deny still beats everything — the safety floor holds. */
+        seedSessionAsk(tools: string[]): void;
 }
 
 export function createPermissionGate(opts: PermissionGateOptions): PermissionGate {
@@ -877,6 +888,17 @@ export function createPermissionGate(opts: PermissionGateOptions): PermissionGat
                         sessionMode = mode;
                         log(`session mode override: ${mode}`);
                         return { applied: true, effectiveMode: mode };
+                },
+
+                seedSessionAsk(tools) {
+                        for (const tool of tools) {
+                                // Pattern-less (matches every call of the tool); dedup on the
+                                // exact shape so repeat approvals never stack rules.
+                                const existing = sessionRules.find((r) => r.tool === tool && r.pattern === undefined);
+                                if (existing) continue;
+                                sessionRules.push({ tool, effect: "ask", source: "session" });
+                                log(`session ask: ${tool} (any)`);
+                        }
                 },
 
                 status() {

@@ -1230,6 +1230,12 @@ async function bootRuntime(cwd: string, verbose: boolean, bootOpts: BootOptions 
 		// Claude Code's "Ready to code?" — execute-auto-accept → acceptEdits,
 		// execute-manual → default.
 		setPermissionMode: (mode) => permissionsGate.setSessionMode(mode),
+		// The approve-each-edit promise (2026-11-10): the gate seeds session
+		// ask rules for edit/write so "Execute — approve each edit" prompts per
+		// edit even on a default-config session (mode `default` alone only
+		// triggers ask RULES — there are none by default; measured live: a
+		// zero-dialog census while the plan executed freely).
+		seedSessionAsk: (tools) => permissionsGate.seedSessionAsk(tools),
 		verbose,
 	});
 	// The TUI addons (ask_user_question, todo, advisor + /addons): bundled
@@ -4249,6 +4255,20 @@ export async function runCli(argv: string[]) {
 				tools: args.tools,
 				appendSystemPromptPath: args.appendSystemPromptPath,
 				plan: args.plan,
+				// The 2026-11-10 combination round 2: the MAIN TUI boot
+				// path dropped both plan-mode flag values at the call
+				// site — the worktree lane (above) and the print lane
+				// (cmdPrint) delivered them, so --plan-model and
+				// --max-turns worked there while the ordinary
+				// `unown --plan --plan-model <id>` boot silently ran
+				// the session model (measured live: 0/11 planning
+				// turns on the sibling, no not-found warning either —
+				// the value never reached getFlag, which answers the
+				// registered default "" instead). Same field set as
+				// the worktree lane, so the three TUI boots can never
+				// drift again.
+				planModel: args.planModel,
+				maxTurns: args.maxTurns,
 				noSplit: args.noSplit,
 				goal: args.goal,
 				// Fleet lane: --session <path> continues a specific

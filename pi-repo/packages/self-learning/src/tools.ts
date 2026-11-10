@@ -1554,6 +1554,15 @@ export interface UnownToolsOptions {
                 effectiveMode: string;
                 note?: string;
         };
+        /** The approve-each-edit seam (the 2026-11-10 combination round 2):
+         *  "Execute — approve each edit" switches the mode to `default`, but a
+         *  default-config session has no ask rules — mode alone never prompted,
+         *  so the option's promise was silent vapor (measured live: a
+         *  zero-dialog census while the plan executed freely). The approval
+         *  lane calls this with the file-mutating tools; the gate seeds
+         *  session-scoped ask rules so every edit/write prompts until the
+         *  session ends (never written to disk). */
+        seedSessionAsk?: (tools: string[]) => void;
         verbose?: boolean;
 }
 
@@ -2694,6 +2703,19 @@ export function createUnownToolsExtension(opts: UnownToolsOptions) {
                                 }
                         } catch {
                                 /* the permission seam is optional — never block approval */
+                        }
+                        // The approve-each-edit promise (2026-11-10): the manual lane
+                        // also seeds session ask rules for the file-mutating tools —
+                        // mode `default` alone only triggers ask RULES and a
+                        // default-config session has none (measured live: a
+                        // zero-dialog census while the plan executed freely). The
+                        // gate dedupes, so a re-approved plan never stacks rules.
+                        if (mode === "default") {
+                                try {
+                                        opts.seedSessionAsk?.(["edit", "write"]);
+                                } catch {
+                                        /* optional seam — never block approval */
+                                }
                         }
                         updateStatus(ctx);
                         persistPlanState();
