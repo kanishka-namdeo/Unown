@@ -102,11 +102,21 @@ setups T1–T5 × lifecycle L1–L6. Full enumeration and the adversarial rows:
   feed regenerated), `check:docs`, `check:claims` (62 literals resolve),
   `check:benchmarks` (6 tracks) — all green.
 - `bun bin/unown --version` → **0.0.60** (package.json is the source of
-  truth; the release TAG is deliberately not cut — the same honest
-  hand-off as the v0.0.58/v0.0.59 bumps: the pre-existing flaky CI lanes
-  (landing e2e/unit, Chaconne, the Live production check — failing across
-  rounds, untouched by this round) would hold the release workflow's
-  ci-green gate).
+  truth; the release TAG is deliberately not cut — the same honest hand-off
+  as the v0.0.58/v0.0.59 bumps: the pre-existing red CI lanes would hold
+  the release workflow's ci-green gate). Measured on the final commit
+  (b8014ce3, receipts via the Actions API): the round's OWN lanes all green
+  — Build + test (ubuntu) with the full self-learning suite and every new
+  pin, the cross-platform gate, LLM bridge tests, typecheck, security scan,
+  docs links, production build, deploy-verify, CodeQL and Scorecard — and
+  the 4 red lanes (Unit tests (landing), E2E + a11y (landing), Chaconne,
+  Changed-line coverage) are a strict SUBSET of the round's BASE commit's
+  6 red lanes (which additionally carried Legato and the Live production
+  check — both green on the round's commits). The coverage gate fails only
+  because `bun test src` is red on the pre-existing Encore/Finale showcase
+  tests ("the coverage gate does not run on a red suite" — the local
+  reproduction's own words); the round touched no landing component source,
+  only the generated data modules.
 
 ## The independent review (M5) and its hardening
 
