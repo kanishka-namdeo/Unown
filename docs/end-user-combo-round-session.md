@@ -187,3 +187,17 @@ research).
   - Final gates at the M5 tree: docs/changelog/blog/benchmarks/claims
     all ok, typecheck 0, the landing battery 2,094/0, the engine suite
     5,512/0/105.
+  - **The cross-platform verdict (the version bump's 3-OS legs + the
+    xplat dispatch)**: ubuntu GREEN (the M5 CI run 42900046229, all 22
+    jobs), macos GREEN (the M4 rerun's leg), windows — the leg surfaced
+    ONE pre-existing knife's edge: `install-meta-readers.test.ts`'s
+    FIRST powershell spawn measured 5,192 ms against bun's default
+    5,000 ms budget (the cold start; later spawns ride warm at
+    0.4-1.1 s). The budget now carries the cold start at 20 s with the
+    receipt comment (d50e533f + the tab restoration 44a87b40 — the
+    editor's space-indent rewrite restored to house tabs), and the
+    `xplat core · windows-latest` dispatch (run 42903742456, on
+    44a87b40) is **completed success**. The full matrix holds.
+  - Production verified live: the blog index renders clean unquoted
+    titles and /blog carries its og:image (unown-nine.vercel.app, the
+    Vercel auto-deploy of main).
