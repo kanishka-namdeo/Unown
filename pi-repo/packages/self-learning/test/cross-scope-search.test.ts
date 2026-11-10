@@ -8,7 +8,13 @@
 //   2. a dead scope never kills the fan-out (partial results still ship);
 //   3. the total limit is honored across the merged set;
 //   4. knownProjectScopes lists dreamed composite project tiers and skips
-//      legacy-superseded ones (their memories migrated onto the composite key).
+//      legacy-superseded ones (their memories migrated onto the composite key);
+//   5. (2026-11-10 round, F3) the HTTP scoped lane resolves a raw project
+//      SLUG to its prefixed platform scope — `?agent_id=<slug>` used to
+//      search a scope that does not exist and answer a silent empty set
+//      (measured live: 0/2 memories through the slug, 2/2 through
+//      `project:<slug>`); the explicit prefixed form and foreign agent ids
+//      pass through unchanged.
 import "./_env.ts";
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { searchAcrossScopes } from "../src/memzero.ts";
@@ -112,5 +118,89 @@ describe("knownProjectScopes", () => {
         test("empty store: only the engine scope would fan out (no project tiers)", () => {
                 store.run(`DELETE FROM memory_versions WHERE tier LIKE 'project:%'`);
                 expect(knownProjectScopes()).toEqual([]);
+        });
+});
+
+describe("GET /api/memories — the scoped lane's project-slug resolution (F3)", () => {
+        const REQ = {
+                method: "GET",
+                query: new URLSearchParams(),
+                body: null as any,
+        };
+
+        beforeAll(() => {
+                store.run(`DELETE FROM memory_versions WHERE tier LIKE 'project:%'`);
+                store.run(
+                        `INSERT INTO memory_versions (tier, version, content, changed_by, note, created_at) VALUES ('project:api-3f9c21d', 1, '# a', 'mem0', 'test', ?)`,
+                        [Date.now()],
+                );
+        });
+        afterAll(() => {
+                store.run(`DELETE FROM memory_versions WHERE tier LIKE 'project:%'`);
+        });
+
+        test("a raw project slug resolves to the prefixed platform scope (was: silent empty set)", async () => {
+                const { handleApi } = await import("../src/server.ts");
+                const { setMemoryPlatformForTests } = await import("../src/memzero.ts");
+                const platform = makeFakePlatform();
+                platform.seed([
+                        { id: "p1", text: "the parser treats columns as 1-based offsets", metadata: { kind: "terminal-note", agent_id: "project:api-3f9c21d" } },
+                        { id: "e1", text: "run the verify script before declaring success", metadata: { kind: "seed", agent_id: "unown-engine" } },
+                ]);
+                setMemoryPlatformForTests(platform);
+                try {
+                        const res = await handleApi({
+                                ...REQ,
+                                path: "/api/memories",
+                                query: new URLSearchParams("agent_id=api-3f9c21d"),
+                        });
+                        expect(res.status).toBe(200);
+                        const body = (await res.json()) as Record<string, any>;
+                        // the scope the caller's slug MEANT, not the raw spelling
+                        expect(body.scope).toEqual({ agentId: "project:api-3f9c21d" });
+                        // and its memories actually come back (the pre-fix lane
+                        // answered an empty set for the same request)
+                        expect(body.memories.length).toBe(1);
+                        expect(body.memories[0].text).toContain("1-based offsets");
+                } finally {
+                        setMemoryPlatformForTests(null);
+                }
+        });
+
+        test("the explicit prefixed form and foreign agent ids pass through unchanged", async () => {
+                const { handleApi } = await import("../src/server.ts");
+                const { setMemoryPlatformForTests } = await import("../src/memzero.ts");
+                const platform = makeFakePlatform();
+                platform.seed([
+                        { id: "p1", text: "the parser treats columns as 1-based offsets", metadata: { kind: "terminal-note", agent_id: "project:api-3f9c21d" } },
+                        { id: "x1", text: "an unrelated foreign agent's memory", metadata: { kind: "note", agent_id: "some-other-agent" } },
+                ]);
+                setMemoryPlatformForTests(platform);
+                try {
+                        const explicit = await handleApi({
+                                ...REQ,
+                                path: "/api/memories",
+                                query: new URLSearchParams("agent_id=project:api-3f9c21d"),
+                        });
+                        expect((await explicit.json() as Record<string, any>).scope).toEqual({ agentId: "project:api-3f9c21d" });
+                        const foreign = await handleApi({
+                                ...REQ,
+                                path: "/api/memories",
+                                query: new URLSearchParams("agent_id=some-other-agent"),
+                        });
+                        const foreignBody = (await foreign.json()) as Record<string, any>;
+                        expect(foreignBody.scope).toEqual({ agentId: "some-other-agent" });
+                        expect(foreignBody.memories.length).toBe(1);
+                        expect(foreignBody.memories[0].text).toContain("foreign agent");
+                        // a slug-like id that is NOT a dreamed scope stays raw too
+                        const unknown = await handleApi({
+                                ...REQ,
+                                path: "/api/memories",
+                                query: new URLSearchParams("agent_id=api-3f9c21d-unknown-child"),
+                        });
+                        expect((await unknown.json() as Record<string, any>).scope).toEqual({ agentId: "api-3f9c21d-unknown-child" });
+                } finally {
+                        setMemoryPlatformForTests(null);
+                }
         });
 });

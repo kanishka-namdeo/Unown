@@ -66,11 +66,17 @@ setups T1–T5 × lifecycle L1–L6. Full enumeration and the adversarial rows:
 | F1 | **The live suite's busy-mutex probe was non-deterministic — its verdict was decided by unrelated router activity, not the mutex under test.** Two measured live failure modes: (a) both 409 — a dream-check queued while the previous test's API dream ran drains on the next router tick and holds the mutex when the pair fires; (b) both 200 — the triggered dream was a ~1ms NO-OP (see F2) that acquired and released the mutex faster than the second request arrived. The probe had no idle precondition and no real fuel. | `test/memory-live.test.ts` (concurrency probe) | high (lane) |
 | F2 | **The manual dream trigger's engine lane was a silent no-op below the AUTO lanes' ≥3 threshold.** `POST /api/dreams/run` answered `{started:true}` and the fire-and-forget body consolidated NOTHING whenever 1–2 benchmark notes + 0 terminal notes were pending (the mirror of `auto-dream`'s `>= 3` guard skipped `runDream()`; `runProjectDream()` had no terminal notes). Measured live twice: the dashboard's "dream now" reports a start, the Dreams screen shows nothing — the same defect class the 26641dec fix closed for terminal notes, still open on the benchmark lane. The ≥3 threshold is a cost policy for AUTONOMOUS operation, not a correctness requirement: `runDream()` consolidates any count ≥1 (its junk `no-notes` row only exists at exactly zero) and `canaryCheck` skips itself gracefully with no last-passing task. | `src/server.ts` (`/api/dreams/run` handler) | high (engine) |
 | (verified green) | The engine-side live loop on a fresh environment: injection marker VERBATIM in the upstream request, tier blocks + `<project_instructions` wrapper present, real dream + canary + SSE events, write/history/rollback, crash-consistency self-heal, size hygiene — all green before AND after the round's fixes (receipts under `benchmarks/memory-eval/results/memory-live-receipt-*.json`). The poison gates live: PROBE A (poisoned benchmark note through the canary-gated dream) and PROBE B (poisoned terminal note through the project dream) — poison never ships (`memory-poison-receipt-*.json`). The busy mutex itself is SOUND (synchronous check-acquire, no TOCTOU — the probe's flake was lane-side). | — | none |
+| F3 | **The scoped HTTP search lane dropped the `project:` prefix.** `GET /api/memories?agent_id=<slug>` constructed the scope `{agentId: <slug>}` verbatim — but a terminal project's platform scope is `{agentId: "project:<slug>"}` (memzero.ts `projectScope`; "the tier key IS the agent_id"). Measured live: the alpha scope listed **0/2 memories** through the raw slug and **2/2** through the prefixed form — a caller scoping by the slug every other surface prints got a silent empty set. The across lane and the in-session `/memory search` were unaffected (they resolve through `projectScope()`); the engine scope was unaffected. | `src/server.ts` (`/api/memories` handler) | medium (engine) |
+| F5 | **`/learning`'s transparency lines were the first casualties of a long stack.** The notify renders its TAIL; the engine-state header and the injection-budget line were emitted FIRST, so on the default 36-row pane with alpha's dreamed stack (the pane dump is the receipt: the visible window started mid-project-tier) the two most load-bearing lines — the never-silent-truncation budget mechanism and the staleness frame — scrolled off the top exactly when the stack got long enough to matter. | `src/tools.ts` (`/learning` notify order) | medium (UX) |
+| (documented non-defect) | **A clone cloned from a LOCAL PATH gets its own scope** (L6): the worktree correctly shares the repo scope (the gitdir/commondir hop works — `alpha-a45747`), but `git clone <local-path>` sets the clone's origin to the filesystem path, which normalizes to a different identity than the canonical remote (`alpha-ae1fe2` vs `alpha-a45747`, measured live). Git never propagates the source's own remote, so no engine-side key can bridge it; the documented contract is remote-keyed identity and the workaround is `git remote set-url origin <canonical>`. The README's "one repository = one memory across clones" holds for every clone of the same remote. | `src/project-identity.ts` (by design) | none |
+| (documented non-defect) | The `-p` print lane inherits the operator harness's stdin (the rondo-round V-1 class, re-measured): the wrapper's exit-code lines slurp into the prompt and the process outlives its answer. The AGENTS.md law holds — run `-p` with `< /dev/null`; with the guard the print lane is 2 s, exit 0, both learned memories recalled verbatim. | operator runbook | none |
 
 ## Fixes
 
 1. **F2 (the manual trigger honors explicit intent)**: the `/api/dreams/run` engine lane now runs `runDream()` for ANY benchmark-note count ≥1 — the ≥3 threshold stays the AUTO lanes' (router `auto-dream` / `dream-check`) cost policy. The zero-note junk row stays guarded (`>= 1`). `{started:true}` is now always true when notes exist (any pending note feeds at least one lane); `{skipped: "no undreamed notes"}` unchanged. Pinned by the new benchmark-lane test in `test/dreams-run-projects.test.ts` (single benchmark note → a real engine dream row that RAN, `notes_in=1`, no junk row — against the dead bridge the honest `'error'` status).
 2. **F1 (the deterministic probe)**: the live suite's concurrency probe now (a) polls for FULL idle first — no running dream, `router.activeJob() === ""`, `pendingEventJobs()` empty (in-process router introspection), (b) asserts the mutex-winning trigger produced a NEW dream row with `notes_in >= 1` (a skipped trigger can no longer pass vacuously), and (c) keeps the started-dream finish poll for clean afterAll state. The probe's own note is real fuel post-F2 — the first trigger holds the mutex through a real LLM dream, the second deterministically 409s.
+3. **F3 (the scoped search resolves the slug)**: the `/api/memories` handler resolves a raw `agent_id` that names a known dreamed project scope (memory.ts `knownProjectScopes()`) to its prefixed platform scope; the explicit `project:<slug>` form and genuinely foreign agent ids pass through unchanged. Pinned by two new tests in `test/cross-scope-search.test.ts` (the slug → prefixed scope + its memories; the pass-through forms). Verified live: `?agent_id=alpha-a45747` now returns 2/2 memories with `scope: project:alpha-a45747`.
+4. **F5 (the transparency tail)**: `/learning`'s notify now renders the tier stack first and the engine-state header + injection-budget line LAST (with the deep-dive hint) — the notify's tail is the always-visible window, so the budget line survives every geometry. Verified live in the 36-row pane (the mem-learning pane dump shows the header + budget line at the tail).
 
 ## Verification (live, this round)
 
@@ -96,6 +102,32 @@ setups T1–T5 × lifecycle L1–L6. Full enumeration and the adversarial rows:
   `src/server.ts`, F1 fixed in `test/memory-live.test.ts`, the F2 pin added
   to `test/dreams-run-projects.test.ts`; re-verified live **7/7 + 3/3
   GREEN**. Milestone M2 pushed.
+- **CP2 (the terminal-side live matrix + F3/F5 fixed + the permanent lane)**:
+  the whole terminal side driven as a real user against the live engine on
+  the alpha matrix project (git repo, remote
+  `github.com/example/alpha`, scope `alpha-a45747`): R4 `unown memory` + T2
+  default policy + T3 local-override labels; W4 shell note (delivered,
+  kind terminal, composite slug); **L4 outbox end-to-end** (engine killed →
+  note queued with front-matter → engine reboot → outbox drained → archived
+  to `done/` → row in the DB); **C2 the project dream** (manual trigger →
+  `project-37647f69` row, 2 notes consolidated, the BOM pitfall + smoke
+  convention rendered, provenance footer `rendered 2/2 memories via Mem0
+  (backend: lexical)`, **W6 the Manual-notes marker preserved verbatim**);
+  R6/R7 search lanes (F3 found, fixed, pinned, re-verified live);
+  L6 worktree identity shared + the local-path-clone non-defect recorded;
+  L3 the health card (0 duplicates, 0 conflicts, no warnings, reconcile
+  stamped); L1 rollback (project tier v6 → v4 content restored as a
+  forward-only v7 `rollback` audit row); R1 the print lane (stdin-guarded —
+  both learned memories recalled verbatim, exit 0); W2 the agent `note`
+  tool (print session → the AGENT-NOTE-TOOL-LANE row landed, kind
+  terminal); W3 exit notes (delivered on every clean quit); **R9 the
+  dashboard Memory screen** (live: engine tiers with versions, the
+  injection-budget bar `4% 3.3k/80k`, BOTH project scopes with versions,
+  the loop-state rail). F5 found through the lane's first run and fixed
+  (the transparency tail). The permanent lane
+  `scripts/tui-capture/verify_memory_matrix.py` (8 phases, 16 steps) run
+  twice end-to-end — **ALL GREEN** (stills + pane dumps under
+  `download/unown-mem-matrix/stills/`). Milestone M3 pushed.
 
 ## Hand-off notes
 

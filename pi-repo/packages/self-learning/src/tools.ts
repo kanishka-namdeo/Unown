@@ -4730,8 +4730,18 @@ export function createUnownToolsExtension(opts: UnownToolsOptions) {
                                         const age = f.fsPath ? ageOf(f.fsPath) : "";
                                         return `── ${f.tier.toUpperCase()} · ${f.path}${age ? ` (${age})` : ""} ──\n${shown}`;
                                 });
+                                // F5 (2026-11-10 memory-engine combination round, measured
+                                // live in a 36-row pane): the notify renders its TAIL — the
+                                // stack body is longer than the pane, so the header + budget
+                                // line emitted FIRST scrolled off the top and the two most
+                                // load-bearing transparency lines (the injection budget is
+                                // the never-silent-truncation mechanism; the engine state is
+                                // the staleness frame) were the first casualties of a long
+                                // stack. The tiers render first; the transparency block rides
+                                // the tail with the deep-dive hint, so it stays visible in
+                                // every geometry.
                                 ctx.ui.notify(
-                                        `${header}\n${budgetLine}\n\n${parts.join("\n\n")}\n\ndeep-dive: /dashboard — tiers, version history, rollbacks, dreams, notes, skills · /memory search <q> — cross-project recall`,
+                                        `${parts.join("\n\n")}\n\n${header}\n${budgetLine}\ndeep-dive: /dashboard — tiers, version history, rollbacks, dreams, notes, skills · /memory search <q> — cross-project recall`,
                                         "info",
                                 );
                         },

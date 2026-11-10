@@ -916,8 +916,25 @@ export async function handleApi(req: ApiRequest): Promise<Response> {
                 // ------------------------------------------------------------------
                 if (method === "GET" && path === "/api/memories") {
                         const q = req.query.get("q");
-                        const agentId = req.query.get("agent_id") || undefined;
+                        let agentId = req.query.get("agent_id") || undefined;
                         const userId = req.query.get("user_id") || undefined;
+                        // F3 (2026-11-10 memory-engine combination round, measured live):
+                        // a caller scoping by a terminal project's SLUG must reach that
+                        // project's memories — the platform scope for a project is
+                        // {agentId: `project:<slug>`} (memzero.ts projectScope; memory.ts
+                        // knownProjectScopes — "the tier key IS the agent_id"). The raw
+                        // agent_id used to pass through verbatim, so `?agent_id=<slug>`
+                        // searched a scope that does not exist and answered a silent
+                        // empty set (live: the alpha scope listed 0/2 memories through
+                        // the slug and 2/2 through `project:<slug>`). Resolve the
+                        // known-slug spelling to the prefixed scope; the explicit
+                        // `project:<slug>` form and genuinely foreign agent ids pass
+                        // through unchanged.
+                        if (agentId && !agentId.startsWith("project:")) {
+                                if (new Set(knownProjectScopes()).has(agentId)) {
+                                        agentId = `project:${agentId}`;
+                                }
+                        }
                         const across = req.query.get("across") === "1" || req.query.get("across") === "true";
                         const limit = Math.min(Number(req.query.get("limit") ?? 20) || 20, 100);
                         // CROSS-SCOPE SEARCH (shared-memory recall): `across=1` + `q`
