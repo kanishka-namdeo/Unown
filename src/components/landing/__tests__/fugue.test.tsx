@@ -120,7 +120,10 @@ describe("fugue band (the fourth user product)", () => {
     expect(container.textContent).toContain("Chromium-desktop");
     // fixture honesty: the band's own words, not a measurement claim
     expect(container.textContent).toContain("Fixture-verified");
-    expect(container.textContent).toContain("the one hand-edit lane");
+    // the 2026-11-10 lede compression kept the fixture-lane claim this pin
+    // rides on — the "one hand-edit lane" enumeration clause it used to pin
+    // was the cut (fugue-data.ts, the end-user combination round).
+    expect(container.textContent).toContain("never the live network");
   });
 
   test("every number the band renders belongs to the token-class set — the no-figure pin", () => {

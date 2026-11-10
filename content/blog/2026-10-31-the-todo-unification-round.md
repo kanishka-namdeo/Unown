@@ -1,6 +1,6 @@
 ---
-title: "The todo unification round: why you saw two to-do lists in plan mode"
-description: "The plan-steps widget and the seeded Todos panel both mounted after approval. This round made them one list — verified live, with receipts."
+title: The todo unification round: why you saw two to-do lists in plan mode
+description: The plan-steps widget and the seeded Todos panel both mounted after approval. This round made them one list — verified live, with receipts.
 date: 2026-10-31
 lastmod: 2026-10-31
 tags: [planning, tui, verification]

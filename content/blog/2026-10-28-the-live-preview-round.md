@@ -1,6 +1,6 @@
 ---
-title: "The live preview round: the landing page now runs what the agent built"
-description: "Four sessions, ~200 tool calls, one fullstack app — and the landing page now runs it instead of showing a video. The category's first live agent-built demo."
+title: The live preview round: the landing page now runs what the agent built
+description: Four sessions, ~200 tool calls, one fullstack app — and the landing page now runs it instead of showing a video. The category's first live agent-built demo.
 date: 2026-10-28
 lastmod: 2026-10-28
 tags: [landing, demo]

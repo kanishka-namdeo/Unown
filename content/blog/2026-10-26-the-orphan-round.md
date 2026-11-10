@@ -1,6 +1,6 @@
 ---
-title: "The orphan round: the lane with no ledger of its own"
-description: "Round four paid the ledger's last IOU: the sync lane's kill -9 orphans — alive, unrecorded, swept by nobody — now journal, heartbeat, and sweep."
+title: The orphan round: the lane with no ledger of its own
+description: Round four paid the ledger's last IOU: the sync lane's kill -9 orphans — alive, unrecorded, swept by nobody — now journal, heartbeat, and sweep.
 date: 2026-10-26
 lastmod: 2026-10-26
 tags: [subagents, release]

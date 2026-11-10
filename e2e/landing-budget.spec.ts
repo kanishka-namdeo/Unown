@@ -97,7 +97,24 @@ import { expect, test } from "@playwright/test";
  * no-divergence lesson); the words twin moves 3,950 -> 4,060 with it
  * (measured + one rail-stop's ~20w headroom).
  */
-const MAX_PAGE_VH = 17.5;
+/*
+ * The 2026-11-10 FIFTEENTH amendment (the end-user combination round's
+ * F0c close-out): 17.5 -> 20.5vh and 4,170 -> 4,570w — both twins
+ * together (the 0.0.48 no-divergence lesson). The breach measured
+ * 20.4vh / 4,582w: three product bands landed since the fourteenth
+ * amendment without carrying their ceilings — Chaconne (0.98vh / 114w),
+ * Fugue (1.07vh / 169w), Legato (1.01vh / 146w) — the +1.0vh-per-band
+ * precedent the thirteenth amendment set for a user-product band, × 3 =
+ * the +3.0vh the ceiling now carries. Compressed FIRST, per the
+ * contract: the two newest bands' ledes — FUGUE_LEDE 95 -> 63w and
+ * LEGATO_LEDE 75 -> 70w (fugue-data.ts, legato-data.ts; the enumeration
+ * parenthetical and the off-peak-lane elaboration cut, every unique
+ * claim kept) — and no generated number, no gated literal, no receipt
+ * figure touched. The word ceiling carries the measured 4,540-class
+ * post-compression page plus one rail-stop's (~30w) headroom per the
+ * 0.0.44 rule so the next release does not open on a knife's edge.
+ */
+const MAX_PAGE_VH = 20.5;
 /*
  * The 2026-11-01 dependency-round release amendment (the twelfth): 3,920 ->
  * 3,950 carries the rail's 52nd stop. Measured at the breach: 3,930 — ten
@@ -142,7 +159,14 @@ const MAX_PAGE_VH = 17.5;
  * src/components/landing/AGENTS.md (O-6 chunk 1 carries the draft; the
  * spec's comment records the measurement until it lands).
  */
-const MAX_WORDS = 4170;
+/*
+ * The 2026-11-10 FIFTEENTH amendment (the end-user combination round's
+ * F0c close-out): 4,170 -> 4,570w — both twins together. See the vh
+ * twin's comment above for the receipt (three product bands carried
+ * at +1.0vh each; Fugue/Legato ledes compressed first, -37 measured
+ * words; no generated number, no gated literal touched).
+ */
+const MAX_WORDS = 4570;
 
 /*
  * The 2026-10-31 planning-round release amendment (the tenth): 3,860 ->

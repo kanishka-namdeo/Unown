@@ -1,6 +1,6 @@
 ---
-title: "The provider round: what nine competitors taught unown about connecting a model"
-description: "Wire-aware probes, a rate-limit verdict that stops lying, masked key entry everywhere, and latency chips — the 2026-10-30 hardening of the provider path."
+title: The provider round: what nine competitors taught unown about connecting a model
+description: Wire-aware probes, a rate-limit verdict that stops lying, masked key entry everywhere, and latency chips — the 2026-10-30 hardening of the provider path.
 date: 2026-10-30
 lastmod: 2026-10-30
 tags: [providers, hardening]

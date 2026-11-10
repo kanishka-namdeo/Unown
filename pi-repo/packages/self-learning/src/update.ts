@@ -1211,7 +1211,13 @@ async function cmdCheckBinary(
                 log(`  run: unown update`);
                 return 2;
         }
-        log(`unown ${res.current} — up to date (latest release: v${res.latest})`);
+        log(
+                `unown ${res.current} — ${
+                        compareSemver(res.current, res.latest) > 0
+                                ? `ahead of the latest release (v${res.latest}) — a source checkout or a pre-release build`
+                                : `up to date (latest release: v${res.latest})`
+                }`,
+        );
         return 0;
 }
 
@@ -1318,7 +1324,13 @@ function cmdCheck(root: string, home: string, git: GitRunner, log: (l: string) =
                 log(`  run: unown update`);
                 return 2;
         }
-        log(`unown ${res.current} — up to date (latest release: v${res.latest})`);
+        log(
+                `unown ${res.current} — ${
+                        compareSemver(res.current, res.latest) > 0
+                                ? `ahead of the latest release (v${res.latest}) — a source checkout or a pre-release build`
+                                : `up to date (latest release: v${res.latest})`
+                }`,
+        );
         return 0;
 }
 

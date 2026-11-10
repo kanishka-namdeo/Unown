@@ -67,4 +67,4 @@ export const LEGATO_LINKS: { label: string; href: string }[] = [
  * fixture-verified, offline-first, no account, no server).
  */
 export const LEGATO_LEDE =
-  "The repo's fifth user-facing app: a keyboard-first, offline-first read-later PWA — clip any URL, get a clean readable copy stored locally, find it again with full-text search + tags, read in a keyboard-driven queue, highlight what mattered, carry everything in a byte-stable JSON bundle. Fixture-verified by construction: every test lane runs against the 4018 hostile fixture server, never the live network; the js-walled fallback lane is an honest title+URL+flag, never a bypass. Honest scope: Chromium-desktop only.";
+  "The repo's fifth user-facing app: a keyboard-first, offline-first read-later PWA — clip any URL, get a clean readable copy stored locally, find it again with full-text search + tags, read in a keyboard-driven queue, highlight what mattered, carry everything in a byte-stable JSON bundle. Fixture-verified: every test lane runs against the hostile fixture server, never the live network; the js-walled fallback is an honest title+URL+flag, never a bypass. Honest scope: Chromium-desktop only.";

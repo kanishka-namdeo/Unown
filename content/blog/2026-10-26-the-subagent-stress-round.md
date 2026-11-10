@@ -1,6 +1,6 @@
 ---
-title: "The subagent stress round: what a real model found that the scripted tests could not"
-description: "Ten live scenarios drove the subagent stack the way its docs promise — six real defects found, two of them silently broken features, all fixed and pinned."
+title: The subagent stress round: what a real model found that the scripted tests could not
+description: Ten live scenarios drove the subagent stack the way its docs promise — six real defects found, two of them silently broken features, all fixed and pinned.
 date: 2026-10-26
 lastmod: 2026-10-26
 tags: [subagents, release]

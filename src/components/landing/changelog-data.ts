@@ -30,36 +30,40 @@ export interface ChangelogStop {
   groups: ChangelogGroup[];
 }
 
-export const CHANGELOG_TOTAL_ENTRIES = 556;
+export const CHANGELOG_TOTAL_ENTRIES = 558;
 
 export const CHANGELOG_TOTALS: Record<ChangelogBucket, number> = {
-  "Added": 262,
+  "Added": 263,
   "Changed": 32,
   "Deprecated": 0,
   "Removed": 3,
   "Fixed": 206,
   "Security": 5,
-  "Behavior": 48
+  "Behavior": 49
 };
 
 export const CHANGELOG_STOPS: ChangelogStop[] = [
   {
     "label": "Unreleased",
     "date": null,
-    "total": 47,
+    "total": 49,
     "counts": {
-      "Added": 31,
+      "Added": 32,
       "Changed": 0,
       "Deprecated": 0,
       "Removed": 0,
       "Fixed": 13,
       "Security": 0,
-      "Behavior": 3
+      "Behavior": 4
     },
     "groups": [
       {
         "bucket": "Added",
         "items": [
+          {
+            "title": "The end-user combination round — every entry lane × management command × service × platform artifact…",
+            "behavior": false
+          },
           {
             "title": "The memory-engine combination round — every write lane × consolidation × read lane × tier × lifecycle…",
             "behavior": false
@@ -189,6 +193,10 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
       {
         "bucket": "Behavior",
         "items": [
+          {
+            "title": "The CLI's usage-error class and subcommand-scoped help (the end-user combination round, 2026-11-10)",
+            "behavior": true
+          },
           {
             "title": "Plan mode's stay-loop respects the user's decline for the rest of the run (the plan-mode × TUI combination…",
             "behavior": true

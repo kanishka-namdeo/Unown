@@ -1,5 +1,5 @@
 ---
-title: "Round 2: when the browser remembered before it clicked"
+title: Round 2: when the browser remembered before it clicked
 description: Closing the recall-vs-application gap — a tool-time memory hint lane, and the run where the agent armed the dialog before the trap.
 date: 2026-11-01
 lastmod: 2026-11-01

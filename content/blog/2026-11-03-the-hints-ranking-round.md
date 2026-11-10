@@ -1,5 +1,5 @@
 ---
-title: "The hints-ranking round: when six new facts shouldn't evict the one that matters"
+title: The hints-ranking round: when six new facts shouldn't evict the one that matters
 description: The browser-memory hint digest becomes category-balanced — round-robin across idiom classes so a burst of new facts cannot evict the dialog lesson.
 date: 2026-11-03
 tags: [memory, browser, learning]

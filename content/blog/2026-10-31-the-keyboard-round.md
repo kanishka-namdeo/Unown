@@ -1,6 +1,6 @@
 ---
-title: "The keyboard round: the shortcut that never worked, and five more finds"
-description: "The planning round's headline shortcut never worked on a fresh install. The keyboard round found it and five more, fixed all six, verified live."
+title: The keyboard round: the shortcut that never worked, and five more finds
+description: The planning round's headline shortcut never worked on a fresh install. The keyboard round found it and five more, fixed all six, verified live.
 date: 2026-10-31
 lastmod: 2026-10-31
 tags: [planning, keyboard, tui, release]

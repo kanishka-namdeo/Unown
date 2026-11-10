@@ -1,6 +1,6 @@
 ---
-title: "The SOTA memory-eval round: four suites, one real fix, and a bill paid"
-description: "How our memory system earned its numbers: gold-op ledgers, dual-embedder retrieval, a calibrated judge, twelve failure modes — and the bug they caught."
+title: The SOTA memory-eval round: four suites, one real fix, and a bill paid
+description: How our memory system earned its numbers: gold-op ledgers, dual-embedder retrieval, a calibrated judge, twelve failure modes — and the bug they caught.
 date: 2026-10-26
 lastmod: 2026-10-26
 tags: [memory, benchmarks, release]

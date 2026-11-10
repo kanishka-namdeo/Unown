@@ -1,6 +1,6 @@
 ---
-title: "The validation round: cold-starting the learning loop, then pointing it at itself"
-description: "A fresh clone, an empty engine DB, one tracked memory file — a validation programme that found drift, poisoning, and a dead-ended mint, then fixed all three."
+title: The validation round: cold-starting the learning loop, then pointing it at itself
+description: A fresh clone, an empty engine DB, one tracked memory file — a validation programme that found drift, poisoning, and a dead-ended mint, then fixed all three.
 date: 2026-10-29
 lastmod: 2026-10-29
 tags: [memory, engine, release]

@@ -1,6 +1,6 @@
 ---
-title: "The presence round: six effects that make the landing page answer you"
-description: "A decode wave, a scroll route bar, a nav that names your band, pointer spotlights and counted receipts — additive effects, finished base states."
+title: The presence round: six effects that make the landing page answer you
+description: A decode wave, a scroll route bar, a nav that names your band, pointer spotlights and counted receipts — additive effects, finished base states.
 date: 2026-10-28
 lastmod: 2026-10-28
 tags: [landing, design]

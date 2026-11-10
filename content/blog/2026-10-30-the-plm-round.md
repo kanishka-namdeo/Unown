@@ -1,6 +1,6 @@
 ---
-title: "The PLM round: unown now tracks itself as processes"
-description: "A 12-state machine for every engine activity, governed tool invocations, a recovery ledger — and the machine caught its own wiring bugs live."
+title: The PLM round: unown now tracks itself as processes
+description: A 12-state machine for every engine activity, governed tool invocations, a recovery ledger — and the machine caught its own wiring bugs live.
 date: 2026-10-30
 lastmod: 2026-10-30
 tags: [plm, observability]

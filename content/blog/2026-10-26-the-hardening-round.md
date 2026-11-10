@@ -1,6 +1,6 @@
 ---
-title: "The hardening round: the verdict on the detached engine"
-description: "We re-litigated the core USP's architecture against ten competitor repos and 54 sources. The detached engine stays; six honest-failure lanes ship in v0.0.28."
+title: The hardening round: the verdict on the detached engine
+description: We re-litigated the core USP's architecture against ten competitor repos and 54 sources. The detached engine stays; six honest-failure lanes ship in v0.0.28.
 date: 2026-10-26
 lastmod: 2026-10-26
 tags: [engine, release]

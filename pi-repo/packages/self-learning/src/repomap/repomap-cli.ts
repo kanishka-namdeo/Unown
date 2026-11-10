@@ -243,11 +243,18 @@ export async function runRepomapCliCommand(argv: string[], opts: { cwd: string }
         const cwd = pathArg ? (await import("node:path")).resolve(opts.cwd, pathArg) : opts.cwd;
         try {
                 const result = await runRepomapCommand(cwd, rest.join(" "));
+                // A warning-level result (non-repo, empty map) means the
+                // command did NOT produce what was asked — exit 1 so scripts
+                // can detect it (the end-user combo round, 2026-11-10: the
+                // non-git path used to exit 0 with no map, masking failure).
+                // Info-level results (caches cleared, disabled, no tracked
+                // files) stay 0 — those are honest state answers, not failures.
+                const code = result.level === "error" || result.level === "warning" ? 1 : 0;
                 if (asJson) {
                         const payload = { level: result.level, message: result.message };
-                        return { stdout: `${JSON.stringify(payload)}\n`, stderr: "", exitCode: result.level === "error" ? 1 : 0 };
+                        return { stdout: `${JSON.stringify(payload)}\n`, stderr: "", exitCode: code };
                 }
-                return { stdout: `${result.message}\n`, stderr: result.level === "error" ? "" : "", exitCode: result.level === "error" ? 1 : 0 };
+                return { stdout: `${result.message}\n`, stderr: result.level === "error" ? "" : "", exitCode: code };
         } catch (err: any) {
                 const message = `repomap failed: ${err instanceof Error ? err.message : String(err)}`;
                 return asJson

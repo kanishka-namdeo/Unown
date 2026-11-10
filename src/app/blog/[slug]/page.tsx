@@ -41,6 +41,17 @@ export async function generateMetadata({
       // og:image comes from the colocated opengraph-image.tsx route — the
       // file convention owns the image set so metadata never fights it.
     },
+    // twitter: RESTATED per post (the end-user combo round's F3b): the root
+    // layout's twitter block carries the LANDING title/description, so a
+    // tweet of any post unfurled with the landing's copy instead of the
+    // post's. The card mirrors the post's own metadata + the colocated
+    // OG image route.
+    twitter: {
+      card: "summary_large_image",
+      title: post.title,
+      description: post.description,
+      images: [`/blog/${post.slug}/opengraph-image`],
+    },
   };
 }
 

@@ -1,6 +1,6 @@
 ---
-title: "Six updates, one pixel diff: shipping a dependency round you can trust"
-description: "How Unown updates packages without regressions: staged gates, an A/B pixel diff of the landing page, and the word budget the changelog almost broke."
+title: Six updates, one pixel diff: shipping a dependency round you can trust
+description: How Unown updates packages without regressions: staged gates, an A/B pixel diff of the landing page, and the word budget the changelog almost broke.
 date: 2026-11-01
 lastmod: 2026-11-01
 tags: [release, dependencies, verification]

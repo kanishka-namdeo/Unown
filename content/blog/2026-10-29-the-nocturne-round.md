@@ -1,6 +1,6 @@
 ---
-title: "The nocturne round: the agent built an incident-ops platform — and got better building it"
-description: "Gallery app #7 — Nocturne, a multi-tenant incident-ops platform: 28 sessions, 473 tests, a 10/10 live browser pass, six failures pinned."
+title: The nocturne round: the agent built an incident-ops platform — and got better building it
+description: Gallery app #7 — Nocturne, a multi-tenant incident-ops platform: 28 sessions, 473 tests, a 10/10 live browser pass, six failures pinned.
 date: 2026-10-29
 lastmod: 2026-10-29
 tags: [gallery, learning, release]

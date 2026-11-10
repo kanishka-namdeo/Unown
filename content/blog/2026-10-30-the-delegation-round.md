@@ -1,6 +1,6 @@
 ---
-title: "The delegation round: every spawn now says why"
-description: "Unown 0.0.46: the why field, the delegation audit ledger, four specialist agents, and a measured 76→79 with the runaway-scout shape dead — receipts inside."
+title: The delegation round: every spawn now says why
+description: Unown 0.0.46: the why field, the delegation audit ledger, four specialist agents, and a measured 76→79 with the runaway-scout shape dead — receipts inside.
 date: 2026-10-30
 lastmod: 2026-10-30
 tags: [subagents, observability]

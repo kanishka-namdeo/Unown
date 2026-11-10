@@ -58,7 +58,7 @@ concurrency:
 #
 # Landing + TUI honesty gates (this branch):
 #   - coverage runs the changed-line coverage gate of strategy §6 gate 9:
-#     `scripts/check_coverage.mjs --run` spawns `bun test src --coverage`
+#     `scripts/check_coverage.mjs --run` spawns `bun test ./src --coverage`
 #     itself, fails on a red suite, and treats an unparseable report as a hard
 #     error rather than a pass; threshold 80, exemptions in
 #     scripts/coverage-exempt.txt.
@@ -552,8 +552,18 @@ jobs:
       - name: Install dependencies
         run: bun install
       - name: Unit tests
-        # bun:test is built in — no vitest/jest config or extra deps needed
-        run: bun test src
+        # bun:test is built in — no vitest/jest config or extra deps needed.
+        # `./src` (path form, not the bare `src` substring form): bun's
+        # positional filter is a SUBSTRING match, so `bun test src` also
+        # collects every apps/*/src/** test file (bolero, fugue, ...) into
+        # the SAME process as the landing suite — where the root bunfig
+        # preload registers one shared happy-dom document. The app suites'
+        # manual DOM renders then pollute the component tests' role
+        # queries (measured on CI 2026-11-10: encore's 11-chip count saw
+        # a leaked bolero <li>; getByRole("heading") found bolero h2s;
+        # the fugue/bolero fetch lanes hit ECONNREFUSED :3100). The path
+        # form runs exactly the 148 src/ files.
+        run: bun test ./src
 
   coverage:
     name: Changed-line coverage (src/)
@@ -569,7 +579,7 @@ jobs:
       - name: Install dependencies
         run: bun install
       - name: Run suite and enforce the changed-line coverage gate
-        # testing-strategy.md §6 gate 9. The script runs `bun test src
+        # testing-strategy.md §6 gate 9. The script runs `bun test ./src
         # --coverage` itself (byte-safe on every shell), fails on a red suite,
         # and treats an unparseable report as a hard error rather than a pass.
         run: node scripts/check_coverage.mjs --run "${{ github.event.pull_request.base.sha || github.event.before }}"
@@ -1015,6 +1025,13 @@ jobs:
         run: bun apps/chaconne/scripts/verify-precache.ts
       - name: Chromium for Playwright
         run: bunx playwright install chromium --with-deps
+      - name: Chaconne real-browser smoke (armed — browser present)
+        # The real-adapter smoke self-skips in every lane that runs without
+        # a browser (Lane A/B run BEFORE this step); armed here it actually
+        # launches Chromium against the local file:// fixtures — the PLAN §3
+        # "exactly ONE real-browser smoke per ticket" contract, now with a
+        # lane that can satisfy it on every CI run.
+        run: cd apps/chaconne && CHACONNE_REAL_SMOKE=1 bun test runner/real-smoke.test.ts
       - name: "Chaconne e2e battery (isolated, self-skip-guarded, Chromium-desktop-only)"
         # The round's P0 honesty: Chromium-desktop-only PWA + runner scope.
         # The 20-spec battery (K-1 zero-mouse flow, A-1 axe wcag2a/2aa

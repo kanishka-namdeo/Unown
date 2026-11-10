@@ -37,6 +37,31 @@ export const metadata: Metadata = {
   openGraph: {
     siteName: SITE.name,
     type: "website",
+    // og:url + og:image are RESTATED here on purpose: Next's metadata
+    // merge REPLACES the parent openGraph object wholesale, so without
+    // these two the /blog index unfurls with no image and no url (the
+    // end-user combo round's F3 — reproduced on production). The hero
+    // image is the right card for the index; each post's own
+    // opengraph-image route overrides it per slug.
+    url: "/blog",
+    title: "Blog — Unown",
+    description:
+      "How each feature and release works, what it does, and the receipts behind it — the longhand record of Unown, the self-improving terminal coding agent.",
+    images: [
+      {
+        url: SITE.ogImage.url,
+        width: SITE.ogImage.width,
+        height: SITE.ogImage.height,
+        alt: SITE.ogImage.alt,
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Blog — Unown",
+    description:
+      "How each feature and release works, what it does, and the receipts behind it — the longhand record of Unown, the self-improving terminal coding agent.",
+    images: [SITE.ogImage.url],
   },
 };
 

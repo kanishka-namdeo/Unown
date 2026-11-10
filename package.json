@@ -13,7 +13,7 @@
     "start": "next start",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
-    "test:unit": "bun test src --path-ignore-patterns=data/self-learning/**",
+    "test:unit": "bun test ./src --path-ignore-patterns=data/self-learning/**",
     "test:coverage": "node scripts/check_coverage.mjs --run",
     "check:docs": "node scripts/check_docs.mjs docs/*.md",
     "check:changelog": "node scripts/landing_changelog.mjs --check",

@@ -7,31 +7,31 @@
     <description>How each feature and release works, what it does, and the receipts behind it — the longhand record of the self-improving terminal coding agent Unown.</description>
     <language>en</language>
     <item>
-      <title>&quot;The memory-engine round: dream-now that dreamed nothing&quot;</title>
+      <title>The memory-engine round: dream-now that dreamed nothing</title>
       <link>https://unown-nine.vercel.app/blog/2026-11-10-the-memory-engine-combo-round</link>
       <guid isPermaLink="true">https://unown-nine.vercel.app/blog/2026-11-10-the-memory-engine-combo-round</guid>
       <pubDate>Tue, 10 Nov 2026 00:00:00 GMT</pubDate>
-      <description>&quot;Every write lane, dream, read lane and tier combination driven live against a real engine — a dream button that lied, a search lane that whispered empty.&quot;</description>
+      <description>Every write lane, dream, read lane and tier combination driven live against a real engine — a dream button that lied, a search lane that whispered empty.</description>
       <category>memory</category>
       <category>engine</category>
       <category>release</category>
     </item>
     <item>
-      <title>&quot;The combination round 2: the approval option that never asked&quot;</title>
+      <title>The combination round 2: the approval option that never asked</title>
       <link>https://unown-nine.vercel.app/blog/2026-11-10-the-plan-mode-combo-round-2</link>
       <guid isPermaLink="true">https://unown-nine.vercel.app/blog/2026-11-10-the-plan-mode-combo-round-2</guid>
       <pubDate>Tue, 10 Nov 2026 00:00:00 GMT</pubDate>
-      <description>&quot;The second pass over every plan-mode × TUI combination found an approval option whose promise was silent vapor — and a boot lane still dropping its flags.&quot;</description>
+      <description>The second pass over every plan-mode × TUI combination found an approval option whose promise was silent vapor — and a boot lane still dropping its flags.</description>
       <category>planning</category>
       <category>tui</category>
       <category>release</category>
     </item>
     <item>
-      <title>&quot;The combination round: the flag that never worked, and the gate that wouldn&apos;t stay closed&quot;</title>
+      <title>The combination round: the flag that never worked, and the gate that wouldn&apos;t stay closed</title>
       <link>https://unown-nine.vercel.app/blog/2026-11-09-the-plan-mode-combo-round</link>
       <guid isPermaLink="true">https://unown-nine.vercel.app/blog/2026-11-09-the-plan-mode-combo-round</guid>
       <pubDate>Mon, 09 Nov 2026 00:00:00 GMT</pubDate>
-      <description>&quot;A full pass over every plan-mode combination found a flagship flag that silently did nothing, an approval gate that re-opened while you typed, and more.&quot;</description>
+      <description>A full pass over every plan-mode combination found a flagship flag that silently did nothing, an approval gate that re-opened while you typed, and more.</description>
       <category>planning</category>
       <category>tui</category>
       <category>release</category>
@@ -48,7 +48,7 @@
       <category>agent-driven</category>
     </item>
     <item>
-      <title>&quot;The spend-and-memory-health round: two honest misses become two honest cards&quot;</title>
+      <title>The spend-and-memory-health round: two honest misses become two honest cards</title>
       <link>https://unown-nine.vercel.app/blog/2026-11-04-the-spend-and-memory-health-round</link>
       <guid isPermaLink="true">https://unown-nine.vercel.app/blog/2026-11-04-the-spend-and-memory-health-round</guid>
       <pubDate>Wed, 04 Nov 2026 00:00:00 GMT</pubDate>
@@ -69,7 +69,7 @@
       <category>testing</category>
     </item>
     <item>
-      <title>&quot;The doc-truth round: the maintenance pass that made every documented number true&quot;</title>
+      <title>The doc-truth round: the maintenance pass that made every documented number true</title>
       <link>https://unown-nine.vercel.app/blog/2026-11-03-the-doc-truth-round</link>
       <guid isPermaLink="true">https://unown-nine.vercel.app/blog/2026-11-03-the-doc-truth-round</guid>
       <pubDate>Tue, 03 Nov 2026 00:00:00 GMT</pubDate>
@@ -79,7 +79,7 @@
       <category>hardening</category>
     </item>
     <item>
-      <title>&quot;The hints-ranking round: when six new facts shouldn&apos;t evict the one that matters&quot;</title>
+      <title>The hints-ranking round: when six new facts shouldn&apos;t evict the one that matters</title>
       <link>https://unown-nine.vercel.app/blog/2026-11-03-the-hints-ranking-round</link>
       <guid isPermaLink="true">https://unown-nine.vercel.app/blog/2026-11-03-the-hints-ranking-round</guid>
       <pubDate>Tue, 03 Nov 2026 00:00:00 GMT</pubDate>
@@ -99,7 +99,7 @@
       <category>memory</category>
     </item>
     <item>
-      <title>&quot;Round 2: when the browser remembered before it clicked&quot;</title>
+      <title>Round 2: when the browser remembered before it clicked</title>
       <link>https://unown-nine.vercel.app/blog/2026-11-01-the-browser-autonomy-round-2</link>
       <guid isPermaLink="true">https://unown-nine.vercel.app/blog/2026-11-01-the-browser-autonomy-round-2</guid>
       <pubDate>Sun, 01 Nov 2026 00:00:00 GMT</pubDate>
@@ -109,342 +109,342 @@
       <category>benchmarks</category>
     </item>
     <item>
-      <title>&quot;Six updates, one pixel diff: shipping a dependency round you can trust&quot;</title>
+      <title>Six updates, one pixel diff: shipping a dependency round you can trust</title>
       <link>https://unown-nine.vercel.app/blog/2026-11-01-the-dependency-round</link>
       <guid isPermaLink="true">https://unown-nine.vercel.app/blog/2026-11-01-the-dependency-round</guid>
       <pubDate>Sun, 01 Nov 2026 00:00:00 GMT</pubDate>
-      <description>&quot;How Unown updates packages without regressions: staged gates, an A/B pixel diff of the landing page, and the word budget the changelog almost broke.&quot;</description>
+      <description>How Unown updates packages without regressions: staged gates, an A/B pixel diff of the landing page, and the word budget the changelog almost broke.</description>
       <category>release</category>
       <category>dependencies</category>
       <category>verification</category>
     </item>
     <item>
-      <title>&quot;The release that never was: re-cutting v0.0.53 from a red tag&quot;</title>
+      <title>The release that never was: re-cutting v0.0.53 from a red tag</title>
       <link>https://unown-nine.vercel.app/blog/2026-11-01-the-release-recovery-round</link>
       <guid isPermaLink="true">https://unown-nine.vercel.app/blog/2026-11-01-the-release-recovery-round</guid>
       <pubDate>Sun, 01 Nov 2026 00:00:00 GMT</pubDate>
-      <description>&quot;The tag shipped while CI was red on all three OSes, so the release never published. The story of the one-way latch that caused it — and the fix.&quot;</description>
+      <description>The tag shipped while CI was red on all three OSes, so the release never published. The story of the one-way latch that caused it — and the fix.</description>
       <category>release</category>
       <category>verification</category>
       <category>testing</category>
     </item>
     <item>
-      <title>&quot;Four alerts, three findings, zero regressions: the security round&quot;</title>
+      <title>Four alerts, three findings, zero regressions: the security round</title>
       <link>https://unown-nine.vercel.app/blog/2026-11-01-the-security-round</link>
       <guid isPermaLink="true">https://unown-nine.vercel.app/blog/2026-11-01-the-security-round</guid>
       <pubDate>Sun, 01 Nov 2026 00:00:00 GMT</pubDate>
-      <description>&quot;How Unown cleared every open Dependabot advisory and CodeQL finding in one gated round — including the one Dependabot&apos;s own patch would have left broken.&quot;</description>
+      <description>How Unown cleared every open Dependabot advisory and CodeQL finding in one gated round — including the one Dependabot&apos;s own patch would have left broken.</description>
       <category>release</category>
       <category>security</category>
       <category>verification</category>
     </item>
     <item>
-      <title>&quot;The footer quiet round: what a terminal owes you at rest&quot;</title>
+      <title>The footer quiet round: what a terminal owes you at rest</title>
       <link>https://unown-nine.vercel.app/blog/2026-10-31-the-footer-quiet-round</link>
       <guid isPermaLink="true">https://unown-nine.vercel.app/blog/2026-10-31-the-footer-quiet-round</guid>
       <pubDate>Sat, 31 Oct 2026 00:00:00 GMT</pubDate>
-      <description>&quot;The area below the input showed four rows of chrome before you typed a word. This round made it two — and made every chip earn its row.&quot;</description>
+      <description>The area below the input showed four rows of chrome before you typed a word. This round made it two — and made every chip earn its row.</description>
       <category>tui</category>
       <category>ux</category>
       <category>verification</category>
     </item>
     <item>
-      <title>&quot;The keyboard round: the shortcut that never worked, and five more finds&quot;</title>
+      <title>The keyboard round: the shortcut that never worked, and five more finds</title>
       <link>https://unown-nine.vercel.app/blog/2026-10-31-the-keyboard-round</link>
       <guid isPermaLink="true">https://unown-nine.vercel.app/blog/2026-10-31-the-keyboard-round</guid>
       <pubDate>Sat, 31 Oct 2026 00:00:00 GMT</pubDate>
-      <description>&quot;The planning round&apos;s headline shortcut never worked on a fresh install. The keyboard round found it and five more, fixed all six, verified live.&quot;</description>
+      <description>The planning round&apos;s headline shortcut never worked on a fresh install. The keyboard round found it and five more, fixed all six, verified live.</description>
       <category>planning</category>
       <category>keyboard</category>
       <category>tui</category>
       <category>release</category>
     </item>
     <item>
-      <title>&quot;Plan Mode V2: the round where unown learned to actually plan&quot;</title>
+      <title>Plan Mode V2: the round where unown learned to actually plan</title>
       <link>https://unown-nine.vercel.app/blog/2026-10-31-the-planning-round</link>
       <guid isPermaLink="true">https://unown-nine.vercel.app/blog/2026-10-31-the-planning-round</guid>
       <pubDate>Sat, 31 Oct 2026 00:00:00 GMT</pubDate>
-      <description>&quot;A scored plan file, an approval gate, and two mechanical convergence lanes took plan mode from zero plans produced to 100/100 — with receipts.&quot;</description>
+      <description>A scored plan file, an approval gate, and two mechanical convergence lanes took plan mode from zero plans produced to 100/100 — with receipts.</description>
       <category>planning</category>
       <category>benchmark</category>
       <category>release</category>
     </item>
     <item>
-      <title>&quot;The sessions round: abort and resume, made consistent&quot;</title>
+      <title>The sessions round: abort and resume, made consistent</title>
       <link>https://unown-nine.vercel.app/blog/2026-10-31-the-sessions-round</link>
       <guid isPermaLink="true">https://unown-nine.vercel.app/blog/2026-10-31-the-sessions-round</guid>
       <pubDate>Sat, 31 Oct 2026 00:00:00 GMT</pubDate>
-      <description>&quot;One abort matrix behind Esc, /abort and every protocol; both session stores behind every picker; resume in both grammars the field ships.&quot;</description>
+      <description>One abort matrix behind Esc, /abort and every protocol; both session stores behind every picker; resume in both grammars the field ships.</description>
       <category>sessions</category>
       <category>cli</category>
     </item>
     <item>
-      <title>&quot;The settings round: when your diff view lies to every fresh install&quot;</title>
+      <title>The settings round: when your diff view lies to every fresh install</title>
       <link>https://unown-nine.vercel.app/blog/2026-10-31-the-settings-round</link>
       <guid isPermaLink="true">https://unown-nine.vercel.app/blog/2026-10-31-the-settings-round</guid>
       <pubDate>Sat, 31 Oct 2026 00:00:00 GMT</pubDate>
-      <description>&quot;Minting the round&apos;s authoring failures into guards found three real defects — including a diff view that lied on every fresh install. Measured and pinned.&quot;</description>
+      <description>Minting the round&apos;s authoring failures into guards found three real defects — including a diff view that lied on every fresh install. Measured and pinned.</description>
       <category>settings</category>
       <category>benchmarks</category>
       <category>learning</category>
       <category>release</category>
     </item>
     <item>
-      <title>&quot;The todo unification round: why you saw two to-do lists in plan mode&quot;</title>
+      <title>The todo unification round: why you saw two to-do lists in plan mode</title>
       <link>https://unown-nine.vercel.app/blog/2026-10-31-the-todo-unification-round</link>
       <guid isPermaLink="true">https://unown-nine.vercel.app/blog/2026-10-31-the-todo-unification-round</guid>
       <pubDate>Sat, 31 Oct 2026 00:00:00 GMT</pubDate>
-      <description>&quot;The plan-steps widget and the seeded Todos panel both mounted after approval. This round made them one list — verified live, with receipts.&quot;</description>
+      <description>The plan-steps widget and the seeded Todos panel both mounted after approval. This round made them one list — verified live, with receipts.</description>
       <category>planning</category>
       <category>tui</category>
       <category>verification</category>
     </item>
     <item>
-      <title>&quot;The craft axes: teaching the agent to see what elite pages never do&quot;</title>
+      <title>The craft axes: teaching the agent to see what elite pages never do</title>
       <link>https://unown-nine.vercel.app/blog/2026-10-30-the-craft-axes</link>
       <guid isPermaLink="true">https://unown-nine.vercel.app/blog/2026-10-30-the-craft-axes</guid>
       <pubDate>Fri, 30 Oct 2026 00:00:00 GMT</pubDate>
-      <description>&quot;The second Website Excellence round: nine elite sites from production CSS, six new enforceable critique gates, and the app that passed on iteration three.&quot;</description>
+      <description>The second Website Excellence round: nine elite sites from production CSS, six new enforceable critique gates, and the app that passed on iteration three.</description>
       <category>website-excellence</category>
       <category>design</category>
       <category>critique</category>
     </item>
     <item>
-      <title>&quot;The delegation round: every spawn now says why&quot;</title>
+      <title>The delegation round: every spawn now says why</title>
       <link>https://unown-nine.vercel.app/blog/2026-10-30-the-delegation-round</link>
       <guid isPermaLink="true">https://unown-nine.vercel.app/blog/2026-10-30-the-delegation-round</guid>
       <pubDate>Fri, 30 Oct 2026 00:00:00 GMT</pubDate>
-      <description>&quot;Unown 0.0.46: the why field, the delegation audit ledger, four specialist agents, and a measured 76→79 with the runaway-scout shape dead — receipts inside.&quot;</description>
+      <description>Unown 0.0.46: the why field, the delegation audit ledger, four specialist agents, and a measured 76→79 with the runaway-scout shape dead — receipts inside.</description>
       <category>subagents</category>
       <category>observability</category>
     </item>
     <item>
-      <title>&quot;The model-specs round: never guess a context window again&quot;</title>
+      <title>The model-specs round: never guess a context window again</title>
       <link>https://unown-nine.vercel.app/blog/2026-10-30-the-model-specs-round</link>
       <guid isPermaLink="true">https://unown-nine.vercel.app/blog/2026-10-30-the-model-specs-round</guid>
       <pubDate>Fri, 30 Oct 2026 00:00:00 GMT</pubDate>
-      <description>&quot;Unown 0.0.47: specs detected from verifiable sources, asked for when nothing knows, provenance everywhere, and a bridge that learns limits from upstream 400s.&quot;</description>
+      <description>Unown 0.0.47: specs detected from verifiable sources, asked for when nothing knows, provenance everywhere, and a bridge that learns limits from upstream 400s.</description>
       <category>providers</category>
       <category>verification</category>
     </item>
     <item>
-      <title>&quot;The observability round: can you read your agent&apos;s state in 60 seconds?&quot;</title>
+      <title>The observability round: can you read your agent&apos;s state in 60 seconds?</title>
       <link>https://unown-nine.vercel.app/blog/2026-10-30-the-observability-round</link>
       <guid isPermaLink="true">https://unown-nine.vercel.app/blog/2026-10-30-the-observability-round</guid>
       <pubDate>Fri, 30 Oct 2026 00:00:00 GMT</pubDate>
-      <description>&quot;A mission panel, a 60-second brief, a recovery card, receipts-only confidence and an ambient learning feed — the round the terminal learned to explain itself.&quot;</description>
+      <description>A mission panel, a 60-second brief, a recovery card, receipts-only confidence and an ambient learning feed — the round the terminal learned to explain itself.</description>
       <category>observability</category>
       <category>tui</category>
     </item>
     <item>
-      <title>&quot;The PLM round: unown now tracks itself as processes&quot;</title>
+      <title>The PLM round: unown now tracks itself as processes</title>
       <link>https://unown-nine.vercel.app/blog/2026-10-30-the-plm-round</link>
       <guid isPermaLink="true">https://unown-nine.vercel.app/blog/2026-10-30-the-plm-round</guid>
       <pubDate>Fri, 30 Oct 2026 00:00:00 GMT</pubDate>
-      <description>&quot;A 12-state machine for every engine activity, governed tool invocations, a recovery ledger — and the machine caught its own wiring bugs live.&quot;</description>
+      <description>A 12-state machine for every engine activity, governed tool invocations, a recovery ledger — and the machine caught its own wiring bugs live.</description>
       <category>plm</category>
       <category>observability</category>
     </item>
     <item>
-      <title>&quot;The provider round: what nine competitors taught unown about connecting a model&quot;</title>
+      <title>The provider round: what nine competitors taught unown about connecting a model</title>
       <link>https://unown-nine.vercel.app/blog/2026-10-30-the-provider-round</link>
       <guid isPermaLink="true">https://unown-nine.vercel.app/blog/2026-10-30-the-provider-round</guid>
       <pubDate>Fri, 30 Oct 2026 00:00:00 GMT</pubDate>
-      <description>&quot;Wire-aware probes, a rate-limit verdict that stops lying, masked key entry everywhere, and latency chips — the 2026-10-30 hardening of the provider path.&quot;</description>
+      <description>Wire-aware probes, a rate-limit verdict that stops lying, masked key entry everywhere, and latency chips — the 2026-10-30 hardening of the provider path.</description>
       <category>providers</category>
       <category>hardening</category>
     </item>
     <item>
-      <title>&quot;The encore round: an agent that critiqued its own design work, then beat its own gates&quot;</title>
+      <title>The encore round: an agent that critiqued its own design work, then beat its own gates</title>
       <link>https://unown-nine.vercel.app/blog/2026-10-29-the-encore-round</link>
       <guid isPermaLink="true">https://unown-nine.vercel.app/blog/2026-10-29-the-encore-round</guid>
       <pubDate>Thu, 29 Oct 2026 00:00:00 GMT</pubDate>
-      <description>&quot;The gallery&apos;s eighth app, built inside a measured design loop — every screenshot scored, every failure ledgered, every number traced to a receipt.&quot;</description>
+      <description>The gallery&apos;s eighth app, built inside a measured design loop — every screenshot scored, every failure ledgered, every number traced to a receipt.</description>
       <category>landing</category>
       <category>demo</category>
     </item>
     <item>
-      <title>&quot;The nocturne round: the agent built an incident-ops platform — and got better building it&quot;</title>
+      <title>The nocturne round: the agent built an incident-ops platform — and got better building it</title>
       <link>https://unown-nine.vercel.app/blog/2026-10-29-the-nocturne-round</link>
       <guid isPermaLink="true">https://unown-nine.vercel.app/blog/2026-10-29-the-nocturne-round</guid>
       <pubDate>Thu, 29 Oct 2026 00:00:00 GMT</pubDate>
-      <description>&quot;Gallery app #7 — Nocturne, a multi-tenant incident-ops platform: 28 sessions, 473 tests, a 10/10 live browser pass, six failures pinned.&quot;</description>
+      <description>Gallery app #7 — Nocturne, a multi-tenant incident-ops platform: 28 sessions, 473 tests, a 10/10 live browser pass, six failures pinned.</description>
       <category>gallery</category>
       <category>learning</category>
       <category>release</category>
     </item>
     <item>
-      <title>&quot;The SOTA round: Fugue, and the loop that watched it build&quot;</title>
+      <title>The SOTA round: Fugue, and the loop that watched it build</title>
       <link>https://unown-nine.vercel.app/blog/2026-10-29-the-sota-round</link>
       <guid isPermaLink="true">https://unown-nine.vercel.app/blog/2026-10-29-the-sota-round</guid>
       <pubDate>Thu, 29 Oct 2026 00:00:00 GMT</pubDate>
-      <description>&quot;The fifth gallery app, built by unown while the loop minted skills, dreamed, and published an honest null — the receipts behind the showcase band.&quot;</description>
+      <description>The fifth gallery app, built by unown while the loop minted skills, dreamed, and published an honest null — the receipts behind the showcase band.</description>
       <category>landing</category>
       <category>learning</category>
     </item>
     <item>
-      <title>&quot;The validation round: cold-starting the learning loop, then pointing it at itself&quot;</title>
+      <title>The validation round: cold-starting the learning loop, then pointing it at itself</title>
       <link>https://unown-nine.vercel.app/blog/2026-10-29-the-validation-round</link>
       <guid isPermaLink="true">https://unown-nine.vercel.app/blog/2026-10-29-the-validation-round</guid>
       <pubDate>Thu, 29 Oct 2026 00:00:00 GMT</pubDate>
-      <description>&quot;A fresh clone, an empty engine DB, one tracked memory file — a validation programme that found drift, poisoning, and a dead-ended mint, then fixed all three.&quot;</description>
+      <description>A fresh clone, an empty engine DB, one tracked memory file — a validation programme that found drift, poisoning, and a dead-ended mint, then fixed all three.</description>
       <category>memory</category>
       <category>engine</category>
       <category>release</category>
     </item>
     <item>
-      <title>&quot;The cadence round: a habit tracker, a real bug in unown, and a three-app gallery&quot;</title>
+      <title>The cadence round: a habit tracker, a real bug in unown, and a three-app gallery</title>
       <link>https://unown-nine.vercel.app/blog/2026-10-28-the-cadence-round</link>
       <guid isPermaLink="true">https://unown-nine.vercel.app/blog/2026-10-28-the-cadence-round</guid>
       <pubDate>Wed, 28 Oct 2026 00:00:00 GMT</pubDate>
-      <description>&quot;One round, every SDLC stage: planned, built, browser-QA&apos;d, reviewed twice — and the review caught a TDZ crash in unown itself. Three apps live.&quot;</description>
+      <description>One round, every SDLC stage: planned, built, browser-QA&apos;d, reviewed twice — and the review caught a TDZ crash in unown itself. Three apps live.</description>
       <category>landing</category>
       <category>demo</category>
     </item>
     <item>
-      <title>&quot;The carving round: the letters draw themselves&quot;</title>
+      <title>The carving round: the letters draw themselves</title>
       <link>https://unown-nine.vercel.app/blog/2026-10-28-the-carving-round</link>
       <guid isPermaLink="true">https://unown-nine.vercel.app/blog/2026-10-28-the-carving-round</guid>
       <pubDate>Wed, 28 Oct 2026 00:00:00 GMT</pubDate>
-      <description>&quot;Glyph draw-on for the decode panel and the spellbox, a decode fill that stays AA at every frame, keycap chips, and copy buttons that finally speak.&quot;</description>
+      <description>Glyph draw-on for the decode panel and the spellbox, a decode fill that stays AA at every frame, keycap chips, and copy buttons that finally speak.</description>
       <category>landing</category>
       <category>design</category>
     </item>
     <item>
-      <title>&quot;The commerce round: a storefront, a checkout, and a browser QA pass&quot;</title>
+      <title>The commerce round: a storefront, a checkout, and a browser QA pass</title>
       <link>https://unown-nine.vercel.app/blog/2026-10-28-the-commerce-round</link>
       <guid isPermaLink="true">https://unown-nine.vercel.app/blog/2026-10-28-the-commerce-round</guid>
       <pubDate>Wed, 28 Oct 2026 00:00:00 GMT</pubDate>
-      <description>&quot;Three SDLC rounds — planned, reviewed, browser-QA&apos;d — and the landing page now frames two agent-built apps in a live gallery: 838 calls, one SHIP verdict.&quot;</description>
+      <description>Three SDLC rounds — planned, reviewed, browser-QA&apos;d — and the landing page now frames two agent-built apps in a live gallery: 838 calls, one SHIP verdict.</description>
       <category>landing</category>
       <category>demo</category>
     </item>
     <item>
-      <title>&quot;The live preview round: the landing page now runs what the agent built&quot;</title>
+      <title>The live preview round: the landing page now runs what the agent built</title>
       <link>https://unown-nine.vercel.app/blog/2026-10-28-the-live-preview-round</link>
       <guid isPermaLink="true">https://unown-nine.vercel.app/blog/2026-10-28-the-live-preview-round</guid>
       <pubDate>Wed, 28 Oct 2026 00:00:00 GMT</pubDate>
-      <description>&quot;Four sessions, ~200 tool calls, one fullstack app — and the landing page now runs it instead of showing a video. The category&apos;s first live agent-built demo.&quot;</description>
+      <description>Four sessions, ~200 tool calls, one fullstack app — and the landing page now runs it instead of showing a video. The category&apos;s first live agent-built demo.</description>
       <category>landing</category>
       <category>demo</category>
     </item>
     <item>
-      <title>&quot;The parley round: a multi-tenant SaaS, two P0s found by the adversarial review&quot;</title>
+      <title>The parley round: a multi-tenant SaaS, two P0s found by the adversarial review</title>
       <link>https://unown-nine.vercel.app/blog/2026-10-28-the-parley-round</link>
       <guid isPermaLink="true">https://unown-nine.vercel.app/blog/2026-10-28-the-parley-round</guid>
       <pubDate>Wed, 28 Oct 2026 00:00:00 GMT</pubDate>
-      <description>&quot;The gallery&apos;s fourth app adds tenancy, real auth, RBAC and isolation — and the round&apos;s failures became pinned regressions and agent skills.&quot;</description>
+      <description>The gallery&apos;s fourth app adds tenancy, real auth, RBAC and isolation — and the round&apos;s failures became pinned regressions and agent skills.</description>
       <category>landing</category>
       <category>demo</category>
     </item>
     <item>
-      <title>&quot;The presence round: six effects that make the landing page answer you&quot;</title>
+      <title>The presence round: six effects that make the landing page answer you</title>
       <link>https://unown-nine.vercel.app/blog/2026-10-28-the-presence-round</link>
       <guid isPermaLink="true">https://unown-nine.vercel.app/blog/2026-10-28-the-presence-round</guid>
       <pubDate>Wed, 28 Oct 2026 00:00:00 GMT</pubDate>
-      <description>&quot;A decode wave, a scroll route bar, a nav that names your band, pointer spotlights and counted receipts — additive effects, finished base states.&quot;</description>
+      <description>A decode wave, a scroll route bar, a nav that names your band, pointer spotlights and counted receipts — additive effects, finished base states.</description>
       <category>landing</category>
       <category>design</category>
     </item>
     <item>
-      <title>&quot;The builder round: one prompt, a whole app, filmed end to end&quot;</title>
+      <title>The builder round: one prompt, a whole app, filmed end to end</title>
       <link>https://unown-nine.vercel.app/blog/2026-10-27-the-builder-round</link>
       <guid isPermaLink="true">https://unown-nine.vercel.app/blog/2026-10-27-the-builder-round</guid>
       <pubDate>Tue, 27 Oct 2026 00:00:00 GMT</pubDate>
-      <description>&quot;One prompt into an empty directory; 47 tool calls later a full-stack app with a green 39-test suite and a live-verified API. The whole build, on film.&quot;</description>
+      <description>One prompt into an empty directory; 47 tool calls later a full-stack app with a green 39-test suite and a live-verified API. The whole build, on film.</description>
       <category>landing</category>
       <category>media</category>
     </item>
     <item>
-      <title>&quot;The long-run round: what breaks when the agent works for hours&quot;</title>
+      <title>The long-run round: what breaks when the agent works for hours</title>
       <link>https://unown-nine.vercel.app/blog/2026-10-27-the-long-run-round</link>
       <guid isPermaLink="true">https://unown-nine.vercel.app/blog/2026-10-27-the-long-run-round</guid>
       <pubDate>Tue, 27 Oct 2026 00:00:00 GMT</pubDate>
-      <description>&quot;Eleven endurance scenarios, 150-turn buildouts, forced compaction and kill-resume torture — five layered defects fixed, ten more in the runner itself.&quot;</description>
+      <description>Eleven endurance scenarios, 150-turn buildouts, forced compaction and kill-resume torture — five layered defects fixed, ten more in the runner itself.</description>
       <category>release</category>
       <category>stress</category>
       <category>memory</category>
     </item>
     <item>
-      <title>&quot;The security round: every open advisory, closed at the source&quot;</title>
+      <title>The security round: every open advisory, closed at the source</title>
       <link>https://unown-nine.vercel.app/blog/2026-10-27-the-security-round</link>
       <guid isPermaLink="true">https://unown-nine.vercel.app/blog/2026-10-27-the-security-round</guid>
       <pubDate>Tue, 27 Oct 2026 00:00:00 GMT</pubDate>
-      <description>&quot;Eleven Dependabot alerts, three CodeQL findings, one lockfile incident — the advisory surface went to zero by fixing causes, not findings.&quot;</description>
+      <description>Eleven Dependabot alerts, three CodeQL findings, one lockfile incident — the advisory surface went to zero by fixing causes, not findings.</description>
       <category>security</category>
       <category>release</category>
     </item>
     <item>
-      <title>&quot;The chaos round: orphaned fleets, stolen steering, and the reports that lied&quot;</title>
+      <title>The chaos round: orphaned fleets, stolen steering, and the reports that lied</title>
       <link>https://unown-nine.vercel.app/blog/2026-10-26-the-chaos-round</link>
       <guid isPermaLink="true">https://unown-nine.vercel.app/blog/2026-10-26-the-chaos-round</guid>
       <pubDate>Mon, 26 Oct 2026 00:00:00 GMT</pubDate>
-      <description>&quot;The chaos round: nested CLI calls, watchdog kills, oversized reports, slow children outliving the process. Seven findings, fixed and pinned.&quot;</description>
+      <description>The chaos round: nested CLI calls, watchdog kills, oversized reports, slow children outliving the process. Seven findings, fixed and pinned.</description>
       <category>subagents</category>
       <category>release</category>
     </item>
     <item>
-      <title>&quot;The hardening round: the verdict on the detached engine&quot;</title>
+      <title>The hardening round: the verdict on the detached engine</title>
       <link>https://unown-nine.vercel.app/blog/2026-10-26-the-hardening-round</link>
       <guid isPermaLink="true">https://unown-nine.vercel.app/blog/2026-10-26-the-hardening-round</guid>
       <pubDate>Mon, 26 Oct 2026 00:00:00 GMT</pubDate>
-      <description>&quot;We re-litigated the core USP&apos;s architecture against ten competitor repos and 54 sources. The detached engine stays; six honest-failure lanes ship in v0.0.28.&quot;</description>
+      <description>We re-litigated the core USP&apos;s architecture against ten competitor repos and 54 sources. The detached engine stays; six honest-failure lanes ship in v0.0.28.</description>
       <category>engine</category>
       <category>release</category>
     </item>
     <item>
-      <title>&quot;The ledger round: the seams the chaos round wrote down&quot;</title>
+      <title>The ledger round: the seams the chaos round wrote down</title>
       <link>https://unown-nine.vercel.app/blog/2026-10-26-the-ledger-round</link>
       <guid isPermaLink="true">https://unown-nine.vercel.app/blog/2026-10-26-the-ledger-round</guid>
       <pubDate>Mon, 26 Oct 2026 00:00:00 GMT</pubDate>
-      <description>&quot;Round three paid the chaos round&apos;s IOUs: the stop that couldn&apos;t un-park, the re-ask that vanished, the name with no entropy, the crash with no trace.&quot;</description>
+      <description>Round three paid the chaos round&apos;s IOUs: the stop that couldn&apos;t un-park, the re-ask that vanished, the name with no entropy, the crash with no trace.</description>
       <category>subagents</category>
       <category>release</category>
     </item>
     <item>
-      <title>&quot;The orphan round: the lane with no ledger of its own&quot;</title>
+      <title>The orphan round: the lane with no ledger of its own</title>
       <link>https://unown-nine.vercel.app/blog/2026-10-26-the-orphan-round</link>
       <guid isPermaLink="true">https://unown-nine.vercel.app/blog/2026-10-26-the-orphan-round</guid>
       <pubDate>Mon, 26 Oct 2026 00:00:00 GMT</pubDate>
-      <description>&quot;Round four paid the ledger&apos;s last IOU: the sync lane&apos;s kill -9 orphans — alive, unrecorded, swept by nobody — now journal, heartbeat, and sweep.&quot;</description>
+      <description>Round four paid the ledger&apos;s last IOU: the sync lane&apos;s kill -9 orphans — alive, unrecorded, swept by nobody — now journal, heartbeat, and sweep.</description>
       <category>subagents</category>
       <category>release</category>
     </item>
     <item>
-      <title>&quot;The SOTA memory-eval round: four suites, one real fix, and a bill paid&quot;</title>
+      <title>The SOTA memory-eval round: four suites, one real fix, and a bill paid</title>
       <link>https://unown-nine.vercel.app/blog/2026-10-26-the-sota-memory-eval-round</link>
       <guid isPermaLink="true">https://unown-nine.vercel.app/blog/2026-10-26-the-sota-memory-eval-round</guid>
       <pubDate>Mon, 26 Oct 2026 00:00:00 GMT</pubDate>
-      <description>&quot;How our memory system earned its numbers: gold-op ledgers, dual-embedder retrieval, a calibrated judge, twelve failure modes — and the bug they caught.&quot;</description>
+      <description>How our memory system earned its numbers: gold-op ledgers, dual-embedder retrieval, a calibrated judge, twelve failure modes — and the bug they caught.</description>
       <category>memory</category>
       <category>benchmarks</category>
       <category>release</category>
     </item>
     <item>
-      <title>&quot;The SOTA re-cut: thirteen reels re-filmed, and how we audit demo video&quot;</title>
+      <title>The SOTA re-cut: thirteen reels re-filmed, and how we audit demo video</title>
       <link>https://unown-nine.vercel.app/blog/2026-10-26-the-sota-recut-round</link>
       <guid isPermaLink="true">https://unown-nine.vercel.app/blog/2026-10-26-the-sota-recut-round</guid>
       <pubDate>Mon, 26 Oct 2026 00:00:00 GMT</pubDate>
-      <description>&quot;A frame-sampled VLM audit sent thirteen landing reels back into the capture harness — and the first audit pass itself was wrong about what it saw.&quot;</description>
+      <description>A frame-sampled VLM audit sent thirteen landing reels back into the capture harness — and the first audit pass itself was wrong about what it saw.</description>
       <category>landing</category>
       <category>media</category>
       <category>release</category>
     </item>
     <item>
-      <title>&quot;The stress round: what breaks when a real user drives the browser&quot;</title>
+      <title>The stress round: what breaks when a real user drives the browser</title>
       <link>https://unown-nine.vercel.app/blog/2026-10-26-the-stress-round</link>
       <guid isPermaLink="true">https://unown-nine.vercel.app/blog/2026-10-26-the-stress-round</guid>
       <pubDate>Mon, 26 Oct 2026 00:00:00 GMT</pubDate>
-      <description>&quot;Fifteen hostile scenarios and seven competitor repos exposed three browser-agent architecture bugs — all closed in v0.0.29.&quot;</description>
+      <description>Fifteen hostile scenarios and seven competitor repos exposed three browser-agent architecture bugs — all closed in v0.0.29.</description>
       <category>browser</category>
       <category>release</category>
     </item>
     <item>
-      <title>&quot;The subagent stress round: what a real model found that the scripted tests could not&quot;</title>
+      <title>The subagent stress round: what a real model found that the scripted tests could not</title>
       <link>https://unown-nine.vercel.app/blog/2026-10-26-the-subagent-stress-round</link>
       <guid isPermaLink="true">https://unown-nine.vercel.app/blog/2026-10-26-the-subagent-stress-round</guid>
       <pubDate>Mon, 26 Oct 2026 00:00:00 GMT</pubDate>
-      <description>&quot;Ten live scenarios drove the subagent stack the way its docs promise — six real defects found, two of them silently broken features, all fixed and pinned.&quot;</description>
+      <description>Ten live scenarios drove the subagent stack the way its docs promise — six real defects found, two of them silently broken features, all fixed and pinned.</description>
       <category>subagents</category>
       <category>release</category>
     </item>

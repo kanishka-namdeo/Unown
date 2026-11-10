@@ -1,6 +1,6 @@
 ---
-title: "The encore round: an agent that critiqued its own design work, then beat its own gates"
-description: "The gallery's eighth app, built inside a measured design loop — every screenshot scored, every failure ledgered, every number traced to a receipt."
+title: The encore round: an agent that critiqued its own design work, then beat its own gates
+description: The gallery's eighth app, built inside a measured design loop — every screenshot scored, every failure ledgered, every number traced to a receipt.
 date: 2026-10-29
 lastmod: 2026-10-29
 tags: [landing, demo]

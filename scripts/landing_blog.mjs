@@ -89,7 +89,26 @@ function readSiteUrl() {
  * Returns `{ meta, body }`. Multi-word string values need no quotes in this
  * subset (the grammar has no colons-in-values); a value that wants to carry
  * a colon must be rephrased, which is the right pressure for descriptions.
+ *
+ * Quote hygiene (the end-user combo round, 2026-11-10): 43 of 49 posts
+ * shipped YAML-habit quoted strings (`title: "..."`), and the plain
+ * `value.trim()` let the quotes flow into every rendered surface — h1,
+ * <title>, og:title, JSON-LD, the RSS feed, the index cards — on production.
+ * The parser now strips ONE matching surrounding pair (" or ') from plain
+ * string values, and the sources are normalized to the unquoted grammar.
+ * A value whose content still starts or ends with a stray quote fails
+ * validation — that author almost certainly mis-nested the quotes.
  */
+function stripMatchingQuotes(value) {
+  const trimmed = value.trim();
+  if (
+    (trimmed.startsWith('"') && trimmed.endsWith('"') && trimmed.length >= 2) ||
+    (trimmed.startsWith("'") && trimmed.endsWith("'") && trimmed.length >= 2)
+  ) {
+    return trimmed.slice(1, -1).trim();
+  }
+  return trimmed;
+}
 function parseFrontmatter(raw, slug) {
   const m = raw.match(/^---\r?\n([\s\S]*?)\r?\n---\r?\n?([\s\S]*)$/);
   if (!m) fail(`${slug}.md has no --- frontmatter block`);
@@ -114,7 +133,7 @@ function parseFrontmatter(raw, slug) {
     } else if (value === "true" || value === "false") {
       meta[key] = value === "true";
     } else {
-      meta[key] = value.trim();
+      meta[key] = stripMatchingQuotes(value);
     }
   }
   return { meta, body: m[2] };
@@ -129,6 +148,12 @@ const isPlainString = (v) => typeof v === "string" && v.length > 0;
 function validateMeta(meta, slug) {
   if (!isPlainString(meta.title)) fail(`${slug}.md: title is required`);
   if (meta.title.length > 96) fail(`${slug}.md: title is ${meta.title.length} chars (max 96)`);
+  if (/^["']|["']$/.test(meta.title)) {
+    fail(`${slug}.md: title starts/ends with a stray quote after quote-stripping — check the frontmatter quoting`);
+  }
+  if (/^["']|["']$/.test(String(meta.description))) {
+    fail(`${slug}.md: description starts/ends with a stray quote after quote-stripping — check the frontmatter quoting`);
+  }
   if (!isPlainString(meta.description)) fail(`${slug}.md: description is required`);
   if (meta.description.length < 70 || meta.description.length > 160) {
     fail(

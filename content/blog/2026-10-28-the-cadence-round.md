@@ -1,6 +1,6 @@
 ---
-title: "The cadence round: a habit tracker, a real bug in unown, and a three-app gallery"
-description: "One round, every SDLC stage: planned, built, browser-QA'd, reviewed twice — and the review caught a TDZ crash in unown itself. Three apps live."
+title: The cadence round: a habit tracker, a real bug in unown, and a three-app gallery
+description: One round, every SDLC stage: planned, built, browser-QA'd, reviewed twice — and the review caught a TDZ crash in unown itself. Three apps live.
 date: 2026-10-28
 lastmod: 2026-10-28
 tags: [landing, demo]

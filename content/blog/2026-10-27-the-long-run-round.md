@@ -1,6 +1,6 @@
 ---
-title: "The long-run round: what breaks when the agent works for hours"
-description: "Eleven endurance scenarios, 150-turn buildouts, forced compaction and kill-resume torture — five layered defects fixed, ten more in the runner itself."
+title: The long-run round: what breaks when the agent works for hours
+description: Eleven endurance scenarios, 150-turn buildouts, forced compaction and kill-resume torture — five layered defects fixed, ten more in the runner itself.
 date: 2026-10-27
 lastmod: 2026-10-27
 tags: [release, stress, memory]

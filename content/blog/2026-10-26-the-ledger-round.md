@@ -1,6 +1,6 @@
 ---
-title: "The ledger round: the seams the chaos round wrote down"
-description: "Round three paid the chaos round's IOUs: the stop that couldn't un-park, the re-ask that vanished, the name with no entropy, the crash with no trace."
+title: The ledger round: the seams the chaos round wrote down
+description: Round three paid the chaos round's IOUs: the stop that couldn't un-park, the re-ask that vanished, the name with no entropy, the crash with no trace.
 date: 2026-10-26
 lastmod: 2026-10-26
 tags: [subagents, release]

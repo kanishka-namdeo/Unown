@@ -99,7 +99,15 @@ import { join } from "node:path";
 const BASE = process.env.LANDING_AUDIT_URL ?? "http://localhost:3000";
 const OUT = join(process.cwd(), "download", "landing");
 const BUDGET = process.argv.includes("--budget");
-const MAX_VH = 17.5;
+const MAX_VH = 20.5;
+// 2026-11-10 (the fifteenth amendment, the end-user combination round's
+// F0c close-out): 17.5 -> 20.5vh — both twins together (the 0.0.48
+// no-divergence lesson; the e2e twin carries the full receipt). Three
+// product bands landed since the fourteenth amendment without carrying
+// their ceilings (Chaconne, Fugue, Legato — +1.0vh each per the
+// thirteenth amendment's user-product precedent); Fugue/Legato ledes
+// compressed FIRST (-37 measured words, no generated number, no gated
+// literal touched).
 // 2026-10-31: reunited with the e2e twin (3,860) — the 0.0.48 release
 // amendment moved only the e2e spec, leaving this copy at 3,800 while the
 // page measured 3,838; the landing AGENTS.md rule is "the twin gates must
@@ -153,7 +161,14 @@ const MAX_VH = 17.5;
  * O-6 carries the draft; this script's comment records the measurement
  * until it lands).
  */
-const MAX_WORDS = 4170;
+/*
+ * The 2026-11-10 fifteenth amendment (the end-user combination round's
+ * F0c close-out): 4,170 -> 4,570w — both twins together. See the e2e
+ * twin's fifteenth-amendment comment for the receipt (three product
+ * bands carried; ledes compressed first, -37 measured words; no
+ * generated number, no gated literal touched).
+ */
+const MAX_WORDS = 4570;
 const MAX_BAND_VH = 3;
 
 let chromium = null;

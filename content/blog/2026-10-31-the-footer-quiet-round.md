@@ -1,6 +1,6 @@
 ---
-title: "The footer quiet round: what a terminal owes you at rest"
-description: "The area below the input showed four rows of chrome before you typed a word. This round made it two — and made every chip earn its row."
+title: The footer quiet round: what a terminal owes you at rest
+description: The area below the input showed four rows of chrome before you typed a word. This round made it two — and made every chip earn its row.
 date: 2026-10-31
 lastmod: 2026-10-31
 tags: [tui, ux, verification]

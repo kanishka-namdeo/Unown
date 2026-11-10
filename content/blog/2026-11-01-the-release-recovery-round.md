@@ -1,6 +1,6 @@
 ---
-title: "The release that never was: re-cutting v0.0.53 from a red tag"
-description: "The tag shipped while CI was red on all three OSes, so the release never published. The story of the one-way latch that caused it — and the fix."
+title: The release that never was: re-cutting v0.0.53 from a red tag
+description: The tag shipped while CI was red on all three OSes, so the release never published. The story of the one-way latch that caused it — and the fix.
 date: 2026-11-01
 lastmod: 2026-11-01
 tags: [release, verification, testing]

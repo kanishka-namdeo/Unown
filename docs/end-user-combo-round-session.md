@@ -86,19 +86,67 @@ research).
 | I | Landing + blog | dev server routes, a11y, SEO, installers served, feed |
 | J | CI gates locally | typecheck, lint, unit, docs/changelog/blog/benchmarks/claims gates, e2e — reproduce main's red lanes and fix |
 
-## Findings ledger (updated at each checkpoint)
+## Findings ledger
 
-- **F0** — CI red on main (see above). Lane J.
-- **F1** — engine DOWN on the `bun install`-only path (see Checkpoint 0).
-  Verify the README quickstart; if it tells users to `bun install` +
-  `agent:start` directly, that lane is broken for every fresh clone.
-- (further findings appended at each checkpoint)
+- **F0 (CI red, closed)** — three root causes, all fixed: (a) `bun test src`
+  is a substring filter that collected 86 `apps/*/src/**` files into the
+  one-process landing battery → shared-document pollution (the encore
+  11-vs-12 chip count saw a leaked bolero `<li>`; `getByRole("heading")`
+  multi-matched bolero's h2s; ECONNREFUSED :3100) — now `bun test ./src`
+  (path form, 148 files) in CI + `package.json` + the coverage gate
+  script + every doc reference; (b) chaconne's real-browser smoke ran in
+  the browser-free Lane A — self-skip guard `CHACONNE_REAL_SMOKE=1` + an
+  armed CI step after the chromium install; (c) the landing page over
+  budget (20.4vh/4,582w) — Fugue/Legato ledes compressed first (-37w),
+  fifteenth ceiling amendment 17.5→20.5vh / 4,170→4,570w in BOTH twins +
+  the landing AGENTS.md ledger.
+- **F1 (closed)** — README/docs install-order fidelity is CLEAN (every
+  surface documents `agent:install` before `agent:start`; lane I audit
+  with citations); the real defect was `agent:start`'s own behavior —
+  engine-down printed "✓ Unown is up." → preflight fail-fast (the
+  pi-workspace check, verified live both ways) + a conditional banner.
+- **F2 (closed)** — 43/49 blog posts shipped YAML-habit quoted frontmatter
+  → literal quote marks in h1/`<title>`/og:title/JSON-LD/RSS/index cards
+  on production. Parser strips one matching pair + rejects strays;
+  sources normalized; regenerated (49 posts, 0 quoted titles;
+  `check:blog` green).
+- **F3 (closed)** — `/blog` carried no og:image/og:url (the layout's
+  openGraph replaced the root's wholesale); posts' `twitter:` cards
+  inherited the LANDING's title/description. Both lanes carry their own
+  cards now.
+- **F4 (closed)** — CLI craft: `models <typo>` silent overview (now exit 2
+  + did-you-mean), `note --help` root HELP (own page + subcommand-scoped
+  help routing for every paged command), `-p` no-prompt exit 1→2,
+  `repomap <non-git>` exit 0→1, the doctor engine-skew message's
+  identical-versions self-contradiction (build hashes now shown),
+  `engine status` spacing, `update --check` "up to date" while ahead.
+  Pinned 8 ways (`test/cli/end-user-craft.test.ts`).
+- **Not defects (recorded)** — the dex-video webm decode failures are the
+  sandbox chromium's codec set (CI's runner decodes them: the CI log
+  shows those tests ✓); the "malformed blog tags" first read was a
+  terminal-render illusion (`[m` sequences eaten by the tool output —
+  hex-verified clean); LSP-servers-absent is the documented optional
+  lane; the model-spec unverified warning is the first-run gate
+  (`unown setup --context-window/--max-tokens` answers it).
+- **Lanes driven (A–J)** — install 7/7; CLI sweep 38/38 commands clean
+  (zero crashes/hangs/stack traces, ≤1.5 s each, NO_COLOR clean, exit
+  codes correct); print-mode text+NDJSON against the real Agnes upstream
+  (4.1 s round trip, clean envelope, per-message usage); six apps'
+  domain suites green (coda 51/0 · ostinato 119/0 · chaconne 111/0 + 3
+  armed smokes · fugue 300/0 · legato 207/0 · bolero 44/0; PWAs serve
+  200 with manifest/SW/health resolving); landing routes + SEO + blog +
+  feed + installers verified; engine REST/SSE through the bearer token;
+  doctor green twice. Session-lifecycle lanes (-c/--resume/sessions
+  list/export) driven in the e2e project; the TUI dashboard PTY lane and
+  the plan-mode matrix lane are the M5 verification surface.
 
 ## Checkpoints
 
-- [x] CP0 — environment up, smokes green (this section)
-- [ ] CP1 — research records committed (M1)
-- [ ] CP2 — matrix lanes A–J driven, findings ledger filled (M2)
-- [ ] CP3 — fixes landed, lanes re-run green (M3)
+- [x] CP0 — environment up, smokes green
+- [x] CP1 — research records committed (M1, ef5e7ede)
+- [x] CP2 — matrix lanes A–J driven, findings ledger filled (M2)
+- [x] CP3 — fixes landed, lanes re-run green (M3 — this push; suite
+  receipts: engine 5,512/0/105, landing 2,093/0, budget e2e GREEN,
+  chaconne armed smokes 3/0, all six doc gates green)
 - [ ] CP4 — round close: records, contracts, blog, version bump (M4)
 - [ ] CP5 — review hardening: full gate re-run, receipts (M5)

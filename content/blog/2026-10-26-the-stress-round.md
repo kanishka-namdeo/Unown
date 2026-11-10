@@ -1,6 +1,6 @@
 ---
-title: "The stress round: what breaks when a real user drives the browser"
-description: "Fifteen hostile scenarios and seven competitor repos exposed three browser-agent architecture bugs — all closed in v0.0.29."
+title: The stress round: what breaks when a real user drives the browser
+description: Fifteen hostile scenarios and seven competitor repos exposed three browser-agent architecture bugs — all closed in v0.0.29.
 date: 2026-10-26
 lastmod: 2026-10-26
 tags: [browser, release]

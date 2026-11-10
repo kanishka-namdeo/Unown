@@ -1,6 +1,6 @@
 ---
-title: "The craft axes: teaching the agent to see what elite pages never do"
-description: "The second Website Excellence round: nine elite sites from production CSS, six new enforceable critique gates, and the app that passed on iteration three."
+title: The craft axes: teaching the agent to see what elite pages never do
+description: The second Website Excellence round: nine elite sites from production CSS, six new enforceable critique gates, and the app that passed on iteration three.
 date: 2026-10-30
 lastmod: 2026-10-30
 tags: [website-excellence, design, critique]

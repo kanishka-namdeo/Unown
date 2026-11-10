@@ -3,7 +3,7 @@
 //   node scripts/check_coverage.mjs --run [<git-base>]     # runs the suite itself
 //   node scripts/check_coverage.mjs <report.txt> [<git-base>]
 //
-// The script runs `bun test src --coverage` itself rather than relying on shell
+// The script runs `bun test ./src --coverage` itself rather than relying on shell
 // redirection: bun's shell has no `>` or `tee` on Windows, PowerShell's `>`
 // writes UTF-16, and PowerShell's `Select-Object` masks exit codes. One spawn,
 // byte-safe capture, no shell.
@@ -49,12 +49,17 @@ const fail = (msg) => {
 
 let report;
 if (runSuite) {
-        const proc = spawnSync("bun", ["test", "src", "--coverage"], { encoding: "utf8" });
+        // `./src` — the path form. The bare `src` substring form also
+        // collects every apps/*/src/** test file into the same process
+        // (bun's positional filter is a substring match), which both
+        // pollutes the shared happy-dom document and drags suites the
+        // gate never intended to measure into the report.
+        const proc = spawnSync("bun", ["test", "./src", "--coverage"], { encoding: "utf8" });
         report = `${proc.stdout ?? ""}${proc.stderr ?? ""}`;
         writeFileSync(reportFile, report, "utf8");
         if (proc.status !== 0) {
                 console.log(report);
-                fail(`bun test src --coverage exited ${proc.status}; the coverage gate does not run on a red suite`);
+                fail(`bun test ./src --coverage exited ${proc.status}; the coverage gate does not run on a red suite`);
         }
 } else {
         if (!existsSync(reportFile)) fail(`no coverage report at ${reportFile} (run: node scripts/check_coverage.mjs --run)`);
@@ -63,7 +68,7 @@ if (runSuite) {
 
 // The gate is only meaningful if the run it summarises actually passed.
 const summary = /(\d+)\s+pass\s*\r?\n\s*(\d+)\s+fail/.exec(report);
-if (!summary) fail(`could not find the test summary in ${reportFile}; run \`bun test src --coverage > ${reportFile}\``);
+if (!summary) fail(`could not find the test summary in ${reportFile}; run \`bun test ./src --coverage > ${reportFile}\``);
 const failed = Number(summary[2]);
 if (failed > 0) fail(`dashboard suite reported ${failed} failing tests; the coverage gate does not run on a red suite`);
 

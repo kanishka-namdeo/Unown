@@ -45,7 +45,7 @@ export function LegatoSection() {
     <section
       data-hue="leaf"
       id="legato"
-      className="scroll-mt-16 border-t border-line py-16 sm:py-[72px]"
+      className="scroll-mt-16 border-t border-line py-12 sm:py-12"
     >
       <div className="mx-auto max-w-6xl px-5 sm:px-6">
         <FadeUp className="max-w-2xl">
@@ -58,8 +58,8 @@ export function LegatoSection() {
         </FadeUp>
 
         {/* The product tile: the identity pair of stills, framed in the shared chrome. */}
-        <FadeUp delay={0.06} className="mt-8">
-          <div className="grid gap-4 sm:grid-cols-2">
+        <FadeUp delay={0.06} className="mt-6">
+          <div className="mx-auto grid max-w-4xl gap-4 sm:grid-cols-2">
             {LEGATO_STILLS.map((s) => (
               <TerminalWindow key={s.src} title={`legato — ${s.caption}`}>
                 <figure className="m-0">
@@ -81,7 +81,7 @@ export function LegatoSection() {
 
           {/* The receipt exits — absolute GitHub links into the docs and
               the round's receipts, not in-page routes. */}
-          <p className="mt-4 flex flex-wrap items-center gap-x-2 gap-y-1 font-mono text-[10px] text-faint">
+          <p className="mt-3 flex flex-wrap items-center gap-x-2 gap-y-1 font-mono text-[10px] text-faint">
             {LEGATO_LINKS.map((l, i) => (
               <Fragment key={l.href}>
                 {i > 0 ? (

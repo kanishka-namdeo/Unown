@@ -201,6 +201,31 @@ if (await probeHttpOk(`http://127.0.0.1:${ENGINE_PORT}/api/overview`, 1500)) {
   console.log(`${sym.dot} engine already healthy on :${ENGINE_PORT} - reusing it`);
 } else {
   await waitForPortFree(`http://127.0.0.1:${ENGINE_PORT}/api/overview`, "engine", 20_000);
+  // Preflight (the F1 cure, end-user combo round 2026-11-10): the engine
+  // imports the vendored pi workspace (@earendil-works/pi-coding-agent via
+  // pi-repo/packages/self-learning) — which the ROOT `bun install` never
+  // installs (pi-repo is its own bun workspace, installed by step 2 of
+  // `bun run agent:install`). Spawning without it yields an engine that
+  // dies on a module-resolution error while this launcher's 65 s health
+  // wait burns down and still prints "✓ Unown is up." — the exact
+  // fresh-clone trap. Fail fast with the remediation instead.
+  const piWorkspace = path.join(
+    REPO_ROOT,
+    "pi-repo",
+    "packages",
+    "self-learning",
+    "node_modules",
+    "@earendil-works",
+    "pi-coding-agent",
+  );
+  if (!fs.existsSync(piWorkspace)) {
+    die(
+      `${sym.fail} the vendored pi workspace is not installed (${path.relative(REPO_ROOT, piWorkspace)} missing).\n` +
+        `    run the full installer first:  bun run agent:install\n` +
+        `    (a bare root bun install does NOT install pi-repo — the engine would die on\n` +
+        `     "Cannot find module '@earendil-works/pi-coding-agent'")`,
+    );
+  }
   startService("engine", path.join("mini-services", "agent-service"), ["index.ts"]);
 }
 // ------------------------------------------------------- health wait (~60s)
@@ -231,10 +256,23 @@ if (!(bridgeOk && engineOk)) {
       `engine ${state(engineOk)}`,
   );
   console.log(`    check the logs: .run/bridge.log, .run/engine.log`);
+  if (!engineOk) {
+    console.log(
+      `    an engine that never comes up on a fresh clone is the classic missing-install\n` +
+        `    state: bun run agent:install (installs pi-repo, hydrates model data, builds, links)`,
+    );
+  }
 }
 
 console.log("");
-console.log(`${sym.ok} Unown is up.`);
+if (bridgeOk && engineOk) {
+  console.log(`${sym.ok} Unown is up.`);
+} else {
+  // F1 honesty: never claim "up" for a half-down stack — the engine carries
+  // memory/AutoDream/routines; without it the stack is a bridge only.
+  console.log(`${sym.warn} Unown is PARTIALLY up — the engine is ${engineOk ? "ok" : "DOWN"}, the bridge is ${bridgeOk ? "ok" : "DOWN"}.`);
+  console.log(`    terminal sessions still work; memory/dreams/routines/dashboard do not.`);
+}
 console.log(`    TUI dashboard  unown dashboard   (or /dashboard inside a session)`);
 console.log(`    Engine API     http://127.0.0.1:${ENGINE_PORT}/api/overview`);
 console.log(`    LLM bridge     http://127.0.0.1:${BRIDGE_PORT}/health`);

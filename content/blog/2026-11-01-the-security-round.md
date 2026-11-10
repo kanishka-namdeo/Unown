@@ -1,6 +1,6 @@
 ---
-title: "Four alerts, three findings, zero regressions: the security round"
-description: "How Unown cleared every open Dependabot advisory and CodeQL finding in one gated round — including the one Dependabot's own patch would have left broken."
+title: Four alerts, three findings, zero regressions: the security round
+description: How Unown cleared every open Dependabot advisory and CodeQL finding in one gated round — including the one Dependabot's own patch would have left broken.
 date: 2026-11-01
 lastmod: 2026-11-01
 tags: [release, security, verification]

@@ -1,6 +1,6 @@
 ---
-title: "The settings round: when your diff view lies to every fresh install"
-description: "Minting the round's authoring failures into guards found three real defects — including a diff view that lied on every fresh install. Measured and pinned."
+title: The settings round: when your diff view lies to every fresh install
+description: Minting the round's authoring failures into guards found three real defects — including a diff view that lied on every fresh install. Measured and pinned.
 date: 2026-10-31
 lastmod: 2026-10-31
 tags: [settings, benchmarks, learning, release]

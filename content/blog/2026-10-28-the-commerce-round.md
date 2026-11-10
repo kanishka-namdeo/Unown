@@ -1,6 +1,6 @@
 ---
-title: "The commerce round: a storefront, a checkout, and a browser QA pass"
-description: "Three SDLC rounds — planned, reviewed, browser-QA'd — and the landing page now frames two agent-built apps in a live gallery: 838 calls, one SHIP verdict."
+title: The commerce round: a storefront, a checkout, and a browser QA pass
+description: Three SDLC rounds — planned, reviewed, browser-QA'd — and the landing page now frames two agent-built apps in a live gallery: 838 calls, one SHIP verdict.
 date: 2026-10-28
 lastmod: 2026-10-28
 tags: [landing, demo]

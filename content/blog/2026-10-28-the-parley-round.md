@@ -1,6 +1,6 @@
 ---
-title: "The parley round: a multi-tenant SaaS, two P0s found by the adversarial review"
-description: "The gallery's fourth app adds tenancy, real auth, RBAC and isolation — and the round's failures became pinned regressions and agent skills."
+title: The parley round: a multi-tenant SaaS, two P0s found by the adversarial review
+description: The gallery's fourth app adds tenancy, real auth, RBAC and isolation — and the round's failures became pinned regressions and agent skills.
 date: 2026-10-28
 lastmod: 2026-10-28
 tags: [landing, demo]

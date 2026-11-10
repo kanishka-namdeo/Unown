@@ -38,8 +38,8 @@ export const BLOG_TAGS: string[] = ["agent-driven","benchmark","benchmarks","bet
 export const BLOG_POSTS: BlogPost[] = [
   {
     "slug": "2026-11-10-the-memory-engine-combo-round",
-    "title": "\"The memory-engine round: dream-now that dreamed nothing\"",
-    "description": "\"Every write lane, dream, read lane and tier combination driven live against a real engine — a dream button that lied, a search lane that whispered empty.\"",
+    "title": "The memory-engine round: dream-now that dreamed nothing",
+    "description": "Every write lane, dream, read lane and tier combination driven live against a real engine — a dream button that lied, a search lane that whispered empty.",
     "date": "2026-11-10",
     "lastmod": "2026-11-10",
     "tags": [
@@ -56,8 +56,8 @@ export const BLOG_POSTS: BlogPost[] = [
   },
   {
     "slug": "2026-11-10-the-plan-mode-combo-round-2",
-    "title": "\"The combination round 2: the approval option that never asked\"",
-    "description": "\"The second pass over every plan-mode × TUI combination found an approval option whose promise was silent vapor — and a boot lane still dropping its flags.\"",
+    "title": "The combination round 2: the approval option that never asked",
+    "description": "The second pass over every plan-mode × TUI combination found an approval option whose promise was silent vapor — and a boot lane still dropping its flags.",
     "date": "2026-11-10",
     "lastmod": "2026-11-10",
     "tags": [
@@ -75,8 +75,8 @@ export const BLOG_POSTS: BlogPost[] = [
   },
   {
     "slug": "2026-11-09-the-plan-mode-combo-round",
-    "title": "\"The combination round: the flag that never worked, and the gate that wouldn't stay closed\"",
-    "description": "\"A full pass over every plan-mode combination found a flagship flag that silently did nothing, an approval gate that re-opened while you typed, and more.\"",
+    "title": "The combination round: the flag that never worked, and the gate that wouldn't stay closed",
+    "description": "A full pass over every plan-mode combination found a flagship flag that silently did nothing, an approval gate that re-opened while you typed, and more.",
     "date": "2026-11-09",
     "lastmod": "2026-11-09",
     "tags": [
@@ -115,7 +115,7 @@ export const BLOG_POSTS: BlogPost[] = [
   },
   {
     "slug": "2026-11-04-the-spend-and-memory-health-round",
-    "title": "\"The spend-and-memory-health round: two honest misses become two honest cards\"",
+    "title": "The spend-and-memory-health round: two honest misses become two honest cards",
     "description": "The settings benchmark's two pinned search misses both flip — automation spend gets a meter and ceilings, memory gets a health card.",
     "date": "2026-11-04",
     "lastmod": null,
@@ -151,7 +151,7 @@ export const BLOG_POSTS: BlogPost[] = [
   },
   {
     "slug": "2026-11-03-the-doc-truth-round",
-    "title": "\"The doc-truth round: the maintenance pass that made every documented number true\"",
+    "title": "The doc-truth round: the maintenance pass that made every documented number true",
     "description": "The doc-truth round re-derived and corrected every drifted count, measured the Coda PWA null with a receipt, and priced the instruction-surface PR lane.",
     "date": "2026-11-03",
     "lastmod": null,
@@ -170,7 +170,7 @@ export const BLOG_POSTS: BlogPost[] = [
   },
   {
     "slug": "2026-11-03-the-hints-ranking-round",
-    "title": "\"The hints-ranking round: when six new facts shouldn't evict the one that matters\"",
+    "title": "The hints-ranking round: when six new facts shouldn't evict the one that matters",
     "description": "The browser-memory hint digest becomes category-balanced — round-robin across idiom classes so a burst of new facts cannot evict the dialog lesson.",
     "date": "2026-11-03",
     "lastmod": null,
@@ -202,7 +202,7 @@ export const BLOG_POSTS: BlogPost[] = [
   },
   {
     "slug": "2026-11-01-the-browser-autonomy-round-2",
-    "title": "\"Round 2: when the browser remembered before it clicked\"",
+    "title": "Round 2: when the browser remembered before it clicked",
     "description": "Closing the recall-vs-application gap — a tool-time memory hint lane, and the run where the agent armed the dialog before the trap.",
     "date": "2026-11-01",
     "lastmod": "2026-11-01",
@@ -218,8 +218,8 @@ export const BLOG_POSTS: BlogPost[] = [
   },
   {
     "slug": "2026-11-01-the-dependency-round",
-    "title": "\"Six updates, one pixel diff: shipping a dependency round you can trust\"",
-    "description": "\"How Unown updates packages without regressions: staged gates, an A/B pixel diff of the landing page, and the word budget the changelog almost broke.\"",
+    "title": "Six updates, one pixel diff: shipping a dependency round you can trust",
+    "description": "How Unown updates packages without regressions: staged gates, an A/B pixel diff of the landing page, and the word budget the changelog almost broke.",
     "date": "2026-11-01",
     "lastmod": "2026-11-01",
     "tags": [
@@ -234,8 +234,8 @@ export const BLOG_POSTS: BlogPost[] = [
   },
   {
     "slug": "2026-11-01-the-release-recovery-round",
-    "title": "\"The release that never was: re-cutting v0.0.53 from a red tag\"",
-    "description": "\"The tag shipped while CI was red on all three OSes, so the release never published. The story of the one-way latch that caused it — and the fix.\"",
+    "title": "The release that never was: re-cutting v0.0.53 from a red tag",
+    "description": "The tag shipped while CI was red on all three OSes, so the release never published. The story of the one-way latch that caused it — and the fix.",
     "date": "2026-11-01",
     "lastmod": "2026-11-01",
     "tags": [
@@ -253,8 +253,8 @@ export const BLOG_POSTS: BlogPost[] = [
   },
   {
     "slug": "2026-11-01-the-security-round",
-    "title": "\"Four alerts, three findings, zero regressions: the security round\"",
-    "description": "\"How Unown cleared every open Dependabot advisory and CodeQL finding in one gated round — including the one Dependabot's own patch would have left broken.\"",
+    "title": "Four alerts, three findings, zero regressions: the security round",
+    "description": "How Unown cleared every open Dependabot advisory and CodeQL finding in one gated round — including the one Dependabot's own patch would have left broken.",
     "date": "2026-11-01",
     "lastmod": "2026-11-01",
     "tags": [
@@ -269,8 +269,8 @@ export const BLOG_POSTS: BlogPost[] = [
   },
   {
     "slug": "2026-10-31-the-footer-quiet-round",
-    "title": "\"The footer quiet round: what a terminal owes you at rest\"",
-    "description": "\"The area below the input showed four rows of chrome before you typed a word. This round made it two — and made every chip earn its row.\"",
+    "title": "The footer quiet round: what a terminal owes you at rest",
+    "description": "The area below the input showed four rows of chrome before you typed a word. This round made it two — and made every chip earn its row.",
     "date": "2026-10-31",
     "lastmod": "2026-10-31",
     "tags": [
@@ -291,8 +291,8 @@ export const BLOG_POSTS: BlogPost[] = [
   },
   {
     "slug": "2026-10-31-the-keyboard-round",
-    "title": "\"The keyboard round: the shortcut that never worked, and five more finds\"",
-    "description": "\"The planning round's headline shortcut never worked on a fresh install. The keyboard round found it and five more, fixed all six, verified live.\"",
+    "title": "The keyboard round: the shortcut that never worked, and five more finds",
+    "description": "The planning round's headline shortcut never worked on a fresh install. The keyboard round found it and five more, fixed all six, verified live.",
     "date": "2026-10-31",
     "lastmod": "2026-10-31",
     "tags": [
@@ -310,8 +310,8 @@ export const BLOG_POSTS: BlogPost[] = [
   },
   {
     "slug": "2026-10-31-the-planning-round",
-    "title": "\"Plan Mode V2: the round where unown learned to actually plan\"",
-    "description": "\"A scored plan file, an approval gate, and two mechanical convergence lanes took plan mode from zero plans produced to 100/100 — with receipts.\"",
+    "title": "Plan Mode V2: the round where unown learned to actually plan",
+    "description": "A scored plan file, an approval gate, and two mechanical convergence lanes took plan mode from zero plans produced to 100/100 — with receipts.",
     "date": "2026-10-31",
     "lastmod": "2026-10-31",
     "tags": [
@@ -326,8 +326,8 @@ export const BLOG_POSTS: BlogPost[] = [
   },
   {
     "slug": "2026-10-31-the-sessions-round",
-    "title": "\"The sessions round: abort and resume, made consistent\"",
-    "description": "\"One abort matrix behind Esc, /abort and every protocol; both session stores behind every picker; resume in both grammars the field ships.\"",
+    "title": "The sessions round: abort and resume, made consistent",
+    "description": "One abort matrix behind Esc, /abort and every protocol; both session stores behind every picker; resume in both grammars the field ships.",
     "date": "2026-10-31",
     "lastmod": "2026-10-31",
     "tags": [
@@ -344,8 +344,8 @@ export const BLOG_POSTS: BlogPost[] = [
   },
   {
     "slug": "2026-10-31-the-settings-round",
-    "title": "\"The settings round: when your diff view lies to every fresh install\"",
-    "description": "\"Minting the round's authoring failures into guards found three real defects — including a diff view that lied on every fresh install. Measured and pinned.\"",
+    "title": "The settings round: when your diff view lies to every fresh install",
+    "description": "Minting the round's authoring failures into guards found three real defects — including a diff view that lied on every fresh install. Measured and pinned.",
     "date": "2026-10-31",
     "lastmod": "2026-10-31",
     "tags": [
@@ -361,8 +361,8 @@ export const BLOG_POSTS: BlogPost[] = [
   },
   {
     "slug": "2026-10-31-the-todo-unification-round",
-    "title": "\"The todo unification round: why you saw two to-do lists in plan mode\"",
-    "description": "\"The plan-steps widget and the seeded Todos panel both mounted after approval. This round made them one list — verified live, with receipts.\"",
+    "title": "The todo unification round: why you saw two to-do lists in plan mode",
+    "description": "The plan-steps widget and the seeded Todos panel both mounted after approval. This round made them one list — verified live, with receipts.",
     "date": "2026-10-31",
     "lastmod": "2026-10-31",
     "tags": [
@@ -382,8 +382,8 @@ export const BLOG_POSTS: BlogPost[] = [
   },
   {
     "slug": "2026-10-30-the-craft-axes",
-    "title": "\"The craft axes: teaching the agent to see what elite pages never do\"",
-    "description": "\"The second Website Excellence round: nine elite sites from production CSS, six new enforceable critique gates, and the app that passed on iteration three.\"",
+    "title": "The craft axes: teaching the agent to see what elite pages never do",
+    "description": "The second Website Excellence round: nine elite sites from production CSS, six new enforceable critique gates, and the app that passed on iteration three.",
     "date": "2026-10-30",
     "lastmod": "2026-10-30",
     "tags": [
@@ -398,8 +398,8 @@ export const BLOG_POSTS: BlogPost[] = [
   },
   {
     "slug": "2026-10-30-the-delegation-round",
-    "title": "\"The delegation round: every spawn now says why\"",
-    "description": "\"Unown 0.0.46: the why field, the delegation audit ledger, four specialist agents, and a measured 76→79 with the runaway-scout shape dead — receipts inside.\"",
+    "title": "The delegation round: every spawn now says why",
+    "description": "Unown 0.0.46: the why field, the delegation audit ledger, four specialist agents, and a measured 76→79 with the runaway-scout shape dead — receipts inside.",
     "date": "2026-10-30",
     "lastmod": "2026-10-30",
     "tags": [
@@ -415,8 +415,8 @@ export const BLOG_POSTS: BlogPost[] = [
   },
   {
     "slug": "2026-10-30-the-model-specs-round",
-    "title": "\"The model-specs round: never guess a context window again\"",
-    "description": "\"Unown 0.0.47: specs detected from verifiable sources, asked for when nothing knows, provenance everywhere, and a bridge that learns limits from upstream 400s.\"",
+    "title": "The model-specs round: never guess a context window again",
+    "description": "Unown 0.0.47: specs detected from verifiable sources, asked for when nothing knows, provenance everywhere, and a bridge that learns limits from upstream 400s.",
     "date": "2026-10-30",
     "lastmod": "2026-10-30",
     "tags": [
@@ -432,8 +432,8 @@ export const BLOG_POSTS: BlogPost[] = [
   },
   {
     "slug": "2026-10-30-the-observability-round",
-    "title": "\"The observability round: can you read your agent's state in 60 seconds?\"",
-    "description": "\"A mission panel, a 60-second brief, a recovery card, receipts-only confidence and an ambient learning feed — the round the terminal learned to explain itself.\"",
+    "title": "The observability round: can you read your agent's state in 60 seconds?",
+    "description": "A mission panel, a 60-second brief, a recovery card, receipts-only confidence and an ambient learning feed — the round the terminal learned to explain itself.",
     "date": "2026-10-30",
     "lastmod": "2026-10-30",
     "tags": [
@@ -452,8 +452,8 @@ export const BLOG_POSTS: BlogPost[] = [
   },
   {
     "slug": "2026-10-30-the-plm-round",
-    "title": "\"The PLM round: unown now tracks itself as processes\"",
-    "description": "\"A 12-state machine for every engine activity, governed tool invocations, a recovery ledger — and the machine caught its own wiring bugs live.\"",
+    "title": "The PLM round: unown now tracks itself as processes",
+    "description": "A 12-state machine for every engine activity, governed tool invocations, a recovery ledger — and the machine caught its own wiring bugs live.",
     "date": "2026-10-30",
     "lastmod": "2026-10-30",
     "tags": [
@@ -470,8 +470,8 @@ export const BLOG_POSTS: BlogPost[] = [
   },
   {
     "slug": "2026-10-30-the-provider-round",
-    "title": "\"The provider round: what nine competitors taught unown about connecting a model\"",
-    "description": "\"Wire-aware probes, a rate-limit verdict that stops lying, masked key entry everywhere, and latency chips — the 2026-10-30 hardening of the provider path.\"",
+    "title": "The provider round: what nine competitors taught unown about connecting a model",
+    "description": "Wire-aware probes, a rate-limit verdict that stops lying, masked key entry everywhere, and latency chips — the 2026-10-30 hardening of the provider path.",
     "date": "2026-10-30",
     "lastmod": "2026-10-30",
     "tags": [
@@ -490,8 +490,8 @@ export const BLOG_POSTS: BlogPost[] = [
   },
   {
     "slug": "2026-10-29-the-encore-round",
-    "title": "\"The encore round: an agent that critiqued its own design work, then beat its own gates\"",
-    "description": "\"The gallery's eighth app, built inside a measured design loop — every screenshot scored, every failure ledgered, every number traced to a receipt.\"",
+    "title": "The encore round: an agent that critiqued its own design work, then beat its own gates",
+    "description": "The gallery's eighth app, built inside a measured design loop — every screenshot scored, every failure ledgered, every number traced to a receipt.",
     "date": "2026-10-29",
     "lastmod": "2026-10-29",
     "tags": [
@@ -509,8 +509,8 @@ export const BLOG_POSTS: BlogPost[] = [
   },
   {
     "slug": "2026-10-29-the-nocturne-round",
-    "title": "\"The nocturne round: the agent built an incident-ops platform — and got better building it\"",
-    "description": "\"Gallery app #7 — Nocturne, a multi-tenant incident-ops platform: 28 sessions, 473 tests, a 10/10 live browser pass, six failures pinned.\"",
+    "title": "The nocturne round: the agent built an incident-ops platform — and got better building it",
+    "description": "Gallery app #7 — Nocturne, a multi-tenant incident-ops platform: 28 sessions, 473 tests, a 10/10 live browser pass, six failures pinned.",
     "date": "2026-10-29",
     "lastmod": "2026-10-29",
     "tags": [
@@ -527,8 +527,8 @@ export const BLOG_POSTS: BlogPost[] = [
   },
   {
     "slug": "2026-10-29-the-sota-round",
-    "title": "\"The SOTA round: Fugue, and the loop that watched it build\"",
-    "description": "\"The fifth gallery app, built by unown while the loop minted skills, dreamed, and published an honest null — the receipts behind the showcase band.\"",
+    "title": "The SOTA round: Fugue, and the loop that watched it build",
+    "description": "The fifth gallery app, built by unown while the loop minted skills, dreamed, and published an honest null — the receipts behind the showcase band.",
     "date": "2026-10-29",
     "lastmod": "2026-10-29",
     "tags": [
@@ -546,8 +546,8 @@ export const BLOG_POSTS: BlogPost[] = [
   },
   {
     "slug": "2026-10-29-the-validation-round",
-    "title": "\"The validation round: cold-starting the learning loop, then pointing it at itself\"",
-    "description": "\"A fresh clone, an empty engine DB, one tracked memory file — a validation programme that found drift, poisoning, and a dead-ended mint, then fixed all three.\"",
+    "title": "The validation round: cold-starting the learning loop, then pointing it at itself",
+    "description": "A fresh clone, an empty engine DB, one tracked memory file — a validation programme that found drift, poisoning, and a dead-ended mint, then fixed all three.",
     "date": "2026-10-29",
     "lastmod": "2026-10-29",
     "tags": [
@@ -565,8 +565,8 @@ export const BLOG_POSTS: BlogPost[] = [
   },
   {
     "slug": "2026-10-28-the-cadence-round",
-    "title": "\"The cadence round: a habit tracker, a real bug in unown, and a three-app gallery\"",
-    "description": "\"One round, every SDLC stage: planned, built, browser-QA'd, reviewed twice — and the review caught a TDZ crash in unown itself. Three apps live.\"",
+    "title": "The cadence round: a habit tracker, a real bug in unown, and a three-app gallery",
+    "description": "One round, every SDLC stage: planned, built, browser-QA'd, reviewed twice — and the review caught a TDZ crash in unown itself. Three apps live.",
     "date": "2026-10-28",
     "lastmod": "2026-10-28",
     "tags": [
@@ -585,8 +585,8 @@ export const BLOG_POSTS: BlogPost[] = [
   },
   {
     "slug": "2026-10-28-the-carving-round",
-    "title": "\"The carving round: the letters draw themselves\"",
-    "description": "\"Glyph draw-on for the decode panel and the spellbox, a decode fill that stays AA at every frame, keycap chips, and copy buttons that finally speak.\"",
+    "title": "The carving round: the letters draw themselves",
+    "description": "Glyph draw-on for the decode panel and the spellbox, a decode fill that stays AA at every frame, keycap chips, and copy buttons that finally speak.",
     "date": "2026-10-28",
     "lastmod": "2026-10-28",
     "tags": [
@@ -608,8 +608,8 @@ export const BLOG_POSTS: BlogPost[] = [
   },
   {
     "slug": "2026-10-28-the-commerce-round",
-    "title": "\"The commerce round: a storefront, a checkout, and a browser QA pass\"",
-    "description": "\"Three SDLC rounds — planned, reviewed, browser-QA'd — and the landing page now frames two agent-built apps in a live gallery: 838 calls, one SHIP verdict.\"",
+    "title": "The commerce round: a storefront, a checkout, and a browser QA pass",
+    "description": "Three SDLC rounds — planned, reviewed, browser-QA'd — and the landing page now frames two agent-built apps in a live gallery: 838 calls, one SHIP verdict.",
     "date": "2026-10-28",
     "lastmod": "2026-10-28",
     "tags": [
@@ -628,8 +628,8 @@ export const BLOG_POSTS: BlogPost[] = [
   },
   {
     "slug": "2026-10-28-the-live-preview-round",
-    "title": "\"The live preview round: the landing page now runs what the agent built\"",
-    "description": "\"Four sessions, ~200 tool calls, one fullstack app — and the landing page now runs it instead of showing a video. The category's first live agent-built demo.\"",
+    "title": "The live preview round: the landing page now runs what the agent built",
+    "description": "Four sessions, ~200 tool calls, one fullstack app — and the landing page now runs it instead of showing a video. The category's first live agent-built demo.",
     "date": "2026-10-28",
     "lastmod": "2026-10-28",
     "tags": [
@@ -645,8 +645,8 @@ export const BLOG_POSTS: BlogPost[] = [
   },
   {
     "slug": "2026-10-28-the-parley-round",
-    "title": "\"The parley round: a multi-tenant SaaS, two P0s found by the adversarial review\"",
-    "description": "\"The gallery's fourth app adds tenancy, real auth, RBAC and isolation — and the round's failures became pinned regressions and agent skills.\"",
+    "title": "The parley round: a multi-tenant SaaS, two P0s found by the adversarial review",
+    "description": "The gallery's fourth app adds tenancy, real auth, RBAC and isolation — and the round's failures became pinned regressions and agent skills.",
     "date": "2026-10-28",
     "lastmod": "2026-10-28",
     "tags": [
@@ -665,8 +665,8 @@ export const BLOG_POSTS: BlogPost[] = [
   },
   {
     "slug": "2026-10-28-the-presence-round",
-    "title": "\"The presence round: six effects that make the landing page answer you\"",
-    "description": "\"A decode wave, a scroll route bar, a nav that names your band, pointer spotlights and counted receipts — additive effects, finished base states.\"",
+    "title": "The presence round: six effects that make the landing page answer you",
+    "description": "A decode wave, a scroll route bar, a nav that names your band, pointer spotlights and counted receipts — additive effects, finished base states.",
     "date": "2026-10-28",
     "lastmod": "2026-10-28",
     "tags": [
@@ -685,8 +685,8 @@ export const BLOG_POSTS: BlogPost[] = [
   },
   {
     "slug": "2026-10-27-the-builder-round",
-    "title": "\"The builder round: one prompt, a whole app, filmed end to end\"",
-    "description": "\"One prompt into an empty directory; 47 tool calls later a full-stack app with a green 39-test suite and a live-verified API. The whole build, on film.\"",
+    "title": "The builder round: one prompt, a whole app, filmed end to end",
+    "description": "One prompt into an empty directory; 47 tool calls later a full-stack app with a green 39-test suite and a live-verified API. The whole build, on film.",
     "date": "2026-10-27",
     "lastmod": "2026-10-27",
     "tags": [
@@ -707,8 +707,8 @@ export const BLOG_POSTS: BlogPost[] = [
   },
   {
     "slug": "2026-10-27-the-long-run-round",
-    "title": "\"The long-run round: what breaks when the agent works for hours\"",
-    "description": "\"Eleven endurance scenarios, 150-turn buildouts, forced compaction and kill-resume torture — five layered defects fixed, ten more in the runner itself.\"",
+    "title": "The long-run round: what breaks when the agent works for hours",
+    "description": "Eleven endurance scenarios, 150-turn buildouts, forced compaction and kill-resume torture — five layered defects fixed, ten more in the runner itself.",
     "date": "2026-10-27",
     "lastmod": "2026-10-27",
     "tags": [
@@ -725,8 +725,8 @@ export const BLOG_POSTS: BlogPost[] = [
   },
   {
     "slug": "2026-10-27-the-security-round",
-    "title": "\"The security round: every open advisory, closed at the source\"",
-    "description": "\"Eleven Dependabot alerts, three CodeQL findings, one lockfile incident — the advisory surface went to zero by fixing causes, not findings.\"",
+    "title": "The security round: every open advisory, closed at the source",
+    "description": "Eleven Dependabot alerts, three CodeQL findings, one lockfile incident — the advisory surface went to zero by fixing causes, not findings.",
     "date": "2026-10-27",
     "lastmod": "2026-10-27",
     "tags": [
@@ -740,8 +740,8 @@ export const BLOG_POSTS: BlogPost[] = [
   },
   {
     "slug": "2026-10-26-the-chaos-round",
-    "title": "\"The chaos round: orphaned fleets, stolen steering, and the reports that lied\"",
-    "description": "\"The chaos round: nested CLI calls, watchdog kills, oversized reports, slow children outliving the process. Seven findings, fixed and pinned.\"",
+    "title": "The chaos round: orphaned fleets, stolen steering, and the reports that lied",
+    "description": "The chaos round: nested CLI calls, watchdog kills, oversized reports, slow children outliving the process. Seven findings, fixed and pinned.",
     "date": "2026-10-26",
     "lastmod": "2026-10-26",
     "tags": [
@@ -758,8 +758,8 @@ export const BLOG_POSTS: BlogPost[] = [
   },
   {
     "slug": "2026-10-26-the-hardening-round",
-    "title": "\"The hardening round: the verdict on the detached engine\"",
-    "description": "\"We re-litigated the core USP's architecture against ten competitor repos and 54 sources. The detached engine stays; six honest-failure lanes ship in v0.0.28.\"",
+    "title": "The hardening round: the verdict on the detached engine",
+    "description": "We re-litigated the core USP's architecture against ten competitor repos and 54 sources. The detached engine stays; six honest-failure lanes ship in v0.0.28.",
     "date": "2026-10-26",
     "lastmod": "2026-10-26",
     "tags": [
@@ -776,8 +776,8 @@ export const BLOG_POSTS: BlogPost[] = [
   },
   {
     "slug": "2026-10-26-the-ledger-round",
-    "title": "\"The ledger round: the seams the chaos round wrote down\"",
-    "description": "\"Round three paid the chaos round's IOUs: the stop that couldn't un-park, the re-ask that vanished, the name with no entropy, the crash with no trace.\"",
+    "title": "The ledger round: the seams the chaos round wrote down",
+    "description": "Round three paid the chaos round's IOUs: the stop that couldn't un-park, the re-ask that vanished, the name with no entropy, the crash with no trace.",
     "date": "2026-10-26",
     "lastmod": "2026-10-26",
     "tags": [
@@ -794,8 +794,8 @@ export const BLOG_POSTS: BlogPost[] = [
   },
   {
     "slug": "2026-10-26-the-orphan-round",
-    "title": "\"The orphan round: the lane with no ledger of its own\"",
-    "description": "\"Round four paid the ledger's last IOU: the sync lane's kill -9 orphans — alive, unrecorded, swept by nobody — now journal, heartbeat, and sweep.\"",
+    "title": "The orphan round: the lane with no ledger of its own",
+    "description": "Round four paid the ledger's last IOU: the sync lane's kill -9 orphans — alive, unrecorded, swept by nobody — now journal, heartbeat, and sweep.",
     "date": "2026-10-26",
     "lastmod": "2026-10-26",
     "tags": [
@@ -812,8 +812,8 @@ export const BLOG_POSTS: BlogPost[] = [
   },
   {
     "slug": "2026-10-26-the-sota-memory-eval-round",
-    "title": "\"The SOTA memory-eval round: four suites, one real fix, and a bill paid\"",
-    "description": "\"How our memory system earned its numbers: gold-op ledgers, dual-embedder retrieval, a calibrated judge, twelve failure modes — and the bug they caught.\"",
+    "title": "The SOTA memory-eval round: four suites, one real fix, and a bill paid",
+    "description": "How our memory system earned its numbers: gold-op ledgers, dual-embedder retrieval, a calibrated judge, twelve failure modes — and the bug they caught.",
     "date": "2026-10-26",
     "lastmod": "2026-10-26",
     "tags": [
@@ -830,8 +830,8 @@ export const BLOG_POSTS: BlogPost[] = [
   },
   {
     "slug": "2026-10-26-the-sota-recut-round",
-    "title": "\"The SOTA re-cut: thirteen reels re-filmed, and how we audit demo video\"",
-    "description": "\"A frame-sampled VLM audit sent thirteen landing reels back into the capture harness — and the first audit pass itself was wrong about what it saw.\"",
+    "title": "The SOTA re-cut: thirteen reels re-filmed, and how we audit demo video",
+    "description": "A frame-sampled VLM audit sent thirteen landing reels back into the capture harness — and the first audit pass itself was wrong about what it saw.",
     "date": "2026-10-26",
     "lastmod": "2026-10-26",
     "tags": [
@@ -849,8 +849,8 @@ export const BLOG_POSTS: BlogPost[] = [
   },
   {
     "slug": "2026-10-26-the-stress-round",
-    "title": "\"The stress round: what breaks when a real user drives the browser\"",
-    "description": "\"Fifteen hostile scenarios and seven competitor repos exposed three browser-agent architecture bugs — all closed in v0.0.29.\"",
+    "title": "The stress round: what breaks when a real user drives the browser",
+    "description": "Fifteen hostile scenarios and seven competitor repos exposed three browser-agent architecture bugs — all closed in v0.0.29.",
     "date": "2026-10-26",
     "lastmod": "2026-10-26",
     "tags": [
@@ -866,8 +866,8 @@ export const BLOG_POSTS: BlogPost[] = [
   },
   {
     "slug": "2026-10-26-the-subagent-stress-round",
-    "title": "\"The subagent stress round: what a real model found that the scripted tests could not\"",
-    "description": "\"Ten live scenarios drove the subagent stack the way its docs promise — six real defects found, two of them silently broken features, all fixed and pinned.\"",
+    "title": "The subagent stress round: what a real model found that the scripted tests could not",
+    "description": "Ten live scenarios drove the subagent stack the way its docs promise — six real defects found, two of them silently broken features, all fixed and pinned.",
     "date": "2026-10-26",
     "lastmod": "2026-10-26",
     "tags": [

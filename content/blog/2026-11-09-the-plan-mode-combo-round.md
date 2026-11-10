@@ -1,6 +1,6 @@
 ---
-title: "The combination round: the flag that never worked, and the gate that wouldn't stay closed"
-description: "A full pass over every plan-mode combination found a flagship flag that silently did nothing, an approval gate that re-opened while you typed, and more."
+title: The combination round: the flag that never worked, and the gate that wouldn't stay closed
+description: A full pass over every plan-mode combination found a flagship flag that silently did nothing, an approval gate that re-opened while you typed, and more.
 date: 2026-11-09
 lastmod: 2026-11-09
 tags: [planning, tui, release]

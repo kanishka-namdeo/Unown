@@ -1,6 +1,6 @@
 ---
-title: "The SOTA re-cut: thirteen reels re-filmed, and how we audit demo video"
-description: "A frame-sampled VLM audit sent thirteen landing reels back into the capture harness — and the first audit pass itself was wrong about what it saw."
+title: The SOTA re-cut: thirteen reels re-filmed, and how we audit demo video
+description: A frame-sampled VLM audit sent thirteen landing reels back into the capture harness — and the first audit pass itself was wrong about what it saw.
 date: 2026-10-26
 lastmod: 2026-10-26
 tags: [landing, media, release]

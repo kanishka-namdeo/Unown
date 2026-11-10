@@ -1,6 +1,6 @@
 ---
-title: "The SOTA round: Fugue, and the loop that watched it build"
-description: "The fifth gallery app, built by unown while the loop minted skills, dreamed, and published an honest null — the receipts behind the showcase band."
+title: The SOTA round: Fugue, and the loop that watched it build
+description: The fifth gallery app, built by unown while the loop minted skills, dreamed, and published an honest null — the receipts behind the showcase band.
 date: 2026-10-29
 lastmod: 2026-10-29
 tags: [landing, learning]

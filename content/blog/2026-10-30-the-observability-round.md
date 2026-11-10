@@ -1,6 +1,6 @@
 ---
-title: "The observability round: can you read your agent's state in 60 seconds?"
-description: "A mission panel, a 60-second brief, a recovery card, receipts-only confidence and an ambient learning feed — the round the terminal learned to explain itself."
+title: The observability round: can you read your agent's state in 60 seconds?
+description: A mission panel, a 60-second brief, a recovery card, receipts-only confidence and an ambient learning feed — the round the terminal learned to explain itself.
 date: 2026-10-30
 lastmod: 2026-10-30
 tags: [observability, tui]

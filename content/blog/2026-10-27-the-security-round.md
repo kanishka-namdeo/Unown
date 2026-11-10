@@ -1,6 +1,6 @@
 ---
-title: "The security round: every open advisory, closed at the source"
-description: "Eleven Dependabot alerts, three CodeQL findings, one lockfile incident — the advisory surface went to zero by fixing causes, not findings."
+title: The security round: every open advisory, closed at the source
+description: Eleven Dependabot alerts, three CodeQL findings, one lockfile incident — the advisory surface went to zero by fixing causes, not findings.
 date: 2026-10-27
 lastmod: 2026-10-27
 tags: [security, release]

@@ -1,6 +1,6 @@
 ---
-title: "The combination round 2: the approval option that never asked"
-description: "The second pass over every plan-mode × TUI combination found an approval option whose promise was silent vapor — and a boot lane still dropping its flags."
+title: The combination round 2: the approval option that never asked
+description: The second pass over every plan-mode × TUI combination found an approval option whose promise was silent vapor — and a boot lane still dropping its flags.
 date: 2026-11-10
 lastmod: 2026-11-10
 tags: [planning, tui, release]

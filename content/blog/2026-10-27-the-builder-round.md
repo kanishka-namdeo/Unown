@@ -1,6 +1,6 @@
 ---
-title: "The builder round: one prompt, a whole app, filmed end to end"
-description: "One prompt into an empty directory; 47 tool calls later a full-stack app with a green 39-test suite and a live-verified API. The whole build, on film."
+title: The builder round: one prompt, a whole app, filmed end to end
+description: One prompt into an empty directory; 47 tool calls later a full-stack app with a green 39-test suite and a live-verified API. The whole build, on film.
 date: 2026-10-27
 lastmod: 2026-10-27
 tags: [landing, media]

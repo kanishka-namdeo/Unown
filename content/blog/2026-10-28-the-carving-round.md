@@ -1,6 +1,6 @@
 ---
-title: "The carving round: the letters draw themselves"
-description: "Glyph draw-on for the decode panel and the spellbox, a decode fill that stays AA at every frame, keycap chips, and copy buttons that finally speak."
+title: The carving round: the letters draw themselves
+description: Glyph draw-on for the decode panel and the spellbox, a decode fill that stays AA at every frame, keycap chips, and copy buttons that finally speak.
 date: 2026-10-28
 lastmod: 2026-10-28
 tags: [landing, design]

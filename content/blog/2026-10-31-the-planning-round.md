@@ -1,6 +1,6 @@
 ---
-title: "Plan Mode V2: the round where unown learned to actually plan"
-description: "A scored plan file, an approval gate, and two mechanical convergence lanes took plan mode from zero plans produced to 100/100 — with receipts."
+title: Plan Mode V2: the round where unown learned to actually plan
+description: A scored plan file, an approval gate, and two mechanical convergence lanes took plan mode from zero plans produced to 100/100 — with receipts.
 date: 2026-10-31
 lastmod: 2026-10-31
 tags: [planning, benchmark, release]

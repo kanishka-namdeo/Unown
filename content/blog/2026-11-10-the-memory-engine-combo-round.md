@@ -1,6 +1,6 @@
 ---
-title: "The memory-engine round: dream-now that dreamed nothing"
-description: "Every write lane, dream, read lane and tier combination driven live against a real engine — a dream button that lied, a search lane that whispered empty."
+title: The memory-engine round: dream-now that dreamed nothing
+description: Every write lane, dream, read lane and tier combination driven live against a real engine — a dream button that lied, a search lane that whispered empty.
 date: 2026-11-10
 lastmod: 2026-11-10
 tags: [memory, engine, release]

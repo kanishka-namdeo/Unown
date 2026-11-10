@@ -1,6 +1,6 @@
 ---
-title: "The sessions round: abort and resume, made consistent"
-description: "One abort matrix behind Esc, /abort and every protocol; both session stores behind every picker; resume in both grammars the field ships."
+title: The sessions round: abort and resume, made consistent
+description: One abort matrix behind Esc, /abort and every protocol; both session stores behind every picker; resume in both grammars the field ships.
 date: 2026-10-31
 lastmod: 2026-10-31
 tags: [sessions, cli]

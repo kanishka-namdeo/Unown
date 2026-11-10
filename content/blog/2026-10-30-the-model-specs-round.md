@@ -1,6 +1,6 @@
 ---
-title: "The model-specs round: never guess a context window again"
-description: "Unown 0.0.47: specs detected from verifiable sources, asked for when nothing knows, provenance everywhere, and a bridge that learns limits from upstream 400s."
+title: The model-specs round: never guess a context window again
+description: Unown 0.0.47: specs detected from verifiable sources, asked for when nothing knows, provenance everywhere, and a bridge that learns limits from upstream 400s.
 date: 2026-10-30
 lastmod: 2026-10-30
 tags: [providers, verification]

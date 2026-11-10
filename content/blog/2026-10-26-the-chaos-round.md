@@ -1,6 +1,6 @@
 ---
-title: "The chaos round: orphaned fleets, stolen steering, and the reports that lied"
-description: "The chaos round: nested CLI calls, watchdog kills, oversized reports, slow children outliving the process. Seven findings, fixed and pinned."
+title: The chaos round: orphaned fleets, stolen steering, and the reports that lied
+description: The chaos round: nested CLI calls, watchdog kills, oversized reports, slow children outliving the process. Seven findings, fixed and pinned.
 date: 2026-10-26
 lastmod: 2026-10-26
 tags: [subagents, release]

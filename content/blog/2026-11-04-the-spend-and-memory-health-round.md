@@ -1,5 +1,5 @@
 ---
-title: "The spend-and-memory-health round: two honest misses become two honest cards"
+title: The spend-and-memory-health round: two honest misses become two honest cards
 description: The settings benchmark's two pinned search misses both flip — automation spend gets a meter and ceilings, memory gets a health card.
 date: 2026-11-04
 tags: [settings, memory, governance]

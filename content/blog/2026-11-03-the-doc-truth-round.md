@@ -1,5 +1,5 @@
 ---
-title: "The doc-truth round: the maintenance pass that made every documented number true"
+title: The doc-truth round: the maintenance pass that made every documented number true
 description: The doc-truth round re-derived and corrected every drifted count, measured the Coda PWA null with a receipt, and priced the instruction-surface PR lane.
 date: 2026-11-03
 tags: [benchmark, verification, hardening]

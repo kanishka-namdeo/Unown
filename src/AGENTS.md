@@ -20,7 +20,7 @@ The marketing surfaces: the landing page — a single Next.js 16 App Router rout
 - `tailwind.config.ts` is deliberately absent: Tailwind CSS 4 is configured through the CSS. Do not reintroduce a JS config file.
 - Styling: Tailwind CSS 4 conventions, `cn()` from `src/lib/utils.ts` (the one runtime helper), `lucide-react` icons, `framer-motion` motion, `fuse.js` for the dex search. The page is a static marketing surface whose only network call is the wrapped star-count fetch (`star-count.tsx`, ISR `revalidate: 3600`, silent fallback — it must never fail a build).
 - Root `package.json` owns commands: `bun run dev` (landing dev server on :3000), `bun run build`, `bun run start`, `bun run lint`, `bun run typecheck`, `bun run test:unit`, `bun run test:coverage`, the `check:*` gates and `audit:landing`. `agent:start`/`agent:stop` are NOT this tree's business — see `scripts/AGENTS.md`.
-- `src/types/bun-test.d.ts` — ambient `bun-types` loader so `tsc --noEmit` resolves `bun:test` imports; `src/test-dom-setup.ts` — the happy-dom global registrator the root `bunfig.toml` preloads for `bun test src`.
+- `src/types/bun-test.d.ts` — ambient `bun-types` loader so `tsc --noEmit` resolves `bun:test` imports; `src/test-dom-setup.ts` — the happy-dom global registrator the root `bunfig.toml` preloads for `bun test ./src`.
 
 ## Work Guidance
 
@@ -32,7 +32,7 @@ The marketing surfaces: the landing page — a single Next.js 16 App Router rout
 
 ## Verification
 
-- `bun run lint` and `bun run typecheck` — must be clean; CI enforces both plus `bun test src` (the unit count moves with every pin, so it is not restated here) and the changed-line coverage gate (>= 80% of touched `src/` lines; `scripts/coverage-exempt.txt` carries the one justified exemption, the OG image route).
+- `bun run lint` and `bun run typecheck` — must be clean; CI enforces both plus `bun test ./src` (the unit count moves with every pin, so it is not restated here) and the changed-line coverage gate (>= 80% of touched `src/` lines; `scripts/coverage-exempt.txt` carries the one justified exemption, the OG image route).
 - `bun run build` — exit 0; `/` and `/blog` + every post + their OG images must prerender, and the standalone server must answer 200 on `/` (CI's build job does this smoke on a scratch port).
 - The e2e lane is landing- and blog-scoped (`e2e/`): axe-core a11y in both motion states, the scroll budget, the dex video decode gate, the SEO surface, and `blog.spec.ts` (index, feed, article SEO, the generated card, the 404).
 - Landing work additionally requires a visual pass against a production build, a reduced-motion pass, and the palette gates — see `src/components/landing/AGENTS.md` (Verification) and `scripts/AGENTS.md`.
