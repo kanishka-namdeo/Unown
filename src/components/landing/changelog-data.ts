@@ -232,7 +232,7 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
         "bucket": "Added",
         "items": [
           {
-            "title": "The Memory Recital round — the memory system benchtested by driving the agent like a real user…",
+            "title": "The Memory Recital round — real-user memory benchtest, four defects caught (2026-11-11)",
             "behavior": false
           },
           {
