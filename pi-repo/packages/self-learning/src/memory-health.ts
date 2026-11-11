@@ -282,10 +282,18 @@ export async function memoryHealth(
 }
 
 /** The engine's undreamed benchmark-lane notes (the reconcile-stale warning's
- * input for the engine scope; 0 = an empty queue, never an error). */
+ * input for the engine scope; 0 = an empty queue, never an error).
+ *
+ * The Memory Encore round fix (2026-11-12): this used to return
+ * `(undreamedNotes ?? 0).length` — the imported FUNCTION's `.length` (its
+ * arity, always 2), never the queue — so the reconcile-stale warning
+ * reported a phantom "2 undreamed note(s) pending" whenever the 7-day
+ * horizon tripped. The fix calls the function (the same
+ * `undreamedNotes(50, "benchmark").length` shape router.ts and server.ts
+ * use); the catch stays for a store that cannot answer. */
 function engineUndreamedNotes(): number {
         try {
-                return (undreamedNotes ?? 0).length;
+                return undreamedNotes(50, "benchmark").length;
         } catch {
                 return 0;
         }

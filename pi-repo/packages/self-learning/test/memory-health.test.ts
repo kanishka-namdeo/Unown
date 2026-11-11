@@ -21,6 +21,7 @@ import {
         clearReconcileRecord,
         countConflicts,
         countDuplicates,
+        engineMemoryHealth,
         lastReconcileTs,
         memoryHealth,
         RECONCILE_STALE_MS,
@@ -400,5 +401,67 @@ describe("API route /api/memory/health", () => {
                 // route delegates to it).
                 expect(src.includes('"/api/memory/health"')).toBe(true);
                 expect(src.includes("engineMemoryHealth")).toBe(true);
+        });
+});
+
+// ---------------------------------------------------------------------------
+// 7. The arity bug (Memory Encore round, 2026-11-12) — engineUndreamedNotes
+//    used to return the imported FUNCTION's .length (its arity, always 2),
+//    so the engine scope's reconcile-stale warning reported a phantom
+//    "2 undreamed note(s) pending" whenever the 7d horizon tripped — an
+//    empty queue could never clear it and a real backlog always read as 2.
+//    engineMemoryHealth must report the REAL benchmark-lane count, and only
+//    benchmark notes (terminal notes belong to project scopes, not the
+//    engine scope's lane).
+// ---------------------------------------------------------------------------
+
+describe("engineMemoryHealth — the real undreamed count (arity-bug regression)", () => {
+        test("reports the REAL benchmark-note count, not the function's arity (2)", async () => {
+                const { createNote } = await import("../src/notes.ts");
+                const { store } = await import("../src/store.ts");
+                const dir = freshDir("arity");
+                store.run(`DELETE FROM notes WHERE kind = 'benchmark'`);
+                try {
+                        // 5 undreamed benchmark notes — deliberately ≠ 2 so an
+                        // arity regression (always "2") cannot pass by accident.
+                        for (let i = 0; i < 5; i++) createNote(null as any, `arity-fix probe note ${i}`, "benchmark");
+                        const h = await engineMemoryHealth({ platform: fakePlatform([]), recordDir: dir });
+                        const stale = h.warnings.find((w) => w.kind === "reconcile-stale");
+                        // no successful reconcile on record + notes pending → stale fires
+                        expect(stale).toBeDefined();
+                        expect(stale!.detail).toContain("5 undreamed note(s) pending");
+                        expect(stale!.detail).not.toContain("2 undreamed note(s) pending");
+                } finally {
+                        store.run(`DELETE FROM notes WHERE kind = 'benchmark'`);
+                }
+        });
+
+        test("an empty benchmark queue never fires the stale warning (the phantom-note cure)", async () => {
+                const { store } = await import("../src/store.ts");
+                const dir = freshDir("arity-empty");
+                store.run(`DELETE FROM notes WHERE kind = 'benchmark'`);
+                try {
+                        const h = await engineMemoryHealth({ platform: fakePlatform([]), recordDir: dir });
+                        expect(h.warnings.some((w) => w.kind === "reconcile-stale")).toBe(false);
+                } finally {
+                        store.run(`DELETE FROM notes WHERE kind = 'benchmark'`);
+                }
+        });
+
+        test("terminal notes do not count toward the engine scope's lane", async () => {
+                const { createNote } = await import("../src/notes.ts");
+                const { store } = await import("../src/store.ts");
+                const dir = freshDir("arity-terminal");
+                store.run(`DELETE FROM notes WHERE kind = 'benchmark'`);
+                try {
+                        // terminal notes belong to project scopes; the engine's
+                        // benchmark lane must stay empty
+                        createNote(null as any, "terminal note for another project", "terminal", "/tmp/arity-probe");
+                        const h = await engineMemoryHealth({ platform: fakePlatform([]), recordDir: dir });
+                        expect(h.warnings.some((w) => w.kind === "reconcile-stale")).toBe(false);
+                } finally {
+                        store.run(`DELETE FROM notes WHERE kind = 'benchmark'`);
+                        store.run(`DELETE FROM notes WHERE project_path = '/tmp/arity-probe'`);
+                }
         });
 });
