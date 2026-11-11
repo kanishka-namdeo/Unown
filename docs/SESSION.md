@@ -8,10 +8,36 @@ archaeology. When a round completes, its log graduates to a round-specific
 
 ---
 
-## ACTIVE ROUND — none (2026-11-11)
+## ACTIVE ROUND — the Memory Encore round (2026-11-12, IN FLIGHT)
 
-The Memory Recital round is the last graduated round (see below).
-The next session opens a round here per the checkpoint discipline.
+Mission: evaluate the detached memory system architecture by reverse-engineering
+similar products/tools/projects (at least 5 — this round tears down ELEVEN new
+ones on top of the Recital round's five) to find what is proven better by user
+experience or research, then augment the workflows, fix whatever breaks, add
+visual indicators for user delight, and cover the edge cases.
+
+Checkpoints (each pushed; the round log will graduate to
+`docs/memory-encore-round-session.md`):
+
+- [x] CP0 — research: `docs/memory-encore-round-research.md` (Claude Code,
+  Cursor, Windsurf, Gemini CLI, Codex/AGENTS.md, Copilot, MemOS, A-MEM,
+  HippoRAG 2, Supermemory, OpenMemory — ranked patterns, every claim sourced)
+- [ ] CP1 — fix: the `engineUndreamedNotes()` arity bug (the reconcile-stale
+  warning always reported "2 undreamed note(s)" — a function's arity, never
+  the queue) + pinned regression test
+- [ ] CP2 — architecture: the freshness lane — every rendered memory bullet
+  carries its last-confirmed date + a `stale` marker past the horizon
+  (Claude Code's modified-timestamp pattern; Copilot's 28-day TTL evidence),
+  the memory guide teaches the semantics, drift pins updated
+- [ ] CP3 — terminal delight: the session-start recall line (Claude Code's
+  "Recalled N memories") + `/memory show` (Gemini CLI's exact-context
+  debuggability)
+- [ ] CP4 — dashboard: the memory health card surfaces on the Memory screen
+  (last reconcile, dupes, conflicts, warnings — the existing-but-invisible
+  audit, Claude Code's prompt-audit pattern)
+- [ ] CP5 — verification: full suites green, the memory-recital benchmark
+  live re-run (warm arm), PTY capture of the new surfaces
+- [ ] CP6 — docs/landing/blog/CHANGELOG/DOX, version bump, release
 
 ---
 ## GRADUATED — the v0.0.62 release cut (2026-11-11, the five-bump gap closed)
