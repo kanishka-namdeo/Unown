@@ -46,44 +46,20 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
   {
     "label": "Unreleased",
     "date": null,
-    "total": 53,
+    "total": 35,
     "counts": {
-      "Added": 33,
+      "Added": 27,
       "Changed": 0,
       "Deprecated": 0,
       "Removed": 0,
-      "Fixed": 14,
+      "Fixed": 6,
       "Security": 0,
-      "Behavior": 6
+      "Behavior": 2
     },
     "groups": [
       {
         "bucket": "Added",
         "items": [
-          {
-            "title": "The Memory Recital round — the memory system benchtested by driving the agent like a real user…",
-            "behavior": false
-          },
-          {
-            "title": "The end-user combination round — every entry lane × management command × service × platform artifact…",
-            "behavior": false
-          },
-          {
-            "title": "The memory-engine combination round — every write lane × consolidation × read lane × tier × lifecycle…",
-            "behavior": false
-          },
-          {
-            "title": "The Serenade round closes L-12 — the Legato landing: docs + landing band + REAL captures + README + CHANGELOG…",
-            "behavior": false
-          },
-          {
-            "title": "The Sonata round's V-27 — the F-7 render link closed through A2 (the V-26 open link from F-6, 2026-11-07)",
-            "behavior": false
-          },
-          {
-            "title": "The Sonata round's V-15 closes — the F-5 flow-spec pick-gap race…",
-            "behavior": false
-          },
           {
             "title": "A2H-9 closes — the encore Finale test-isolation fix (2026-11-06)",
             "behavior": false
@@ -198,6 +174,93 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
         "bucket": "Behavior",
         "items": [
           {
+            "title": "The tool-time browser-memory hint digest is category-balanced (the hints-ranking round)",
+            "behavior": true
+          },
+          {
+            "title": "Plan mode's toolset changes shape in V3 (the observable difference)",
+            "behavior": true
+          }
+        ]
+      },
+      {
+        "bucket": "Fixed",
+        "items": [
+          {
+            "title": "A Ctrl+C exit during a running turn no longer loses the whole session",
+            "behavior": false
+          },
+          {
+            "title": "The dream-render/landing-quote coupling is closed on all three fronts (#46) — the memory route of the claims…",
+            "behavior": false
+          },
+          {
+            "title": "Screenshots no longer write JPEG bytes under a .png name — the filename's extension is honored…",
+            "behavior": false
+          },
+          {
+            "title": "The bazaar order-id uniqueness test stopped being a dice roll",
+            "behavior": false
+          },
+          {
+            "title": "fill_form no longer reports a silent success when the values were discarded…",
+            "behavior": false
+          },
+          {
+            "title": "The dev server was silently un-interactable when browsed by IP literal",
+            "behavior": false
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "label": "0.0.62",
+    "date": "2026-11-11",
+    "total": 18,
+    "counts": {
+      "Added": 6,
+      "Changed": 0,
+      "Deprecated": 0,
+      "Removed": 0,
+      "Fixed": 8,
+      "Security": 0,
+      "Behavior": 4
+    },
+    "groups": [
+      {
+        "bucket": "Added",
+        "items": [
+          {
+            "title": "The Memory Recital round — the memory system benchtested by driving the agent like a real user…",
+            "behavior": false
+          },
+          {
+            "title": "The end-user combination round — every entry lane × management command × service × platform artifact…",
+            "behavior": false
+          },
+          {
+            "title": "The memory-engine combination round — every write lane × consolidation × read lane × tier × lifecycle…",
+            "behavior": false
+          },
+          {
+            "title": "The Serenade round closes L-12 — the Legato landing: docs + landing band + REAL captures + README + CHANGELOG…",
+            "behavior": false
+          },
+          {
+            "title": "The Sonata round's V-27 — the F-7 render link closed through A2 (the V-26 open link from F-6, 2026-11-07)",
+            "behavior": false
+          },
+          {
+            "title": "The Sonata round's V-15 closes — the F-5 flow-spec pick-gap race…",
+            "behavior": false
+          }
+        ]
+      },
+      {
+        "bucket": "Behavior",
+        "items": [
+          {
             "title": "The ⛨ indicator — the fresh-evidence guard is visible (the Memory Recital round's CP4, 2026-11-11)",
             "behavior": true
           },
@@ -211,14 +274,6 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
           },
           {
             "title": "Plan mode's stay-loop respects the user's decline for the rest of the run (the plan-mode × TUI combination…",
-            "behavior": true
-          },
-          {
-            "title": "The tool-time browser-memory hint digest is category-balanced (the hints-ranking round)",
-            "behavior": true
-          },
-          {
-            "title": "Plan mode's toolset changes shape in V3 (the observable difference)",
             "behavior": true
           }
         ]
@@ -256,30 +311,6 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
           },
           {
             "title": "Plan-mode label + lane drift cleaned up (same round)",
-            "behavior": false
-          },
-          {
-            "title": "A Ctrl+C exit during a running turn no longer loses the whole session",
-            "behavior": false
-          },
-          {
-            "title": "The dream-render/landing-quote coupling is closed on all three fronts (#46) — the memory route of the claims…",
-            "behavior": false
-          },
-          {
-            "title": "Screenshots no longer write JPEG bytes under a .png name — the filename's extension is honored…",
-            "behavior": false
-          },
-          {
-            "title": "The bazaar order-id uniqueness test stopped being a dice roll",
-            "behavior": false
-          },
-          {
-            "title": "fill_form no longer reports a silent success when the values were discarded…",
-            "behavior": false
-          },
-          {
-            "title": "The dev server was silently un-interactable when browsed by IP literal",
             "behavior": false
           }
         ]
