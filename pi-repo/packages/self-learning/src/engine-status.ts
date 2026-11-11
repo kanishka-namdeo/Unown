@@ -432,6 +432,27 @@ export function dreamNewsToastText(news: DreamNews): string {
         return `✦ AutoDream learned ${rules} for this project (v${Math.max(0, news.version - 1)} → v${news.version})`;
 }
 
+// ---------------------------------------------------------------------------
+// The Memory Encore round (2026-11-12): the session-start recall line — the
+// answer to "is my memory even loaded?" printed ONCE per process boot, the
+// moment the tiers are injected. Claude Code ships this as "Recalled 2
+// memories" (its most-iterated memory-UX element — four changelog rounds);
+// our footer-quiet contract keeps the healthy up-state SILENT, so without
+// this line the default layout never affirmatively says "memory was
+// injected this session". The dream-news toast (above) is the save-side
+// twin; this is the recall-side one.
+// ---------------------------------------------------------------------------
+
+/** The recall line's copy (pure, pinned by tests). Same facts as the footer
+ *  bar, same age grammar (humanizeDreamAge), one ◈ glyph: the recall moment
+ *  deserves its own mark the way dreams own ✦. The `/memory show` pointer is
+ *  the Claude Code /context + Gemini /memory show answer to "prove it". */
+export function memoryRecallLine(info: MemoryBarInfo, now: number = Date.now()): string {
+        const version = info.version > 0 ? ` · v${info.version}` : "";
+        const dreamed = info.dreamedAt !== undefined ? ` · dreamed ${humanizeDreamAge(now - info.dreamedAt)}` : "";
+        return `◈ memory recalled: ${info.rules} rule${info.rules === 1 ? "" : "s"}${version}${dreamed} — /memory show`;
+}
+
 export interface EngineStatusHooks {
         /** Footer line setter (ctx.ui.setStatus("engine", text) — guarded by
          *  caller). The quiet round adds `attention`: false only for the plain

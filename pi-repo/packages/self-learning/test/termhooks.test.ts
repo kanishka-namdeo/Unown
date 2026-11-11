@@ -23,11 +23,11 @@
 // /tmp subtree).
 import "./_env.ts"; // MUST be the first import: store.ts opens SQLite at module scope
 import { afterAll, beforeEach, describe, expect, test } from "bun:test";
-import { mkdirSync, readlinkSync, realpathSync, rmSync, symlinkSync } from "node:fs";
+import { mkdirSync, readlinkSync, realpathSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { homedir, platform, tmpdir } from "node:os";
 import { join } from "node:path";
 import { decideBash, jailPath } from "../src/hooks.ts";
-import { buildTerminalNote, createTerminalExtension } from "../src/termhooks.ts";
+import { buildTerminalNote, createTerminalExtension, resetMemoryRecallLatchForTests } from "../src/termhooks.ts";
 import { TEST_TMP } from "./_env.ts";
 
 // ---------------------------------------------------------------------------
@@ -855,3 +855,83 @@ function decoded(body: string): string {
                 return body;
         }
 }
+
+// ---------------------------------------------------------------------------
+// The Memory Encore round: the session-start recall line — ONE info notify
+// per process boot when the project has learned rules, silent for a fresh
+// project, never repeated across /new-style reloads (the module latch).
+// ---------------------------------------------------------------------------
+
+describe("session_start — the recall line (the Claude Code 'Recalled N memories' moment)", () => {
+        const RDIR = join(TEST_TMP, "termhooks", "recall");
+        beforeEach(() => {
+                rmSync(RDIR, { recursive: true, force: true });
+                resetMemoryRecallLatchForTests();
+        });
+
+        function seedProject(dir: string, rules: number): void {
+                const memDir = join(dir, ".unown", "memory");
+                mkdirSync(memDir, { recursive: true });
+                const bullets = Array.from({ length: rules }, (_, i) => `- learned rule number ${i} for the recall line`).join("\n");
+                writeFileSync(join(memDir, "project.md"), `# Project Memory\n\n## Workflow\n${bullets}\n`, "utf8");
+        }
+
+        function attachRecall(dir: string): { handlers: Record<string, HookHandler>; notified: Array<[string, string]> } {
+                const notified: Array<[string, string]> = [];
+                const handlers: Record<string, HookHandler> = {};
+                const ext = createTerminalExtension({ cwd: dir, engineUrl: "http://127.0.0.1:1" });
+                ext.factory({
+                        on: (name: string, handler: HookHandler) => {
+                                handlers[name] = handler;
+                        },
+                });
+                return { handlers, notified };
+        }
+
+        async function fireStart(handlers: Record<string, HookHandler>, notified: Array<[string, string]>): Promise<void> {
+                await handlers["session_start"]({}, {
+                        hasUI: true,
+                        ui: { notify: (m: string, l: string) => notified.push([m, l]), setStatus: () => {} },
+                });
+        }
+
+        test("a project with learned rules gets ONE info recall line naming the count", async () => {
+                const proj = join(RDIR, "p1");
+                seedProject(proj, 3);
+                const { handlers, notified } = attachRecall(proj);
+                await fireStart(handlers, notified);
+                const recalls = notified.filter(([m]) => m.startsWith("◈ memory recalled:"));
+                expect(recalls.length).toBe(1);
+                expect(recalls[0][0]).toContain("3 rules");
+                expect(recalls[0][1]).toBe("info");
+        });
+
+        test("a fresh project (no memory file) stays silent — no rules, no line", async () => {
+                const proj = join(RDIR, "p2");
+                mkdirSync(proj, { recursive: true });
+                const { handlers, notified } = attachRecall(proj);
+                await fireStart(handlers, notified);
+                expect(notified.filter(([m]) => m.startsWith("◈ memory recalled:")).length).toBe(0);
+        });
+
+        test("a session RELOAD (/new re-fires session_start) never repeats the line (the process latch)", async () => {
+                const proj = join(RDIR, "p3");
+                seedProject(proj, 5);
+                const { handlers, notified } = attachRecall(proj);
+                await fireStart(handlers, notified);
+                await fireStart(handlers, notified); // the reload
+                await fireStart(handlers, notified); // and again
+                expect(notified.filter(([m]) => m.startsWith("◈ memory recalled:")).length).toBe(1);
+        });
+
+        test("a missing/absent ui never throws (degrade silently — the cosmetic contract)", async () => {
+                const proj = join(RDIR, "p4");
+                seedProject(proj, 2);
+                const handlers: Record<string, HookHandler> = {};
+                const ext = createTerminalExtension({ cwd: proj, engineUrl: "http://127.0.0.1:1" });
+                ext.factory({ on: (name: string, handler: HookHandler) => (handlers[name] = handler) });
+                await handlers["session_start"]({}, {}); // no ctx.ui at all
+                expect(true).toBe(true); // reaching here is the contract
+        });
+});
+

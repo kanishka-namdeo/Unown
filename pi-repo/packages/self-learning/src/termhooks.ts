@@ -57,6 +57,8 @@ import {
         describeSpawnCircuit,
         engineAssumedDown,
         getEngineStatusInfo,
+        memoryRecallLine,
+        readMemoryBarInfo,
         startEngineStatusLoop,
         stopEngineStatusLoop,
 } from "./engine-status.ts";
@@ -562,6 +564,19 @@ async function terminalCallMcp(server: string, tool: string, args: Record<string
  *  children spawn their own `unown` process with their own extension). */
 let activeTerminalHooks: { handlers: Partial<Record<HookEventName, unknown[]>>; ctx: HookRunContext } | null = null;
 
+/** The Memory Encore round: the session-start recall line fires ONCE per
+ *  process boot — /new|resume|fork reloads re-fire session_start, and the
+ *  footer-quiet contract means this line is the only affirmative
+ *  "memory was injected" signal; repeating it per reload would be noise. */
+let recallLineShown = false;
+
+/** Test seam: re-arm the once-per-process recall-line latch (the
+ *  resetShieldTelemetry convention — the latch is module state a suite
+ *  cannot otherwise reach between cases). */
+export function resetMemoryRecallLatchForTests(): void {
+        recallLineShown = false;
+}
+
 /** True when the current terminal session has any user hooks loaded. */
 export function terminalHooksActive(): boolean {
         return activeTerminalHooks !== null;
@@ -706,6 +721,30 @@ export function createTerminalExtension(opts: TerminalHookOptions) {
                                         ctx?.ui?.notify?.(notice, "warning");
                                 } catch {
                                         /* non-fatal */
+                                }
+                        }
+                        // The Memory Encore round: the session-start recall
+                        // line — ONE per process boot (the latch survives
+                        // /new|resume reloads the way the status loop does),
+                        // printed only when this project actually HAS learned
+                        // rules (silence for a fresh project is honest). This
+                        // is the recall-side twin of the dream-news toast:
+                        // "✦ AutoDream learned N" celebrates the save, this
+                        // confirms the load. Claude Code ships the same moment
+                        // as "Recalled 2 memories"; our footer-quiet contract
+                        // leaves the healthy state silent, so this line is the
+                        // only affirmative "memory was injected" signal in the
+                        // default layout. Reads the project's own files (never
+                        // the engine) — it works degraded, like the bar does.
+                        if (!recallLineShown) {
+                                recallLineShown = true;
+                                try {
+                                        const bar = readMemoryBarInfo(opts.cwd);
+                                        if (bar && bar.rules > 0) {
+                                                ctx?.ui?.notify?.(memoryRecallLine(bar), "info");
+                                        }
+                                } catch {
+                                        /* cosmetic — degrade silently */
                                 }
                         }
                         // Same refuse-first UX for the project hooks config.

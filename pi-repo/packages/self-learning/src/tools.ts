@@ -4629,7 +4629,7 @@ export function createUnownToolsExtension(opts: UnownToolsOptions) {
 
                 pi.registerCommand("memory", {
                         description:
-                                "Memory: /memory search <query> searches every project's learned memory (cross-scope); bare /memory opens the dashboard Memory screen",
+                                "Memory: /memory search <query> searches every project's learned memory (cross-scope); /memory show prints exactly what was injected this session; bare /memory opens the dashboard Memory screen",
                         handler: async (args, ctx) => {
                                 // /memory search <query> — the shared-memory recall surface:
                                 // one semantic search across the engine scope AND every project
@@ -4682,6 +4682,42 @@ export function createUnownToolsExtension(opts: UnownToolsOptions) {
                                                         "error",
                                                 );
                                         }
+                                        return;
+                                }
+                                // /memory show [full] — the Memory Encore round: the
+                                // exact-context debuggability surface (Gemini CLI's
+                                // `/memory show` + Claude Code's /context pattern).
+                                // /learning shows the STACK (tiers, staleness,
+                                // budget); this shows the PAYLOAD — the exact
+                                // budget-pruned files the model receives this
+                                // session, provenance lines and guide included, so
+                                // "is my memory even loaded?" is answered by
+                                // reading, not trusting. `full` lifts the
+                                // 60-line-per-tier display cap (the model always
+                                // receives the full stack; only the DISPLAY trims).
+                                if (/^show\b/i.test(trimmed)) {
+                                        const full = /\bfull\b/i.test(trimmed);
+                                        const { files, report } = terminalMemoryForAgentDetailed(opts.cwd);
+                                        const budgetLine =
+                                                report.overflow || report.prunedBlocks.length > 0
+                                                        ? `injection budget: ${report.totalAfter}/${report.cap} chars${report.prunedBlocks.length > 0 ? ` — ${report.prunedBlocks.length} oldest block(s) pruned` : ""}${report.truncatedTiers.length > 0 ? `, head-truncated: ${report.truncatedTiers.join(", ")}` : ""}${report.overflow ? " — OVERFLOW: protected content alone exceeds the cap" : ""}`
+                                                        : `injection budget: ${report.totalAfter}/${report.cap} chars — the whole stack fits`;
+                                        const DISPLAY_LINES = 60;
+                                        const parts = files.map((f) => {
+                                                const lines = f.content.trimEnd().split("\n");
+                                                const displayTruncated = !full && lines.length > DISPLAY_LINES;
+                                                const shown =
+                                                        lines.slice(0, full ? lines.length : DISPLAY_LINES).join("\n") +
+                                                        (displayTruncated ? `\n… (${lines.length - DISPLAY_LINES} more lines — /memory show full)` : "");
+                                                return `── ${f.tier.toUpperCase()} · ${f.path} (${f.content.length} chars) ──\n${shown}`;
+                                        });
+                                        // The F5 tail pattern: the transparency block
+                                        // rides LAST so a long stack can never scroll
+                                        // it off the top of the pane.
+                                        ctx.ui.notify(
+                                                `${parts.join("\n\n")}\n\n${budgetLine}\nthe model receives exactly this stack (${files.length} file(s)) · /learning — per-tier staleness · /dashboard — versions, diffs, rollbacks`,
+                                                "info",
+                                        );
                                         return;
                                 }
                                 await openDashboardScreen(ctx, "memory");
