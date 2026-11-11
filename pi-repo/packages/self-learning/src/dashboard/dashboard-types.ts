@@ -242,6 +242,33 @@ export interface ProjectMemoryResponse {
         projects: ProjectMemoryTier[];
 }
 
+/** GET /api/memory/health — the engine scope's health card (the Memory
+ *  Encore round's dashboard surface: the existing-but-invisible audit).
+ *  `lastReconcile`/warning `since` are epoch ms or null. */
+export interface MemoryHealthWarning {
+        kind: "reconcile-failing" | "tier-at-cap" | "reconcile-stale";
+        detail: string;
+}
+
+export interface MemoryHealthCard {
+        scope: string;
+        lastReconcile: number | null;
+        duplicateCount: number;
+        conflictCount: number;
+        warnings: MemoryHealthWarning[];
+        memoryCount: number;
+}
+
+export interface MemoryHealthResponse {
+        health: MemoryHealthCard;
+        platform: {
+                available: boolean;
+                backend: string;
+                model: string;
+                error?: string;
+        };
+}
+
 export interface MemoryHistoryEntry {
         id: number;
         tier: string;

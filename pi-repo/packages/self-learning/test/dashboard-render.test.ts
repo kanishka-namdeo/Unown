@@ -103,7 +103,10 @@ describe("DashboardApp headless render", () => {
                 // only appears in the skills screen's EMPTY state.
                 const anchors: Record<string, string[]> = {
                         overview: ["benchmark tasks", "pass rate"],
-                        memory: ["engine tiers", "injection budget", "project memories"],
+                        // memory: the health card pins (Memory Encore round) — the
+                        // audit line + the live warning badge render under the
+                        // budget meter.
+                        memory: ["engine tiers", "injection budget", "health · last reconcile", "reconcile-stale", "project memories"],
                         // dreams: the ⛨ pin (2026-11-11 Recital round) — the
                         // fresh-evidence guard's emerald indicator renders.
                         dreams: ["autodream", "protected"],

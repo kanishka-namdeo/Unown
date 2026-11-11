@@ -34,6 +34,7 @@ import type {
         LiveRun,
         LiveRunsResponse,
         MemoryHistoryResponse,
+        MemoryHealthResponse,
         MemoryResponse,
         MintResponse,
         NoteCreateResponse,
@@ -138,6 +139,7 @@ export type ResourceId =
         | "liveRuns"
         | "memory"
         | "memoryProjects"
+        | "memoryHealth"
         | "cycles"
         | "improvements"
         | "dreams"
@@ -167,6 +169,11 @@ const LOADERS: Record<ResourceId, (c: EngineClient) => Promise<unknown>> = {
         liveRuns: (c) => c.get<LiveRunsResponse>("/api/runs/live"),
         memory: (c) => c.get<MemoryResponse>("/api/memory"),
         memoryProjects: (c) => c.get<ProjectMemoryResponse>("/api/memory/projects"),
+        // The Memory Encore round: the health card joins the polled surface —
+        // the audit existed (SM-2) but only through the API/doctor; the
+        // Memory screen now renders it (Claude Code's prompt-audit pattern:
+        // visible audits build trust; invisible ones read as creep).
+        memoryHealth: (c) => c.get<MemoryHealthResponse>("/api/memory/health"),
         cycles: (c) => c.get<CyclesResponse>("/api/cycles"),
         improvements: (c) => c.get<ImprovementsResponse>("/api/improvements"),
         dreams: (c) => c.get<DreamsResponse>("/api/dreams"),
@@ -197,8 +204,9 @@ const INVALIDATIONS: Record<string, ResourceId[]> = {
         "improvement:shipped": ["improvements", "cycles", "overview"],
         "improvement:regressed": ["improvements", "cycles", "memory", "overview"],
         "dream:started": ["dreams", "notes", "memory", "overview"],
-        "dream:finished": ["dreams", "notes", "memory", "overview", "skills", "memoryProjects"],
-        "memory:changed": ["memory", "overview", "memoryProjects"],
+        // a finished dream may have reconciled (health's lastReconcile)
+        "dream:finished": ["dreams", "notes", "memory", "overview", "skills", "memoryProjects", "memoryHealth"],
+        "memory:changed": ["memory", "overview", "memoryProjects", "memoryHealth"],
         "memory:budget": ["memory"],
         hook: ["hooks", "overview"],
         "note:created": ["notes", "overview"],
@@ -633,6 +641,7 @@ export class DashboardStore {
                 });
                 void this.refresh("memory");
                 void this.refresh("memoryProjects");
+                void this.refresh("memoryHealth"); // a rollback changes the scope the card audits
                 void this.refresh("overview");
                 this.clearDetailCache(`memhist:${tier}`);
                 return r;

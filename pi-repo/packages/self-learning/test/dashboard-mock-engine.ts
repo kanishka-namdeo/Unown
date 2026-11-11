@@ -1391,6 +1391,28 @@ export async function startMockEngine(): Promise<MockEngine> {
                         json(res, { projects: projectTiers });
                         return;
                 }
+                // The Memory Encore round: the health card fixture — a healthy
+                // engine scope with one stale-backlog warning (the shape the
+                // memory screen renders under the budget meter).
+                if (p === "/api/memory/health") {
+                        json(res, {
+                                health: {
+                                        scope: "unown-engine",
+                                        lastReconcile: T0 - 3 * MIN,
+                                        duplicateCount: 0,
+                                        conflictCount: 0,
+                                        warnings: [
+                                                {
+                                                        kind: "reconcile-stale",
+                                                        detail: "2 undreamed note(s) pending with no successful reconcile since 2026-11-01",
+                                                },
+                                        ],
+                                        memoryCount: 12,
+                                },
+                                platform: { available: true, backend: "lexical", model: "agnes-3.0-flash" },
+                        });
+                        return;
+                }
                 const histMatch = p.match(/^\/api\/memory\/([^/]+)\/history$/);
                 if (histMatch) {
                         json(res, { history: historyFor(decodeURIComponent(histMatch[1] ?? "")) });
