@@ -30,36 +30,40 @@ export interface ChangelogStop {
   groups: ChangelogGroup[];
 }
 
-export const CHANGELOG_TOTAL_ENTRIES = 558;
+export const CHANGELOG_TOTAL_ENTRIES = 560;
 
 export const CHANGELOG_TOTALS: Record<ChangelogBucket, number> = {
-  "Added": 263,
+  "Added": 264,
   "Changed": 32,
   "Deprecated": 0,
   "Removed": 3,
   "Fixed": 206,
   "Security": 5,
-  "Behavior": 49
+  "Behavior": 50
 };
 
 export const CHANGELOG_STOPS: ChangelogStop[] = [
   {
     "label": "Unreleased",
     "date": null,
-    "total": 49,
+    "total": 51,
     "counts": {
-      "Added": 32,
+      "Added": 33,
       "Changed": 0,
       "Deprecated": 0,
       "Removed": 0,
       "Fixed": 13,
       "Security": 0,
-      "Behavior": 4
+      "Behavior": 5
     },
     "groups": [
       {
         "bucket": "Added",
         "items": [
+          {
+            "title": "The Memory Recital round — the memory system benchtested by driving the agent like a real user…",
+            "behavior": false
+          },
           {
             "title": "The end-user combination round — every entry lane × management command × service × platform artifact…",
             "behavior": false
@@ -193,6 +197,10 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
       {
         "bucket": "Behavior",
         "items": [
+          {
+            "title": "The learning loop's evidence discipline — four agent-behavior changes from the Memory Recital round (2026-11-11)",
+            "behavior": true
+          },
           {
             "title": "The CLI's usage-error class and subcommand-scoped help (the end-user combination round, 2026-11-10)",
             "behavior": true

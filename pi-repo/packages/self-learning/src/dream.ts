@@ -164,9 +164,17 @@ async function consolidate(
         }
         // Reconcile: contradiction resolution + semantic dedup + pruning (the
         // surviving AutoDream judgment) applied through mem0 primitives.
+        // Fresh-evidence protection (2026-11-11 Recital round, BUG 1): the ids
+        // this batch just extracted are handed to the reconciler as
+        // undeletable — a verdict that kills the just-written carrier of
+        // current state (observed live: the strict date rule superseded AND
+        // its relaxed replacement deleted in one pass, leaving the topic
+        // with no current rule) is rejected deterministically; the memory
+        // becomes established evidence the NEXT pass may retire.
         const reconcile = await reconcileMemories(scope, {
                 platform,
                 llmFn: opts.reconcileLlmFn,
+                protectedIds: surviving.filter((e) => e.event === "ADD" && e.id).map((e) => String(e.id)),
         });
         const memories = await platform.getAll(scope);
         const rendered = renderProjectMemoryMarkdown(memories, {

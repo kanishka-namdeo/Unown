@@ -387,6 +387,31 @@ describe("stripSessionMetadataLine — the quarantine false-positive fix", () =>
                 // the extractable outcome survives
                 expect(stripped).toContain("Final outcome: learned that the flaky retry test");
         });
+
+        // 2026-11-11 Recital round, BUG 3 follow-up: the withheld-outcome line
+        // (harness-authored meta for answer-only sessions) must be stripped at
+        // BOTH layers — the live verification caught the extraction LLM minting
+        // the line's own sentence into memory ("Unverified model output must
+        // not be extracted as engineering evidence" landed as a project rule).
+        test("the withheld-outcome line never reaches scan OR extraction (both layers strip it)", () => {
+                const withheldNote = buildTerminalNote({
+                        cwd: "/tmp/quarantine-proj",
+                        prompts: 2,
+                        toolCalls: 0,
+                        toolNames: [],
+                        lastAssistantText: "No comment style is specified in this project's memory.",
+                        sessionStartTs: Date.now() - 5 * 60_000,
+                        sessionId: "wxyz0000",
+                });
+                // layer 0 (guard): the scaffolding line is dropped before the scan
+                expect(scanUntrustedText(withheldNote).rules).toEqual([]);
+                // the extraction-input strip: the meta sentence is gone entirely
+                const stripped = stripSessionMetadataLine(withheldNote);
+                expect(stripped).not.toContain("Final outcome withheld");
+                expect(stripped).not.toContain("not extractable evidence");
+                // and the unverified answer text never rode the note at all
+                expect(stripped).not.toContain("No comment style");
+        });
         test("end to end: a bash-using session's note is NOT quarantined — its knowledge extracts", async () => {
                 const project = join(SCRATCH, "quarantine-fix-project");
                 rmSync(project, { recursive: true, force: true });

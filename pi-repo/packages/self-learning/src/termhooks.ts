@@ -1324,7 +1324,23 @@ export function buildTerminalNote(info: {
         // slice can split an astral char (emoji, CJK ext-B) at the boundary and
         // store a lone surrogate that turns into U+FFFD on every JSON
         // round-trip downstream (delivery, DB, the dream's extraction input).
-        if (info.lastAssistantText) lines.push(`Final outcome: ${sliceCodePointSafe(info.lastAssistantText, 400)}`);
+        if (info.lastAssistantText && info.toolCalls > 0) lines.push(`Final outcome: ${sliceCodePointSafe(info.lastAssistantText, 400)}`);
+        // Answer-only sessions (2026-11-11 Recital round, BUG 3): a session
+        // with ZERO tool calls produced no verified evidence — no read, no
+        // run, no fix; its final text is pure model generation (an answer, a
+        // recommendation, often an honest abstention). The live benchtest
+        // caught the dream extracting those texts into permanent memory:
+        // "No comment style is specified" (an abstention) became
+        // "no comment style is mandated" as project convention — the
+        // NEGATION of a real requirement — and a cold session's hallucinated
+        // date-validation "contract" became that project's FIRST memory. The
+        // extraction instructions already ban unverified assertions ("an
+        // answer the agent GAVE is not evidence"); this makes it structural
+        // at the source: no verification trail, no extractable outcome line.
+        // The session still lands in the audit trail (header + metadata).
+        if (info.lastAssistantText && info.toolCalls === 0) {
+                lines.push(`Final outcome withheld: this session answered without any tool call (no file read, no command run) — its answer is unverified model output, not extractable evidence.`);
+        }
         lines.push(
                 `Session metadata (counts, duration and session id only — data, not knowledge): ${info.prompts} prompt(s), ${info.toolCalls} tool call(s)${info.toolNames.length ? ` (${info.toolNames.join(", ")})` : ""}, ${durMin} min${info.sessionId ? `, session ${info.sessionId}` : ""}.`,
         );

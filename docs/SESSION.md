@@ -8,10 +8,19 @@ archaeology. When a round completes, its log graduates to a round-specific
 
 ---
 
-## ACTIVE ROUND — none (2026-11-10)
+## ACTIVE ROUND — the Memory Recital round (2026-11-11, OPENED)
 
-The end-user combination round is the last graduated round (see below).
-The next session opens a round here per the checkpoint discipline.
+`docs/memory-recital-round-session.md` — benchtest the memory system
+**driving the agent like a real user on complex tasks and complex
+scenarios** (real `unown -p` sessions → notes → AutoDream → injection →
+recall, scored live), reverse-engineer five other memory products
+(Mem0 v3 / Zep-Graphiti / Letta MemFS / Cognee / LangChain-LlamaIndex)
+into teardown docs, fix whatever breaks, improve the learning system,
+add delight-grade visual indicators, and close with docs/landing/blog/
+version-bump/dependabot hygiene. Baseline: v0.0.61 @ c7280cec, fresh
+clone, install 7/7 green, doctor green, Agnes upstream verified
+(agnes-3.0-flash), bridge :3031 + engine :3030 up. CP0 (setup) recorded
+in the round log; CP1 (the real-user benchtest) in flight.
 
 ---
 ## GRADUATED — the end-user combination round (2026-11-10, CLOSED at M4)

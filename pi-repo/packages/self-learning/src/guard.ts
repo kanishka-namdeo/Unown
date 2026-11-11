@@ -227,7 +227,7 @@ function stripHarnessNoteScaffolding(content: string): string {
                 .split("\n")
                 .filter(
                         (l) =>
-                                !/^\s*(?:Terminal session(?: \[subagent\])?(?: outcome)? in \S+?:\s*$|Session metadata \([^)]*\):|Injection shield flagged )/.test(
+                                !/^\s*(?:Terminal session(?: \[subagent\])?(?: outcome)? in \S+?:\s*$|Session metadata \([^)]*\):|Injection shield flagged |Final outcome withheld:)/.test(
                                         l,
                                 ),
                 )

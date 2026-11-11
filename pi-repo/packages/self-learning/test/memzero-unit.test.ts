@@ -323,3 +323,183 @@ describe("reconcileMemories idempotent op application", () => {
                 expect(result.merged).toBe(1);
         });
 });
+
+// ---------------------------------------------------------------------------
+// Fresh-evidence protection (2026-11-11 Recital round, BUG 1)
+//
+// The live benchtest: session 3 reversed the strict ISO date rule; extraction
+// correctly added the relaxed replacement, and the reconcile verdict then
+// deleted BOTH the old strict rule (correct) and the fresh replacement (the
+// current-state carrier) — leaving the project's memory with NO date rule at
+// all. T3 recall failed with "no information". The guard: DELETE ops on ids
+// born in the current batch are rejected deterministically.
+// ---------------------------------------------------------------------------
+describe("reconcileMemories fresh-evidence protection (2026-11-11 Recital BUG 1)", () => {
+        function platformWith(memories: Array<{ id: string; text: string; createdAt: number }>) {
+                const deleted: string[] = [];
+                const updated: Array<{ id: string; text: string }> = [];
+                return {
+                        deleted,
+                        updated,
+                        async getAll() {
+                                return memories.map((m) => ({ id: m.id, text: m.text, updatedAt: m.createdAt, createdAt: m.createdAt, metadata: {} }));
+                        },
+                        async delete(id: string) {
+                                if (deleted.includes(id)) throw new Error(`Memory with ID ${id} not found`);
+                                deleted.push(id);
+                        },
+                        async update(id: string, text: string) {
+                                updated.push({ id, text });
+                        },
+                } as any;
+        }
+
+        test("a verdict deleting BOTH sides of a contradiction keeps the fresh carrier alive", async () => {
+                const { reconcileMemories } = await import("../src/memzero.ts");
+                // The exact live shape: old strict rule + fresh relaxed replacement.
+                const platform = platformWith([
+                        { id: "old-strict", text: "strict ISO date format YYYY-MM-DD enforced", createdAt: 1 },
+                        { id: "fresh-relaxed", text: "strict ISO date rejection replaced with relaxed check: empty dates accepted, any parseable date accepted", createdAt: 2 },
+                ]);
+                const result = await reconcileMemories({ agentId: "t" }, {
+                        platform,
+                        // The observed failure verdict: the reconciler "resolved" the
+                        // topic by deleting every memory about it — including the winner.
+                        llmFn: async () => ({
+                                ops: [
+                                        { op: "DELETE", id: "old-strict", reason: "superseded" },
+                                        { op: "DELETE", id: "fresh-relaxed", reason: "transition record about the superseded rule" },
+                                ],
+                        }),
+                        protectedIds: ["fresh-relaxed"],
+                });
+                expect(platform.deleted).toEqual(["old-strict"]); // the loser still goes
+                expect(result.pruned).toBe(1);
+                expect(result.protectedDeletes).toBe(1); // the fresh winner survived, counted
+        });
+
+        test("protected ids still accept UPDATE (merge INTO the fresh memory is legal)", async () => {
+                const { reconcileMemories } = await import("../src/memzero.ts");
+                const platform = platformWith([{ id: "fresh", text: "auto-sizing with Math.max(4, ...)", createdAt: 2 }]);
+                const result = await reconcileMemories({ agentId: "t" }, {
+                        platform,
+                        llmFn: async () => ({
+                                ops: [{ op: "UPDATE", id: "fresh", text: "auto-sizing with Math.max(4, ...) (Updated 2026-11-05)", reason: "merge temporal marker" }],
+                        }),
+                        protectedIds: ["fresh"],
+                });
+                expect(platform.updated).toEqual([{ id: "fresh", text: "auto-sizing with Math.max(4, ...) (Updated 2026-11-05)" }]);
+                expect(platform.deleted).toEqual([]);
+                expect(result.protectedDeletes).toBe(0);
+        });
+
+        test("without protectedIds the same verdict is applied as before (opt-in guard)", async () => {
+                const { reconcileMemories } = await import("../src/memzero.ts");
+                const platform = platformWith([
+                        { id: "old", text: "old rule", createdAt: 1 },
+                        { id: "fresh", text: "new rule", createdAt: 2 },
+                ]);
+                const result = await reconcileMemories({ agentId: "t" }, {
+                        platform,
+                        llmFn: async () => ({
+                                ops: [
+                                        { op: "DELETE", id: "old", reason: "x" },
+                                        { op: "DELETE", id: "fresh", reason: "y" },
+                                ],
+                        }),
+                });
+                expect(platform.deleted).toEqual(["old", "fresh"]);
+                expect(result.protectedDeletes).toBe(0);
+        });
+
+        test("an empty protectedIds set protects nothing but stays green", async () => {
+                const { reconcileMemories } = await import("../src/memzero.ts");
+                const platform = platformWith([{ id: "m1", text: "rule", createdAt: 1 }]);
+                const result = await reconcileMemories({ agentId: "t" }, {
+                        platform,
+                        llmFn: async () => ({ ops: [{ op: "DELETE", id: "m1", reason: "stale" }] }),
+                        protectedIds: [],
+                });
+                expect(platform.deleted).toEqual(["m1"]);
+                expect(result.protectedDeletes).toBe(0);
+        });
+
+        test("exact-twin carve-out: a same-batch duplicate pair may still collapse (platform dedup stays legal)", async () => {
+                // mem0's own dedup judgment DELETEs one of two same-batch twins —
+                // the content survives in the twin, so the guard must let it
+                // through (the localml dream-wiring contract: "dedup is the
+                // platform's job — the reconcile verdict collapses the pair").
+                const { reconcileMemories } = await import("../src/memzero.ts");
+                const twinText = "Parser fix verified the fixture count matches the spec";
+                const platform = platformWith([
+                        { id: "twin-a", text: twinText, createdAt: 2 },
+                        { id: "twin-b", text: twinText, createdAt: 2 },
+                        { id: "other", text: "Router note: hook payloads are fenced by schema", createdAt: 1 },
+                ]);
+                const result = await reconcileMemories({ agentId: "t" }, {
+                        platform,
+                        llmFn: async () => ({ ops: [{ op: "DELETE", id: "twin-b", reason: "near-duplicate" }] }),
+                        protectedIds: ["twin-a", "twin-b", "other"],
+                });
+                expect(platform.deleted).toEqual(["twin-b"]); // the twin's content survives in twin-a
+                expect(result.pruned).toBe(1);
+                expect(result.protectedDeletes).toBe(0);
+        });
+
+        test("deleting BOTH twins is still rejected (no sole carrier of fresh content dies)", async () => {
+                const { reconcileMemories } = await import("../src/memzero.ts");
+                const twinText = "Parser fix verified the fixture count matches the spec";
+                const platform = platformWith([
+                        { id: "twin-a", text: twinText, createdAt: 2 },
+                        { id: "twin-b", text: twinText, createdAt: 2 },
+                ]);
+                const result = await reconcileMemories({ agentId: "t" }, {
+                        platform,
+                        llmFn: async () => ({
+                                ops: [
+                                        { op: "DELETE", id: "twin-a", reason: "x" },
+                                        { op: "DELETE", id: "twin-b", reason: "y" },
+                                ],
+                        }),
+                        protectedIds: ["twin-a", "twin-b"],
+                });
+                expect(platform.deleted).toEqual([]); // each twin's only survivor is itself deleted → both rejected
+                expect(result.protectedDeletes).toBe(2);
+        });
+});
+
+// ---------------------------------------------------------------------------
+// Prompt-contract tests for the 2026-11-11 Recital fixes (BUG 2 + BUG 4)
+// ---------------------------------------------------------------------------
+
+describe("Recital extraction/reconcile prompt contracts (2026-11-11)", () => {
+        test("MEM0_CUSTOM_INSTRUCTIONS carries the conventions lane (BUG 2: preferences were dropped)", async () => {
+                // Live: the user required "comments in sentence case with no trailing
+                // periods", stated AND applied in-session — extraction dropped it
+                // (no lane for it), T4 recall failed, and the dream then wrote the
+                // abstention's negation ("no comment style is mandated") into memory.
+                const { MEM0_CUSTOM_INSTRUCTIONS } = await import("../src/memzero.ts");
+                expect(MEM0_CUSTOM_INSTRUCTIONS).toContain("CONVENTIONS AND STYLE RULES");
+                expect(MEM0_CUSTOM_INSTRUCTIONS).toContain("sentence case");
+                expect(MEM0_CUSTOM_INSTRUCTIONS).toContain("an instruction every future session must follow");
+        });
+
+        test("MEM0_CUSTOM_INSTRUCTIONS bans negative-abstention extraction (BUG 3's second layer)", async () => {
+                const { MEM0_CUSTOM_INSTRUCTIONS } = await import("../src/memzero.ts");
+                expect(MEM0_CUSTOM_INSTRUCTIONS).toContain("NEGATIVE ABSTENTION answers are never facts");
+                expect(MEM0_CUSTOM_INSTRUCTIONS).toContain("never extract what it reported NOT finding");
+        });
+
+        test("RECONCILE_SYSTEM protects the winner and bans invented history (BUG 1 + BUG 4 prompts)", async () => {
+                const { RECONCILE_SYSTEM } = await import("../src/memzero.ts");
+                // BUG 1 prompt layer: deleting both sides of a contradiction is the
+                // worst outcome; merges keep the newest as carrier.
+                expect(RECONCILE_SYSTEM).toContain("The WINNER (the newer memory carrying the current state) is never a valid DELETE target");
+                expect(RECONCILE_SYSTEM).toContain("MERGE DIRECTION");
+                expect(RECONCILE_SYSTEM).toContain("keep the NEWEST memory as the surviving carrier");
+                // BUG 4: the live T1 UPDATE invented "previously stated as a future
+                // switch" — history markers must cite only what the memories say.
+                expect(RECONCILE_SYSTEM).toContain("never invent history");
+                expect(RECONCILE_SYSTEM).toContain("Temporal/history markers in a merged text must cite ONLY what the memories themselves already say");
+        });
+});
