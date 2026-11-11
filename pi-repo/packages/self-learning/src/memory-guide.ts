@@ -31,6 +31,11 @@ export const MEMORY_GUIDE = `# How to use these memory tiers
   before changing code because of it — verify it against the owning source
   when that check is cheap (one read, one grep). If memory and source
   disagree, the source wins.
+- Each learned rule ends with the date it was last confirmed (e.g.
+  "· 2026-11-08"); a later session re-asserting the rule refreshes that
+  date. Rules marked "· stale" have gone weeks without re-confirmation —
+  treat them as weaker evidence: verify before asserting, and prefer a
+  fresh source over a stale memory when they disagree.
 - When an answer rests on a memory entry, say so ("from project memory:")
   and, for consequential facts, name the source you verified against. If
   you cannot verify and the stakes are low, answer from memory and mark it

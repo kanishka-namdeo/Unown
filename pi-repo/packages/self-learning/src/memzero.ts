@@ -129,6 +129,52 @@ export function mem0ReconcileEnabled(): boolean {
         return String(process.env.PI_MEM0_RECONCILE ?? "").trim() !== "0";
 }
 
+// ------------------------------------------------------------- freshness lane
+// The Memory Encore round (2026-11-12): every rendered memory bullet carries
+// the date it was last confirmed (the mem0 updatedAt — an UPDATE verdict from
+// a later dream rewrites it, so re-asserted evidence refreshes the date the
+// way Copilot's re-store-on-verify does), and bullets older than the horizon
+// are marked stale. Claude Code ships per-memory `modified` timestamps for
+// exactly this reason ("helping Claude reason about which memories are fresh
+// vs. stale", v2.1.75); Copilot expires at 28 days (un-refreshed memories
+// vanish) — the marker is our softer, visible version of the same decay:
+// the rule stays, its evidential weight drops, and the memory guide says so.
+
+/** The staleness horizon in days (PI_MEM0_STALE_DAYS; default 28 — Copilot's
+ * TTL evidence; 0 disables the stale marker, dates still render). */
+export function mem0StaleDays(): number {
+        const n = Number(process.env.PI_MEM0_STALE_DAYS ?? 28);
+        return Number.isFinite(n) && n >= 0 ? n : 28;
+}
+
+/** The last-confirmed timestamp of a memory (ms), or null when neither
+ * updatedAt nor createdAt parses — legacy/migrated rows may carry neither,
+ * and an unknown age must not render as a fake date (or a fake 1970-stale). */
+export function memoryConfirmedAt(m: PlatformMemory): number | null {
+        const ts = Date.parse(String(m.updatedAt ?? m.createdAt ?? ""));
+        return Number.isFinite(ts) ? ts : null;
+}
+
+/** The freshness suffix for one rendered bullet: ` · YYYY-MM-DD` normally,
+ * ` · YYYY-MM-DD · stale` past the horizon, `""` when the age is unknown or
+ * the memory is a seed (the repo's own scaffolding — instructions, not
+ * dated evidence). Pure, deterministic (no Date.now() inside — `now` is a
+ * parameter), so renders stay idempotent: the same memory set always
+ * renders byte-identical, and only an UPDATE (new evidence) moves a date.
+ */
+export function memoryFreshnessStamp(
+        m: PlatformMemory,
+        now: number = Date.now(),
+): string {
+        if (String(m.metadata?.kind ?? "") === "seed") return "";
+        const ts = memoryConfirmedAt(m);
+        if (ts === null) return "";
+        const days = mem0StaleDays();
+        const stale = days > 0 && now - ts > days * 86_400_000;
+        const date = new Date(ts).toISOString().slice(0, 10);
+        return stale ? `${date} · stale` : date;
+}
+
 /** Both embedders are 384-dim by construction — a single vector space size. */
 export const MEM0_DIM = 384;
 
@@ -1870,11 +1916,14 @@ export function renderProjectMemoryMarkdown(
                  *  is re-appended verbatim (the hand-edit lane; dream.ts threads the
                  *  current file here). */
                 preserveManualNotesFrom?: string;
+                /** The freshness clock (tests pin it; default Date.now()). */
+                now?: number;
         } = {},
 ): string {
         const cap = opts.maxBullets ?? mem0MaxRendered();
         const hardWonCap = mem0MaxHardWon();
         const maxChars = mem0MaxRenderChars();
+        const now = opts.now ?? Date.now();
         const sorted = [...memories].sort((a, b) => {
                 const ta = Date.parse(String(a.updatedAt ?? a.createdAt ?? "")) || 0;
                 const tb = Date.parse(String(b.updatedAt ?? b.createdAt ?? "")) || 0;
@@ -1947,7 +1996,15 @@ export function renderProjectMemoryMarkdown(
                         const list = sections.get(title);
                         if (!list?.length) continue;
                         parts.push(`## ${title}`);
-                        for (const m of list) parts.push(`- ${m.text.replace(/\s+/g, " ").trim()}`);
+                        // The freshness lane (Memory Encore round): every bullet
+                        // carries its last-confirmed date (+ `stale` past the
+                        // horizon). Seeds and unknown-age rows keep the bare
+                        // bullet — a missing date is honest, a fake one is not.
+                        for (const m of list) {
+                                const stamp = memoryFreshnessStamp(m, now);
+                                const text = m.text.replace(/\s+/g, " ").trim();
+                                parts.push(stamp ? `- ${text} · ${stamp}` : `- ${text}`);
+                        }
                         parts.push("");
                 }
                 if (manual.trim()) {
