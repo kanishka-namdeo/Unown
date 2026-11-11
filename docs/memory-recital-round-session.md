@@ -189,3 +189,33 @@ CONTRADICTION still resolved correctly: the old sentence-case preference
 is gone, the new one stands). Pinned by the mock-fixture render test
 (`dreams: [..., "protected"]`), the feed tests, and the end-to-end
 wiring test in `test/manual-notes.test.ts`.
+
+## CP5 — the formal benchtest suite + edge cases (2026-11-11)
+
+`benchmarks/memory-recital/` — the permanent real-user lane (Track 10 in
+benchmarks/README.md): a fixture project (the keel CSV library with the
+planted defect), a runner (`bun runner.mjs [--dry|--edge|--fresh]`)
+that materializes the fixture, drives the three REAL sessions, dreams
+through the engine API, runs the 5-probe QA battery warm/cold with
+judge-free scoring (recall-qa's matcher semantics), the three edge probes
+(concurrency, contamination, the engine-down outbox arc — kill the engine
+pid ONLY: the bridge must stay up or the session itself dies at preflight),
+resume-safe receipts under `results/<model>/`.
+
+**Live run (2026-11-11, agnes-3.0-flash): warm 5/5, cold 0/5, lift +5** —
+the cold arm's T3/T4 hallucinations (invented date "contracts", a bizarre
+"Chinese-only comments" rule) are the exact lane the memory closes. Edge:
+E1 concurrency PASS, E2 contamination PASS (dreaming the QA notes added
+nothing false), E3 outbox PASS (queued while down, drained on restart,
+and the down session still ANSWERED correctly — memory is files; injection
+needs no engine). RESULTS.md carries the pre-fix baseline table too.
+
+Edge cases covered by unit pins beyond the suite: the exact-twin dedup
+carve-out, both-twins-deleted rejection, the empty protectedIds set, the
+answer-only withheld-outcome lane (build time + the real shutdown path),
+the withheld-line strip at both guard layers, the plural grammar of the ⛨
+fragment, the feed's no-standing-zero rule. Observed non-defects (recorded,
+not fixed): the never-dreamed scaffold keeps the legacy seed shape until
+the first substantive dream re-renders it (self-healing, instructional
+value); the engine scope's own dream can gate on its canary and roll back
+(the canary system working as designed — observed live twice).

@@ -1,0 +1,58 @@
+{
+ "ts": "2026-11-11T05:17:14.168Z",
+ "model": "agnes-3.0-flash",
+ "probes": 5,
+ "warmPass": 5,
+ "coldPass": 0,
+ "lift": 5,
+ "perProbe": [
+  {
+   "id": "T1-temporal",
+   "ability": "temporal reasoning",
+   "warmPass": true,
+   "coldPass": false,
+   "warmScore": 1,
+   "coldScore": 0
+  },
+  {
+   "id": "T2-history",
+   "ability": "multi-session reasoning (history)",
+   "warmPass": true,
+   "coldPass": false,
+   "warmScore": 0.8333333333333334,
+   "coldScore": 0
+  },
+  {
+   "id": "T3-knowledge-update",
+   "ability": "knowledge update (current contract)",
+   "warmPass": true,
+   "coldPass": false,
+   "warmScore": 0.6666666666666666,
+   "coldScore": 0
+  },
+  {
+   "id": "T4-preference",
+   "ability": "preference (stated convention)",
+   "warmPass": true,
+   "coldPass": false,
+   "warmScore": 1,
+   "coldScore": 0
+  },
+  {
+   "id": "T5-abstention",
+   "ability": "abstention (knowing what memory does not know)",
+   "warmPass": true,
+   "coldPass": false,
+   "warmScore": 1,
+   "coldScore": 0
+  }
+ ],
+ "edge": {
+  "concurrentNotes": 3,
+  "concurrencyOk": true,
+  "contaminationAdded": false,
+  "contaminationOk": true,
+  "outboxQueuedWhileDown": true,
+  "outboxDrained": true
+ }
+}

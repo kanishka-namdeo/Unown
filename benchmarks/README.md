@@ -267,6 +267,26 @@ size hygiene — plus MPBench-style poisoning probes (engine tier vs.
 project tier, receipts as evidence). Findings and hardening shipped:
 `docs/memory-system-review.md`.
 
+## Track 10 — The real-user memory benchtest (`memory-recital/`)
+
+**The full-loop lane (2026-11-11, the Recital round):** unlike Track 9's
+dream-side mechanics on synthetic notes, `memory-recital/` drives **real
+`unown -p` sessions doing real work** in a scratch project (a planted
+CSV-parser defect actually gets fixed, the knowledge updates actually get
+applied), lets the note pipeline capture what it captures, dreams through
+the live engine, and scores fresh-session recall warm (memory injected) vs
+cold (a fresh clone with no `.unown/`) — LongMemEval's five abilities
+(temporal, multi-hop history, knowledge-update, preference, abstention),
+judge-free scoring, plus three edge probes (`--edge`: concurrent-session note
+landing, the QA-notes contamination contract, the engine-down outbox arc).
+The suite was built during the round and its baseline run IS the round's
+receipt: warm 3/5 pre-fix exposed the four learning-loop defects (reconcile
+deleting fresh evidence, conventions dropped at extraction, answer-only
+abstention/hallucination answers consolidating into memory, invented
+history markers); post-fix the same battery scores **warm 5/5 / cold 0/5 /
+lift +5** with all three edge probes green. Receipts:
+`memory-recital/results/<model>/` + `memory-recital/RESULTS.md`.
+
 ## What we deliberately do NOT self-run (and why)
 
 SWE-bench Verified and Terminal-Bench require per-task Docker environments (or, for

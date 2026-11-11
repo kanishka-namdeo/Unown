@@ -1,0 +1,19 @@
+{
+ "id": "S3-reversal-pref-temporal",
+ "ts": "2026-11-11T05:09:59.872Z",
+ "exitCode": 0,
+ "response": "All three done, tests green (10 pass / 0 fail):\n\n1. **Reversal** — `src/validate.ts`: removed the `ISO_DATE` regex and its rejection. `validateRows` now only checks 3 columns and numeric amount; empty or non-ISO dates pass. `test/validate.test.ts` updated to assert empty and non-ISO dates pass, while keeping the numeric-amount and short-row checks.\n2. **Preference** — all existing doc comments in `src/parse.ts`, `src/render.ts`, and `src/validate.ts` are now sentence case with no trailing periods; also applied to the new test/style code.\n3. **Record** — noted the 2026-11-05 render-lane switch (fixed → auto-sizing column widths) in `.unown/memory/local.md` and delivered it to the self-learning engine.\n",
+ "dream": {
+  "id": "project-a6a6c535-88ee-4adc-a261-d6532425b6b2",
+  "started_at": 1794373662427,
+  "ended_at": 1794373766919,
+  "status": "done",
+  "notes_in": 1,
+  "entries_merged": 0,
+  "entries_pruned": 0,
+  "entries_added": 2,
+  "output": "# Project Memory\n\n## Known pitfalls\n- If a test asserts a bug as the expected behavior (e.g., expects commas inside quotes to be treated as separators), update the test to assert the correct parsed structure and verify that quoted delimiters survive as literal characters within the field. Cover both edge cases—delimiters inside quotes and newlines inside quotes—with tests after fixing the parsing utility.\n- In src/validate.ts, row[0] must match strict ISO regex /\\d{4}-\\d{2}-\\d{2}/ or fail with 'row N: date must be YYYY-MM-DD'; reject empty dates and non-ISO formats like 'Jan 5 2026'.\n\n## Environment\n- When parsing CSV or similar delimited formats, never use naive string splitting (e.g., split(\",\")) because it breaks on delimiters inside quoted fields; use a proper CSV parser or a state-machine approach that respects quotes.\n\n## Facts\n- In src/render.ts, auto-sizing replaced fixed column widths; verified with test/validate.test.ts cases covering valid ISO date acceptance and missing/non-ISO date rejection.\n\n## Manual notes\n- Your own durable rules. AutoDream preserves this section verbatim — one\n  bullet per rule; everything outside it is re-rendered.\n\n<!-- unown: rendered 4/4 memories via Mem0 (backend: lexical) at 2026-11-11T05:09:26.918Z -->\n",
+  "note": "project dream: warm-7d3a90 memory -> v2 (/tmp/memory-recital-live/warm), 1 fresh-delete verdicts protected",
+  "entries_protected": 1
+ }
+}

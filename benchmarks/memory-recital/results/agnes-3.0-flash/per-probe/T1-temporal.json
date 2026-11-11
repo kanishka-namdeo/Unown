@@ -1,0 +1,23 @@
+{
+ "id": "T1-temporal",
+ "ability": "temporal reasoning",
+ "question": "Answer from the project memory/context ONLY (do not read source files, do not run tools): When did the render lane of this project switch from fixed column widths to auto-sizing? One line.",
+ "expected": "2026-11-05",
+ "warm": {
+  "response": "From project memory (local overrides tier): 2026-11-05 — the team switched the render lane from fixed column widths to auto-sizing.",
+  "exitCode": 0,
+  "timedOut": false,
+  "pass": true,
+  "score": 1,
+  "kind": "exact-match"
+ },
+ "cold": {
+  "response": "From project memory: I have no record of this — project memory's Conventions and Known-pitfalls sections are empty, so the render lane's switch from fixed column widths to auto-sizing is not in any memory tier (unverified).",
+  "exitCode": 0,
+  "timedOut": false,
+  "pass": false,
+  "score": 0,
+  "kind": "exact-match"
+ },
+ "ts": "2026-11-11T05:10:04.937Z"
+}
