@@ -166,6 +166,23 @@ async function checkServices() {
         const engine = await api("/api/health").catch(() => null);
         if (!engine?.ok || engine?.json?.phase !== "ready")
                 throw new Error(`engine not ready on ${ENGINE_URL} (run: bun run agent:start)`);
+        // The Memory Encore round's live re-runs found the hard way that a
+        // budget-throttled governor stretches a dream past any sane wait: the
+        // engine lane's extraction calls sit in breaker backoff while the
+        // runner polls for a project row that is queued behind the mutex. A
+        // suite needs ~10-25 engine LLM calls of headroom under the default
+        // 60/hour cap; fail FAST with the actionable cure instead of hanging
+        // ten minutes into the sessions.
+        const overview = await api("/api/overview").catch(() => null);
+        const budget = overview?.json?.budget;
+        if (budget?.overBudget) {
+                throw new Error(
+                        `engine governor is throttled (${budget.reason}) — wait for the rolling hour to cool down, or raise PI_ENGINE_MAX_CALLS_HOUR for the bench lane and restart the stack`,
+                );
+        }
+        if (budget && typeof budget.limits?.callsHour === "number" && budget.callsHour > budget.limits.callsHour - 10) {
+                console.error(`[recital] warning: only ${budget.limits.callsHour - budget.callsHour} engine call(s) of hourly headroom left — the suite may throttle mid-flight`);
+        }
         return { bridge, engine: engine.json };
 }
 
@@ -201,20 +218,50 @@ function materialize(dir) {
         return dir;
 }
 
-/** Trigger a dream and wait for the newest one to finish; returns its row. */
-async function dreamAndWait() {
+/** Trigger a dream and wait for OUR project's dream receipt; returns its row.
+ *
+ * The Memory Encore round's live re-run (2026-11-11) caught the race this
+ * guard closes: the manual trigger is fire-and-forget and runs the ENGINE
+ * dream first, whose row is inserted AT START (status running) — but a
+ * PROJECT dream's row is inserted only AT ITS END (dream.ts writes the
+ * receipt row on completion, started_at backdated). Polling "newest row is
+ * done" therefore returns in the window BETWEEN the engine dream finishing
+ * and the project dream's row existing: the S3 → T1 sequence probed v1 of
+ * the project memory while v2 was still rendering (T1 warm-answered "no
+ * memory of a render lane change" against a file that had it 54 s later).
+ *
+ * The guard: wait until a project row whose note names OUR project path has
+ * ENDED after this call (every project-dream outcome — done/gated/pending/
+ * error/no-substantive — inserts one, and the note carries the path). The
+ * other rows do not matter: another project's dream running after ours does
+ * not un-render our file. The budget (600 s) covers a dirty engine whose
+ * single mutex serializes other projects' backlogs and the engine lane's
+ * canaries ahead of our row. */
+async function dreamAndWait(cwd) {
+        const snapshotBefore = await api("/api/dreams?limit=100");
+        const beforeEnd = Math.max(
+                0,
+                ...(snapshotBefore.json?.dreams ?? []).map((r) => r.ended_at ?? 0),
+        );
         const started = await api("/api/dreams/run", { method: "POST", headers: { "content-type": "application/json" }, body: "{}" });
+        if (started.json?.skipped) return started.json; // no undreamed notes — nothing will land; the honest fast path (E2's second call)
         if (!started.ok) {
                 // engine-busy: an auto-dream is already running — wait it out.
                 await Bun.sleep(DREAM_WAIT_MS);
         }
-        for (let i = 0; i < 30; i++) {
+        for (let i = 0; i < 120; i++) {
                 await Bun.sleep(5_000);
-                const d = await api("/api/dreams?limit=1");
-                const row = d.json?.dreams?.[0];
-                if (row && row.status !== "running" && row.ended_at) return row;
+                const d = await api("/api/dreams?limit=100");
+                const rows = d.json?.dreams ?? [];
+                const ours = rows.find(
+                        (r) =>
+                                String(r.id ?? "").startsWith("project-") &&
+                                (r.ended_at ?? 0) > beforeEnd &&
+                                String(r.note ?? "").includes(cwd),
+                );
+                if (ours && ours.status !== "running" && ours.ended_at) return ours;
         }
-        throw new Error("dream never finished (waited 150s)");
+        throw new Error(`dream for ${cwd} never finished (waited 600s)`);
 }
 
 // ------------------------------------------------------------- the scorer
@@ -246,7 +293,7 @@ function matchScore(response, expected) {
         return overlap;
 }
 
-const ABSTAIN_MARKERS = ["no record", "not recorded", "not stored", "isn't in", "is not in", "cannot answer", "can't answer", "don't know", "do not know", "not in memory", "no information", "unverified", "not specified", "nothing in"];
+const ABSTAIN_MARKERS = ["no record", "not recorded", "not stored", "isn't in", "is not in", "cannot answer", "can't answer", "don't know", "do not know", "not in memory", "no information", "unverified", "not specified", "nothing in", "no such"];
 
 function scoreProbe(probe, response) {
         if (probe.expected !== null) {
@@ -318,7 +365,7 @@ async function main() {
                         execFileSync("git", ["commit", "-qm", `recital ${s.id}`], { cwd: project });
                 } catch {}
                 log(`session ${s.id}: dreaming`);
-                const dream = await dreamAndWait();
+                const dream = await dreamAndWait(project);
                 writeFileSync(receiptPath, JSON.stringify({ id: s.id, ts: now(), exitCode: r.code, response: r.out, dream }, null, 1));
         }
 
@@ -370,7 +417,7 @@ async function main() {
                         runSession(project, "Answer from memory/context only (no tools): what comment style do I require in this repo? One line."),
                         runSession(project, "Answer from memory/context only (no tools): when did the render lane switch to auto-sizing? One line."),
                 ]);
-                await dreamAndWait();
+                await dreamAndWait(project);
                 const notes = await api("/api/notes?limit=6");
                 const recent = notes.json?.notes ?? [];
                 edge.concurrentNotes = recent.filter((n) => n.project_slug && String(n.content).startsWith("Terminal session outcome")).length;
@@ -379,7 +426,7 @@ async function main() {
                 // E2 contamination: dreaming the QA sessions' own notes must add
                 // nothing false (the Recital BUG-3 contract: withheld outcomes).
                 const before = readFileSync(join(project, ".unown", "memory", "project.md"), "utf8");
-                await dreamAndWait();
+                await dreamAndWait(project);
                 const after = readFileSync(join(project, ".unown", "memory", "project.md"), "utf8");
                 edge.contaminationAdded = after.replace(before, "").includes("- ") && !before.includes("No record of");
                 // The contract: no abstention text became a memory line.

@@ -22,17 +22,17 @@ Checkpoints (each pushed; the round log will graduate to
 - [x] CP0 — research: `docs/memory-encore-round-research.md` (Claude Code,
   Cursor, Windsurf, Gemini CLI, Codex/AGENTS.md, Copilot, MemOS, A-MEM,
   HippoRAG 2, Supermemory, OpenMemory — ranked patterns, every claim sourced)
-- [ ] CP1 — fix: the `engineUndreamedNotes()` arity bug (the reconcile-stale
+- [x] CP1 — fix: the `engineUndreamedNotes()` arity bug (the reconcile-stale
   warning always reported "2 undreamed note(s)" — a function's arity, never
   the queue) + pinned regression test
-- [ ] CP2 — architecture: the freshness lane — every rendered memory bullet
+- [x] CP2 — architecture: the freshness lane — every rendered memory bullet
   carries its last-confirmed date + a `stale` marker past the horizon
   (Claude Code's modified-timestamp pattern; Copilot's 28-day TTL evidence),
   the memory guide teaches the semantics, drift pins updated
-- [ ] CP3 — terminal delight: the session-start recall line (Claude Code's
+- [x] CP3 — terminal delight: the session-start recall line (Claude Code's
   "Recalled N memories") + `/memory show` (Gemini CLI's exact-context
   debuggability)
-- [ ] CP4 — dashboard: the memory health card surfaces on the Memory screen
+- [x] CP4 — dashboard: the memory health card surfaces on the Memory screen
   (last reconcile, dupes, conflicts, warnings — the existing-but-invisible
   audit, Claude Code's prompt-audit pattern)
 - [ ] CP5 — verification: full suites green, the memory-recital benchmark

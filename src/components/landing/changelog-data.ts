@@ -30,162 +30,61 @@ export interface ChangelogStop {
   groups: ChangelogGroup[];
 }
 
-export const CHANGELOG_TOTAL_ENTRIES = 562;
+export const CHANGELOG_TOTAL_ENTRIES = 568;
 
 export const CHANGELOG_TOTALS: Record<ChangelogBucket, number> = {
-  "Added": 264,
+  "Added": 241,
   "Changed": 32,
   "Deprecated": 0,
   "Removed": 3,
-  "Fixed": 207,
+  "Fixed": 208,
   "Security": 5,
-  "Behavior": 51
+  "Behavior": 79
 };
 
 export const CHANGELOG_STOPS: ChangelogStop[] = [
   {
     "label": "Unreleased",
     "date": null,
-    "total": 35,
+    "total": 41,
     "counts": {
-      "Added": 27,
+      "Added": 4,
       "Changed": 0,
       "Deprecated": 0,
       "Removed": 0,
-      "Fixed": 6,
+      "Fixed": 7,
       "Security": 0,
-      "Behavior": 2
+      "Behavior": 30
     },
     "groups": [
       {
         "bucket": "Added",
         "items": [
           {
-            "title": "A2H-9 closes — the encore Finale test-isolation fix (2026-11-06)",
+            "title": "Memory freshness lane — every learned rule now carries its last-confirmed date…",
             "behavior": false
           },
           {
-            "title": "The Rondo round opens — the eighteenth lineage's Phase 0 (2026-11-06)",
+            "title": "The session-start recall line — ◈ memory recalled: 14 rules · v17 · dreamed 12m ago — /memory show (2026-11-12…",
             "behavior": false
           },
           {
-            "title": "The Reprise round's second drive milestone — R-2 lands: deck-level review settings (2026-11-05)",
+            "title": "/memory show [full] — print exactly what the model receives (2026-11-12, the Memory Encore round)",
             "behavior": false
           },
           {
-            "title": "A2H-4 lands — the PTY harness's fresh-install hardening (registry H-8 PROMOTED, the V-3/V-4/V-5 durable fix…",
+            "title": "The memory health card surfaces on the dashboard Memory screen (2026-11-12, the Memory Encore round)",
             "behavior": false
-          },
-          {
-            "title": "R-1 CLOSES — the e2e heatmap spec lands and harvests B-12: the el() tabindex junk-expando defect that left the…",
-            "behavior": false
-          },
-          {
-            "title": "The Reprise round's first drive milestone — R-1's code lane lands: the review log + the stats heatmap…",
-            "behavior": false
-          },
-          {
-            "title": "The Reprise round opens — the Ostinato engagement's P1 continuation (2026-11-05)…",
-            "behavior": false
-          },
-          {
-            "title": "The Ostinato round closes — O-6 lands: the round's closeout…",
-            "behavior": false
-          },
-          {
-            "title": "The Ostinato round's fifth drive milestone — O-5 lands: the PWA tooling + capture lane + root wiring + CI job…",
-            "behavior": false
-          },
-          {
-            "title": "The Ostinato round's fourth drive milestone — O-4 lands: the hardening e2e battery…",
-            "behavior": false
-          },
-          {
-            "title": "The Ostinato round's third drive milestone — O-3 lands: the review runner + the keyboard surface…",
-            "behavior": false
-          },
-          {
-            "title": "A2H-3 lands: the unit lane anchored against the engine's sandbox pollution (V-18's durable fix, 2026-11-04)",
-            "behavior": false
-          },
-          {
-            "title": "A2H-2 lands: the PTY harness's pump-while-typing hardening (B-2/V-9's harness half)…",
-            "behavior": false
-          },
-          {
-            "title": "The Ostinato round's second drive milestone — O-2 lands: the domain core, complete and receipted (SM-2…",
-            "behavior": false
-          },
-          {
-            "title": "The Ostinato round's first drive milestone — O-1 lands: the app skeleton plus the calibration baselines…",
-            "behavior": false
-          },
-          {
-            "title": "The Ostinato round opens — the DRIVE-track app round of the 2026-11-04 A1 engagement (STABILISE × HARDEN ×…",
-            "behavior": false
-          },
-          {
-            "title": "The automation spend meter + ceilings under governance (S2-11, the spend-and-memory-health round)",
-            "behavior": false
-          },
-          {
-            "title": "The memory health card (S2-4, the spend-and-memory-health round)",
-            "behavior": false
-          },
-          {
-            "title": "The instruction-set PR lane, priced and documented (T4, the doc-truth round)",
-            "behavior": false
-          },
-          {
-            "title": "The Coda landing band + the committed usage-capture lane (T3, the doc-truth round)",
-            "behavior": false
-          },
-          {
-            "title": "The Coda PWA benchmark lane (benchmarks/coda-pwa/) — the PT-5 plan's honest \"not measured\" PWA null is now a…",
-            "behavior": false
-          },
-          {
-            "title": "C5 — root wiring + CI + DOX/docs for the Coda app (plan steps 7+8 atomically; the round's final CODE ticket)",
-            "behavior": false
-          },
-          {
-            "title": "The exit hint lane — every TUI exit now prints a resume command you can actually paste",
-            "behavior": false
-          },
-          {
-            "title": "PT-5 — the complex-plan lane with live specialist spawns: the plan-mode V3 bench consulted…",
-            "behavior": false
-          },
-          {
-            "title": "The print-mode exit-path trace (UNOWN_PRINT_EXIT_TRACE=1…",
-            "behavior": false
-          },
-          {
-            "title": "The tool-time browser-memory hint lane (#45) — learned browser procedures now surface at the point of action…",
-            "behavior": false
-          },
-          {
-            "title": "Plan Mode V3 — the capability orchestrator + self-improvement directive",
-            "behavior": false
-          }
-        ]
-      },
-      {
-        "bucket": "Behavior",
-        "items": [
-          {
-            "title": "The tool-time browser-memory hint digest is category-balanced (the hints-ranking round)",
-            "behavior": true
-          },
-          {
-            "title": "Plan mode's toolset changes shape in V3 (the observable difference)",
-            "behavior": true
           }
         ]
       },
       {
         "bucket": "Fixed",
         "items": [
+          {
+            "title": "The engineUndreamedNotes() arity bug — the memory health card's reconcile-stale warning always reported a…",
+            "behavior": false
+          },
           {
             "title": "A Ctrl+C exit during a running turn no longer loses the whole session",
             "behavior": false
@@ -209,6 +108,131 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
           {
             "title": "The dev server was silently un-interactable when browsed by IP literal",
             "behavior": false
+          }
+        ]
+      },
+      {
+        "bucket": "Behavior",
+        "items": [
+          {
+            "title": "The memory guide teaches freshness (2026-11-12, the Memory Encore round)",
+            "behavior": true
+          },
+          {
+            "title": "A2H-9 closes — the encore Finale test-isolation fix (2026-11-06)",
+            "behavior": true
+          },
+          {
+            "title": "The Rondo round opens — the eighteenth lineage's Phase 0 (2026-11-06)",
+            "behavior": true
+          },
+          {
+            "title": "The Reprise round's second drive milestone — R-2 lands: deck-level review settings (2026-11-05)",
+            "behavior": true
+          },
+          {
+            "title": "A2H-4 lands — the PTY harness's fresh-install hardening (registry H-8 PROMOTED, the V-3/V-4/V-5 durable fix…",
+            "behavior": true
+          },
+          {
+            "title": "R-1 CLOSES — the e2e heatmap spec lands and harvests B-12: the el() tabindex junk-expando defect that left the…",
+            "behavior": true
+          },
+          {
+            "title": "The Reprise round's first drive milestone — R-1's code lane lands: the review log + the stats heatmap…",
+            "behavior": true
+          },
+          {
+            "title": "The Reprise round opens — the Ostinato engagement's P1 continuation (2026-11-05)…",
+            "behavior": true
+          },
+          {
+            "title": "The Ostinato round closes — O-6 lands: the round's closeout…",
+            "behavior": true
+          },
+          {
+            "title": "The Ostinato round's fifth drive milestone — O-5 lands: the PWA tooling + capture lane + root wiring + CI job…",
+            "behavior": true
+          },
+          {
+            "title": "The Ostinato round's fourth drive milestone — O-4 lands: the hardening e2e battery…",
+            "behavior": true
+          },
+          {
+            "title": "The Ostinato round's third drive milestone — O-3 lands: the review runner + the keyboard surface…",
+            "behavior": true
+          },
+          {
+            "title": "A2H-3 lands: the unit lane anchored against the engine's sandbox pollution (V-18's durable fix, 2026-11-04)",
+            "behavior": true
+          },
+          {
+            "title": "A2H-2 lands: the PTY harness's pump-while-typing hardening (B-2/V-9's harness half)…",
+            "behavior": true
+          },
+          {
+            "title": "The Ostinato round's second drive milestone — O-2 lands: the domain core, complete and receipted (SM-2…",
+            "behavior": true
+          },
+          {
+            "title": "The Ostinato round's first drive milestone — O-1 lands: the app skeleton plus the calibration baselines…",
+            "behavior": true
+          },
+          {
+            "title": "The Ostinato round opens — the DRIVE-track app round of the 2026-11-04 A1 engagement (STABILISE × HARDEN ×…",
+            "behavior": true
+          },
+          {
+            "title": "The automation spend meter + ceilings under governance (S2-11, the spend-and-memory-health round)",
+            "behavior": true
+          },
+          {
+            "title": "The memory health card (S2-4, the spend-and-memory-health round)",
+            "behavior": true
+          },
+          {
+            "title": "The instruction-set PR lane, priced and documented (T4, the doc-truth round)",
+            "behavior": true
+          },
+          {
+            "title": "The Coda landing band + the committed usage-capture lane (T3, the doc-truth round)",
+            "behavior": true
+          },
+          {
+            "title": "The Coda PWA benchmark lane (benchmarks/coda-pwa/) — the PT-5 plan's honest \"not measured\" PWA null is now a…",
+            "behavior": true
+          },
+          {
+            "title": "C5 — root wiring + CI + DOX/docs for the Coda app (plan steps 7+8 atomically; the round's final CODE ticket)",
+            "behavior": true
+          },
+          {
+            "title": "The exit hint lane — every TUI exit now prints a resume command you can actually paste",
+            "behavior": true
+          },
+          {
+            "title": "PT-5 — the complex-plan lane with live specialist spawns: the plan-mode V3 bench consulted…",
+            "behavior": true
+          },
+          {
+            "title": "The print-mode exit-path trace (UNOWN_PRINT_EXIT_TRACE=1…",
+            "behavior": true
+          },
+          {
+            "title": "The tool-time browser-memory hint lane (#45) — learned browser procedures now surface at the point of action…",
+            "behavior": true
+          },
+          {
+            "title": "Plan Mode V3 — the capability orchestrator + self-improvement directive",
+            "behavior": true
+          },
+          {
+            "title": "The tool-time browser-memory hint digest is category-balanced (the hints-ranking round)",
+            "behavior": true
+          },
+          {
+            "title": "Plan mode's toolset changes shape in V3 (the observable difference)",
+            "behavior": true
           }
         ]
       }

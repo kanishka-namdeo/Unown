@@ -13,6 +13,14 @@ commands are local: /learning reads disk, /note posts to the engine, /memory
 search hits the engine API):
 
   boot     the TUI boots in the target project; the memory footer row renders
+  recall   the Memory Encore round: the session-start recall line (◈ memory
+           recalled: N rules … — /memory show) fires ONCE at boot in a project
+           that HAS learned rules (Claude Code's "Recalled N memories" moment;
+           the footer-quiet contract's only affirmative injection signal)
+  show     the Memory Encore round: `/memory show` prints the EXACT stack the
+           model receives (tier headers with char counts, provenance + guide,
+           the injection-budget tail) — and `/memory show full` lifts the
+           60-line display cap (Gemini /memory show + Claude /context)
   learning `/learning` (R2): the effective four-tier stack fresh from disk —
            the engine header ("memory engine: up"), the injection budget line,
            per-tier staleness ages, the deep-dive footer hint
@@ -169,6 +177,91 @@ def phase_boot(log, cwd) -> bool:
         pane = s.pane_text()
         check("TUI boots in the target project", "esc-esc tree" in pane or "Themes" in pane)
         s.still("mem-boot", ["esc-esc tree"], mode="any")
+    finally:
+        s.close()
+    return all(ok for _, ok in steps)
+
+
+def _plant_learned_project(project: str, rules: int) -> bool:
+    """Plant a project memory with N learned rules (the recall line's fuel).
+
+    Writes the scaffold shape the first boot would create — title + a
+    Workflow section of bullets + the Manual-notes lane — so the file reads
+    as a project with learned memory (never the pristine seed, which the
+    recall line must stay silent for)."""
+    path = project_memory_path(project)
+    try:
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        bullets = "\n".join(f"- recall-lane rule {i}: plant a memory and prove it loads" for i in range(rules))
+        with open(path, "w", encoding="utf-8") as f:
+            f.write(f"# Project Memory\n\n## Workflow\n{bullets}\n\n## Manual notes\n")
+        return True
+    except OSError:
+        return False
+
+
+def phase_recall(log, cwd) -> bool:
+    steps: list[tuple[str, bool]] = []
+
+    def check(name, ok, extra=""):
+        steps.append((name, ok))
+        note(log, "recall", name, ok, extra)
+
+    # 3 rules — deliberately ≠ 1 so a pluralization/count regression cannot
+    # pass by accident, and ≠ 0 so the fresh-project silence lane is separate.
+    planted = _plant_learned_project(cwd, 3)
+    check("a project memory with 3 learned rules is planted", planted)
+    if not planted:
+        return False
+
+    s = pc.UnownPty(log, cwd=cwd)
+    try:
+        s.wait_ready()
+        # The recall line is a session_start info notify — it renders AT boot,
+        # before any keystroke; catch it before typing anything.
+        try:
+            pane = s.wait_for(["◈ memory recalled:"], timeout=45)
+            check("the recall line fires at session start (◈ memory recalled:)", True)
+        except pc.PaneTimeout:
+            check("the recall line fires at session start (◈ memory recalled:)", False, "timeout")
+            pane = s.pane_text()
+        check("the recall line names the rule count", "3 rules" in pane)
+        check("the recall line points at /memory show", "/memory show" in pane)
+        pc.dismiss_first_flights(s, log)
+        s.still("mem-recall", ["memory recalled"], mode="any")
+    finally:
+        s.close()
+    return all(ok for _, ok in steps)
+
+
+def phase_show(log, cwd) -> bool:
+    steps: list[tuple[str, bool]] = []
+
+    def check(name, ok, extra=""):
+        steps.append((name, ok))
+        note(log, "show", name, ok, extra)
+
+    marker = f"SHOW-STACK-{uuid.uuid4().hex[:8]}"
+    planted = plant_manual_marker(cwd, marker)
+    check("a marker rides the project tier for the exact-stack proof", planted)
+    if not planted:
+        return False
+
+    s = pc.UnownPty(log, cwd=cwd)
+    try:
+        s.wait_ready()
+        pc.dismiss_first_flights(s, log)
+        s.type_prompt("/memory show")
+        try:
+            pane = s.wait_for(["the model receives exactly this stack"], timeout=30)
+            check("/memory show answers with the exact-stack contract", True)
+        except pc.PaneTimeout:
+            check("/memory show answers with the exact-stack contract", False, "timeout")
+            pane = s.pane_text()
+        check("tier headers render with char counts", "chars) ──" in pane)
+        check("the injection-budget line rides the tail", "injection budget:" in pane)
+        check("the planted marker is IN the injected stack (it is what the model gets)", marker in pane)
+        s.still("mem-show", ["injection budget:"])
     finally:
         s.close()
     return all(ok for _, ok in steps)
@@ -450,6 +543,8 @@ def phase_exit(log, cwd) -> bool:
 
 RUNNERS = {
     "boot": phase_boot,
+    "recall": phase_recall,
+    "show": phase_show,
     "learning": phase_learning,
     "manual": phase_manual,
     "note": phase_note,

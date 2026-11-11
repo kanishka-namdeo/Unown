@@ -7,6 +7,15 @@
     <description>How each feature and release works, what it does, and the receipts behind it — the longhand record of the self-improving terminal coding agent Unown.</description>
     <language>en</language>
     <item>
+      <title>The Memory Encore round: eleven teardowns, four delight surfaces, one arity bug</title>
+      <link>https://unown-nine.vercel.app/blog/2026-11-12-the-memory-encore-round</link>
+      <guid isPermaLink="true">https://unown-nine.vercel.app/blog/2026-11-12-the-memory-encore-round</guid>
+      <pubDate>Thu, 12 Nov 2026 00:00:00 GMT</pubDate>
+      <description>Eleven product teardowns shaped four surfaces: freshness dates on every rule, a session-start recall line, exact-context show, a visible health card.</description>
+      <category>memory</category>
+      <category>engine</category>
+    </item>
+    <item>
       <title>The Recital round: benchtesting memory as a real user</title>
       <link>https://unown-nine.vercel.app/blog/2026-11-11-the-memory-recital-round</link>
       <guid isPermaLink="true">https://unown-nine.vercel.app/blog/2026-11-11-the-memory-recital-round</guid>
