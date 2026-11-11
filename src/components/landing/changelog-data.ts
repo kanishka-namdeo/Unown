@@ -30,14 +30,14 @@ export interface ChangelogStop {
   groups: ChangelogGroup[];
 }
 
-export const CHANGELOG_TOTAL_ENTRIES = 561;
+export const CHANGELOG_TOTAL_ENTRIES = 562;
 
 export const CHANGELOG_TOTALS: Record<ChangelogBucket, number> = {
   "Added": 264,
   "Changed": 32,
   "Deprecated": 0,
   "Removed": 3,
-  "Fixed": 206,
+  "Fixed": 207,
   "Security": 5,
   "Behavior": 51
 };
@@ -46,13 +46,13 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
   {
     "label": "Unreleased",
     "date": null,
-    "total": 52,
+    "total": 53,
     "counts": {
       "Added": 33,
       "Changed": 0,
       "Deprecated": 0,
       "Removed": 0,
-      "Fixed": 13,
+      "Fixed": 14,
       "Security": 0,
       "Behavior": 6
     },
@@ -226,6 +226,10 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
       {
         "bucket": "Fixed",
         "items": [
+          {
+            "title": "The Recital round's closeout hygiene — every dependency current, every scanning alert closed…",
+            "behavior": false
+          },
           {
             "title": "The review hardening: the approve-each-edit posture survives a session resume…",
             "behavior": false

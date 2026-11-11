@@ -309,20 +309,42 @@ function quoteIfNeeded(value: string): string {
         }
         // MSVCRT/CommandLineToArgvW rules: only `"` (and backslashes directly
         // before it) are special, so Windows drive paths keep single backslashes.
-        // CodeQL js/incomplete-sanitization (alert #86, the 2026-11-11 Recital
-        // dependency-hygiene round): escaping ONLY the quote characters is
-        // incomplete — a run of backslashes directly before a `"` must be
-        // doubled (2n backslashes + escaped quote → the parser's n literal
-        // backslashes + a literal quote) and a trailing run of backslashes
-        // before the closing quote must be doubled likewise (or the closing
-        // quote itself is consumed as an escaped literal). Both rules applied
-        // below; a quote with NO preceding backslashes stays the plain `\"`
-        // escape it always was, and ordinary drive paths (backslashes not
-        // adjacent to a quote) stay single, exactly as before.
-        const msvcrtEscaped = value
-                .replace(/(\\*)"/g, "$1$1\\\"")
-                .replace(/(\\+)$/g, "$1$1");
-        return `"${msvcrtEscaped}"`;
+        // CodeQL js/incomplete-sanitization (alert #86) + js/polynomial-redos
+        // (alert #90, both the 2026-11-11 Recital dependency-hygiene round):
+        // escaping ONLY the quote characters is incomplete — a run of
+        // backslashes directly before a `"` must be doubled (2n backslashes +
+        // escaped quote → the parser's n literal backslashes + a literal
+        // quote) and a trailing run of backslashes must be doubled before the
+        // closing quote (or the closing quote is consumed as an escaped
+        // literal). The two regex replaces that first expressed those rules
+        // (`/(\\*)"/` + `/(\\+)$/`) were themselves flagged — a star-quantifier
+        // over backslashes followed by a literal backtracks polynomially on a
+        // long backslash run. The escape is therefore a single LINEAR
+        // character pass (one char, one O(1) append; no quantifier, no
+        // backtracking) implementing the same semantics: backslashes are
+        // emitted as they arrive, a quote doubles the adjacent run (2n
+        // backslashes + `\"`) and ends it, any other character ends the run
+        // unstressed (single backslashes), and the trailing run doubles
+        // before the closing quote. Pinned both directions in
+        // test/format-resume-command.test.ts.
+        let body = "";
+        let run = 0;
+        for (let i = 0; i < value.length; i++) {
+                const ch = value[i]!;
+                if (ch === "\\") {
+                        run++;
+                        body += ch;
+                        continue;
+                }
+                if (ch === '"') {
+                        body += "\\".repeat(run) + '\\"';
+                        run = 0;
+                        continue;
+                }
+                run = 0;
+                body += ch;
+        }
+        return `"${body}${"\\".repeat(run)}"`;
 }
 
 /** Options for {@link formatResumeCommand}. */

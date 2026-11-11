@@ -24,8 +24,8 @@ latency, and the next-session injection.
 | CP2 reverse-engineer 5 products | ✅ done | `docs/TEARDOWN_2026-11-11_five-memory-systems.md` |
 | CP3 fix bugs found + learning-system improvements | ✅ done (4 bugs + 1 follow-up) | code + 11 unit tests, receipts below |
 | CP4 visual indicators (user delight) | ✅ done | the ⛨ chain: DB → API → dashboard row/detail → feed |
-| CP5 edge cases + verification + formal benchtest suite | pending | `benchmarks/memory-recital/` |
-| CP6 docs/README/blog/landing + version bump + dependabot | pending | — |
+| CP5 edge cases + verification + formal benchtest suite | ✅ done | `benchmarks/memory-recital/` (warm 5/5, cold 0/5, lift +5; E1-E3 green) |
+| CP6 docs/README/blog/landing + version bump + dependabot | ✅ done | v0.0.62; 9 dependabot PRs applied+closed; CodeQL alerts #86–#89 closed (#90, opened by the #86 fix's regex, closed the same round with the linear-scan rewrite); CI green (CI + CodeQL + Scorecard + deploy-verify on every pushed milestone) |
 
 ## CP1 — the real-user benchtest (2026-11-11, live)
 
@@ -219,3 +219,64 @@ not fixed): the never-dreamed scaffold keeps the legacy seed shape until
 the first substantive dream re-renders it (self-healing, instructional
 value); the engine scope's own dream can gate on its canary and roll back
 (the canary system working as designed — observed live twice).
+
+## CP6 — docs, blog, version bump, dependabot + code scanning (2026-11-11)
+
+- **Docs**: README.md (the AutoDream mechanism row carries the evidence
+  discipline + the guard + the teardown and benchtest receipts; the Dreams
+  screen line names the ⛨ indicator; the benchmarks table gains the
+  memory-recital row), docs/memory.md (the conventions lane, the
+  fresh-evidence guard paragraph, the answer-only note contract),
+  docs/BEHAVIOR.md (the memory-stack paragraph's full evidence-discipline
+  contracts + the memory-recital receipt), docs/SESSION.md (graduation).
+- **Blog**: `content/blog/2026-11-11-the-memory-recital-round.md` (51 posts;
+  `check:blog` green after the tags-frontmatter fix).
+- **Version bump**: 0.0.61 → **0.0.62** (`bun bin/unown --version` agrees;
+  the bump rides the memory-system hardening + the ⛨ indicator, and it is
+  the commit that runs CI's cross-platform legs per the spend gate).
+- **xplat local smoke**: green (engine unit 269 s, version consistency,
+  CLI boot, doctor table).
+- **Dependabot**: all six dependency bumps applied on main
+  (`next`/`eslint-config-next` 16.4.5, `lucide-react` 1.70.0, `playwright`
+  trio 1.65.0, the vendored `diff` 8→9 — verified API-compatible against
+  the release notes AND live through an edit-path session) plus the two
+  GitHub-Actions pins (codeql-action 4.39.3, harden-runner 2.22.4); the
+  nine open dependabot PRs (#47, #49–#56) closed as superseded by main,
+  each with the receipt comment. Gates re-run green on the bumped tree:
+  root tsc 0, eslint 0 errors, landing unit 2094/0, the production build
+  compiles.
+- **Code scanning**: the four open CodeQL alerts closed
+  ([#89] unnecessary-use-of-cat → readFileSync; [#88] stack-trace-exposure
+  → the 422 reason is the throw's single-line message, capped; [#87]
+  incomplete-url-scheme-check → coda's sanitizer moved to the scheme
+  allowlist with control-char normalization; [#86] incomplete-sanitization
+  → the vendored resume-hint's MSVCRT quoting doubles backslash runs
+  adjacent to quotes, pinned 2 ways) — coda 51/0, bolero 45/0, a1 4/0,
+  format-resume 18/0, the six interactive-mode suites 37/0, self-learning
+  5633/0/105.
+
+## The alert-#90 follow-up (closed in-round, 2026-11-11)
+
+The CodeQL scan on 84305bb8 (the #86 fix's commit) closed alerts #86–#89
+and opened ONE new alert on the fix's own regex — `js/polynomial-redos`
+on `/(\\*)"/` (a star-quantifier over backslashes followed by a literal
+backtracks polynomially on a long backslash run). Closed the same round:
+the MSVCRT escape is now a single LINEAR character pass (no regex, no
+quantifier, no backtracking — 200k backslashes in 4 ms), proven
+equivalent to the regex semantics on a 13-case battery (bare quotes,
+n-backslash runs before quotes, trailing runs, the pure-backslash stress
+shape, plain drive paths) before the swap; the six interactive-mode
+suites re-ran 37/0 with the two pins intact.
+
+## Round closed (2026-11-11)
+
+All six checkpoints landed, each pushed as its own milestone commit
+(b773ace0 M1 → d5f8b5a2 CP4 → d9e6ee9d CP5 → 3cc1a3a2 deps+0.0.62 →
+f587986f docs → 84305bb8 security → the graduation commit). CI verdict
+on every pushed milestone: CI / CodeQL / Scorecard / deploy-verify all
+success. The round's four learning-loop bugs are fixed, pinned (11+
+unit tests), measured (the permanent memory-recital suite: warm 3/5 →
+5/5), and visible (the ⛨ indicator chain); the five-product teardown
+grounds the design; the docs/README/blog/landing surfaces carry it;
+the repo's hygiene is clean (9 dependabot PRs applied and closed, all
+open CodeQL alerts closed).

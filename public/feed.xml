@@ -7,6 +7,16 @@
     <description>How each feature and release works, what it does, and the receipts behind it — the longhand record of the self-improving terminal coding agent Unown.</description>
     <language>en</language>
     <item>
+      <title>The Recital round: benchtesting memory as a real user</title>
+      <link>https://unown-nine.vercel.app/blog/2026-11-11-the-memory-recital-round</link>
+      <guid isPermaLink="true">https://unown-nine.vercel.app/blog/2026-11-11-the-memory-recital-round</guid>
+      <pubDate>Wed, 11 Nov 2026 00:00:00 GMT</pubDate>
+      <description>We drove the agent like a user on real work, then watched its own memory fail four different ways — and reverse-engineered five memory products to fix it.</description>
+      <category>memory</category>
+      <category>engine</category>
+      <category>release</category>
+    </item>
+    <item>
       <title>The end-user round: what a red main was hiding</title>
       <link>https://unown-nine.vercel.app/blog/2026-11-10-the-end-user-combo-round</link>
       <guid isPermaLink="true">https://unown-nine.vercel.app/blog/2026-11-10-the-end-user-combo-round</guid>

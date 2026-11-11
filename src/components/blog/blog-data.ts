@@ -31,11 +31,29 @@ export interface BlogPost {
   html: string;
 }
 
-export const BLOG_TOTAL_POSTS = 50;
+export const BLOG_TOTAL_POSTS = 51;
 
 export const BLOG_TAGS: string[] = ["agent-driven","benchmark","benchmarks","beta","browser","ci","cli","critique","demo","dependencies","design","engine","gallery","governance","hardening","keyboard","landing","learning","local-first","media","memory","meta","observability","planning","plm","providers","pwa","release","security","sessions","settings","stress","subagents","testing","tui","ux","verification","website-excellence"];
 
 export const BLOG_POSTS: BlogPost[] = [
+  {
+    "slug": "2026-11-11-the-memory-recital-round",
+    "title": "The Recital round: benchtesting memory as a real user",
+    "description": "We drove the agent like a user on real work, then watched its own memory fail four different ways — and reverse-engineered five memory products to fix it.",
+    "date": "2026-11-11",
+    "lastmod": "2026-11-11",
+    "tags": [
+      "memory",
+      "engine",
+      "release"
+    ],
+    "type": "feature",
+    "readingMinutes": 3,
+    "media": [
+      "/landing/tui/dashboard/stills/02-memory.png"
+    ],
+    "html": "<p>Every memory benchmark we had tested the machinery. The dream-side\nplumbing, the poison defenses, the consolidation quality axes — all fed\nsynthetic notes into a pipeline and measured what came out. This round&#39;s\ndirective asked for the thing none of them measure: <strong>benchtest the memory\nsystem driving the agent like a real user on complex tasks and complex\nscenarios.</strong></p>\n<p>So that is what we did. A real scratch project with a planted bug — a CSV\nparser that breaks on quoted fields. A real debugging session where the\nagent actually fixes it. A knowledge update: strict date validation, new\nrender widths. A reversal: drop the strict rule, state a comment-style\npreference, record a dated switch. Then fresh sessions asking questions\nonly memory can answer — against a fresh clone with no memory as the\ncontrol. Five probes, LongMemEval&#39;s five abilities, judge-free scoring.</p>\n<p>Warm — the memory-injected arm — scored <strong>3/5</strong>. The two failures opened\nfour bugs, and the four bugs opened a teardown of five other memory\nproducts that had already solved each one.</p>\n<h2>The four ways a memory system can quietly fail you</h2>\n<p><strong>The reconcile pass deleted fresh evidence.</strong> The extraction step\ncorrectly minted the relaxed date rule; the reconcile verdict then deleted\nBOTH sides of the contradiction — the old strict rule <em>and</em> the new\nreplacement — leaving the project&#39;s memory with no date rule at all. Ask a\nfresh session about the current contract: &quot;no information.&quot; Mem0 v3\nsolved this by making extraction ADD-only; Cognee watermarks entries as\nconsolidated-exactly-once. Our fix is a deterministic guard: a reconcile\nDELETE on a memory born in the current batch is rejected — the\njust-learned carrier of current state survives to the next pass.</p>\n<p><strong>Extraction dropped stated conventions.</strong> &quot;Comments in sentence case, no\ntrailing periods&quot; — stated by the user, applied across the codebase,\nverified by tests. Never became memory. The extraction prompt had a lane\nfor pitfalls and workflows and infrastructure, none for <em>an instruction\nevery future session must follow</em>. CoALA&#39;s taxonomy calls this procedural\nmemory; it is now a first-class extraction target.</p>\n<p><strong>Answer-only sessions polluted memory.</strong> This one we found by accident:\nafter the QA battery, the auto-dream consolidated the QA sessions&#39; own\nexit notes. The warm arm&#39;s honest abstention — &quot;No comment style is\nspecified&quot; — became permanent project convention: <em>&quot;no comment style is\nmandated.&quot;</em> The negation of a real requirement. A cold session&#39;s\nhallucinated date-validation &quot;contract&quot; became that project&#39;s first\nmemory. An answer with zero tool calls is unverified model output; it now\nnever rides a note.</p>\n<p><strong>The reconciler invented history.</strong> A merged temporal marker carried a\nfabricated &quot;previously stated as a future switch&quot; clause — history the\nmemories never stated. Markers now cite only what the memories themselves\nsay.</p>\n<h2>The indicator</h2>\n<p>The fresh-evidence guard works silently, which is a problem of its own —\n&quot;the system protected your just-learned rule&quot; is exactly the moment worth\nshowing. So it shows: the dashboard&#39;s Dreams screen renders <strong>⛨ N\nprotected</strong> in emerald when the guard holds, the dream rows record the\ncount, and the live feed carries it.</p>\n<h2>The proof</h2>\n<p>Post-fix, the same battery on a fresh project: <strong>warm 5/5</strong> — the current\ndate contract recalled from memory, the preference recalled, the dated\nswitch recalled, honest abstention where memory holds nothing. The cold\narm still hallucinates confident &quot;contracts&quot; and bizarre comment rules —\nwhich is the memory&#39;s value made visible, not a scoring artifact.</p>\n<p>The battery is now a permanent suite —\n<a href=\"https://github.com/kanishka-namdeo/Unown/tree/main/benchmarks/memory-recital\"><code>benchmarks/memory-recital/</code></a>:\nreal sessions, real dreams, warm-vs-cold recall, plus edge probes for\nconcurrent sessions, QA-note contamination, and the engine-down outbox\narc. Its baseline run <em>is</em> the bug report; its green run is the receipt.</p>\n<p>The full teardown — Mem0 v3, Zep/Graphiti, Letta MemFS, Cognee,\nLangChain/LangMem — is in\n<a href=\"https://github.com/kanishka-namdeo/Unown/blob/main/docs/TEARDOWN_2026-11-11_five-memory-systems.md\">the round&#39;s records</a>.\nThe field converged on the same invariants from five directions; now\nUnown&#39;s receipts say the same thing from a sixth.</p>\n"
+  },
   {
     "slug": "2026-11-10-the-end-user-combo-round",
     "title": "The end-user round: what a red main was hiding",

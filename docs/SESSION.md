@@ -8,19 +8,41 @@ archaeology. When a round completes, its log graduates to a round-specific
 
 ---
 
-## ACTIVE ROUND — the Memory Recital round (2026-11-11, OPENED)
+## ACTIVE ROUND — none (2026-11-11)
 
-`docs/memory-recital-round-session.md` — benchtest the memory system
+The Memory Recital round is the last graduated round (see below).
+The next session opens a round here per the checkpoint discipline.
+
+---
+## GRADUATED — the Memory Recital round (2026-11-11, CLOSED at CP6)
+
+`docs/memory-recital-round-session.md` — the memory system benchtested
 **driving the agent like a real user on complex tasks and complex
 scenarios** (real `unown -p` sessions → notes → AutoDream → injection →
-recall, scored live), reverse-engineer five other memory products
-(Mem0 v3 / Zep-Graphiti / Letta MemFS / Cognee / LangChain-LlamaIndex)
-into teardown docs, fix whatever breaks, improve the learning system,
-add delight-grade visual indicators, and close with docs/landing/blog/
-version-bump/dependabot hygiene. Baseline: v0.0.61 @ c7280cec, fresh
-clone, install 7/7 green, doctor green, Agnes upstream verified
-(agnes-3.0-flash), bridge :3031 + engine :3030 up. CP0 (setup) recorded
-in the round log; CP1 (the real-user benchtest) in flight.
+recall, scored live): the baseline battery scored warm 3/5 and its two
+failures root-caused into four learning-loop bugs — the reconcile pass
+deleting the just-extracted current-state carrier (T3 "no information"),
+stated conventions dropped at extraction (T4), the QA sessions' own
+abstention/hallucination answers consolidating into permanent memory
+(the negation of a real requirement became project convention; a cold
+session's hallucination became that project's first memory), and a
+merged temporal marker inventing history. All four fixed (fresh-evidence
+protection in `reconcileMemories` with the exact-twin carve-out, the
+conventions/abstention-ban extraction lanes, the answer-only withheld
+outcome stripped at both guard layers, the no-invented-history reconcile
+rule) and re-measured live: **warm 5/5** — now the permanent suite
+`benchmarks/memory-recital/` (Track 10: warm/cold arms over LongMemEval's
+five abilities + concurrency/contamination/outbox edge probes; live run
+warm 5/5 / cold 0/5 / lift +5). Reverse-engineering: the five-product
+teardown `docs/TEARDOWN_2026-11-11_five-memory-systems.md` (Mem0 v3
+ADD-only + Dream supersede, Zep bi-temporal invalidation, Letta MemFS
+git-repo memory + RecoveryBench, Cognee's 9-stage watermarked improve(),
+LangChain/LangMem + LlamaIndex priority blocks — each scored against
+the live bugs). The ⛨ fresh-evidence indicator chain (DB → dashboard
+row/detail → feed). v0.0.62; 9 dependabot PRs applied+closed; CodeQL
+alerts #86–#90 closed (the #90 the #86 fix itself opened — its regex
+rewritten as a linear scan, proven equivalent on a 13-case battery);
+CI green on every pushed milestone.
 
 ---
 ## GRADUATED — the end-user combination round (2026-11-10, CLOSED at M4)
