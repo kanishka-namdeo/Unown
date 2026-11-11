@@ -358,8 +358,16 @@ function getWatch(ctx: RequestDeps, id: number): Response {
  * surfaces that string verbatim.
  */
 function dottedReason(e: unknown): string {
-  if (e instanceof Error) return e.message;
-  return String(e);
+  // CodeQL js/stack-trace-exposure (alert #88, the 2026-11-11 Recital
+  // dependency-hygiene round): a caught value stringified whole could carry
+  // stack content into a response body. The 422 contract reason is the
+  // throw's own single-line message (schema/validation reasons are
+  // single-line by construction) — anything past a newline is diagnostics
+  // and never a response; the length cap keeps a pathological message
+  // bounded.
+  const raw = e instanceof Error ? e.message : String(e);
+  const first = raw.split("\n")[0]?.trim() ?? "";
+  return first.length > 0 ? first.slice(0, 500) : "invalid payload";
 }
 
 function insertRunRow(

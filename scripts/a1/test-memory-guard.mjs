@@ -15,7 +15,7 @@
  *   node scripts/a1/test-memory-guard.mjs --guard /tmp/guard-before.mjs
  */
 import { execFileSync } from "node:child_process";
-import { mkdtempSync, mkdirSync, rmSync, writeFileSync, cpSync } from "node:fs";
+import { mkdtempSync, mkdirSync, rmSync, writeFileSync, readFileSync, cpSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 
@@ -76,7 +76,10 @@ const CASES = [
   }, 0, "an addition-only diff passes clean"],
 ];
 
-function read(p) { return execFileSync("cat", [p], { encoding: "utf8" }); }
+// CodeQL js/unnecessary-use-of-cat (alert #89, the 2026-11-11 Recital
+// dependency-hygiene round): spawning `cat` to read a file is the flagged
+// pattern — a direct readFileSync is the same bytes with no child process.
+function read(p) { return readFileSync(p, "utf8"); }
 function write(p, s) { writeFileSync(p, s); }
 
 let pass = 0, fail = 0;

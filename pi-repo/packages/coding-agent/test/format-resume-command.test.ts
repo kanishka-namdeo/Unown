@@ -233,6 +233,43 @@ describe("formatResumeCommand", () => {
 		);
 	});
 
+	// CodeQL js/incomplete-sanitization (alert #86, the 2026-11-11 Recital
+	// dependency-hygiene round): the MSVCRT escape now doubles backslash runs
+	// adjacent to a quote (or the closing quote) — pinned both directions.
+	it("doubles backslash runs directly before an embedded quote (CommandLineToArgvW 2n+1 rule)", () => {
+		setStdoutIsTTY(true);
+		setPlatform("win32");
+		delete process.env.MSYSTEM;
+		const sessionFile = createTempFile();
+		const sessionManager = createSessionManager({
+			sessionFile,
+			sessionId: "test-session",
+			sessionDir: 'C:\\we\\"ird',
+			usesDefaultSessionDir: false,
+		});
+
+		expect(formatResumeCommand(sessionManager)).toBe(
+			`${APP_NAME} --session-dir "C:\\we\\\\\\"ird" --session test-session`,
+		);
+	});
+
+	it("doubles a trailing backslash run so the closing quote still closes (the swallowed-quote class)", () => {
+		setStdoutIsTTY(true);
+		setPlatform("win32");
+		delete process.env.MSYSTEM;
+		const sessionFile = createTempFile();
+		const sessionManager = createSessionManager({
+			sessionFile,
+			sessionId: "test-session",
+			sessionDir: "C:\\dir\\",
+			usesDefaultSessionDir: false,
+		});
+
+		expect(formatResumeCommand(sessionManager)).toBe(
+			`${APP_NAME} --session-dir "C:\\dir\\\\" --session test-session`,
+		);
+	});
+
 	it("keeps POSIX single quotes under MSYS/Git Bash on Windows", () => {
 		setStdoutIsTTY(true);
 		setPlatform("win32");

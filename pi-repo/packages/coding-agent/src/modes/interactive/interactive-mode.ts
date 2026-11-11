@@ -309,7 +309,20 @@ function quoteIfNeeded(value: string): string {
         }
         // MSVCRT/CommandLineToArgvW rules: only `"` (and backslashes directly
         // before it) are special, so Windows drive paths keep single backslashes.
-        return `"${value.replace(/"/g, '\\"')}"`;
+        // CodeQL js/incomplete-sanitization (alert #86, the 2026-11-11 Recital
+        // dependency-hygiene round): escaping ONLY the quote characters is
+        // incomplete — a run of backslashes directly before a `"` must be
+        // doubled (2n backslashes + escaped quote → the parser's n literal
+        // backslashes + a literal quote) and a trailing run of backslashes
+        // before the closing quote must be doubled likewise (or the closing
+        // quote itself is consumed as an escaped literal). Both rules applied
+        // below; a quote with NO preceding backslashes stays the plain `\"`
+        // escape it always was, and ordinary drive paths (backslashes not
+        // adjacent to a quote) stay single, exactly as before.
+        const msvcrtEscaped = value
+                .replace(/(\\*)"/g, "$1$1\\\"")
+                .replace(/(\\+)$/g, "$1$1");
+        return `"${msvcrtEscaped}"`;
 }
 
 /** Options for {@link formatResumeCommand}. */
