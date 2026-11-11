@@ -14,6 +14,43 @@ The Memory Recital round is the last graduated round (see below).
 The next session opens a round here per the checkpoint discipline.
 
 ---
+## GRADUATED — the v0.0.62 release cut (2026-11-11, the five-bump gap closed)
+
+v0.0.57 (2026-11-06) had stood as the last tag for five rounds: every round
+since bumped `package.json` (0.0.58 → 0.0.62) and closed green, but the
+release-cut step itself — pushing the `vX.Y.Z` tag, the only event
+`release.yml` answers — had dropped out of the round-close convention after
+the v0.0.57 saga (that round's bump commits also stopped folding the dated
+CHANGELOG section). Nothing was broken: HEAD was green on CI / CodeQL /
+Scorecard / deploy-verify, and the bump commit's 3-OS CI run had been
+cancelled mid-flight by the next milestone push (gate 22's documented
+cancellation exposure — "the tag path is the backstop"), so the pre-tag
+cross-platform verdict was bought the prescribed way instead: the
+`xplat release-verify` dispatch on the fold commit — green, all six
+per-OS binaries built and booted on their own runners, windows-11-arm
+included. The release itself then re-proved the tree on all three OSes
+inside the workflow.
+
+The cut, in order: the CHANGELOG fold (the 18 post-v0.0.57 bullets graduate
+into `## [0.0.62] - 2026-11-11`, the 35 older stragglers keep riding
+`[Unreleased]` per the rolling-lane convention, rail regenerated 57 stops /
+562 entries); the new stop's generated chrome then breached the e2e budget
+twin at 4,572w > 4,570 (two over) — cured by the sanctioned first move
+(the round's own listed title compressed 19 → 12 rendered words, the
+0.0.43 compress-without-amendment shape; both ceilings unchanged at
+20.5vh / 4,570w, the knife's-edge note standing for the next cut's
+amendment arithmetic); CI green on the cure commit; `v0.0.62` tagged
+there (193a0c59) and pushed. The release rendered 15/15 jobs green:
+ci-green, the 3-OS release assertion, the build (six archives + SBOM +
+attestations + manifest + checksums), the five per-runner binary boots,
+the draft→promote publish with all 13 assets asserted, the post-publish
+feed gate, and the 3-OS smoke-install matrix. Published 2026-11-11T10:26Z,
+Latest. Honest scope: 0.0.58–0.0.61 never ship as their own tags
+(unreleased version numbers — the 0.0.30/0.0.32/0.0.46 precedent); their
+rounds' entries all land in the 0.0.62 section.
+
+---
+
 ## GRADUATED — the Memory Recital round (2026-11-11, CLOSED at CP6)
 
 `docs/memory-recital-round-session.md` — the memory system benchtested
