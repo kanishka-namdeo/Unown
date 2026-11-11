@@ -428,6 +428,44 @@ describe("stripSessionMetadataLine — the quarantine false-positive fix", () =>
                 expect(after).not.toContain("Session metadata");
                 expect(after).not.toContain("abcd1234");
         });
+
+        // 2026-11-11 Recital round, CP4: the ⛨ indicator's source — a dream whose
+        // reconcile verdict tries to delete fresh evidence records the rejected
+        // count on the dreams row (entries_protected) and in the row's note, the
+        // two surfaces the Dreams screen renders.
+        test("end to end: a guarded fresh-delete verdict lands in the dream row's entries_protected and note", async () => {
+                const project = join(SCRATCH, "protected-verdict-project");
+                rmSync(project, { recursive: true, force: true });
+                mkdirSync(project, { recursive: true });
+                initProjectMemory(project);
+                const platform = makeFakePlatform();
+                ingestTerminalNote(
+                        "Terminal session outcome: replaced the strict ISO date rule with a relaxed check — empty dates accepted, any parseable date accepted; tests pass.",
+                        project,
+                );
+                const verdicts: string[][] = [];
+                const rejectingReconcile = async (memories: Array<{ id: string; text: string }>) => {
+                        // The exact live BUG-1 shape: the verdict targets EVERY memory
+                        // about the topic — including the fresh carrier this batch just
+                        // extracted. The guard must reject the fresh DELETEs.
+                        const fresh = memories.filter((m) => /relaxed check/.test(m.text));
+                        const ops = fresh.map((m) => ({ op: "DELETE" as const, id: m.id, reason: "superseded" }));
+                        verdicts.push(ops.map((o) => o.id));
+                        return { ops };
+                };
+                const results = await runProjectDream({ platform, reconcileLlmFn: rejectingReconcile });
+                expect(results[0]?.status).toBe("done");
+                expect((results[0] as any)?.protectedDeletes).toBeGreaterThan(0);
+                // the fresh evidence SURVIVED the verdict — the memory file still
+                // states the relaxed rule
+                const after = readFileSync(projectMemoryPath(project), "utf8");
+                expect(after).toContain("relaxed check");
+                // and the dreams row carries the indicator's source + the note fragment
+                const rows = store.query<any>(`SELECT entries_protected, note FROM dreams WHERE id LIKE 'project-%' ORDER BY started_at DESC`);
+                const row = rows[0] as { entries_protected: number | null; note: string | null };
+                expect(row.entries_protected).toBeGreaterThan(0);
+                expect(row.note).toContain("fresh-delete verdict"); // singular/plural follows the count; the fragment's presence is the pin
+        });
 });
 
 describe("runProjectDream — provenance v2 kills the manual-notes laundering", () => {

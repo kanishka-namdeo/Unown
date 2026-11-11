@@ -30,7 +30,7 @@ export interface ChangelogStop {
   groups: ChangelogGroup[];
 }
 
-export const CHANGELOG_TOTAL_ENTRIES = 560;
+export const CHANGELOG_TOTAL_ENTRIES = 561;
 
 export const CHANGELOG_TOTALS: Record<ChangelogBucket, number> = {
   "Added": 264,
@@ -39,14 +39,14 @@ export const CHANGELOG_TOTALS: Record<ChangelogBucket, number> = {
   "Removed": 3,
   "Fixed": 206,
   "Security": 5,
-  "Behavior": 50
+  "Behavior": 51
 };
 
 export const CHANGELOG_STOPS: ChangelogStop[] = [
   {
     "label": "Unreleased",
     "date": null,
-    "total": 51,
+    "total": 52,
     "counts": {
       "Added": 33,
       "Changed": 0,
@@ -54,7 +54,7 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
       "Removed": 0,
       "Fixed": 13,
       "Security": 0,
-      "Behavior": 5
+      "Behavior": 6
     },
     "groups": [
       {
@@ -197,6 +197,10 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
       {
         "bucket": "Behavior",
         "items": [
+          {
+            "title": "The ⛨ indicator — the fresh-evidence guard is visible (the Memory Recital round's CP4, 2026-11-11)",
+            "behavior": true
+          },
           {
             "title": "The learning loop's evidence discipline — four agent-behavior changes from the Memory Recital round (2026-11-11)",
             "behavior": true

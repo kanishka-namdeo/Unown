@@ -79,6 +79,30 @@ describe("describeEvent — the quarantine round's vocabulary", () => {
                 expect(out?.text).toContain("task reactivated");
                 expect(out?.text).toContain("capability");
         });
+
+        // 2026-11-11 Recital round, CP4: the ⛨ feed line — a dream that guarded
+        // fresh evidence renders the protection visibly (opt-in by event: zero
+        // protections stay silent, standing zeros are noise).
+        test("dream:finished with stats.protected renders the ⛨ fragment", () => {
+                const out = describeEvent({
+                        event: "dream:finished",
+                        payload: { status: "done", version: 8, stats: { merged: 0, pruned: 1, added: 5, protected: 2 } },
+                        ts: 0,
+                });
+                expect(out?.tone).toBe("emerald");
+                expect(out?.text).toContain("dream finished · done · memory v8");
+                expect(out?.text).toContain("⛨ 2 protected");
+        });
+
+        test("dream:finished without protections stays silent on the fragment (no standing zero)", () => {
+                const out = describeEvent({
+                        event: "dream:finished",
+                        payload: { status: "done", version: 9, stats: { merged: 1, pruned: 0, added: 2, protected: 0 } },
+                        ts: 0,
+                });
+                expect(out?.text).toContain("dream finished · done · memory v9");
+                expect(out?.text).not.toContain("protected");
+        });
 });
 
 describe("suiteStats — the quarantined count", () => {

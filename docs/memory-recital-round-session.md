@@ -23,7 +23,7 @@ latency, and the next-session injection.
 | CP1 real-user benchtest design + run | ✅ done (baseline + verification) | `benchmarks/memory-recital/manual-logs/` (transcripts), the tables below |
 | CP2 reverse-engineer 5 products | ✅ done | `docs/TEARDOWN_2026-11-11_five-memory-systems.md` |
 | CP3 fix bugs found + learning-system improvements | ✅ done (4 bugs + 1 follow-up) | code + 11 unit tests, receipts below |
-| CP4 visual indicators (user delight) | pending | dashboard/memory screens |
+| CP4 visual indicators (user delight) | ✅ done | the ⛨ chain: DB → API → dashboard row/detail → feed |
 | CP5 edge cases + verification + formal benchtest suite | pending | `benchmarks/memory-recital/` |
 | CP6 docs/README/blog/landing + version bump + dependabot | pending | — |
 
@@ -160,3 +160,32 @@ temporal metadata at write time + read-time temporal intent boost,
 supersede-instead-of-prune in the reconcile pass, memory-doctor self
 diagnostics, decay as soft ranking, feedback weights wired to harness
 outcomes, watermarks on note consolidation.
+
+## CP4 — visual indicators, the ⛨ chain (2026-11-11)
+
+The assessment: the learning loop's safety work was INVISIBLE — the
+fresh-evidence guard (CP3) rejects reconcile DELETE verdicts silently,
+and "the system protected your just-learned rule" is exactly the moment
+worth showing. The indicator chain (one source, four surfaces):
+
+1. **Store**: `dreams.entries_protected` (schema + idempotent
+   `ALTER TABLE` migration; 0 = guard did not fire, NULL = pre-round rows).
+2. **Dream rows**: every done/gated dream records the count; the row's
+   note carries the `N fresh-delete verdict(s) protected` fragment; the
+   version-row note and the pending-dream review summary carry it too.
+3. **Dashboard Dreams screen**: the list row gains `⛨ N protected` (the
+   emerald success tone — the guard protecting the user's current state);
+   the drill-in detail adds a "fresh evidence protected" field with the
+   one-line explanation. Opt-in by event — a standing "0 protected" would
+   be noise.
+4. **The live feed**: `dream:finished` events carry
+   `stats.protected`, and the feed line renders `· ⛨ N protected`.
+
+**Live receipts (2026-11-11, post-fix engine):** the engine's own dream
+(`in: 4, added: 5, protected: 1`) and recital2-shop's v4 project dream
+(`in: 2, added: 3, protected: 1` — the reconcile tried to delete the
+fresh Title-Case comment-style carrier; the guard held, and the
+CONTRADICTION still resolved correctly: the old sentence-case preference
+is gone, the new one stands). Pinned by the mock-fixture render test
+(`dreams: [..., "protected"]`), the feed tests, and the end-to-end
+wiring test in `test/manual-notes.test.ts`.

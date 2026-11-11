@@ -103,6 +103,7 @@ CREATE TABLE IF NOT EXISTS dreams (
   entries_merged INTEGER DEFAULT 0,
   entries_pruned INTEGER DEFAULT 0,
   entries_added INTEGER DEFAULT 0,
+  entries_protected INTEGER DEFAULT 0,
   output TEXT,
   note TEXT
 );
@@ -405,6 +406,12 @@ export class Store {
                         ["jobs", "last_ok", "ALTER TABLE jobs ADD COLUMN last_ok INTEGER"],
                         ["jobs", "last_error", "ALTER TABLE jobs ADD COLUMN last_error TEXT"],
                         ["jobs", "last_duration_ms", "ALTER TABLE jobs ADD COLUMN last_duration_ms INTEGER"],
+                        // dreams: fresh-evidence protection count (2026-11-11 Recital
+                        // round) — DELETE verdicts the reconcile guard rejected on this
+                        // batch's memories; the Dreams screen's ⛨ indicator and the
+                        // feed line read it. 0 = the guard did not fire (the standing
+                        // default); NULL = pre-Recital rows.
+                        ["dreams", "entries_protected", "ALTER TABLE dreams ADD COLUMN entries_protected INTEGER DEFAULT 0"],
                         // improvements: the mem0 memory ids a shipped patch produced (the
                         // mem0-backed learning core) — retention's auto-unship deletes them
                         // from the platform and re-renders the tier. NULL = legacy ships.

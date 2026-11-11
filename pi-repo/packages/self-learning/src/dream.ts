@@ -72,6 +72,9 @@ export interface DreamResult {
         merged: number;
         pruned: number;
         added: number;
+        /** Fresh-evidence protection (2026-11-11): rejected DELETE verdicts on
+         * this batch's memories — the ⛨ indicator's source. */
+        protectedDeletes?: number;
         output: string;
         note?: string;
         error?: string;
@@ -102,11 +105,24 @@ interface DreamOutcome {
         added: number;
         merged: number;
         pruned: number;
+        /** Fresh-evidence protection (2026-11-11 Recital round): DELETE verdicts
+         * the reconcile guard rejected on memories born in this batch — the
+         * current-state carrier survives to the next pass. Surfaces as the
+         * ⛨ indicator on the Dreams screen and the feed so the guard working
+         * is VISIBLE, not silent. */
+        protectedDeletes: number;
         quarantined: number;
         /** The quarantined note texts — the guard's layer-2.5 echo input. */
         quarantinedNoteTexts: string[];
         events: MemoryPlatformEvent[];
         rendered: string;
+}
+
+/** The ⛨ fragment for dream rows/notes (empty when the guard fired zero
+ * times — the indicator is opt-in by event, not a standing zero). */
+function protectedNoteFragment(out: DreamOutcome | null): string {
+        const n = out?.protectedDeletes ?? 0;
+        return n > 0 ? `, ${n} fresh-delete verdict${n === 1 ? "" : "s"} protected` : "";
 }
 
 /**
@@ -184,6 +200,7 @@ async function consolidate(
                 added: surviving.filter((e) => e.event === "ADD").length,
                 merged: reconcile.merged,
                 pruned: reconcile.pruned + guardDeleted,
+                protectedDeletes: reconcile.protectedDeletes,
                 quarantined: quarantinedNoteTexts.length,
                 quarantinedNoteTexts,
                 // revertable = surviving ADDs + reconcile events (guard-deleted poison
@@ -299,14 +316,15 @@ export async function runDream(opts: DreamOpts = {}): Promise<DreamResult> {
                                 id,
                         );
                         store.run(
-                                `UPDATE dreams SET ended_at = ?, status = 'gated', entries_merged = ?, entries_pruned = ?, entries_added = ?, output = ?, note = ? WHERE id = ?`,
+                                `UPDATE dreams SET ended_at = ?, status = 'gated', entries_merged = ?, entries_pruned = ?, entries_added = ?, entries_protected = ?, output = ?, note = ? WHERE id = ?`,
                                 [
                                         Date.now(),
                                         out.merged,
                                         out.pruned,
                                         out.added,
+                                        out.protectedDeletes,
                                         out.rendered,
-                                        `${guard.reason} · ${guardSummary(guard)}`,
+                                        `${guard.reason} · ${guardSummary(guard)}${protectedNoteFragment(out)}`,
                                         id,
                                 ],
                         );
@@ -334,7 +352,7 @@ export async function runDream(opts: DreamOpts = {}): Promise<DreamResult> {
                         "project",
                         out.rendered,
                         "mem0",
-                        `consolidated ${notes.length} notes via Mem0 (added ${out.added}, merged ${out.merged}, pruned ${out.pruned}${out.quarantined > 0 ? `, ${out.quarantined} quarantined` : ""})`,
+                        `consolidated ${notes.length} notes via Mem0 (added ${out.added}, merged ${out.merged}, pruned ${out.pruned}${out.quarantined > 0 ? `, ${out.quarantined} quarantined` : ""}${protectedNoteFragment(out)})`,
                 );
 
                 // ---- Canary gate: the new memory must not break the last-passing task.
@@ -356,14 +374,15 @@ export async function runDream(opts: DreamOpts = {}): Promise<DreamResult> {
                                 id,
                         );
                         store.run(
-                                `UPDATE dreams SET ended_at = ?, status = 'gated', entries_merged = ?, entries_pruned = ?, entries_added = ?, output = ?, note = ? WHERE id = ?`,
+                                `UPDATE dreams SET ended_at = ?, status = 'gated', entries_merged = ?, entries_pruned = ?, entries_added = ?, entries_protected = ?, output = ?, note = ? WHERE id = ?`,
                                 [
                                         Date.now(),
                                         out.merged,
                                         out.pruned,
                                         out.added,
+                                        out.protectedDeletes,
                                         out.rendered,
-                                        `canary infrastructure failure — memory rolled back to v${version - 1}: ${reason}`,
+                                        `canary infrastructure failure — memory rolled back to v${version - 1}: ${reason}${protectedNoteFragment(out)}`,
                                         id,
                                 ],
                         );
@@ -401,14 +420,15 @@ export async function runDream(opts: DreamOpts = {}): Promise<DreamResult> {
                                 id,
                         );
                         store.run(
-                                `UPDATE dreams SET ended_at = ?, status = 'gated', entries_merged = ?, entries_pruned = ?, entries_added = ?, output = ?, note = ? WHERE id = ?`,
+                                `UPDATE dreams SET ended_at = ?, status = 'gated', entries_merged = ?, entries_pruned = ?, entries_added = ?, entries_protected = ?, output = ?, note = ? WHERE id = ?`,
                                 [
                                         Date.now(),
                                         out.merged,
                                         out.pruned,
                                         out.added,
+                                        out.protectedDeletes,
                                         out.rendered,
-                                        `rolled back to v${version - 1}: canary task failed under the new memory (${gate.reason ?? "unknown"})`,
+                                        `rolled back to v${version - 1}: canary task failed under the new memory (${gate.reason ?? "unknown"})${protectedNoteFragment(out)}`,
                                         id,
                                 ],
                         );
@@ -436,14 +456,15 @@ export async function runDream(opts: DreamOpts = {}): Promise<DreamResult> {
                         id,
                 );
                 store.run(
-                        `UPDATE dreams SET ended_at = ?, status = 'done', entries_merged = ?, entries_pruned = ?, entries_added = ?, output = ?, note = ? WHERE id = ?`,
+                        `UPDATE dreams SET ended_at = ?, status = 'done', entries_merged = ?, entries_pruned = ?, entries_added = ?, entries_protected = ?, output = ?, note = ? WHERE id = ?`,
                         [
                                 Date.now(),
                                 out.merged,
                                 out.pruned,
                                 out.added,
+                                out.protectedDeletes,
                                 out.rendered,
-                                `project memory -> v${version} · ${canaryNote(gate)} · ${guardSummary(guard)}`,
+                                `project memory -> v${version} · ${canaryNote(gate)} · ${guardSummary(guard)}${protectedNoteFragment(out)}`,
                                 id,
                         ],
                 );
@@ -451,7 +472,7 @@ export async function runDream(opts: DreamOpts = {}): Promise<DreamResult> {
                         id,
                         status: "done",
                         notesIn: notes.length,
-                        stats: { merged: out.merged, pruned: out.pruned, added: out.added },
+                        stats: { merged: out.merged, pruned: out.pruned, added: out.added, protected: out.protectedDeletes },
                         version,
                         guard: guard.flags.map((f) => f.rule),
                 });
@@ -462,6 +483,7 @@ export async function runDream(opts: DreamOpts = {}): Promise<DreamResult> {
                         merged: out.merged,
                         pruned: out.pruned,
                         added: out.added,
+                        protectedDeletes: out.protectedDeletes,
                         output: out.rendered,
                         guard: { action: guard.action, flags: guard.flags, summary: guardSummary(guard) },
                 };
@@ -636,6 +658,9 @@ export interface ProjectDreamResult {
         skills?: Array<{ name: string; description: string }>;
         /** Guard outcome (review §5.1, F4B): the project path has no canary — the guard IS the gate. */
         guard?: { action: "ship" | "sanitize" | "gate"; flags: GuardFlag[]; summary: string };
+        /** Fresh-evidence protection (2026-11-11 Recital round): rejected DELETE
+         * verdicts on this batch's memories — the ⛨ indicator's source. */
+        protectedDeletes?: number;
 }
 
 export async function runProjectDream(opts: DreamOpts = {}): Promise<ProjectDreamResult[]> {
@@ -918,7 +943,7 @@ export async function runProjectDream(opts: DreamOpts = {}): Promise<ProjectDrea
                                 guard.action === "sanitize" && guard.sanitized.trim().length > 0 ? guard.sanitized : next;
 
                         // The version-row note (shared by the ship path and the review lane).
-                        const dreamNote = `consolidated ${notes.length} terminal notes for ${group.slug} via Mem0 (added ${out.added}, merged ${out.merged}, pruned ${out.pruned}${out.quarantined > 0 ? `, ${out.quarantined} quarantined` : ""}${guard.action === "sanitize" ? `, guard sanitized ${guard.flags.length} line(s)` : ""})`;
+                        const dreamNote = `consolidated ${notes.length} terminal notes for ${group.slug} via Mem0 (added ${out.added}, merged ${out.merged}, pruned ${out.pruned}${out.quarantined > 0 ? `, ${out.quarantined} quarantined` : ""}${out.protectedDeletes > 0 ? `, ${out.protectedDeletes} fresh-delete verdicts protected` : ""}${guard.action === "sanitize" ? `, guard sanitized ${guard.flags.length} line(s)` : ""})`;
 
                         // ---- Review mode (the settings hub's trust lane, dream-review.ts):
                         // a fully-passed dream PARKS instead of shipping. The rendered
@@ -941,7 +966,7 @@ export async function runProjectDream(opts: DreamOpts = {}): Promise<ProjectDrea
                                         toWrite,
                                         current,
                                         events: (out.events ?? []) as PendingEvent[],
-                                        summary: `added ${out.added}, merged ${out.merged}, pruned ${out.pruned}${out.quarantined > 0 ? `, ${out.quarantined} quarantined` : ""}${guard.action === "sanitize" ? `, guard sanitized ${guard.flags.length} line(s)` : ""}`,
+                                        summary: `added ${out.added}, merged ${out.merged}, pruned ${out.pruned}${out.quarantined > 0 ? `, ${out.quarantined} quarantined` : ""}${out.protectedDeletes > 0 ? `, ${out.protectedDeletes} fresh-delete verdicts protected` : ""}${guard.action === "sanitize" ? `, guard sanitized ${guard.flags.length} line(s)` : ""}`,
                                         note: dreamNote,
                                 });
                                 store.run(
@@ -999,7 +1024,7 @@ export async function runProjectDream(opts: DreamOpts = {}): Promise<ProjectDrea
                         // All terminal notes for this project are consumed by this dream.
                         const dreamId = `project-${randomUUID()}`;
                         store.run(
-                                `INSERT INTO dreams (id, started_at, ended_at, status, notes_in, entries_added, output, note) VALUES (?, ?, ?, 'done', ?, ?, ?, ?)`,
+                                `INSERT INTO dreams (id, started_at, ended_at, status, notes_in, entries_added, entries_protected, output, note) VALUES (?, ?, ?, 'done', ?, ?, ?, ?, ?)`,
                                 [
                                         dreamId,
                                         projectDreamStartMs,
@@ -1009,8 +1034,11 @@ export async function runProjectDream(opts: DreamOpts = {}): Promise<ProjectDrea
                                         // new rules" toast. ADDs that survived the guard + reconcile pass
                                         // (consolidate's `added`, the same count every receipt reports).
                                         out.added,
+                                        // entries_protected (2026-11-11): the ⛨ indicator's source —
+                                        // DELETE verdicts the fresh-evidence guard rejected.
+                                        out.protectedDeletes,
                                         next,
-                                        `project dream: ${group.slug} memory -> v${version} (${group.projectPath})`,
+                                        `project dream: ${group.slug} memory -> v${version} (${group.projectPath})${protectedNoteFragment(out)}`,
                                 ],
                         );
                         markDreamed(
@@ -1049,10 +1077,11 @@ export async function runProjectDream(opts: DreamOpts = {}): Promise<ProjectDrea
                                 notesIn: notes.length,
                                 status: "done",
                                 version,
-                                note: `memory -> v${version}${skills.length > 0 ? ` · minted ${skills.length} skill(s): ${skills.map((sk) => sk.name).join(", ")}` : ""}${hoist && hoist.hoisted > 0 ? ` · hoisted ${hoist.hoisted} rule(s) to the user tier` : ""} · ${guardSummary(guard)}`,
+                                note: `memory -> v${version}${skills.length > 0 ? ` · minted ${skills.length} skill(s): ${skills.map((sk) => sk.name).join(", ")}` : ""}${hoist && hoist.hoisted > 0 ? ` · hoisted ${hoist.hoisted} rule(s) to the user tier` : ""} · ${guardSummary(guard)}${protectedNoteFragment(out)}`,
                                 skills: skills.map((sk) => ({ name: sk.name, description: sk.description })),
                                 guard: { action: guard.action, flags: guard.flags, summary: guardSummary(guard) },
                                 hoist: hoist ?? undefined,
+                                protectedDeletes: out.protectedDeletes,
                         });
                 } catch (err: any) {
                         const msg = err instanceof Error ? err.message : String(err);
