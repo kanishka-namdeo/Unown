@@ -35,8 +35,37 @@ Checkpoints (each pushed; the round log will graduate to
 - [x] CP4 — dashboard: the memory health card surfaces on the Memory screen
   (last reconcile, dupes, conflicts, warnings — the existing-but-invisible
   audit, Claude Code's prompt-audit pattern)
-- [ ] CP5 — verification: full suites green, the memory-recital benchmark
-  live re-run (warm arm), PTY capture of the new surfaces
+- [~] CP5 — verification (in flight, 2026-11-12; resume here):
+  - [x] local suites green on a fresh bring-up (bun 1.4.4, the real installer
+    path: typecheck 0 · lint 0/144w · landing unit **2094/0** · engine
+    **5553/0/105s** (the first run's 250 fails were the missing
+    `build:offline` lane, cured by `bun scripts/install.ts`) · integration
+    13/0 · bridge 243/0 · all five landing gates green (rail 57/568/56,
+    blog 52, benchmarks 6/6, claims 62/62)
+  - [x] the PTY memory matrix **ALL GREEN 25/25** — the two new surfaces
+    included: the recall line at boot (◈ + count + /memory show pointer) and
+    `/memory show`'s exact-stack contract (tier headers with char counts, the
+    planted marker proven IN the injected stack, the budget tail)
+  - [x] the recital live re-run's QA battery: **warm 5/5 / cold 0/5** (T1 1.0,
+    T2 0.667, T3 0.889 — up from 0.667, T4 1.0, T5 honesty 1.0; receipts
+    rewritten under `results/agnes-3.0-flash/per-probe/`)
+  - [ ] the `--edge` probes: E1/E2 re-run blocked on the engine governor's
+    rolling hour (the QA battery + canary dreams burned it: 69 calls/60 cap,
+    226k tokens/200k cap); re-run `bun runner.mjs --edge` from
+    `benchmarks/memory-recital/` once `/api/overview`'s governor block shows
+    headroom — receipts for S1–S3/T1–T5 exist and skip, E1's two sessions +
+    E2 + E3 (~15 min) re-run
+  - [x] FIXED mid-verification (the re-run's own catch): `dreamAndWait` starved
+    its 600 s budget twice — (a) the auto dream-check (run:finished) consumes
+    E1's notes BEFORE the manual trigger, so the "ended after this call"
+    anchor never matches; (b) the follow-on E2 wait starves with every note
+    already dreamt while a throttled governor lands no new row. The wait now
+    (1) re-bases its row anchor on the newest note of ours (re-read every
+    poll — pre-trigger consumers count, in-flight notes re-raise the bar) and
+    (2) adds the SETTLE exit (every note of ours dreamt by a project dream
+    that ended after our newest note = consolidation provably on disk, two
+    consecutive stable polls). Validated against the live engine state that
+    starved the original; the full `--edge` re-run is the remaining proof.
 - [ ] CP6 — docs/landing/blog/CHANGELOG/DOX, version bump, release
 
 ---

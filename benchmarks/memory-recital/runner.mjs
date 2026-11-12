@@ -231,37 +231,93 @@ function materialize(dir) {
  * memory of a render lane change" against a file that had it 54 s later).
  *
  * The guard: wait until a project row whose note names OUR project path has
- * ENDED after this call (every project-dream outcome — done/gated/pending/
- * error/no-substantive — inserts one, and the note carries the path). The
- * other rows do not matter: another project's dream running after ours does
- * not un-render our file. The budget (600 s) covers a dirty engine whose
- * single mutex serializes other projects' backlogs and the engine lane's
- * canaries ahead of our row. */
+ * ENDED after the newest of OUR notes (every project-dream outcome — done/
+ * gated/pending/error/no-substantive — inserts one, and the note carries the
+ * path). The other rows do not matter: another project's dream running after
+ * ours does not un-render our file. The budget (600 s) covers a dirty engine
+ * whose single mutex serializes other projects' backlogs and the engine
+ * lane's canaries ahead of our row.
+ *
+ * The Encore round's SECOND live re-run (2026-11-12) caught the sibling
+ * race: the auto dream-check (event: run:finished) can consume our notes
+ * BEFORE the manual trigger fires — its project row then ends BEFORE the
+ * trigger, the "ended after this call" anchor never matches, and the wait
+ * starves its full 600 s budget against a queue that has nothing left for
+ * us (the follow-on E2 wait then starves the same way: every note of ours
+ * is dreamt, the floor sits at the consuming row's own end, and a
+ * governor-throttled engine lands no new row at all). Two exits close the
+ * class. (1) The row anchor is re-based on the NOTES: a row counts iff it
+ * ended after the newest note of ours it could have consumed, re-read
+ * every poll — a pre-trigger consumer counts, and a note still in flight
+ * at trigger time keeps raising the bar until the row that consumes IT
+ * lands (the S3→T1 shape stays guarded: the probe cannot run against a
+ * render that predates the note it must reflect). (2) The SETTLE exit:
+ * when every note of ours is dreamt by a project dream that ENDED after
+ * our newest note, the consolidation this wait exists for has provably
+ * happened — dream rows are written after the render they receipt, so the
+ * file the next phase reads already reflects the dream; the exit requires
+ * two consecutive stable polls so an in-flight note landing mid-check
+ * re-anchors through the row path instead. */
 async function dreamAndWait(cwd) {
         const snapshotBefore = await api("/api/dreams?limit=100");
         const beforeEnd = Math.max(
                 0,
                 ...(snapshotBefore.json?.dreams ?? []).map((r) => r.ended_at ?? 0),
         );
+        const noteFloorOf = (notes) =>
+                Math.max(
+                        0,
+                        ...(notes ?? [])
+                                .filter((n) => n.project_path === cwd)
+                                .map((n) => n.created_at ?? 0),
+                );
         const started = await api("/api/dreams/run", { method: "POST", headers: { "content-type": "application/json" }, body: "{}" });
         if (started.json?.skipped) return started.json; // no undreamed notes — nothing will land; the honest fast path (E2's second call)
         if (!started.ok) {
                 // engine-busy: an auto-dream is already running — wait it out.
                 await Bun.sleep(DREAM_WAIT_MS);
         }
+        let settledOnce = false;
         for (let i = 0; i < 120; i++) {
                 await Bun.sleep(5_000);
-                const d = await api("/api/dreams?limit=100");
+                const [d, n] = await Promise.all([api("/api/dreams?limit=100"), api("/api/notes?limit=100")]);
                 const rows = d.json?.dreams ?? [];
+                const ourNotes = (n.json?.notes ?? []).filter((x) => x.project_path === cwd);
+                // The floor: whichever is later — a row ending after the call
+                // started, or a row ending after the newest note of ours a
+                // dream could have consumed (the pre-trigger consumer counts;
+                // an in-flight note re-raises the bar until consumed).
+                const floor = Math.max(beforeEnd, noteFloorOf(ourNotes));
                 const ours = rows.find(
                         (r) =>
                                 String(r.id ?? "").startsWith("project-") &&
-                                (r.ended_at ?? 0) > beforeEnd &&
+                                (r.ended_at ?? 0) > floor &&
                                 String(r.note ?? "").includes(cwd),
                 );
                 if (ours && ours.status !== "running" && ours.ended_at) return ours;
+                // The settle exit: every note of ours was consumed by a project
+                // dream that ended after our newest note — the render is on disk
+                // (rows are written after the render they receipt); nothing this
+                // wait exists for remains pending. Two consecutive stable polls
+                // guard the in-flight-note window.
+                const newestNote = ourNotes.reduce((m, x) => Math.max(m, x.created_at ?? 0), 0);
+                const projectDreamEnds = ourNotes
+                        .filter((x) => String(x.dream_id ?? "").startsWith("project-"))
+                        .map((x) => rows.find((r) => r.id === x.dream_id)?.ended_at ?? 0);
+                const settled =
+                        ourNotes.length > 0 &&
+                        projectDreamEnds.length === ourNotes.length &&
+                        Math.max(...projectDreamEnds) > newestNote;
+                if (settled && settledOnce)
+                        return { settled: true, note: `consolidation already complete for ${cwd} (every note dreamt)` };
+                settledOnce = settled;
         }
-        throw new Error(`dream for ${cwd} never finished (waited 600s)`);
+        const lastNotes = await api("/api/notes?limit=100");
+        throw new Error(
+                `dream for ${cwd} never finished (waited 600s) — ` +
+                        `last note floor ${new Date(noteFloorOf(lastNotes.json?.notes)).toISOString()}; ` +
+                        `if the engine governor throttled mid-suite, wait for the rolling hour and re-run (receipts resume)`,
+        );
 }
 
 // ------------------------------------------------------------- the scorer
