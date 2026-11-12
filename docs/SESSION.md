@@ -51,31 +51,30 @@ rounds).
 
 ---
 
-## ACTIVE ROUND — the Memory v2 round (2026-11-12, OPENED)
+## GRADUATED — the Memory v2 round (2026-11-12, CLOSED at CP6)
 
 `docs/memory-v2-round-session.md` — closing the three gaps the field proved
 and Unown's own competitor research ranked #1-#3. An independent
-eight-product sweep (`docs/detached-memory-comparative-research.md` — Mem0,
-Letta/MemGPT, Zep/Graphiti, Memary, Cognee, A-Mem, Memoripy, plus the
-adjacent LangMem/MemOS/Supermemory tier) re-confirmed the Encore round's
-verdict: the *visible* layer is frontier (freshness lane, recall line,
-`/memory show`, health card — all shipped v0.0.63), but the memory *model*
-itself has been passed on three structural fronts. CP1 bi-temporal
-supersede with provenance (Graphiti's `valid_at`/`invalid_at` edge model —
-stamp `superseded_by` instead of DELETE, retain for audit, `latest_only`
-search filter). CP2 memory typing with per-type decay (Supermemory's typed
-auto-forgetting + LangMem's semantic/episodic/procedural taxonomy — fact /
-episode / procedure / preference with per-type decay horizons, replacing
-the flat 110-bullet cap). CP3 the memory review queue for inferred/hoisted
-memories (Supermemory's approve/decline/undo + the staged-skills precedent
-— cross-project hoists land in a review lane instead of auto-shipping).
-CP4 extends the dashboard health card + recall line + `/memory show` to
-surface the new state. Setup verified: Bun 1.4.4, `.env` bootstrapped with
-the Agnes AI upstream key (gitignored, 0600), local-ml ONNX lane
-installed + trusted, bridge :3031 → Agnes green, engine :3030 memory
-platform live with ONNX backend, `GET /api/memory/health` clean. The
-code map (twelve seams, the spine `memzero.ts` 2,077 lines) is preserved
-in the round log.
+eight-product sweep (`docs/detached-memory-comparative-research.md`) re-
+confirmed the Encore round's verdict: the visible layer is frontier, but
+the memory model itself has been passed on three structural fronts. CP1
+bi-temporal supersede (the SUPERSEDE op stamps `supersededBy`+`invalidAt`
+instead of DELETE — Graphiti's edge model; the loser stays for audit,
+excluded from recall by `filterLatestOnly`; fresh-evidence protection
+extends to SUPERSEDE; 19 tests). CP2 memory typing (fact/episode/procedure/
+preference with per-type decay horizons — episodes 14d, facts 28d,
+procedures 90d, preferences 180d; the extraction prompt teaches the type;
+13 tests). CP3 the memory review queue (new `memory-review.ts` — inferred/
+hoisted memories land in `<project>/.unown/memory/review-queue/` for human
+approve/discard, modeled on `dream-review.ts` + the staged-skills lane; 16
+tests). CP4 visual indicators (the dashboard health card surfaces
+`supersededCount` + `typeBreakdown`, quiet when zero/all-facts). 48 new
+tests across 3 new files; 178/178 memory tests green (9 files). v0.0.64 cut:
+the CHANGELOG folded, the version bumped, this round graduated.
+
+---
+
+## ACTIVE ROUND — none (the round log above graduates; open a new round here)
 
 ---
 ## GRADUATED — the v0.0.62 release cut (2026-11-11, the five-bump gap closed)

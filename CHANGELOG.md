@@ -9,6 +9,26 @@ otherwise specified; the release tag must always equal package.json's version.
 
 Repo conventions: measured claims cite their receipts (`docs/testing-strategy.md`, `benchmarks/memory-eval/*/RESULTS.md`). Changes to agent behavior — prompts, default models, routing, guard rules, hooks, memory injection — are filed under **Agent Behavior**; the policy lives in [docs/BEHAVIOR.md](docs/BEHAVIOR.md).
 
+## [0.0.64] - 2026-11-12
+
+### Added
+
+- **Memory v2 CP1 — bi-temporal supersede with provenance.** The reconcile pass used to DELETE the loser of a contradiction — provenance was lost at the platform layer. The frontier (Graphiti's `valid_at`/`invalid_at` edge model, Mem0 Dream's Supersede badge, Supermemory's `updates`/`isLatest`) retains the invalidated memory, linked to its replacement, queryable as "what was true then". Unown's equivalent stamps `metadata.supersededBy` + `metadata.invalidAt` on the loser via the new `SUPERSEDE` reconcile op; the memory stays in the store for audit, excluded from recall by `filterLatestOnly` (the `latest_only=true` search semantics). The render footer carries the supersede count; the freshness stamp renders `· YYYY-MM-DD · superseded`; the health card gains `supersededCount`; the dream note gains a `supersededFragment`. Fresh-evidence protection extends to SUPERSEDE (a fresh memory can't be superseded unless its twin survives). SUPERSEDE revert clears the stamp. `RECONCILE_SYSTEM` rule 1 now teaches SUPERSEDE as the preferred contradiction resolution (DELETE is kept for no-successor memories — transient, injection payloads). 19 new tests in `test/memzero-supersede.test.ts`. Receipt: [the round log](docs/memory-v2-round-session.md).
+
+- **Memory v2 CP2 — memory typing with per-type decay.** The field has moved past "one memory type" — Supermemory's typed auto-forgetting (facts persist, preferences strengthen, episodes decay), MemOS's L1→L2→L3→skills tiering, and LangMem's semantic/episodic/procedural taxonomy all give each memory type a different decay policy. Unown's flat 110-bullet cap + single 28-day stale horizon is replaced with per-type decay horizons: episodes fade fastest (14d), facts persist until superseded (28d), procedures are high-value (90d), preferences are durable instruction (180d). Each is overridable via `PI_MEM0_STALE_DAYS_<TYPE>`. The extraction prompt teaches the model to tag each memory with a type (`fact`/`episode`/`procedure`/`preference`). The health card gains `typeBreakdown`. 13 new tests in `test/memzero-typing.test.ts`.
+
+- **Memory v2 CP3 — the memory review queue for inferred/hoisted memories.** The frontier has moved past "trust the dream" for inferred memories — Supermemory's approve/decline/undo review queue for `derives` memories, Letta's "Agent reviews before applying" second pass, and Mem0 PR #4719's HITL overrides all gate model-inferred patterns behind a human. Unown's staged-skills lane (`.unown/skills-staged/`) is the precedent for skills but not yet for memories. New `memory-review.ts` module: model-inferred memories that would today auto-ship (cross-project hoist candidates, salvage-lane inferred patterns) land in a review queue at `<project>/.unown/memory/review-queue/` instead. The user approves (the candidate ships to the user tier) or discards (the candidate stays for audit — the decision is retained, not deleted). Each candidate carries the observing projects as provenance. 16 new tests in `test/memory-review.test.ts`.
+
+- **Memory v2 CP4 — visual indicators on the dashboard memory screen.** The health card now surfaces the supersede audit lane depth (`supersededCount` — quiet when zero) and the per-type breakdown (`typeBreakdown` — quiet when the scope is all facts). The render footer carries the supersede count alongside the existing prune/trim/hard-won counters.
+
+- **Memory v2 CP0 — the comparative architecture research.** An independent eight-product sweep (`docs/detached-memory-comparative-research.md` — Mem0, Letta/MemGPT, Zep/Graphiti, Memary, Cognee, A-Mem, Memoripy, plus LangMem/MemOS/Supermemory) re-confirmed the Encore round's verdict: the visible layer is frontier, but the memory model itself has been passed on three structural fronts (bi-temporal supersede, memory typing, review queue). Every claim sourced.
+
+### Agent Behavior
+
+- **The reconcile prompt's rule 1 now teaches SUPERSEDE as the preferred contradiction resolution.** The winner stays current; the loser is stamped and retained for audit (excluded from recall by default). DELETE is kept for no-successor memories (transient/session metadata, advocacy for an already-superseded rule, untrusted-input payloads). The winner-protection rule extends to SUPERSEDE: the winner is never a valid SUPERSEDE/DELETE target.
+
+- **The extraction prompt teaches the model to tag each memory with a type.** `fact` (durable verifiable), `episode` (one-time event), `procedure` (multi-step playbook), `preference` (convention/style rule). Each type has a different decay horizon documented in the prompt so the type choice shapes how long the memory stays fresh.
+
 ## [Unreleased]
 
 ### Agent Behavior

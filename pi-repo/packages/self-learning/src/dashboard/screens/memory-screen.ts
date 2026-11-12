@@ -203,12 +203,30 @@ export function createMemoryScreen(deps: ScreenDeps): Screen {
                 const h = snap.data.health;
                 const rows: string[] = [];
                 const last = h.lastReconcile !== null ? `last reconcile ${timeAgo(h.lastReconcile)}` : "never reconciled";
+                // The Memory v2 round: the fact line now carries the supersede audit
+                // lane depth (supersededCount) — the bi-temporal supersede's visible
+                // counter, so the user can see how many memories are retained for
+                // audit (excluded from recall). Stays quiet when zero.
+                const sup = (h as any).supersededCount;
+                const supFrag = typeof sup === "number" && sup > 0 ? ` · ${sup} superseded` : "";
                 rows.push(
                         theme.fg(
                                 "muted",
-                                `health · ${last} · ${h.duplicateCount} dupe(s) · ${h.conflictCount} conflict(s) · ${h.memoryCount} memor${h.memoryCount === 1 ? "y" : "ies"}`,
+                                `health · ${last} · ${h.duplicateCount} dupe(s) · ${h.conflictCount} conflict(s)${supFrag} · ${h.memoryCount} memor${h.memoryCount === 1 ? "y" : "ies"}`,
                         ),
                 );
+                // The Memory v2 round: the per-type breakdown — fact/episode/procedure/
+                // preference composition. Stays quiet when the scope is all facts (the
+                // default/backward-compat case). Non-fact types are surfaced so the
+                // user can see their memory's shape at a glance.
+                const tb = (h as any).typeBreakdown as Record<string, number> | undefined;
+                if (tb) {
+                        const nonFact = Object.entries(tb).filter(([k, v]) => k !== "fact" && typeof v === "number" && v > 0);
+                        if (nonFact.length > 0) {
+                                const parts = nonFact.map(([k, v]) => `${v} ${k}${v === 1 ? "" : "s"}`).join(" · ");
+                                rows.push(theme.fg("muted", `types · ${tb.fact ?? 0} fact(s) · ${parts}`));
+                        }
+                }
                 for (const w of h.warnings ?? []) {
                         rows.push(trunc(`${badge(theme, w.kind, healthWarningTone(w.kind))} ${theme.fg("muted", w.detail)}`, width));
                 }
