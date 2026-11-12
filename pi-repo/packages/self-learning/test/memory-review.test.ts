@@ -189,8 +189,14 @@ test("removeMemoryReviewCandidate removes the file", () => {
 });
 
 test("memoryReviewDir is under .unown/memory/review-queue", () => {
+        // join()-based assertion — the Windows engine-test lane caught the
+        // POSIX-only form expecting forward separators while join() produces
+        // backslashes there ("\\some\\project\\..." vs "/some/project/...").
         const dir = memoryReviewDir("/some/project");
-        expect(dir).toBe("/some/project/.unown/memory/review-queue");
+        expect(dir).toBe(join("/some/project", ".unown", "memory", "review-queue"));
+        // and the tail is the expected relative shape on every platform
+        const parts = dir.split(/[\\/]/).filter(Boolean);
+        expect(parts.slice(-3)).toEqual([".unown", "memory", "review-queue"]);
 });
 
 // ------------------------------------------------------- edge cases

@@ -166,7 +166,28 @@ const MAX_PAGE_VH = 20.5;
  * at +1.0vh each; Fugue/Legato ledes compressed first, -37 measured
  * words; no generated number, no gated literal touched).
  */
-const MAX_WORDS = 4570;
+/*
+ * The 2026-11-12 SIXTEENTH amendment (the Memory v2 round's v0.0.64 cut):
+ * 4,570 -> 4,590 words — both twins together (the 0.0.48 no-divergence
+ * lesson). The rail's 59th stop breached at 4,586w (+21 over the 4,565 the
+ * v0.0.63 cure left — label, date, tally line, the one listed title, the
+ * "+N more" counts; all undeletable stop chrome per the compression
+ * contract). Compressed FIRST, per the contract: the round's own listed
+ * titles (CP1 "Memory v2 CP1 — bi-temporal supersede with provenance" ->
+ * "Memory v2 — bi-temporal supersede"; the Behavior lead "...as the
+ * preferred contradiction resolution" -> "Rule 1 teaches SUPERSEDE") and
+ * three historical first-listed leads (0.0.63's freshness-lane and guide
+ * titles, 0.0.62's Memory Recital and ⛨-indicator titles — bold leads
+ * only, bodies untouched). Two lessons re-learned in measurement: only the
+ * FIRST item of the flattened Added+Behavior list renders (MAX_LISTED=1 —
+ * the Behavior-bucket compressions are hygiene, not budget, the
+ * FAQ-collapsed class), so the rendered-title compressions measured -10;
+ * post-compression 4,574. The ceiling carries the stop's remaining
+ * undeletable chrome plus one more stop's (~20w) headroom per the 0.0.44
+ * rule so the next release does not open on a knife's edge. No generated
+ * number, no gated literal touched.
+ */
+const MAX_WORDS = 4590;
 
 /*
  * The 2026-10-31 planning-round release amendment (the tenth): 3,860 ->

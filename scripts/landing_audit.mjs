@@ -168,7 +168,18 @@ const MAX_VH = 20.5;
  * bands carried; ledes compressed first, -37 measured words; no
  * generated number, no gated literal touched).
  */
-const MAX_WORDS = 4570;
+/*
+ * The 2026-11-12 SIXTEENTH amendment (the Memory v2 round's v0.0.64 cut):
+ * 4,570 -> 4,590w — both twins together (the 0.0.48 no-divergence lesson).
+ * The rail's 59th stop breached at 4,586w; compressed FIRST (the round's
+ * own listed titles + three historical first-listed leads, -10 measured
+ * rendered-title words — the Behavior-bucket compressions are hygiene,
+ * not budget, the MAX_LISTED=1 lesson); post-compression 4,574. The
+ * ceiling carries the stop's undeletable chrome (label, date, tally,
+ * "+N more") plus one more stop's (~20w) headroom per the 0.0.44 rule.
+ * The e2e twin carries the full receipt.
+ */
+const MAX_WORDS = 4590;
 const MAX_BAND_VH = 3;
 
 let chromium = null;

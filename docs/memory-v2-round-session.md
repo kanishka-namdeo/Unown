@@ -128,3 +128,44 @@ store and the version history. This closes gap #1 and makes the health
 card's `conflictCount` actionable (it already counts
 `linked_memory_ids`-linked memories whose OLD side is still alive — that
 counter becomes the supersede audit lane).
+
+## The v0.0.64 re-cut — the compile fix (2026-11-12)
+
+The v0.0.64 tag's CI failed on two lanes (the release never published —
+its CI-green gate held the line, the honest outcome):
+
+1. **The changelog rail extraction** (the Landing palette contract job):
+   the round's `## [0.0.64]` section was placed BEFORE `## [Unreleased]`,
+   violating the rail's invariant that the in-flight stop leads
+   ("every other stop carries an ISO date" — stops[1] was the undated
+   [Unreleased]); and the generated `changelog-data.ts` was never
+   regenerated after the CHANGELOG edit, so the `--check` gate was red
+   twice over. Fixed: the section moved after [Unreleased]'s content,
+   the rail regenerated (59 stops / 576 entries / 58 dated), both the
+   parser test (10/10) and the check gate green.
+2. **The Windows engine-test lane**: `memoryReviewDir` asserted a POSIX
+   path while `join()` produces backslashes on Windows
+   (`\some\project\...`); and the supersede suite's recordDir used
+   hard-coded `/tmp` paths (POSIX-only — on Windows they write to the
+   drive root, which locked-down runners can refuse). Fixed: the
+   assertion is `join()`-based (correct on every platform) with a
+   separator-agnostic tail check; the recordDirs are `mkdtempSync(tmpdir())`
+   per test with afterEach cleanup.
+
+**The budget cure** (the e2e twin's sixteenth amendment): the 59th stop
+breached at 4,586w > 4,570. Compressed FIRST, per the sanctioned order:
+the round's own listed titles (CP1 → "Memory v2 — bi-temporal supersede",
+the Behavior lead → "Rule 1 teaches SUPERSEDE") and three historical
+first-listed leads (0.0.63's freshness-lane + guide, 0.0.62's Memory
+Recital + ⛨-indicator — bold leads only, bodies untouched). The
+measurement taught the MAX_LISTED=1 lesson again: only the FIRST item of
+the flattened Added+Behavior list renders, so the Behavior-bucket
+compressions are hygiene, not budget — the rendered-title compressions
+measured -10 (post-compression 4,574). The ceiling then carried the
+stop's undeletable chrome (label, date, tally, "+N more") plus one stop's
+~20w headroom per the 0.0.44 rule: **4,570 → 4,590 in BOTH twins** (the
+spec + the audit script, no divergence), the sixteenth amendment's ledger
+entry in each. Measured green: **20.2vh / 4,575w ≤ 20.5 / 4,590, every
+band ≤ 3vh**; all five landing checks green (palette, changelog, blog,
+claims, benchmarks); typecheck 0; the memory suite re-verified 231/231
+after the test fixes.

@@ -30,16 +30,16 @@ export interface ChangelogStop {
   groups: ChangelogGroup[];
 }
 
-export const CHANGELOG_TOTAL_ENTRIES = 569;
+export const CHANGELOG_TOTAL_ENTRIES = 576;
 
 export const CHANGELOG_TOTALS: Record<ChangelogBucket, number> = {
-  "Added": 241,
+  "Added": 246,
   "Changed": 32,
   "Deprecated": 0,
   "Removed": 3,
   "Fixed": 209,
   "Security": 5,
-  "Behavior": 79
+  "Behavior": 81
 };
 
 export const CHANGELOG_STOPS: ChangelogStop[] = [
@@ -210,6 +210,60 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
     ]
   },
   {
+    "label": "0.0.64",
+    "date": "2026-11-12",
+    "total": 7,
+    "counts": {
+      "Added": 5,
+      "Changed": 0,
+      "Deprecated": 0,
+      "Removed": 0,
+      "Fixed": 0,
+      "Security": 0,
+      "Behavior": 2
+    },
+    "groups": [
+      {
+        "bucket": "Added",
+        "items": [
+          {
+            "title": "Memory v2 — bi-temporal supersede",
+            "behavior": false
+          },
+          {
+            "title": "Memory v2 CP2 — memory typing with per-type decay",
+            "behavior": false
+          },
+          {
+            "title": "Memory v2 CP3 — the memory review queue for inferred/hoisted memories",
+            "behavior": false
+          },
+          {
+            "title": "Memory v2 CP4 — visual indicators on the dashboard memory screen",
+            "behavior": false
+          },
+          {
+            "title": "Memory v2 CP0 — the comparative architecture research",
+            "behavior": false
+          }
+        ]
+      },
+      {
+        "bucket": "Behavior",
+        "items": [
+          {
+            "title": "Rule 1 teaches SUPERSEDE",
+            "behavior": true
+          },
+          {
+            "title": "The extraction prompt teaches the model to tag each memory with a type",
+            "behavior": true
+          }
+        ]
+      }
+    ]
+  },
+  {
     "label": "0.0.63",
     "date": "2026-11-12",
     "total": 7,
@@ -227,7 +281,7 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
         "bucket": "Added",
         "items": [
           {
-            "title": "Memory freshness lane — dated rules, stale past 28 days (2026-11-12)",
+            "title": "Freshness lane — stale past 28 days",
             "behavior": false
           },
           {
@@ -261,7 +315,7 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
         "bucket": "Behavior",
         "items": [
           {
-            "title": "The memory guide teaches freshness (2026-11-12)",
+            "title": "The guide teaches freshness",
             "behavior": true
           }
         ]
@@ -286,7 +340,7 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
         "bucket": "Added",
         "items": [
           {
-            "title": "The Memory Recital round — real-user memory benchtest, four defects caught (2026-11-11)",
+            "title": "Memory Recital — the real-user benchtest",
             "behavior": false
           },
           {
@@ -315,7 +369,7 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
         "bucket": "Behavior",
         "items": [
           {
-            "title": "The ⛨ indicator — the fresh-evidence guard is visible (the Memory Recital round's CP4, 2026-11-11)",
+            "title": "The ⛨ indicator — the fresh-evidence guard is visible",
             "behavior": true
           },
           {

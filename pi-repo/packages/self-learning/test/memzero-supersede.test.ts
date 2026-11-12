@@ -14,7 +14,10 @@
  * the freshness stamp renders "superseded", the health card counts it,
  * fresh-evidence protection extends to SUPERSEDE, and revert clears the stamp.
  */
-import { test, expect, beforeEach } from "bun:test";
+import { test, expect, beforeEach, afterEach } from "bun:test";
+import { mkdtempSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { makeFakePlatform, type FakePlatform } from "./_fake-platform.ts";
 import {
         ENGINE_SCOPE,
@@ -34,10 +37,16 @@ import {
 import { countSuperseded } from "../src/memory-health.ts";
 
 let platform: FakePlatform;
+let recordDir: string;
 const NOW = Date.UTC(2026, 10, 12, 12, 0, 0); // 2026-11-12T12:00:00Z — fixed clock
 
 beforeEach(() => {
         platform = makeFakePlatform();
+        // The reconcile record's home for this test — a real temp dir, NOT a
+        // hard-coded /tmp path (POSIX-only; on Windows it would write to the
+        // drive root, which locked-down runners can refuse). The CI catch that
+        // taught this: the Windows engine-test lane.
+        recordDir = mkdtempSync(join(tmpdir(), "unown-supersede-test-"));
         // seed two contradictory memories: the old rule and the new rule
         platform.seed([
                 {
@@ -57,6 +66,10 @@ beforeEach(() => {
         ]);
 });
 
+afterEach(() => {
+        rmSync(recordDir, { recursive: true, force: true });
+});
+
 // ------------------------------------------------------------------- the op
 
 test("a SUPERSEDE op stamps supersededBy + invalidAt on the loser (not DELETE)", async () => {
@@ -68,7 +81,7 @@ test("a SUPERSEDE op stamps supersededBy + invalidAt on the loser (not DELETE)",
         const result = await reconcileMemories(ENGINE_SCOPE, {
                 platform,
                 llmFn: async () => verdict,
-                recordDir: "/tmp/unown-test-supersede-" + Date.now(),
+                recordDir,
         });
         expect(result.superseded).toBe(1);
         expect(result.pruned).toBe(0); // not deleted
@@ -89,7 +102,7 @@ test("the loser stays in the store (getAll still returns it for audit)", async (
         await reconcileMemories(ENGINE_SCOPE, {
                 platform,
                 llmFn: async () => verdict,
-                recordDir: "/tmp/unown-test-supersede-" + Date.now(),
+                recordDir,
         });
         const all = await platform.getAll(ENGINE_SCOPE);
         expect(all.length).toBe(2); // both memories survive — the loser is retained
@@ -100,7 +113,7 @@ test("the SUPERSEDE event is captured for revert (event: SUPERSEDE, supersededBy
         const result = await reconcileMemories(ENGINE_SCOPE, {
                 platform,
                 llmFn: async () => verdict,
-                recordDir: "/tmp/unown-test-supersede-" + Date.now(),
+                recordDir,
         });
         const ev = result.events.find((e) => e.event === "SUPERSEDE");
         expect(ev).toBeDefined();
@@ -115,7 +128,7 @@ test("filterLatestOnly excludes superseded memories from the render", async () =
         await reconcileMemories(ENGINE_SCOPE, {
                 platform,
                 llmFn: async () => verdict,
-                recordDir: "/tmp/unown-test-supersede-" + Date.now(),
+                recordDir,
         });
         const all = await platform.getAll(ENGINE_SCOPE);
         const visible = filterLatestOnly(all);
@@ -128,7 +141,7 @@ test("the render excludes superseded memories and carries the supersede count in
         await reconcileMemories(ENGINE_SCOPE, {
                 platform,
                 llmFn: async () => verdict,
-                recordDir: "/tmp/unown-test-supersede-" + Date.now(),
+                recordDir,
         });
         const all = await platform.getAll(ENGINE_SCOPE);
         const rendered = renderProjectMemoryMarkdown(all, { now: NOW });
@@ -147,7 +160,7 @@ test("memoryFreshnessStamp renders 'superseded' for a superseded memory", async 
         await reconcileMemories(ENGINE_SCOPE, {
                 platform,
                 llmFn: async () => verdict,
-                recordDir: "/tmp/unown-test-supersede-" + Date.now(),
+                recordDir,
         });
         const all = await platform.getAll(ENGINE_SCOPE);
         const loser = all.find((m) => m.id === "mem-old")!;
@@ -179,7 +192,7 @@ test("countSuperseded counts memories carrying supersededBy metadata", async () 
         await reconcileMemories(ENGINE_SCOPE, {
                 platform,
                 llmFn: async () => verdict,
-                recordDir: "/tmp/unown-test-supersede-" + Date.now(),
+                recordDir,
         });
         const all = await platform.getAll(ENGINE_SCOPE);
         expect(countSuperseded(all)).toBe(1);
@@ -204,7 +217,7 @@ test("fresh-evidence protection extends to SUPERSEDE: a fresh memory can't be su
                 platform,
                 llmFn: async () => verdict,
                 protectedIds: ["mem-old"], // mem-old is fresh
-                recordDir: "/tmp/unown-test-supersede-" + Date.now(),
+                recordDir,
         });
         // the guard rejects the SUPERSEDE — mem-old survives unsuperseded
         expect(result.superseded).toBe(0);
@@ -235,7 +248,7 @@ test("fresh-evidence SUPERSEDE is allowed when an exact-text twin survives", asy
                 platform,
                 llmFn: async () => verdict,
                 protectedIds: ["mem-old", "mem-old-twin"],
-                recordDir: "/tmp/unown-test-supersede-" + Date.now(),
+                recordDir,
         });
         // one twin is superseded, the other survives (the content lives on in the twin)
         // — the exact-twin carve-out keeps the platform-dedup lane legal
@@ -254,7 +267,7 @@ test("a SUPERSEDE targeting a hallucinated id is ignored", async () => {
         const result = await reconcileMemories(ENGINE_SCOPE, {
                 platform,
                 llmFn: async () => verdict,
-                recordDir: "/tmp/unown-test-supersede-" + Date.now(),
+                recordDir,
         });
         expect(result.superseded).toBe(0); // no-op — the id wasn't in scope
 });
@@ -266,7 +279,7 @@ test("a SUPERSEDE where the winner doesn't exist is ignored", async () => {
         const result = await reconcileMemories(ENGINE_SCOPE, {
                 platform,
                 llmFn: async () => verdict,
-                recordDir: "/tmp/unown-test-supersede-" + Date.now(),
+                recordDir,
         });
         expect(result.superseded).toBe(0); // no-op — the winner isn't in scope
         const all = await platform.getAll(ENGINE_SCOPE);
@@ -276,7 +289,7 @@ test("a SUPERSEDE where the winner doesn't exist is ignored", async () => {
 test("a SUPERSEDE on an already-superseded memory is a no-op (idempotent)", async () => {
         // first pass: supersede mem-old
         const verdict1 = { ops: [{ op: "SUPERSEDE", id: "mem-old", supersededBy: "mem-new" }] as ReconcileOp[] };
-        const dir = "/tmp/unown-test-supersede-idem-" + Date.now();
+        const dir = recordDir;
         await reconcileMemories(ENGINE_SCOPE, { platform, llmFn: async () => verdict1, recordDir: dir });
         // second pass: try to supersede mem-old again
         const verdict2 = { ops: [{ op: "SUPERSEDE", id: "mem-old", supersededBy: "mem-new" }] as ReconcileOp[] };
@@ -291,7 +304,7 @@ test("a memory cannot supersede itself", async () => {
         const result = await reconcileMemories(ENGINE_SCOPE, {
                 platform,
                 llmFn: async () => verdict,
-                recordDir: "/tmp/unown-test-supersede-" + Date.now(),
+                recordDir,
         });
         expect(result.superseded).toBe(0); // no-op — cannot supersede itself
 });
@@ -300,7 +313,7 @@ test("a memory cannot supersede itself", async () => {
 
 test("SUPERSEDE revert clears the supersededBy + invalidAt metadata", async () => {
         const verdict = { ops: [{ op: "SUPERSEDE", id: "mem-old", supersededBy: "mem-new" }] as ReconcileOp[] };
-        const dir = "/tmp/unown-test-supersede-revert-" + Date.now();
+        const dir = recordDir;
         const result = await reconcileMemories(ENGINE_SCOPE, {
                 platform,
                 llmFn: async () => verdict,
