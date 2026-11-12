@@ -41,7 +41,7 @@ Unown on three structural fronts, all three already named in
 | CP0 research — eight products + the adjacent tier | ✅ done | `docs/detached-memory-comparative-research.md` + this file's code map |
 | CP1 architecture — bi-temporal supersede with provenance | ✅ done | `memzero.ts` SUPERSEDE op + `isSuperseded`/`filterLatestOnly`/`memoryInvalidAt` + `memoryFreshnessStamp` supersede render + `memory-health.ts` `countSuperseded`/`supersededCount` + `dashboard-types.ts` `MemoryHealthCard.supersededCount` + `dream.ts` `DreamOutcome.superseded`/`supersededFragment` + `test/memzero-supersede.test.ts` (19 cases) |
 | CP2 architecture — memory typing with per-type decay | ✅ done | `memzero.ts` `MemoryType`/`memoryType`/`mem0StaleDaysForType` + `memoryFreshnessStamp` per-type decay + `MEM0_CUSTOM_INSTRUCTIONS` type-teaching + `memory-health.ts` `countByType`/`typeBreakdown` + `dashboard-types.ts` `MemoryHealthCard.typeBreakdown` + `test/memzero-typing.test.ts` (13 cases) |
-| CP3 architecture — the memory review queue | pending | new `memory-review.ts` (modeled on `dream-review.ts` + `skills.ts` staged lane) |
+| CP3 architecture — the memory review queue | ✅ done | new `memory-review.ts` (park/list/approve/discard, modeled on `dream-review.ts` + `skills.ts` staged lane) + `test/memory-review.test.ts` (16 cases) |
 | CP4 visual indicators — dashboard + recall line + health card | pending | `memory-screen.ts` + `engine-status.ts` + `memory-health.ts` extensions |
 | CP5 edge cases + verification | pending | extended `memzero-unit.test.ts` + `memory-health.test.ts` + new `memory-review.test.ts` |
 | CP6 docs/landing/blog/CHANGELOG/DOX + version + release | pending | v0.0.64; the rail regenerated; CI + release green |
