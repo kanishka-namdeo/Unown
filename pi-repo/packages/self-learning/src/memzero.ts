@@ -185,7 +185,10 @@ export function memoryFreshnessStamp(
         }
         const ts = memoryConfirmedAt(m);
         if (ts === null) return "";
-        const days = mem0StaleDays();
+        // Per-type decay (Memory v2 round): each type has its own stale horizon —
+        // episodes decay fastest, preferences rarely go stale. The type is read
+        // from metadata.type (default "fact" for backward compat).
+        const days = mem0StaleDaysForType(memoryType(m));
         const stale = days > 0 && now - ts > days * 86_400_000;
         const date = new Date(ts).toISOString().slice(0, 10);
         return stale ? `${date} · stale` : date;
@@ -230,6 +233,56 @@ export function filterLatestOnly(memories: PlatformMemory[]): PlatformMemory[] {
         return memories.filter((m) => !isSuperseded(m));
 }
 
+// ---------------------------------------------------- memory typing + decay
+// The Memory v2 round (2026-11-12): the field has moved past "one memory type"
+// — Supermemory's typed auto-forgetting (facts persist, preferences strengthen,
+// episodes decay), MemOS's L1→L2→L3→skills tiering, and LangMem's
+// semantic/episodic/procedural taxonomy all give each memory type a different
+// decay policy. Unown's flat 110-bullet cap + single 28-day stale horizon is
+// the weaker version — this lane tags each memory with a type at extraction
+// and gives each type its own decay horizon, replacing the flat cap with a
+// principled per-type budget. The type lives in metadata.type (default "fact"
+// for backward compatibility — memories without a type tag behave as before).
+
+/** The four memory types (LangMem's taxonomy + Supermemory's typed forgetting):
+ *  - fact: a durable verifiable statement (versions, paths, schemas) — persists
+ *    until superseded; the default for backward compatibility.
+ *  - episode: a one-time event or transient observation — decays fastest.
+ *  - procedure: a multi-step playbook that recurred — persists longest.
+ *  - preference: a convention/style rule the user stated — strengthens with
+ *    repetition, rarely stale. */
+export type MemoryType = "fact" | "episode" | "procedure" | "preference";
+
+/** The set of valid memory types (for validation / display). */
+export const MEMORY_TYPES: readonly MemoryType[] = ["fact", "episode", "procedure", "preference"];
+
+/** Read a memory's type (metadata.type, default "fact" for backward compat). */
+export function memoryType(m: PlatformMemory): MemoryType {
+        const t = String(m?.metadata?.type ?? "").trim().toLowerCase();
+        return (MEMORY_TYPES as readonly string[]).includes(t) ? (t as MemoryType) : "fact";
+}
+
+/** The stale-day horizon for a memory type. Episodes decay fastest (default
+ *  14d — one-time observations rarely help future sessions); facts persist
+ *  until superseded (default 28d — the original horizon); procedures persist
+ *  longest (default 90d — multi-step playbooks that recurred are high-value);
+ *  preferences strengthen with repetition and rarely go stale (default 180d —
+ *  a convention the user stated is durable instruction, not decayable
+ *  observation). Each is overridable via PI_MEM0_STALE_DAYS_<TYPE>. */
+export function mem0StaleDaysForType(type: MemoryType): number {
+        const fallback = mem0StaleDays();
+        const envKey = `PI_MEM0_STALE_DAYS_${type.toUpperCase()}`;
+        const n = Number(process.env[envKey]);
+        if (!Number.isFinite(n) || n < 0) {
+                // per-type defaults: episode 14, fact 28 (the fallback), procedure 90, preference 180
+                if (type === "episode") return Number(process.env.PI_MEM0_STALE_DAYS_EPISODE ?? 14) || 14;
+                if (type === "procedure") return Number(process.env.PI_MEM0_STALE_DAYS_PROCEDURE ?? 90) || 90;
+                if (type === "preference") return Number(process.env.PI_MEM0_STALE_DAYS_PREFERENCE ?? 180) || 180;
+                return fallback;
+        }
+        return n;
+}
+
 /** Both embedders are 384-dim by construction — a single vector space size. */
 export const MEM0_DIM = 384;
 
@@ -265,6 +318,7 @@ Environment facts include infrastructure details — ports, endpoints, backup sc
 Verified vs asserted: extract facts the note VERIFIED (a command's output, a test result, a file the session read, a fix it applied and re-tested) — never the session's own UNVERIFIED assertions. An answer the agent GAVE (a reply to a question, a recommendation, a restatement from its own training) is not evidence: a session that answered wrongly produces note text that is wrong, however confident it reads. If a note's fact carries no verification trail and contradicts what the session actually read or ran, drop the assertion; keep the verified observation.
 Unverified recency must not overwrite verified knowledge: when a new, unverified assertion conflicts with an established memory whose note carried verification (a read, a run, a fix), keep the established memory and link the assertion as a candidate correction (linked_memory_ids) instead of replacing it.
 Prefer short imperative statements ("Run X with flag Y", "Z fails unless W", "Comment style: sentence case, no trailing periods").
+Tag each extracted memory with a type in its metadata: "fact" (a durable verifiable statement — versions, paths, schemas, environment facts), "episode" (a one-time event or transient observation — "the build broke on Tuesday", a session-specific status), "procedure" (a multi-step playbook that recurred — "to deploy: first X, then Y, then Z"), or "preference" (a convention/style rule the user stated — "comments in sentence case, no trailing periods", "commit messages under 72 chars"). The default is "fact" when the type is ambiguous. Each type has a different decay horizon: episodes fade fastest (14d), facts persist until superseded (28d), procedures are high-value (90d), preferences are durable instruction (180d) — the type you choose shapes how long the memory stays fresh.
 The 'text' field must NEVER carry decision rationale, meta-deliberation or JSON fragments: no "Reason:" clauses, no [note ...] deliberation blobs, no ', "reason": ...' provenance fragments — the why goes to its own 'reason' field only.`;
 
 // ---------------------------------------------------------------- embedders

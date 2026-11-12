@@ -258,6 +258,8 @@ export interface MemoryHealthCard {
         /** Bi-temporal supersede (Memory v2 round): memories carrying
          *  metadata.supersededBy — retained for audit, excluded from recall. */
         supersededCount: number;
+        /** Per-type breakdown (Memory v2 round): fact/episode/procedure/preference. */
+        typeBreakdown: Record<string, number>;
         warnings: MemoryHealthWarning[];
         memoryCount: number;
 }

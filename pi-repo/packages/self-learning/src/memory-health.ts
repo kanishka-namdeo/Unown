@@ -160,6 +160,9 @@ export interface MemoryHealth {
          *  metadata.supersededBy — retained for audit, excluded from recall.
          *  The audit lane depth (Graphiti's invalidated-edge count). */
         supersededCount: number;
+        /** Per-type breakdown (Memory v2 round): fact/episode/procedure/preference
+         *  counts. The memory model's shape, surfaced on the health card. */
+        typeBreakdown: Record<string, number>;
         /** Live warnings (an empty scope with no records has none). */
         warnings: HealthWarning[];
         /** The platform's current memory count for the scope (context). */
@@ -217,6 +220,21 @@ export function countConflicts(memories: Array<Pick<PlatformMemory, "id" | "text
  *  the audit lane's size on the health card. */
 export function countSuperseded(memories: Array<Pick<PlatformMemory, "id" | "metadata">>): number {
         return memories.filter((m) => Boolean(m?.metadata?.supersededBy)).length;
+}
+
+/** Count memories by type (Memory v2 round): the per-type breakdown for the
+ *  health card — fact/episode/procedure/preference. Reads metadata.type
+ *  (default "fact" for backward compat). The breakdown surfaces the memory
+ *  model's shape on the health card so the user can see their memory's
+ *  composition at a glance. */
+export function countByType(memories: Array<Pick<PlatformMemory, "id" | "metadata">>): Record<string, number> {
+        const counts: Record<string, number> = { fact: 0, episode: 0, procedure: 0, preference: 0 };
+        for (const m of memories) {
+                const t = String(m?.metadata?.type ?? "").trim().toLowerCase();
+                if (t in counts) counts[t]++;
+                else counts.fact++; // unknown type → fact (the default)
+        }
+        return counts;
 }
 
 /** The reconcile-stale horizon: a scope with no reconcile success in more
@@ -290,6 +308,7 @@ export async function memoryHealth(
                 duplicateCount: countDuplicates(memories),
                 conflictCount: countConflicts(memories),
                 supersededCount: countSuperseded(memories),
+                typeBreakdown: countByType(memories),
                 warnings,
                 memoryCount: memories.length,
         };
