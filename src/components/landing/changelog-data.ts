@@ -30,14 +30,14 @@ export interface ChangelogStop {
   groups: ChangelogGroup[];
 }
 
-export const CHANGELOG_TOTAL_ENTRIES = 568;
+export const CHANGELOG_TOTAL_ENTRIES = 569;
 
 export const CHANGELOG_TOTALS: Record<ChangelogBucket, number> = {
   "Added": 241,
   "Changed": 32,
   "Deprecated": 0,
   "Removed": 3,
-  "Fixed": 208,
+  "Fixed": 209,
   "Security": 5,
   "Behavior": 79
 };
@@ -46,78 +46,20 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
   {
     "label": "Unreleased",
     "date": null,
-    "total": 41,
+    "total": 35,
     "counts": {
-      "Added": 4,
+      "Added": 0,
       "Changed": 0,
       "Deprecated": 0,
       "Removed": 0,
-      "Fixed": 7,
+      "Fixed": 6,
       "Security": 0,
-      "Behavior": 30
+      "Behavior": 29
     },
     "groups": [
       {
-        "bucket": "Added",
-        "items": [
-          {
-            "title": "Memory freshness lane — every learned rule now carries its last-confirmed date…",
-            "behavior": false
-          },
-          {
-            "title": "The session-start recall line — ◈ memory recalled: 14 rules · v17 · dreamed 12m ago — /memory show (2026-11-12…",
-            "behavior": false
-          },
-          {
-            "title": "/memory show [full] — print exactly what the model receives (2026-11-12, the Memory Encore round)",
-            "behavior": false
-          },
-          {
-            "title": "The memory health card surfaces on the dashboard Memory screen (2026-11-12, the Memory Encore round)",
-            "behavior": false
-          }
-        ]
-      },
-      {
-        "bucket": "Fixed",
-        "items": [
-          {
-            "title": "The engineUndreamedNotes() arity bug — the memory health card's reconcile-stale warning always reported a…",
-            "behavior": false
-          },
-          {
-            "title": "A Ctrl+C exit during a running turn no longer loses the whole session",
-            "behavior": false
-          },
-          {
-            "title": "The dream-render/landing-quote coupling is closed on all three fronts (#46) — the memory route of the claims…",
-            "behavior": false
-          },
-          {
-            "title": "Screenshots no longer write JPEG bytes under a .png name — the filename's extension is honored…",
-            "behavior": false
-          },
-          {
-            "title": "The bazaar order-id uniqueness test stopped being a dice roll",
-            "behavior": false
-          },
-          {
-            "title": "fill_form no longer reports a silent success when the values were discarded…",
-            "behavior": false
-          },
-          {
-            "title": "The dev server was silently un-interactable when browsed by IP literal",
-            "behavior": false
-          }
-        ]
-      },
-      {
         "bucket": "Behavior",
         "items": [
-          {
-            "title": "The memory guide teaches freshness (2026-11-12, the Memory Encore round)",
-            "behavior": true
-          },
           {
             "title": "A2H-9 closes — the encore Finale test-isolation fix (2026-11-06)",
             "behavior": true
@@ -232,6 +174,94 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
           },
           {
             "title": "Plan mode's toolset changes shape in V3 (the observable difference)",
+            "behavior": true
+          }
+        ]
+      },
+      {
+        "bucket": "Fixed",
+        "items": [
+          {
+            "title": "A Ctrl+C exit during a running turn no longer loses the whole session",
+            "behavior": false
+          },
+          {
+            "title": "The dream-render/landing-quote coupling is closed on all three fronts (#46) — the memory route of the claims…",
+            "behavior": false
+          },
+          {
+            "title": "Screenshots no longer write JPEG bytes under a .png name — the filename's extension is honored…",
+            "behavior": false
+          },
+          {
+            "title": "The bazaar order-id uniqueness test stopped being a dice roll",
+            "behavior": false
+          },
+          {
+            "title": "fill_form no longer reports a silent success when the values were discarded…",
+            "behavior": false
+          },
+          {
+            "title": "The dev server was silently un-interactable when browsed by IP literal",
+            "behavior": false
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "label": "0.0.63",
+    "date": "2026-11-12",
+    "total": 7,
+    "counts": {
+      "Added": 4,
+      "Changed": 0,
+      "Deprecated": 0,
+      "Removed": 0,
+      "Fixed": 2,
+      "Security": 0,
+      "Behavior": 1
+    },
+    "groups": [
+      {
+        "bucket": "Added",
+        "items": [
+          {
+            "title": "Memory freshness lane — dated rules, stale past 28 days (2026-11-12)",
+            "behavior": false
+          },
+          {
+            "title": "The session-start recall line — ◈ memory recalled (2026-11-12)",
+            "behavior": false
+          },
+          {
+            "title": "/memory show [full] — the exact injected stack (2026-11-12)",
+            "behavior": false
+          },
+          {
+            "title": "The dashboard memory health card (2026-11-12)",
+            "behavior": false
+          }
+        ]
+      },
+      {
+        "bucket": "Fixed",
+        "items": [
+          {
+            "title": "The engineUndreamedNotes() arity bug — phantom undreamed-note counts (2026-11-12)",
+            "behavior": false
+          },
+          {
+            "title": "The recital runner's dreamAndWait starvation closed (2026-11-12)",
+            "behavior": false
+          }
+        ]
+      },
+      {
+        "bucket": "Behavior",
+        "items": [
+          {
+            "title": "The memory guide teaches freshness (2026-11-12)",
             "behavior": true
           }
         ]
@@ -359,7 +389,7 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
         "bucket": "Fixed",
         "items": [
           {
-            "title": "The Windows release-blocker — automation-spend.test.ts's isolation pass hit \"no such table: automations\" on a…",
+            "title": "The Windows release-blocker — a fresh-DB isolation pass (B-19)",
             "behavior": false
           },
           {
@@ -388,7 +418,7 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
         "bucket": "Fixed",
         "items": [
           {
-            "title": "The /abort notice survives the first-flight settle tip (B-1 — the fresh-user first-turn abort path lost all…",
+            "title": "The /abort notice survives the first-flight settle tip (B-1)",
             "behavior": false
           }
         ]
@@ -489,7 +519,7 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
         "bucket": "Changed",
         "items": [
           {
-            "title": "The quiet footer — the bottom area is two rows at rest, and ambient state earns no row",
+            "title": "The quiet footer — two rows at rest, ambient state earns no row",
             "behavior": false
           }
         ]
@@ -1601,7 +1631,7 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
         "bucket": "Added",
         "items": [
           {
-            "title": "landing: the presence round — six effects that make the page answer the visitor",
+            "title": "landing: the presence round — the page answers the visitor",
             "behavior": false
           }
         ]
@@ -1626,7 +1656,7 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
         "bucket": "Added",
         "items": [
           {
-            "title": "landing + demo: the cadence round — a third app in the gallery",
+            "title": "landing + demo: the cadence round — a third app",
             "behavior": false
           }
         ]
@@ -2191,7 +2221,7 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
         "bucket": "Added",
         "items": [
           {
-            "title": "cli: the install receipt reaches the TUI — a card, a pill, one record contract",
+            "title": "cli: the install receipt reaches the TUI",
             "behavior": false
           }
         ]
@@ -2703,7 +2733,7 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
         "bucket": "Added",
         "items": [
           {
-            "title": "browser(v2): the stealth + CAPTCHA tiers — CDP-signal silence, coherent fingerprints, humanized input…",
+            "title": "browser(v2): the stealth + CAPTCHA tiers",
             "behavior": false
           }
         ]
@@ -2737,7 +2767,7 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
         "bucket": "Added",
         "items": [
           {
-            "title": "browser automation: the browser session tool — drive a real Chromium over raw CDP, zero new runtime dependencies",
+            "title": "browser automation: the browser session tool — real Chromium over raw CDP",
             "behavior": false
           }
         ]
@@ -2817,7 +2847,7 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
         "bucket": "Added",
         "items": [
           {
-            "title": "landing: a section menu below lg — the phone visitor gets the seven anchors back",
+            "title": "landing: a section menu below lg — the anchors back on phones",
             "behavior": false
           },
           {
@@ -3332,7 +3362,7 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
         "bucket": "Changed",
         "items": [
           {
-            "title": "the version line resets to 0.0.1 — releases are sequential 0.0.x patch increments until otherwise specified",
+            "title": "the version line resets — sequential 0.0.x patch increments",
             "behavior": false
           },
           {

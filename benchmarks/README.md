@@ -287,6 +287,19 @@ history markers); post-fix the same battery scores **warm 5/5 / cold 0/5 /
 lift +5** with all three edge probes green. Receipts:
 `memory-recital/results/<model>/` + `memory-recital/RESULTS.md`.
 
+**The Encore round's verification re-run (2026-11-12):** the same battery on
+the freshness-stamped code — **warm 5/5 / cold 0/5 / lift +5 reproduced**
+(T3 knowledge-update 0.67 → 0.89), the freshness lane visible end to end
+(8/8 rendered bullets date-stamped in the S3 dream receipt), and the re-run
+itself hardened the runner's `dreamAndWait` twice more: the row anchor now
+re-bases on the newest note of ours (the auto dream-check can consume notes
+before the manual trigger — the sibling of the S3→T1 race), and a SETTLE
+exit returns when every note of ours is provably dreamt (the throttled
+governor's starvation shape). E3's outbox intermediate is conditional by
+design — the note delivery auto-starts a down engine (the M6 lane) and may
+deliver directly; the runner polls for the transient file so it is recorded
+whenever the outbox path is taken.
+
 ## What we deliberately do NOT self-run (and why)
 
 SWE-bench Verified and Terminal-Bench require per-task Docker environments (or, for

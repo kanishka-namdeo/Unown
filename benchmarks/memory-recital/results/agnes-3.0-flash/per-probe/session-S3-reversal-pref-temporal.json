@@ -1,19 +1,19 @@
 {
  "id": "S3-reversal-pref-temporal",
- "ts": "2026-11-11T05:09:59.872Z",
+ "ts": "2026-11-12T05:17:01.725Z",
  "exitCode": 0,
- "response": "All three done, tests green (10 pass / 0 fail):\n\n1. **Reversal** — `src/validate.ts`: removed the `ISO_DATE` regex and its rejection. `validateRows` now only checks 3 columns and numeric amount; empty or non-ISO dates pass. `test/validate.test.ts` updated to assert empty and non-ISO dates pass, while keeping the numeric-amount and short-row checks.\n2. **Preference** — all existing doc comments in `src/parse.ts`, `src/render.ts`, and `src/validate.ts` are now sentence case with no trailing periods; also applied to the new test/style code.\n3. **Record** — noted the 2026-11-05 render-lane switch (fixed → auto-sizing column widths) in `.unown/memory/local.md` and delivered it to the self-learning engine.\n",
+ "response": "All three done, and the full suite passes (10 pass / 0 fail).\n\n**1. Reversal — strict date validation dropped**\n- `src/validate.ts`: removed the ISO regex and the `date must be YYYY-MM-DD` rejection. Empty dates now pass as unspecified; any non-empty date is accepted. The 3-column check and the numeric-amount check are unchanged.\n- `test/validate.test.ts`: flipped the two rejection tests — \"rejects a missing date\" → \"accepts an empty date as unspecified\" and \"rejects a non-ISO date\" → \"accepts a non-ISO parseable date\" — and added a \"rejects a non-numeric amount\" case so the retained checks stay covered.\n\n**2. Preference — sentence case, no trailing periods**\n- Applied to every existing doc comment in `src/parse.ts`, `src/validate.ts`, `src/render.ts` (stripped trailing periods; they were already sentence-case). Recorded it as a durable rule for this repo.\n\n**3. Record — render-lane switch**\n- Noted that on 2026-11-05 the render lane moved from fixed column widths to auto-sizing.\n\nVerification: `bun test` → **10 pass, 0 fail**.\n",
  "dream": {
-  "id": "project-a6a6c535-88ee-4adc-a261-d6532425b6b2",
-  "started_at": 1794373662427,
-  "ended_at": 1794373766919,
+  "id": "project-4377d770-f2fc-466a-801c-dc75d31fe1a5",
+  "started_at": 1794460567360,
+  "ended_at": 1794460620159,
   "status": "done",
-  "notes_in": 1,
+  "notes_in": 3,
   "entries_merged": 0,
   "entries_pruned": 0,
-  "entries_added": 2,
-  "output": "# Project Memory\n\n## Known pitfalls\n- If a test asserts a bug as the expected behavior (e.g., expects commas inside quotes to be treated as separators), update the test to assert the correct parsed structure and verify that quoted delimiters survive as literal characters within the field. Cover both edge cases—delimiters inside quotes and newlines inside quotes—with tests after fixing the parsing utility.\n- In src/validate.ts, row[0] must match strict ISO regex /\\d{4}-\\d{2}-\\d{2}/ or fail with 'row N: date must be YYYY-MM-DD'; reject empty dates and non-ISO formats like 'Jan 5 2026'.\n\n## Environment\n- When parsing CSV or similar delimited formats, never use naive string splitting (e.g., split(\",\")) because it breaks on delimiters inside quoted fields; use a proper CSV parser or a state-machine approach that respects quotes.\n\n## Facts\n- In src/render.ts, auto-sizing replaced fixed column widths; verified with test/validate.test.ts cases covering valid ISO date acceptance and missing/non-ISO date rejection.\n\n## Manual notes\n- Your own durable rules. AutoDream preserves this section verbatim — one\n  bullet per rule; everything outside it is re-rendered.\n\n<!-- unown: rendered 4/4 memories via Mem0 (backend: lexical) at 2026-11-11T05:09:26.918Z -->\n",
-  "note": "project dream: warm-7d3a90 memory -> v2 (/tmp/memory-recital-live/warm), 1 fresh-delete verdicts protected",
-  "entries_protected": 1
+  "entries_added": 4,
+  "entries_protected": 0,
+  "output": "# Project Memory\n\n## Known pitfalls\n- Full test suite passes with 10 pass / 0 fail after the date-validation reversal and related updates. · 2026-11-12\n- CSV parser naive split on delimiters fails when fields contain commas or newlines inside double quotes. · 2026-11-12\n\n## Environment\n- Pre-pass splitting on newlines before field parsing breaks rows with multi-line quoted fields; process entire text with unified state machine instead. · 2026-11-12\n\n## Facts\n- Implement stateful char-by-char CSV parser with in-quotes flag to handle fields containing commas, newlines, and escaped quotes; do not use naive splitting or pre-pass newline stripping. · 2026-11-12\n- Code comment style in this repo: sentence case, no trailing periods. · 2026-11-12\n- Render lane in src/render.ts uses auto-sizing as of 2026-11-05: columns size to max cell length with a minimum width of 4. · 2026-11-12\n- Strict ISO date validation in src/validate.ts was removed; empty dates now pass as unspecified, any non-empty date is accepted, while 3-column and numeric-amount checks remain unchanged. · 2026-11-12\n- Validate CSV parser with test cases covering quoted fields containing commas, newlines, and escaped quotes. · 2026-11-12\n\n## Manual notes\n- Your own durable rules. AutoDream preserves this section verbatim — one\n  bullet per rule; everything outside it is re-rendered.\n\n<!-- unown: rendered 8/8 memories via Mem0 (backend: lexical) at 2026-11-12T05:17:00.158Z -->\n",
+  "note": "project dream: warm-7d3a90 memory -> v3 (/tmp/memory-recital-live/warm)"
  }
 }

@@ -1,5 +1,5 @@
 {
- "ts": "2026-11-11T05:17:14.168Z",
+ "ts": "2026-11-12T06:54:02.231Z",
  "model": "agnes-3.0-flash",
  "probes": 5,
  "warmPass": 5,
@@ -19,7 +19,7 @@
    "ability": "multi-session reasoning (history)",
    "warmPass": true,
    "coldPass": false,
-   "warmScore": 0.8333333333333334,
+   "warmScore": 0.6666666666666666,
    "coldScore": 0
   },
   {
@@ -27,8 +27,8 @@
    "ability": "knowledge update (current contract)",
    "warmPass": true,
    "coldPass": false,
-   "warmScore": 0.6666666666666666,
-   "coldScore": 0
+   "warmScore": 0.8888888888888888,
+   "coldScore": 0.1111111111111111
   },
   {
    "id": "T4-preference",
@@ -48,11 +48,11 @@
   }
  ],
  "edge": {
-  "concurrentNotes": 3,
+  "concurrentNotes": 2,
   "concurrencyOk": true,
   "contaminationAdded": false,
   "contaminationOk": true,
-  "outboxQueuedWhileDown": true,
+  "outboxQueuedWhileDown": false,
   "outboxDrained": true
  }
 }

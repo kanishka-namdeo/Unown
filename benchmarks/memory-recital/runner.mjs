@@ -506,7 +506,23 @@ async function main() {
                 const downNote = await runSession(project, "Answer from memory/context only (no tools): what comment style do I require? One line.");
                 const outboxDir = join(process.env.UNOWN_HOME ?? join(process.env.HOME ?? "~", ".unown"), "notes", "outbox");
                 const outboxCount = () => (existsSync(outboxDir) ? execFileSync("ls", [outboxDir]).toString().trim().split("\n").filter(Boolean).length : 0);
-                const outboxBefore = outboxCount();
+                // The queued-while-down observation is conditional BY PRODUCT
+                // DESIGN: a down engine is auto-started on note delivery (the
+                // M6 lane — the README's own contract), and when the spawned
+                // engine boots before the delivery gives up, the note is
+                // delivered DIRECTLY and no outbox file ever exists (the
+                // 2026-11-12 re-run's shape: engine serve booted 06:53:36,
+                // note delivered 06:53:38, outbox empty throughout). The
+                // outbox intermediate only appears when the delivery's retry
+                // (~600 ms) loses that race — the 2026-11-11 run caught it.
+                // Poll for the write, bounded, so the transient file is
+                // observed whenever it DOES exist; the receipt's
+                // outboxQueuedWhileDown records which path the arc took.
+                let outboxBefore = outboxCount();
+                for (let i = 0; i < 10 && outboxBefore === 0; i++) {
+                        await Bun.sleep(1_000);
+                        outboxBefore = outboxCount();
+                }
                 execFileSync("bun", ["run", "agent:start"], { cwd: ROOT, stdio: "ignore" });
                 await Bun.sleep(8_000);
                 await checkServices();

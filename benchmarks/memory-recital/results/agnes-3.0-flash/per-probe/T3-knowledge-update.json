@@ -4,20 +4,20 @@
  "question": "Answer from the project memory/context ONLY (do not read source files, do not run tools): What is the CURRENT date-validation contract in validateRows, and what was it before? One line.",
  "expected": "empty dates accepted any parseable date strict ISO removed",
  "warm": {
-  "response": "`validateRows` requires `row[0]` to match the strict ISO regex `/\\d{4}-\\d{2}-\\d{2}/` or fail with \"row N: date must be YYYY-MM-DD\" (rejecting empty dates and non-ISO formats like \"Jan 5 2026\"); before, it accepted \"Jan 5 2026\"-style dates as valid.",
+  "response": "Current contract in `validateRows` (src/validate.ts): strict ISO date validation was removed, so empty dates pass as unspecified and any non-empty date is accepted while the 3-column and numeric-amount checks remain unchanged (from project memory, 2026-11-12); before, it enforced strict ISO-format date validation.",
   "exitCode": 0,
   "timedOut": false,
   "pass": true,
-  "score": 0.6666666666666666,
+  "score": 0.8888888888888888,
   "kind": "exact-match"
  },
  "cold": {
-  "response": "No memory-backed answer: the memory tiers here contain no record of `validateRows`' date-validation contract (current or previous) — the only \"validateRows\" in unown's memory index is an eval-fixture entry, so I won't recite one; check the source instead.",
+  "response": "I have no record of `validateRows` or its date-validation contract in the project memory — the project memory tiers are all empty (no conventions or pitfalls recorded) — so I can't answer this from memory alone; if you'd like, I can check the source.",
   "exitCode": 0,
   "timedOut": false,
   "pass": false,
-  "score": 0,
+  "score": 0.1111111111111111,
   "kind": "exact-match"
  },
- "ts": "2026-11-11T05:10:20.356Z"
+ "ts": "2026-11-12T05:17:13.095Z"
 }
