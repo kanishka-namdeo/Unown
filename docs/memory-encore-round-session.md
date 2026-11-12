@@ -173,7 +173,19 @@ carry-overs re-verified against current main in earlier rounds.
 
 ## Round closed (2026-11-12)
 
-v0.0.63 cut and released: the CHANGELOG fold, the version bump, the rail
-regeneration, the 3-OS CI verdict on the bump commit, and the release
-workflow's full 15-job render. Memory that proves itself AND shows itself —
+v0.0.63 cut and released. The fold commit a727c704 (the seven entries into
+`[0.0.63] - 2026-11-12`, the version bump, the rail regenerated at 58
+stops/569 entries/57 dated, unown-overview re-stamped) — its new stop
+breached the e2e budget twin at 4,597w > 4,570 and was cured per the
+sanctioned order (the round's own listed titles first, then five
+historical first-listed leads; the MAX_LISTED=1 lesson re-learned — only
+the first item of the Added/Behavior buckets renders), landing at 20.2vh /
+4,565w in both twins with five words of headroom. CI green on the bump
+commit (run #1145, the 3-OS matrix); `v0.0.63` tagged there and pushed;
+the release rendered **15/15 jobs green** (run #101 — the CI-green
+assertion, the 3-OS release assertions, the build + SBOM + attestations,
+the six per-OS binaries, five per-runner boots, the draft→promote publish
+with all 13 assets, the feed gate, the 3-OS smoke-install matrix);
+published 2026-11-12T07:47:25Z, Latest. deploy-verify green on both pushed
+milestones (runs #562/#563). Memory that proves itself AND shows itself —
 that's the product.

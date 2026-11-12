@@ -27,7 +27,27 @@ dividend — two more `dreamAndWait` starvation fixes in the recital runner
 observation poll. Verified: all suites green on a fresh bring-up, the PTY
 memory matrix **25/25** with the new surfaces, the memory-recital live
 re-run **warm 5/5 / cold 0/5 / lift +5 reproduced** (T3 0.67 → 0.89; 8/8
-bullets date-stamped end to end). v0.0.63.
+bullets date-stamped end to end).
+
+The v0.0.63 cut, in order: the fold commit (a727c704 — the round's seven
+entries into `[0.0.63] - 2026-11-12`, the version bump, the rail
+regenerated at 58 stops/569 entries/57 dated, unown-overview re-stamped);
+the new stop's chrome breached the e2e budget twin at 4,597w > 4,570 —
+cured per the sanctioned order (the round's own listed titles compressed
+first, then five historical first-listed leads, bold leads only, bodies
+untouched; the MAX_LISTED=1 lesson re-learned: only the first item of the
+Added/Behavior buckets renders) landing at 20.2vh / 4,565w in BOTH twins,
+five words of headroom; CI green on the bump commit (run #1145, the 3-OS
+matrix the version movement gates); `v0.0.63` tagged there and pushed. The
+release rendered **15/15 jobs green** (run #101: the CI-green assertion,
+the 3-OS release assertions, the production build + SBOM + attestations,
+the six per-OS binaries, five per-runner boots, the draft→promote publish
+with all 13 assets, the post-publish feed gate, the 3-OS smoke-install
+matrix). Published 2026-11-12T07:47:25Z, Latest. deploy-verify green on
+both pushed milestones (runs #562/#563); CodeQL + Scorecard green; 0 open
+PRs, 0 open code-scanning/dependabot alerts at close (the 7 self-filed
+issues are prior-round carry-overs, re-verified against main in their
+rounds).
 
 ---
 
