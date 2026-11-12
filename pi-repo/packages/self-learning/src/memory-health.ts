@@ -156,6 +156,10 @@ export interface MemoryHealth {
         duplicateCount: number;
         /** Supersede links whose OLD (linked) memory is still alive. */
         conflictCount: number;
+        /** Bi-temporal supersede (Memory v2 round): memories carrying
+         *  metadata.supersededBy — retained for audit, excluded from recall.
+         *  The audit lane depth (Graphiti's invalidated-edge count). */
+        supersededCount: number;
         /** Live warnings (an empty scope with no records has none). */
         warnings: HealthWarning[];
         /** The platform's current memory count for the scope (context). */
@@ -204,6 +208,15 @@ export function countConflicts(memories: Array<Pick<PlatformMemory, "id" | "text
                 }
         }
         return count;
+}
+
+/** Count superseded memories (Memory v2 round): memories carrying
+ *  metadata.supersededBy — the audit lane depth. Superseded memories are
+ *  retained in the store (excluded from recall by filterLatestOnly) so the
+ *  version history can answer "what was true then". This counter surfaces
+ *  the audit lane's size on the health card. */
+export function countSuperseded(memories: Array<Pick<PlatformMemory, "id" | "metadata">>): number {
+        return memories.filter((m) => Boolean(m?.metadata?.supersededBy)).length;
 }
 
 /** The reconcile-stale horizon: a scope with no reconcile success in more
@@ -276,6 +289,7 @@ export async function memoryHealth(
                 lastReconcile: last,
                 duplicateCount: countDuplicates(memories),
                 conflictCount: countConflicts(memories),
+                supersededCount: countSuperseded(memories),
                 warnings,
                 memoryCount: memories.length,
         };

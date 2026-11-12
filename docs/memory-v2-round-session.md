@@ -39,7 +39,7 @@ Unown on three structural fronts, all three already named in
 | Phase | Status | Artifact |
 |---|---|---|
 | CP0 research — eight products + the adjacent tier | ✅ done | `docs/detached-memory-comparative-research.md` + this file's code map |
-| CP1 architecture — bi-temporal supersede with provenance | 🚧 in flight | `memzero.ts` reconcile SUPERSEDE op + `memoryConfirmedAt`/`memoryFreshnessStamp` bi-temporal render |
+| CP1 architecture — bi-temporal supersede with provenance | ✅ done | `memzero.ts` SUPERSEDE op + `isSuperseded`/`filterLatestOnly`/`memoryInvalidAt` + `memoryFreshnessStamp` supersede render + `memory-health.ts` `countSuperseded`/`supersededCount` + `dashboard-types.ts` `MemoryHealthCard.supersededCount` + `dream.ts` `DreamOutcome.superseded`/`supersededFragment` + `test/memzero-supersede.test.ts` (19 cases) |
 | CP2 architecture — memory typing with per-type decay | pending | `memzero.ts` type classifier + per-type decay horizons + render sections |
 | CP3 architecture — the memory review queue | pending | new `memory-review.ts` (modeled on `dream-review.ts` + `skills.ts` staged lane) |
 | CP4 visual indicators — dashboard + recall line + health card | pending | `memory-screen.ts` + `engine-status.ts` + `memory-health.ts` extensions |

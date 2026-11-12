@@ -75,6 +75,9 @@ export interface DreamResult {
         /** Fresh-evidence protection (2026-11-11): rejected DELETE verdicts on
          * this batch's memories — the ⛨ indicator's source. */
         protectedDeletes?: number;
+        /** Bi-temporal supersede (Memory v2 round): memories stamped
+         *  supersededBy + invalidAt this pass — retained for audit. */
+        superseded?: number;
         output: string;
         note?: string;
         error?: string;
@@ -105,6 +108,10 @@ interface DreamOutcome {
         added: number;
         merged: number;
         pruned: number;
+        /** Bi-temporal supersede (Memory v2 round): memories stamped
+         *  supersededBy + invalidAt this pass — retained for audit, excluded
+         *  from recall by filterLatestOnly. The winner carries current state. */
+        superseded: number;
         /** Fresh-evidence protection (2026-11-11 Recital round): DELETE verdicts
          * the reconcile guard rejected on memories born in this batch — the
          * current-state carrier survives to the next pass. Surfaces as the
@@ -116,6 +123,15 @@ interface DreamOutcome {
         quarantinedNoteTexts: string[];
         events: MemoryPlatformEvent[];
         rendered: string;
+}
+
+/** The supersede fragment for dream rows/notes (empty when zero memories
+ *  were superseded — the indicator is opt-in by event, not a standing zero).
+ *  Bi-temporal supersede (Memory v2 round): the loser is stamped and retained
+ *  for audit, not deleted — provenance survives. */
+function supersededFragment(out: DreamOutcome | null): string {
+        const n = out?.superseded ?? 0;
+        return n > 0 ? `, ${n} superseded (retained for audit)` : "";
 }
 
 /** The ⛨ fragment for dream rows/notes (empty when the guard fired zero
@@ -200,6 +216,7 @@ async function consolidate(
                 added: surviving.filter((e) => e.event === "ADD").length,
                 merged: reconcile.merged,
                 pruned: reconcile.pruned + guardDeleted,
+                superseded: reconcile.superseded,
                 protectedDeletes: reconcile.protectedDeletes,
                 quarantined: quarantinedNoteTexts.length,
                 quarantinedNoteTexts,
@@ -352,7 +369,7 @@ export async function runDream(opts: DreamOpts = {}): Promise<DreamResult> {
                         "project",
                         out.rendered,
                         "mem0",
-                        `consolidated ${notes.length} notes via Mem0 (added ${out.added}, merged ${out.merged}, pruned ${out.pruned}${out.quarantined > 0 ? `, ${out.quarantined} quarantined` : ""}${protectedNoteFragment(out)})`,
+                        `consolidated ${notes.length} notes via Mem0 (added ${out.added}, merged ${out.merged}, pruned ${out.pruned}${out.quarantined > 0 ? `, ${out.quarantined} quarantined` : ""}${supersededFragment(out)}${protectedNoteFragment(out)})`,
                 );
 
                 // ---- Canary gate: the new memory must not break the last-passing task.

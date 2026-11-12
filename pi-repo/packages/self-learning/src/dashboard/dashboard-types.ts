@@ -255,6 +255,9 @@ export interface MemoryHealthCard {
         lastReconcile: number | null;
         duplicateCount: number;
         conflictCount: number;
+        /** Bi-temporal supersede (Memory v2 round): memories carrying
+         *  metadata.supersededBy — retained for audit, excluded from recall. */
+        supersededCount: number;
         warnings: MemoryHealthWarning[];
         memoryCount: number;
 }

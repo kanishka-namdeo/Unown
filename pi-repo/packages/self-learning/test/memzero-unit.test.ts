@@ -493,13 +493,19 @@ describe("Recital extraction/reconcile prompt contracts (2026-11-11)", () => {
         test("RECONCILE_SYSTEM protects the winner and bans invented history (BUG 1 + BUG 4 prompts)", async () => {
                 const { RECONCILE_SYSTEM } = await import("../src/memzero.ts");
                 // BUG 1 prompt layer: deleting both sides of a contradiction is the
-                // worst outcome; merges keep the newest as carrier.
-                expect(RECONCILE_SYSTEM).toContain("The WINNER (the newer memory carrying the current state) is never a valid DELETE target");
+                // worst outcome; merges keep the newest as carrier. The Memory v2
+                // round (2026-11-12) extended the winner-protection to SUPERSEDE
+                // too — the winner is never a valid SUPERSEDE/DELETE target.
+                expect(RECONCILE_SYSTEM).toContain("The WINNER (the newer memory carrying the current state) is never a valid SUPERSEDE/DELETE target");
                 expect(RECONCILE_SYSTEM).toContain("MERGE DIRECTION");
                 expect(RECONCILE_SYSTEM).toContain("keep the NEWEST memory as the surviving carrier");
                 // BUG 4: the live T1 UPDATE invented "previously stated as a future
                 // switch" — history markers must cite only what the memories say.
                 expect(RECONCILE_SYSTEM).toContain("never invent history");
                 expect(RECONCILE_SYSTEM).toContain("Temporal/history markers in a merged text must cite ONLY what the memories themselves already say");
+                // Memory v2 round: the SUPERSEDE op is the preferred contradiction
+                // resolution (provenance survives, audit lane retained).
+                expect(RECONCILE_SYSTEM).toContain("SUPERSEDE");
+                expect(RECONCILE_SYSTEM).toContain("supersededBy");
         });
 });
