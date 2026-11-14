@@ -42,7 +42,7 @@ unilaterally).
 | CP3 usage-conditioned decay — render-exclusion dormancy with recurrence reset | ✅ done | `mem0DormantAfter`/`DormancyEntry`/`readDormancyRecord`/`writeDormancyRecord`/`isDormantId`/`trackDormancyFromPlan`/`reviveDormantByIds`/`dormantCountFor`/`dormantCountAll`/`dormancyScopeKey` + `computeRenderPlan` (extracted from the render, byte-identical) + dream.ts consolidate wiring (`dormantNew`/`dormantResets` on DreamOutcome) + server.ts `annotateAndReviveDormancy` (badge + revive on every search lane) + memory-health `dormantCount` + dashboard-types + env/docs (PI_MEM0_DORMANT_AFTER in .env.example + configuration.md; memory.md; AGENTS.md; unown-overview) + `test/memory-dormancy.test.ts` (10) |
 | CP4 the delight lane — provenance badges, honest counts, the AutoDream digest | ✅ done | tools.ts search badges (type/hard-won/freshness stamp/dormant-revived) + the store-free `memory-stamps.ts` (single definitions, re-exported; the terminal tools never import the engine DB) + `countProjectStaleRules`/`MemoryBarInfo.stale` + the recall line's `(N stale)` fragment + dreams-table `entries_superseded`/`entries_dormant` (schema + migrations + threading through all dream-row writes) + `latestDreamNews` digest fields + `DreamNews.superseded/dormant` + `dreamNewsToastText` digest + /memory show's `not injected · N dormant` line + the dashboard fact line's dormant/sro counts + docs (memory.md delight section, AGENTS.md, unown-overview) + `test/memory-delight.test.ts` (6) |
 | CP5 `unown memory doctor` — the audit that proves the loop | ✅ done | new `src/memory-doctor.ts` (`auditProjectMemory`/`renderMemoryDoctorReport`/`liveMemoryDoctorEngine`) + the cli.ts subcommand + HELP + the `unown doctor` store row + docs (memory.md, AGENTS.md, unown-overview) + `test/memory-doctor.test.ts` (6) |
-| CP6 memory interchange — export/import behind the human gate | ✅ done | `src/memory-interchange.ts` (schema v1 builders, the parse/refuse, the trust gate, injectable park/write appliers) + `GET/POST /api/memory/interchange` (engine-side validation, one source of truth) + `unown memory export [--out]` / `import <file> [--apply]` + the unknown-flag guard's per-family subcommand surfaces (the live smoke's own find: --reason had been broken since CP1) + docs (memory.md incl. a duplicate-bullet cure, AGENTS.md incl. a duplicated-CP5-sentence cure, README, CHANGELOG) + `test/memory-interchange.test.ts` (21) + 4 parse-args pins |
+| CP6 memory interchange — export/import behind the human gate | ✅ done | `src/memory-interchange.ts` (schema v1 builders, the parse/refuse, the trust gate, injectable park/write appliers) + `GET/POST /api/memory/interchange` (engine-side validation, one source of truth) + `unown memory export [--out]` / `import <file> [--apply]` + the unknown-flag guard's per-family subcommand surfaces (the live smoke's own find: --reason had been broken since CP1) + docs (memory.md incl. a duplicate-bullet cure, AGENTS.md incl. a duplicated-CP5-sentence cure, README, CHANGELOG) + `test/memory-interchange.test.ts` (21) + 4 parse-args pins; **the same-day parallel-lineage reconciliation** (two lineages shipped CP6 within the hour — first-landing `1397ca4f` governs, the second folded in): the dedupe lane (`importDedupeKey`/`classifyImportRecords{existingTexts}`/`duplicates`, the route injects the queue for park + the scopes' live rows for apply — re-imports converge), the pre-parse `IMPORT_MAX_FILE_BYTES` CLI cap (5 MiB via statSync before readFileSync/JSON.parse), `shipChangedBy` (the approve's attribution names memory-import, never "hoisted from 0 project(s)"; the memory:changed emit carries changedBy), the memory.md dedupe bullet + the unown-overview doubled-doctor-sentence cure + the interchange counted + re-stamped, and `test/memory-interchange-reconcile.test.ts` (9) + `test/memory-interchange-api.test.ts` (5) |
 | CP7 verification + docs/landing/blog/DOX + CHANGELOG + version + release | ☐ | |
 
 ## CP0 — the research, the code map, the baseline (2026-11-14)
@@ -325,6 +325,31 @@ derivable-from-repo findings. `unown doctor`'s memory row gains a one-line
 store summary. Live-smoked against the running engine: sealed, healthy.
 
 Measured: doctor suite 6/6; engine 5660/0.
+
+### The parallel-lineage reconciliation (2026-11-15, the same hour)
+
+Two lineages shipped CP6 within the hour — the landed `1397ca4f` (the
+sessions-export pattern: one /api/memory/interchange route, engine-side
+validation, injectable appliers, platform-write apply) and the reconciling
+one (the export/import route pair, the review-queue ship lane for apply,
+env-tunable caps, the API/CLI batteries). First-landing-governs (the
+coordination protocol, TEARDOWN_2026-11-07): the landed shape governs; the
+second lineage's independently-verified value folded INTO it — the dedupe
+lane (the convergence law at classification time), the pre-parse byte cap
+(the OOM surface is the parse, not the record count), and shipChangedBy
+(the approve's attribution names the lane that wrote). The second lineage's
+`--apply` semantics (user-tier ship lane) stood DOWN for the landed
+platform-write semantics (fresh rows, infer:false, source:import — the
+MIRIX id-resurrection class impossible by construction). The hoist
+order-dependence bisect (budget.test.ts's cleanup resets the firstMint
+expression — the 93-file prefix repro) stands in this log as corroboration
+of the v0.0.65 flake cures that fixed the same test upstream.
+
+Measured at the reconciliation: interchange 21 + reconcile 9 + api 5;
+memory neighborhood 140/0; the live round trip re-smoked on the restarted
+engine (export 7 → park 7 → re-import 0 · 7 duplicate; the poisoned apply
+quarantines + writes the clean row; the 6 MB file refuses pre-parse; the
+probe rows and candidates cleaned, queue depth 0).
 
 ## Session checkpoint protocol
 

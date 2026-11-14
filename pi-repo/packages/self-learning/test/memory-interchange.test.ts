@@ -173,7 +173,13 @@ describe("memory-interchange — the parse (schema refusal)", () => {
 
 describe("memory-interchange — the trust gate", () => {
         test("clean records of both scope shapes are accepted", () => {
-                const { accepted, quarantined } = classifyImportRecords([record(), record({ scope: "project:my-app" })]);
+                // Distinct texts: the reconciliation lane's in-file dedupe would
+                // (correctly) skip a second record with the SAME normalized text —
+                // this test pins scope-shape acceptance, not dedupe.
+                const { accepted, quarantined } = classifyImportRecords([
+                        record(),
+                        record({ scope: "project:my-app", text: "a second, distinct clean rule about the project scope" }),
+                ]);
                 expect(accepted).toHaveLength(2);
                 expect(quarantined).toHaveLength(0);
         });

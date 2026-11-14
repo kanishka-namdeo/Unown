@@ -51,6 +51,10 @@ export interface MemoryReviewShipOk {
         droppedByGuard: string[];
         /** The engine user-tier version AFTER the append. */
         tierVersion: number;
+        /** The attribution domain the write used (autodream-hoist for hoist
+         *  candidates, memory-import for import candidates — the tier's
+         *  attribution line names the lane that actually wrote). */
+        changedBy: string;
         /** The candidate as stamped (approved + shippedVersion). */
         candidate: MemoryReviewCandidate;
 }
@@ -111,6 +115,7 @@ export async function approveAndShipMemoryReview(id: string, home?: string): Pro
                         skippedDupes,
                         droppedByGuard: [],
                         tierVersion: currentVersion("user" as Tier),
+                        changedBy: shipChangedBy(candidate),
                         candidate: stamped!,
                 };
         }
@@ -148,13 +153,21 @@ export async function approveAndShipMemoryReview(id: string, home?: string): Pro
         }
 
         // ---- 3. dual-target write, engine tier first (a throw leaves nothing).
+        // The provenance names the lane that actually wrote: a hoist candidate
+        // names its observing projects; an import candidate names the
+        // interchange ("hoisted from 0 project(s)" would be a lie — it was
+        // never hoisted, and the attribution line is the tier's audit trail).
         const projects = [...new Set(candidate.projects)];
         const stamp = new Date().toISOString().slice(0, 10);
-        const provenance = `hoisted from ${projects.length} project(s): ${projects.join(", ")} (${stamp}) — approved via memory review ${id}`;
+        const changedBy = shipChangedBy(candidate);
+        const provenance =
+                candidate.source === "import"
+                        ? `imported via memory interchange (${stamp}) — approved via memory review ${id}`
+                        : `hoisted from ${projects.length} project(s): ${projects.join(", ")} (${stamp}) — approved via memory review ${id}`;
         let tierVersion: number;
         try {
-                tierVersion = await appendRules("user" as Tier, survivors, "autodream-hoist", provenance);
-                appendTerminalUserRules(survivors, "autodream-hoist", provenance);
+                tierVersion = await appendRules("user" as Tier, survivors, changedBy, provenance);
+                appendTerminalUserRules(survivors, changedBy, provenance);
         } catch (err: unknown) {
                 return {
                         ok: false,
@@ -173,6 +186,14 @@ export async function approveAndShipMemoryReview(id: string, home?: string): Pro
                 skippedDupes,
                 droppedByGuard,
                 tierVersion,
+                changedBy,
                 candidate: stamped!,
         };
+}
+
+/** The attribution domain for a candidate's ship: the lane that parked it
+ *  is the lane the tier's attribution line must name (autodream-hoist /
+ *  memory-import). */
+function shipChangedBy(candidate: MemoryReviewCandidate): string {
+        return candidate.source === "import" ? "memory-import" : "autodream-hoist";
 }

@@ -221,6 +221,16 @@ Memories move between machines and teams through a schema-versioned file
   store's render budget decides on its own evidence. Original platform ids
   ride as provenance only — an import mints fresh rows, so a foreign id
   space can never collide with (or resurrect) local history.
+- **Duplicates converge, never double** (the reconciliation lane): a record
+  whose normalized text already appeared in the file, or is already present
+  in the destination (the pending review queue for park mode; the target
+  scopes' live rows for `--apply`), is **skipped with an honest
+  `N duplicate` count** — importing the same export twice parks/writes 0
+  the second time, the same convergence law the review ship lane enforces
+  at decision time. The CLI also refuses a file over 5 MB **before the JSON
+  parse** (the record cap bounds amplification only after the parse — the
+  parse itself is the OOM surface; a hostile "memory file" is refused by
+  size, on disk).
 
 ## The delight surfaces (Divertimento CP4, 2026-11-14)
 

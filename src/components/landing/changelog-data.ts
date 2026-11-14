@@ -30,14 +30,14 @@ export interface ChangelogStop {
   groups: ChangelogGroup[];
 }
 
-export const CHANGELOG_TOTAL_ENTRIES = 589;
+export const CHANGELOG_TOTAL_ENTRIES = 590;
 
 export const CHANGELOG_TOTALS: Record<ChangelogBucket, number> = {
   "Added": 248,
   "Changed": 32,
   "Deprecated": 0,
   "Removed": 3,
-  "Fixed": 220,
+  "Fixed": 221,
   "Security": 5,
   "Behavior": 81
 };
@@ -46,13 +46,13 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
   {
     "label": "Unreleased",
     "date": null,
-    "total": 37,
+    "total": 38,
     "counts": {
       "Added": 0,
       "Changed": 0,
       "Deprecated": 0,
       "Removed": 0,
-      "Fixed": 8,
+      "Fixed": 9,
       "Security": 0,
       "Behavior": 29
     },
@@ -211,6 +211,10 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
           },
           {
             "title": "The dev server was silently un-interactable when browsed by IP literal",
+            "behavior": false
+          },
+          {
+            "title": "The memory interchange's duplicate…",
             "behavior": false
           }
         ]

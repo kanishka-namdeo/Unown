@@ -66,6 +66,7 @@ import {
         ENGINE_SCOPE,
         getMemoryPlatform,
         isDormantId,
+        isSuperseded,
         type MemoryScope,
         memoryPlatformStatus,
         projectMemories,
@@ -1072,7 +1073,7 @@ export async function handleApi(req: ApiRequest): Promise<Response> {
                                         return json({ error: res.error, code: res.code, ...(res.flags ? { flags: res.flags } : {}) }, status);
                                 }
                                 emit("memory:review:changed", { id, action: "approve", shipped: res.shipped.length, tierVersion: res.tierVersion });
-                                if (res.shipped.length > 0) emit("memory:changed", { tier: "user", version: res.tierVersion, changedBy: "autodream-hoist", note: `memory review ${id} approved` });
+                                if (res.shipped.length > 0) emit("memory:changed", { tier: "user", version: res.tierVersion, changedBy: res.changedBy, note: `memory review ${id} approved` });
                                 return json(res);
                         } catch (err: any) {
                                 console.error("[agent-service] memory review approve failed:", err);
@@ -1133,8 +1134,30 @@ export async function handleApi(req: ApiRequest): Promise<Response> {
                         const origin = typeof body?.origin === "string" && body.origin.trim() ? body.origin.trim().slice(0, 200) : "an export file";
                         const parsed = parseMemoryInterchangeFile(body.file);
                         if (!parsed.ok) return json({ error: parsed.error, hint: parsed.hint }, 422);
-                        const { accepted, quarantined } = classifyImportRecords(parsed.file.records);
                         try {
+                                // The dedupe lane's destination read (the reconciliation,
+                                // 2026-11-15): the caller injects what "already landed"
+                                // means for THIS mode — the pending review queue's rules
+                                // for park mode (a re-import never double-parks), the
+                                // target scopes' live platform rows for apply mode (a
+                                // re-import never rewrites a landed row). Same-batch
+                                // convergence, the ship lane's own law.
+                                let existingTexts: string[];
+                                if (body?.apply === true) {
+                                        const platform = await getMemoryPlatform();
+                                        const targetScopes = [...new Set(parsed.file.records.map((r) => r.scope))].filter((s) => /^(engine|project:[a-z0-9][a-z0-9._-]{0,63})$/i.test(s));
+                                        existingTexts = (
+                                                await Promise.all(
+                                                        targetScopes.map(async (s) => {
+                                                                const rows = await platform.getAll(s === "engine" ? ENGINE_SCOPE : projectScope(s.slice("project:".length)));
+                                                                return rows.filter((m) => !isSuperseded(m)).map((m) => String(m.text ?? ""));
+                                                        }),
+                                                )
+                                        ).flat();
+                                } else {
+                                        existingTexts = listPendingMemoryReviewCandidates().map((c) => c.rule);
+                                }
+                                const { accepted, quarantined, duplicates } = classifyImportRecords(parsed.file.records, { existingTexts });
                                 if (body?.apply === true) {
                                         const platform = await getMemoryPlatform();
                                         const out = await writeImportedRecords(accepted, origin, (r, metadata) =>
@@ -1149,6 +1172,7 @@ export async function handleApi(req: ApiRequest): Promise<Response> {
                                         return json({
                                                 accepted: accepted.length,
                                                 quarantined,
+                                                duplicates,
                                                 written: out.written,
                                                 failed: out.failed,
                                         });
@@ -1158,6 +1182,7 @@ export async function handleApi(req: ApiRequest): Promise<Response> {
                                 return json({
                                         accepted: accepted.length,
                                         quarantined,
+                                        duplicates,
                                         parked: out.parked,
                                         failed: out.failed,
                                 });

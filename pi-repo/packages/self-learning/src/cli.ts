@@ -1923,6 +1923,27 @@ async function cmdMemory(sub: string): Promise<void> {
                 }
                 const filePath = mFile[1]!;
                 const apply = /(^|\s)--apply(\s|$)/.test(rest);
+                // The byte cap BEFORE the read + parse (the reconciliation lane,
+                // 2026-11-15): the engine's record cap bounds amplification only
+                // after the JSON is parsed, and the parse is the OOM surface — a
+                // hostile multi-hundred-MB "memory file" is refused by SIZE, on
+                // disk. The constant mirrors memory-interchange.ts's
+                // IMPORT_MAX_FILE_BYTES locally (importing that module here would
+                // pull memzero -> store into the terminal process — the detached
+                // contract; the two constants are pinned together).
+                const IMPORT_MAX_FILE_BYTES = 5_000_000;
+                let fileSize = 0;
+                try {
+                        const { statSync } = await import("node:fs");
+                        fileSize = statSync(filePath).size;
+                } catch (err: any) {
+                        console.error(`unown memory import: cannot read ${filePath} — ${err instanceof Error ? err.message : String(err)}`);
+                        process.exit(2);
+                }
+                if (fileSize > IMPORT_MAX_FILE_BYTES) {
+                        console.error(`unown memory import: ${filePath} is ${(fileSize / 1_000_000).toFixed(1)} MB — over the ${IMPORT_MAX_FILE_BYTES / 1_000_000} MB interchange cap (a memory file bigger than the whole store it could write is not a memory file)`);
+                        process.exit(2);
+                }
                 let raw: string;
                 try {
                         raw = readFileSync(filePath, "utf8");
@@ -1957,6 +1978,7 @@ async function cmdMemory(sub: string): Promise<void> {
                 console.log(
                         `✓ import from ${filePath}: ${body.accepted} accepted · ${applied} ${apply ? "written" : "parked for review"} · ${(body.quarantined ?? []).length} quarantined`,
                 );
+                if (body.duplicates > 0) console.log(`  · ${body.duplicates} duplicate (skipped, never duplicated — a re-import converges)`);
                 if (!apply && body.parked > 0) console.log("  decide with: unown memory review  (approve ships, discard keeps the audit row)");
                 for (const q of (body.quarantined ?? []).slice(0, 10) as Array<{ record: { text: string }; reasons: string[] }>) {
                         console.log(`  ⚠ quarantined: "${q.record.text.slice(0, 60)}${q.record.text.length > 60 ? "…" : ""}" — ${q.reasons.join("; ")}`);
@@ -2025,7 +2047,7 @@ async function cmdMemoryReview(rest: string): Promise<void> {
                         return;
                 }
                 const res = await engineFetch(`${ENGINE_URL}/api/memory/review`, { signal: AbortSignal.timeout(8000) });
-                if (!res.ok) throw new Error((await res.json().catch(() => ({})))?.error ?? `engine ${res.status}`);
+                if (!res.ok) throw new Error(((await res.json().catch(() => ({}))) as any)?.error ?? `engine ${res.status}`);
                 const data = (await res.json()) as {
                         queue: Array<{ id: string; rule: string; evidence: string; createdAt: number }>;
                         depth: number;

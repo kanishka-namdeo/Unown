@@ -51,6 +51,29 @@ export const IMPORT_MAX_TEXT_CHARS = 600;
  *  bounds a hostile file's park/write amplification. */
 export const IMPORT_MAX_RECORDS = 5000;
 
+/** Whole-file BYTE cap — checked before the JSON parse (the reconciliation
+ *  lane, 2026-11-15): a 5k-record cap alone bounds amplification only AFTER
+ *  the file is parsed, and the parse itself is the OOM surface — a hostile
+ *  multi-hundred-MB "memory file" must be refused by SIZE, on disk, before
+ *  any JSON.parse runs. 5 MiB is comfortably above a full 5k-record export
+ *  at real memory sizes. The CLI mirrors this constant locally (importing
+ *  this module from the terminal would pull memzero -> store into the CLI
+ *  process — the detached contract). */
+export const IMPORT_MAX_FILE_BYTES = 5_000_000;
+
+/** The dedupe key — the normalization the ship lane uses (trim, strip the
+ *  bullet marker, lowercase, collapse whitespace): "- Always test" and
+ *  "always test" are the same rule (the reconciliation lane: an import
+ *  never duplicates a landed rule — in-file or in-store). */
+export function importDedupeKey(text: string): string {
+        return String(text ?? "")
+                .trim()
+                .replace(/^[-*]\s+/, "")
+                .toLowerCase()
+                .replace(/\s+/g, " ")
+                .trim();
+}
+
 /** One exported memory — the fields the engine consumes, nothing else. */
 export interface MemoryInterchangeRecord {
         /** The platform scope the memory lived in: "engine" or "project:<slug>". */
@@ -248,6 +271,11 @@ export interface QuarantinedImportRecord {
 export interface ImportClassification {
         accepted: AcceptedImportRecord[];
         quarantined: QuarantinedImportRecord[];
+        /** Records skipped as duplicates — in-file repeats and rules already
+         *  present in the destination store (injected via existingTexts).
+         *  Skipped with an honest count, never quarantined (a duplicate is
+         *  not a defect — the re-import converges instead of doubling). */
+        duplicates: number;
 }
 
 const SCOPE_RE = /^(engine|project:[a-z0-9][a-z0-9._-]{0,63})$/i;
@@ -261,13 +289,23 @@ const SCOPE_RE = /^(engine|project:[a-z0-9][a-z0-9._-]{0,63})$/i;
  *     already resolved);
  *   - the deterministic guard (scanMemoryCandidate) must come back clean —
  *     a flagged line is quarantined WITH its flags, never trimmed (an
- *     imported runner-directive must be refused loudly, the F4B law).
+ *     imported runner-directive must be refused loudly, the F4B law);
+ *   - DUPLICATES skip, never park or write (the reconciliation lane): a
+ *     record whose normalized text already appeared in this file, or is
+ *     already present in the destination (opts.existingTexts — the caller
+ *     injects the pending review queue for park mode / the target scopes'
+ *     live rows for apply mode), is counted in `duplicates` and skipped —
+ *     a re-import CONVERGES instead of doubling (the same law the ship
+ *     lane's decision-time re-dedupe enforces).
  *  Dormancy bookkeeping is NOT imported: dormancy is usage-conditioned
  *  (this store's render budget decides), and a foreign store's exclusion
  *  counts say nothing about this one. */
-export function classifyImportRecords(records: MemoryInterchangeRecord[]): ImportClassification {
+export function classifyImportRecords(records: MemoryInterchangeRecord[], opts: { existingTexts?: string[] } = {}): ImportClassification {
         const accepted: AcceptedImportRecord[] = [];
         const quarantined: QuarantinedImportRecord[] = [];
+        const existing = new Set((opts.existingTexts ?? []).map((t) => importDedupeKey(t)).filter(Boolean));
+        const seen = new Set<string>();
+        let duplicates = 0;
         for (const r of records) {
                 const reasons: string[] = [];
                 if (!SCOPE_RE.test(r.scope)) reasons.push(`unknown scope "${r.scope}" (expected engine or project:<slug>)`);
@@ -283,6 +321,20 @@ export function classifyImportRecords(records: MemoryInterchangeRecord[]): Impor
                         quarantined.push({ record: r, reasons });
                         continue;
                 }
+                // The dedupe lane: in-file first, then the destination's
+                // existing texts. A duplicate is SKIPPED with an honest
+                // count — never quarantined (it is not a defect) and never
+                // written (a re-import converges).
+                const key = importDedupeKey(text);
+                if (key && seen.has(key)) {
+                        duplicates++;
+                        continue;
+                }
+                if (key && existing.has(key)) {
+                        duplicates++;
+                        continue;
+                }
+                if (key) seen.add(key);
                 accepted.push({
                         scope: r.scope,
                         text,
@@ -291,7 +343,7 @@ export function classifyImportRecords(records: MemoryInterchangeRecord[]): Impor
                         provenance: r.provenance,
                 });
         }
-        return { accepted, quarantined };
+        return { accepted, quarantined, duplicates };
 }
 
 // ---------------------------------------------------------------------------
