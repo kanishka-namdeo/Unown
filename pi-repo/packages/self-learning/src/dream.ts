@@ -358,13 +358,15 @@ export async function runDream(opts: DreamOpts = {}): Promise<DreamResult> {
                                 id,
                         );
                         store.run(
-                                `UPDATE dreams SET ended_at = ?, status = 'gated', entries_merged = ?, entries_pruned = ?, entries_added = ?, entries_protected = ?, output = ?, note = ? WHERE id = ?`,
+                                `UPDATE dreams SET ended_at = ?, status = 'gated', entries_merged = ?, entries_pruned = ?, entries_added = ?, entries_protected = ?, entries_superseded = ?, entries_dormant = ?, output = ?, note = ? WHERE id = ?`,
                                 [
                                         Date.now(),
                                         out.merged,
                                         out.pruned,
                                         out.added,
                                         out.protectedDeletes,
+                                        out.superseded ?? 0,
+                                        out.dormantNew ?? 0,
                                         out.rendered,
                                         `${guard.reason} · ${guardSummary(guard)}${protectedNoteFragment(out)}`,
                                         id,
@@ -416,13 +418,15 @@ export async function runDream(opts: DreamOpts = {}): Promise<DreamResult> {
                                 id,
                         );
                         store.run(
-                                `UPDATE dreams SET ended_at = ?, status = 'gated', entries_merged = ?, entries_pruned = ?, entries_added = ?, entries_protected = ?, output = ?, note = ? WHERE id = ?`,
+                                `UPDATE dreams SET ended_at = ?, status = 'gated', entries_merged = ?, entries_pruned = ?, entries_added = ?, entries_protected = ?, entries_superseded = ?, entries_dormant = ?, output = ?, note = ? WHERE id = ?`,
                                 [
                                         Date.now(),
                                         out.merged,
                                         out.pruned,
                                         out.added,
                                         out.protectedDeletes,
+                                        out.superseded ?? 0,
+                                        out.dormantNew ?? 0,
                                         out.rendered,
                                         `canary infrastructure failure — memory rolled back to v${version - 1}: ${reason}${protectedNoteFragment(out)}`,
                                         id,
@@ -462,13 +466,15 @@ export async function runDream(opts: DreamOpts = {}): Promise<DreamResult> {
                                 id,
                         );
                         store.run(
-                                `UPDATE dreams SET ended_at = ?, status = 'gated', entries_merged = ?, entries_pruned = ?, entries_added = ?, entries_protected = ?, output = ?, note = ? WHERE id = ?`,
+                                `UPDATE dreams SET ended_at = ?, status = 'gated', entries_merged = ?, entries_pruned = ?, entries_added = ?, entries_protected = ?, entries_superseded = ?, entries_dormant = ?, output = ?, note = ? WHERE id = ?`,
                                 [
                                         Date.now(),
                                         out.merged,
                                         out.pruned,
                                         out.added,
                                         out.protectedDeletes,
+                                        out.superseded ?? 0,
+                                        out.dormantNew ?? 0,
                                         out.rendered,
                                         `rolled back to v${version - 1}: canary task failed under the new memory (${gate.reason ?? "unknown"})${protectedNoteFragment(out)}`,
                                         id,
@@ -498,13 +504,15 @@ export async function runDream(opts: DreamOpts = {}): Promise<DreamResult> {
                         id,
                 );
                 store.run(
-                        `UPDATE dreams SET ended_at = ?, status = 'done', entries_merged = ?, entries_pruned = ?, entries_added = ?, entries_protected = ?, output = ?, note = ? WHERE id = ?`,
+                        `UPDATE dreams SET ended_at = ?, status = 'done', entries_merged = ?, entries_pruned = ?, entries_added = ?, entries_protected = ?, entries_superseded = ?, entries_dormant = ?, output = ?, note = ? WHERE id = ?`,
                         [
                                 Date.now(),
                                 out.merged,
                                 out.pruned,
                                 out.added,
                                 out.protectedDeletes,
+                                out.superseded ?? 0,
+                                out.dormantNew ?? 0,
                                 out.rendered,
                                 `project memory -> v${version} · ${canaryNote(gate)} · ${guardSummary(guard)}${protectedNoteFragment(out)}`,
                                 id,
@@ -1066,7 +1074,7 @@ export async function runProjectDream(opts: DreamOpts = {}): Promise<ProjectDrea
                         // All terminal notes for this project are consumed by this dream.
                         const dreamId = `project-${randomUUID()}`;
                         store.run(
-                                `INSERT INTO dreams (id, started_at, ended_at, status, notes_in, entries_added, entries_protected, output, note) VALUES (?, ?, ?, 'done', ?, ?, ?, ?, ?)`,
+                                `INSERT INTO dreams (id, started_at, ended_at, status, notes_in, entries_added, entries_protected, entries_superseded, entries_dormant, output, note) VALUES (?, ?, ?, 'done', ?, ?, ?, ?, ?, ?, ?)`,
                                 [
                                         dreamId,
                                         projectDreamStartMs,
@@ -1079,6 +1087,12 @@ export async function runProjectDream(opts: DreamOpts = {}): Promise<ProjectDrea
                                         // entries_protected (2026-11-11): the ⛨ indicator's source —
                                         // DELETE verdicts the fresh-evidence guard rejected.
                                         out.protectedDeletes,
+                                        // entries_superseded (Divertimento CP4): the digest's supersede
+                                        // count — LLM verdicts + the deterministic SRO pass.
+                                        out.superseded ?? 0,
+                                        // entries_dormant (Divertimento CP4): rows that went dormant
+                                        // under this dream's render budget.
+                                        out.dormantNew ?? 0,
                                         next,
                                         `project dream: ${group.slug} memory -> v${version} (${group.projectPath})${protectedNoteFragment(out)}`,
                                 ],
@@ -1193,10 +1207,10 @@ export function dreamNotes(dreamId: string) {
  */
 export function latestDreamNews(
         maxAgeMs = 3_600_000,
-): { id: string; project: string; added: number; version: number; at: number } | null {
+): { id: string; project: string; added: number; version: number; at: number; superseded?: number; dormant?: number } | null {
         try {
                 const rows = store.query<any>(
-                        `SELECT id, ended_at, entries_added, note FROM dreams
+                        `SELECT id, ended_at, entries_added, entries_superseded, entries_dormant, note FROM dreams
                          WHERE status = 'done' AND entries_added > 0 AND ended_at IS NOT NULL AND ended_at > ?
                          ORDER BY ended_at DESC LIMIT 8`,
                         [Date.now() - maxAgeMs],
@@ -1210,6 +1224,10 @@ export function latestDreamNews(
                                 added: Number(r.entries_added),
                                 version: Number(m[2]),
                                 at: Number(r.ended_at),
+                                // Divertimento CP4: the post-consolidation digest's fields —
+                                // optional (0 on pre-Divertimento rows renders as absent).
+                                ...(Number(r.entries_superseded) > 0 ? { superseded: Number(r.entries_superseded) } : {}),
+                                ...(Number(r.entries_dormant) > 0 ? { dormant: Number(r.entries_dormant) } : {}),
                         };
                 }
                 return null;

@@ -314,6 +314,9 @@ export interface MemoryBarInfo {
         rules: number;
         /** Provenance `at` (epoch ms); undefined when the sidecar is absent. */
         dreamedAt?: number;
+        /** Rendered rules carrying the `· stale` stamp (the freshness lane's
+         *  visible decay — the Divertimento CP4 honest count). 0 when none. */
+        stale?: number;
 }
 
 /** Count the bullet rules under "## " sections — the project-memory render's
@@ -330,6 +333,24 @@ export function countProjectRules(content: string): number {
                         continue;
                 }
                 if (inSection && /^- /.test(line)) n++;
+        }
+        return n;
+}
+
+/** Count the stale-stamped bullets — the render's own freshness grammar
+ *  (a bullet ending "· YYYY-MM-DD · stale"). The recall line's honest
+ *  count (Divertimento CP4): the injected stack saying so itself, the
+ *  same disk-derived contract as the rest of the bar (engine-down safe).
+ *  Bullets before the first section don't count (countProjectRules' law). */
+export function countProjectStaleRules(content: string): number {
+        let inSection = false;
+        let n = 0;
+        for (const line of content.split(/\r?\n/)) {
+                if (/^##\s/.test(line)) {
+                        inSection = true;
+                        continue;
+                }
+                if (inSection && /^- /.test(line) && /· stale$/.test(line.trim())) n++;
         }
         return n;
 }
@@ -379,6 +400,7 @@ export function readMemoryBarInfo(projectDir: string): MemoryBarInfo | null {
                         version: provenance?.version ?? 0,
                         rules: countProjectRules(content),
                         dreamedAt: provenance?.at,
+                        stale: countProjectStaleRules(content),
                 };
         } catch {
                 return null;
@@ -426,10 +448,20 @@ export function shouldToastDreamNews(
 
 /** The toast copy — the confirmation moment. The version pair is honest:
  *  project dreams allocate MAX(version)+1, so `from` is always `to - 1`
- *  (v0 → v1 on the first mint says "there was no prior version"). */
+ *  (v0 → v1 on the first mint says "there was no prior version").
+ *
+ *  The Divertimento digest (CP4): the toast is the one moment the user
+ *  SEES what consolidation did (ChatGPT's Wrapped lesson: memory becomes
+ *  a reward when it's visible; the post-consolidation diff is the cheapest
+ *  delight surface — the data already exists). Each fragment renders only
+ *  when its count is non-zero (the quiet contract — no standing zeros). */
 export function dreamNewsToastText(news: DreamNews): string {
         const rules = `${news.added} new rule${news.added === 1 ? "" : "s"}`;
-        return `✦ AutoDream learned ${rules} for this project (v${Math.max(0, news.version - 1)} → v${news.version})`;
+        const base = `✦ AutoDream learned ${rules} for this project (v${Math.max(0, news.version - 1)} → v${news.version})`;
+        const parts: string[] = [];
+        if (news.superseded && news.superseded > 0) parts.push(`${news.superseded} superseded (kept for audit)`);
+        if (news.dormant && news.dormant > 0) parts.push(`${news.dormant} went dormant`);
+        return parts.length > 0 ? `${base} · ${parts.join(" · ")}` : base;
 }
 
 // ---------------------------------------------------------------------------
@@ -450,7 +482,12 @@ export function dreamNewsToastText(news: DreamNews): string {
 export function memoryRecallLine(info: MemoryBarInfo, now: number = Date.now()): string {
         const version = info.version > 0 ? ` · v${info.version}` : "";
         const dreamed = info.dreamedAt !== undefined ? ` · dreamed ${humanizeDreamAge(now - info.dreamedAt)}` : "";
-        return `◈ memory recalled: ${info.rules} rule${info.rules === 1 ? "" : "s"}${version}${dreamed} — /memory show`;
+        // The Divertimento honest count (CP4): how many of the injected rules
+        // carry the stale stamp — rendered ONLY when non-zero (a healthy stack
+        // stays quiet; a decayed one says so at the recall moment, the exact
+        // point the model starts using it).
+        const stale = info.stale && info.stale > 0 ? ` (${info.stale} stale)` : "";
+        return `◈ memory recalled: ${info.rules} rule${info.rules === 1 ? "" : "s"}${stale}${version}${dreamed} — /memory show`;
 }
 
 export interface EngineStatusHooks {

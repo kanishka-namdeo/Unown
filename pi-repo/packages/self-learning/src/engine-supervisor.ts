@@ -386,6 +386,12 @@ export interface DreamNews {
 	version: number;
 	/** Dream end time, epoch ms. */
 	at: number;
+	/** Divertimento CP4 (optional): memories superseded this dream (LLM
+	 *  verdicts + the deterministic SRO pass) — the digest fragment. */
+	superseded?: number;
+	/** Divertimento CP4 (optional): rows that went dormant under this
+	 *  dream's render budget — the digest fragment. */
+	dormant?: number;
 }
 
 /** Validate + narrow an unknown /api/overview body fragment to DreamNews
@@ -398,7 +404,15 @@ export function parseDreamNews(raw: unknown): DreamNews | undefined {
 	if (typeof r.added !== "number" || !(r.added > 0)) return undefined;
 	if (typeof r.version !== "number" || !Number.isFinite(r.version)) return undefined;
 	if (typeof r.at !== "number" || !Number.isFinite(r.at)) return undefined;
-	return { id: r.id, project: r.project, added: r.added, version: r.version, at: r.at };
+	return {
+		id: r.id,
+		project: r.project,
+		added: r.added,
+		version: r.version,
+		at: r.at,
+		...(typeof r.superseded === "number" && r.superseded > 0 ? { superseded: r.superseded } : {}),
+		...(typeof r.dormant === "number" && r.dormant > 0 ? { dormant: r.dormant } : {}),
+	};
 }
 
 /** Cheap liveness probe: is the engine answering HTTP right now? The

@@ -104,6 +104,8 @@ CREATE TABLE IF NOT EXISTS dreams (
   entries_pruned INTEGER DEFAULT 0,
   entries_added INTEGER DEFAULT 0,
   entries_protected INTEGER DEFAULT 0,
+  entries_superseded INTEGER DEFAULT 0,   -- Divertimento CP4: bi-temporal supersede count (LLM + deterministic)
+  entries_dormant INTEGER DEFAULT 0,     -- Divertimento CP4: rows that went dormant this dream
   output TEXT,
   note TEXT
 );
@@ -412,6 +414,13 @@ export class Store {
                         // feed line read it. 0 = the guard did not fire (the standing
                         // default); NULL = pre-Recital rows.
                         ["dreams", "entries_protected", "ALTER TABLE dreams ADD COLUMN entries_protected INTEGER DEFAULT 0"],
+                        // dreams: the Divertimento round's digest columns (2026-11-14) —
+                        // the supersede count (LLM verdicts + the deterministic SRO pass)
+                        // and the dormancy count, threaded from DreamOutcome into the
+                        // dream row so latestDreamNews and the toast can render the
+                        // post-consolidation digest. 0 = pre-Divertimento rows.
+                        ["dreams", "entries_superseded", "ALTER TABLE dreams ADD COLUMN entries_superseded INTEGER DEFAULT 0"],
+                        ["dreams", "entries_dormant", "ALTER TABLE dreams ADD COLUMN entries_dormant INTEGER DEFAULT 0"],
                         // improvements: the mem0 memory ids a shipped patch produced (the
                         // mem0-backed learning core) — retention's auto-unship deletes them
                         // from the platform and re-renders the tier. NULL = legacy ships.

@@ -66,6 +66,32 @@
  */
 import { existsSync, mkdirSync, readdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
+// The pure stamp helpers (Divertimento CP4): the single definitions live in
+// memory-stamps.ts (store-free — the terminal agent's tools import them
+// without pulling the engine DB into the terminal process); re-exported
+// here so every existing importer is unchanged.
+export {
+        filterLatestOnly,
+        isSuperseded,
+        mem0StaleDays,
+        mem0StaleDaysForType,
+        memoryConfirmedAt,
+        memoryFreshnessStamp,
+        memoryInvalidAt,
+        memoryType,
+        MEMORY_TYPES,
+        supersededById,
+} from "./memory-stamps.ts";
+export type { MemoryType } from "./memory-stamps.ts";
+import {
+        filterLatestOnly,
+        isSuperseded,
+        MEMORY_TYPES,
+        memoryConfirmedAt,
+        memoryFreshnessStamp,
+        memoryType as memoryTypeOf,
+} from "./memory-stamps.ts";
+import type { MemoryType } from "./memory-stamps.ts";
 import { emit } from "./bus.ts";
 import { recordLlmCall, recordLlmFailure, recordLlmSuccess } from "./governor.ts";
 import { chatJson, modelFor } from "./llm.ts";
@@ -208,110 +234,6 @@ export function mem0MaxRenderChars(): number {
 /** The reconcile pass toggle (PI_MEM0_RECONCILE=0 → mem0 additive-only). */
 export function mem0ReconcileEnabled(): boolean {
         return String(process.env.PI_MEM0_RECONCILE ?? "").trim() !== "0";
-}
-
-// ------------------------------------------------------------- freshness lane
-// The Memory Encore round (2026-11-12): every rendered memory bullet carries
-// the date it was last confirmed (the mem0 updatedAt — an UPDATE verdict from
-// a later dream rewrites it, so re-asserted evidence refreshes the date the
-// way Copilot's re-store-on-verify does), and bullets older than the horizon
-// are marked stale. Claude Code ships per-memory `modified` timestamps for
-// exactly this reason ("helping Claude reason about which memories are fresh
-// vs. stale", v2.1.75); Copilot expires at 28 days (un-refreshed memories
-// vanish) — the marker is our softer, visible version of the same decay:
-// the rule stays, its evidential weight drops, and the memory guide says so.
-
-/** The staleness horizon in days (PI_MEM0_STALE_DAYS; default 28 — Copilot's
- * TTL evidence; 0 disables the stale marker, dates still render). */
-export function mem0StaleDays(): number {
-        const n = Number(process.env.PI_MEM0_STALE_DAYS ?? 28);
-        return Number.isFinite(n) && n >= 0 ? n : 28;
-}
-
-/** The last-confirmed timestamp of a memory (ms), or null when neither
- * updatedAt nor createdAt parses — legacy/migrated rows may carry neither,
- * and an unknown age must not render as a fake date (or a fake 1970-stale). */
-export function memoryConfirmedAt(m: PlatformMemory): number | null {
-        const ts = Date.parse(String(m.updatedAt ?? m.createdAt ?? ""));
-        return Number.isFinite(ts) ? ts : null;
-}
-
-/** The freshness suffix for one rendered bullet: ` · YYYY-MM-DD` normally,
- * ` · YYYY-MM-DD · stale` past the horizon, `""` when the age is unknown or
- * the memory is a seed (the repo's own scaffolding — instructions, not
- * dated evidence). Pure, deterministic (no Date.now() inside — `now` is a
- * parameter), so renders stay idempotent: the same memory set always
- * renders byte-identical, and only an UPDATE (new evidence) moves a date.
- *
- * Bi-temporal supersede (Memory v2 round, 2026-11-12): a superseded memory
- * renders its invalidation date with the `superseded` marker instead of
- * the confirmed date — the audit lane. The loser stays in the store
- * (retained for version history + the health card's supersededCount),
- * excluded from recall by filterLatestOnly. Graphiti's edge model, Mem0
- * Dream's Supersede badge, and Supermemory's `isLatest` all render this
- * same shape — "current truth" is a query, history is preserved.
- */
-export function memoryFreshnessStamp(
-        m: PlatformMemory,
-        now: number = Date.now(),
-): string {
-        if (String(m.metadata?.kind ?? "") === "seed") return "";
-        if (isSuperseded(m)) {
-                const inv = memoryInvalidAt(m);
-                if (inv !== null) {
-                        const date = new Date(inv).toISOString().slice(0, 10);
-                        return `${date} · superseded`;
-                }
-                return "superseded";
-        }
-        const ts = memoryConfirmedAt(m);
-        if (ts === null) return "";
-        // Per-type decay (Memory v2 round): each type has its own stale horizon —
-        // episodes decay fastest, preferences rarely go stale. The type is read
-        // from metadata.type (default "fact" for backward compat).
-        const days = mem0StaleDaysForType(memoryType(m));
-        const stale = days > 0 && now - ts > days * 86_400_000;
-        const date = new Date(ts).toISOString().slice(0, 10);
-        return stale ? `${date} · stale` : date;
-}
-
-// ----------------------------------------------- bi-temporal supersede lane
-// The Memory v2 round (2026-11-12): the reconcile pass used to DELETE the
-// loser of a contradiction — provenance was lost at the platform layer. The
-// frontier (Graphiti's valid_at/invalid_at edge model, Mem0 Dream's Supersede
-// badge, Supermemory's updates/isLatest) retains the invalidated memory,
-// linked to its replacement, queryable as "what was true then". Unown's
-// equivalent stamps metadata.supersededBy + metadata.invalidAt on the loser
-// via the new SUPERSEDE reconcile op; the memory stays in the store for audit,
-// excluded from recall by filterLatestOnly (the `latest_only=true` search
-// semantics). A memory without supersededBy metadata behaves exactly as
-// before — the lane is backward-compatible.
-
-/** True when this memory has been superseded (carries metadata.supersededBy).
- *  A superseded memory is retained for audit but excluded from recall by
- *  filterLatestOnly. */
-export function isSuperseded(m: PlatformMemory): boolean {
-        return Boolean(m?.metadata?.supersededBy);
-}
-
-/** The id of the memory that supersedes this one, or null when current. */
-export function supersededById(m: PlatformMemory): string | null {
-        const v = m?.metadata?.supersededBy;
-        return v ? String(v) : null;
-}
-
-/** The invalidation timestamp (ms) of a superseded memory, or null. */
-export function memoryInvalidAt(m: PlatformMemory): number | null {
-        const ts = Date.parse(String(m?.metadata?.invalidAt ?? ""));
-        return Number.isFinite(ts) ? ts : null;
-}
-
-/** Filter superseded memories out of a list (the `latest_only=true` search
- *  semantics — superseded memories stay in the store for audit but are
- *  excluded from recall by default). Memories without `supersededBy` metadata
- *  pass through unchanged (backward-compatible). */
-export function filterLatestOnly(memories: PlatformMemory[]): PlatformMemory[] {
-        return memories.filter((m) => !isSuperseded(m));
 }
 
 // ---------------------------------------------------------- dormancy lane
@@ -691,56 +613,6 @@ export async function applyDeterministicSroSupersedes(
                 }
         }
         return { events, count, skipped };
-}
-
-// ---------------------------------------------------- memory typing + decay
-// The Memory v2 round (2026-11-12): the field has moved past "one memory type"
-// — Supermemory's typed auto-forgetting (facts persist, preferences strengthen,
-// episodes decay), MemOS's L1→L2→L3→skills tiering, and LangMem's
-// semantic/episodic/procedural taxonomy all give each memory type a different
-// decay policy. Unown's flat 110-bullet cap + single 28-day stale horizon is
-// the weaker version — this lane tags each memory with a type at extraction
-// and gives each type its own decay horizon, replacing the flat cap with a
-// principled per-type budget. The type lives in metadata.type (default "fact"
-// for backward compatibility — memories without a type tag behave as before).
-
-/** The four memory types (LangMem's taxonomy + Supermemory's typed forgetting):
- *  - fact: a durable verifiable statement (versions, paths, schemas) — persists
- *    until superseded; the default for backward compatibility.
- *  - episode: a one-time event or transient observation — decays fastest.
- *  - procedure: a multi-step playbook that recurred — persists longest.
- *  - preference: a convention/style rule the user stated — strengthens with
- *    repetition, rarely stale. */
-export type MemoryType = "fact" | "episode" | "procedure" | "preference";
-
-/** The set of valid memory types (for validation / display). */
-export const MEMORY_TYPES: readonly MemoryType[] = ["fact", "episode", "procedure", "preference"];
-
-/** Read a memory's type (metadata.type, default "fact" for backward compat). */
-export function memoryType(m: PlatformMemory): MemoryType {
-        const t = String(m?.metadata?.type ?? "").trim().toLowerCase();
-        return (MEMORY_TYPES as readonly string[]).includes(t) ? (t as MemoryType) : "fact";
-}
-
-/** The stale-day horizon for a memory type. Episodes decay fastest (default
- *  14d — one-time observations rarely help future sessions); facts persist
- *  until superseded (default 28d — the original horizon); procedures persist
- *  longest (default 90d — multi-step playbooks that recurred are high-value);
- *  preferences strengthen with repetition and rarely go stale (default 180d —
- *  a convention the user stated is durable instruction, not decayable
- *  observation). Each is overridable via PI_MEM0_STALE_DAYS_<TYPE>. */
-export function mem0StaleDaysForType(type: MemoryType): number {
-        const fallback = mem0StaleDays();
-        const envKey = `PI_MEM0_STALE_DAYS_${type.toUpperCase()}`;
-        const n = Number(process.env[envKey]);
-        if (!Number.isFinite(n) || n < 0) {
-                // per-type defaults: episode 14, fact 28 (the fallback), procedure 90, preference 180
-                if (type === "episode") return Number(process.env.PI_MEM0_STALE_DAYS_EPISODE ?? 14) || 14;
-                if (type === "procedure") return Number(process.env.PI_MEM0_STALE_DAYS_PROCEDURE ?? 90) || 90;
-                if (type === "preference") return Number(process.env.PI_MEM0_STALE_DAYS_PREFERENCE ?? 180) || 180;
-                return fallback;
-        }
-        return n;
 }
 
 /** Both embedders are 384-dim by construction — a single vector space size. */
@@ -2676,7 +2548,7 @@ export function computeRenderPlan(
         // the old flat behavior at the same total.
         const regulars = sorted.filter((m) => !isHardWon(m));
         const byType: Record<MemoryType, PlatformMemory[]> = { fact: [], episode: [], procedure: [], preference: [] };
-        for (const m of regulars) byType[memoryType(m)].push(m);
+        for (const m of regulars) byType[memoryTypeOf(m)].push(m);
         const counts: Record<MemoryType, number> = {
                 fact: byType.fact.length,
                 episode: byType.episode.length,
@@ -2750,7 +2622,7 @@ export function renderProjectMemoryMarkdown(
                         // Per-type sections (Divertimento CP1): the typed sections
                         // render before the regex-classified ones — a tagged preference
                         // or episode is a stronger signal than any keyword match.
-                        const t = memoryType(m);
+                        const t = memoryTypeOf(m);
                         if (t === "preference") section = "Preferences";
                         else if (t === "episode") section = "Episodes";
                         else {

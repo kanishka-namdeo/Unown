@@ -194,6 +194,33 @@ What a teammate gets when they clone the repo: the shared project memory and the
 - `unown dashboard` → **Memory** screen — the engine's four tiers with contents, full version history and one-key rollback, plus every skill AutoDream minted into your projects (skills rollback and retire write back to your project's files). The engine's platform state (backend, model, dir, cap) rides `/api/overview`'s `memoryPlatform` block, and `GET /api/memories?q=…` searches the platform's memories per scope. Since the Divertimento round the screen also renders the **review-queue card** (pending candidates with evidence) under the health card, refetching live on every park/approve/discard.
 - `/memory search <query> [--all]` — cross-project semantic search over every scope that has dreamed (see [shared memory](#shared-memory-across-sessions-and-projects)); `GET /api/memories?across=1&q=…` is the HTTP form. Superseded memories are excluded from results by default — they never answer a recall as if current; `--all` / `latest_only=0` opts into the audit view (they render with a `· superseded <date>` badge, never bare).
 
+## The delight surfaces (Divertimento CP4, 2026-11-14)
+
+The UX research's law — visible provenance builds trust, invisible influence
+destroys it (Gemini's Statement+Rationale; Memory Sandbox's scrutability;
+the ChatGPT anti-patterns quantified at 96% unilateral creation):
+
+- **`/memory search` provenance badges** (the repo's own open item #8): every
+  result carries its scope, score, and now its TYPE (non-fact only), its
+  hard-won kind (`seeded` / `verified fix`), its freshness stamp (`· 2026-11-11 · stale` —
+  the per-type horizon), and its dormancy state (`· dormant (revived by this
+  search)` — the hit that just revived the row says so).
+- **The recall line's honest count**: `◈ memory recalled: 12 rules (2 stale) · v7 ·
+  dreamed 3h ago — /memory show` — the stale count renders ONLY when non-zero
+  (a healthy stack stays quiet; a decayed one says so at the exact moment the
+  model starts using it).
+- **The dream digest toast** (the post-consolidation diff — the cheapest delight
+  surface there is; the data already exists): `✦ AutoDream learned 3 new rules
+  for this project (v41 → v42) · 4 superseded (kept for audit) · 2 went dormant`
+  — each fragment only when its count is non-zero. The dream rows carry the
+  digest columns (`entries_superseded`, `entries_dormant`) threaded from the
+  outcome.
+- **`/memory show`** appends `not injected · N dormant (…a /memory search hit
+  revives)` when the engine reports any — what the budget LEFT OUT, honest
+  about the stack's boundary (degrades to absent engine-down).
+- **The dashboard health card** fact line gains `· N dormant · N sro-tagged`
+  (quiet when zero), riding the superseded count.
+
 ## The memory health card (S2-4)
 
 The memory platform's maintenance pass — the reconcile step that dedupes, retires stale rules and resolves contradictions — is **fail-open**: when its LLM call fails, the dream continues additive-only and the failure used to be ephemeral (a bus event + a console line, nothing queryable after the fact). The health card makes the accumulated state of a memory scope observable, deterministically and without an LLM call:

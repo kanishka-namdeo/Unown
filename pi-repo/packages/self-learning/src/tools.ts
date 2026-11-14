@@ -84,6 +84,7 @@ import {
 } from "./delegation.ts";
 import { auditInstructionSet, renderInstructionAudit, summarizeInstructionAudit } from "./doctor-instructions.ts";
 import { engineFetch } from "./engine-auth.ts";
+import { memoryFreshnessStamp } from "./memzero.ts";
 import { getEngineStatusInfo } from "./engine-status.ts";
 import {
         recordFleetChildFinish,
@@ -4677,8 +4678,21 @@ export function createUnownToolsExtension(opts: UnownToolsOptions) {
                                                         // bare — it renders its invalidation, never a silent "current".
                                                         const inv = String(m.metadata?.invalidAt ?? "");
                                                         const date = inv && Number.isFinite(Date.parse(inv)) ? ` ${new Date(inv).toISOString().slice(0, 10)}` : "";
-                                                        const badge = m.metadata?.supersededBy ? ` · superseded${date}` : "";
-                                                        return `· [${where}${score}${badge}] ${m.text}`;
+                                                        const supBadge = m.metadata?.supersededBy ? ` · superseded${date}` : "";
+                                                        // The provenance badges (Divertimento CP4 — the repo's own open
+                                                        // item #8, per-bullet provenance in /memory search): the type
+                                                        // when non-fact, the confirmed date + staleness (Gemini's
+                                                        // Statement+Rationale law — visible provenance builds trust,
+                                                        // invisible influence destroys it), the hard-won kinds, and
+                                                        // the dormancy state (a hit that just revived the row says so).
+                                                        const type = String(m.metadata?.type ?? "").toLowerCase();
+                                                        const typeBadge = type && type !== "fact" ? ` · ${type}` : "";
+                                                        const kind = String(m.metadata?.kind ?? "");
+                                                        const kindBadge = kind === "seed" || kind === "harness" ? ` · ${kind === "seed" ? "seeded" : "verified fix"}` : "";
+                                                        const confirmed = memoryFreshnessStamp(m, Date.now());
+                                                        const stampBadge = confirmed ? ` · ${confirmed}` : "";
+                                                        const dorm = (m as any).dormant === true ? ` · dormant${(m as any).revivedBy ? ` (revived by this search)` : ""}` : "";
+                                                        return `· [${where}${score}${typeBadge}${kindBadge}${stampBadge}${supBadge}${dorm}] ${m.text}`;
                                                 });
                                                 ctx.ui.notify(
                                                         `cross-project memory search — "${query}" (${data.memories.length} match(es) across ${data.scopes?.length ?? "?"} scopes${all ? ", --all: superseded included, badged" : ""}):\n${lines.join("\n")}`,
@@ -4722,8 +4736,24 @@ export function createUnownToolsExtension(opts: UnownToolsOptions) {
                                         // The F5 tail pattern: the transparency block
                                         // rides LAST so a long stack can never scroll
                                         // it off the top of the pane.
+                                        // The Divertimento CP4 line: what the budget LEFT OUT — the
+                                        // dormant shelf (revivable by /memory search). Engine-down or
+                                        // dormantCount=0 degrades to absent (never a standing zero).
+                                        let dormantLine = "";
+                                        try {
+                                                const hres = await engineFetch(`${ENGINE_URL}/api/memory/health`, { signal: AbortSignal.timeout(4000) });
+                                                if (hres.ok) {
+                                                        const hbody = (await hres.json()) as any;
+                                                        const d = Number(hbody?.health?.dormantCount ?? 0);
+                                                        if (d > 0) {
+                                                                dormantLine = `\nnot injected · ${d} dormant (excluded by the render budget ${process.env.PI_MEM0_DORMANT_AFTER || 3} consecutive times — a /memory search hit revives)`;
+                                                        }
+                                                }
+                                        } catch {
+                                                /* engine-down: the line is absent, never blocks the stack */
+                                        }
                                         ctx.ui.notify(
-                                                `${parts.join("\n\n")}\n\n${budgetLine}\nthe model receives exactly this stack (${files.length} file(s)) · /learning — per-tier staleness · /dashboard — versions, diffs, rollbacks`,
+                                                `${parts.join("\n\n")}\n\n${budgetLine}${dormantLine}\nthe model receives exactly this stack (${files.length} file(s)) · /learning — per-tier staleness · /dashboard — versions, diffs, rollbacks`,
                                                 "info",
                                         );
                                         return;

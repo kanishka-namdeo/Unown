@@ -30,14 +30,14 @@ export interface ChangelogStop {
   groups: ChangelogGroup[];
 }
 
-export const CHANGELOG_TOTAL_ENTRIES = 582;
+export const CHANGELOG_TOTAL_ENTRIES = 583;
 
 export const CHANGELOG_TOTALS: Record<ChangelogBucket, number> = {
   "Added": 248,
   "Changed": 32,
   "Deprecated": 0,
   "Removed": 3,
-  "Fixed": 213,
+  "Fixed": 214,
   "Security": 5,
   "Behavior": 81
 };
@@ -46,13 +46,13 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
   {
     "label": "Unreleased",
     "date": null,
-    "total": 41,
+    "total": 42,
     "counts": {
       "Added": 2,
       "Changed": 0,
       "Deprecated": 0,
       "Removed": 0,
-      "Fixed": 10,
+      "Fixed": 11,
       "Security": 0,
       "Behavior": 29
     },
@@ -215,6 +215,10 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
           },
           {
             "title": "Usage-conditioned decay — the dormancy lane (the Memory Divertimento round CP3; MIRIX's experience-pool law…",
+            "behavior": false
+          },
+          {
+            "title": "The delight surfaces — visible provenance, honest counts…",
             "behavior": false
           },
           {

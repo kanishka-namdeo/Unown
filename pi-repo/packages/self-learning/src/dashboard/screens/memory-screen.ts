@@ -210,10 +210,17 @@ export function createMemoryScreen(deps: ScreenDeps): Screen {
                 // audit (excluded from recall). Stays quiet when zero.
                 const sup = (h as any).supersededCount;
                 const supFrag = typeof sup === "number" && sup > 0 ? ` · ${sup} superseded` : "";
+                // The Divertimento counts (CP4): dormant (the reversible sleeping
+                // shelf) and SRO-tagged (the deterministic lane's adoption) — quiet
+                // when zero, the Encore pattern.
+                const dormant = (h as any).dormantCount;
+                const dormFrag = typeof dormant === "number" && dormant > 0 ? ` · ${dormant} dormant` : "";
+                const sro = (h as any).sroTaggedCount;
+                const sroFrag = typeof sro === "number" && sro > 0 ? ` · ${sro} sro-tagged` : "";
                 rows.push(
                         theme.fg(
                                 "muted",
-                                `health · ${last} · ${h.duplicateCount} dupe(s) · ${h.conflictCount} conflict(s)${supFrag} · ${h.memoryCount} memor${h.memoryCount === 1 ? "y" : "ies"}`,
+                                `health · ${last} · ${h.duplicateCount} dupe(s) · ${h.conflictCount} conflict(s)${supFrag}${dormFrag}${sroFrag} · ${h.memoryCount} memor${h.memoryCount === 1 ? "y" : "ies"}`,
                         ),
                 );
                 // The Memory v2 round: the per-type breakdown — fact/episode/procedure/
