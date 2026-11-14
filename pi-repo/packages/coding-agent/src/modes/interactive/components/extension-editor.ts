@@ -33,6 +33,11 @@ export class ExtensionEditorComponent extends Container implements Focusable {
 	 * non-cancel keypress — the "press Esc again to discard" arm state. */
 	private discardArmed = false;
 	private hintText: Text;
+	/** The plan-visibility round (2026-11-14): a docked dialog owns the
+	 * viewport navigation keys while focused — without this the alt-screen
+	 * viewport's home/end scroll bindings eat the editor's cursorLineStart/
+	 * cursorLineEnd keys (plan editing could not reach line start/end). */
+	readonly wantsViewportNav = true;
 
 	private _focused = false;
 	get focused(): boolean {

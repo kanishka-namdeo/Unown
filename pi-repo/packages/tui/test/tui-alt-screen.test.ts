@@ -1492,6 +1492,76 @@ describe("TuiAltScreen", () => {
 		tui.stop();
 	});
 
+	it("gives viewport navigation keys to a focused docked dialog that wants them", async () => {
+		// The plan-visibility round (2026-11-14): a dialog swapped into the
+		// editor dock (an extension selector/input/editor — NOT an overlay)
+		// declares wantsViewportNav and receives home/end/pageUp/pageDown;
+		// without the flag those keys belong to the viewport's scroll
+		// bindings (the pre-existing behavior pinned by the next test).
+		class DockedDialog {
+			focused = false;
+			wantsViewportNav = true;
+			inputs: string[] = [];
+
+			handleInput(data: string): void {
+				this.inputs.push(data);
+			}
+
+			render(): string[] {
+				return ["dialog"];
+			}
+
+			invalidate(): void {}
+		}
+		const terminal = new VirtualTerminal(20, 6);
+		const tui = new TuiAltScreen(terminal);
+		tui.addChild(new Text(Array.from({ length: 12 }, (_, index) => `line ${index + 1}`).join("\n"), 0, 0));
+		const dialog = new DockedDialog();
+		tui.start();
+		await terminal.waitForRender();
+		const topBefore = tui.viewportTop;
+		tui.setFocus(dialog);
+
+		const keys = ["\x1b[5~", "\x1b[6~", "\x1b[H", "\x1b[F"];
+		for (const key of keys) terminal.sendInput(key);
+		await terminal.waitForRender();
+
+		assert.deepStrictEqual(dialog.inputs, keys);
+		assert.strictEqual(tui.viewportTop, topBefore);
+		tui.stop();
+	});
+
+	it("keeps viewport scrolling when a docked component does not claim the navigation keys", async () => {
+		class PlainEditor {
+			focused = false;
+			inputs: string[] = [];
+
+			handleInput(data: string): void {
+				this.inputs.push(data);
+			}
+
+			render(): string[] {
+				return ["editor"];
+			}
+
+			invalidate(): void {}
+		}
+		const terminal = new VirtualTerminal(20, 6);
+		const tui = new TuiAltScreen(terminal);
+		tui.addChild(new Text(Array.from({ length: 12 }, (_, index) => `line ${index + 1}`).join("\n"), 0, 0));
+		const editor = new PlainEditor();
+		tui.start();
+		await terminal.waitForRender();
+		const topBefore = tui.viewportTop;
+		tui.setFocus(editor);
+
+		terminal.sendInput("\x1b[5~");
+		await terminal.waitForRender();
+		assert.deepStrictEqual(editor.inputs, []);
+		assert.ok(tui.viewportTop < topBefore);
+		tui.stop();
+	});
+
 	it("keeps viewport scrolling while transcript search is focused", async () => {
 		const terminal = new VirtualTerminal(20, 6);
 		const tui = new TuiAltScreen(terminal);

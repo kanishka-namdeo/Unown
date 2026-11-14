@@ -48,8 +48,14 @@ import {
 import { tmpdir } from "node:os";
 import { dirname, isAbsolute, join, resolve } from "node:path";
 import { StringEnum } from "@earendil-works/pi-ai";
-import { type ExtensionAPI, type ExtensionUIContext, parseFrontmatter } from "@earendil-works/pi-coding-agent";
-import { Key, stableLaneIndex, Text } from "@earendil-works/pi-tui";
+import {
+        type ExtensionAPI,
+        type ExtensionUIContext,
+        getMarkdownTheme,
+        keyText,
+        parseFrontmatter,
+} from "@earendil-works/pi-coding-agent";
+import { Key, Markdown, stableLaneIndex, Text } from "@earendil-works/pi-tui";
 import { Type } from "typebox";
 import {
         completeForegroundTodosBySubjects,
@@ -169,6 +175,15 @@ import {
 import { IS_COMPILED_BINARY, isBunVirtualPath } from "./packaging.ts";
 import type { PermissionsStatus } from "./permissions.ts";
 import {
+        planApprovedLines,
+        planDialogPreviewTitle,
+        type PlanResultDetails,
+        planRejectedLines,
+        planResultDetails,
+        planRetrospectiveLines,
+        planWritePreviewLines,
+} from "./plan-display.ts";
+import {
         EMPTY_PLAN_DOC,
         extractPlanDoc,
         extractPlanSteps,
@@ -188,6 +203,7 @@ import {
         planReport,
         planSlug,
         renderPlanMarkdown,
+        renderRetrospectiveSection,
         rescanCompletedSteps,
         scorePlanDoc,
         scorePlanDocV3,
@@ -2631,6 +2647,89 @@ export function createUnownToolsExtension(opts: UnownToolsOptions) {
                         PLAN_APPROVAL_KEEP_PLANNING,
                 ] as const;
 
+                /** The plan-visibility lane's shared renderer (the 2026-11-14
+                 * round, docs/plan-visibility-round-session.md): the plan a
+                 * plan tool result carries renders for the USER by default —
+                 * compact preview (objective + steps + score) honoring the
+                 * narrow-terminal budget, the standard expand affordance
+                 * (dynamic keybinding text — the read tool's `⋯ N hidden ·
+                 * <key>` chip pattern), the full markdown when expanded.
+                 * Before this round both plan renderers truncated to one
+                 * capped line and ignored `options.expanded`, so Ctrl+O was
+                 * a functional no-op and the plan was invisible by default —
+                 * the exact defect the round closes (no major coding agent
+                 * hides the plan: Codex renders the full ProposedPlanCell,
+                 * Claude Code "presents it and asks how to proceed").
+                 * Legacy results (a resumed transcript replaying a plan turn
+                 * written before this round) carry no `details` payload —
+                 * for those the plan is recovered from the result text
+                 * markers, and a text without markers falls back to the old
+                 * single-line render so a session never renders empty. */
+                const renderPlanResultBlock = (
+                        result: any,
+                        options: { expanded?: boolean } | undefined,
+                        theme: any,
+                        kind: "written" | "approved" | "rejected" | "retrospective",
+                ): Text | Markdown => {
+                        const block = result?.content?.[0];
+                        const text = block?.type === "text" ? block.text : "";
+                        const firstLine = text.split("\n")[0] ?? "";
+                        const rawDetails: PlanResultDetails | undefined = result?.details;
+                        const expandKey = keyText("app.tools.expand");
+                        const hint = expandKey
+                                ? theme.fg("dim", " · ") + theme.fg("muted", `${expandKey} to expand`)
+                                : "";
+                        const recoveredMarkdown = (): string => {
+                                // Legacy-replay recovery: the approved/rejected result
+                                // texts embed the full markdown after their markers.
+                                const marker = kind === "rejected" ? "Rejected plan:\n" : "## Approved Plan\n\n";
+                                const at = text.indexOf(marker);
+                                return at >= 0 ? text.slice(at + marker.length) : "";
+                        };
+                        const markdownOf = (): string => rawDetails?.plan || recoveredMarkdown();
+                        const detailsOf = (): PlanResultDetails | undefined => {
+                                if (rawDetails) return rawDetails;
+                                const md = recoveredMarkdown();
+                                if (!md.trim()) return undefined;
+                                const doc = parsePlanMarkdown(md);
+                                if (doc.steps.length === 0) return undefined;
+                                return {
+                                        outcome: kind,
+                                        plan: md,
+                                        objective: doc.objective || "Untitled plan",
+                                        steps: doc.steps.map((s) => ({ step: s.step, text: s.text, completed: s.completed })),
+                                        file: "",
+                                        score: 0,
+                                };
+                        };
+                        const compact = (): string[] => {
+                                const details = detailsOf();
+                                if (!details) return [firstLine];
+                                if (kind === "approved") {
+                                        // The human headline is the first sentence of the model-facing
+                                        // text ("User has approved your plan.") — the full instruction
+                                        // ("start with step 1, flip the seeded todos…") stays in the
+                                        // expanded payload, where it belongs: it addresses the model.
+                                        const head = firstLine.split(/(?<=\.)\s/)[0] || firstLine;
+                                        return planApprovedLines(details, head);
+                                }
+                                if (kind === "rejected") return planRejectedLines(details, firstLine);
+                                if (kind === "retrospective") return planRetrospectiveLines(details, firstLine);
+                                return planWritePreviewLines(details);
+                        };
+                        if (options?.expanded) {
+                                const md = markdownOf();
+                                if (md.trim()) {
+                                        return new Markdown(md, 1, 0, getMarkdownTheme(), {
+                                                color: (s: string) => theme.fg("toolOutput", s),
+                                        });
+                                }
+                        }
+                        const lines = compact();
+                        const body = lines.map((l) => theme.fg("muted", l)).join("\n");
+                        return new Text(theme.fg("accent", "✳ ") + body + hint, 0, 0);
+                };
+
                 /** The TUI approval dialog (gap P-04/P-13): four options, the
                  * Claude Code "Ready to code?" mapping plus the editor lane.
                  * Loops on editor rounds; every exit re-scores the edited file. */
@@ -2643,7 +2742,20 @@ export function createUnownToolsExtension(opts: UnownToolsOptions) {
                         let currentDoc = doc;
                         let currentScore = score;
                         for (let round = 0; round < 6; round++) {
-                                const title = `Plan ready — ${currentScore.summary}`;
+                                // The plan-visibility lane (the 2026-11-14 round): the dialog
+                                // title carries the plan itself — objective + the first steps —
+                                // under the unchanged `Plan ready — <score>` headline. Before
+                                // this round the user was asked to approve a plan whose content
+                                // was never shown (title + four options only). A custom message
+                                // cannot be injected into the transcript mid-execution
+                                // (sendCustomMessage defers to end-of-turn — providers that
+                                // validate message order reject a message between a tool call
+                                // and its result), so the dialog itself is the surface. The
+                                // preview is capped (plan-display.ts) so the dialog stays inside
+                                // the narrow-terminal budget; the full markdown is one "Edit the
+                                // plan" away, and ctrl+o still passes through the open dialog to
+                                // expand the plan_write block above.
+                                const title = planDialogPreviewTitle(currentDoc, currentScore);
                                 const choice = await ctx.ui.select(title, [...planApprovalOptions]);
                                 if (choice === PLAN_APPROVAL_EXECUTE_AUTO) {
                                         await approvePlanExecution(ctx, currentDoc, "acceptEdits");
@@ -2901,6 +3013,11 @@ export function createUnownToolsExtension(opts: UnownToolsOptions) {
                                                                 text: `Plan written to ${file}.\n\n${planCritiqueAdvice(score)}`,
                                                         },
                                                 ],
+                                                // The plan-visibility lane: the rendered plan rides the UI-only
+                                                // details channel (never serialized to the provider) so the
+                                                // renderer can show the user the plan itself — before this
+                                                // round the result rendered as a single score line.
+                                                details: planResultDetails("written", doc, score, file),
                                                 isError: !score.passes && doc.steps.length === 0,
                                         };
                                 },
@@ -2912,11 +3029,8 @@ export function createUnownToolsExtension(opts: UnownToolsOptions) {
                                                 0,
                                         );
                                 },
-                                renderResult(result: any, _o: any, theme: any) {
-                                        const block = result?.content?.[0];
-                                        const text = block?.type === "text" ? block.text : "";
-                                        const first = text.split("\n").find((l: string) => l.includes("/100")) ?? text.slice(0, 80);
-                                        return new Text(theme.fg("accent", "✳ ") + theme.fg("muted", first), 0, 0);
+                                renderResult(result: any, options: any, theme: any) {
+                                        return renderPlanResultBlock(result, options, theme, "written");
                                 },
                         });
 
@@ -3013,6 +3127,12 @@ export function createUnownToolsExtension(opts: UnownToolsOptions) {
                                                                         text: `User has approved your plan. You can now start coding. Start with step 1, mark each completed step with a [DONE:n] tag${todos > 0 ? ` and flip the seeded todo tasks by id (${todos} were created from these exact steps — update THOSE tasks; do not create new todos for the same work)` : " and track progress with the todo tool"}.\n\nYour plan has been saved to: ${file}\n\n## Approved Plan\n\n${renderPlanMarkdown(doc)}`,
                                                                 },
                                                         ],
+                                                        // The plan-visibility lane: the approved plan renders for
+                                                        // the user (compact checklist by default, full markdown on
+                                                        // ctrl+o) instead of the first 90 characters of the first
+                                                        // line — the old renderer discarded the `## Approved Plan`
+                                                        // body it was handed.
+                                                        details: planResultDetails("approved", doc, score, file),
                                                 };
                                         }
                                         if (outcome.kind === "rejected") {
@@ -3024,6 +3144,9 @@ export function createUnownToolsExtension(opts: UnownToolsOptions) {
                                                                         text: `The plan was NOT approved — the user chose to keep planning.\n\nRejected plan:\n${renderPlanMarkdown(doc)}\nUser feedback: ${outcome.feedback || "(none given)"}\n\nRevise the plan file with plan_write accordingly and call exit_plan_mode again.`,
                                                                 },
                                                         ],
+                                                        details: planResultDetails("rejected", doc, score, file, {
+                                                                feedback: outcome.feedback,
+                                                        }),
                                                 };
                                         }
                                         // stayed (no choice / empty feedback): back to planning.
@@ -3048,9 +3171,30 @@ export function createUnownToolsExtension(opts: UnownToolsOptions) {
                                 renderCall(_args: any, theme: any) {
                                         return new Text(theme.fg("toolTitle", theme.bold("exit_plan_mode")), 0, 0);
                                 },
-                                renderResult(result: any, _o: any, theme: any) {
+                                renderResult(result: any, options: any, theme: any) {
+                                        // The plan-visibility lane: the approved/rejected plan
+                                        // renders for the user (compact checklist / feedback +
+                                        // objective, full markdown on ctrl+o) instead of the
+                                        // first 90 characters of the first line — the old
+                                        // renderer discarded the `## Approved Plan` body it was
+                                        // handed. A stayed turn is a model-facing wait
+                                        // instruction — the single muted line stays. Results
+                                        // with no details payload are either stayed turns or
+                                        // legacy transcript replays; the legacy approved and
+                                        // rejected texts embed the full markdown after their
+                                        // markers, so those plans are recovered and rendered
+                                        // too — a resumed session never loses the plan.
+                                        const outcome = result?.details?.outcome;
+                                        if (outcome === "rejected") return renderPlanResultBlock(result, options, theme, "rejected");
+                                        if (outcome === "approved") return renderPlanResultBlock(result, options, theme, "approved");
                                         const block = result?.content?.[0];
                                         const text = block?.type === "text" ? block.text : "";
+                                        if (text.includes("## Approved Plan")) {
+                                                return renderPlanResultBlock(result, options, theme, "approved");
+                                        }
+                                        if (text.includes("Rejected plan:")) {
+                                                return renderPlanResultBlock(result, options, theme, "rejected");
+                                        }
                                         const first = text.split("\n")[0] ?? "";
                                         return new Text(theme.fg("accent", first.slice(0, 90)), 0, 0);
                                 },
@@ -3153,6 +3297,12 @@ export function createUnownToolsExtension(opts: UnownToolsOptions) {
                                                                 text: `Retrospective recorded in ${file} and delivered to the self-learning engine (AutoDream will consolidate it).\n\nOutcome: ${retro!.outcome}${retro!.failureClass && retro!.failureClass !== "none" ? ` · failure class: ${retro!.failureClass}` : ""}\nLearnings:\n${learningLines || "  (none)"}\nImprovements:\n${improvementLines || "  (none)"}\n\nThe plan is closed. Summarize the delivery and the learning in your final answer.`,
                                                         },
                                                 ],
+                                                // The plan-visibility lane: the closed plan + its merged
+                                                // retrospective ride the UI-only details channel.
+                                                details: {
+                                                        ...planResultDetails("retrospective", doc, planScore ?? scorePlanDoc(doc), file),
+                                                        plan: `${renderPlanMarkdown(doc)}${renderRetrospectiveSection(retro!)}`,
+                                                },
                                         };
                                 },
                                 renderCall(args: any, theme: any) {
@@ -3163,11 +3313,8 @@ export function createUnownToolsExtension(opts: UnownToolsOptions) {
                                                 0,
                                         );
                                 },
-                                renderResult(result: any, _o: any, theme: any) {
-                                        const block = result?.content?.[0];
-                                        const text = block?.type === "text" ? block.text : "";
-                                        const first = text.split("\n")[0] ?? "";
-                                        return new Text(theme.fg("success", "✓ ") + theme.fg("muted", first.slice(0, 90)), 0, 0);
+                                renderResult(result: any, options: any, theme: any) {
+                                        return renderPlanResultBlock(result, options, theme, "retrospective");
                                 },
                         });
                 }

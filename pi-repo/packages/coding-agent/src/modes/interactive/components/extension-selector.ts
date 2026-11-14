@@ -30,6 +30,12 @@ export class ExtensionSelectorComponent extends Container {
          * every number to be reachable. Display-only — the callback still
          * receives the raw option string. */
         private readonly numberedQuickSelect: boolean;
+        /** The plan-visibility round (2026-11-14): a docked dialog owns the
+         * viewport navigation keys while focused — without this the alt-screen
+         * viewport's home/end/pageUp/pageDown scroll bindings eat the list
+         * navigation (tui.select.first/last/pageUp/pageDown) before this
+         * component ever sees the keys. */
+        readonly wantsViewportNav = true;
 
         constructor(
                 title: string,

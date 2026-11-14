@@ -584,7 +584,14 @@ export class TuiAltScreen extends TuiBase implements ViewportTUI {
         }
 
         private shouldDeferViewportInputToOverlay(): boolean {
-                return this.isOverlayFocused() && this.activeSearch?.overlay?.isFocused() !== true;
+                if (this.activeSearch?.overlay?.isFocused() === true) return false;
+                if (this.isOverlayFocused()) return true;
+                // A focused docked dialog (an extension selector/editor/input
+                // swapped into the editor area — NOT an overlay) declares it
+                // owns the viewport navigation keys: the scroll bindings must
+                // not eat home/end/pageUp/pageDown under a list the user is
+                // navigating or an editor whose cursor lives on those keys.
+                return this.getFocusedComponent()?.wantsViewportNav === true;
         }
 
         private handleViewportInput(data: string): { consume?: boolean } | undefined {

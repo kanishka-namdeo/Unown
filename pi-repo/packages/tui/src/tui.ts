@@ -41,6 +41,15 @@ export interface Component {
         wantsKeyRelease?: boolean;
 
         /**
+         * If true, this component receives the viewport navigation keys
+         * (home/end/pageUp/pageDown) while focused, instead of the alt-screen
+         * viewport's scroll bindings consuming them first. Dialog-style
+         * components swapped into the editor dock (an extension selector,
+         * input or editor) set this; overlays already defer to their focus.
+         */
+        wantsViewportNav?: boolean;
+
+        /**
          * Invalidate any cached rendering state.
          * Called when theme changes or when component needs to re-render from scratch.
          */

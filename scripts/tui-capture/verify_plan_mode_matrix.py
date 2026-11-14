@@ -528,15 +528,25 @@ def phase_gate(log, cwd) -> bool:
 
         # --- the user re-arms with a message; approve; execute ---
         s.type_prompt("the plan is fine — offer it for approval again")
+        # Two separately-labeled waits: a PaneTimeout on the SECOND wait is an
+        # execution timeout, not a re-arm failure (the 2026-11-14 plan-visibility
+        # round caught the except branch mislabeling a slow execution as a
+        # failed re-arm — the gate HAD re-armed and the todos were already
+        # flipping).
         try:
             s.wait_for([GATE_TITLE], timeout=240, desc="re-offer after user message")
-            check("user message re-arms the gate", True)
-            s.key("Enter")
-            s.wait_for([PLAN_COMPLETE], timeout=420, desc="execution complete")
-            check("approve → execute → Plan complete", True)
-            s.still("m6-complete", [PLAN_COMPLETE])
         except pc.PaneTimeout:
             check("user message re-arms the gate", False, s.pane_text()[-300:])
+        else:
+            check("user message re-arms the gate", True)
+            s.key("Enter")
+            try:
+                s.wait_for([PLAN_COMPLETE], timeout=420, desc="execution complete")
+            except pc.PaneTimeout:
+                check("approve → execute → Plan complete", False, s.pane_text()[-300:])
+            else:
+                check("approve → execute → Plan complete", True)
+                s.still("m6-complete", [PLAN_COMPLETE])
 
         # --- the seeded-todo discipline (the 2026-11-09 instruction fix) ---
         session = latest_session(since=started)

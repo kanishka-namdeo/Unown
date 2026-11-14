@@ -20,6 +20,10 @@ export class ExtensionInputComponent extends Container implements Focusable {
 	private titleText: Text;
 	private baseTitle: string;
 	private countdown: CountdownTimer | undefined;
+	/** The plan-visibility round (2026-11-14): a docked dialog owns the
+	 * viewport navigation keys while focused — the alt-screen viewport's
+	 * home/end scroll bindings must not eat the input's cursor keys. */
+	readonly wantsViewportNav = true;
 
 	// Focusable implementation - propagate to input for IME cursor positioning
 	private _focused = false;
