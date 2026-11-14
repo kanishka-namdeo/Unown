@@ -374,6 +374,21 @@ the 0.0.65 section AFTER the v0.0.65 tag had been cut (the tag points at
 15c3bc16), so the released 0.0.65 binaries never contained the
 interchange; [0.0.66] is where the code actually ships.
 
+
+**The cut, in order.** The fold commit (a58ad45c): the interchange entry
+honestly moved from the post-tag [0.0.65] section into [0.0.66] (the
+landed CP6 commit had parked its entry in 0.0.65 AFTER that tag was
+cut), the reconciliation + legato entries, the 0.0.66 title
+compressions, the budget-twin amendment 4,590→4,612 (both twins), the
+version bump, the overview re-stamp. The fold's CI was cancelled
+mid-flight by the rail cure 410eb09d (the parallel legato fix had left
+the rail stale — main's red at run #1166; the cure's regenerated rail
+closed it) — the v0.0.62 precedent: the pre-tag cross-platform verdict
+was bought via the xplat release-verify dispatch instead (run
+43638033447: six binaries, three-OS tests, six runner boots, all
+green). `v0.0.66` tagged on 410eb09d; the release rendered **15/15
+jobs green** (run #106) and published 2026-11-14T20:59:08Z as Latest
+with all 13 assets.
 ## Session checkpoint protocol
 
 This file is the resumable state: each CP updates its ledger row and adds
