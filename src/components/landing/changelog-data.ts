@@ -30,14 +30,14 @@ export interface ChangelogStop {
   groups: ChangelogGroup[];
 }
 
-export const CHANGELOG_TOTAL_ENTRIES = 583;
+export const CHANGELOG_TOTAL_ENTRIES = 585;
 
 export const CHANGELOG_TOTALS: Record<ChangelogBucket, number> = {
   "Added": 248,
   "Changed": 32,
   "Deprecated": 0,
   "Removed": 3,
-  "Fixed": 214,
+  "Fixed": 216,
   "Security": 5,
   "Behavior": 81
 };
@@ -46,13 +46,13 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
   {
     "label": "Unreleased",
     "date": null,
-    "total": 42,
+    "total": 44,
     "counts": {
       "Added": 2,
       "Changed": 0,
       "Deprecated": 0,
       "Removed": 0,
-      "Fixed": 11,
+      "Fixed": 13,
       "Security": 0,
       "Behavior": 29
     },
@@ -219,6 +219,14 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
           },
           {
             "title": "The delight surfaces — visible provenance, honest counts…",
+            "behavior": false
+          },
+          {
+            "title": "unown memory doctor — the memory audit pass (the Memory Divertimento round CP5; the deferred gap #4 from the…",
+            "behavior": false
+          },
+          {
+            "title": "unown memory doctor — the memory audit pass (the Memory Divertimento round CP5; the deferred gap #4 from the…",
             "behavior": false
           },
           {

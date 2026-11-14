@@ -41,7 +41,7 @@ unilaterally).
 | CP2 deterministic supersession — SRO keys in the reconcile | ✅ done | `parseSro`/`normalizeSroPart`/`sroClaimKey`/`sroFullKey`/`sroContradictionGroups`/`applyDeterministicSroSupersedes` + the post-LLM wiring in `reconcileMemories` (`sroApplied`/`sroSkipped` on ReconcileResult, never re-opening an LLM verdict) + `MEM0_CUSTOM_INSTRUCTIONS` SRO tagging + `RECONCILE_SYSTEM` no-merge rule + the reconcile listing enrichment + `DreamOutcome.sroApplied` + the dream-note ", K deterministic" fragment + `countSroTagged`/`sroTaggedCount` on the health card + docs (memory.md, AGENTS.md, unown-overview) + `test/memory-sro.test.ts` (15) |
 | CP3 usage-conditioned decay — render-exclusion dormancy with recurrence reset | ✅ done | `mem0DormantAfter`/`DormancyEntry`/`readDormancyRecord`/`writeDormancyRecord`/`isDormantId`/`trackDormancyFromPlan`/`reviveDormantByIds`/`dormantCountFor`/`dormantCountAll`/`dormancyScopeKey` + `computeRenderPlan` (extracted from the render, byte-identical) + dream.ts consolidate wiring (`dormantNew`/`dormantResets` on DreamOutcome) + server.ts `annotateAndReviveDormancy` (badge + revive on every search lane) + memory-health `dormantCount` + dashboard-types + env/docs (PI_MEM0_DORMANT_AFTER in .env.example + configuration.md; memory.md; AGENTS.md; unown-overview) + `test/memory-dormancy.test.ts` (10) |
 | CP4 the delight lane — provenance badges, honest counts, the AutoDream digest | ✅ done | tools.ts search badges (type/hard-won/freshness stamp/dormant-revived) + the store-free `memory-stamps.ts` (single definitions, re-exported; the terminal tools never import the engine DB) + `countProjectStaleRules`/`MemoryBarInfo.stale` + the recall line's `(N stale)` fragment + dreams-table `entries_superseded`/`entries_dormant` (schema + migrations + threading through all dream-row writes) + `latestDreamNews` digest fields + `DreamNews.superseded/dormant` + `dreamNewsToastText` digest + /memory show's `not injected · N dormant` line + the dashboard fact line's dormant/sro counts + docs (memory.md delight section, AGENTS.md, unown-overview) + `test/memory-delight.test.ts` (6) |
-| CP5 `unown memory doctor` — the audit that proves the loop | ☐ | |
+| CP5 `unown memory doctor` — the audit that proves the loop | ✅ done | new `src/memory-doctor.ts` (`auditProjectMemory`/`renderMemoryDoctorReport`/`liveMemoryDoctorEngine`) + the cli.ts subcommand + HELP + the `unown doctor` store row + docs (memory.md, AGENTS.md, unown-overview) + `test/memory-doctor.test.ts` (6) |
 | CP6 memory interchange — export/import behind the human gate | ☐ | |
 | CP7 verification + docs/landing/blog/DOX + CHANGELOG + version + release | ☐ | |
 
@@ -269,6 +269,20 @@ importing the engine DB into the terminal process.
 
 Measured: delight 6/6; the stamp/supersede/typing/recall battery 106/106
 after the dedup; engine 5654/0.
+
+
+## CP5 — the memory audit pass, shipped (2026-11-14)
+
+`unown memory doctor [--json]` (the deferred gap #4, closed; the memU
+doctor law: prove the loop): tier budgets + the injection budget (the
+terminal resolution — engine-down safe), the stale count, a LIVE
+recall-seal probe (a superseded row answering a default recall bare is a
+LEAK finding), the store's health + the review-queue depth
+(degraded-to-absent engine-down), placement findings (report-only), and
+derivable-from-repo findings. `unown doctor`'s memory row gains a one-line
+store summary. Live-smoked against the running engine: sealed, healthy.
+
+Measured: doctor suite 6/6; engine 5660/0.
 
 ## Session checkpoint protocol
 

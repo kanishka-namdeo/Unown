@@ -52,6 +52,7 @@ import { DASHBOARD_HELP, runDashboardCommand } from "./dashboard/dashboard-boot.
 import { DELEGATIONS_USAGE, runDelegationsCommand } from "./delegations-cli.ts";
 import { auditInstructionSet, renderInstructionAudit, summarizeInstructionAudit } from "./doctor-instructions.ts";
 import { engineFetch } from "./engine-auth.ts";
+import { auditProjectMemory, liveMemoryDoctorEngine, renderMemoryDoctorReport } from "./memory-doctor.ts";
 import { runEngineCommand } from "./engine-cli.ts";
 import { describeEngineOwner, probeEngine } from "./engine-probe.ts";
 import { readSpawnState } from "./engine-supervisor.ts";
@@ -222,6 +223,11 @@ Usage:
                            candidates, approve <id> (ships to both user
                            tiers, re-deduped + re-guarded at decision time),
                            discard <id> [--reason s] (kept for audit)
+  unown memory doctor      the memory audit pass: tier budgets + injection
+                           budget, the live recall-seal probe, the store's
+                           health (dupes/conflicts/superseded/dormant/sro),
+                           the review queue, placement and derivable-from-
+                           repo findings (--json for machines)
   unown dashboard [screen] the TUI mission control for the learning memory
                            system (alias: dash) — screens: overview, memory,
                            dreams, notes, skills, lab, hooks, router,
@@ -1808,14 +1814,38 @@ function cmdDoctorInstructions(args: string[]): number {
         return sum.errors > 0 ? 1 : 0;
 }
 
-function cmdMemory(sub: string): void {
+async function cmdMemory(sub: string): Promise<void> {
         // `unown memory review` — the human gate (Divertimento CP1): bare
         // lists the pending queue through the engine; `approve <id>` ships
         // via memory-review-ship; `discard <id> [--reason]` records the
         // verdict. One inbox across projects (the queue is user-level).
         const rest = String(sub ?? "").trim();
         if (/^review\b/i.test(rest)) {
-                void cmdMemoryReview(rest.replace(/^review\s+/i, "").trim());
+                await cmdMemoryReview(rest.replace(/^review\s+/i, "").trim());
+                return;
+        }
+        // `unown memory doctor` — the audit pass (Divertimento CP5): what IS in
+        // the tiers and what the engine says about the store. Tiers/injection/
+        // placement/derivable run terminal-side (engine-down safe); the store
+        // health, the review queue, and the LIVE recall-seal probe come through
+        // the engine API (degraded-to-absent when down). --json for machines.
+        if (/^doctor\b/i.test(rest)) {
+                const asJson = /(^|\s)--json(\s|$)/.test(rest);
+                const engine = liveMemoryDoctorEngine(async (path) => {
+                        try {
+                                const res = await engineFetch(`${ENGINE_URL}${path}`, { signal: AbortSignal.timeout(5000) });
+                                if (!res.ok) return null;
+                                return await res.json();
+                        } catch {
+                                return null;
+                        }
+                });
+                const report = await auditProjectMemory(process.cwd(), engine);
+                if (asJson) {
+                        console.log(JSON.stringify(report, null, 2));
+                } else {
+                        console.log(renderMemoryDoctorReport(report));
+                }
                 return;
         }
         if (rest) {
@@ -2162,6 +2192,24 @@ async function cmdDoctor(jsonMode: boolean): Promise<number> {
         initProjectMemory(cwd);
         check("project memory", existsSync(projectMemoryPath(cwd)), projectMemoryPath(cwd).replace(cwd, "."));
         check("user memory", true, `${UNOWN_HOME}/memory/user.md`);
+        // The Divertimento store row (CP5): one best-effort line from the
+        // engine's health card — the deep audit is `unown memory doctor`.
+        try {
+                const hres = await engineFetch(`${ENGINE_URL}/api/memory/health`, { signal: AbortSignal.timeout(3000) });
+                if (hres.ok) {
+                        const hbody = (await hres.json()) as any;
+                        const h = hbody?.health;
+                        check(
+                                "memory store",
+                                true,
+                                `${h?.memoryCount ?? 0} memor${h?.memoryCount === 1 ? "y" : "ies"} · ${h?.duplicateCount ?? 0} dupe(s) · ${h?.conflictCount ?? 0} conflict(s) · ${h?.dormantCount ?? 0} dormant${h?.reviewQueueDepth ? ` · ${h.reviewQueueDepth} in review (unown memory review)` : ""}`,
+                        );
+                } else {
+                        check("memory store", false, "engine unreachable — the audit is skipped (unown engine start)", "warn");
+                }
+        } catch {
+                check("memory store", false, "engine unreachable — the audit is skipped (unown engine start)", "warn");
+        }
 
         // 3. model endpoint (the chat path — failures here break sessions)
         if (active?.baseUrl) {
@@ -4387,7 +4435,7 @@ subgrammar.`,
                         process.exit(0);
                         break;
                 case "memory":
-                        cmdMemory(args.prompt ?? "");
+                        await cmdMemory(args.prompt ?? "");
                         process.exit(0);
                         break;
                 case "note":
