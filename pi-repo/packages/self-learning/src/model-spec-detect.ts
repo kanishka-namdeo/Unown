@@ -51,7 +51,28 @@ export interface SpecCost {
 }
 
 /** Where a spec (or a field of it) came from. */
-export type SpecSource = "curated" | "models-dev" | "litellm" | "endpoint" | "user" | "learned";
+export type SpecSource =
+        | "curated"
+        | "models-dev"
+        | "litellm"
+        | "endpoint"
+        | "user"
+        | "learned"
+        /** A sidecar record whose `source` was not one of the known values
+         *  (a hand-edit, a foreign pinning script, a future version). Records
+         *  are NEVER dropped for it — the raw value survives in `unknownSource`
+         *  and renders honestly (issue #48: doctor used to crash on these). */
+        | "unknown";
+
+/** The set of sources a sidecar record may carry without becoming `unknown`. */
+const KNOWN_SPEC_SOURCES: ReadonlySet<string> = new Set([
+        "curated",
+        "models-dev",
+        "litellm",
+        "endpoint",
+        "user",
+        "learned",
+]);
 
 /**
  * How the source's id was matched:
@@ -83,6 +104,10 @@ export interface ModelSpecDetection {
         matchedId?: string;
         /** Every source that contributed a field, with the fields it provided. */
         contributors: Array<{ source: SpecSource; fields: string[]; match: SpecMatchQuality }>;
+        /** The raw `source` string a sidecar record carried when it was not a
+         *  known value (present only on `source: "unknown"` records). Kept so
+         *  the display can say exactly what the foreign writer put there. */
+        unknownSource?: string;
 }
 
 /** A recorded detection (the provenance sidecar's record shape). */
@@ -800,11 +825,42 @@ export interface SpecSidecar {
         specs: Record<string, ModelSpecRecord>;
 }
 
+/** Sanitize one sidecar record's provenance (issue #48): a `source` outside
+ *  the known enum (hand-edit, foreign pinning script, future version) is
+ *  coerced to "unknown" with the raw value preserved in `unknownSource` —
+ *  the record itself is never dropped, and every display path stays total.
+ *  Contributor sources are coerced too (they render in detection receipts). */
+function sanitizeSpecRecordSource<T extends ModelSpecRecord>(record: T): T {
+        if (typeof record.source !== "string" || !KNOWN_SPEC_SOURCES.has(record.source)) {
+                const raw = typeof record.source === "string" ? record.source : JSON.stringify(record.source);
+                record = { ...record, source: "unknown", ...(raw ? { unknownSource: raw } : {}) };
+        }
+        if (Array.isArray(record.contributors)) {
+                record = {
+                        ...record,
+                        contributors: record.contributors.map((c) =>
+                                typeof c?.source === "string" && KNOWN_SPEC_SOURCES.has(c.source)
+                                        ? c
+                                        : { ...c, source: "unknown" as SpecSource },
+                        ),
+                };
+        }
+        return record;
+}
+
 export function readSpecSidecar(agentDir: string): SpecSidecar {
         try {
                 const raw = JSON.parse(readFileSync(join(agentDir, SIDECAR_FILENAME), "utf8")) as SpecSidecar;
-                if (raw && typeof raw === "object" && raw.version === 1 && raw.specs && typeof raw.specs === "object")
-                        return raw;
+                if (raw && typeof raw === "object" && raw.version === 1 && raw.specs && typeof raw.specs === "object") {
+                        // Sanitize every record's provenance BEFORE it can reach a
+                        // display helper — a foreign `source` value used to crash
+                        // `unown doctor` (issue #48: formatSpecShort TypeError).
+                        const specs: Record<string, ModelSpecRecord> = {};
+                        for (const [key, record] of Object.entries(raw.specs)) {
+                                if (record && typeof record === "object") specs[key] = sanitizeSpecRecordSource(record);
+                        }
+                        return { version: 1, specs };
+                }
         } catch {
                 /* missing/corrupt — empty */
         }
@@ -851,10 +907,15 @@ const SOURCE_LABELS: Record<SpecSource, string> = {
         endpoint: "the endpoint's own /models",
         user: "you entered it",
         learned: "learned from an upstream error",
+        unknown: "an unrecognized source",
 };
 
-export function specSourceLabel(source: SpecSource): string {
-        return SOURCE_LABELS[source];
+/** Total by construction (issue #48): any value — including garbage from a
+ *  hand-edited or foreign-written sidecar — resolves to a printable label,
+ *  never undefined. The raw value itself is rendered by the format helpers
+ *  through `unknownSource`, which is where the specificity belongs. */
+export function specSourceLabel(source: SpecSource | string): string {
+        return SOURCE_LABELS[source as SpecSource] ?? SOURCE_LABELS.unknown;
 }
 
 /** "524,288 ctx / 65,536 out · text+image · $0.11 in / $0.60 out per 1M · models.dev (exact)" */
@@ -867,8 +928,13 @@ export function formatSpecLine(spec: ModelSpecDetection | ModelSpecRecord): stri
                 const c = spec.cost;
                 bits.push(`$${trimNum(c.input)} in / $${trimNum(c.output)} out per 1M`);
         }
-        bits.push(`${specSourceLabel(spec.source)}${spec.match === "exact" ? "" : ` (${spec.match} match)`}`);
+        bits.push(`${specSourceLabel(spec.source)}${spec.match === "exact" ? "" : ` (${spec.match} match)`}${rawSourceSuffix(spec)}`);
         return bits.join(" · ");
+}
+
+/** "(raw: operator)" — the honest rendering of a foreign source value. */
+function rawSourceSuffix(spec: ModelSpecDetection | ModelSpecRecord): string {
+        return spec.source === "unknown" && spec.unknownSource ? ` (raw: ${String(spec.unknownSource).slice(0, 40)})` : "";
 }
 
 /** "524,288 ctx / 65,536 out (curated catalog)" — the compact chip for
@@ -877,7 +943,7 @@ export function formatSpecShort(spec: ModelSpecDetection | ModelSpecRecord): str
         const ctx = spec.contextWindow !== undefined ? spec.contextWindow.toLocaleString("en-US") : "?";
         const out = spec.maxTokens !== undefined ? spec.maxTokens.toLocaleString("en-US") : "?";
         const label = specSourceLabel(spec.source).split(" (")[0];
-        return `${ctx} ctx / ${out} out (${label}${spec.match === "exact" ? "" : `, ${spec.match}`})`;
+        return `${ctx} ctx / ${out} out (${label}${spec.match === "exact" ? "" : `, ${spec.match}`}${rawSourceSuffix(spec)})`;
 }
 
 function trimNum(n: number): string {

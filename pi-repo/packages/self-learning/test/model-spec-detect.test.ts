@@ -9,13 +9,14 @@
  * — fetch is always injected, env URLs point at dead ports.
  */
 import { afterAll, describe, expect, test } from "bun:test";
-import { mkdtempSync, rmSync } from "node:fs";
+import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import {
         detectModelSpec,
         familyMatch,
         formatSpecLine,
+        formatSpecShort,
         getRecordedSpec,
         indexLiteLLM,
         indexModelsDev,
@@ -28,6 +29,7 @@ import {
         readRegistryCache,
         readSpecSidecar,
         recordSpec,
+        specSourceLabel,
         registryCacheTtlMs,
         sanitizeSpecNumbers,
         specIdCandidates,
@@ -534,6 +536,43 @@ describe("the provenance sidecar", () => {
         });
         test("missing file → empty sidecar", () => {
                 expect(readSpecSidecar(join(tmp, "does-not-exist")).specs).toEqual({});
+        });
+        test("issue #48: a foreign source value never crashes the display path", () => {
+                const dir = mkdtempSync(join(tmpdir(), "spec-sidecar-foreign-"));
+                // Exactly the shape an operator pinning script or a hand-edit can
+                // leave behind: a `source` outside the enum (and a garbage
+                // contributor). Pre-fix this made `unown doctor` throw a
+                // TypeError from formatSpecShort (specSourceLabel → undefined.split).
+                writeFileSync(
+                        join(dir, "model-specs.json"),
+                        JSON.stringify({
+                                version: 1,
+                                specs: {
+                                        "kimi/kimi-k2.5": {
+                                                contextWindow: 262144,
+                                                maxTokens: 16384,
+                                                source: "operator",
+                                                match: "exact",
+                                                contributors: [{ source: 7, fields: ["contextWindow"], match: "exact" }],
+                                                verifiedAt: 1234,
+                                        },
+                                },
+                        }),
+                );
+                const rec = getRecordedSpec(dir, "kimi", "kimi-k2.5");
+                expect(rec?.source).toBe("unknown"); // coerced, never dropped
+                expect(rec?.unknownSource).toBe("operator"); // raw value preserved
+                expect(rec?.contributors[0].source).toBe("unknown");
+                // The two display helpers doctor / `unown models` / setup render
+                // through — and say what the foreign writer put there.
+                expect(formatSpecShort(rec!)).toContain("raw: operator");
+                expect(formatSpecLine(rec!)).toContain("an unrecognized source");
+                expect(formatSpecLine(rec!)).toContain("raw: operator");
+                // Total even for direct garbage: the label helper itself never
+                // returns undefined for ANY input.
+                expect(specSourceLabel("operator")).toContain("unrecognized");
+                expect(specSourceLabel(undefined as unknown as string)).toContain("unrecognized");
+                rmSync(dir, { recursive: true, force: true });
         });
         test("userSpec carries user provenance", () => {
                 const s = userSpec(1000, 100);
