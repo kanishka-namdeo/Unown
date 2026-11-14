@@ -137,7 +137,15 @@ describe("boot-time integrity gate (server.ts, fresh process)", () => {
                 expect(r.stdout).toContain("BOOT_RESULT=refused");
                 expect(r.stderr).toContain("integrity check failed");
                 expect(r.stderr).toContain("unown engine repair");
-        }, 15_000);
+                // 45s (was 15s): the probe boots a fresh bun process through
+                // the whole of server.ts, and the loaded WINDOWS release leg
+                // crossed the old 15s budget (run 43631366861, the healthy-DB
+                // sibling measured 15,044 ms — the runner runs the full
+                // install + build before the suite). Same class as the
+                // quickcheck's own 5s -> 30s bump documented above; the
+                // spawnSync budget is 60s, so the test budget now matches it
+                // with headroom.
+        }, 45_000);
 
         test("a healthy DB boots normally (the gate does not over-block)", () => {
                 const path = join(ROOT, "gate-healthy.db");
@@ -145,5 +153,7 @@ describe("boot-time integrity gate (server.ts, fresh process)", () => {
                 const r = bootGateProbe(path);
                 expect(r.code).toBe(0);
                 expect(r.stdout).toContain("BOOT_RESULT=booted");
-        }, 15_000);
+        }, 45_000); // 45s (was 15s): the full boot (migrations + schema +
+        // ephemeral bind) on the loaded Windows release leg — same receipt as
+        // the damaged-DB sibling above.
 });
