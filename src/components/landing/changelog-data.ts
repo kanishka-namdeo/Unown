@@ -46,13 +46,13 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
   {
     "label": "Unreleased",
     "date": null,
-    "total": 38,
+    "total": 37,
     "counts": {
       "Added": 0,
       "Changed": 0,
       "Deprecated": 0,
       "Removed": 0,
-      "Fixed": 9,
+      "Fixed": 8,
       "Security": 0,
       "Behavior": 29
     },
@@ -182,10 +182,6 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
         "bucket": "Fixed",
         "items": [
           {
-            "title": "Legato's clip pipeline boot no longer fails silently — a transient module-fetch failure at boot was permanently…",
-            "behavior": false
-          },
-          {
             "title": "CodeQL alert #91 (js/polynomial-redos…",
             "behavior": false
           },
@@ -224,13 +220,13 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
   {
     "label": "0.0.66",
     "date": "2026-11-15",
-    "total": 2,
+    "total": 3,
     "counts": {
       "Added": 1,
       "Changed": 0,
       "Deprecated": 0,
       "Removed": 0,
-      "Fixed": 1,
+      "Fixed": 2,
       "Security": 0,
       "Behavior": 0
     },
@@ -249,6 +245,10 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
         "items": [
           {
             "title": "The interchange's duplicate…",
+            "behavior": false
+          },
+          {
+            "title": "Legato's clip pipeline boot no longer fails silently — a transient module-fetch failure at boot was permanently…",
             "behavior": false
           }
         ]
