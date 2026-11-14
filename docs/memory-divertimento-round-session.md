@@ -440,10 +440,14 @@ blog landed in the same day's post-close pass:
    guard. Model-luck (the 11-11 and 11-12 runs passed the same probe
    warm), n=5, the receipts carry the raw responses.
 
-3. **The round's blog post** — `content/blog/2026-11-15-the-memory-
-   divertimento-round.md` ("The round that fixed memory itself"), the
-   review-queue pane capture from the matrix run as its media
-   (`public/blog/2026-11-15-the-memory-divertimento-round/`), the blog
+3. **The round's blog post** — the parallel lineage's
+   `content/blog/2026-11-15-the-memory-divertimento-round.md` ("The
+   Memory Divertimento round: the integrity lane, and memory you can
+   carry") governs (first-landing); the reconciliation folded this
+   lineage's verified value into it (the frontmatter tags typo cured;
+   the review-queue pane capture from the matrix run embedded in the
+   integrity-lane section —
+   `public/blog/2026-11-15-the-memory-divertimento-round/`), the blog
    generator + feed re-stamped (54 posts), the blog suites green (11/0).
 ## Session checkpoint protocol
 
