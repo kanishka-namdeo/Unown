@@ -4,7 +4,7 @@
  "question": "Answer from the project memory/context ONLY (do not read source files, do not run tools): When did the render lane of this project switch from fixed column widths to auto-sizing? One line.",
  "expected": "2026-11-05",
  "warm": {
-  "response": "From project memory: the render lane (src/render.ts) switched to auto-sizing on **2026-11-05**.",
+  "response": "On 2026-11-05, the render lane switched from fixed column widths to auto-sizing per-column widths with a minimum width of 4 (in src/render.ts).",
   "exitCode": 0,
   "timedOut": false,
   "pass": true,
@@ -12,12 +12,12 @@
   "kind": "exact-match"
  },
  "cold": {
-  "response": "I have no record of that in the project memory — the memory tiers contain no information about a \"render lane\" or column-width changes, so I can't answer from memory alone. (If it's from the project's commit history, I could check with git log, but that requires a tool, which you asked me to avoid.)",
+  "response": "I don't have that in memory — no record of a \"render lane\" or a column-width auto-sizing change exists in the memory tiers provided, so I can't answer without reading source.",
   "exitCode": 0,
   "timedOut": false,
   "pass": false,
   "score": 0,
   "kind": "exact-match"
  },
- "ts": "2026-11-12T05:17:05.286Z"
+ "ts": "2026-11-14T21:27:09.089Z"
 }

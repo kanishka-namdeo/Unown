@@ -1,0 +1,36 @@
+  methodical-debugging, repo-exploration, unown-self-learning, verification-first
+
+── Extensions ──
+  <inline:6>
+
+── Themes ──
+  unown
+
+[Extension issues]
+  <inline:unown-tools>
+    Extension command '/settings' overrides a built-in interactive command. The extension version is dispatched and listed in
+autocomplete.
+
+
+ ◈ memory recalled: 6 rules — /memory show
+
+ memory review queue — 2 pending (approve: /memory review approve <id> · discard: /memory review discard <id>):
+ · rv-fa606cb7-r2 · queued 1m ago — imported from /tmp/unown-mem-matrix-y9xvtw7f/matrix-review-import.json (source scope:
+ engine)
+   rule: PTY-REVIEW-DISCARD-LANE: the review queue's discard lane is pinned by the matrix (the verdict is kept for audit)
+ · rv-25ade33c-r2 · queued 1m ago — imported from /tmp/unown-mem-matrix-y9xvtw7f/matrix-review-import.json (source scope:
+ engine)
+   rule: PTY-REVIEW-APPROVE-LANE: the review queue's approve lane is pinned by the matrix (ships to both user tiers)
+
+ memory review discarded — rv-fa606cb7-r2 (kept for audit)
+
+ memory review approved — shipped 0 rule(s) to both user tiers (v1) · 1 already present (skipped)
+
+ memory review queue is empty — nothing awaits your decision
+
+ ○ no tracked steps · conf ✓ · 0m in session
+»───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+/tmp/unown-mem-matrix-y9xvtw7f · ctx ▕░░░░░░░░░░▏ 0.0%/524k (auto)                                               agnes-3.0-flash
+? help · ctrl+k palette · / commands · ! bash · ctrl+o tools · esc-esc tree

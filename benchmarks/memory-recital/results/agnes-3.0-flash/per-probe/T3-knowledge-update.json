@@ -4,20 +4,20 @@
  "question": "Answer from the project memory/context ONLY (do not read source files, do not run tools): What is the CURRENT date-validation contract in validateRows, and what was it before? One line.",
  "expected": "empty dates accepted any parseable date strict ISO removed",
  "warm": {
-  "response": "Current contract in `validateRows` (src/validate.ts): strict ISO date validation was removed, so empty dates pass as unspecified and any non-empty date is accepted while the 3-column and numeric-amount checks remain unchanged (from project memory, 2026-11-12); before, it enforced strict ISO-format date validation.",
+  "response": "From project memory: **Now** `validateRows` enforces only 3-column count and numeric amount (empty dates are valid; non-empty dates pass without format check); **before**, it enforced ISO date validation via an `ISO_DATE` regex that rejected malformed dates.",
   "exitCode": 0,
   "timedOut": false,
-  "pass": true,
-  "score": 0.8888888888888888,
+  "pass": false,
+  "score": 0.4444444444444444,
   "kind": "exact-match"
  },
  "cold": {
-  "response": "I have no record of `validateRows` or its date-validation contract in the project memory — the project memory tiers are all empty (no conventions or pitfalls recorded) — so I can't answer this from memory alone; if you'd like, I can check the source.",
+  "response": "Not in the project memory — the provided memory tiers are empty on this topic (\"Known pitfalls\" and \"Conventions\" are empty), so I have no recorded answer for the current or previous date-validation contract in `validateRows`; I'd need to read the source to say.",
   "exitCode": 0,
   "timedOut": false,
   "pass": false,
   "score": 0.1111111111111111,
   "kind": "exact-match"
  },
- "ts": "2026-11-12T05:17:13.095Z"
+ "ts": "2026-11-14T21:27:15.567Z"
 }

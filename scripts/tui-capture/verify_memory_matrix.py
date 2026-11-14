@@ -64,6 +64,8 @@ from __future__ import annotations
 
 import json
 import os
+import re
+import subprocess
 import sys
 import time
 import urllib.request
@@ -538,6 +540,289 @@ def phase_exit(log, cwd) -> bool:
 
 
 # ---------------------------------------------------------------------------
+# Phases — the Memory Divertimento round's surfaces (CP1 review / CP5 doctor /
+# CP6 interchange), added at the round's CP7 close (2026-11-15): the closing
+# lineage's battery ran the suites; these lanes pin the SAME surfaces through
+# the products' own commands against a live engine — the pre-registered
+# "PTY memory matrix extended to the new surfaces".
+# ---------------------------------------------------------------------------
+
+def _run_cli(log, cwd, args, timeout=90):
+    """Run `bun bin/unown …` in the target project. The doctor + interchange
+    surfaces are CLI lanes (the TUI slash lane covers review); the PTY
+    lane's receipt is the command's own output + the state it leaves in the
+    engine. bin/unown resolves its package relative to the SCRIPT, so the
+    subprocess runs fine from the scratch project cwd."""
+    cmd = ["bun", os.path.join(_REPO_ROOT, "bin", "unown"), *args]
+    env = {**os.environ, "UNOWN_ENGINE_URL": ENGINE_URL}
+    try:
+        p = subprocess.run(cmd, cwd=cwd, capture_output=True, text=True, timeout=timeout, env=env)
+        out = (p.stdout or "") + (p.stderr or "")
+        head = out.strip().splitlines()[0] if out.strip() else "(no output)"
+        log(f"[CLI] unown {' '.join(args)} -> exit {p.returncode} | {head}")
+        return p.returncode, out
+    except subprocess.TimeoutExpired:
+        log(f"[CLI] unown {' '.join(args)} -> TIMEOUT ({timeout}s)")
+        return 124, ""
+
+
+def _synthetic_export(path: str, texts: list) -> None:
+    """Write a minimal schema-v1 interchange file (the CP6 shape — the same
+    record fields `unown memory export` writes, trimmed to the required
+    set). Fixed marker texts (not uuids) so matrix RE-RUNS converge: the
+    approve lane's decision-time dedupe skips a rule the first run already
+    shipped, and the re-park lane parks re-observations under -r<N> ids."""
+    doc = {
+        "version": 1,
+        "generator": "verify_memory_matrix.py",
+        "exportedAt": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+        "records": [
+            {
+                "scope": "engine",
+                "id": f"matrix-{i}",
+                "text": t,
+                "kind": "fact",
+                "sro": None,
+                "createdAt": None,
+                "updatedAt": None,
+                "confirmedAt": None,
+                "supersededBy": None,
+                "invalidAt": None,
+                "dormant": False,
+                "provenance": None,
+            }
+            for i, t in enumerate(texts)
+        ],
+        "meta": {"total": len(texts), "live": len(texts), "superseded": 0, "dormant": 0, "scopes": ["engine"]},
+    }
+    with open(path, "w", encoding="utf-8") as f:
+        json.dump(doc, f, indent=2)
+
+
+def _review_queue_ids(log, cwd, marker=None) -> list:
+    """The pending review-queue ids, read through the CLI's own listing (the
+    degraded-safe surface — the same rows the TUI renders). With a marker,
+    only the candidate blocks whose rule/evidence carry it are returned —
+    the phase decides ITS OWN rows, never a neighbor's on a shared
+    user-level queue."""
+    rc, out = _run_cli(log, cwd, ["memory", "review"])
+    if rc != 0:
+        return []
+    blocks = re.split(r"^\s*$", out, flags=re.M)
+    ids = []
+    for b in blocks:
+        m = re.search(r"^\s{2}(\S+) \u00b7 queued", b, flags=re.M)
+        if not m:
+            continue
+        if marker is None or marker in b:
+            ids.append(m.group(1))
+    return ids
+
+
+def phase_review(log, cwd) -> bool:
+    """`/memory review` — the review queue's TUI lane (Divertimento CP1):
+    the queue is planted through the product's OWN import path (the
+    human-gate default parks imported records), listed through the TUI,
+    decided through the TUI — discard keeps the audit row, approve ships
+    (a re-run converges: the decision-time dedupe skips an already-shipped
+    rule, the re-park lane answers under a -r<N> id)."""
+    steps: list[tuple[str, bool]] = []
+
+    def check(name, ok, extra=""):
+        steps.append((name, ok))
+        note(log, "review", name, ok, extra)
+
+    discard_text = "PTY-REVIEW-DISCARD-LANE: the review queue's discard lane is pinned by the matrix (the verdict is kept for audit)"
+    approve_text = "PTY-REVIEW-APPROVE-LANE: the review queue's approve lane is pinned by the matrix (ships to both user tiers)"
+    # 1. Plant two candidates through the product's own import (park mode —
+    #    the human gate is the DEFAULT destination).
+    f = os.path.join(cwd, "matrix-review-import.json")
+    _synthetic_export(f, [discard_text, approve_text])
+    rc, out = _run_cli(log, cwd, ["memory", "import", f])
+    check(
+        "import parks the candidates (the human-gate default)",
+        rc == 0 and "2 accepted" in out and "2 parked for review" in out,
+        out.strip().splitlines()[0] if out.strip() else "no output",
+    )
+    s = pc.UnownPty(log, cwd=cwd)
+    try:
+        s.wait_ready()
+        pc.dismiss_first_flights(s, log)
+        # 2. The TUI listing names both candidates (evidence carries the
+        #    origin file — where the import came from).
+        s.type_prompt("/memory review")
+        try:
+            pane = s.wait_for(["memory review queue", "review queue is empty"], mode="any", timeout=45)
+            listed = (
+                "memory review queue" in pane
+                and "PTY-REVIEW-DISCARD-LANE" in pane
+                and "PTY-REVIEW-APPROVE-LANE" in pane
+            )
+            check("/memory review lists the parked candidates (both lanes' rows)", listed)
+        except pc.PaneTimeout:
+            check("/memory review lists the parked candidates (both lanes' rows)", False, "timeout")
+        s.still("mem-review-list", ["review"], mode="any")
+        # 3. Decide through the TUI: discard WITH a reason (the CodeQL-#91
+        #    parser's own lane — the reason rides to the engine). The ids are
+        #    marker-filtered: this phase decides only ITS OWN candidates.
+        discard_ids = _review_queue_ids(log, cwd, marker="PTY-REVIEW-DISCARD-LANE")
+        approve_ids = _review_queue_ids(log, cwd, marker="PTY-REVIEW-APPROVE-LANE")
+        if discard_ids and approve_ids:
+            s.type_prompt(f"/memory review discard {discard_ids[0]} --reason the matrix verification lane")
+            try:
+                s.wait_for(["memory review discarded"], timeout=30)
+                check("discard with --reason answers (kept for audit)", True)
+            except pc.PaneTimeout:
+                check("discard with --reason answers (kept for audit)", False, "timeout")
+            # 4. Approve the second candidate — the ship lane.
+            s.type_prompt(f"/memory review approve {approve_ids[0]}")
+            try:
+                pane = s.wait_for(["memory review approved", "approve failed"], mode="any", timeout=30)
+                ok = "memory review approved" in pane
+                check("approve answers through the ship lane", ok)
+            except pc.PaneTimeout:
+                check("approve answers through the ship lane", False, "timeout")
+        else:
+            check(
+                "discard with --reason answers (kept for audit)",
+                False,
+                f"queue ids parsed: discard={discard_ids} approve={approve_ids}",
+            )
+            check(
+                "approve answers through the ship lane",
+                False,
+                f"queue ids parsed: discard={discard_ids} approve={approve_ids}",
+            )
+        # 5. The queue answers again after the decisions (both decided — the
+        #    honest empty, or a neighbor's rows on a shared engine).
+        s.type_prompt("/memory review")
+        try:
+            s.wait_for(["review queue is empty", "memory review queue"], mode="any", timeout=45)
+            check("the queue answers again after the decisions", True)
+        except pc.PaneTimeout:
+            check("the queue answers again after the decisions", False, "timeout")
+        s.still("mem-review-post", ["review"], mode="any")
+    finally:
+        s.close()
+    return all(ok for _, ok in steps)
+
+
+def phase_doctor(log, cwd) -> bool:
+    """`unown memory doctor` — the audit that proves the loop (Divertimento
+    CP5), live against the real engine: the report renders, the engine's
+    store is audited, and --json answers the machine shape with an honest
+    recall-seal verdict (sealed | leak | unverified — never a fake sealed)."""
+    steps: list[tuple[str, bool]] = []
+
+    def check(name, ok, extra=""):
+        steps.append((name, ok))
+        note(log, "doctor", name, ok, extra)
+
+    rc, out = _run_cli(log, cwd, ["memory", "doctor"])
+    lines = [l for l in out.splitlines() if l.strip()]
+    check(
+        "memory doctor renders against the live engine",
+        rc == 0 and any("memory doctor \u2014" in l for l in lines),
+        f"exit {rc}",
+    )
+    check("the engine is audited (engine up)", any("engine up" in l for l in lines))
+    check("the tier findings render", any("tier " in l for l in lines))
+    check("the store-health finding renders", any("store health:" in l for l in lines))
+    check("the review-queue finding renders", any("review queue:" in l for l in lines))
+    check(
+        "the summary line answers (healthy or N items need attention)",
+        any(("memory is healthy" in l or "need attention" in l) for l in lines),
+    )
+    # --json: the machine shape
+    rc2, out2 = _run_cli(log, cwd, ["memory", "doctor", "--json"])
+    shape_ok = False
+    seal_ok = False
+    try:
+        doc = json.loads(out2)
+        shape_ok = (
+            rc2 == 0
+            and doc.get("engine") in ("up", "down")
+            and isinstance(doc.get("findings"), list)
+            and isinstance(doc.get("tiers"), list)
+        )
+        seal_ok = doc.get("recallSeal") in ("sealed", "leak", "unverified")
+    except Exception:
+        pass
+    check("--json answers the machine shape (tiers/findings/engine)", shape_ok)
+    check("the recall-seal verdict is honest (sealed|leak|unverified)", seal_ok)
+    return all(ok for _, ok in steps)
+
+
+def phase_interchange(log, cwd) -> bool:
+    """`unown memory export` / `import` — the memory interchange (Divertimento
+    CP6) through the CLI against the live engine: the export writes a valid
+    schema-v1 file, the import parks into the review queue (the human gate),
+    a RE-IMPORT of the same file converges (the reconciliation's dedupe
+    lane — duplicates skip, never double-park), the version-2 file is
+    refused with the remedy, and the phase decides its own candidate so the
+    queue is left as it was found (the matrix is re-runnable on any engine)."""
+    steps: list[tuple[str, bool]] = []
+
+    def check(name, ok, extra=""):
+        steps.append((name, ok))
+        note(log, "interchange", name, ok, extra)
+
+    # 1. The export: any store answers (0 memories included — the shape is
+    #    the pin, not the count; the any-engine lesson).
+    out_path = os.path.join(cwd, "matrix-memory-export.json")
+    rc, out = _run_cli(log, cwd, ["memory", "export", "--out", out_path])
+    file_ok = False
+    try:
+        with open(out_path, encoding="utf-8") as f:
+            doc = json.load(f)
+        file_ok = doc.get("version") == 1 and isinstance(doc.get("records"), list) and isinstance(doc.get("meta"), dict)
+    except Exception:
+        pass
+    check("memory export writes a valid schema-v1 file", rc == 0 and file_ok, out.strip().splitlines()[0] if out.strip() else "no output")
+
+    # 2. The import parks (the human gate); 3. the re-import CONVERGES (the
+    #    dedupe lane: the same file parks 0 the second time).
+    conv_text = "PTY-INTERCHANGE-CONVERGE-LANE: the interchange's re-import dedupe is pinned by the matrix (duplicates skip, never double-park)"
+    conv_file = os.path.join(cwd, "matrix-interchange-import.json")
+    _synthetic_export(conv_file, [conv_text])
+    rc, out = _run_cli(log, cwd, ["memory", "import", conv_file])
+    check(
+        "import parks into the review queue (the human-gate default)",
+        rc == 0 and "1 accepted" in out and "1 parked for review" in out,
+        out.strip().splitlines()[0] if out.strip() else "no output",
+    )
+    rc, out = _run_cli(log, cwd, ["memory", "import", conv_file])
+    check(
+        "a re-import of the same file converges (duplicates skip, 0 parked)",
+        rc == 0 and "0 parked for review" in out and "duplicate" in out,
+        out.strip().splitlines()[0] if out.strip() else "no output",
+    )
+
+    # 4. The version-2 refusal: exit 2 + the remedy (the schema-version
+    #    gate's own words).
+    bad_file = os.path.join(cwd, "matrix-interchange-v2.json")
+    with open(bad_file, "w", encoding="utf-8") as f:
+        json.dump({"version": 2, "records": []}, f)
+    rc, out = _run_cli(log, cwd, ["memory", "import", bad_file])
+    check(
+        "the version-2 file is refused with the remedy",
+        rc == 2 and "unsupported schema version 2" in out and "re-export" in out,
+        f"exit {rc}",
+    )
+
+    # 5. Clean up: decide this phase's own candidate (discard — the audit
+    #    row stays, the queue empties; the next phase sees the queue as it
+    #    was found). Marker-filtered: never a neighbor's row.
+    ids = _review_queue_ids(log, cwd, marker="PTY-INTERCHANGE-CONVERGE-LANE")
+    cleaned = False
+    for i in ids:
+        rc, _ = _run_cli(log, cwd, ["memory", "review", "discard", i, "--reason", "the matrix interchange lane's own candidate"])
+        cleaned = rc == 0
+    check("the phase decides its own candidate (the queue left as found)", cleaned, f"ids={ids}")
+    return all(ok for _, ok in steps)
+
+
+# ---------------------------------------------------------------------------
 # Runner
 # ---------------------------------------------------------------------------
 
@@ -552,6 +837,9 @@ RUNNERS = {
     "new": phase_new,
     "budget": phase_budget,
     "exit": phase_exit,
+    "review": phase_review,
+    "doctor": phase_doctor,
+    "interchange": phase_interchange,
 }
 PHASES = list(RUNNERS)
 

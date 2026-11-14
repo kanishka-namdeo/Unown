@@ -4,7 +4,7 @@
  "question": "Answer from the project memory/context ONLY (do not read source files, do not run tools): Why was the CSV parser rewritten, and what was the original defect? One line.",
  "expected": "naive comma splitting broke quoted fields",
  "warm": {
-  "response": "From project memory: the CSV parser was rewritten because the naive split on delimiters fails when fields contain commas or newlines inside double quotes (and pre-pass newline splitting breaks multi-line quoted fields), so a stateful char-by-char parser with an in-quotes flag was implemented instead.",
+  "response": "From project memory: the naive `line.split(\",\")` approach in src/parse.ts broke on quoted fields containing commas, escaped quotes, and embedded newlines, so it was rewritten as an RFC 4180-compliant state-machine parser (`parseCsvLines`).",
   "exitCode": 0,
   "timedOut": false,
   "pass": true,
@@ -12,12 +12,12 @@
   "kind": "exact-match"
  },
  "cold": {
-  "response": "Project memory (Tier 1) has no entry about a CSV parser or its rewrite — the Conventions and \"Known pitfalls\" sections are empty — so I can't answer this from memory; it's unverified.",
+  "response": "No record of a CSV parser rewrite or any original defect exists in the project memory/context — the project memory's conventions and pitfalls sections are empty, and none of the other injected tiers mention a CSV parser, so I cannot answer this from memory alone.",
   "exitCode": 0,
   "timedOut": false,
   "pass": false,
   "score": 0,
   "kind": "exact-match"
  },
- "ts": "2026-11-12T05:17:08.914Z"
+ "ts": "2026-11-14T21:27:12.232Z"
 }

@@ -5,7 +5,7 @@ date: 2026-11-15
 lastmod: 2026-11-15
 tags: [memory, engine, interchange]
 type: feature
-media: [/landing/tui/dashboard/stills/02-memory.png]
+media: [/landing/tui/dashboard/stills/02-memory.png, /blog/2026-11-15-the-memory-divertimento-round/the-review-queue.png]
 ---
 
 The Encore round made the memory visible. This round made it *honest* —
@@ -52,6 +52,13 @@ one inbox across projects), and a human decides — `unown memory review`,
 `/memory review`, the dashboard card, or the API. Approve ships to both
 user tiers, but *re-verified at decision time*: re-deduped, re-guarded,
 provenance naming the observing projects and the review decision.
+
+![The review queue in the live TUI — the inbox, a discard verdict, an approve that ships, and the honest empty](/blog/2026-11-15-the-memory-divertimento-round/the-review-queue.png)
+
+The queue in motion, from the round's live PTY verification: the inbox
+listing (both candidates with their evidence), a discard-with-reason
+verdict (kept for audit), an approve that ships, and the honest empty
+afterwards.
 
 The **recall path is sealed**: every search lane excludes superseded
 memories by default — the soft-delete-leak class MIRIX's security review

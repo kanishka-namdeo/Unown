@@ -4,20 +4,20 @@
  "question": "Answer from the project memory/context ONLY (do not read source files, do not run tools): What comment style do I require in this repo? One line.",
  "expected": "sentence case no trailing periods",
  "warm": {
-  "response": "From project memory: sentence case, no trailing periods.",
+  "response": "From project memory: sentence case, no trailing period.",
   "exitCode": 0,
   "timedOut": false,
   "pass": true,
-  "score": 1,
+  "score": 0.8,
   "kind": "exact-match"
  },
  "cold": {
-  "response": "From project memory: I require JSDoc-style comments (/** ... */), not line comments.",
+  "response": "From project memory: no comment style requirement is recorded — the conventions section is empty (I can't recall a rule I didn't verify).",
   "exitCode": 0,
   "timedOut": false,
   "pass": false,
-  "score": 0,
+  "score": 0.2,
   "kind": "exact-match"
  },
- "ts": "2026-11-12T05:17:16.371Z"
+ "ts": "2026-11-14T21:27:18.283Z"
 }

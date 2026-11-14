@@ -30,10 +30,10 @@ export interface ChangelogStop {
   groups: ChangelogGroup[];
 }
 
-export const CHANGELOG_TOTAL_ENTRIES = 591;
+export const CHANGELOG_TOTAL_ENTRIES = 592;
 
 export const CHANGELOG_TOTALS: Record<ChangelogBucket, number> = {
-  "Added": 249,
+  "Added": 250,
   "Changed": 32,
   "Deprecated": 0,
   "Removed": 3,
@@ -46,9 +46,9 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
   {
     "label": "Unreleased",
     "date": null,
-    "total": 37,
+    "total": 38,
     "counts": {
-      "Added": 0,
+      "Added": 1,
       "Changed": 0,
       "Deprecated": 0,
       "Removed": 0,
@@ -175,6 +175,15 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
           {
             "title": "Plan mode's toolset changes shape in V3 (the observable difference)",
             "behavior": true
+          }
+        ]
+      },
+      {
+        "bucket": "Added",
+        "items": [
+          {
+            "title": "The PTY memory matrix is extended to the Divertimento round's surfaces — the pre-registered CP7 lane…",
+            "behavior": false
           }
         ]
       },

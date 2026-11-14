@@ -1,19 +1,21 @@
 {
  "id": "S2-knowledge-update",
- "ts": "2026-11-12T05:14:15.093Z",
+ "ts": "2026-11-14T21:23:37.510Z",
  "exitCode": 0,
- "response": "Both tasks done — all 9 tests pass.\n\n**1. Date validation** ([src/validate.ts](src/validate.ts))\n- Each data row's date column now must match `/^\\d{4}-\\d{2}-\\d{2}$/`; otherwise `row N: date must be YYYY-MM-DD` is added.\n- New tests in [test/validate.test.ts](test/validate.test.ts): valid ISO date accepted, missing date rejected, `Jan 5 2026` rejected — all asserting the exact error message.\n\n**2. Auto-sized table** ([src/render.ts](src/render.ts))\n- Replaced the fixed `[10, 24, 12]` widths with per-column auto-sizing: width = max cell length per column (header + body, `undefined` cells treated as `\"\"`), floored at 4. Column count is derived from the data instead of hard-coded.\n\nVerified with `bun test`: 9 pass, 0 fail.\n",
+ "response": "All 8 tests pass (was 5, added 4 new date validation tests).\n\nChanges:\n\n**`src/validate.ts`** — date column check:\n- Regex `/^\\d{4}-\\d{2}-\\d{2}$/` enforces strict ISO format\n- Row error: `row N: date must be YYYY-MM-DD` (fires for missing/empty dates too, since `\"\"` fails the regex)\n\n**`src/render.ts`** — auto column widths:\n- `widths[i] = max(4, longest cell length in column i)` replacing the fixed `[10, 24, 12]` array; works for any column count\n\n**`test/validate.test.ts`** — new tests for:\n- valid date `2026-01-03` → `ok: true`\n- missing date `\"\"` → rejected with the date error\n- `\"Jan 5 2026\"` → rejected with the date error\n",
  "dream": {
-  "id": "project-1ecf328d-8ae6-4fbc-8840-988db21968da",
-  "started_at": 1794460407212,
-  "ended_at": 1794460454852,
+  "id": "project-2b418776-abc2-4def-b6e3-e755f456b701",
+  "started_at": 1794691369349,
+  "ended_at": 1794691414794,
   "status": "done",
   "notes_in": 1,
   "entries_merged": 0,
   "entries_pruned": 0,
-  "entries_added": 2,
+  "entries_added": 3,
   "entries_protected": 0,
-  "output": "# Project Memory\n\n## Known pitfalls\n- Date validation in src/validate.ts requires each data row's date column to match regex /^\\d{4}-\\d{2}-\\d{2}$/, rejecting missing dates and non-ISO formats like Jan 5 2026 with exact error message 'row N: date must be YYYY-MM-DD' · 2026-11-12\n- CSV parser naive split on delimiters fails when fields contain commas or newlines inside double quotes. · 2026-11-12\n\n## Environment\n- Pre-pass splitting on newlines before field parsing breaks rows with multi-line quoted fields; process entire text with unified state machine instead. · 2026-11-12\n\n## Facts\n- All 9 tests pass for CSV parser date validation task in /tmp/memory-recital-live/warm, covering valid ISO date acceptance, missing date rejection, and Jan 5 2026 rejection · 2026-11-12\n- Validate CSV parser with test cases covering quoted fields containing commas, newlines, and escaped quotes. · 2026-11-12\n- Fix: implement stateful char-by-char parser with in-quotes flag to preserve delimiters inside quoted fields. · 2026-11-12\n\n## Manual notes\n- Your own durable rules. AutoDream preserves this section verbatim — one\n  bullet per rule; everything outside it is re-rendered.\n\n<!-- unown: rendered 6/6 memories via Mem0 (backend: lexical) at 2026-11-12T05:14:14.851Z -->\n",
-  "note": "project dream: warm-7d3a90 memory -> v2 (/tmp/memory-recital-live/warm)"
+  "output": "# Project Memory\n\n## Known pitfalls\n- src/validate.ts enforces strict ISO date format (YYYY-MM-DD) using regex /^\\d{4}-\\d{2}-\\d{2}$/; missing or empty date fields trigger error: 'row N: date must be YYYY-MM-DD'. · 2026-11-14\n\n## Environment\n- CSV parsing must use an RFC 4180-compliant state-machine parser, never naive comma splitting, to correctly handle quoted fields, escaped quotes, and embedded newlines. · 2026-11-14\n- Fixed src/parse.ts by replacing naive split with RFC 4180 state-machine parser parseCsvLines that handles quoted commas, escaped double-quotes (\"\" → \"), and embedded newlines; all 5 tests pass. · 2026-11-14\n\n## Facts\n- Project test suite in /tmp/memory-recital-live/warm contains 8 tests, all passing after adding 4 new date validation tests. · 2026-11-14\n- src/render.ts calculates auto column widths using: widths[i] = max(4, longest cell length in column i). · 2026-11-14\n- Project test suite contains 5 tests which all pass after the CSV parser fix. · 2026-11-14\n- Working directory for this project is /tmp/memory-recital-live/warm. · 2026-11-14\n- CSV parser in src/parse.ts: naive line.split(\",\") breaks on quoted fields containing commas, escaped quotes, or embedded newlines. · 2026-11-14\n\n## Manual notes\n- Your own durable rules. AutoDream preserves this section verbatim — one\n  bullet per rule; everything outside it is re-rendered.\n\n<!-- unown: rendered 8/8 memories via Mem0 (backend: lexical) at 2026-11-14T21:23:34.792Z -->\n",
+  "note": "project dream: warm-7d3a90 memory -> v2 (/tmp/memory-recital-live/warm)",
+  "entries_superseded": 0,
+  "entries_dormant": 0
  }
 }

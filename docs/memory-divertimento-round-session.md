@@ -389,6 +389,62 @@ was bought via the xplat release-verify dispatch instead (run
 green). `v0.0.66` tagged on 410eb09d; the release rendered **15/15
 jobs green** (run #106) and published 2026-11-14T20:59:08Z as Latest
 with all 13 assets.
+## Post-close verification (2026-11-15, the pre-registered CP7 lanes, landed by the closing lineage's sibling)
+
+The CP7 close shipped the static battery; two pre-registered lanes and the
+blog landed in the same day's post-close pass:
+
+1. **The PTY memory matrix, extended to the round's surfaces — 13 phases,
+   43/43 steps ALL GREEN** against the live engine (booted from the current
+   tree) + the Agnes upstream. Three new phases in
+   `scripts/tui-capture/verify_memory_matrix.py`:
+   - `review` — the review queue's TUI arc end to end: two candidates
+     planted through the product's OWN import path (the human-gate default),
+     listed through `/memory review` (both markers visible, the evidence
+     naming the origin file), decided through the TUI —
+     discard-with-reason keeps the audit row; approve ships (on re-runs the
+     decision-time dedupe answers "0 shipped · 1 already present (skipped)"
+     and the re-park lane parks under `-r<N>` ids — the convergence law).
+   - `doctor` — `unown memory doctor` against the live engine: the report
+     renders, every finding class answers (tiers, store health, review
+     queue), `--json` carries the machine shape, and the recall-seal
+     verdict is honest (`unverified` on this store — the probe's zero-hit
+     answer, never a fake sealed).
+   - `interchange` — the CP6 arc through the CLI: export writes a valid
+     schema-v1 file (40 memories across 10 scopes on this engine), import
+     parks into the review queue, a RE-IMPORT of the same file converges
+     (duplicates skip, 0 parked), the version-2 file refuses with exit 2 +
+     the remedy, and the phase decides its own candidate so the queue is
+     left as found.
+   The lane's own dividend, recorded as the live-verification law: the
+   first interchange run "failed" its convergence pin against an engine
+   booted from ANOTHER CHECKOUT (`/home/z/my-project/Unown`, capital U)
+   before the reconciliation landed — a stale engine is a stale verdict;
+   the live lanes must run against the current tree's stack
+   (`bun run agent:start`). The failing pin was the PHASE's own assertion
+   error on the first run against the fresh engine (the re-import's honest
+   `0 accepted` vs the asserted `1 accepted`) — the product converged
+   correctly; the check was corrected to pin the convergence (0 parked +
+   the duplicate count), not the accepted counter.
+
+2. **The memory-recital re-run on the final tree** — warm 3/5 / cold 1/5,
+   lift +2, E1-E3 green (receipts:
+   `benchmarks/memory-recital/results/agnes-3.0-flash/`; the honest read in
+   `RESULTS.md`). Every knowledge probe stayed memory-gated (T1/T2/T4
+   warm-pass cold-fail); T3 was matcher-strict on a semantically correct
+   answer (0.44 < 0.6 — "valid" vs "accepted"); T5's warm arm FABRICATED
+   ("we benchmarked keel against libc" — nothing in the dreamt memory
+   names keel) while the cold arm honestly abstained: the run's one
+   genuine finding, recorded as measured — injected memory can prime
+   fabrication as well as prevent it, and the abstention lane is the
+   guard. Model-luck (the 11-11 and 11-12 runs passed the same probe
+   warm), n=5, the receipts carry the raw responses.
+
+3. **The round's blog post** — `content/blog/2026-11-15-the-memory-
+   divertimento-round.md` ("The round that fixed memory itself"), the
+   review-queue pane capture from the matrix run as its media
+   (`public/blog/2026-11-15-the-memory-divertimento-round/`), the blog
+   generator + feed re-stamped (54 posts), the blog suites green (11/0).
 ## Session checkpoint protocol
 
 This file is the resumable state: each CP updates its ledger row and adds
