@@ -13,7 +13,7 @@
  *            Esc focus-return to the originating row).
  */
 import { test, expect } from "bun:test";
-import { emptyDoc } from "./app.js";
+import { emptyDoc, type AppDeps } from "./app.js";
 import type { LegatoData } from "../domain/types.js";
 import { FakeStorage } from "../storage/fake-storage.js";
 
@@ -164,5 +164,87 @@ if (!hasDom) {
     const rows = root.querySelectorAll<HTMLElement>(".legato-clip-row");
     expect((document.activeElement as HTMLElement)?.getAttribute("data-index")).toBe("0");
     root.remove();
+  });
+
+  // ── The pipeline-boot lane's pins (the 2026-11-14 CI-receipt cure:
+  //    runs 43614723332 + 43632794835 failed the clip lane with an
+  //    EMPTY status line — deps.clipUrl was never wired and nothing
+  //    surfaced it; the boot now retries + surfaces + answers with
+  //    the honest not-booted stub) ──────────────────────────────────
+
+  test("app: the clip pipeline boots — deps.clipUrl wires, the ready signal lands, the outcome is never silent (DOM)", async () => {
+    const { main } = await import("./app.js");
+    const deps: AppDeps = { storage: new FakeStorage(null) };
+    const root = document.createElement("div");
+    document.body.append(root);
+    // The boot diagnostic is the wiring's signal: the log fires in
+    // the same synchronous block that assigns deps.clipUrl (the
+    // RealFetcher + the read seam + the assignment), so seeing the
+    // line means the real pipeline is callable.
+    const lines: string[] = [];
+    const origLog = console.log;
+    console.log = (...a: unknown[]) => { lines.push(a.map(String).join(" ")); };
+    try {
+      await main(deps, root);
+      // Bounded wait for the dynamic-import boot to land (bun
+      // resolves the cached modules in microtasks; 3 s is generous).
+      let wired = false;
+      for (let i = 0; i < 120 && !wired; i++) {
+        wired = lines.some((l) => l.includes("pipeline closure booted"));
+        if (!wired) await new Promise((r) => setTimeout(r, 25));
+      }
+      expect(wired).toBe(true);
+      expect(typeof deps.clipUrl).toBe("function");
+      // THE READY SIGNAL (the lane's contract): the synchronous
+      // first write — "Clipping <url>…" — the exact signal the
+      // e2e lane's clipAndRead waits on.
+      deps.clipUrl!("https://unreachable.invalid/x");
+      const status = document.getElementById("legato-status");
+      expect(status!.textContent).toContain("Clipping https://unreachable.invalid/x");
+      // THE HONEST OUTCOME (never silent): the unreachable host
+      // rejects (RFC 2606's .invalid never resolves) → the
+      // orchestrator's fetch-failed lane → the degraded clip's
+      // status write. Bounded: DNS rejects in ~1.5 s locally; the
+      // 10 s bound covers loaded machines.
+      let outcome = "";
+      for (let i = 0; i < 400; i++) {
+        outcome = document.getElementById("legato-status")?.textContent ?? "";
+        if (outcome.includes("Clipped (degraded: fetch-failed)")) break;
+        await new Promise((r) => setTimeout(r, 25));
+      }
+      expect(outcome).toContain("Clipped (degraded: fetch-failed)");
+    } finally {
+      console.log = origLog;
+      root.remove();
+    }
+  });
+
+  test("app: a submit that outlives the pipeline boot gets the honest not-booted notice — never the silent no-op (DOM)", async () => {
+    const { main } = await import("./app.js");
+    const deps: AppDeps = { storage: new FakeStorage(null) };
+    const root = document.createElement("div");
+    document.body.append(root);
+    // The boot's own guard ("a window without fetch has nothing to
+    // boot") makes the stub lane deterministic here: with fetch
+    // gone, the dynamic-import boot no-ops and deps.clipUrl KEEPS
+    // the not-booted stub — the exact window the CI receipts hit
+    // (a submit racing a boot that never lands).
+    const wAny = (globalThis as Record<string, unknown>)["window"] as Record<string, unknown>;
+    const savedFetch = wAny["fetch"];
+    delete wAny["fetch"];
+    try {
+      await main(deps, root);
+      expect(typeof deps.clipUrl).toBe("function");
+      deps.clipUrl!("https://example.com/anything");
+      // THE HONEST NOTICE (the store-not-loaded guard's twin): the
+      // status line gets words — the silent `?.` no-op lane (the
+      // receipt's signature: an EMPTY status for the whole 30 s
+      // budget) is gone.
+      const status = document.getElementById("legato-status");
+      expect(status!.textContent).toContain("Clip: the pipeline has not booted yet — try again.");
+    } finally {
+      if (savedFetch !== undefined) wAny["fetch"] = savedFetch;
+      root.remove();
+    }
   });
 }

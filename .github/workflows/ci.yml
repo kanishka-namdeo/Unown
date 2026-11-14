@@ -1156,6 +1156,24 @@ jobs:
         # the L-11 close numbers, receipted in
         # benchmarks/serenade-round/receipts/l11.md).
         run: cd apps/legato && bun test
+      - name: Legato unit tests — Lane B (root form, preload active, masked by design)
+        # `bun test apps/legato` from the repo root: the root bunfig.toml's
+        # happy-dom preload IS active here, so DOM-globally-dependent domain
+        # code would be MASKED — which is why Lane A is the enforcement lane
+        # and this lane is the compatibility lane (the form a developer will
+        # actually type). boundary.test.ts still runs in this lane and still
+        # enforces the import boundary, so the purity contract holds even
+        # under the masked runtime (the coda/ostinato/chaconne siblings'
+        # Lane B step, legato's own now).
+        #
+        # The pipeline-boot lane's pins ride HERE (they need the DOM): the
+        # 2026-11-14 CI-receipt cure — runs 43614723332 + 43632794835
+        # failed the clip lane with an EMPTY status line (deps.clipUrl
+        # never wired, nothing surfaced it). The pins prove the boot wires
+        # the real pipeline (the ready signal + the never-silent outcome)
+        # and that a submit outliving the boot gets the honest not-booted
+        # notice instead of the silent no-op. 269 tests / 26 files.
+        run: bun test apps/legato
       - name: Chromium for Playwright
         run: bunx playwright install chromium --with-deps
       - name: "Legato e2e battery (isolated, self-skip-guarded, Chromium-desktop-only)"

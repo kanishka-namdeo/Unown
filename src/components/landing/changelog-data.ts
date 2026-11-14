@@ -182,6 +182,10 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
         "bucket": "Fixed",
         "items": [
           {
+            "title": "Legato's clip pipeline boot no longer fails silently — a transient module-fetch failure at boot was permanently…",
+            "behavior": false
+          },
+          {
             "title": "CodeQL alert #91 (js/polynomial-redos…",
             "behavior": false
           },

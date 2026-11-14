@@ -60,7 +60,12 @@ import type { LegatoData, Clip, ClipState } from "../domain/types.js";
 
 export interface AppDeps {
   storage: StoragePort;
-  /** the clip-URL action (L-5's placeholder; L-11 injects RealFetcher). */
+  /** the clip-URL action. Wired in TWO stages by main(): the
+   *  honest not-booted stub first (the 2026-11-14 CI-receipt
+   *  cure — a submit racing the pipeline boot gets the "try
+   *  again" notice + re-kicks the boot, never a silent no-op),
+   *  then the L-11 RealFetcher pipeline once the dynamic-import
+   *  boot lands. */
   clipUrl?: (url: string) => void;
   /** root element to render into (default: #legato-root). */
   rootId?: string;
@@ -704,9 +709,49 @@ export async function main(deps: AppDeps, root?: HTMLElement): Promise<App> {
   // (real IDB in the browser lane). A save failure surfaces in the
   // status line (the Q-1 honest-notice lane) — never silent.
   const w = (globalThis as Record<string, unknown>)["window"] as Window | undefined;
-  if (w && typeof w["fetch"] === "function") {
+  // ── THE PIPELINE BOOT'S RETRY + NEVER-SILENT CURE (the
+  //    2026-11-14 CI receipts: runs 43614723332 + 43632794835) ──
+  //    Both runs failed the clip lane with the SAME signature:
+  //    the submit fired, the status line stayed EMPTY for the
+  //    whole 30 s budget — `deps.clipUrl` was still undefined
+  //    (the dynamic-import boot below had failed, and NOTHING
+  //    surfaced it). A one-shot `import()` never retries: a
+  //    single transient module-fetch failure (serve.mjs's
+  //    tryFile returns null → 404 on ANY transient read error)
+  //    permanently and SILENTLY killed clipping for the page's
+  //    lifetime — the exact "silent hang" T-7's manifest
+  //    outlaws, one lane up (in the boot, not the fetch). The
+  //    cure is three lanes:
+  //      1. THE BOUNDED RETRY — the boot re-attempts (three
+  //         tries, 400 ms apart): a transient blip converges
+  //         before the user can even open the palette.
+  //      2. THE NEVER-SILENT CATCH — a final failure surfaces to
+  //         the status line + console.error (the Q-1 "never
+  //         silent" law — the same shape as the pipeline's own
+  //         reject lane below).
+  //      3. THE NOT-BOOTED STUB — `deps.clipUrl` is wired
+  //         IMMEDIATELY with the honest-notice stub (the
+  //         store-not-loaded guard's twin), so a submit that
+  //         races (or outlives) the boot gets words in the
+  //         status line instead of the silent `?.` no-op — and
+  //         the stub's call RE-KICKS the boot (a submit is a
+  //         fresh demand: the transient failure gets another
+  //         chance to converge).
+  const PIPELINE_BOOT_TRIES = 3;
+  const PIPELINE_BOOT_RETRY_MS = 400;
+  let pipelineWired = false;
+  const bootClipPipeline = (attempt: number): void => {
+    if (pipelineWired) return;
+    if (!w || typeof w["fetch"] !== "function") return;
     import("../pipeline/fetcher.js").then(({ RealFetcher }) => {
-      import("../pipeline/clip.js").then(({ clipUrl }) => {
+      // The inner promise is RETURNED — the outer .catch below
+      // sees the inner import's reject AND any throw inside the
+      // wiring body. (The fire-and-forget form left an inner
+      // rejection unhandled — silent forever, the receipt's
+      // other half.)
+      return import("../pipeline/clip.js").then(({ clipUrl }) => {
+        if (pipelineWired) return; // idempotent: a retry racing the re-kick wires once
+        pipelineWired = true;
         // THE FETCH CAP (T-7's app-side half — the timeout-masking
         // pin): the default is 15 s (the 4018 /slow route's 5 s
         // delay clears it → a clean clip of the slow page). The
@@ -829,8 +874,47 @@ export async function main(deps: AppDeps, root?: HTMLElement): Promise<App> {
           })();
         };
       });
+    }).catch((err: unknown) => {
+      // THE NEVER-SILENT CATCH (cure lane 2): a boot reject
+      // lands in the status line + console.error, never in an
+      // unhandled rejection — the Ostinato Q-1 "never silent"
+      // law's executable form, the pipeline's own reject lane
+      // ("Clip failed: …") applied to the boot itself.
+      const log = (globalThis as Record<string, unknown>)["console"] as
+        | { error: (...args: unknown[]) => void }
+        | undefined;
+      log?.error(
+        "[legato] clip pipeline boot failed (attempt " +
+          String(attempt + 1) + "/" + String(PIPELINE_BOOT_TRIES) + "):",
+        err,
+      );
+      // Cure lane 1 — the bounded retry: a transient
+      // module-fetch blip gets another chance (the one-shot
+      // import never retries on its own — the receipt's root).
+      if (attempt + 1 < PIPELINE_BOOT_TRIES) {
+        setTimeout(() => bootClipPipeline(attempt + 1), PIPELINE_BOOT_RETRY_MS);
+        return;
+      }
+      // The budget is spent — the FINAL failure surfaces (cure
+      // lane 2's terminal write; the stub below keeps answering
+      // later submits with the honest "try again" + a re-kick).
+      const s = doc.getElementById("legato-status");
+      if (s) s.textContent = "Clip unavailable: the pipeline failed to load — reload the page and try again.";
     });
-  }
+  };
+  // THE NOT-BOOTED STUB (cure lane 3): wired BEFORE the boot
+  // lands, so the form's `deps.clipUrl?.(url)` submit lane
+  // always finds a function — the silent no-op lane is gone.
+  // The url is intentionally unused: the notice IS the lane
+  // (the real pipeline takes the url once the boot lands; a
+  // submit that raced the boot re-submits after the notice —
+  // the store-not-loaded guard's "try again" shape, its twin).
+  deps.clipUrl = (_url: string): void => {
+    const s = doc.getElementById("legato-status");
+    if (s) s.textContent = "Clip: the pipeline has not booted yet — try again.";
+    bootClipPipeline(0);
+  };
+  bootClipPipeline(0);
 
   return app;
 }

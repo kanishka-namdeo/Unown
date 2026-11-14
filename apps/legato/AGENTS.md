@@ -56,7 +56,11 @@ Node `runner/` edge — the Chaconne precedent reshaped).
   **Lane A** — `cd apps/legato && bun test`: no `bunfig.toml` in the app
   dir, the root happy-dom preload does NOT apply — the purity enforcer.
   **Lane B** — `bun test apps/legato` from the root: preload active,
-  the compatibility form.
+  the compatibility form; the pipeline-boot lane's pins ride here (they
+  need the DOM — the 2026-11-14 CI-receipt cure: the boot retries +
+  surfaces + answers with the honest not-booted stub, so the clip lane
+  can never silently die; Lane B is a CI step in the legato job, the
+  coda/ostinato/chaconne siblings' pattern).
 - **The `legato.v1` grammar** (PLAN §2, lands L-2): `Clip` records,
   closed enums (`ClipState`, the 7-entry `ClipError` taxonomy),
   deterministic integer ids, canonical JSON (sortKeysDeep + compact
@@ -95,6 +99,12 @@ Node `runner/` edge — the Chaconne precedent reshaped).
   DOM-guard skips) green, 0 fail (the 2026-11-10 end-user combo round
   re-measure; the L-1 close's "1 test" was the scaffold-era snapshot —
   the L-queue grew the battery).
+- Lane B: `bun test apps/legato` from the root — 269 tests green, 0
+  fail (the 2026-11-14 pipeline-boot cure's count: the two new DOM pins
+  — the boot wires the real pipeline with the ready signal + the
+  never-silent degraded outcome, and a submit outliving the boot gets
+  the honest not-booted notice — plus the app boot pins that were
+  already riding Lane B).
 - App typecheck: the ROOT `bun run typecheck` (the root tsconfig's
   include covers `apps/legato/**/*.ts`; the app-local tsconfig extends
   the root per the Fugue convention).
@@ -111,4 +121,6 @@ Node `runner/` edge — the Chaconne precedent reshaped).
 - `src/pipeline/` — `Fetcher`/`Extractor`, the taxonomy, the fixtures
   lane (L-3).
 - `src/ui/` — the keyboard-first shell, palette, list/detail, theme
-  (L-5..L-8).
+  (L-5..L-8); the L-11 pipeline closure's boot (in `app.ts`'s `main()`)
+  is retryable + never-silent + stub-guarded (the 2026-11-14 cure —
+  see the "Domain purity" lane note above).
