@@ -30,14 +30,14 @@ export interface ChangelogStop {
   groups: ChangelogGroup[];
 }
 
-export const CHANGELOG_TOTAL_ENTRIES = 580;
+export const CHANGELOG_TOTAL_ENTRIES = 581;
 
 export const CHANGELOG_TOTALS: Record<ChangelogBucket, number> = {
   "Added": 248,
   "Changed": 32,
   "Deprecated": 0,
   "Removed": 3,
-  "Fixed": 211,
+  "Fixed": 212,
   "Security": 5,
   "Behavior": 81
 };
@@ -46,13 +46,13 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
   {
     "label": "Unreleased",
     "date": null,
-    "total": 39,
+    "total": 40,
     "counts": {
       "Added": 2,
       "Changed": 0,
       "Deprecated": 0,
       "Removed": 0,
-      "Fixed": 8,
+      "Fixed": 9,
       "Security": 0,
       "Behavior": 29
     },
@@ -207,6 +207,10 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
           },
           {
             "title": "The recall path no longer leaks superseded memories as current — the recall-integrity seal (the…",
+            "behavior": false
+          },
+          {
+            "title": "The deterministic SRO supersede layer — contradictions resolved by the (subject, relation) rule…",
             "behavior": false
           },
           {

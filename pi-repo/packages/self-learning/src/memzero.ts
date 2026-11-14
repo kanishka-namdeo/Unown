@@ -314,6 +314,187 @@ export function filterLatestOnly(memories: PlatformMemory[]): PlatformMemory[] {
         return memories.filter((m) => !isSuperseded(m));
 }
 
+// ------------------------------------------------------------- the SRO lane
+// The Memory Divertimento round (2026-11-14), CP2: deterministic
+// supersession. The research verdict (MemStrata/Temporal Validity,
+// arXiv 2606.26511): similarity-based conflict detection separates
+// contradicted from duplicated facts at AUROC 0.59 — chance — while a
+// deterministic (subject, relation, object) rule in a bi-temporal ledger
+// takes stale-fact errors 15–40% → ~0% (DISCERN: recall pillars are
+// saturated at 0.93–0.98; RESOLUTION is the frontier). MIRIX's
+// numeric-merge guard is the same law: differing values for one claim are
+// a contradiction, never an average.
+//
+// The rule: two LIVE memories that make a claim about the SAME
+// (subject, relation) with DIFFERENT objects are a contradiction decided
+// by recency — no LLM call, no similarity threshold, no merge. The newest
+// confirmed evidence (the platform updatedAt) is the winner; the losers
+// are stamped supersededBy=<winner> with the existing bi-temporal stamps,
+// retained verbatim for audit ("what was true then"). Adoption is
+// gradual and backward-compatible: memories without an SRO triple never
+// participate (legacy rows behave exactly as before — the LLM reconcile
+// keeps full authority over them); the triple is taught to extraction
+// (MEM0_CUSTOM_INSTRUCTIONS) so new memories carry it.
+
+/** One (subject, relation, object) triple — the claim identity. */
+export interface SroTriple {
+        s: string;
+        r: string;
+        o: string;
+}
+
+/** Normalize one SRO part: lowercase, collapse whitespace, strip trailing
+ *  punctuation. Digits, flags, units and versions STAY — the object is the
+ *  differentia that makes "X is 20" and "X is 22" different claims about
+ *  the same subject+relation (never averaged, never merged). */
+export function normalizeSroPart(part: unknown): string {
+        return String(part ?? "")
+                .toLowerCase()
+                .replace(/\s+/g, " ")
+                .replace(/[.,;:!]+$/, "")
+                .trim();
+}
+
+/** Parse a memory's SRO triple (metadata.sro). Tolerant to the three
+ *  plausible shapes — ["s","r","o"], "s|r|o", {s,r,o} — and returns null
+ *  for anything else (absent, wrong arity, empty parts): a memory without
+ *  a well-formed triple never participates in the deterministic lane. */
+export function parseSro(m: PlatformMemory): SroTriple | null {
+        const raw = (m?.metadata as Record<string, any> | undefined)?.sro;
+        let parts: string[] | null = null;
+        if (Array.isArray(raw) && raw.length === 3) parts = raw.map((x) => String(x ?? ""));
+        else if (typeof raw === "string" && raw.includes("|")) parts = raw.split("|");
+        else if (raw && typeof raw === "object") {
+                const o = raw as Record<string, unknown>;
+                if (o.s !== undefined && o.r !== undefined && o.o !== undefined) parts = [String(o.s), String(o.r), String(o.o)];
+        }
+        if (!parts) return null;
+        const t: SroTriple = { s: normalizeSroPart(parts[0]), r: normalizeSroPart(parts[1]), o: normalizeSroPart(parts[2]) };
+        if (!t.s || !t.r || !t.o) return null;
+        return t;
+}
+
+/** The claim key — WHAT property of WHAT subject the memory asserts.
+ *  Two memories sharing this key with different objects contradict. */
+export function sroClaimKey(t: SroTriple): string {
+        return `${t.s}|${t.r}`;
+}
+
+/** The full key — claim + value; identical full keys are duplicates (the
+ *  dedup lane's class, never the supersede lane's). */
+export function sroFullKey(t: SroTriple): string {
+        return `${t.s}|${t.r}|${t.o}`;
+}
+
+/** One deterministic contradiction group: the claim key, the winner (the
+ *  newest confirmed evidence — the platform updatedAt, tie-broken by id
+ *  for determinism), and the losers to stamp. */
+export interface SroContradictionGroup {
+        claimKey: string;
+        winner: PlatformMemory;
+        losers: PlatformMemory[];
+}
+
+/** Group LIVE SRO-carrying memories by claim key; a group is a
+ *  CONTRADICTION only when its objects differ — identical objects are the
+ *  duplicate class (the dedup lane owns those). The winner is the newest
+ *  confirmedAt; ties (same-batch memories with indistinguishable
+ *  timestamps) yield NO group — that case is left to the LLM reconcile,
+ *  which sees both rows in the same listing with full context. */
+export function sroContradictionGroups(memories: PlatformMemory[]): SroContradictionGroup[] {
+        const byClaim = new Map<string, PlatformMemory[]>();
+        for (const m of memories) {
+                if (isSuperseded(m)) continue; // only LIVE rows participate
+                const t = parseSro(m);
+                if (!t) continue; // no well-formed triple — legacy row, LLM authority
+                const key = sroClaimKey(t);
+                const list = byClaim.get(key) ?? [];
+                list.push(m);
+                byClaim.set(key, list);
+        }
+        const out: SroContradictionGroup[] = [];
+        for (const [claimKey, list] of byClaim) {
+                if (list.length < 2) continue;
+                const objects = new Set(list.map((m) => parseSro(m)!.o));
+                if (objects.size < 2) continue; // all same object — duplicates, the dedup lane's class
+                // newest confirmed evidence wins; ties yield no group (the LLM
+                // reconcile sees both rows — same-batch context is its job)
+                const sorted = [...list].sort((a, b) => {
+                        const ta = memoryConfirmedAt(a) ?? 0;
+                        const tb = memoryConfirmedAt(b) ?? 0;
+                        if (tb !== ta) return tb - ta;
+                        return String(b.id).localeCompare(String(a.id)); // determinism only
+                });
+                const winner = sorted[0];
+                const winnerAt = memoryConfirmedAt(winner) ?? 0;
+                const loserSameTs = sorted.slice(1).some((m) => (memoryConfirmedAt(m) ?? 0) === winnerAt);
+                if (loserSameTs) continue; // indistinguishable recency — the LLM's call
+                out.push({ claimKey, winner, losers: sorted.slice(1) });
+        }
+        return out;
+}
+
+/**
+ * Apply the deterministic SRO supersedes: stamp every loser with the
+ * existing bi-temporal stamps (supersededBy=<winner>, invalidAt=now) via
+ * the platform's update seam — the SAME stamping path the LLM's SUPERSEDE
+ * ops use, so revert and the health card treat both identically. The
+ * fresh-evidence protection applies as everywhere: a protected (this
+ * batch's) loser without an exact-text twin survives to the next pass.
+ * Idempotent: an already-superseded row is skipped. Returns the events
+ * (for revert) and the count.
+ */
+export async function applyDeterministicSroSupersedes(
+        memories: PlatformMemory[],
+        opts: {
+                platform: MemoryPlatform;
+                protectedIds?: Set<string> | null;
+                now?: number;
+                /** The exact-text twin test (the reconcile's own shape). */
+                twinSurvives?: (id: string, text: string) => boolean;
+        },
+): Promise<{ events: MemoryPlatformEvent[]; count: number; skipped: number }> {
+        const events: MemoryPlatformEvent[] = [];
+        let count = 0;
+        let skipped = 0;
+        const textToIds = new Map<string, string[]>();
+        for (const m of memories) {
+                const list = textToIds.get(m.text) ?? [];
+                list.push(m.id);
+                textToIds.set(m.text, list);
+        }
+        const twin = opts.twinSurvives ?? ((id: string, text: string) => (textToIds.get(text) ?? []).some((t) => t !== id));
+        const groups = sroContradictionGroups(memories);
+        for (const g of groups) {
+                for (const loser of g.losers) {
+                        if (isSuperseded(loser)) continue; // idempotent
+                        if (opts.protectedIds?.has(loser.id) && !twin(loser.id, loser.text)) {
+                                skipped++; // fresh-evidence protection: survives to the next pass
+                                continue;
+                        }
+                        try {
+                                await opts.platform.update(loser.id, loser.text, {
+                                        supersededBy: g.winner.id,
+                                        invalidAt: new Date(opts.now ?? Date.now()).toISOString(),
+                                });
+                        } catch (err) {
+                                if (/not found/i.test(err instanceof Error ? err.message : String(err))) continue;
+                                throw err;
+                        }
+                        events.push({
+                                event: "SUPERSEDE",
+                                id: loser.id,
+                                text: loser.text,
+                                previousText: loser.text,
+                                kind: loser.metadata?.kind ? String(loser.metadata.kind) : undefined,
+                                supersededBy: g.winner.id,
+                        });
+                        count++;
+                }
+        }
+        return { events, count, skipped };
+}
+
 // ---------------------------------------------------- memory typing + decay
 // The Memory v2 round (2026-11-12): the field has moved past "one memory type"
 // — Supermemory's typed auto-forgetting (facts persist, preferences strengthen,
@@ -400,6 +581,7 @@ Verified vs asserted: extract facts the note VERIFIED (a command's output, a tes
 Unverified recency must not overwrite verified knowledge: when a new, unverified assertion conflicts with an established memory whose note carried verification (a read, a run, a fix), keep the established memory and link the assertion as a candidate correction (linked_memory_ids) instead of replacing it.
 Prefer short imperative statements ("Run X with flag Y", "Z fails unless W", "Comment style: sentence case, no trailing periods").
 Tag each extracted memory with a type in its metadata: "fact" (a durable verifiable statement — versions, paths, schemas, environment facts), "episode" (a one-time event or transient observation — "the build broke on Tuesday", a session-specific status), "procedure" (a multi-step playbook that recurred — "to deploy: first X, then Y, then Z"), or "preference" (a convention/style rule the user stated — "comments in sentence case, no trailing periods", "commit messages under 72 chars"). The default is "fact" when the type is ambiguous. Each type has a different decay horizon: episodes fade fastest (14d), facts persist until superseded (28d), procedures are high-value (90d), preferences are durable instruction (180d) — the type you choose shapes how long the memory stays fresh.
+Tag each extracted memory with an SRO triple in its metadata — sro: [subject, relation, object], three short lowercase strings naming WHAT the claim is about, the property, and the exact value: ["node version", "is", "20"], ["test runner", "runs with", "--runInBand"], ["comment style", "is", "sentence case"], ["parser columns", "are", "1-based"]. The subject names the entity (tool, file, versioned thing, project concept), the relation the property or verb, the object the exact current value INCLUDING numbers, flags and versions — the differentia that makes "X is 20" and "X is 22" different claims about the same subject+relation. Keep each part under 6 words, drop articles ("the"), never average or blend differing values: when newer evidence changes a value, the new memory carries the NEW object and the reconciler supersedes the old claim by recency. Every memory that asserts a state or value should carry an SRO; purely narrative episodes may omit it.
 The 'text' field must NEVER carry decision rationale, meta-deliberation or JSON fragments: no "Reason:" clauses, no [note ...] deliberation blobs, no ', "reason": ...' provenance fragments — the why goes to its own 'reason' field only.`;
 
 // ---------------------------------------------------------------- embedders
@@ -1578,7 +1760,7 @@ Your job: keep the memory list coherent as new evidence arrives. Output STRICT J
 The \`text\` field is the COMPLETE new bullet a future session will read — the new wording ONLY. Never put your rationale, explanations or a "Reason:" clause in \`text\`; \`reason\` is its own field.
 
 Rules (in priority order):
-1. RECENCY WINS on contradictions: when two memories disagree, the one with the newer updatedAt is current practice. SUPERSEDE the loser with {"op":"SUPERSEDE","id":"<loser>","supersededBy":"<winner>"} — the loser is stamped and retained for audit (excluded from recall by default), the winner carries the current state. This is preferred over DELETE: provenance survives, the version history can answer "what was true then", and the health card can surface the supersede depth. Use DELETE only for a memory that has NO successor (transient/session metadata, advocacy for an already-superseded rule, untrusted-input payloads) — when a contradiction resolves, the winner STAYS and the loser SUPERSEDES, never both gone. A stale rule stated as a SIDE CLAUSE of an otherwise-current memory ("…; X still enforced…", "…; keep using X…") makes THAT memory stale too: UPDATE it to drop the stale clause (keep the current part) — do not let the loser survive by hiding inside a newer sentence. An old memory that argues for RETAINING a superseded rule ("X caught bugs early; valuable to retain") is advocacy for the LOSER, not evidence: SUPERSEDE (or DELETE if it has no successor) the advocacy memory when the rule it defends was replaced - but never the WINNER or its supporting evidence (a current rule's own "this caught bugs" track record is a reason to keep it, and stays). The WINNER (the newer memory carrying the current state) is never a valid SUPERSEDE/DELETE target: when a contradiction resolves, the loser goes and the newest memory STAYS as the carrier of current practice — deleting both sides leaves the topic with no current state, the worst outcome a reconcile pass can produce.
+1. RECENCY WINS on contradictions: when two memories disagree, the one with the newer updatedAt is current practice. SUPERSEDE the loser with {"op":"SUPERSEDE","id":"<loser>","supersededBy":"<winner>"} — the loser is stamped and retained for audit (excluded from recall by default), the winner carries the current state. When both rows carry an SRO triple with the same subject|relation and DIFFERENT objects, this is a pure value contradiction — SUPERSEDE the older one; NEVER merge, blend or average differing values into one text (two different values for one claim is a contradiction, not a range). This is preferred over DELETE: provenance survives, the version history can answer "what was true then", and the health card can surface the supersede depth. Use DELETE only for a memory that has NO successor (transient/session metadata, advocacy for an already-superseded rule, untrusted-input payloads) — when a contradiction resolves, the winner STAYS and the loser SUPERSEDES, never both gone. A stale rule stated as a SIDE CLAUSE of an otherwise-current memory ("…; X still enforced…", "…; keep using X…") makes THAT memory stale too: UPDATE it to drop the stale clause (keep the current part) — do not let the loser survive by hiding inside a newer sentence. An old memory that argues for RETAINING a superseded rule ("X caught bugs early; valuable to retain") is advocacy for the LOSER, not evidence: SUPERSEDE (or DELETE if it has no successor) the advocacy memory when the rule it defends was replaced - but never the WINNER or its supporting evidence (a current rule's own "this caught bugs" track record is a reason to keep it, and stays). The WINNER (the newer memory carrying the current state) is never a valid SUPERSEDE/DELETE target: when a contradiction resolves, the loser goes and the newest memory STAYS as the carrier of current practice — deleting both sides leaves the topic with no current state, the worst outcome a reconcile pass can produce.
   MERGE DIRECTION: when near-duplicates merge, keep the NEWEST memory as the surviving carrier (UPDATE it with the merged wording) and SUPERSEDE the older ones (supersededBy=<the merged survivor's id>) — recency protects the winner, and a merged memory that stays put keeps its provenance and timestamps intact.
   ENTITY STALENESS after a migration: when a newer memory records a version/tool/library switch (X 3 -> X 4, tool A -> tool B), every memory describing the OLD generation's schemas, behavior or APIs is stale - even when it never asserts a version or contradicts anything on its face ("the X 3 schema mirrors Y", "X's output flattens cleanly"). SUPERSEDE those with supersededBy=<the newer switch record's id>, or UPDATE them to the new generation; do not keep parallel facts about both generations of the same entity.
 2. MERGE near-duplicates into the better-worded memory (UPDATE one, SUPERSEDE the rest with supersededBy=<the survivor's id>). Facts about the same entity that say different things are NOT duplicates — rule 1 decides.
@@ -1616,6 +1798,13 @@ export interface ReconcileResult {
          * to the next pass; counted here so the dream note and tests can see
          * the guard working. */
         protectedDeletes: number;
+        /** The deterministic SRO pass (Divertimento CP2): contradictions the
+         *  LLM left on the table, resolved by the (subject, relation) rule —
+         *  no similarity, no threshold. Included in `superseded` above. */
+        sroApplied?: number;
+        /** Deterministic pass skips: protected (this-batch) losers without an
+         *  exact-text twin — they survive to the next pass. */
+        sroSkipped?: number;
 }
 
 /**
@@ -1661,13 +1850,15 @@ export async function reconcileMemories(
                 // or reconciling is off) — clear any live failure record so the
                 // warning lane stays true, and stamp the success marker.
                 clearHealthReconcileFailure(opts?.recordDir);
-                return { ops: [], events: [], merged: 0, pruned: 0, updated: 0, superseded: 0, protectedDeletes: 0 };
+                return { ops: [], events: [], merged: 0, pruned: 0, updated: 0, superseded: 0, protectedDeletes: 0, sroApplied: 0, sroSkipped: 0 };
         }
         const listing = memories
                 .map((m) => {
                         const kind = String(m.metadata?.kind ?? "note");
                         const sup = isSuperseded(m) ? ` superseded=${m.metadata?.supersededBy}` : "";
-                        return `- id=${m.id} updated=${m.updatedAt ?? m.createdAt ?? "?"} kind=${kind}${sup}: ${m.text}`;
+                        const t = parseSro(m);
+                        const sro = t ? ` sro=${sroClaimKey(t)} -> ${t.o}` : "";
+                        return `- id=${m.id} updated=${m.updatedAt ?? m.createdAt ?? "?"} kind=${kind}${sup}${sro}: ${m.text}`;
                 })
                 .join("\n");
         // 2026-10-22 benchtest finding (quality-axes live campaign): one
@@ -1696,7 +1887,7 @@ export async function reconcileMemories(
                 // ephemeral bus event gains a durable record the health card /
                 // API / doctor can render until a pass succeeds.
                 recordHealthReconcileFailure(reconcileError ?? "unknown reconcile error", opts?.recordDir);
-                return { ops: [], events: [], merged: 0, pruned: 0, updated: 0, superseded: 0, protectedDeletes: 0 };
+                return { ops: [], events: [], merged: 0, pruned: 0, updated: 0, superseded: 0, protectedDeletes: 0, sroApplied: 0, sroSkipped: 0 };
         }
         const events: MemoryPlatformEvent[] = [];
         let merged = 0;
@@ -1846,8 +2037,44 @@ export async function reconcileMemories(
         // the failure lane and stamps the last-success marker — the health
         // card's `lastReconcile` is this timestamp, honest about WHICH pass
         // succeeded (the dreams table carries no reconcile outcome).
+        //
+        // ---- The deterministic SRO pass (Divertimento CP2, 2026-11-14):
+        // contradictions the LLM verdict left on the table are resolved by
+        // the (subject, relation) rule — no similarity, no threshold, no
+        // merge. Runs AFTER the LLM's ops so its own merges/supersedes get
+        // first claim; only rows the LLM left LIVE participate (an
+        // LLM-DELETEd/SUPERSEDEDed row is out of scope — the deterministic
+        // pass never re-opens a verdict). Protected (this-batch) losers
+        // without an exact-text twin survive to the next pass, exactly like
+        // the LLM lanes.
+        const llmTouched = new Set(events.map((e) => e.id));
+        const stillLive = memories.filter((m) => !llmTouched.has(m.id) && !isSuperseded(m));
+        let sroApplied = 0;
+        let sroSkipped = 0;
+        if (stillLive.length > 1) {
+                const sro = await applyDeterministicSroSupersedes(stillLive, {
+                        platform,
+                        protectedIds,
+                        now: Date.now(),
+                        twinSurvives: (id, text) => twinSurvives(id, text),
+                });
+                events.push(...sro.events);
+                superseded += sro.count;
+                sroApplied = sro.count;
+                sroSkipped = sro.skipped;
+        }
         clearHealthReconcileFailure(opts?.recordDir);
-        return { ops: verdict.ops, events, merged, pruned, updated, superseded, protectedDeletes };
+        return {
+                ops: verdict.ops,
+                events,
+                merged,
+                pruned,
+                updated,
+                superseded,
+                protectedDeletes,
+                sroApplied,
+                sroSkipped,
+        };
 }
 
 async function defaultReconcileLlm(memories: PlatformMemory[]): Promise<{ ops: ReconcileOp[] }> {
@@ -1855,7 +2082,9 @@ async function defaultReconcileLlm(memories: PlatformMemory[]): Promise<{ ops: R
                 .map((m) => {
                         const kind = String(m.metadata?.kind ?? "note");
                         const sup = isSuperseded(m) ? ` superseded=${m.metadata?.supersededBy}` : "";
-                        return `- id=${m.id} updated=${m.updatedAt ?? m.createdAt ?? "?"} kind=${kind}${sup}: ${m.text}`;
+                        const t = parseSro(m);
+                        const sro = t ? ` sro=${sroClaimKey(t)} -> ${t.o}` : "";
+                        return `- id=${m.id} updated=${m.updatedAt ?? m.createdAt ?? "?"} kind=${kind}${sup}${sro}: ${m.text}`;
                 })
                 .join("\n");
         const result = await chatJson<{ ops: ReconcileOp[] }>(

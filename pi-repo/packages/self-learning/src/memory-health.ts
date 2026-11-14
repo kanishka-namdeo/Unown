@@ -35,7 +35,7 @@
 import { mkdirSync, readFileSync, unlinkSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { DATA_DIR } from "./store.ts";
-import { ENGINE_SCOPE, type MemoryPlatform, type MemoryScope, type PlatformMemory } from "./memzero.ts";
+import { ENGINE_SCOPE, parseSro, type MemoryPlatform, type MemoryScope, type PlatformMemory } from "./memzero.ts";
 import { undreamedNotes } from "./notes.ts";
 
 // ---------------------------------------------------------------------------
@@ -167,6 +167,11 @@ export interface MemoryHealth {
         warnings: HealthWarning[];
         /** The platform's current memory count for the scope (context). */
         memoryCount: number;
+        /** Live memories carrying a well-formed SRO triple (Divertimento
+         *  CP2): the deterministic supersede lane's adoption indicator —
+         *  legacy rows without triples keep LLM authority, so this counter
+         *  shows how much of the store the deterministic rule covers. */
+        sroTaggedCount: number;
         /** The memory review queue's pending depth (Divertimento CP1): the
          *  human gate's visible counter. The queue is user-level (one inbox
          *  across projects) but the counter rides the health card every
@@ -240,6 +245,17 @@ export function countByType(memories: Array<Pick<PlatformMemory, "id" | "metadat
                 else counts.fact++; // unknown type → fact (the default)
         }
         return counts;
+}
+
+/** Count live memories carrying a well-formed SRO triple (Divertimento
+ *  CP2): the deterministic supersede lane's adoption indicator. Pure —
+ *  reads only the memory list. */
+export function countSroTagged(memories: Array<Pick<PlatformMemory, "id" | "metadata">>): number {
+        let n = 0;
+        for (const m of memories) {
+                if (!m?.metadata?.supersededBy && parseSro(m as PlatformMemory)) n++;
+        }
+        return n;
 }
 
 /** The reconcile-stale horizon: a scope with no reconcile success in more
@@ -331,6 +347,7 @@ export async function memoryHealth(
                 typeBreakdown: countByType(memories),
                 warnings,
                 memoryCount: memories.length,
+                sroTaggedCount: countSroTagged(memories),
                 reviewQueueDepth: opts.reviewQueueDepth ?? 0,
         };
 }

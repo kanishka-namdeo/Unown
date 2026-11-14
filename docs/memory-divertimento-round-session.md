@@ -38,7 +38,7 @@ unilaterally).
 |---|---|---|
 | CP0 research + code map + baseline bring-up | ✅ done | teardown + research docs + this file's code map + the verified baseline below |
 | CP1 the integrity lane — wire the review queue, seal the recall path, per-type budget, env/docs sync | ✅ done | `memory-review.ts` (user-level queue, `-r<N>` re-park) + new `memory-review-ship.ts` (the only write path: re-dedupe + re-guard at decision time, `shippedVersion` stamped after both writes land) + `hoist.ts` rewired (park, never auto-write) + search-path `latest_only` on `searchMemories`/`searchAcrossScopes`/`/api/memories` (+ `/memory search --all` badged) + `renderTypeShares`/`allocateTypeBudget` + `## Preferences`/`## Episodes` sections + per-type footer + `/api/memory/review` routes + `/memory review` + `unown memory review` (degraded local read) + the dashboard review card + `reviewQueueDepth`/`review-pending` + env/docs sync + DOX (self-learning AGENTS.md, memory.md, configuration.md, unown-overview re-stamp) + CHANGELOG×4 + tests: memory-review 18, memory-review-ship 8, hoist 18 reworked, memory-recall-integrity 15, manual-notes/budget/freshness re-pinned |
-| CP2 deterministic supersession — SRO keys in the reconcile | ☐ | |
+| CP2 deterministic supersession — SRO keys in the reconcile | ✅ done | `parseSro`/`normalizeSroPart`/`sroClaimKey`/`sroFullKey`/`sroContradictionGroups`/`applyDeterministicSroSupersedes` + the post-LLM wiring in `reconcileMemories` (`sroApplied`/`sroSkipped` on ReconcileResult, never re-opening an LLM verdict) + `MEM0_CUSTOM_INSTRUCTIONS` SRO tagging + `RECONCILE_SYSTEM` no-merge rule + the reconcile listing enrichment + `DreamOutcome.sroApplied` + the dream-note ", K deterministic" fragment + `countSroTagged`/`sroTaggedCount` on the health card + docs (memory.md, AGENTS.md, unown-overview) + `test/memory-sro.test.ts` (15) |
 | CP3 usage-conditioned decay — render-exclusion dormancy with recurrence reset | ☐ | |
 | CP4 the delight lane — provenance badges, honest counts, the AutoDream digest | ☐ | |
 | CP5 `unown memory doctor` — the audit that proves the loop | ☐ | |
@@ -194,6 +194,37 @@ Measured at the milestone: engine suite **5623/0** (5728 ran, 105 live-
 gated skips), root unit **2094/0**, root e2e **15/15** with the landing
 budget twin green at MAX_WORDS 4590, typecheck 0, lint 0 errors, all five
 landing checks green.
+
+
+## CP2 — the deterministic SRO supersede, shipped (2026-11-14)
+
+MemStrata's measured verdict drives the design: similarity-based conflict
+detection sits at AUROC 0.59 (chance) on contradicted-vs-duplicated facts;
+a deterministic (subject, relation) rule takes stale-fact errors 15-40% to
+~0%. Unown's adaptation, gradual and backward-compatible:
+
+- **Extraction tags SRO triples** (`[subject, relation, object]` — the
+  claim, the property, the exact value; the object keeps numbers, flags
+  and versions: the differentia that makes "X is 20" and "X is 22"
+  different claims). The reconcile listing renders them so the LLM sees
+  the claim keys too.
+- **A deterministic pass follows the LLM verdict** inside
+  `reconcileMemories`: two LIVE rows with the same claim key and
+  different objects are a contradiction resolved by recency alone —
+  newest confirmedAt wins, losers take the same bi-temporal stamps
+  (supersededBy + invalidAt, retained verbatim), **differing values are
+  never merged or averaged** (the MIRIX numeric-merge class).
+- **Never re-opens an LLM verdict** (rows the LLM touched are out of
+  scope); rows without triples keep full LLM authority (legacy back-compat
+  by construction); same-batch timestamp ties go to the LLM (it sees both
+  rows in one listing); the fresh-evidence protection extends to the pass.
+- **Surfaces**: `ReconcileResult.sroApplied/sroSkipped`, the dream note's
+  ", K deterministic" fragment, the health card's `sroTaggedCount`
+  adoption indicator.
+
+Measured: the SRO suite 15/0 (input shapes, group rules, the apply pass,
+the reconcile integration, the back-compat pin); engine suite 5638/0
+(+15) with zero fallout; full-suite re-run at the CP2 milestone below.
 
 ## Session checkpoint protocol
 

@@ -264,6 +264,9 @@ export interface MemoryHealthCard {
          *  human gate's visible counter — every model-inferred user-tier rule
          *  waits here until decided. */
         reviewQueueDepth: number;
+        /** Live memories carrying a well-formed SRO triple (Divertimento
+         *  CP2): the deterministic supersede lane's adoption indicator. */
+        sroTaggedCount: number;
         warnings: MemoryHealthWarning[];
         memoryCount: number;
 }

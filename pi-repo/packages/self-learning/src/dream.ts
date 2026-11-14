@@ -112,6 +112,10 @@ interface DreamOutcome {
          *  supersededBy + invalidAt this pass — retained for audit, excluded
          *  from recall by filterLatestOnly. The winner carries current state. */
         superseded: number;
+        /** Of `superseded`, the deterministic SRO pass's share (Divertimento
+         *  CP2): contradictions the LLM left on the table, resolved by the
+         *  (subject, relation) rule — no similarity, no threshold. */
+        sroApplied?: number;
         /** Fresh-evidence protection (2026-11-11 Recital round): DELETE verdicts
          * the reconcile guard rejected on memories born in this batch — the
          * current-state carrier survives to the next pass. Surfaces as the
@@ -128,10 +132,13 @@ interface DreamOutcome {
 /** The supersede fragment for dream rows/notes (empty when zero memories
  *  were superseded — the indicator is opt-in by event, not a standing zero).
  *  Bi-temporal supersede (Memory v2 round): the loser is stamped and retained
- *  for audit, not deleted — provenance survives. */
+ *  for audit, not deleted — provenance survives. The deterministic share
+ *  (Divertimento CP2) rides the same fragment when it fired. */
 function supersededFragment(out: DreamOutcome | null): string {
         const n = out?.superseded ?? 0;
-        return n > 0 ? `, ${n} superseded (retained for audit)` : "";
+        if (n <= 0) return "";
+        const k = out?.sroApplied ?? 0;
+        return k > 0 ? `, ${n} superseded (retained for audit; ${k} deterministic)` : `, ${n} superseded (retained for audit)`;
 }
 
 /** The ⛨ fragment for dream rows/notes (empty when the guard fired zero
@@ -217,6 +224,7 @@ async function consolidate(
                 merged: reconcile.merged,
                 pruned: reconcile.pruned + guardDeleted,
                 superseded: reconcile.superseded,
+                sroApplied: reconcile.sroApplied ?? 0,
                 protectedDeletes: reconcile.protectedDeletes,
                 quarantined: quarantinedNoteTexts.length,
                 quarantinedNoteTexts,

@@ -74,7 +74,7 @@ the CHANGELOG folded, the version bumped, this round graduated.
 
 ---
 
-## ACTIVE ROUND — the Memory Divertimento round (2026-11-14, CP1 SHIPPED)
+## ACTIVE ROUND — the Memory Divertimento round (2026-11-14, CP1+CP2 SHIPPED)
 
 `docs/memory-divertimento-round-session.md` — fix what broke, prove the
 patterns, make it delightful. CP0 done (five teardowns + papers + consumer
@@ -92,9 +92,7 @@ class); the per-type render budget (shares + waterfall; `## Preferences`/
 `## Episodes` sections; per-type kept/pruned footer) replacing the flat cap;
 env-docs drift closed. Suites: engine 5623/0, root unit 2094/0, root e2e
 15/15, the landing budget twin green at MAX_WORDS 4590 (rail 59 stops /
-580 entries), typecheck 0, lint 0 errors. Remaining: CP2 deterministic SRO
-supersession → CP3 usage-conditioned dormancy → CP4 the delight lane →
-CP5 `unown memory doctor` → CP6 export/import → CP7 verify + release.
+580 entries), typecheck 0, lint 0 errors. **CP2 SHIPPED — the deterministic SRO supersede**: extraction tags `[subject, relation, object]` triples; a post-LLM pass resolves same-claim-key/different-object contradictions by recency alone (no similarity — AUROC 0.59, arXiv 2606.26511); losers take the same bi-temporal stamps, differing values are never merged (the MIRIX numeric-merge class); rows without triples keep LLM authority; same-batch ties go to the LLM; fresh-evidence protection extends; the dream note renders ", K deterministic" and the health card carries `sroTaggedCount`. Pinned by `test/memory-sro.test.ts` (15); engine 5638/0. Remaining: CP3 usage-conditioned dormancy → CP4 the delight lane → CP5 `unown memory doctor` → CP6 export/import → CP7 verify + release.
 Push on every milestone; the phase ledger in the round log is the resume
 point.
 
