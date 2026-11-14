@@ -46,13 +46,13 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
   {
     "label": "Unreleased",
     "date": null,
-    "total": 40,
+    "total": 38,
     "counts": {
-      "Added": 2,
+      "Added": 1,
       "Changed": 0,
       "Deprecated": 0,
       "Removed": 0,
-      "Fixed": 9,
+      "Fixed": 8,
       "Security": 0,
       "Behavior": 29
     },
@@ -184,10 +184,6 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
           {
             "title": "The PTY memory matrix is extended to the Divertimento round's surfaces — the pre-registered CP7 lane…",
             "behavior": false
-          },
-          {
-            "title": "The evidence lane — every learned rule links back to the note that produced it (the Memory Nocturne round…",
-            "behavior": false
           }
         ]
       },
@@ -225,7 +221,37 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
           {
             "title": "The dev server was silently un-interactable when browsed by IP literal",
             "behavior": false
-          },
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "label": "0.0.67",
+    "date": "2026-11-15",
+    "total": 2,
+    "counts": {
+      "Added": 1,
+      "Changed": 0,
+      "Deprecated": 0,
+      "Removed": 0,
+      "Fixed": 1,
+      "Security": 0,
+      "Behavior": 0
+    },
+    "groups": [
+      {
+        "bucket": "Added",
+        "items": [
+          {
+            "title": "The evidence lane — every learned rule links back to the note that produced it (the Memory Nocturne round…",
+            "behavior": false
+          }
+        ]
+      },
+      {
+        "bucket": "Fixed",
+        "items": [
           {
             "title": "unown doctor no longer crashes on a foreign source value in model-specs.json (issue #48…",
             "behavior": false
