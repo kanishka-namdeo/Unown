@@ -43,7 +43,7 @@ unilaterally).
 | CP4 the delight lane — provenance badges, honest counts, the AutoDream digest | ✅ done | tools.ts search badges (type/hard-won/freshness stamp/dormant-revived) + the store-free `memory-stamps.ts` (single definitions, re-exported; the terminal tools never import the engine DB) + `countProjectStaleRules`/`MemoryBarInfo.stale` + the recall line's `(N stale)` fragment + dreams-table `entries_superseded`/`entries_dormant` (schema + migrations + threading through all dream-row writes) + `latestDreamNews` digest fields + `DreamNews.superseded/dormant` + `dreamNewsToastText` digest + /memory show's `not injected · N dormant` line + the dashboard fact line's dormant/sro counts + docs (memory.md delight section, AGENTS.md, unown-overview) + `test/memory-delight.test.ts` (6) |
 | CP5 `unown memory doctor` — the audit that proves the loop | ✅ done | new `src/memory-doctor.ts` (`auditProjectMemory`/`renderMemoryDoctorReport`/`liveMemoryDoctorEngine`) + the cli.ts subcommand + HELP + the `unown doctor` store row + docs (memory.md, AGENTS.md, unown-overview) + `test/memory-doctor.test.ts` (6) |
 | CP6 memory interchange — export/import behind the human gate | ✅ done | `src/memory-interchange.ts` (schema v1 builders, the parse/refuse, the trust gate, injectable park/write appliers) + `GET/POST /api/memory/interchange` (engine-side validation, one source of truth) + `unown memory export [--out]` / `import <file> [--apply]` + the unknown-flag guard's per-family subcommand surfaces (the live smoke's own find: --reason had been broken since CP1) + docs (memory.md incl. a duplicate-bullet cure, AGENTS.md incl. a duplicated-CP5-sentence cure, README, CHANGELOG) + `test/memory-interchange.test.ts` (21) + 4 parse-args pins; **the same-day parallel-lineage reconciliation** (two lineages shipped CP6 within the hour — first-landing `1397ca4f` governs, the second folded in): the dedupe lane (`importDedupeKey`/`classifyImportRecords{existingTexts}`/`duplicates`, the route injects the queue for park + the scopes' live rows for apply — re-imports converge), the pre-parse `IMPORT_MAX_FILE_BYTES` CLI cap (5 MiB via statSync before readFileSync/JSON.parse), `shipChangedBy` (the approve's attribution names memory-import, never "hoisted from 0 project(s)"; the memory:changed emit carries changedBy), the memory.md dedupe bullet + the unown-overview doubled-doctor-sentence cure + the interchange counted + re-stamped, and `test/memory-interchange-reconcile.test.ts` (9) + `test/memory-interchange-api.test.ts` (5) |
-| CP7 verification + docs/landing/blog/DOX + CHANGELOG + version + release | ☐ | |
+| CP7 verification + docs/landing/blog/DOX + CHANGELOG + version + release | ✅ done | the full battery (engine 5727/0 · root unit 2094/0 · e2e 15/15 · both landing twins green at 4,608w ≤ the amended 4,612 ceiling / 20.2vh · typecheck 0 · lint 0 errors · all five landing checks green, rail 61 stops / 590 entries · Dependabot 0 · code-scanning 0) + the v0.0.66 cut (the CHANGELOG fold — the interchange entry MOVED from the 0.0.65 section where the landed CP6 had parked it post-tag into [0.0.66] where the code actually ships, plus the reconciliation Fixed entry; the 0.0.66 title compressions -2w; the historical-lead hygiene compressions v0.0.31/v0.0.2/v0.0.7; the budget-twin amendment 4,590→4,612 both twins, the 61st stop's +23w structural cost per the 0.0.44/0.0.48/0.0.62/0.0.65 precedent; package.json 0.0.66; unown-overview re-stamped) |
 
 ## CP0 — the research, the code map, the baseline (2026-11-14)
 
@@ -350,6 +350,29 @@ memory neighborhood 140/0; the live round trip re-smoked on the restarted
 engine (export 7 → park 7 → re-import 0 · 7 duplicate; the poisoned apply
 quarantines + writes the clean row; the 6 MB file refuses pre-parse; the
 probe rows and candidates cleaned, queue depth 0).
+
+## CP7 — the verification + the v0.0.66 cut, shipped (2026-11-15)
+
+The full battery on the final tree: engine **5727/0** (105 live-gated
+skips), root unit **2094/0**, root e2e **15/15**, typecheck 0, lint 0
+errors, all five landing checks green (rail 61 stops / 590 entries),
+Dependabot 0 open, code-scanning 0 open.
+
+The landing budget twin needed the release amendment (the thirteenth
+ceiling move): the 61st stop's chrome measured +23w net (tile chrome +
+the newest stop's two visible titles − the 0.0.65 titles the latest
+marker rotates out) against five words of carried headroom — the round's
+own titles compressed first (-2w), then **4,590 → 4,612** in BOTH twins
+(the 0.0.48 lesson) with the comment documenting the cost. The
+historical-lead compressions (v0.0.31/v0.0.2/v0.0.7) re-learned the
+FAQ-collapsed lesson a third time: only the latest stop's item titles
+reach innerText — hygiene, not budget.
+
+The honest fold: the interchange entry moved OUT of the [0.0.65] section
+into [0.0.66] — the landed CP6 commit (1397ca4f) wrote its entry into
+the 0.0.65 section AFTER the v0.0.65 tag had been cut (the tag points at
+15c3bc16), so the released 0.0.65 binaries never contained the
+interchange; [0.0.66] is where the code actually ships.
 
 ## Session checkpoint protocol
 

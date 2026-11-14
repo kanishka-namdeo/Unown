@@ -187,7 +187,24 @@ const MAX_PAGE_VH = 20.5;
  * rule so the next release does not open on a knife's edge. No generated
  * number, no gated literal touched.
  */
-const MAX_WORDS = 4590;
+/*
+ * The 2026-11-15 v0.0.66 release amendment (the thirteenth): 4,590 -> 4,612
+ * carries the rail's 61st stop — the same structural cost, the same
+ * precedent (the 0.0.65 cut left the page at 4,585, five words under; the
+ * 61st stop's undeletable chrome measured +23 net: ~20w of tile chrome plus
+ * the newest stop's two visible titles, minus the 0.0.65 titles the latest
+ * marker rotates out of visibility). Compressed FIRST, as the contract
+ * demands: the round's own listed changelog titles ("unown memory export /
+ * import — the memory interchange, behind the human gate (Divertimento
+ * CP6)" and the reconciliation Fixed lead, -2 measured words; the Fixed
+ * title is generator-clipped at four). Re-learned lesson (the FAQ-collapsed
+ * class, third time): HISTORICAL first-listed leads do not render — only
+ * the latest stop's items reach innerText — so the v0.0.31/v0.0.2/v0.0.7
+ * lead compressions in the same CHANGELOG are hygiene, not budget. The
+ * ceiling carries one more stop's headroom so the next release does not
+ * open on a knife's edge. No generated number, no gated literal touched.
+ */
+const MAX_WORDS = 4612;
 
 /*
  * The 2026-10-31 planning-round release amendment (the tenth): 3,860 ->

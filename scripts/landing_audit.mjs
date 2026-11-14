@@ -179,7 +179,11 @@ const MAX_VH = 20.5;
  * "+N more") plus one more stop's (~20w) headroom per the 0.0.44 rule.
  * The e2e twin carries the full receipt.
  */
-const MAX_WORDS = 4590;
+// The 2026-11-15 v0.0.66 release amendment: 4,590 -> 4,612 carries the
+// rail's 61st stop (the ~+23w structural cost; the round's own titles
+// compressed first, -2w; the historical-lead lesson re-learned: only the
+// latest stop's items render). Both twins move together — the 0.0.48 lesson.
+const MAX_WORDS = 4612;
 const MAX_BAND_VH = 3;
 
 let chromium = null;

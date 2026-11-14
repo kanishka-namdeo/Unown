@@ -30,10 +30,10 @@ export interface ChangelogStop {
   groups: ChangelogGroup[];
 }
 
-export const CHANGELOG_TOTAL_ENTRIES = 590;
+export const CHANGELOG_TOTAL_ENTRIES = 591;
 
 export const CHANGELOG_TOTALS: Record<ChangelogBucket, number> = {
-  "Added": 248,
+  "Added": 249,
   "Changed": 32,
   "Deprecated": 0,
   "Removed": 3,
@@ -216,9 +216,39 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
           {
             "title": "The dev server was silently un-interactable when browsed by IP literal",
             "behavior": false
-          },
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "label": "0.0.66",
+    "date": "2026-11-15",
+    "total": 2,
+    "counts": {
+      "Added": 1,
+      "Changed": 0,
+      "Deprecated": 0,
+      "Removed": 0,
+      "Fixed": 1,
+      "Security": 0,
+      "Behavior": 0
+    },
+    "groups": [
+      {
+        "bucket": "Added",
+        "items": [
           {
-            "title": "The memory interchange's duplicate…",
+            "title": "unown memory export / import — the memory interchange, behind the human gate (Divertimento CP6)",
+            "behavior": false
+          }
+        ]
+      },
+      {
+        "bucket": "Fixed",
+        "items": [
+          {
+            "title": "The interchange's duplicate…",
             "behavior": false
           }
         ]
@@ -228,13 +258,13 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
   {
     "label": "0.0.65",
     "date": "2026-11-14",
-    "total": 11,
+    "total": 10,
     "counts": {
       "Added": 2,
       "Changed": 0,
       "Deprecated": 0,
       "Removed": 0,
-      "Fixed": 9,
+      "Fixed": 8,
       "Security": 0,
       "Behavior": 0
     },
@@ -272,10 +302,6 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
           },
           {
             "title": "The memory env-var documentation drift is closed (the every-env-var-documented contract)",
-            "behavior": false
-          },
-          {
-            "title": "unown memory export / unown memory import — memory interchange behind the human gate (the Memory Divertimento…",
             "behavior": false
           }
         ]
@@ -1935,7 +1961,7 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
         "bucket": "Fixed",
         "items": [
           {
-            "title": "benchmarks: the long-run runner learns from its own first green runs — nine lane fixes and a deadlock",
+            "title": "benchmarks: the long-run runner learns from its own runs — nine lane fixes, a deadlock",
             "behavior": false
           },
           {
@@ -2844,7 +2870,7 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
         "bucket": "Fixed",
         "items": [
           {
-            "title": "memory: the reconcile rationale leak — a model's \"Reason:\" sailed into project memory and broke the landing…",
+            "title": "memory: the reconcile rationale leak — a rationale sailed into project memory and broke the claims gate",
             "behavior": false
           },
           {
@@ -3441,7 +3467,7 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
         "bucket": "Fixed",
         "items": [
           {
-            "title": "the install docs name two services, not three — and the pinned installer examples name the live tag",
+            "title": "the install docs name two services, not three",
             "behavior": false
           },
           {
