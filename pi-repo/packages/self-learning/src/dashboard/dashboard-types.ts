@@ -267,6 +267,9 @@ export interface MemoryHealthCard {
         /** Live memories carrying a well-formed SRO triple (Divertimento
          *  CP2): the deterministic supersede lane's adoption indicator. */
         sroTaggedCount: number;
+        /** Rows dormant across every scope's record (Divertimento CP3):
+         *  a reversible state — searchable, revivable, never deleted. */
+        dormantCount: number;
         warnings: MemoryHealthWarning[];
         memoryCount: number;
 }

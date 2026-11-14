@@ -31,6 +31,7 @@ import { emit } from "./bus.ts";
 import { analyzeCanaryRun, canaryK, sampleCanaryTasks } from "./canary.ts";
 import { decideGuardAction, type GuardFlag, guardSummary, scanUntrustedText } from "./guard.ts";
 import { hoistCrossProjectRules } from "./hoist.ts";
+import { computeRenderPlan, dormancyScopeKey, trackDormancyFromPlan } from "./memzero.ts";
 import { currentVersion, maxTierChars, readTier, rollback, writeTier } from "./memory.ts";
 import {
         ENGINE_SCOPE,
@@ -125,6 +126,11 @@ interface DreamOutcome {
         quarantined: number;
         /** The quarantined note texts — the guard's layer-2.5 echo input. */
         quarantinedNoteTexts: string[];
+        /** Dormancy tracking (Divertimento CP3): rows that went dormant this
+         *  pass (PI_MEM0_DORMANT_AFTER consecutive excluded renders) and rows
+         *  whose inclusion/search-hit REVIVED them (the recurrence reset). */
+        dormantNew?: number;
+        dormantResets?: number;
         events: MemoryPlatformEvent[];
         rendered: string;
 }
@@ -219,6 +225,15 @@ async function consolidate(
         const rendered = renderProjectMemoryMarkdown(memories, {
                 preserveManualNotesFrom: opts.preserveManualNotesFrom,
         });
+        // ---- Dormancy tracking (Divertimento CP3): the render's in/out list
+        // updates the per-scope side record — included rows reset (recurrence),
+        // excluded rows count toward PI_MEM0_DORMANT_AFTER (default 3). Never
+        // touches the platform rows: a counter bump is not a re-assertion, and
+        // platform.update would refresh updatedAt (falsely refreshing the
+        // freshness stamp and flipping the SRO winner order). 0 disables.
+        const dormancy = trackDormancyFromPlan(computeRenderPlan(memories), {
+                scopeKey: dormancyScopeKey(scope),
+        });
         return {
                 added: surviving.filter((e) => e.event === "ADD").length,
                 merged: reconcile.merged,
@@ -228,6 +243,8 @@ async function consolidate(
                 protectedDeletes: reconcile.protectedDeletes,
                 quarantined: quarantinedNoteTexts.length,
                 quarantinedNoteTexts,
+                dormantNew: dormancy.newlyDormant,
+                dormantResets: dormancy.resets,
                 // revertable = surviving ADDs + reconcile events (guard-deleted poison
                 // is deliberately NOT revertable)
                 events: [...surviving.filter((e) => e.event === "ADD"), ...reconcile.events],

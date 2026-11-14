@@ -62,13 +62,18 @@ import {
         type Tier,
 } from "./memory.ts";
 import {
+        dormancyScopeKey,
         ENGINE_SCOPE,
+        isDormantId,
         type MemoryScope,
         memoryPlatformStatus,
         projectMemories,
         projectScope,
+        readDormancyRecord,
+        reviveDormantByIds,
         searchAcrossScopes,
         searchMemories,
+        type ScopedMemory,
 } from "./memzero.ts";
 import { runMintJob, suiteStats } from "./mint.ts";
 import { ingestTerminalNote, undreamedNotes } from "./notes.ts";
@@ -970,6 +975,14 @@ export async function handleApi(req: ApiRequest): Promise<Response> {
                                 ];
                                 try {
                                         const memories = await searchAcrossScopes(q, scopes, limit, { latestOnly });
+                                        // Dormancy annotate + revive (Divertimento CP3): a search hit
+                                        // IS use — the hit carries a `dormant` badge when it answered
+                                        // from the sleeping shelf, and the hit REVIVES it (MIRIX's
+                                        // recurrence reset; the next render's budget reconsiders).
+                                        annotateAndReviveDormancy(
+                                                memories,
+                                                (label) => (label === "engine" ? "engine" : `project:${label}`),
+                                        );
                                         return json({
                                                 memories,
                                                 query: q,
@@ -993,6 +1006,11 @@ export async function handleApi(req: ApiRequest): Promise<Response> {
                                 // dashboards and doctors want the full store); the q SEARCH
                                 // honors latest_only exactly like the across lane.
                                 const memories = q ? await searchMemories(q, scope, limit, { latestOnly }) : await projectMemories(scope);
+                                if (q) {
+                                        // Dormancy annotate + revive (Divertimento CP3) — same lane
+                                        // as the across form: a hit is use; a hit revives.
+                                        annotateAndReviveDormancy(memories, () => dormancyScopeKey(scope));
+                                }
                                 return json({ memories, query: q ?? null, scope, latestOnly: q ? latestOnly : undefined, platform: memoryPlatformStatus() });
                         } catch (err: any) {
                                 console.error("[agent-service] memory search failed:", err);
@@ -2152,4 +2170,41 @@ function startMaintenance(auth?: { token: string; path: string; sharedPath?: str
                 }
         }, 60_000);
         maintenanceTimer.unref?.();
+}
+
+/**
+ * Dormancy annotate + revive (Divertimento CP3): after a successful search,
+ * every hit carries `dormant: true` when it answered from the sleeping
+ * shelf, and every dormant hit is REVIVED (MIRIX's recurrence reset — the
+ * next render's budget reconsiders it). Writes only the per-scope side
+ * records: no platform rows, no updatedAt refresh, no event stream.
+ */
+function annotateAndReviveDormancy<T extends { id: string }>(hits: T[], keyOf: (label: string) => string): void {
+        try {
+                const byKey = new Map<string, T[]>();
+                for (const h of hits) {
+                        const label = ((h as T & { scope?: string }).scope ?? "engine") as string;
+                        const key = keyOf(label);
+                        const list = byKey.get(key) ?? [];
+                        list.push(h);
+                        byKey.set(key, list);
+                }
+                for (const [key, list] of byKey) {
+                        const rec = readDormancyRecord(key);
+                        const revivedIds: string[] = [];
+                        for (const h of list) {
+                                if (isDormantId(rec, h.id)) {
+                                        // annotate the RESPONSE row (the badge the TUI renders):
+                                        // this hit answered from the sleeping shelf, and this very
+                                        // search revived it for the next render's budget.
+                                        (h as T & { dormant?: boolean; revivedBy?: string }).dormant = true;
+                                        (h as T & { dormant?: boolean; revivedBy?: string }).revivedBy = "search";
+                                        revivedIds.push(h.id);
+                                }
+                        }
+                        if (revivedIds.length > 0) reviveDormantByIds(revivedIds, { scopeKey: key, by: "search" });
+                }
+        } catch {
+                /* bookkeeping is best-effort — a search never fails over it */
+        }
 }

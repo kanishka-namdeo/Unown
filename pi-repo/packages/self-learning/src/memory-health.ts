@@ -35,7 +35,7 @@
 import { mkdirSync, readFileSync, unlinkSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { DATA_DIR } from "./store.ts";
-import { ENGINE_SCOPE, parseSro, type MemoryPlatform, type MemoryScope, type PlatformMemory } from "./memzero.ts";
+import { dormantCountAll, ENGINE_SCOPE, parseSro, type MemoryPlatform, type MemoryScope, type PlatformMemory } from "./memzero.ts";
 import { undreamedNotes } from "./notes.ts";
 
 // ---------------------------------------------------------------------------
@@ -172,6 +172,11 @@ export interface MemoryHealth {
          *  legacy rows without triples keep LLM authority, so this counter
          *  shows how much of the store the deterministic rule covers. */
         sroTaggedCount: number;
+        /** Rows dormant across EVERY scope's record (Divertimento CP3):
+         *  PI_MEM0_DORMANT_AFTER consecutive excluded renders. A badge and
+         *  a reversible state — never a deletion; searchable, revivable by
+         *  inclusion or a search hit (the recurrence reset). */
+        dormantCount: number;
         /** The memory review queue's pending depth (Divertimento CP1): the
          *  human gate's visible counter. The queue is user-level (one inbox
          *  across projects) but the counter rides the health card every
@@ -282,6 +287,9 @@ export async function memoryHealth(
                 /** The memory review queue's pending depth (injected by the
                  *  engine form; 0/undefined = no warning). */
                 reviewQueueDepth?: number;
+                /** The all-scope dormant count (injected by the engine form;
+                 *  default = dormantCountAll()). */
+                dormantCount?: number;
                 now?: number;
         } = {},
 ): Promise<MemoryHealth> {
@@ -348,6 +356,7 @@ export async function memoryHealth(
                 warnings,
                 memoryCount: memories.length,
                 sroTaggedCount: countSroTagged(memories),
+                dormantCount: opts.dormantCount ?? dormantCountAll(),
                 reviewQueueDepth: opts.reviewQueueDepth ?? 0,
         };
 }

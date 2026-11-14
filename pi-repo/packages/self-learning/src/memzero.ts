@@ -64,8 +64,8 @@
  *   PI_DREAM_MODEL_ID / PI_MODEL_ID / PI_BRIDGE_URL — the LLM the platform
  *     talks to (through the llm-bridge, like every other learning call).
  */
-import { existsSync, mkdirSync } from "node:fs";
-import { join } from "node:path";
+import { existsSync, mkdirSync, readdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
+import { dirname, join } from "node:path";
 import { emit } from "./bus.ts";
 import { recordLlmCall, recordLlmFailure, recordLlmSuccess } from "./governor.ts";
 import { chatJson, modelFor } from "./llm.ts";
@@ -312,6 +312,204 @@ export function memoryInvalidAt(m: PlatformMemory): number | null {
  *  pass through unchanged (backward-compatible). */
 export function filterLatestOnly(memories: PlatformMemory[]): PlatformMemory[] {
         return memories.filter((m) => !isSuperseded(m));
+}
+
+// ---------------------------------------------------------- dormancy lane
+// The Memory Divertimento round (2026-11-14), CP3: usage-conditioned decay.
+// MIRIX's experience-pool law (score = sim × 0.5^ignored_pushes, retire at
+// 3 ignored pushes, RECURRENCE RESETS), CAMeR's finding (time-driven decay
+// collapses to ~zero; use-conditioned reinforcement is the driver), RSPM's
+// prune-with-reinforce, and MemDream's SOFT (reversible) decay — adapted to
+// Unown's render budget: a LIVE memory the budget repeatedly refuses to
+// render goes DORMANT after PI_MEM0_DORMANT_AFTER (default 3) consecutive
+// excluded renders. Dormant is a badge + a bookkeeping state — never a
+// deletion: the memory stays current in the store (searchable, revivable,
+// never superseded by dormancy alone).
+//
+// The bookkeeping lives in a SIDE record per scope (dormancy-<scope>.json
+// under PI_MEM0_DIR), deliberately NOT on the platform rows: a counter bump
+// is not a re-assertion, and platform.update would refresh updatedAt —
+// falsely refreshing the freshness stamp and flipping the SRO winner order
+// (an excluded loser would "win" its group next pass by fake recency).
+// MIRIX stores its pool counters in a separate table for the same reason.
+// The record self-heals: entries for ids absent from the live set are
+// pruned on the next tracking pass, and a rollback converges the same way.
+
+/** How many consecutive excluded renders before a memory goes dormant.
+ *  PI_MEM0_DORMANT_AFTER (default 3); 0 disables dormancy tracking. */
+export function mem0DormantAfter(): number {
+        const n = Number(process.env.PI_MEM0_DORMANT_AFTER ?? 3);
+        return Number.isFinite(n) && n >= 0 ? Math.floor(n) : 3;
+}
+
+/** One memory's dormancy bookkeeping. */
+export interface DormancyEntry {
+        /** Consecutive renders that excluded this memory (reset on inclusion). */
+        excluded: number;
+        /** ts the memory went dormant (absent while not dormant). */
+        dormantSince?: number;
+        /** How many times a search hit (or a render inclusion) revived it. */
+        revives?: number;
+        /** The last revival's lane ("search" today). */
+        lastRevivedBy?: string;
+}
+
+/** The per-scope dormancy record: memory id -> entry. */
+export type DormancyRecord = Record<string, DormancyEntry>;
+
+/** The record's dir: the mem0 data dir (PI_MEM0_DIR default DATA_DIR/mem0). */
+function dormancyDir(): string {
+        return process.env.PI_MEM0_DIR ? (process.env.PI_MEM0_DIR as string) : join(DATA_DIR, "mem0");
+}
+
+/** The per-scope record path: dormancy-<sanitized scope key>.json. */
+export function dormancyRecordPath(scopeKey: string, dir?: string): string {
+        const safe = String(scopeKey ?? "scope")
+                .toLowerCase()
+                .replace(/[^a-z0-9._-]+/g, "-")
+                .replace(/^-+|-+$/g, "")
+                .slice(0, 80) || "scope";
+        return join(dir ?? dormancyDir(), `dormancy-${safe}.json`);
+}
+
+export function readDormancyRecord(scopeKey: string, dir?: string): DormancyRecord {
+        try {
+                return JSON.parse(readFileSync(dormancyRecordPath(scopeKey, dir), "utf8")) as DormancyRecord;
+        } catch {
+                return {}; // absent/corrupt = empty bookkeeping — the honest default
+        }
+}
+
+export function writeDormancyRecord(scopeKey: string, rec: DormancyRecord, dir?: string): void {
+        const path = dormancyRecordPath(scopeKey, dir);
+        mkdirSync(dirname(path), { recursive: true });
+        const tmp = `${path}.tmp-${process.pid}-${Date.now()}`;
+        writeFileSync(tmp, `${JSON.stringify(rec, null, 2)}\n`, "utf8");
+        renameSync(tmp, path);
+}
+
+/** True when the id is dormant in this scope's record. */
+export function isDormantId(rec: DormancyRecord, id: string): boolean {
+        return Boolean(rec[id]?.dormantSince);
+}
+
+/**
+ * Update the bookkeeping from a render plan — the dream path's call after
+ * every render. INCLUDED rows reset (recurrence: one inclusion clears the
+ * counter AND the dormant state); EXCLUDED rows increment, and past
+ * PI_MEM0_DORMANT_AFTER consecutive exclusions the row is stamped
+ * dormantSince. Rows already dormant do not keep counting (the badge is
+ * state, not a counter). Entries for ids absent from the plan's live set
+ * are pruned (deleted memories, rolled-back adds). Returns the outcome
+ * counts for the dream note.
+ */
+export function trackDormancyFromPlan(
+        plan: RenderPlan,
+        opts: { scopeKey: string; dir?: string; now?: number } = { scopeKey: "engine" },
+): { newlyDormant: number; resets: number; excludedBumps: number; prunedEntries: number } {
+        const after = mem0DormantAfter();
+        if (after <= 0) return { newlyDormant: 0, resets: 0, excludedBumps: 0, prunedEntries: 0 };
+        const now = opts.now ?? Date.now();
+        const rec = readDormancyRecord(opts.scopeKey, opts.dir);
+        let newlyDormant = 0;
+        let resets = 0;
+        let excludedBumps = 0;
+        const keptSet = new Set(plan.kept.map((m) => m.id));
+        // included → reset (a dormant row rendered again is REVIVED by use)
+        for (const m of plan.kept) {
+                const e = rec[m.id];
+                if (e && (e.excluded > 0 || e.dormantSince !== undefined)) {
+                        rec[m.id] = { excluded: 0, revives: (e.revives ?? 0) + 1, lastRevivedBy: "render" };
+                        resets++;
+                }
+        }
+        // excluded → count; at threshold → dormant
+        for (const m of plan.excluded) {
+                const e = rec[m.id] ?? { excluded: 0 };
+                if (e.dormantSince !== undefined) continue; // already dormant — state, not a counter
+                const next = e.excluded + 1;
+                if (next >= after) {
+                        rec[m.id] = { ...e, excluded: next, dormantSince: now };
+                        newlyDormant++;
+                } else {
+                        rec[m.id] = { ...e, excluded: next };
+                        excludedBumps++;
+                }
+        }
+        // prune: ids absent from the live set (deleted, rolled back, migrated)
+        const liveIds = new Set(plan.visible.map((m) => m.id));
+        let prunedEntries = 0;
+        for (const id of Object.keys(rec)) {
+                if (!liveIds.has(id) && !keptSet.has(id)) {
+                        delete rec[id];
+                        prunedEntries++;
+                }
+        }
+        writeDormancyRecord(opts.scopeKey, rec, opts.dir);
+        return { newlyDormant, resets, excludedBumps, prunedEntries };
+}
+
+/**
+ * Revive dormant rows a search returned (MIRIX's recurrence reset: a search
+ * hit IS use — the row answered a recall, so the budget's refusal is
+ * reconsidered). Writes only the side record (no platform rows touched, so
+ * no updatedAt refresh and no event stream). Returns how many revived.
+ */
+export function reviveDormantByIds(ids: string[], opts: { scopeKey: string; dir?: string; now?: number; by?: string } = { scopeKey: "engine" }): number {
+        const after = mem0DormantAfter();
+        if (after <= 0) return 0;
+        const rec = readDormancyRecord(opts.scopeKey, opts.dir);
+        let revived = 0;
+        for (const id of ids) {
+                const e = rec[id];
+                if (e && e.dormantSince !== undefined) {
+                        rec[id] = { excluded: 0, revives: (e.revives ?? 0) + 1, lastRevivedBy: opts.by ?? "search" };
+                        revived++;
+                }
+        }
+        if (revived > 0) writeDormancyRecord(opts.scopeKey, rec, opts.dir);
+        return revived;
+}
+
+/** The scope's dormancy-record key — the same label shape the health
+ *  card and the API use (agentId, else user:/run:/default), so the dream
+ *  path (which owns the scope object), the across lane (which owns only
+ *  labels), and the health card all agree on ONE key space. */
+export function dormancyScopeKey(scope: MemoryScope | string): string {
+        if (typeof scope === "string") return scope;
+        return String(scope.agentId ?? (scope.userId ? `user:${scope.userId}` : scope.runId ? `run:${scope.runId}` : "default"));
+}
+
+/** The dormant count across EVERY scope's record (the health card's input —
+ *  the card is the "is memory OK" surface, and dormancy accrues mostly in
+ *  project scopes, so a single-scope count would understate it). */
+export function dormantCountAll(dir?: string): number {
+        const d = dir ?? dormancyDir();
+        let names: string[] = [];
+        try {
+                names = readdirSync(d).filter((f) => f.startsWith("dormancy-") && f.endsWith(".json"));
+        } catch {
+                return 0;
+        }
+        let n = 0;
+        for (const f of names) {
+                try {
+                        const rec = JSON.parse(readFileSync(join(d, f), "utf8")) as DormancyRecord;
+                        for (const e of Object.values(rec)) if (e.dormantSince !== undefined) n++;
+                } catch {
+                        /* corrupt record — skip, never a thrown count */
+                }
+        }
+        return n;
+}
+
+/** The per-scope dormant count (the health card's input). */
+export function dormantCountFor(scopeKey: string, dir?: string): number {
+        let n = 0;
+        for (const e of Object.values(readDormancyRecord(scopeKey, dir))) {
+                if (e.dormantSince !== undefined) n++;
+        }
+        return n;
 }
 
 // ------------------------------------------------------------- the SRO lane
@@ -2414,24 +2612,37 @@ export function stripSessionMetadataLine(text: string): string {
  * footer marker — bounded degradation, never a silent truncate and never a
  * render writeTier can refuse.
  */
-export function renderProjectMemoryMarkdown(
+/** What the render's budget decided, shared by the text render and the
+ *  dormancy tracker (Divertimento CP3) so both see the SAME in/out list —
+ *  one allocation, two consumers, never two budgets that drift. */
+export interface RenderPlan {
+        /** Live rows after the supersede filter, newest-first. */
+        visible: PlatformMemory[];
+        /** How many rows the supersede filter removed (retained for audit). */
+        supersededHidden: number;
+        /** Rendered rows (seeds first, then per-type budget, then hard-won). */
+        kept: PlatformMemory[];
+        /** LIVE rows the budget did NOT render this pass — the per-type drops
+         *  plus the hard-won overflow. The dormancy tracker's input class. */
+        excluded: PlatformMemory[];
+        perTypeKept: Record<MemoryType, number>;
+        perTypeDropped: Record<MemoryType, number>;
+        dropped: number;
+        hardWonDropped: number;
+        shares: Record<MemoryType, number>;
+        alloc: Record<MemoryType, number>;
+}
+
+/** The deterministic render budget, computed alone (no text assembled).
+ *  `renderProjectMemoryMarkdown` builds its document from this plan; the
+ *  dream path calls it directly to update dormancy tracking on the SAME
+ *  in/out list. Pure — `now` is a parameter, no Date.now inside. */
+export function computeRenderPlan(
         memories: PlatformMemory[],
-        opts: {
-                title?: string;
-                maxBullets?: number;
-                backend?: string;
-                /** The previous project-memory file whose "## Manual notes" section
-                 *  is re-appended verbatim (the hand-edit lane; dream.ts threads the
-                 *  current file here). */
-                preserveManualNotesFrom?: string;
-                /** The freshness clock (tests pin it; default Date.now()). */
-                now?: number;
-        } = {},
-): string {
+        opts: { maxBullets?: number } = {},
+): RenderPlan {
         const cap = opts.maxBullets ?? mem0MaxRendered();
         const hardWonCap = mem0MaxHardWon();
-        const maxChars = mem0MaxRenderChars();
-        const now = opts.now ?? Date.now();
         // Bi-temporal supersede (Memory v2 round): superseded memories are
         // excluded from the rendered document by default (the `latest_only=true`
         // search semantics). They stay in the store for audit (the version
@@ -2493,6 +2704,42 @@ export function renderProjectMemoryMarkdown(
                         hardWonKept++;
                 } else hardWonDropped++;
         }
+        const keptSet = new Set(kept.map((m) => m.id));
+        const excluded = visible.filter((m) => !keptSet.has(m.id));
+        return {
+                visible,
+                supersededHidden,
+                kept,
+                excluded,
+                perTypeKept,
+                perTypeDropped,
+                dropped,
+                hardWonDropped,
+                shares,
+                alloc,
+        };
+}
+
+export function renderProjectMemoryMarkdown(
+        memories: PlatformMemory[],
+        opts: {
+                title?: string;
+                maxBullets?: number;
+                backend?: string;
+                /** The previous project-memory file whose "## Manual notes" section
+                 *  is re-appended verbatim (the hand-edit lane; dream.ts threads the
+                 *  current file here). */
+                preserveManualNotesFrom?: string;
+                /** The freshness clock (tests pin it; default Date.now()). */
+                now?: number;
+        } = {},
+): string {
+        const maxChars = mem0MaxRenderChars();
+        const now = opts.now ?? Date.now();
+        const plan = computeRenderPlan(memories, { maxBullets: opts.maxBullets });
+        const { visible, supersededHidden, kept, perTypeKept, perTypeDropped, dropped, hardWonDropped } = plan;
+        const cap = opts.maxBullets ?? mem0MaxRendered();
+        const hardWonCap = mem0MaxHardWon();
         const sections = new Map<string, PlatformMemory[]>();
         for (const m of kept) {
                 const kind = String(m.metadata?.kind ?? "");

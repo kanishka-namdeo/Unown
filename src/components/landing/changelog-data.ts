@@ -30,14 +30,14 @@ export interface ChangelogStop {
   groups: ChangelogGroup[];
 }
 
-export const CHANGELOG_TOTAL_ENTRIES = 581;
+export const CHANGELOG_TOTAL_ENTRIES = 582;
 
 export const CHANGELOG_TOTALS: Record<ChangelogBucket, number> = {
   "Added": 248,
   "Changed": 32,
   "Deprecated": 0,
   "Removed": 3,
-  "Fixed": 212,
+  "Fixed": 213,
   "Security": 5,
   "Behavior": 81
 };
@@ -46,13 +46,13 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
   {
     "label": "Unreleased",
     "date": null,
-    "total": 40,
+    "total": 41,
     "counts": {
       "Added": 2,
       "Changed": 0,
       "Deprecated": 0,
       "Removed": 0,
-      "Fixed": 9,
+      "Fixed": 10,
       "Security": 0,
       "Behavior": 29
     },
@@ -211,6 +211,10 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
           },
           {
             "title": "The deterministic SRO supersede layer — contradictions resolved by the (subject, relation) rule…",
+            "behavior": false
+          },
+          {
+            "title": "Usage-conditioned decay — the dormancy lane (the Memory Divertimento round CP3; MIRIX's experience-pool law…",
             "behavior": false
           },
           {

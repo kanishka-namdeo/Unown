@@ -39,7 +39,7 @@ unilaterally).
 | CP0 research + code map + baseline bring-up | ✅ done | teardown + research docs + this file's code map + the verified baseline below |
 | CP1 the integrity lane — wire the review queue, seal the recall path, per-type budget, env/docs sync | ✅ done | `memory-review.ts` (user-level queue, `-r<N>` re-park) + new `memory-review-ship.ts` (the only write path: re-dedupe + re-guard at decision time, `shippedVersion` stamped after both writes land) + `hoist.ts` rewired (park, never auto-write) + search-path `latest_only` on `searchMemories`/`searchAcrossScopes`/`/api/memories` (+ `/memory search --all` badged) + `renderTypeShares`/`allocateTypeBudget` + `## Preferences`/`## Episodes` sections + per-type footer + `/api/memory/review` routes + `/memory review` + `unown memory review` (degraded local read) + the dashboard review card + `reviewQueueDepth`/`review-pending` + env/docs sync + DOX (self-learning AGENTS.md, memory.md, configuration.md, unown-overview re-stamp) + CHANGELOG×4 + tests: memory-review 18, memory-review-ship 8, hoist 18 reworked, memory-recall-integrity 15, manual-notes/budget/freshness re-pinned |
 | CP2 deterministic supersession — SRO keys in the reconcile | ✅ done | `parseSro`/`normalizeSroPart`/`sroClaimKey`/`sroFullKey`/`sroContradictionGroups`/`applyDeterministicSroSupersedes` + the post-LLM wiring in `reconcileMemories` (`sroApplied`/`sroSkipped` on ReconcileResult, never re-opening an LLM verdict) + `MEM0_CUSTOM_INSTRUCTIONS` SRO tagging + `RECONCILE_SYSTEM` no-merge rule + the reconcile listing enrichment + `DreamOutcome.sroApplied` + the dream-note ", K deterministic" fragment + `countSroTagged`/`sroTaggedCount` on the health card + docs (memory.md, AGENTS.md, unown-overview) + `test/memory-sro.test.ts` (15) |
-| CP3 usage-conditioned decay — render-exclusion dormancy with recurrence reset | ☐ | |
+| CP3 usage-conditioned decay — render-exclusion dormancy with recurrence reset | ✅ done | `mem0DormantAfter`/`DormancyEntry`/`readDormancyRecord`/`writeDormancyRecord`/`isDormantId`/`trackDormancyFromPlan`/`reviveDormantByIds`/`dormantCountFor`/`dormantCountAll`/`dormancyScopeKey` + `computeRenderPlan` (extracted from the render, byte-identical) + dream.ts consolidate wiring (`dormantNew`/`dormantResets` on DreamOutcome) + server.ts `annotateAndReviveDormancy` (badge + revive on every search lane) + memory-health `dormantCount` + dashboard-types + env/docs (PI_MEM0_DORMANT_AFTER in .env.example + configuration.md; memory.md; AGENTS.md; unown-overview) + `test/memory-dormancy.test.ts` (10) |
 | CP4 the delight lane — provenance badges, honest counts, the AutoDream digest | ☐ | |
 | CP5 `unown memory doctor` — the audit that proves the loop | ☐ | |
 | CP6 memory interchange — export/import behind the human gate | ☐ | |
@@ -225,6 +225,34 @@ a deterministic (subject, relation) rule takes stale-fact errors 15-40% to
 Measured: the SRO suite 15/0 (input shapes, group rules, the apply pass,
 the reconcile integration, the back-compat pin); engine suite 5638/0
 (+15) with zero fallout; full-suite re-run at the CP2 milestone below.
+
+
+## CP3 — usage-conditioned decay, shipped (2026-11-14)
+
+The MIRIX experience-pool law (retire at 3 ignored pushes, recurrence
+resets), CAMeR's finding (time-driven decay collapses; use-conditioned
+reinforcement is the driver), and MemDream's soft/reversible decay,
+adapted to Unown's render budget:
+
+- **Dormancy**: a LIVE memory excluded by the per-type budget
+  `PI_MEM0_DORMANT_AFTER` (default 3) consecutive renders goes dormant —
+  a badge + reversible state, never a deletion. Searchable (with a
+  `dormant` badge; the hit REVIVES it), and one inclusion resets the
+  counter (revives + lastRevivedBy recorded).
+- **Side-record bookkeeping** (`dormancy-<scope>.json` under PI_MEM0_DIR),
+  never on the platform rows — a counter bump is not a re-assertion, and
+  platform.update would refresh updatedAt (falsely refreshing the
+  freshness stamp, flipping the SRO winner order). Self-heals: prunes ids
+  absent from the live set; a rollback converges.
+- **One plan, two consumers**: `computeRenderPlan` extracted from the
+  render (byte-identical — all render pins re-run green); the dream path
+  and the text render share the exact in/out list.
+- **Surfaces**: DreamOutcome.dormantNew/dormantResets; the health card's
+  all-scope dormantCount; the search lanes' annotate-and-revive
+  (`dormant: true · revivedBy: "search"` on the response rows).
+
+Measured: dormancy suite 10/0; engine 5648/0 (+10); render pins 96/96
+after the computeRenderPlan refactor.
 
 ## Session checkpoint protocol
 
