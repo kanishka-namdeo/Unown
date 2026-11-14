@@ -49,7 +49,8 @@ export interface MemoryDoctorFinding {
 
 /** The engine surfaces the audit reads (injectable; null = engine-down). */
 export interface MemoryDoctorEngine {
-        /** The health card; null when unreachable. */
+        /** The health card; null when unreachable. The evidence counter is
+         *  optional on the wire (a pre-evidence-lane engine omits it). */
         health(): Promise<null | {
                 duplicateCount: number;
                 conflictCount: number;
@@ -57,6 +58,7 @@ export interface MemoryDoctorEngine {
                 dormantCount: number;
                 sroTaggedCount: number;
                 memoryCount: number;
+                evidenceLinkedCount?: number;
         }>;
         /** The review queue's pending depth; null when unreachable. */
         reviewDepth(): Promise<number | null>;
@@ -76,6 +78,9 @@ export interface MemoryDoctorReport {
                 dormant: number;
                 sroTagged: number;
                 memoryCount: number;
+                /** Evidence-lane coverage (2026-11-15): live memories carrying a
+                 *  pointer back to their note batch. */
+                evidenceLinked: number;
         };
         reviewQueue: number | null;
         recallSeal: "sealed" | "leak" | "unverified";
@@ -172,13 +177,26 @@ export async function auditProjectMemory(
                         dormant: health.dormantCount ?? 0,
                         sroTagged: health.sroTaggedCount ?? 0,
                         memoryCount: health.memoryCount ?? 0,
+                        evidenceLinked: health.evidenceLinkedCount ?? 0,
                 };
                 findings.push({
                         class: "store health",
                         severity: health.conflictCount > 0 ? "warn" : "ok",
-                        detail: `${health.memoryCount} memories · ${health.duplicateCount ?? 0} dupe(s) · ${health.conflictCount ?? 0} conflict(s) · ${health.superseded ?? 0} superseded · ${health.dormant ?? 0} dormant · ${health.sroTagged ?? 0} sro-tagged`,
+                        detail: `${health.memoryCount} memories · ${health.duplicateCount ?? 0} dupe(s) · ${health.conflictCount ?? 0} conflict(s) · ${health.superseded ?? 0} superseded · ${health.dormant ?? 0} dormant · ${health.sroTagged ?? 0} sro-tagged · ${health.evidenceLinkedCount ?? 0} evidence-linked`,
                         remedy: health.conflictCount > 0 ? "unresolved contradictions — let a dream run the reconcile (the engine's dream lane) or /memory search --all to audit them" : undefined,
                 });
+                // The evidence lane's own finding: coverage is a COUNTER (pre-lane
+                // memories and seeds legitimately carry no pointer — coverage grows
+                // by extraction, never retroactively), so the severity is info and
+                // the remedy teaches the descent surface, never alarms.
+                if ((health.evidenceLinkedCount ?? 0) > 0) {
+                        findings.push({
+                                class: "evidence coverage",
+                                severity: "info",
+                                detail: `${health.evidenceLinkedCount} of ${health.memoryCount ?? 0} live memories link back to the note batch that produced them (dream id + note excerpts)`,
+                                remedy: "inspect a rule's chain with /memory search --all, or export with unown memory export (each record carries its evidence)",
+                        });
+                }
         } else {
                 findings.push({ class: "store health", severity: "info", detail: "engine unreachable — the store audit is skipped (unown engine start)" });
         }

@@ -77,6 +77,7 @@ import {
         searchMemories,
         type ScopedMemory,
 } from "./memzero.ts";
+import { readEvidenceRecord } from "./memory-evidence.ts";
 import { runMintJob, suiteStats } from "./mint.ts";
 import { ingestTerminalNote, undreamedNotes } from "./notes.ts";
 import { syncNoteOutbox } from "./outbox.ts";
@@ -1118,7 +1119,10 @@ export async function handleApi(req: ApiRequest): Promise<Response> {
                                                 const dormantIds = new Set(
                                                         memories.filter((m) => isDormantId(dormant, String(m.id ?? ""))).map((m) => String(m.id ?? "")),
                                                 );
-                                                return { scope: s.key, memories, dormantIds };
+                                                // The evidence lane (2026-11-15): each exported memory
+                                                // carries the dream + note batch that produced it.
+                                                const evidence = readEvidenceRecord(dormancyScopeKey(s.scope));
+                                                return { scope: s.key, memories, dormantIds, evidence };
                                         }),
                                 );
                                 return json(buildMemoryInterchangeFile(scopes));

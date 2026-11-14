@@ -2346,7 +2346,7 @@ async function cmdDoctor(jsonMode: boolean): Promise<number> {
                         check(
                                 "memory store",
                                 true,
-                                `${h?.memoryCount ?? 0} memor${h?.memoryCount === 1 ? "y" : "ies"} · ${h?.duplicateCount ?? 0} dupe(s) · ${h?.conflictCount ?? 0} conflict(s) · ${h?.dormantCount ?? 0} dormant${h?.reviewQueueDepth ? ` · ${h.reviewQueueDepth} in review (unown memory review)` : ""}`,
+                                `${h?.memoryCount ?? 0} memor${h?.memoryCount === 1 ? "y" : "ies"} · ${h?.duplicateCount ?? 0} dupe(s) · ${h?.conflictCount ?? 0} conflict(s) · ${h?.dormantCount ?? 0} dormant${h?.reviewQueueDepth ? ` · ${h.reviewQueueDepth} in review (unown memory review)` : ""}${h?.evidenceLinkedCount ? ` · ${h.evidenceLinkedCount} evidence-linked` : ""}`,
                         );
                 } else {
                         check("memory store", false, "engine unreachable — the audit is skipped (unown engine start)", "warn");

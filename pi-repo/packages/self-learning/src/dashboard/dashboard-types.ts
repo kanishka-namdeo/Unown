@@ -270,6 +270,10 @@ export interface MemoryHealthCard {
         /** Rows dormant across every scope's record (Divertimento CP3):
          *  a reversible state — searchable, revivable, never deleted. */
         dormantCount: number;
+        /** Evidence-lane coverage (2026-11-15 round): live memories carrying a
+         *  pointer back to the note batch that produced them (dream id + note
+         *  excerpts — the WikiTrace / Zep-episodes provenance chain). */
+        evidenceLinkedCount?: number;
         warnings: MemoryHealthWarning[];
         memoryCount: number;
 }

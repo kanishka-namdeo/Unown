@@ -182,6 +182,12 @@ export interface MemoryHealth {
          *  across projects) but the counter rides the health card every
          *  surface already renders. */
         reviewQueueDepth: number;
+        /** Evidence-lane coverage (2026-11-15 round): live memories carrying a
+         *  pointer back to the note batch that produced them (the WikiTrace /
+         *  MAPE / Zep-episodes provenance chain). Pre-lane memories and seeds
+         *  legitimately carry none — coverage grows by extraction, never
+         *  retroactively, so this is a counter, not a ratio to alarm on. */
+        evidenceLinkedCount: number;
 }
 
 /** Normalize a memory text for duplicate grouping (the v1 near-dupe class):
@@ -346,6 +352,16 @@ export async function memoryHealth(
 
         const label =
                 scope.agentId ?? (scope.userId ? `user:${scope.userId}` : scope.runId ? `run:${scope.runId}` : "default");
+        // Evidence-lane coverage for THIS scope (the same key space the dream
+        // path writes under — dormancyScopeKey of the scope object).
+        let evidenceLinkedCount = 0;
+        try {
+                const { dormancyScopeKey: scopeKey, } = await import("./memzero.ts");
+                const { evidenceCoverageFor } = await import("./memory-evidence.ts");
+                evidenceLinkedCount = evidenceCoverageFor(scopeKey(scope), memories.map((m) => m.id), opts.recordDir).linked;
+        } catch {
+                evidenceLinkedCount = 0; // record unreadable — the counter is 0, never a thrown card
+        }
         return {
                 scope: label,
                 lastReconcile: last,
@@ -358,6 +374,7 @@ export async function memoryHealth(
                 sroTaggedCount: countSroTagged(memories),
                 dormantCount: opts.dormantCount ?? dormantCountAll(),
                 reviewQueueDepth: opts.reviewQueueDepth ?? 0,
+                evidenceLinkedCount,
         };
 }
 

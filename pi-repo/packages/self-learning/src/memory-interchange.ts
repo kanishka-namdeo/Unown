@@ -33,6 +33,7 @@
 import { scanMemoryCandidate, type GuardFlag } from "./guard.ts";
 import { type PlatformMemory, parseSro } from "./memzero.ts";
 import { memoryConfirmedAt, memoryInvalidAt, supersededById } from "./memory-stamps.ts";
+import { sanitizeImportedEvidence, type EvidenceRecord } from "./memory-evidence.ts";
 
 // ---------------------------------------------------------------------------
 // Format
@@ -96,6 +97,14 @@ export interface MemoryInterchangeRecord {
         dormant: boolean;
         /** metadata.provenance when present (the dream/run that minted it). */
         provenance: Record<string, unknown> | null;
+        /** The evidence lane (2026-11-15): the dream that extracted this
+         *  memory + the note batch that produced it — the WikiTrace /
+         *  Zep-episodes provenance chain, carried through the interchange so
+         *  an import can show a human WHERE a rule came from. Sanitized on
+         *  import (untrusted input); provenance-only, never re-written into
+         *  the local evidence record (the ids reference a foreign machine's
+         *  notes). */
+        evidence: { dreamId: string; at: number; notes: Array<{ id: string; at: number; excerpt: string }> } | null;
 }
 
 /** The whole export file. */
@@ -116,10 +125,12 @@ export function buildMemoryInterchangeRecord(
         scope: string,
         m: PlatformMemory,
         dormantIds: ReadonlySet<string>,
+        evidence?: EvidenceRecord,
 ): MemoryInterchangeRecord {
         const t = parseSro(m);
         const sro: [string, string, string] | null = t ? [t.s, t.r, t.o] : null;
         const meta = (m?.metadata ?? {}) as Record<string, any>;
+        const ev = evidence?.[String(m.id ?? "")];
         return {
                 scope,
                 id: String(m.id ?? ""),
@@ -133,6 +144,17 @@ export function buildMemoryInterchangeRecord(
                 invalidAt: memoryInvalidAt(m),
                 dormant: dormantIds.has(String(m.id ?? "")),
                 provenance: (meta.provenance as Record<string, unknown> | undefined) ?? null,
+                evidence: ev
+                        ? {
+                                  dreamId: String(ev.dreamId ?? "").slice(0, 64),
+                                  at: typeof ev.at === "number" && Number.isFinite(ev.at) ? ev.at : 0,
+                                  notes: (ev.notes ?? []).slice(0, 8).map((n) => ({
+                                          id: String(n.id ?? "").slice(0, 64),
+                                          at: typeof n.at === "number" && Number.isFinite(n.at) ? n.at : 0,
+                                          excerpt: String(n.excerpt ?? "").slice(0, 200),
+                                  })),
+                          }
+                        : null,
         };
 }
 
@@ -140,12 +162,12 @@ export function buildMemoryInterchangeRecord(
  *  dormant-id set). Pure: `exportedAt` is injectable so tests are
  *  deterministic. */
 export function buildMemoryInterchangeFile(
-        scopes: Array<{ scope: string; memories: PlatformMemory[]; dormantIds: ReadonlySet<string> }>,
+        scopes: Array<{ scope: string; memories: PlatformMemory[]; dormantIds: ReadonlySet<string>; evidence?: EvidenceRecord }>,
         exportedAt: string = new Date().toISOString(),
 ): MemoryInterchangeFile {
         const records: MemoryInterchangeRecord[] = [];
         for (const s of scopes) {
-                for (const m of s.memories) records.push(buildMemoryInterchangeRecord(s.scope, m, s.dormantIds));
+                for (const m of s.memories) records.push(buildMemoryInterchangeRecord(s.scope, m, s.dormantIds, s.evidence));
         }
         return {
                 version: MEMORY_INTERCHANGE_VERSION,
@@ -234,6 +256,23 @@ export function parseMemoryInterchangeFile(raw: unknown): InterchangeParseResult
                         provenance: rec.provenance !== null && typeof rec.provenance === "object" && !Array.isArray(rec.provenance)
                                 ? (rec.provenance as Record<string, unknown>)
                                 : null,
+                        // The evidence chain — sanitized like every other untrusted
+                        // field (bounded ids/dates/excerpts); a malformed entry is
+                        // dropped to null, never a failed import.
+                        evidence:
+                                rec.evidence !== null && typeof rec.evidence === "object" && !Array.isArray(rec.evidence)
+                                        ? (() => {
+                                                  const e = rec.evidence as Record<string, unknown>;
+                                                  const notes = sanitizeImportedEvidence(e.notes);
+                                                  const dreamId = typeof e.dreamId === "string" || typeof e.dreamId === "number" ? String(e.dreamId) : "";
+                                                  if (!notes || !dreamId) return null;
+                                                  return {
+                                                          dreamId: dreamId.slice(0, 64),
+                                                          at: typeof e.at === "number" && Number.isFinite(e.at) ? e.at : 0,
+                                                          notes,
+                                                  };
+                                          })()
+                                        : null,
                 });
         }
         return {
@@ -261,6 +300,8 @@ export interface AcceptedImportRecord {
         kind: string;
         sro: [string, string, string] | null;
         provenance: Record<string, unknown> | null;
+        /** The sanitized evidence chain (provenance-only on import). */
+        evidence: MemoryInterchangeRecord["evidence"];
 }
 
 export interface QuarantinedImportRecord {
@@ -341,6 +382,7 @@ export function classifyImportRecords(records: MemoryInterchangeRecord[], opts: 
                         kind: r.kind,
                         sro: r.sro,
                         provenance: r.provenance,
+                        evidence: r.evidence,
                 });
         }
         return { accepted, quarantined, duplicates };
@@ -376,7 +418,9 @@ export function parkImportedRecords(
                                 rule: r.text,
                                 type: r.kind || undefined,
                                 projects: [],
-                                evidence: `imported from ${origin} (source scope: ${r.scope})`,
+                                evidence: `imported from ${origin} (source scope: ${r.scope}${
+                                        r.evidence ? `; extracted by dream ${r.evidence.dreamId} from ${r.evidence.notes.length} note(s): "${r.evidence.notes[0]?.excerpt ?? ""}"` : ""
+                                })`,
                                 source: "import",
                         });
                         out.parked++;
@@ -406,6 +450,7 @@ export function writeImportedRecords(
                         if (r.kind) metadata.kind = r.kind;
                         if (r.sro) metadata.sro = r.sro;
                         if (r.provenance) metadata.provenance = r.provenance;
+                        if (r.evidence) metadata.provenance = { ...(r.provenance ?? {}), importedEvidence: r.evidence };
                         try {
                                 await write(r, metadata);
                                 out.written++;

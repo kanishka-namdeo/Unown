@@ -8,6 +8,18 @@ archaeology. When a round completes, its log graduates to a round-specific
 
 ---
 
+## IN FLIGHT — the Memory Nocturne round (2026-11-15)
+
+`docs/memory-nocturne-round-session.md` — the evidence-chain round: eight
+systems torn down (Mastra, Letta 2026, MemoryMesh, mcp-memory-service,
+Basic Memory, Mnemos, oh-my-pi, LangGraph Store + the papers sweep), the
+one validated pattern Unown lacked — the provenance chain from a distilled
+rule back to its source note — shipped as the evidence lane (per-scope side
+record, batch-level attribution, health-card counter, doctor finding, dream
+note fragment, interchange export field), plus the #48 doctor crash cure
+and the issue inventory's verification (all seven open issues closed as
+fixed at HEAD).
+
 ## GRADUATED — the Memory Encore round (2026-11-12, CLOSED at CP6)
 
 `docs/memory-encore-round-session.md` — the memory-UX round: eleven new

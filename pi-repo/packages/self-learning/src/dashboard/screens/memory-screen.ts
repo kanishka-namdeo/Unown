@@ -217,10 +217,15 @@ export function createMemoryScreen(deps: ScreenDeps): Screen {
                 const dormFrag = typeof dormant === "number" && dormant > 0 ? ` · ${dormant} dormant` : "";
                 const sro = (h as any).sroTaggedCount;
                 const sroFrag = typeof sro === "number" && sro > 0 ? ` · ${sro} sro-tagged` : "";
+                // The evidence lane (2026-11-15 round): live memories that link back
+                // to the note batch that produced them — the provenance chain's
+                // visible counter, quiet when zero (and absent on a pre-lane engine).
+                const evd = (h as any).evidenceLinkedCount;
+                const evFrag = typeof evd === "number" && evd > 0 ? ` · ${evd} evidence-linked` : "";
                 rows.push(
                         theme.fg(
                                 "muted",
-                                `health · ${last} · ${h.duplicateCount} dupe(s) · ${h.conflictCount} conflict(s)${supFrag}${dormFrag}${sroFrag} · ${h.memoryCount} memor${h.memoryCount === 1 ? "y" : "ies"}`,
+                                `health · ${last} · ${h.duplicateCount} dupe(s) · ${h.conflictCount} conflict(s)${supFrag}${dormFrag}${sroFrag}${evFrag} · ${h.memoryCount} memor${h.memoryCount === 1 ? "y" : "ies"}`,
                         ),
                 );
                 // The Memory v2 round: the per-type breakdown — fact/episode/procedure/

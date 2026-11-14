@@ -32,6 +32,7 @@ import { analyzeCanaryRun, canaryK, sampleCanaryTasks } from "./canary.ts";
 import { decideGuardAction, type GuardFlag, guardSummary, scanUntrustedText } from "./guard.ts";
 import { hoistCrossProjectRules } from "./hoist.ts";
 import { computeRenderPlan, dormancyScopeKey, trackDormancyFromPlan } from "./memzero.ts";
+import { pruneEvidenceToLiveSet, recordEvidenceFromBatch } from "./memory-evidence.ts";
 import { currentVersion, maxTierChars, readTier, rollback, writeTier } from "./memory.ts";
 import {
         ENGINE_SCOPE,
@@ -97,6 +98,10 @@ export interface DreamOpts {
         /** The project's CURRENT memory file (runProjectDream) — its "## Manual
          *  notes" section survives the re-render verbatim (the hand-edit lane). */
         preserveManualNotesFrom?: string;
+        /** The dream row's identifier (the evidence lane's pointer: every
+         *  memory this dream extracts links back to its note batch through
+         *  it). Absent in unit tests that pass no dream identity. */
+        dreamId?: number | string;
 }
 
 /** Resolve the platform once per pass (the seam tests override). */
@@ -131,6 +136,10 @@ interface DreamOutcome {
          *  whose inclusion/search-hit REVIVED them (the recurrence reset). */
         dormantNew?: number;
         dormantResets?: number;
+        /** Memories the evidence lane linked to their note batch this pass
+         *  (2026-11-15 round) — the dream note's ", N evidence-linked"
+         *  fragment, rendered only when non-zero (the quiet contract). */
+        evidenceLinked?: number;
         events: MemoryPlatformEvent[];
         rendered: string;
 }
@@ -152,6 +161,14 @@ function supersededFragment(out: DreamOutcome | null): string {
 function protectedNoteFragment(out: DreamOutcome | null): string {
         const n = out?.protectedDeletes ?? 0;
         return n > 0 ? `, ${n} fresh-delete verdict${n === 1 ? "" : "s"} protected` : "";
+}
+
+/** The evidence fragment for dream rows/notes (2026-11-15 round): how many
+ *  extracted memories now link back to their note batch — the provenance
+ *  chain's visible moment on the Dreams screen. Quiet when zero. */
+function evidenceFragment(out: DreamOutcome | null): string {
+        const n = out?.evidenceLinked ?? 0;
+        return n > 0 ? `, ${n} evidence-linked` : "";
 }
 
 /**
@@ -222,6 +239,34 @@ async function consolidate(
                 protectedIds: surviving.filter((e) => e.event === "ADD" && e.id).map((e) => String(e.id)),
         });
         const memories = await platform.getAll(scope);
+        // ---- The evidence lane (2026-11-15 round): link every memory this
+        // dream extracted back to the batch's notes — the WikiTrace /
+        // MAPE / Zep-episodes pattern (a distilled rule that can still point
+        // at its raw evidence). The batch is the honest attribution unit
+        // (extraction is ONE call); the pointers live in the side record,
+        // never in the rendered tier (render budgets stay untaxed, and a
+        // bookkeeping write must never refresh the platform's updatedAt —
+        // the freshness stamp and the SRO winner order depend on it). Seeded
+        // and pre-lane memories keep LLM/manual authority; coverage grows by
+        // extraction, never retroactively.
+        let evidenceLinked = 0;
+        {
+                const addIds = surviving.filter((e) => e.event === "ADD" && e.id).map((e) => String(e.id));
+                if (addIds.length > 0 && cleanNotes.length > 0 && opts.dreamId !== undefined) {
+                        evidenceLinked = recordEvidenceFromBatch(
+                                addIds,
+                                cleanNotes as Array<{ id: string; content: string; created_at?: number }>,
+                                opts.dreamId,
+                                { scopeKey: dormancyScopeKey(scope) },
+                        );
+                }
+                // Hygiene: entries whose ids left the live set (deleted, rolled
+                // back, migrated) drop out — the dormancy record's own rule.
+                pruneEvidenceToLiveSet(
+                        dormancyScopeKey(scope),
+                        memories.map((m) => m.id),
+                );
+        }
         const rendered = renderProjectMemoryMarkdown(memories, {
                 preserveManualNotesFrom: opts.preserveManualNotesFrom,
         });
@@ -245,6 +290,7 @@ async function consolidate(
                 quarantinedNoteTexts,
                 dormantNew: dormancy.newlyDormant,
                 dormantResets: dormancy.resets,
+                evidenceLinked,
                 // revertable = surviving ADDs + reconcile events (guard-deleted poison
                 // is deliberately NOT revertable)
                 events: [...surviving.filter((e) => e.event === "ADD"), ...reconcile.events],
@@ -286,7 +332,7 @@ export async function runDream(opts: DreamOpts = {}): Promise<DreamResult> {
                 if ((await prePlatform.getAll(ENGINE_SCOPE)).length === 0 && currentVersion("project") > 0) {
                         await importLegacyMarkdown(currentMemory, ENGINE_SCOPE, { platform: prePlatform });
                 }
-                const out = await consolidate(ENGINE_SCOPE, notes as any, opts);
+                const out = await consolidate(ENGINE_SCOPE, notes as any, { ...opts, dreamId: id });
 
                 if (out.rendered.trim().length < 60 || !/^- /m.test(out.rendered)) {
                         // nothing substantive survived extraction (all quarantined, or the
@@ -396,7 +442,7 @@ export async function runDream(opts: DreamOpts = {}): Promise<DreamResult> {
                         "project",
                         out.rendered,
                         "mem0",
-                        `consolidated ${notes.length} notes via Mem0 (added ${out.added}, merged ${out.merged}, pruned ${out.pruned}${out.quarantined > 0 ? `, ${out.quarantined} quarantined` : ""}${supersededFragment(out)}${protectedNoteFragment(out)})`,
+                        `consolidated ${notes.length} notes via Mem0 (added ${out.added}, merged ${out.merged}, pruned ${out.pruned}${out.quarantined > 0 ? `, ${out.quarantined} quarantined` : ""}${supersededFragment(out)}${protectedNoteFragment(out)}${evidenceFragment(out)})`,
                 );
 
                 // ---- Canary gate: the new memory must not break the last-passing task.
@@ -723,6 +769,11 @@ export async function runProjectDream(opts: DreamOpts = {}): Promise<ProjectDrea
 
         for (const group of groups) {
                 const notes = group.notes;
+                // ONE dream identity per group iteration (2026-11-15 evidence
+                // lane): the dreams row the outcome INSERTs write and the
+                // evidence record's pointer share it, so an evidence entry's
+                // dreamId resolves against the dreams table.
+                const dreamId = `project-${randomUUID()}`;
                 let current = "";
                 try {
                         initProjectMemory(group.projectPath);
@@ -819,6 +870,7 @@ export async function runProjectDream(opts: DreamOpts = {}): Promise<ProjectDrea
                         }
                         out = await consolidate(scope, notes as any, {
                                 ...opts,
+                                dreamId,
                                 preserveManualNotesFrom: current,
                         });
                         const next = out.rendered;
@@ -834,7 +886,6 @@ export async function runProjectDream(opts: DreamOpts = {}): Promise<ProjectDrea
                                 // infinite dream loop). Status 'gated' mirrors the guard gate:
                                 // a deterministic policy refusal, honestly recorded.
                                 await revertMemoryEvents(out.events, scope, { platform: opts.platform });
-                                const dreamId = `project-${randomUUID()}`;
                                 store.run(
                                         `INSERT INTO dreams (id, started_at, ended_at, status, notes_in, entries_added, output, note) VALUES (?, ?, ?, 'gated', ?, ?, ?, ?)`,
                                         [
@@ -872,7 +923,6 @@ export async function runProjectDream(opts: DreamOpts = {}): Promise<ProjectDrea
                         // extracted): consume the notes, keep the current file untouched —
                         // never write an empty skeleton over a project's memory.
                         if (!/^- /m.test(next)) {
-                                const dreamId = `project-${randomUUID()}`;
                                 store.run(
                                         `INSERT INTO dreams (id, started_at, ended_at, status, notes_in, entries_added, output, note) VALUES (?, ?, ?, 'done', ?, ?, ?, ?)`,
                                         [
@@ -917,7 +967,6 @@ export async function runProjectDream(opts: DreamOpts = {}): Promise<ProjectDrea
                         });
                         if (guard.action === "gate") {
                                 await revertMemoryEvents(out.events, scope, { platform: opts.platform });
-                                const dreamId = `project-${randomUUID()}`;
                                 store.run(
                                         `INSERT INTO dreams (id, started_at, ended_at, status, notes_in, entries_added, output, note) VALUES (?, ?, ?, 'gated', ?, ?, ?, ?)`,
                                         [
@@ -955,7 +1004,6 @@ export async function runProjectDream(opts: DreamOpts = {}): Promise<ProjectDrea
                         // Honest no-change: idempotent render (nothing learned, nothing
                         // contradicted) consumes the notes without inflating versions.
                         if (next.trim() === current.trim()) {
-                                const dreamId = `project-${randomUUID()}`;
                                 store.run(
                                         `INSERT INTO dreams (id, started_at, ended_at, status, notes_in, entries_added, output, note) VALUES (?, ?, ?, 'done', ?, ?, ?, ?)`,
                                         [
@@ -993,7 +1041,7 @@ export async function runProjectDream(opts: DreamOpts = {}): Promise<ProjectDrea
                                 guard.action === "sanitize" && guard.sanitized.trim().length > 0 ? guard.sanitized : next;
 
                         // The version-row note (shared by the ship path and the review lane).
-                        const dreamNote = `consolidated ${notes.length} terminal notes for ${group.slug} via Mem0 (added ${out.added}, merged ${out.merged}, pruned ${out.pruned}${out.quarantined > 0 ? `, ${out.quarantined} quarantined` : ""}${out.protectedDeletes > 0 ? `, ${out.protectedDeletes} fresh-delete verdicts protected` : ""}${guard.action === "sanitize" ? `, guard sanitized ${guard.flags.length} line(s)` : ""})`;
+                        const dreamNote = `consolidated ${notes.length} terminal notes for ${group.slug} via Mem0 (added ${out.added}, merged ${out.merged}, pruned ${out.pruned}${out.quarantined > 0 ? `, ${out.quarantined} quarantined` : ""}${out.protectedDeletes > 0 ? `, ${out.protectedDeletes} fresh-delete verdicts protected` : ""}${evidenceFragment(out)}${guard.action === "sanitize" ? `, guard sanitized ${guard.flags.length} line(s)` : ""})`;
 
                         // ---- Review mode (the settings hub's trust lane, dream-review.ts):
                         // a fully-passed dream PARKS instead of shipping. The rendered
@@ -1006,7 +1054,6 @@ export async function runProjectDream(opts: DreamOpts = {}): Promise<ProjectDrea
                         // of this loop) so a later render can never ship the parked
                         // memories first.
                         if (loadHubPrefs().learningReviewMode) {
-                                const dreamId = `project-${randomUUID()}`;
                                 parkPendingDream({
                                         id: dreamId,
                                         slug: group.slug,
@@ -1072,7 +1119,6 @@ export async function runProjectDream(opts: DreamOpts = {}): Promise<ProjectDrea
                         shippedThisDream = true;
 
                         // All terminal notes for this project are consumed by this dream.
-                        const dreamId = `project-${randomUUID()}`;
                         store.run(
                                 `INSERT INTO dreams (id, started_at, ended_at, status, notes_in, entries_added, entries_protected, entries_superseded, entries_dormant, output, note) VALUES (?, ?, ?, 'done', ?, ?, ?, ?, ?, ?, ?)`,
                                 [
@@ -1141,7 +1187,6 @@ export async function runProjectDream(opts: DreamOpts = {}): Promise<ProjectDrea
                         });
                 } catch (err: any) {
                         const msg = err instanceof Error ? err.message : String(err);
-                        const dreamId = `project-${randomUUID()}`;
                         let note = `project dream error (${group.slug}): ${msg}`;
                         // Partial-apply unwind (the 2026-10-22 partial-ship fix), scoped to
                         // WHERE the dream died:

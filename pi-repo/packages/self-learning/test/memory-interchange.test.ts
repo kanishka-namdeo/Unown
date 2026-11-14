@@ -321,3 +321,97 @@ describe("memory-interchange — the round trip", () => {
                 expect(out.parked).toBe(1);
         });
 });
+
+// ---------------------------------------------------------------------------
+// The evidence lane (2026-11-15 round) — the provenance chain rides the export
+// ---------------------------------------------------------------------------
+
+describe("memory-interchange — the evidence lane", () => {
+        test("a record with evidence carries the dream + note batch", () => {
+                const m = mem({ id: "abc", text: "run the recital probe before shipping" });
+                const rec = buildMemoryInterchangeRecord(
+                        "project:demo",
+                        m,
+                        new Set(),
+                        {
+                                abc: {
+                                        dreamId: "project-1234",
+                                        at: 1790000000000,
+                                        notes: [{ id: "n1", at: 1789999000000, excerpt: "the recital probe pinned the warm/cold lift" }],
+                                },
+                        },
+                );
+                expect(rec.evidence).not.toBeNull();
+                expect(rec.evidence!.dreamId).toBe("project-1234");
+                expect(rec.evidence!.notes[0].excerpt).toContain("recital probe");
+        });
+
+        test("no evidence entry → null (pre-lane memories export cleanly)", () => {
+                const m = mem({ id: "unlinked" });
+                expect(buildMemoryInterchangeRecord("engine", m, new Set(), {}).evidence).toBeNull();
+        });
+
+        test("the chain survives a parse round-trip", () => {
+                const m = mem({ id: "abc", text: "read the failing test first" });
+                const file = buildMemoryInterchangeFile(
+                        [
+                                {
+                                        scope: "engine",
+                                        memories: [m],
+                                        dormantIds: new Set(),
+                                        evidence: { abc: { dreamId: "d-1", at: 5, notes: [{ id: "n1", at: 1, excerpt: "note one" }] } },
+                                },
+                        ],
+                        "2026-11-15T00:00:00.000Z",
+                );
+                const parsed = parseMemoryInterchangeFile(JSON.stringify(file));
+                expect(parsed.ok).toBe(true);
+                if (!parsed.ok) return;
+                expect(parsed.file.records[0].evidence?.dreamId).toBe("d-1");
+                const { accepted } = classifyImportRecords(parsed.file.records);
+                expect(accepted[0].evidence?.notes[0].excerpt).toBe("note one");
+        });
+
+        test("a hostile evidence entry is sanitized, never a failed import", () => {
+                const m = mem({ id: "abc", text: "a real rule" });
+                const file = buildMemoryInterchangeFile([{ scope: "engine", memories: [m], dormantIds: new Set() }], "2026-11-15T00:00:00.000Z");
+                const raw = JSON.parse(JSON.stringify(file));
+                raw.records[0].evidence = {
+                        dreamId: "x".repeat(500),
+                        at: "not-a-number",
+                        notes: Array.from({ length: 99 }, (_, i) => ({ id: `n${i}`, excerpt: "e".repeat(999) })),
+                };
+                const parsed = parseMemoryInterchangeFile(JSON.stringify(raw));
+                expect(parsed.ok).toBe(true);
+                if (!parsed.ok) return;
+                const ev = parsed.file.records[0].evidence!;
+                expect(ev.dreamId.length).toBeLessThanOrEqual(64);
+                expect(ev.at).toBe(0);
+                expect(ev.notes.length).toBeLessThanOrEqual(8);
+                expect(ev.notes[0].excerpt.length).toBeLessThanOrEqual(200);
+        });
+
+        test("the park evidence line names the dream + first note excerpt", () => {
+                const parked: string[] = [];
+                parkImportedRecords(
+                        [
+                                {
+                                        scope: "engine",
+                                        text: "a rule",
+                                        kind: "fact",
+                                        sro: null,
+                                        provenance: null,
+                                        evidence: { dreamId: "d-9", at: 1, notes: [{ id: "n1", at: 1, excerpt: "the source session" }] },
+                                },
+                        ],
+                        "team-export.json",
+                        (cand) => {
+                                parked.push(cand.evidence);
+                                return "rv-1";
+                        },
+                );
+                expect(parked[0]).toContain("team-export.json");
+                expect(parked[0]).toContain("dream d-9");
+                expect(parked[0]).toContain("the source session");
+        });
+});
