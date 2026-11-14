@@ -30,14 +30,14 @@ export interface ChangelogStop {
   groups: ChangelogGroup[];
 }
 
-export const CHANGELOG_TOTAL_ENTRIES = 588;
+export const CHANGELOG_TOTAL_ENTRIES = 589;
 
 export const CHANGELOG_TOTALS: Record<ChangelogBucket, number> = {
   "Added": 248,
   "Changed": 32,
   "Deprecated": 0,
   "Removed": 3,
-  "Fixed": 219,
+  "Fixed": 220,
   "Security": 5,
   "Behavior": 81
 };
@@ -220,13 +220,13 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
   {
     "label": "0.0.65",
     "date": "2026-11-14",
-    "total": 10,
+    "total": 11,
     "counts": {
       "Added": 2,
       "Changed": 0,
       "Deprecated": 0,
       "Removed": 0,
-      "Fixed": 8,
+      "Fixed": 9,
       "Security": 0,
       "Behavior": 0
     },
@@ -264,6 +264,10 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
           },
           {
             "title": "The memory env-var documentation drift is closed (the every-env-var-documented contract)",
+            "behavior": false
+          },
+          {
+            "title": "unown memory export / unown memory import — memory interchange behind the human gate (the Memory Divertimento…",
             "behavior": false
           }
         ]

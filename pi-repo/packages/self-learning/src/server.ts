@@ -64,6 +64,7 @@ import {
 import {
         dormancyScopeKey,
         ENGINE_SCOPE,
+        getMemoryPlatform,
         isDormantId,
         type MemoryScope,
         memoryPlatformStatus,
@@ -112,8 +113,16 @@ import {
         listMemoryReviewCandidates,
         listPendingMemoryReviewCandidates,
         memoryReviewQueueDepth,
+        parkMemoryReviewCandidate,
 } from "./memory-review.ts";
 import { approveAndShipMemoryReview } from "./memory-review-ship.ts";
+import {
+        buildMemoryInterchangeFile,
+        classifyImportRecords,
+        parkImportedRecords,
+        parseMemoryInterchangeFile,
+        writeImportedRecords,
+} from "./memory-interchange.ts";
 import { getLiveRun, listLiveRuns } from "./run-progress.ts";
 import { ensureAgentDir, getRun, listRuns, MODEL_ID, PROVIDER, runAgent } from "./runner.ts";
 import { listSandboxes } from "./sandbox.ts";
@@ -1078,6 +1087,84 @@ export async function handleApi(req: ApiRequest): Promise<Response> {
                         if (!updated) return json({ error: `no memory review candidate "${id}"` }, 404);
                         emit("memory:review:changed", { id, action: "discard" });
                         return json({ ok: true, candidate: updated });
+                }
+
+                // ------------------------------------------------------------------
+                // Memory interchange (the Divertimento round's CP6, 2026-11-15).
+                // GET /api/memory/interchange — the schema-v1 export: the engine
+                // scope + every known project scope, each memory with its type,
+                // SRO, confirmedAt, provenance, supersede links and dormancy.
+                // POST /api/memory/interchange — the trust-gated import: the
+                // body carries the RAW file object (parsed from disk by the
+                // caller; the version refusal + structural checks live HERE,
+                // one source of truth), and every accepted record lands in the
+                // REVIEW QUEUE by default (the human gate) or, with
+                // apply:true, is written directly through the platform
+                // (infer:false — the text IS the memory), source stamped
+                // `import`. Quarantined records come back with their reasons.
+                // ------------------------------------------------------------------
+                if (method === "GET" && path === "/api/memory/interchange") {
+                        try {
+                                const platform = await getMemoryPlatform();
+                                const scopeList: Array<{ scope: MemoryScope; key: string }> = [
+                                        { scope: ENGINE_SCOPE, key: "engine" },
+                                        ...knownProjectScopes().map((slug) => ({ scope: projectScope(slug), key: `project:${slug}` })),
+                                ];
+                                const scopes = await Promise.all(
+                                        scopeList.map(async (s) => {
+                                                const memories = await platform.getAll(s.scope);
+                                                const dormant = readDormancyRecord(dormancyScopeKey(s.scope));
+                                                const dormantIds = new Set(
+                                                        memories.filter((m) => isDormantId(dormant, String(m.id ?? ""))).map((m) => String(m.id ?? "")),
+                                                );
+                                                return { scope: s.key, memories, dormantIds };
+                                        }),
+                                );
+                                return json(buildMemoryInterchangeFile(scopes));
+                        } catch (err: any) {
+                                console.error("[agent-service] memory export failed:", err);
+                                return json({ error: `memory export unavailable: ${apiErrorMessage(err)}` }, 503);
+                        }
+                }
+                if (method === "POST" && path === "/api/memory/interchange") {
+                        if (body?.file === null || typeof body?.file !== "object") {
+                                return json({ error: "file required (the parsed export object)" }, 400);
+                        }
+                        const origin = typeof body?.origin === "string" && body.origin.trim() ? body.origin.trim().slice(0, 200) : "an export file";
+                        const parsed = parseMemoryInterchangeFile(body.file);
+                        if (!parsed.ok) return json({ error: parsed.error, hint: parsed.hint }, 422);
+                        const { accepted, quarantined } = classifyImportRecords(parsed.file.records);
+                        try {
+                                if (body?.apply === true) {
+                                        const platform = await getMemoryPlatform();
+                                        const out = await writeImportedRecords(accepted, origin, (r, metadata) =>
+                                                platform.add(
+                                                        r.text,
+                                                        r.scope === "engine" ? ENGINE_SCOPE : projectScope(r.scope.slice("project:".length)),
+                                                        metadata,
+                                                        { infer: false },
+                                                ),
+                                        );
+                                        if (out.written > 0) emit("memory:changed", { tier: "engine", version: 0, changedBy: "import", note: `memory import wrote ${out.written} record(s) from ${origin}` });
+                                        return json({
+                                                accepted: accepted.length,
+                                                quarantined,
+                                                written: out.written,
+                                                failed: out.failed,
+                                        });
+                                }
+                                const out = parkImportedRecords(accepted, origin, parkMemoryReviewCandidate);
+                                if (out.parked > 0) emit("memory:review:changed", { action: "import", parked: out.parked, origin });
+                                return json({
+                                        accepted: accepted.length,
+                                        quarantined,
+                                        parked: out.parked,
+                                        failed: out.failed,
+                                });
+                        } catch (err: any) {
+                                console.error("[agent-service] memory import failed:", err);
+                                return json({ error: `memory import failed: ${apiErrorMessage(err)}` }, 503);
+                        }
                 }
 
                 // ------------------------------------------------------------------

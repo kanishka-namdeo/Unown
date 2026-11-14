@@ -419,4 +419,68 @@ describe("parseArgs: the unknown-flag guard", () => {
                 expect(msg).toContain("--nope");
                 expect(msg).toContain("unknown flags"); // plural, both named once each
         });
+
+        // The interchange round's live find (2026-11-15): the memory
+        // subcommand's documented flags were ALL refused by the unknown-flag
+        // guard (--json on doctor, --reason on review discard, --out on
+        // export, --apply on import — the --reason broken since the
+        // Divertimento CP1 wired it). The guard now honors the memory
+        // family's flag surface; these pins keep every lane green.
+        describe("the memory subcommand's flag surface (the interchange round's fix)", () => {
+                test("every documented memory flag reaches the subcommand intact", () => {
+                        const out = parseArgs(["memory", "doctor", "--json"]);
+                        expect(out.command).toBe("memory");
+                        expect(out.prompt).toBe("doctor --json");
+                        const applied = parseArgs(["memory", "import", "team.json", "--apply"]);
+                        expect(applied.prompt).toBe("import team.json --apply");
+                        const reasoned = parseArgs(["memory", "review", "discard", "rv-1", "--reason", "too project-specific"]);
+                        expect(reasoned.prompt).toBe("review discard rv-1 --reason too project-specific");
+                        const outPath = parseArgs(["memory", "export", "--out", "team-export.json"]);
+                        expect(outPath.prompt).toBe("export --out team-export.json");
+                });
+
+                test("a memory VALUE flag passes a dash-prefixed value (quoted or not)", () => {
+                        const args = parseArgs(["memory", "review", "discard", "rv-1", "--reason", "-looks-like-a-flag"]);
+                        expect(args.prompt).toBe("review discard rv-1 --reason -looks-like-a-flag");
+                });
+
+                test("an UNDOCUMENTED flag still refuses inside the memory family", () => {
+                        const origExit = process.exit;
+                        let msg = "";
+                        const origErr = console.error;
+                        console.error = (m?: any) => {
+                                msg = String(m);
+                        };
+                        (process as any).exit = (c?: number) => {
+                                throw new Error("__exit__");
+                        };
+                        try {
+                                expect(() => parseArgs(["memory", "doctor", "--xml"])).toThrow("__exit__");
+                        } finally {
+                                (process as any).exit = origExit;
+                                console.error = origErr;
+                        }
+                        expect(msg).toContain("--xml");
+                        expect(msg).toContain("unknown flag");
+                });
+
+                test("the surface keys on the FIRST word: --apply outside `memory` still refuses", () => {
+                        const origExit = process.exit;
+                        let msg = "";
+                        const origErr = console.error;
+                        console.error = (m?: any) => {
+                                msg = String(m);
+                        };
+                        (process as any).exit = (c?: number) => {
+                                throw new Error("__exit__");
+                        };
+                        try {
+                                expect(() => parseArgs(["apply", "things", "--apply"])).toThrow("__exit__");
+                        } finally {
+                                (process as any).exit = origExit;
+                                console.error = origErr;
+                        }
+                        expect(msg).toContain("--apply");
+                });
+        });
 });

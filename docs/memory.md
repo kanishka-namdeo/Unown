@@ -189,12 +189,38 @@ What a teammate gets when they clone the repo: the shared project memory and the
 
 - `unown memory` — prints the effective four-tier stack for the current directory, exactly as a session receives it.
 - `unown memory doctor [--json]` — the audit pass (the deferred gap #4, closed): tier budgets + the injection budget (the same stack sessions inject), the stale count, a LIVE recall-seal probe (no superseded row may answer a default recall bare — the memU doctor law: prove the loop, not just that files exist), the store's health (dupes/conflicts/superseded/dormant/sro-tagged), the review-queue depth, placement findings (user-tier bullets carrying file paths; project-tier pure-workflow bullets as hoist candidates — report-only, never auto-shipped), and derivable-from-repo findings (bullets restating a package.json script). Engine-down: the tier/injection/placement audits still run (disk-derived); the store/queue/seal rows degrade honestly. `unown doctor`'s memory row gains a one-line store summary.
-- `unown memory doctor [--json]` — the audit pass (the deferred gap #4, closed): tier budgets + the injection budget (the same stack sessions inject), the stale count, a LIVE recall-seal probe (no superseded row may answer a default recall bare — the memU doctor law: prove the loop, not just that files exist), the store's health (dupes/conflicts/superseded/dormant/sro-tagged), the review-queue depth, placement findings (user-tier bullets carrying file paths; project-tier pure-workflow bullets as hoist candidates — report-only, never auto-shipped), and derivable-from-repo findings (bullets restating a package.json script). Engine-down: the tier/injection/placement audits still run (disk-derived); the store/queue/seal rows degrade honestly. `unown doctor`'s memory row gains a one-line store summary.
 - `unown memory review` — the memory review queue: list pending hoist candidates (id, evidence, rule, age), `approve <id>` (ships to both user tiers — re-deduped and re-guarded at decision time), `discard <id> [--reason s]` (kept for audit, never deleted). One user-level inbox across projects; the queue lives at `~/.unown/memory/review-queue/`.
 - `/learning` — the same stack, in-session, re-read from disk, plus the injection budget line (whether the whole stack fit the cap or what was pruned/truncated — truncation is never silent). The stack renders first and the engine-state + budget lines ride the tail of the notice, so they stay visible in a terminal of any height.
 - `unown doctor` — verifies the project and user memory files exist ([troubleshooting](troubleshooting.md)).
 - `unown dashboard` → **Memory** screen — the engine's four tiers with contents, full version history and one-key rollback, plus every skill AutoDream minted into your projects (skills rollback and retire write back to your project's files). The engine's platform state (backend, model, dir, cap) rides `/api/overview`'s `memoryPlatform` block, and `GET /api/memories?q=…` searches the platform's memories per scope. Since the Divertimento round the screen also renders the **review-queue card** (pending candidates with evidence) under the health card, refetching live on every park/approve/discard.
 - `/memory search <query> [--all]` — cross-project semantic search over every scope that has dreamed (see [shared memory](#shared-memory-across-sessions-and-projects)); `GET /api/memories?across=1&q=…` is the HTTP form. Superseded memories are excluded from results by default — they never answer a recall as if current; `--all` / `latest_only=0` opts into the audit view (they render with a `· superseded <date>` badge, never bare).
+
+## Memory interchange — export and import (Divertimento CP6, 2026-11-15)
+
+Memories move between machines and teams through a schema-versioned file
+(`src/memory-interchange.ts`; engine API `GET/POST /api/memory/interchange`):
+
+- **`unown memory export [--out <path>]`** — writes the schema-v1 file
+  (default `unown-memory-export-<date>.json` in the cwd): every memory of
+  the engine scope AND every project scope that has dreamed, each carrying
+  its text, type (fact/episode/procedure/preference), SRO triple, the
+  last-confirmed date, provenance, supersede links and dormancy, plus honest
+  metadata (total/live/superseded/dormant counts, the scope list). Needs the
+  engine up (the platform lives there).
+- **`unown memory import <file> [--apply]`** — the trust-gated import.
+  Unknown schema **versions refuse** with the remedy in the error (never a
+  silent best-effort); every record passes the per-record quarantine: char
+  caps, unknown scopes (never rerouted), **superseded rows never re-import**
+  (retired stays retired), and the deterministic guard (an imported
+  runner-directive is refused loudly, never trimmed). What survives lands in
+  the **review queue by default** — the human gate, the same inbox as the
+  hoist (`unown memory review` decides) — or, with `--apply`, writes
+  directly through the platform (`infer: false` — the text IS the memory),
+  every row stamped `source: import` with the origin file. Dormancy is
+  deliberately NOT imported: it is usage-conditioned bookkeeping, and this
+  store's render budget decides on its own evidence. Original platform ids
+  ride as provenance only — an import mints fresh rows, so a foreign id
+  space can never collide with (or resurrect) local history.
 
 ## The delight surfaces (Divertimento CP4, 2026-11-14)
 

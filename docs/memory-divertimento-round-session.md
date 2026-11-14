@@ -42,7 +42,7 @@ unilaterally).
 | CP3 usage-conditioned decay — render-exclusion dormancy with recurrence reset | ✅ done | `mem0DormantAfter`/`DormancyEntry`/`readDormancyRecord`/`writeDormancyRecord`/`isDormantId`/`trackDormancyFromPlan`/`reviveDormantByIds`/`dormantCountFor`/`dormantCountAll`/`dormancyScopeKey` + `computeRenderPlan` (extracted from the render, byte-identical) + dream.ts consolidate wiring (`dormantNew`/`dormantResets` on DreamOutcome) + server.ts `annotateAndReviveDormancy` (badge + revive on every search lane) + memory-health `dormantCount` + dashboard-types + env/docs (PI_MEM0_DORMANT_AFTER in .env.example + configuration.md; memory.md; AGENTS.md; unown-overview) + `test/memory-dormancy.test.ts` (10) |
 | CP4 the delight lane — provenance badges, honest counts, the AutoDream digest | ✅ done | tools.ts search badges (type/hard-won/freshness stamp/dormant-revived) + the store-free `memory-stamps.ts` (single definitions, re-exported; the terminal tools never import the engine DB) + `countProjectStaleRules`/`MemoryBarInfo.stale` + the recall line's `(N stale)` fragment + dreams-table `entries_superseded`/`entries_dormant` (schema + migrations + threading through all dream-row writes) + `latestDreamNews` digest fields + `DreamNews.superseded/dormant` + `dreamNewsToastText` digest + /memory show's `not injected · N dormant` line + the dashboard fact line's dormant/sro counts + docs (memory.md delight section, AGENTS.md, unown-overview) + `test/memory-delight.test.ts` (6) |
 | CP5 `unown memory doctor` — the audit that proves the loop | ✅ done | new `src/memory-doctor.ts` (`auditProjectMemory`/`renderMemoryDoctorReport`/`liveMemoryDoctorEngine`) + the cli.ts subcommand + HELP + the `unown doctor` store row + docs (memory.md, AGENTS.md, unown-overview) + `test/memory-doctor.test.ts` (6) |
-| CP6 memory interchange — export/import behind the human gate | ☐ | |
+| CP6 memory interchange — export/import behind the human gate | ✅ done | `src/memory-interchange.ts` (schema v1 builders, the parse/refuse, the trust gate, injectable park/write appliers) + `GET/POST /api/memory/interchange` (engine-side validation, one source of truth) + `unown memory export [--out]` / `import <file> [--apply]` + the unknown-flag guard's per-family subcommand surfaces (the live smoke's own find: --reason had been broken since CP1) + docs (memory.md incl. a duplicate-bullet cure, AGENTS.md incl. a duplicated-CP5-sentence cure, README, CHANGELOG) + `test/memory-interchange.test.ts` (21) + 4 parse-args pins |
 | CP7 verification + docs/landing/blog/DOX + CHANGELOG + version + release | ☐ | |
 
 ## CP0 — the research, the code map, the baseline (2026-11-14)
@@ -153,6 +153,48 @@ bridge 248/0; `check:docs` / `check:changelog` (59 stops / 576 entries /
   README/docs/landing/blog/DOX; `unown-overview.md` re-stamped; CHANGELOG
   entries per milestone; version bump; release cut; Dependabot +
   code-scanning addressed; deploy-verify green.
+
+## CP6 — memory interchange, shipped (2026-11-15)
+
+The pre-registered design, implemented and verified live:
+
+- **`src/memory-interchange.ts`** (pure, the sessions-export pattern): the
+  schema-v1 builders (`buildMemoryInterchangeRecord/File` — text, type, SRO
+  triple, confirmedAt, provenance, supersede links, dormancy, honest meta
+  counts), the parse (`parseMemoryInterchangeFile` — version refusal with
+  the remedy, structural checks, the 5k-record cap), the trust gate
+  (`classifyImportRecords` — 600-char cap, unknown scopes quarantined never
+  rerouted, superseded rows never re-import, the guard's flags verbatim),
+  and the two appliers with injectable sinks (`parkImportedRecords` → the
+  review queue, `writeImportedRecords` → the platform with
+  `source: import` + origin + infer:false).
+- **Engine routes** `GET/POST /api/memory/interchange`: the export walks the
+  engine scope + every dreamed project scope (getAll + the dormancy side
+  records); the import owns the validation (one source of truth) and emits
+  `memory:review:changed` / `memory:changed` on the bus.
+- **CLI**: `unown memory export [--out <path>]` (default
+  `unown-memory-export-<date>.json`) and `unown memory import <file>
+  [--apply]`, both with the engine-down remedy; HELP rows; README command
+  block.
+- **The live smoke's own find, fixed with the feature**: the top-level
+  unknown-flag guard refused the ENTIRE memory-subcommand flag surface —
+  `--json` on doctor, `--reason` on review discard (**broken since CP1 wired
+  it**), and the new `--out`/`--apply`. The guard now honors per-family
+  subcommand flag surfaces (keyed on the first word; a VALUE flag passes its
+  value; anything undocumented still refuses) — pinned by four new
+  parse-args tests.
+- **Verified live end to end** against the real engine (the Agnes stack):
+  export (2 memories, full field fidelity) → import (2 parked, evidence
+  names the origin file) → `memory review` listing → the poisoned file (1
+  accepted, 3 quarantined: guard/superseded/unknown-scope, each reason
+  printed) → the version-2 file (exit 2 + the remedy) → `--apply` (written
+  rows carry source/origin/kind/SRO) → `--out`/`--reason`/`--json` flags →
+  discard-with-reason cleanup.
+- **Tests**: `test/memory-interchange.test.ts` (21) + the parse-args pins;
+  the full engine suite **5814/0**; the neighboring suites green.
+- **Docs**: memory.md's new interchange section (+ a duplicate doctor bullet
+  cured), the self-learning AGENTS.md contract (+ a duplicated CP5 sentence
+  cured), README's command block, CHANGELOG (1 Added).
 
 ## CP1 — the integrity lane, shipped (2026-11-14)
 

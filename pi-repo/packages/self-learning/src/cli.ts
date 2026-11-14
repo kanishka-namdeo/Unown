@@ -22,7 +22,7 @@
  *   unown mcp <sub>        manage MCP server configs (add/list/get/remove/test)
  *   unown note "text"     hand a note to the engine (for AutoDream)
  */
-import { existsSync, readdirSync, writeFileSync, writeSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync, writeFileSync, writeSync } from "node:fs";
 import { basename, join } from "node:path";
 import {
         type CreateAgentSessionRuntimeFactory,
@@ -229,6 +229,16 @@ Usage:
                            health (dupes/conflicts/superseded/dormant/sro),
                            the review queue, placement and derivable-from-
                            repo findings (--json for machines)
+  unown memory export      write the schema-v1 interchange file (the engine
+                           scope + every project scope; text, type, SRO,
+                           confirmedAt, provenance, supersede links,
+                           dormancy) — [--out <path>], default
+                           unown-memory-export-<date>.json
+  unown memory import      trust-gated import of an export file: accepted
+                           records land in the REVIEW QUEUE (the human
+                           gate); --apply writes directly, source stamped
+                           import; unknown versions refuse, per-record
+                           quarantine (caps, guard, retired rows)
   unown dashboard [screen] the TUI mission control for the learning memory
                            system (alias: dash) — screens: overview, memory,
                            dreams, notes, skills, lab, hooks, router,
@@ -820,12 +830,40 @@ export function parseArgs(argv: string[]): CliArgs {
         // (measured: `unown --thinking high` sent the words "--thinking high" to
         // the LLM) — the same silent misroute the bare-typo guard exists to
         // refuse. Exit 2 with the flag named; `--help` is one keystroke away.
+        //
+        // Subcommand flag surfaces (2026-11-15, the interchange round's live
+        // find): `unown memory`'s subcommands carry documented flags the main
+        // loop never sees (--json on doctor, --reason on review discard, --out
+        // on export, --apply on import) — this guard scanned them as unknown
+        // flags and refused the whole surface (measured live: all four
+        // exit-2'd; the review-discard's --reason had been broken since the
+        // Divertimento CP1 wired it). When the FIRST word is a subcommand
+        // family with its own flag surface, its documented flags pass — and a
+        // VALUE flag (--reason/--out) also passes its value — while anything
+        // else still refuses: the typo guard's whole point.
         {
+                const SUBCOMMAND_FLAG_SURFACES: Record<string, { flags: Set<string>; values: Set<string> }> = {
+                        memory: {
+                                flags: new Set(["--json", "--apply", "--reason", "--out"]),
+                                values: new Set(["--reason", "--out"]),
+                        },
+                };
+                const surface = rest[0] !== undefined ? SUBCOMMAND_FLAG_SURFACES[rest[0].toLowerCase()] : undefined;
                 const scan = escapeMark === -1 ? rest : rest.slice(0, escapeMark);
-                const unknown = [...new Set(scan.filter((t) => t.startsWith("-")))];
-                if (unknown.length > 0) {
+                const unknown: string[] = [];
+                for (let t = 0; t < scan.length; t++) {
+                        const tok = scan[t]!;
+                        if (!tok.startsWith("-")) continue;
+                        if (surface && surface.flags.has(tok)) {
+                                if (surface.values.has(tok) && t + 1 < scan.length) t++; // skip the flag's value
+                                continue;
+                        }
+                        unknown.push(tok);
+                }
+                const uniq = [...new Set(unknown)];
+                if (uniq.length > 0) {
                         console.error(
-                                `unown: unknown flag${unknown.length === 1 ? "" : "s"} ${unknown.join(", ")} — see \`unown --help\` for the accepted surface (a prompt starting with a dash: quote it, or use the \`--\` end-of-options marker)`,
+                                `unown: unknown flag${uniq.length === 1 ? "" : "s"} ${uniq.join(", ")} — see \`unown --help\` for the accepted surface (a prompt starting with a dash: quote it, or use the \`--\` end-of-options marker)`,
                         );
                         process.exit(2);
                 }
@@ -1849,9 +1887,90 @@ async function cmdMemory(sub: string): Promise<void> {
                 }
                 return;
         }
+        // `unown memory export` — the interchange file (Divertimento CP6): the
+        // engine scope + every project scope, schema v1, written atomically.
+        // Needs the engine (the platform lives there). Default filename
+        // unown-memory-export-<date>.json in the cwd; --out overrides.
+        if (/^export\b/i.test(rest)) {
+                const mOut = /(^|\s)--out\s+(\S+)/.exec(rest);
+                const stamp = new Date().toISOString().slice(0, 10);
+                const outPath = mOut ? mOut[2]! : `unown-memory-export-${stamp}.json`;
+                let file: unknown;
+                try {
+                        const res = await engineFetch(`${ENGINE_URL}/api/memory/interchange`, { signal: AbortSignal.timeout(20000) });
+                        if (!res.ok) throw new Error(((await res.json().catch(() => ({}))) as any)?.error ?? `engine ${res.status}`);
+                        file = await res.json();
+                } catch (err: any) {
+                        console.error(`unown memory export: engine unreachable — ${err instanceof Error ? err.message : String(err)}`);
+                        console.error("start the stack with `bun run agent:start` (the memories live in the engine's platform)");
+                        process.exit(2);
+                }
+                const meta = (file as any)?.meta ?? {};
+                writeFileSync(outPath, `${JSON.stringify(file, null, 2)}\n`, "utf8");
+                console.log(`✓ ${outPath} — ${meta.total ?? 0} memories (${meta.live ?? 0} live · ${meta.superseded ?? 0} superseded · ${meta.dormant ?? 0} dormant) across ${meta.scopes?.length ?? 0} scope(s): ${(meta.scopes ?? []).join(", ")}`);
+                return;
+        }
+        // `unown memory import <file> [--apply]` — the trust-gated interchange
+        // (Divertimento CP6). The file is parsed + validated ENGINE-side (one
+        // source of truth for the schema); accepted records land in the review
+        // queue by default (the human gate — `unown memory review` to decide),
+        // --apply writes them directly (source stamped `import`).
+        if (/^import\b/i.test(rest)) {
+                const mFile = /^import\s+(\S+)/i.exec(rest);
+                if (!mFile) {
+                        console.error("usage: unown memory import <file> [--apply]");
+                        process.exit(2);
+                }
+                const filePath = mFile[1]!;
+                const apply = /(^|\s)--apply(\s|$)/.test(rest);
+                let raw: string;
+                try {
+                        raw = readFileSync(filePath, "utf8");
+                } catch (err: any) {
+                        console.error(`unown memory import: cannot read ${filePath} — ${err instanceof Error ? err.message : String(err)}`);
+                        process.exit(2);
+                }
+                let parsedFile: unknown;
+                try {
+                        parsedFile = JSON.parse(raw);
+                } catch {
+                        console.error(`unown memory import: ${filePath} is not valid JSON`);
+                        process.exit(2);
+                }
+                let body: any;
+                try {
+                        const res = await engineFetch(`${ENGINE_URL}/api/memory/interchange`, {
+                                method: "POST",
+                                headers: { "content-type": "application/json" },
+                                body: JSON.stringify({ file: parsedFile, origin: filePath, apply }),
+                                signal: AbortSignal.timeout(60000),
+                        });
+                        body = (await res.json().catch(() => ({}))) as any;
+                        if (!res.ok) throw new Error(body?.error ?? `engine ${res.status}`);
+                } catch (err: any) {
+                        console.error(`unown memory import: ${err instanceof Error ? err.message : String(err)}`);
+                        if (body?.hint) console.error(`  ${body.hint}`);
+                        console.error("start the stack with `bun run agent:start` if the engine is down");
+                        process.exit(2);
+                }
+                const applied = apply ? body.written : body.parked;
+                console.log(
+                        `✓ import from ${filePath}: ${body.accepted} accepted · ${applied} ${apply ? "written" : "parked for review"} · ${(body.quarantined ?? []).length} quarantined`,
+                );
+                if (!apply && body.parked > 0) console.log("  decide with: unown memory review  (approve ships, discard keeps the audit row)");
+                for (const q of (body.quarantined ?? []).slice(0, 10) as Array<{ record: { text: string }; reasons: string[] }>) {
+                        console.log(`  ⚠ quarantined: "${q.record.text.slice(0, 60)}${q.record.text.length > 60 ? "…" : ""}" — ${q.reasons.join("; ")}`);
+                }
+                if ((body.quarantined ?? []).length > 10) console.log(`  ⚠ …and ${(body.quarantined ?? []).length - 10} more`);
+                for (const f of (body.failed ?? []) as Array<{ text: string; error: string }>) {
+                        console.log(`  ✗ failed: "${f.text.slice(0, 60)}" — ${f.error}`);
+                }
+                return;
+        }
         if (rest) {
-                console.error(`unown memory: unknown subcommand "${rest.split(/\s/)[0]}" (review | stack)`);
+                console.error(`unown memory: unknown subcommand "${rest.split(/\s/)[0]}" (review | doctor | export | import | stack)`);
                 console.error("usage: unown memory [stack] | unown memory review [approve <id> | discard <id> [--reason s]]");
+                console.error("       unown memory doctor [--json] | unown memory export [--out <path>] | unown memory import <file> [--apply]");
                 process.exit(2);
         }
         const cwd = process.cwd();

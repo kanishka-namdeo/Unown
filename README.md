@@ -316,6 +316,8 @@ unown models               # list configured models + spec provenance
 unown models verify        # re-run spec detection; report anything unverified
 unown doctor               # end-to-end diagnostics: endpoint, keys, upstream, memory
 unown memory               # print the effective 4-tier memory stack
+unown memory export        # write the schema-v1 interchange file (all scopes)
+unown memory import f.json # trust-gated import: quarantines, review-queue by default (--apply writes)
 unown note "watch out: flaky test in auth.spec"   # hand AutoDream a note directly
 ```
 
