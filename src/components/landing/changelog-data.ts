@@ -30,14 +30,14 @@ export interface ChangelogStop {
   groups: ChangelogGroup[];
 }
 
-export const CHANGELOG_TOTAL_ENTRIES = 587;
+export const CHANGELOG_TOTAL_ENTRIES = 586;
 
 export const CHANGELOG_TOTALS: Record<ChangelogBucket, number> = {
   "Added": 248,
   "Changed": 32,
   "Deprecated": 0,
   "Removed": 3,
-  "Fixed": 218,
+  "Fixed": 217,
   "Security": 5,
   "Behavior": 81
 };
@@ -46,13 +46,13 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
   {
     "label": "Unreleased",
     "date": null,
-    "total": 46,
+    "total": 35,
     "counts": {
-      "Added": 2,
+      "Added": 0,
       "Changed": 0,
       "Deprecated": 0,
       "Removed": 0,
-      "Fixed": 15,
+      "Fixed": 6,
       "Security": 0,
       "Behavior": 29
     },
@@ -182,14 +182,6 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
         "bucket": "Fixed",
         "items": [
           {
-            "title": "The plan plan mode writes is now visible by default — the reported defect…",
-            "behavior": false
-          },
-          {
-            "title": "Home/End/PageUp/PageDown now reach a focused docked dialog — the approval gate's documented navigation…",
-            "behavior": false
-          },
-          {
             "title": "A Ctrl+C exit during a running turn no longer loses the whole session",
             "behavior": false
           },
@@ -211,6 +203,35 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
           },
           {
             "title": "The dev server was silently un-interactable when browsed by IP literal",
+            "behavior": false
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "label": "0.0.65",
+    "date": "2026-11-14",
+    "total": 10,
+    "counts": {
+      "Added": 2,
+      "Changed": 0,
+      "Deprecated": 0,
+      "Removed": 0,
+      "Fixed": 8,
+      "Security": 0,
+      "Behavior": 0
+    },
+    "groups": [
+      {
+        "bucket": "Fixed",
+        "items": [
+          {
+            "title": "The plan plan mode writes is now visible by default — the reported defect…",
+            "behavior": false
+          },
+          {
+            "title": "Home/End/PageUp/PageDown now reach a focused docked dialog — the approval gate's documented navigation…",
             "behavior": false
           },
           {
@@ -234,10 +255,6 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
             "behavior": false
           },
           {
-            "title": "unown memory doctor — the memory audit pass (the Memory Divertimento round CP5; the deferred gap #4 from the…",
-            "behavior": false
-          },
-          {
             "title": "The memory env-var documentation drift is closed (the every-env-var-documented contract)",
             "behavior": false
           }
@@ -247,7 +264,7 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
         "bucket": "Added",
         "items": [
           {
-            "title": "The memory review queue, wired end-to-end — the human gate every model-inferred user-tier rule now passes…",
+            "title": "The memory review queue — the human gate for inferred user-tier rules (Divertimento CP1)",
             "behavior": false
           },
           {
@@ -1530,7 +1547,7 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
         "bucket": "Added",
         "items": [
           {
-            "title": "The validation round — the cold-start Memory & Learning System Validation Programme",
+            "title": "The validation round — the cold-start validation programme",
             "behavior": false
           },
           {
@@ -1793,7 +1810,7 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
         "bucket": "Added",
         "items": [
           {
-            "title": "landing + demo: the commerce round — the live-demo band became a gallery",
+            "title": "landing + demo: the commerce round — the band became a gallery",
             "behavior": false
           },
           {
@@ -2447,7 +2464,7 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
         "bucket": "Added",
         "items": [
           {
-            "title": "landing: the blog — the longhand record of each feature and release",
+            "title": "landing: the blog — the longhand record",
             "behavior": false
           },
           {
@@ -2728,7 +2745,7 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
         "bucket": "Added",
         "items": [
           {
-            "title": "browser-subagent: browser automation as a first-class subagent + the live subagent-visuals round",
+            "title": "browser-subagent: automation as a first-class subagent",
             "behavior": false
           }
         ]
@@ -3362,7 +3379,7 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
         "bucket": "Added",
         "items": [
           {
-            "title": "a verified standalone binary install lane — --binary on POSIX, -Binary on Windows",
+            "title": "a verified standalone binary install lane (--binary / -Binary)",
             "behavior": false
           },
           {
@@ -3715,7 +3732,7 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
         "bucket": "Added",
         "items": [
           {
-            "title": "a cloned repo can no longer masquerade as AutoDream: provenance honesty, an injection-time scan…",
+            "title": "a cloned repo can no longer masquerade as AutoDream: provenance + the injection scan",
             "behavior": true
           },
           {

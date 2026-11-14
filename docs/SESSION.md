@@ -74,6 +74,26 @@ the CHANGELOG folded, the version bumped, this round graduated.
 
 ---
 
+## ACTIVE ROUND — the Plan Visibility round (2026-11-14, CP1..CP4 SHIPPED, CP5/CP6 IN FLIGHT)
+
+`docs/plan-visibility-round-session.md` — the reported defect ("user cannot
+see plan mode's created plan by default"), closed end to end: the plan
+renders at every moment it matters. The seven-product research (Codex
+ProposedPlanCell / Claude Code presents-it / Cursor virtual file / Copilot
+Review Plan card / Cline / Aider / Gemini CLI, every claim URL-cited) set
+the law — the plan is shown, in full, at the moment it is ready. Shipped:
+`plan-display.ts` + the shared renderer (compact checklist by default, full
+markdown on ctrl+o through the live keybinding machinery), the UI-only
+`details` channel on every plan tool result, the dialog title carrying the
+plan under the byte-stable `Plan ready —` anchor, legacy marker recovery,
+the vendored `wantsViewportNav` fix (the verification's own dividend —
+Home/End/PageUp/PageDown never reached the docked approval dialog; the
+plan editor's cursor keys were being eaten by the viewport), ten display
+pins + two tui pins, and the live PTY matrix ALL GREEN (gate 18/18,
+options-a/b/c, budget, plan-model). CP5 cuts v0.0.65 (the fold done, the
+duplicate upstream doctor entry dropped); CP6 remains: security sweep +
+blog/capture assets.
+
 ## ACTIVE ROUND — the Memory Divertimento round (2026-11-14, CP1..CP5 SHIPPED)
 
 `docs/memory-divertimento-round-session.md` — fix what broke, prove the

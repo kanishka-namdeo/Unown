@@ -219,3 +219,27 @@ Home/End promise is now true in the live TUI); self-learning AGENTS.md
 gains the display-lane contract; root AGENTS.md gains the round sentence;
 docs/AGENTS.md indexes this log; README's plan paragraph gains the
 visible-at-every-moment sentence; CHANGELOG gains the two Fixed entries.
+
+## CP5 — the v0.0.65 cut (2026-11-14)
+
+The fold: the ten post-v0.0.64 entries graduate into `## [0.0.65] -
+2026-11-14` — this round's two Fixed plus the Memory Divertimento round's
+CP1-CP5 (six Fixed, two Added; the round itself stays in flight — its CP6/CP7
+entries ride 0.0.66 when it closes, the 0.0.58–0.0.61 precedent). The
+byte-identical duplicate `unown memory doctor` entry the upstream CP5 commit
+left in [Unreleased] is dropped at the fold (587 → 586 entries). The 35 older
+stragglers keep riding [Unreleased] per the rolling-lane convention.
+
+The budget ritual: the new stop's chrome breached the e2e budget twin at
+4,604w > 4,590 (MAX_LISTED=1 renders only the Added/Behavior first items —
+this round's own Fixed entries never render; the stop's only listed lead is
+the Divertimento's review-queue title, and the first compression attempt
+taught the lesson again: a lead shorter than TITLE_MAX=112 renders MORE of
+its parenthetical, not fewer words). Cured per the sanctioned order — the
+stop's own listed title first, then six historical first-listed leads, bold
+leads only, bodies untouched (0.0.1's cloned-repo lead, 0.0.2's binary
+install lane, 0.0.16's blog, 0.0.34's commerce round, 0.0.40's validation
+round, 0.0.9's browser-subagent) — landing at **20.2vh / 4,582w ≤ 4,590 in
+the twin, eight words of headroom**. All five landing checks + the audit
+green; `bun bin/unown --version` = 0.0.65; unown-overview re-stamped at
+v0.0.65 with the plan-mode row carrying the visibility surfaces.
