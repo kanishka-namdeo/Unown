@@ -2694,7 +2694,7 @@ export function renderProjectMemoryMarkdown(
                                 supersededHidden > 0 ? ` · ${supersededHidden} superseded (retained for audit, excluded from recall)` : ""
                         }${perTypeFrag}${hardWonDropped > 0 ? ` · ${hardWonDropped} hard-won beyond the hard-won cap ${hardWonCap} (oldest shipped fixes dropped)` : ""}${
                                 charTrimmed > 0 ? ` · ${charTrimmed} bullet(s) trimmed at the ${maxChars}-char render ceiling` : ""
-                        } at ${new Date().toISOString()} -->`,
+                        } at ${new Date(now).toISOString()} -->`,
                 );
                 const out = parts.join("\n");
                 return out.length > 0 ? `${out}\n` : out;
@@ -2722,9 +2722,14 @@ export function renderProjectMemoryMarkdown(
                 out = assemble(charTrimmed);
         }
         // never hand the agent an empty file: a scope with no memories keeps the
-        // section skeleton so the next dream has the shape to write into
+        // section skeleton so the next dream has the shape to write into. The
+        // footer rides the same injected clock as the bullets — the opts.now
+        // contract ("tests pin it") covers the whole render, not just the
+        // freshness stamps; the idempotence pin caught the footer minting a
+        // fresh wall-clock instant on every call (CI run 43622789226, a
+        // ms-boundary race that only shows on fast machines).
         if (memories.length === 0) {
-                return `# ${opts.title ?? "Project Memory"}\n\n## Workflow\n\n## Known pitfalls\n\n## Task playbooks\n\n<!-- unown: rendered 0/0 memories via Mem0 (backend: ${opts.backend ?? memoryPlatformStatus().backend}) at ${new Date().toISOString()} -->\n`;
+                return `# ${opts.title ?? "Project Memory"}\n\n## Workflow\n\n## Known pitfalls\n\n## Task playbooks\n\n<!-- unown: rendered 0/0 memories via Mem0 (backend: ${opts.backend ?? memoryPlatformStatus().backend}) at ${new Date(now).toISOString()} -->\n`;
         }
         return out;
 }

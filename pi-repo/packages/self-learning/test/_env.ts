@@ -52,11 +52,11 @@ mkdirSync(join(TEST_TMP_LITERAL, "unown-home"), { recursive: true });
 mkdirSync(join(TEST_TMP_LITERAL, "unown-home", "notes", "outbox"), { recursive: true });
 
 export const TEST_TMP = (() => {
-	try {
-		return realpathSync(TEST_TMP_LITERAL);
-	} catch {
-		return TEST_TMP_LITERAL; // exotic host: keep the literal spelling
-	}
+        try {
+                return realpathSync(TEST_TMP_LITERAL);
+        } catch {
+                return TEST_TMP_LITERAL; // exotic host: keep the literal spelling
+        }
 })();
 
 process.env.PI_SELFLEARNING_DB ??= `${TEST_TMP}/selflearning.db`;
@@ -136,3 +136,14 @@ process.env.PI_MEM0_EMBEDDER ??= "lexical";
 // opts.env (spec-gate.test.ts spins a local Bun.serve registry).
 process.env.UNOWN_SPEC_MODELSDEV_URL ??= "http://127.0.0.1:9/api.json";
 process.env.UNOWN_SPEC_LITELLM_URL ??= "http://127.0.0.1:9/db.json";
+// The plan-visibility round's CI receipt (run 43622789226): the suite renders
+// through the coding-agent's GLOBAL theme (initTheme() in the plan-display /
+// splitview / dashboard-render / fleet-runtime tests), and initTheme picks its
+// color mode from the environment — NO_COLOR unset (the GitHub runner) with no
+// truecolor hint is "256color", whose empty theme colors emit bare ESC wraps
+// INSIDE Markdown renders, so the D3 pin (a plain substring across a styled
+// step line) passed in NO_COLOR sandboxes and failed on CI. The suite pins the
+// deterministic plain mode (no-color.org — the convention theme.ts itself
+// honors at createTheme time); colored rendering is validated live by the PTY
+// matrix lane on a real TUI. ??= keeps a developer's explicit override.
+process.env.NO_COLOR ??= "1";

@@ -243,3 +243,31 @@ round, 0.0.9's browser-subagent) — landing at **20.2vh / 4,582w ≤ 4,590 in
 the twin, eight words of headroom**. All five landing checks + the audit
 green; `bun bin/unown --version` = 0.0.65; unown-overview re-stamped at
 v0.0.65 with the plan-mode row carrying the visibility surfaces.
+
+**The tag-gate cure (2026-11-15).** The fold commit's 3-OS CI went red on
+"Self-learning engine tests" (run 43624110386; the implementation commit's
+run 43622789226 the same) — three environment-dependent flakes, none a
+product defect, every one root-caused and cured before the tag:
+
+1. **D3 (this round's own pin)** — the expanded-markdown assertion is
+   environment-sensitive: `initTheme()` picks plain vs 256color from the
+   process env, and the GitHub runner (no `NO_COLOR`) rendered bare `ESC`
+   wraps inside styled spans where every pre-warmed sandbox rendered plain.
+   Cure: the suite pins the deterministic plain mode (`NO_COLOR ??= "1"` in
+   `test/_env.ts`); the live PTY lane keeps validating colored rendering.
+2. **The memory idempotence pin** — `renderProjectMemoryMarkdown` threaded
+   the injected `opts.now` into the freshness stamps but stamped the footer
+   from `new Date()`: two same-input renders crossing a millisecond boundary
+   were byte-different. Cure: the footer rides the injected clock (a real
+   determinism bug in the `opts.now` contract, not just a test fix).
+3. **The hoist guard pin** — the test assumed the "established tier" its own
+   comment names; on a fresh store the hoist is a first mint and first-mint
+   semantics correctly GATE the whole block (F4B), so `out.rules` was `[]`
+   on fresh runners only. Cure: the test establishes the tier first; the
+   first-mint path keeps its unit pin in `guard.test.ts`.
+
+Verified against a completely fresh redirected store AND a pre-warmed one
+(41/41 in the three files × three consecutive runs; the full engine suite
+5661/0 with only the documented first-run outbox flake, green on re-run);
+root typecheck clean. The v0.0.65 tag lands on the cure commit (the 0.0.62
+precedent), after its own 3-OS CI green.
