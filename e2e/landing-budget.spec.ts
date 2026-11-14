@@ -203,8 +203,19 @@ const MAX_PAGE_VH = 20.5;
  * lead compressions in the same CHANGELOG are hygiene, not budget. The
  * ceiling carries one more stop's headroom so the next release does not
  * open on a knife's edge. No generated number, no gated literal touched.
+ *
+ * The 0.0.67 amendment: 4612 -> 4648 carries the rail's 62nd stop (the
+ * Memory Nocturne round). Compressed FIRST, as the contract demands: the
+ * round's own listed changelog titles ("The evidence lane: every learned
+ * rule links back to its source note" + the #48 Fixed lead, -3 measured
+ * words; the bodies do not render — only the latest stop's leads reach
+ * innerText, re-confirmed). The remaining +23 is the new stop's
+ * structural generated words (titles, dates, section labels — the
+ * undeletable receipts class, f16e8fda precedent) plus headroom so the
+ * next release does not open on a knife's edge. No generated number, no
+ * gated literal touched.
  */
-const MAX_WORDS = 4612;
+const MAX_WORDS = 4648;
 
 /*
  * The 2026-10-31 planning-round release amendment (the tenth): 3,860 ->

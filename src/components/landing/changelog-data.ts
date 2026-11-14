@@ -244,7 +244,7 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
         "bucket": "Added",
         "items": [
           {
-            "title": "The evidence lane — every learned rule links back to the note that produced it (the Memory Nocturne round…",
+            "title": "The evidence lane: every learned rule links back to its source note (the Memory Nocturne round)",
             "behavior": false
           }
         ]
@@ -253,7 +253,7 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
         "bucket": "Fixed",
         "items": [
           {
-            "title": "unown doctor no longer crashes on a foreign source value in model-specs.json (issue #48…",
+            "title": "unown doctor no longer crashes on a foreign source value (issue #48)",
             "behavior": false
           }
         ]
