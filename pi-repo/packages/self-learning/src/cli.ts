@@ -53,6 +53,7 @@ import { DELEGATIONS_USAGE, runDelegationsCommand } from "./delegations-cli.ts";
 import { auditInstructionSet, renderInstructionAudit, summarizeInstructionAudit } from "./doctor-instructions.ts";
 import { engineFetch } from "./engine-auth.ts";
 import { auditProjectMemory, liveMemoryDoctorEngine, renderMemoryDoctorReport } from "./memory-doctor.ts";
+import { parseMemoryReviewDiscard } from "./memory-review.ts";
 import { runEngineCommand } from "./engine-cli.ts";
 import { describeEngineOwner, probeEngine } from "./engine-probe.ts";
 import { readSpawnState } from "./engine-supervisor.ts";
@@ -1873,7 +1874,9 @@ async function cmdMemory(sub: string): Promise<void> {
  *  that decisions need the engine up. */
 async function cmdMemoryReview(rest: string): Promise<void> {
         const mApprove = /^approve\s+(\S+)\s*$/i.exec(rest);
-        const mDiscard = /^discard\s+(\S+)(?:\s+--reason\s+(.+))?$/i.exec(rest);
+        // Linear pass, not a regex: the old shape was CodeQL polynomial-redos
+        // (alert #91) — see memory-review.ts's parseMemoryReviewDiscard.
+        const mDiscard = parseMemoryReviewDiscard(rest);
         try {
                 if (mApprove) {
                         const res = await engineFetch(`${ENGINE_URL}/api/memory/review/approve`, {
@@ -1894,12 +1897,12 @@ async function cmdMemoryReview(rest: string): Promise<void> {
                         const res = await engineFetch(`${ENGINE_URL}/api/memory/review/discard`, {
                                 method: "POST",
                                 headers: { "content-type": "application/json" },
-                                body: JSON.stringify({ id: mDiscard[1], reason: mDiscard[2] }),
+                                body: JSON.stringify({ id: mDiscard.id, reason: mDiscard.reason }),
                                 signal: AbortSignal.timeout(10000),
                         });
                         const body = (await res.json().catch(() => ({}))) as any;
                         if (!res.ok) throw new Error(body?.error ?? `engine ${res.status}`);
-                        console.log(`memory review discarded — ${mDiscard[1]} (the verdict is kept for audit, never deleted)`);
+                        console.log(`memory review discarded — ${mDiscard.id} (the verdict is kept for audit, never deleted)`);
                         return;
                 }
                 const res = await engineFetch(`${ENGINE_URL}/api/memory/review`, { signal: AbortSignal.timeout(8000) });

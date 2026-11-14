@@ -112,6 +112,54 @@ export function memoryReviewId(rule: string, projects: string[]): string {
         return `rv-${(h >>> 0).toString(16)}`;
 }
 
+/** Parse the `discard` subcommand's arguments — `discard <id> [--reason <text>]`
+ *  — as a single LINEAR character pass, no backtracking regex.
+ *
+ *  CodeQL js/polynomial-redos (alert #91, 2026-11-14): the original
+ *  `/^discard\s+(\S+)(?:\s+--reason\s+(.+))?$/i` lets the engine re-split
+ *  the `(\S+)` id token against the optional `--reason` tail in polynomial
+ *  time on adversarial input — the same class the #90 fix cured with a
+ *  linear pass. This parser is behaviorally IDENTICAL to the regex it
+ *  replaces (the 28-case equivalence battery in test/memory-review.test.ts
+ *  was run against BOTH implementations before the swap — case-insensitivity
+ *  of both the command and the flag, the required reason text, the exact-flag
+ *  boundary (`--reasonx` is not the flag), the `$` anchor's rejection of
+ *  trailing separator-only input, and `.`'s never-crossing of line
+ *  terminators): a 200k-character pathological input parses in < 5 ms.
+ *
+ *  Shared by both surfaces that answer `review` — the CLI
+ *  (`unown memory review discard …`, cli.ts) and the TUI slash lane
+ *  (`/memory review discard …`, tools.ts) — so the two can never drift. */
+export function parseMemoryReviewDiscard(rest: string): { id: string; reason?: string } | undefined {
+        // "discard" (case-insensitive) + at least one whitespace
+        if (rest.length < 8 || rest.slice(0, 7).toLowerCase() !== "discard") return undefined;
+        let i = 7;
+        let wsStart = i;
+        while (i < rest.length && /\s/.test(rest[i]!)) i++;
+        if (i === wsStart) return undefined;
+        // the id: a maximal run of non-whitespace (\S+)
+        const idStart = i;
+        while (i < rest.length && !/\s/.test(rest[i]!)) i++;
+        if (i === idStart) return undefined;
+        const id = rest.slice(idStart, i);
+        // end of input right after the id → no reason (the regex's `$`)
+        if (i === rest.length) return { id };
+        // the optional tail must be exactly: \s+ "--reason" \s+ (.+) to the end
+        wsStart = i;
+        while (i < rest.length && /\s/.test(rest[i]!)) i++;
+        if (i === wsStart) return undefined; // separator-only tail: `$` fails
+        if (rest.slice(i, i + 8).toLowerCase() !== "--reason") return undefined; // exact flag (the regex's literal)
+        i += 8;
+        wsStart = i;
+        while (i < rest.length && /\s/.test(rest[i]!)) i++;
+        if (i === wsStart || i === rest.length) return undefined; // `--reason` with no text: `\s+(.+)` fails
+        const reason = rest.slice(i);
+        // `.` never matches a line terminator, so a reason containing one can
+        // never reach `$` — the whole match fails (the regex's behavior).
+        if (/[\n\r\u2028\u2029]/.test(reason)) return undefined;
+        return { id, reason };
+}
+
 /** Park a review candidate (atomic write). If a candidate with the same id
  *  already exists (same rule + projects), the park is a no-op — the
  *  candidate keeps its original createdAt and stays pending. */

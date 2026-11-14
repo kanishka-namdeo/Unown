@@ -7,6 +7,16 @@
     <description>How each feature and release works, what it does, and the receipts behind it — the longhand record of the self-improving terminal coding agent Unown.</description>
     <language>en</language>
     <item>
+      <title>The round that made the plan visible</title>
+      <link>https://unown-nine.vercel.app/blog/2026-11-14-the-plan-visibility-round</link>
+      <guid isPermaLink="true">https://unown-nine.vercel.app/blog/2026-11-14-the-plan-visibility-round</guid>
+      <pubDate>Sat, 14 Nov 2026 00:00:00 GMT</pubDate>
+      <description>Unown scored the plan, saved it, gated it — and never showed it. Seven competitors later, the plan renders at every moment it matters.</description>
+      <category>planning</category>
+      <category>tui</category>
+      <category>release</category>
+    </item>
+    <item>
       <title>The Memory Encore round: eleven teardowns, four delight surfaces, one arity bug</title>
       <link>https://unown-nine.vercel.app/blog/2026-11-12-the-memory-encore-round</link>
       <guid isPermaLink="true">https://unown-nine.vercel.app/blog/2026-11-12-the-memory-encore-round</guid>

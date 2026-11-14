@@ -30,14 +30,14 @@ export interface ChangelogStop {
   groups: ChangelogGroup[];
 }
 
-export const CHANGELOG_TOTAL_ENTRIES = 587;
+export const CHANGELOG_TOTAL_ENTRIES = 588;
 
 export const CHANGELOG_TOTALS: Record<ChangelogBucket, number> = {
   "Added": 248,
   "Changed": 32,
   "Deprecated": 0,
   "Removed": 3,
-  "Fixed": 218,
+  "Fixed": 219,
   "Security": 5,
   "Behavior": 81
 };
@@ -46,13 +46,13 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
   {
     "label": "Unreleased",
     "date": null,
-    "total": 36,
+    "total": 37,
     "counts": {
       "Added": 0,
       "Changed": 0,
       "Deprecated": 0,
       "Removed": 0,
-      "Fixed": 7,
+      "Fixed": 8,
       "Security": 0,
       "Behavior": 29
     },
@@ -181,6 +181,10 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
       {
         "bucket": "Fixed",
         "items": [
+          {
+            "title": "CodeQL alert #91 (js/polynomial-redos…",
+            "behavior": false
+          },
           {
             "title": "The v0.0.65 fold's 3-OS CI red is cured — three environment-dependent test flakes…",
             "behavior": false

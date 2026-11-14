@@ -91,6 +91,7 @@ import {
 import { auditInstructionSet, renderInstructionAudit, summarizeInstructionAudit } from "./doctor-instructions.ts";
 import { engineFetch } from "./engine-auth.ts";
 import { memoryFreshnessStamp } from "./memzero.ts";
+import { parseMemoryReviewDiscard } from "./memory-review.ts";
 import { getEngineStatusInfo } from "./engine-status.ts";
 import {
         recordFleetChildFinish,
@@ -4914,7 +4915,10 @@ export function createUnownToolsExtension(opts: UnownToolsOptions) {
                                 if (/^review\b/i.test(trimmed)) {
                                         const rest = trimmed.replace(/^review\s+/i, "").trim();
                                         const mApprove = /^approve\s+(\S+)\s*$/i.exec(rest);
-                                        const mDiscard = /^discard\s+(\S+)(?:\s+--reason\s+(.+))?$/i.exec(rest);
+                                        // Linear pass, not a regex: the old shape was CodeQL
+                                        // polynomial-redos (alert #91) — see
+                                        // memory-review.ts's parseMemoryReviewDiscard.
+                                        const mDiscard = parseMemoryReviewDiscard(rest);
                                         try {
                                                 if (mApprove) {
                                                         const res = await engineFetch(`${ENGINE_URL}/api/memory/review/approve`, {
@@ -4940,7 +4944,7 @@ export function createUnownToolsExtension(opts: UnownToolsOptions) {
                                                         const res = await engineFetch(`${ENGINE_URL}/api/memory/review/discard`, {
                                                                 method: "POST",
                                                                 headers: { "content-type": "application/json" },
-                                                                body: JSON.stringify({ id: mDiscard[1], reason: mDiscard[2] }),
+                                                                body: JSON.stringify({ id: mDiscard.id, reason: mDiscard.reason }),
                                                                 signal: AbortSignal.timeout(10000),
                                                         });
                                                         const body = (await res.json().catch(() => ({}))) as any;
@@ -4948,7 +4952,7 @@ export function createUnownToolsExtension(opts: UnownToolsOptions) {
                                                                 ctx.ui.notify(`discard failed (engine ${res.status}): ${body?.error ?? "see unown engine status"}`, "error");
                                                                 return;
                                                         }
-                                                        ctx.ui.notify(`memory review discarded — ${mDiscard[1]} (kept for audit)`, "info");
+                                                        ctx.ui.notify(`memory review discarded — ${mDiscard.id} (kept for audit)`, "info");
                                                         return;
                                                 }
                                                 const res = await engineFetch(`${ENGINE_URL}/api/memory/review`, { signal: AbortSignal.timeout(8000) });

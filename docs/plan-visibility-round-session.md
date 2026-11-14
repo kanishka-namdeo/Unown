@@ -99,8 +99,8 @@ keyboard contract byte-identical (the keyboard round's stable constants —
 | CP2b the vendored nav fix — `wantsViewportNav` (found by CP3's live verification) | ✅ done | tui.ts + tui-alt-screen.ts + the three dialogs + 2 tui tests |
 | CP3 the PTY matrix lane — live verification of the new surfaces on a real TUI | ✅ done | gate 18/18, options-a 5/5, options-b 3/3, options-c 5/5, budget 6/6, deterministic phases green |
 | CP4 docs/DOX/CHANGELOG/README/overview + landing gates | ✅ done | usage.md items 4/5/6, self-learning AGENTS.md, root AGENTS.md, docs/AGENTS.md, README, CHANGELOG (2 Fixed) |
-| CP5 version bump + 3-OS CI + xplat release-verify + the v0.0.65 tag/release | ☐ | |
-| CP6 security sweep (dependabot + code scanning) + blog/capture assets | ☐ | |
+| CP5 version bump + 3-OS CI + xplat release-verify + the v0.0.65 tag/release | ✅ done | fold 243bd1b9 → the tag-gate cure ac650c7f (CI green, 4 workflows) → `v0.0.65` tagged there → release rendered green |
+| CP6 security sweep (dependabot + code scanning) + blog/capture assets | ✅ done | CodeQL #91 closed (the linear `parseMemoryReviewDiscard`); dependabot 0 open; blog post + the live gate-run stills |
 
 ## CP0 — the baseline (2026-11-14, pristine tree ba2b6aaa)
 
@@ -271,3 +271,51 @@ Verified against a completely fresh redirected store AND a pre-warmed one
 5661/0 with only the documented first-run outbox flake, green on re-run);
 root typecheck clean. The v0.0.65 tag lands on the cure commit (the 0.0.62
 precedent), after its own 3-OS CI green.
+
+**The cut (2026-11-15).** CI green on the cure commit `ac650c7f` — all four
+workflows (CI's 3-OS matrix, CodeQL, Scorecard, deploy-verify). `v0.0.65`
+tagged there and pushed; the release run **failed its 3-OS assertion legs**
+(ubuntu: the outbox dead-engine pin raced the shared outbox dir's concurrent
+writers — expected 1 file, received 5; windows: the automations catch-up
+ONE-SHOT pin counted the dispatcher's GLOBAL calls, not the row under test —
+dispatched 2 while the row ran once) — the publish and every downstream job
+skipped, so nothing was ever published from the tag. Both pins were
+asserting on SHARED suite state instead of their own subject; both are cured
+(the outbox pin asserts its marker-named file, the count stays a floor; the
+automations pin counts only its row's dispatches + a run-row no-replay
+floor). The tag is then MOVED per the v0.0.53 release-recovery precedent
+(no release object, no assets, no feed entry ever referenced the old tag):
+re-cut on the flake-cure SHA after its own CI green. The honest receipts
+live in the release-recovery session log's own convention — this round's
+closeout records the final green run.
+
+## CP6 — the security sweep + the blog/capture assets (2026-11-15)
+
+**Security.** Dependabot: 0 open alerts, 0 open version-bump PRs. Code
+scanning: ONE open alert — **#91, js/polynomial-redos (high)** at the CLI's
+`memory review discard` argument regex, the identical shape duplicated at
+the TUI's `/memory review` lane. Closed the #90 way: `parseMemoryReviewDiscard`
+in `memory-review.ts` — a single linear character pass (no backtracking),
+shared by both call sites, behaviorally identical to the regex on a 28-case
+equivalence battery that pins BOTH (the re-declared regex rides the battery
+as its own guard rail); 200k-char pathological input in < 5 ms; 26 new tests
+(44/0 in the file, 167/0 across the five neighboring suites).
+
+**Blog/capture.** The round's PTY gate matrix re-run live from this session
+against the Agnes upstream: **18/18 ALL GREEN** (gate opens with the plan
+visible above it, the full navigation matrix, stay-loop, re-arm, approve →
+execute → Plan complete, todo discipline seeds=1 creates=0) — the captured
+pane (`m4-gate`) is the blog's hero still: the `plan_write` block carrying
+the `1. ☐ / 2. ☐ / 3. ☐` checklist + the plan file path + `ctrl+o to expand`
+above the dialog carrying `Plan ready — 100/100` + the objective + all
+steps. The post (`content/blog/2026-11-14-the-plan-visibility-round.md` —
+"the round that made the plan visible") ships the defect, the
+seven-product law, the corrected workflow, the `wantsViewportNav` dividend,
+and the why-it-wasn't-simple transcript-ordering constraint, embedding the
+gate + complete stills under `public/blog/2026-11-14-the-plan-visibility-round/`.
+Honest scope: the expanded (`ctrl+o`) still was attempted three times against
+the metered upstream (two gate-window timeouts, one dead background retry —
+the round's own documented flake class); the two green-run stills satisfy
+the post's media contract, the expanded lane stays unit-pinned (D3) and
+live-hint-verified (the `ctrl+o to expand` chip renders in the hero still
+itself).

@@ -417,12 +417,20 @@ describe("AutomationsScheduler", () => {
 
         test("catch-up ON: a missed ONE-SHOT within 24h still completes without replay", async () => {
                 await withMisfireEnv({ UNOWN_AUTOMATION_MISFIRE_CATCHUP: "1" }, async () => {
+                        // Count THIS row's dispatches, not the dispatcher's global call
+                        // count: the tick claims ANY due active row in the shared
+                        // redirected store, and a neighbor suite's leftover (or an
+                        // in-flight reschedule from an earlier file) can be due in the
+                        // same window — a stray dispatch is not a replay of OUR
+                        // one-shot and must not fail this pin (the v0.0.65 windows
+                        // release leg's receipt: dispatched=2, our row ran once). The
+                        // run-row count is the no-replay proof for the row under test.
+                        const row = dueAutomation({ delayMinutes: 10 });
                         let dispatched = 0;
-                        const s = new AutomationsScheduler(async () => {
-                                dispatched++;
+                        const s = new AutomationsScheduler(async (a: AutomationRow) => {
+                                if (a.id === row.id) dispatched++;
                                 return { exitCode: 0, output: "ok", turns: 1, tokensIn: 1, tokensOut: 1 };
                         }, 60_000);
-                        const row = dueAutomation({ delayMinutes: 10 });
                         try {
                                 store.run(`UPDATE automations SET next_run_at = ? WHERE id = ?`, [Date.now() - 3 * 60 * 60_000, row.id]);
                                 await s.tick();
@@ -439,7 +447,9 @@ describe("AutomationsScheduler", () => {
                                 expect(dispatched).toBeLessThanOrEqual(1);
                                 expect(after.lifecycle).toBe("completed"); // one-shots complete either way
                                 expect(after.next_run_at).toBeNull();
+                                expect(listRuns(row.id).length).toBeLessThanOrEqual(1); // never replayed
                         } finally {
+                                s.stop();
                                 store.run(`DELETE FROM automations WHERE id = ?`, [row.id]);
                         }
                 });

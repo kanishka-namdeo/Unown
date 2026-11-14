@@ -261,7 +261,24 @@ describe("note delivery: assumeDown fast path + budget (M6)", () => {
                         expect(result.delivered).toBe(false);
                         expect(result.via).toBe("outbox");
                         expect(typeof result.detail).toBe("string");
-                        expect(outboxStats().queued).toBe(before + 1);
+                        // THE NOTE LANDED — pinned by ITS OWN marker, not by the global
+                        // count: the suite's outbox dir is shared by design (it catches
+                        // cross-run drift), and this test's ~600ms retry window is long
+                        // enough for a neighbor's in-flight delivery to land a file of
+                        // its own, so `toBe(before + 1)` raced neighbors and failed only
+                        // on loaded runners (the v0.0.65 release legs' receipt: expected
+                        // 1, received 5 — four files were other writers'). The count
+                        // stays as a floor; the marker is the contract.
+                        const newFiles = readdirSync(UNOWN_OUTBOX_DIR).filter((n) => !beforeFiles.includes(n));
+                        const mine = newFiles.filter((n) => {
+                                try {
+                                        return readFileSync(join(UNOWN_OUTBOX_DIR, n), "utf8").includes(`dead-engine probe ${MARKER}`);
+                                } catch {
+                                        return false; // a neighbor's file vanished mid-list — not ours
+                                }
+                        });
+                        expect(mine.length).toBeGreaterThanOrEqual(1);
+                        expect(outboxStats().queued).toBeGreaterThanOrEqual(before + 1);
                 } finally {
                         cleanupNewOutboxFiles(beforeFiles);
                 }
