@@ -102,6 +102,13 @@ import { jobTimeoutMs, listJobs, router, setJobEnabled } from "./router.ts";
 import { describeRoutineSchedule } from "./routine-schedule.ts";
 import { automationSpendReport } from "./automation-spend.ts";
 import { engineMemoryHealth } from "./memory-health.ts";
+import {
+        discardMemoryReviewCandidate,
+        listMemoryReviewCandidates,
+        listPendingMemoryReviewCandidates,
+        memoryReviewQueueDepth,
+} from "./memory-review.ts";
+import { approveAndShipMemoryReview } from "./memory-review-ship.ts";
 import { getLiveRun, listLiveRuns } from "./run-progress.ts";
 import { ensureAgentDir, getRun, listRuns, MODEL_ID, PROVIDER, runAgent } from "./runner.ts";
 import { listSandboxes } from "./sandbox.ts";
@@ -937,6 +944,13 @@ export async function handleApi(req: ApiRequest): Promise<Response> {
                         }
                         const across = req.query.get("across") === "1" || req.query.get("across") === "true";
                         const limit = Math.min(Number(req.query.get("limit") ?? 20) || 20, 100);
+                        // latest_only (default 1): the recall-integrity seal (Divertimento
+                        // CP1). Superseded memories are excluded from SEARCH results by
+                        // default — an invalidated memory never answers a recall as if
+                        // current (the soft-delete-leak class MIRIX's security review
+                        // fixed). latest_only=0 opts IN (audit view: the caller renders
+                        // them badged, never bare).
+                        const latestOnly = req.query.get("latest_only") !== "0";
                         // CROSS-SCOPE SEARCH (shared-memory recall): `across=1` + `q`
                         // fans the query out over the engine scope AND every project
                         // scope that has dreamed, merging best-first with each result
@@ -955,11 +969,12 @@ export async function handleApi(req: ApiRequest): Promise<Response> {
                                         })),
                                 ];
                                 try {
-                                        const memories = await searchAcrossScopes(q, scopes, limit);
+                                        const memories = await searchAcrossScopes(q, scopes, limit, { latestOnly });
                                         return json({
                                                 memories,
                                                 query: q,
                                                 across: true,
+                                                latestOnly,
                                                 scopes: scopes.map((s) => s.label),
                                                 platform: memoryPlatformStatus(),
                                         });
@@ -974,8 +989,11 @@ export async function handleApi(req: ApiRequest): Promise<Response> {
                         // never a useful default.
                         const scope: MemoryScope = agentId || userId ? { agentId, userId } : ENGINE_SCOPE;
                         try {
-                                const memories = q ? await searchMemories(q, scope, limit) : await projectMemories(scope);
-                                return json({ memories, query: q ?? null, scope, platform: memoryPlatformStatus() });
+                                // The no-q LIST stays unfiltered (an inspection/audit surface:
+                                // dashboards and doctors want the full store); the q SEARCH
+                                // honors latest_only exactly like the across lane.
+                                const memories = q ? await searchMemories(q, scope, limit, { latestOnly }) : await projectMemories(scope);
+                                return json({ memories, query: q ?? null, scope, latestOnly: q ? latestOnly : undefined, platform: memoryPlatformStatus() });
                         } catch (err: any) {
                                 console.error("[agent-service] memory search failed:", err);
                                 return json({ error: `memory platform unavailable: ${apiErrorMessage(err)}` }, 503);
@@ -997,6 +1015,51 @@ export async function handleApi(req: ApiRequest): Promise<Response> {
                                 console.error("[agent-service] memory health failed:", err);
                                 return json({ error: `memory health unavailable: ${apiErrorMessage(err)}` }, 503);
                         }
+                }
+
+                // ------------------------------------------------------------------
+                // The memory review queue (Memory v2 CP3, wired by the Divertimento
+                // round): the human gate every model-inferred user-tier rule now
+                // passes through. USER-LEVEL (one inbox across projects, riding the
+                // terminal user tier's home). GET lists it; approve ships via
+                // memory-review-ship (the ONLY write path — re-deduped and
+                // re-guarded at decision time); discard records the verdict and
+                // keeps the candidate for audit.
+                // ------------------------------------------------------------------
+                if (method === "GET" && path === "/api/memory/review") {
+                        const all = req.query.get("status") === "all";
+                        const queue = all ? listMemoryReviewCandidates() : listPendingMemoryReviewCandidates();
+                        return json({
+                                queue,
+                                depth: memoryReviewQueueDepth(),
+                                status: all ? "all" : "pending",
+                        });
+                }
+                if (method === "POST" && path === "/api/memory/review/approve") {
+                        const id = typeof body?.id === "string" ? body.id.trim() : "";
+                        if (!id) return json({ error: "id required" }, 400);
+                        try {
+                                const res = await approveAndShipMemoryReview(id);
+                                if (!res.ok) {
+                                        const status = res.code === "not-found" ? 404 : res.code === "already-decided" ? 409 : res.code === "guard-gate" ? 422 : 503;
+                                        return json({ error: res.error, code: res.code, ...(res.flags ? { flags: res.flags } : {}) }, status);
+                                }
+                                emit("memory:review:changed", { id, action: "approve", shipped: res.shipped.length, tierVersion: res.tierVersion });
+                                if (res.shipped.length > 0) emit("memory:changed", { tier: "user", version: res.tierVersion, changedBy: "autodream-hoist", note: `memory review ${id} approved` });
+                                return json(res);
+                        } catch (err: any) {
+                                console.error("[agent-service] memory review approve failed:", err);
+                                return json({ error: `memory review approve failed: ${apiErrorMessage(err)}` }, 503);
+                        }
+                }
+                if (method === "POST" && path === "/api/memory/review/discard") {
+                        const id = typeof body?.id === "string" ? body.id.trim() : "";
+                        const reason = typeof body?.reason === "string" ? body.reason.slice(0, 500) : undefined;
+                        if (!id) return json({ error: "id required" }, 400);
+                        const updated = discardMemoryReviewCandidate(id, reason);
+                        if (!updated) return json({ error: `no memory review candidate "${id}"` }, 404);
+                        emit("memory:review:changed", { id, action: "discard" });
+                        return json({ ok: true, candidate: updated });
                 }
 
                 // ------------------------------------------------------------------

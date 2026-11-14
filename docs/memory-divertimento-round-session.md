@@ -37,7 +37,7 @@ unilaterally).
 | Phase | Status | Artifact |
 |---|---|---|
 | CP0 research + code map + baseline bring-up | ✅ done | teardown + research docs + this file's code map + the verified baseline below |
-| CP1 the integrity lane — wire the review queue, seal the recall path, per-type budget, env/docs sync | ☐ | |
+| CP1 the integrity lane — wire the review queue, seal the recall path, per-type budget, env/docs sync | ✅ done | `memory-review.ts` (user-level queue, `-r<N>` re-park) + new `memory-review-ship.ts` (the only write path: re-dedupe + re-guard at decision time, `shippedVersion` stamped after both writes land) + `hoist.ts` rewired (park, never auto-write) + search-path `latest_only` on `searchMemories`/`searchAcrossScopes`/`/api/memories` (+ `/memory search --all` badged) + `renderTypeShares`/`allocateTypeBudget` + `## Preferences`/`## Episodes` sections + per-type footer + `/api/memory/review` routes + `/memory review` + `unown memory review` (degraded local read) + the dashboard review card + `reviewQueueDepth`/`review-pending` + env/docs sync + DOX (self-learning AGENTS.md, memory.md, configuration.md, unown-overview re-stamp) + CHANGELOG×4 + tests: memory-review 18, memory-review-ship 8, hoist 18 reworked, memory-recall-integrity 15, manual-notes/budget/freshness re-pinned |
 | CP2 deterministic supersession — SRO keys in the reconcile | ☐ | |
 | CP3 usage-conditioned decay — render-exclusion dormancy with recurrence reset | ☐ | |
 | CP4 the delight lane — provenance badges, honest counts, the AutoDream digest | ☐ | |
@@ -153,6 +153,47 @@ bridge 248/0; `check:docs` / `check:changelog` (59 stops / 576 entries /
   README/docs/landing/blog/DOX; `unown-overview.md` re-stamped; CHANGELOG
   entries per milestone; version bump; release cut; Dependabot +
   code-scanning addressed; deploy-verify green.
+
+## CP1 — the integrity lane, shipped (2026-11-14)
+
+The "fix whatever breaks" checkpoint — every finding from the CP0 audit,
+closed and pinned:
+
+1. **The review queue, wired.** The hoist now parks every promotion in a
+   USER-LEVEL queue (`~/.unown/memory/review-queue/` — one inbox across
+   projects, visible from any session; a decided candidate is never
+   overwritten, a same-id re-observation parks under a `-r<N>` id). The
+   only write path is `approveAndShipMemoryReview` (`memory-review-ship.ts`):
+   re-deduped against both tiers at decision time (a rule that already
+   landed is skipped, never duplicated — which makes a mid-flight retry
+   converge), re-guarded by the deterministic layer (sanitize drops flagged
+   lines; a nothing-clean block is refused with the flags and the candidate
+   stays pending, retryable), provenance names the observing projects AND
+   the review decision, and the candidate is stamped approved with
+   `shippedVersion` only AFTER both writes land. Decisions surface four
+   ways: `/memory review`, `unown memory review` (engine-down degrades to
+   a read-only local listing), `POST /api/memory/review/[approve|discard]`
+   (404 unknown / 409 already-decided / 422 guard-gate / 503 write-failed),
+   and the dashboard Memory screen's review card (`memoryReview` resource;
+   `memory:review:changed` + `hoist:finished` invalidations). The health
+   card carries `reviewQueueDepth` + the amber `review-pending` warning.
+2. **The recall-integrity seal.** `filterLatestOnly` now runs on every
+   search lane (`searchMemories`, `searchAcrossScopes`, the API's scoped +
+   across forms); superseded results render with `· superseded <date>`
+   badges in the `--all`/`latest_only=0` audit view; the no-q LIST stays
+   whole by design (an inspection surface).
+3. **The per-type render budget.** Shares + waterfall (single-type stores
+   keep the flat-cap behavior at the same total), `## Preferences`/
+   `## Episodes` sections (typed before regex; Episodes render last), the
+   per-type kept/pruned footer.
+4. **Docs**: `.env.example` + `configuration.md` + `memory.md` + the
+   self-learning `AGENTS.md` contract + `unown-overview.md` re-stamped;
+   four CHANGELOG entries; the rail regenerated (59 stops / 580 entries).
+
+Measured at the milestone: engine suite **5623/0** (5728 ran, 105 live-
+gated skips), root unit **2094/0**, root e2e **15/15** with the landing
+budget twin green at MAX_WORDS 4590, typecheck 0, lint 0 errors, all five
+landing checks green.
 
 ## Session checkpoint protocol
 

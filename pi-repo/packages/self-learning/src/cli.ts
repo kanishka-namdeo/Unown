@@ -218,6 +218,10 @@ Usage:
                            (--overwrite, --print, --json; reverse-engineered
                            from opencode /init + Claude Code /init)
   unown memory             print the effective memory stack
+  unown memory review      the memory review queue: list pending hoist
+                           candidates, approve <id> (ships to both user
+                           tiers, re-deduped + re-guarded at decision time),
+                           discard <id> [--reason s] (kept for audit)
   unown dashboard [screen] the TUI mission control for the learning memory
                            system (alias: dash) — screens: overview, memory,
                            dreams, notes, skills, lab, hooks, router,
@@ -1804,7 +1808,21 @@ function cmdDoctorInstructions(args: string[]): number {
         return sum.errors > 0 ? 1 : 0;
 }
 
-function cmdMemory() {
+function cmdMemory(sub: string): void {
+        // `unown memory review` — the human gate (Divertimento CP1): bare
+        // lists the pending queue through the engine; `approve <id>` ships
+        // via memory-review-ship; `discard <id> [--reason]` records the
+        // verdict. One inbox across projects (the queue is user-level).
+        const rest = String(sub ?? "").trim();
+        if (/^review\b/i.test(rest)) {
+                void cmdMemoryReview(rest.replace(/^review\s+/i, "").trim());
+                return;
+        }
+        if (rest) {
+                console.error(`unown memory: unknown subcommand "${rest.split(/\s/)[0]}" (review | stack)`);
+                console.error("usage: unown memory [stack] | unown memory review [approve <id> | discard <id> [--reason s]]");
+                process.exit(2);
+        }
         const cwd = process.cwd();
         const files = resolveTerminalMemory(cwd);
         for (const f of files) {
@@ -1813,6 +1831,86 @@ function cmdMemory() {
                 console.log(`──────────────────────────────────────────────────────────`);
                 console.log(f.content.trimEnd());
                 console.log();
+        }
+}
+
+/** `unown memory review` — the review-queue lane of `unown memory`: the
+ *  human gate every model-inferred user-tier rule passes through. Bare
+ *  lists the pending candidates (id + evidence + rule + age); approve and
+ *  discard go through the engine API (the ship is the engine's to perform —
+ *  the terminal never writes tiers). Engine-down: the list degrades to a
+ *  local disk read (the queue is a directory of JSON files) with a note
+ *  that decisions need the engine up. */
+async function cmdMemoryReview(rest: string): Promise<void> {
+        const mApprove = /^approve\s+(\S+)\s*$/i.exec(rest);
+        const mDiscard = /^discard\s+(\S+)(?:\s+--reason\s+(.+))?$/i.exec(rest);
+        try {
+                if (mApprove) {
+                        const res = await engineFetch(`${ENGINE_URL}/api/memory/review/approve`, {
+                                method: "POST",
+                                headers: { "content-type": "application/json" },
+                                body: JSON.stringify({ id: mApprove[1] }),
+                                signal: AbortSignal.timeout(15000),
+                        });
+                        const body = (await res.json().catch(() => ({}))) as any;
+                        if (!res.ok) throw new Error(body?.error ?? `engine ${res.status}`);
+                        console.log(`memory review approved — shipped ${body.shipped?.length ?? 0} rule(s) to both user tiers (engine v${body.tierVersion})`);
+                        if (body.skippedDupes?.length) console.log(`  ${body.skippedDupes.length} already present in a tier (skipped, never duplicated)`);
+                        if (body.droppedByGuard?.length) console.log(`  ${body.droppedByGuard.length} dropped by the guard re-check at decision time`);
+                        for (const r of body.shipped ?? []) console.log(`  · ${r}`);
+                        return;
+                }
+                if (mDiscard) {
+                        const res = await engineFetch(`${ENGINE_URL}/api/memory/review/discard`, {
+                                method: "POST",
+                                headers: { "content-type": "application/json" },
+                                body: JSON.stringify({ id: mDiscard[1], reason: mDiscard[2] }),
+                                signal: AbortSignal.timeout(10000),
+                        });
+                        const body = (await res.json().catch(() => ({}))) as any;
+                        if (!res.ok) throw new Error(body?.error ?? `engine ${res.status}`);
+                        console.log(`memory review discarded — ${mDiscard[1]} (the verdict is kept for audit, never deleted)`);
+                        return;
+                }
+                const res = await engineFetch(`${ENGINE_URL}/api/memory/review`, { signal: AbortSignal.timeout(8000) });
+                if (!res.ok) throw new Error((await res.json().catch(() => ({})))?.error ?? `engine ${res.status}`);
+                const data = (await res.json()) as {
+                        queue: Array<{ id: string; rule: string; evidence: string; createdAt: number }>;
+                        depth: number;
+                };
+                if (!data.depth) {
+                        console.log("memory review queue is empty — nothing awaits your decision");
+                        return;
+                }
+                console.log(`memory review queue — ${data.depth} pending`);
+                console.log("decide with: unown memory review approve <id> | discard <id> [--reason s]");
+                for (const c of data.queue) {
+                        const age = Date.now() - (c.createdAt ?? Date.now());
+                        const mins = Math.max(1, Math.round(age / 60000));
+                        console.log("");
+                        console.log(`  ${c.id} · queued ${mins >= 60 ? `${Math.round(mins / 60)}h` : `${mins}m`} ago`);
+                        console.log(`  evidence: ${c.evidence}`);
+                        console.log(`  rule:     ${c.rule}`);
+                }
+        } catch (err) {
+                const msg = err instanceof Error ? err.message : String(err);
+                // Degraded local read (the queue is a directory; the engine is the
+                // only writer but the files are readable): list from disk, note
+                // that decisions need the engine.
+                try {
+                        const { listPendingMemoryReviewCandidates, memoryReviewDir } = await import("./memory-review.ts");
+                        const pending = listPendingMemoryReviewCandidates();
+                        console.error(`engine unreachable (${msg}) — degraded local read; decisions need the engine up (unown engine start)`);
+                        if (!pending.length) {
+                                console.log("memory review queue is empty (local read)");
+                                return;
+                        }
+                        console.log(`memory review queue — ${pending.length} pending (local read of ${memoryReviewDir()})`);
+                        for (const c of pending) console.log(`  ${c.id} — ${c.evidence}\n    rule: ${c.rule}`);
+                } catch {
+                        console.error(`unown memory review: engine unreachable (${msg})`);
+                        process.exit(1);
+                }
         }
 }
 
@@ -4289,7 +4387,7 @@ subgrammar.`,
                         process.exit(0);
                         break;
                 case "memory":
-                        cmdMemory();
+                        cmdMemory(args.prompt ?? "");
                         process.exit(0);
                         break;
                 case "note":

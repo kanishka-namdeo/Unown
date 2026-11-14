@@ -1094,7 +1094,7 @@ export async function runProjectDream(opts: DreamOpts = {}): Promise<ProjectDrea
                                 notesIn: notes.length,
                                 status: "done",
                                 version,
-                                note: `memory -> v${version}${skills.length > 0 ? ` · minted ${skills.length} skill(s): ${skills.map((sk) => sk.name).join(", ")}` : ""}${hoist && hoist.hoisted > 0 ? ` · hoisted ${hoist.hoisted} rule(s) to the user tier` : ""} · ${guardSummary(guard)}${protectedNoteFragment(out)}`,
+                                note: `memory -> v${version}${skills.length > 0 ? ` · minted ${skills.length} skill(s): ${skills.map((sk) => sk.name).join(", ")}` : ""}${hoist && hoist.hoisted > 0 ? ` · queued ${hoist.hoisted} rule(s) for memory review` : ""} · ${guardSummary(guard)}${protectedNoteFragment(out)}`,
                                 skills: skills.map((sk) => ({ name: sk.name, description: sk.description })),
                                 guard: { action: guard.action, flags: guard.flags, summary: guardSummary(guard) },
                                 hoist: hoist ?? undefined,

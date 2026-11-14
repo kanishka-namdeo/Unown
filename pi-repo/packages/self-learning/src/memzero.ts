@@ -87,10 +87,91 @@ export function mem0EmbedderMode(): "auto" | "onnx" | "lexical" {
         return raw === "onnx" || raw === "lexical" ? raw : "auto";
 }
 
-/** Render bullet cap — the injection-size contract (oldest dropped first, hard-won immune). */
+/** Render bullet cap — the TOTAL injection-size contract, now split per
+ *  memory type by share (Divertimento CP1) instead of a flat oldest-first
+ *  drop; hard-won rules stay immune with their own cap. */
 export function mem0MaxRendered(): number {
         const n = Number(process.env.PI_MEM0_MAX_RENDERED ?? 110);
         return Number.isFinite(n) && n > 0 ? n : 110;
+}
+
+// ---------------------------------------------------- per-type render budget
+// The Memory Divertimento round (2026-11-14): the v2 round shipped per-type
+// STALE horizons but never replaced the flat cap — the render kept dropping
+// oldest-first regardless of type. This is the principled budget the v2
+// code map called for: PI_MEM0_MAX_RENDERED stays the TOTAL; each type gets
+// a share (percent), and a waterfall redistributes unused share to types
+// with more candidates than allocation — so a single-type store (the
+// untyped back-compat case, everything defaulting to fact) behaves EXACTLY
+// like the old flat cap: the whole budget flows to that type. Shares are
+// env-overridable per type (PI_MEM0_RENDER_SHARE_<TYPE>, percent 0-100) and
+// normalized to 100 so the total is always honored.
+
+/** Default per-type shares of the render cap (percent; sum 100). Episodes
+ *  get the smallest share (they decay fastest and carry the least durable
+ *  recall value — the field's consensus); preferences are instruction-like
+ *  and get a guaranteed lane (never starved by a wall of facts). */
+export const RENDER_TYPE_SHARES: Record<MemoryType, number> = {
+        preference: 20,
+        procedure: 25,
+        fact: 40,
+        episode: 15,
+};
+
+/** The effective per-type shares (env overrides + normalization to 100).
+ *  Zero-sum enforcement is proportional: an over-100 total scales every
+ *  share down; an under-100 total scales up (floor 0, never negative). A
+ *  share of 0 means "never render this type" (allowed — the episode lane
+ *  can be zeroed to hide transient observations entirely). */
+export function renderTypeShares(): Record<MemoryType, number> {
+        const out: Record<MemoryType, number> = { ...RENDER_TYPE_SHARES };
+        for (const t of MEMORY_TYPES) {
+                const n = Number(process.env[`PI_MEM0_RENDER_SHARE_${t.toUpperCase()}`]);
+                if (Number.isFinite(n) && n >= 0) out[t] = Math.min(100, Math.floor(n));
+        }
+        const sum = out.fact + out.episode + out.procedure + out.preference;
+        if (sum > 0 && sum !== 100) {
+                for (const t of MEMORY_TYPES) out[t] = Math.floor((out[t] * 100) / sum);
+        }
+        return out;
+}
+
+/** Deterministic type order for allocation: the default-share priority
+ *  (fact 40 > procedure 25 > preference 20 > episode 15), name-tiebroken.
+ *  A literal — never env-map or declaration order — and env share overrides
+ *  change each type's ALLOCATION, not this priority order. */
+const SHARE_ORDER: readonly MemoryType[] = ["fact", "procedure", "preference", "episode"];
+
+/** Allocate `total` slots across the four types for the given candidate
+ *  counts: floor(total×share/100) each, then a two-pass waterfall — types
+ *  that cannot fill their allocation return the surplus to the pool, then
+ *  the pool goes to types with unmet demand in SHARE_ORDER. Deterministic,
+ *  never over-total. Leftover pool (nobody wants it) stays unused — a
+ *  smaller store renders smaller, which is honest. */
+export function allocateTypeBudget(
+        counts: Record<MemoryType, number>,
+        total: number,
+        shares: Record<MemoryType, number> = renderTypeShares(),
+): Record<MemoryType, number> {
+        const alloc: Record<MemoryType, number> = { fact: 0, episode: 0, procedure: 0, preference: 0 };
+        for (const t of MEMORY_TYPES) alloc[t] = Math.floor((total * shares[t]) / 100);
+        let pool = total - (alloc.fact + alloc.episode + alloc.procedure + alloc.preference);
+        for (const t of SHARE_ORDER) {
+                if (counts[t] < alloc[t]) {
+                        pool += alloc[t] - counts[t];
+                        alloc[t] = counts[t];
+                }
+        }
+        for (const t of SHARE_ORDER) {
+                if (pool <= 0) break;
+                const want = counts[t] - alloc[t];
+                if (want > 0) {
+                        const give = Math.min(want, pool);
+                        alloc[t] += give;
+                        pool -= give;
+                }
+        }
+        return alloc;
 }
 
 /**
@@ -1296,15 +1377,23 @@ export async function rememberNote(
         return platform.add(text, scope, metadata, { infer: opts?.infer });
 }
 
-/** Semantic recall, scoped (the search surface the engine never had before). */
+/** Semantic recall, scoped (the search surface the engine never had before).
+ *  `latestOnly` (default TRUE — the documented `latest_only=true` search
+ *  semantics) filters superseded memories out of the results: invalidated
+ *  memories are retained in the store for audit but never answer a recall
+ *  as if current. The Divertimento fix (2026-11-14): this used to leak
+ *  superseded rows — the exact soft-delete-leak class MIRIX's security
+ *  review fixed. `latestOnly: false` opts IN (audit view — callers badge
+ *  them, never render them bare). */
 export async function searchMemories(
         query: string,
         scope: MemoryScope,
         limit = 8,
-        opts?: { platform?: MemoryPlatform },
+        opts?: { platform?: MemoryPlatform; latestOnly?: boolean },
 ): Promise<PlatformMemory[]> {
         const platform = opts?.platform ?? (await getMemoryPlatform());
-        return platform.search(query, scope, limit);
+        const hits = await platform.search(query, scope, limit);
+        return opts?.latestOnly === false ? hits : filterLatestOnly(hits);
 }
 
 /** A platform memory annotated with the scope it came from (cross-scope search). */
@@ -1331,15 +1420,16 @@ export async function searchAcrossScopes(
         query: string,
         scopes: Array<{ scope: MemoryScope; label: string }>,
         limit = 12,
-        opts?: { platform?: MemoryPlatform; perScope?: number },
+        opts?: { platform?: MemoryPlatform; perScope?: number; latestOnly?: boolean },
 ): Promise<ScopedMemory[]> {
         const platform = opts?.platform ?? (await getMemoryPlatform());
         const perScope = Math.max(1, opts?.perScope ?? Math.min(limit, 8));
+        const latestOnly = opts?.latestOnly !== false;
         const all: ScopedMemory[] = [];
         for (const { scope, label } of scopes) {
                 try {
                         const hits = await platform.search(query, scope, perScope);
-                        for (const m of hits) all.push({ ...m, scope: label });
+                        for (const m of latestOnly ? filterLatestOnly(hits) : hits) all.push({ ...m, scope: label });
                 } catch {
                         /* one dead scope must never kill the fan-out */
                 }
@@ -2137,17 +2227,38 @@ export function renderProjectMemoryMarkdown(
         const kept: PlatformMemory[] = [...seeds];
         let hardWonKept = seeds.length;
         let hardWonDropped = 0;
-        let regularKept = 0;
-        let dropped = 0;
-        for (const m of sorted) {
-                if (!isHardWon(m)) {
-                        if (regularKept < cap) {
-                                kept.push(m);
-                                regularKept++;
-                        } else dropped++;
-                        continue;
+        // ---- The per-type render budget (Divertimento CP1): regular memories
+        // are allocated per type (share of the total cap + a waterfall that
+        // returns unused share to the types that can use it). Hard-won rules
+        // (seed/harness) stay OUTSIDE this budget — their own cap governs
+        // them, unchanged. A store with only untyped memories (all default
+        // fact) gets the whole cap through the waterfall — byte-compat with
+        // the old flat behavior at the same total.
+        const regulars = sorted.filter((m) => !isHardWon(m));
+        const byType: Record<MemoryType, PlatformMemory[]> = { fact: [], episode: [], procedure: [], preference: [] };
+        for (const m of regulars) byType[memoryType(m)].push(m);
+        const counts: Record<MemoryType, number> = {
+                fact: byType.fact.length,
+                episode: byType.episode.length,
+                procedure: byType.procedure.length,
+                preference: byType.preference.length,
+        };
+        const shares = renderTypeShares();
+        const alloc = allocateTypeBudget(counts, cap, shares);
+        const perTypeKept: Record<MemoryType, number> = { fact: 0, episode: 0, procedure: 0, preference: 0 };
+        const perTypeDropped: Record<MemoryType, number> = { fact: 0, episode: 0, procedure: 0, preference: 0 };
+        for (const t of MEMORY_TYPES) {
+                for (let i = 0; i < byType[t].length; i++) {
+                        if (perTypeKept[t] < alloc[t]) {
+                                kept.push(byType[t][i]);
+                                perTypeKept[t]++;
+                        } else perTypeDropped[t]++;
                 }
+        }
+        const dropped = perTypeDropped.fact + perTypeDropped.episode + perTypeDropped.procedure + perTypeDropped.preference;
+        for (const m of sorted) {
                 if (String(m.metadata?.kind ?? "") === "seed") continue; // already kept above
+                if (!isHardWon(m)) continue; // regulars handled by the per-type budget above
                 if (hardWonKept < hardWonCap) {
                         kept.push(m);
                         hardWonKept++;
@@ -2160,26 +2271,36 @@ export function renderProjectMemoryMarkdown(
                 if (kind === "harness") section = "Verified fixes";
                 else if (kind === "seed") section = "Workflow";
                 else {
-                        for (const s of RENDER_SECTIONS) {
-                                if (s.title === "Workflow") continue; // pitfalls/playbooks/env classify first
-                                if (s.test.test(m.text)) {
-                                        section = s.title;
-                                        break;
+                        // Per-type sections (Divertimento CP1): the typed sections
+                        // render before the regex-classified ones — a tagged preference
+                        // or episode is a stronger signal than any keyword match.
+                        const t = memoryType(m);
+                        if (t === "preference") section = "Preferences";
+                        else if (t === "episode") section = "Episodes";
+                        else {
+                                for (const s of RENDER_SECTIONS) {
+                                        if (s.title === "Workflow") continue; // pitfalls/playbooks/env classify first
+                                        if (s.test.test(m.text)) {
+                                                section = s.title;
+                                                break;
+                                        }
                                 }
-                        }
-                        // Workflow = the residual engineering-knowledge bucket (not a pitfall,
-                        // not a playbook, not an environment fact)
-                        if (
-                                section === "Facts" &&
-                                /^(run|use|prefer|tests?|build|deploy|verify|the (project|workspace|repo))/i.test(m.text)
-                        ) {
-                                section = "Workflow";
+                                // Workflow = the residual engineering-knowledge bucket (not a pitfall,
+                                // not a playbook, not an environment fact)
+                                if (
+                                        section === "Facts" &&
+                                        /^(run|use|prefer|tests?|build|deploy|verify|the (project|workspace|repo))/i.test(m.text)
+                                ) {
+                                        section = "Workflow";
+                                }
                         }
                 }
                 if (!sections.has(section)) sections.set(section, []);
                 sections.get(section)!.push(m);
         }
-        const order = ["Workflow", "Known pitfalls", "Task playbooks", "Environment", "Verified fixes", "Facts"];
+        // Episodes last (weakest durable value — they decay fastest); Preferences
+        // ride high with the other instruction-like sections.
+        const order = ["Workflow", "Known pitfalls", "Task playbooks", "Environment", "Preferences", "Verified fixes", "Facts", "Episodes"];
         // The Manual notes section is the user's hand-edit lane: whatever the
         // previous file carried under "## Manual notes" is re-appended VERBATIM —
         // dreams re-render platform memories but never rewrite user-authored
@@ -2208,11 +2329,22 @@ export function renderProjectMemoryMarkdown(
                         parts.push(manual.trimEnd(), "");
                 }
                 const renderedTotal = kept.length - charTrimmed;
+                // The per-type budget fragment (Divertimento CP1): rendered when any
+                // non-fact type is in play or the budget pruned something — the flat
+                // "N oldest pruned" line could not say WHICH type lost the slot.
+                const nonFact = perTypeKept.procedure + perTypeKept.preference + perTypeKept.episode;
+                const perTypeFrag =
+                        nonFact > 0 || dropped > 0
+                                ? ` · per-type budget (cap ${cap}): kept ${perTypeKept.fact} fact · ${perTypeKept.procedure} procedure · ${perTypeKept.preference} preference · ${perTypeKept.episode} episode${
+                                          dropped > 0
+                                                  ? ` — pruned ${perTypeDropped.fact}f · ${perTypeDropped.procedure}p · ${perTypeDropped.preference}pf · ${perTypeDropped.episode}e`
+                                                  : ""
+                                  }`
+                                : "";
                 parts.push(
                         `<!-- unown: rendered ${renderedTotal}/${memories.length} memories via Mem0 (backend: ${opts.backend ?? memoryPlatformStatus().backend})${
                                 supersededHidden > 0 ? ` · ${supersededHidden} superseded (retained for audit, excluded from recall)` : ""
-                        }${dropped > 0 ? ` · ${dropped} oldest pruned at render (cap ${cap}; hard-won rules immune)` : ""
-                        }${hardWonDropped > 0 ? ` · ${hardWonDropped} hard-won beyond the hard-won cap ${hardWonCap} (oldest shipped fixes dropped)` : ""}${
+                        }${perTypeFrag}${hardWonDropped > 0 ? ` · ${hardWonDropped} hard-won beyond the hard-won cap ${hardWonCap} (oldest shipped fixes dropped)` : ""}${
                                 charTrimmed > 0 ? ` · ${charTrimmed} bullet(s) trimmed at the ${maxChars}-char render ceiling` : ""
                         } at ${new Date().toISOString()} -->`,
                 );

@@ -197,7 +197,9 @@ describe("renderProjectMemoryMarkdown — manual-notes preservation", () => {
                 // the platform twin was pruned: the sentence appears exactly once
                 expect(out.split(quoted).length - 1).toBe(1);
                 // and the render says it pruned (bounded degradation, visible)
-                expect(out).toContain("oldest pruned at render");
+                // the render says it pruned, per type (bounded degradation, visible)
+                expect(out).toMatch(/pruned \d+f( · 0p · 0pf · 0e)?/);
+                expect(out).toContain("per-type budget");
         });
 });
 

@@ -30,14 +30,14 @@ export interface ChangelogStop {
   groups: ChangelogGroup[];
 }
 
-export const CHANGELOG_TOTAL_ENTRIES = 576;
+export const CHANGELOG_TOTAL_ENTRIES = 580;
 
 export const CHANGELOG_TOTALS: Record<ChangelogBucket, number> = {
-  "Added": 246,
+  "Added": 248,
   "Changed": 32,
   "Deprecated": 0,
   "Removed": 3,
-  "Fixed": 209,
+  "Fixed": 211,
   "Security": 5,
   "Behavior": 81
 };
@@ -46,13 +46,13 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
   {
     "label": "Unreleased",
     "date": null,
-    "total": 35,
+    "total": 39,
     "counts": {
-      "Added": 0,
+      "Added": 2,
       "Changed": 0,
       "Deprecated": 0,
       "Removed": 0,
-      "Fixed": 6,
+      "Fixed": 8,
       "Security": 0,
       "Behavior": 29
     },
@@ -203,6 +203,27 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
           },
           {
             "title": "The dev server was silently un-interactable when browsed by IP literal",
+            "behavior": false
+          },
+          {
+            "title": "The recall path no longer leaks superseded memories as current — the recall-integrity seal (the…",
+            "behavior": false
+          },
+          {
+            "title": "The memory env-var documentation drift is closed (the every-env-var-documented contract)",
+            "behavior": false
+          }
+        ]
+      },
+      {
+        "bucket": "Added",
+        "items": [
+          {
+            "title": "The memory review queue, wired end-to-end — the human gate every model-inferred user-tier rule now passes…",
+            "behavior": false
+          },
+          {
+            "title": "The per-type render budget replaces the flat cap (the v2 round's CP2 goal, finally shipped)",
             "behavior": false
           }
         ]

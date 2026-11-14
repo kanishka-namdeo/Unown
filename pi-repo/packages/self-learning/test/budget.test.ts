@@ -283,7 +283,10 @@ describe("memory.ts — the injected block is capped, the stored memory is not",
                         expect(rendered).toContain("run the workspace tests with bun directly");
                         expect(rendered).toContain("quote the CSV fields before splitting rows");
                         // the render footer is honest about the degradation
-                        expect(rendered).toContain("2 oldest pruned at render (cap 6; hard-won rules immune)");
+                        // the per-type budget pruned the 2 oldest facts (single-type store: the whole
+                        // cap flows to fact — the flat-cap back-compat at the same total)
+                        expect(rendered).toContain("per-type budget (cap 6)");
+                        expect(rendered).toContain("pruned 2f · 0p · 0pf · 0e");
 
                         // STORED-NOT-PRUNED: the platform keeps every memory (the cap is
                         // render-time only — injection hygiene, never data loss).

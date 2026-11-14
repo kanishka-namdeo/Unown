@@ -142,7 +142,7 @@ export function clearReconcileRecord(dir?: string): void {
 // ---------------------------------------------------------------------------
 
 export interface HealthWarning {
-        kind: "reconcile-failing" | "tier-at-cap" | "reconcile-stale";
+        kind: "reconcile-failing" | "tier-at-cap" | "reconcile-stale" | "review-pending";
         detail: string;
 }
 
@@ -167,6 +167,11 @@ export interface MemoryHealth {
         warnings: HealthWarning[];
         /** The platform's current memory count for the scope (context). */
         memoryCount: number;
+        /** The memory review queue's pending depth (Divertimento CP1): the
+         *  human gate's visible counter. The queue is user-level (one inbox
+         *  across projects) but the counter rides the health card every
+         *  surface already renders. */
+        reviewQueueDepth: number;
 }
 
 /** Normalize a memory text for duplicate grouping (the v1 near-dupe class):
@@ -258,6 +263,9 @@ export async function memoryHealth(
                 recordDir?: string;
                 /** Undreamed notes pending in the scope (0 = none). */
                 undreamedNotes?: number;
+                /** The memory review queue's pending depth (injected by the
+                 *  engine form; 0/undefined = no warning). */
+                reviewQueueDepth?: number;
                 now?: number;
         } = {},
 ): Promise<MemoryHealth> {
@@ -300,6 +308,18 @@ export async function memoryHealth(
                 });
         }
 
+        // 4 — the review queue (Divertimento CP1): pending candidates are the
+        // one warning class that is a FEATURE waiting for a human, not a fault —
+        // but it must be VISIBLE until decided (the scrutable-memory research:
+        // invisible decisions are the #1 trust killer). Amber, never rose.
+        const reviewDepth = opts.reviewQueueDepth ?? 0;
+        if (reviewDepth > 0) {
+                warnings.push({
+                        kind: "review-pending",
+                        detail: `${reviewDepth} memory review candidate(s) awaiting your decision — /memory review (or unown memory review)`,
+                });
+        }
+
         const label =
                 scope.agentId ?? (scope.userId ? `user:${scope.userId}` : scope.runId ? `run:${scope.runId}` : "default");
         return {
@@ -311,6 +331,7 @@ export async function memoryHealth(
                 typeBreakdown: countByType(memories),
                 warnings,
                 memoryCount: memories.length,
+                reviewQueueDepth: opts.reviewQueueDepth ?? 0,
         };
 }
 
@@ -340,7 +361,7 @@ function engineUndreamedNotes(): number {
  * tier-at-cap warning instead of failing the whole surface.
  */
 export async function engineMemoryHealth(
-        opts: { platform?: MemoryPlatform; recordDir?: string; undreamedNotes?: number } = {},
+        opts: { platform?: MemoryPlatform; recordDir?: string; undreamedNotes?: number; reviewQueueDepth?: number } = {},
 ): Promise<MemoryHealth> {
         let tierSize: { chars: number; cap: number } | null = null;
         try {
@@ -351,5 +372,14 @@ export async function engineMemoryHealth(
                 tierSize = null; // not measurable — the warning simply is absent
         }
         const pending = opts.undreamedNotes ?? engineUndreamedNotes();
-        return memoryHealth(ENGINE_SCOPE, { ...opts, tierSize, undreamedNotes: pending });
+        // The review queue's depth is user-level (one inbox across projects);
+        // a failed read is 0, never a thrown health card.
+        let reviewDepth = opts.reviewQueueDepth ?? 0;
+        try {
+                const { memoryReviewQueueDepth } = await import("./memory-review.ts");
+                reviewDepth = opts.reviewQueueDepth ?? memoryReviewQueueDepth();
+        } catch {
+                reviewDepth = opts.reviewQueueDepth ?? 0;
+        }
+        return memoryHealth(ENGINE_SCOPE, { ...opts, tierSize, undreamedNotes: pending, reviewQueueDepth: reviewDepth });
 }

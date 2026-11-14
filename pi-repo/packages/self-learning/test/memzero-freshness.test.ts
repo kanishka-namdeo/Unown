@@ -167,7 +167,8 @@ describe("renderProjectMemoryMarkdown — the stamped render", () => {
                 );
                 const out = renderProjectMemoryMarkdown(wide, { backend: "lexical", now: NOW });
                 expect(out.length).toBeLessThanOrEqual(48_000);
-                expect(out).toContain("oldest pruned at render");
+                expect(out).toContain("per-type budget");
+                expect(out).toMatch(/pruned \d+f/);
                 // and the surviving bullets are still stamped
                 expect(out).toMatch(/- rule number \d+ with a deliberately long body.* · 20\d\d-\d\d-\d\d\n/);
         });

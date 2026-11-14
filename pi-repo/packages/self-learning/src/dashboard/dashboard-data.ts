@@ -140,6 +140,7 @@ export type ResourceId =
         | "memory"
         | "memoryProjects"
         | "memoryHealth"
+        | "memoryReview"
         | "cycles"
         | "improvements"
         | "dreams"
@@ -174,6 +175,10 @@ const LOADERS: Record<ResourceId, (c: EngineClient) => Promise<unknown>> = {
         // Memory screen now renders it (Claude Code's prompt-audit pattern:
         // visible audits build trust; invisible ones read as creep).
         memoryHealth: (c) => c.get<MemoryHealthResponse>("/api/memory/health"),
+        // The Divertimento round (2026-11-14): the review queue joins the
+        // polled surface — the human gate, made visible where memory lives
+        // (one user-level inbox across projects; depth + candidates).
+        memoryReview: (c) => c.get<import("./dashboard-types.ts").MemoryReviewResponse>("/api/memory/review"),
         cycles: (c) => c.get<CyclesResponse>("/api/cycles"),
         improvements: (c) => c.get<ImprovementsResponse>("/api/improvements"),
         dreams: (c) => c.get<DreamsResponse>("/api/dreams"),
@@ -204,9 +209,17 @@ const INVALIDATIONS: Record<string, ResourceId[]> = {
         "improvement:shipped": ["improvements", "cycles", "overview"],
         "improvement:regressed": ["improvements", "cycles", "memory", "overview"],
         "dream:started": ["dreams", "notes", "memory", "overview"],
-        // a finished dream may have reconciled (health's lastReconcile)
-        "dream:finished": ["dreams", "notes", "memory", "overview", "skills", "memoryProjects", "memoryHealth"],
+        // a finished dream may have reconciled (health's lastReconcile) — and
+        // may have parked hoist candidates in the review queue
+        "dream:finished": ["dreams", "notes", "memory", "overview", "skills", "memoryProjects", "memoryHealth", "memoryReview"],
         "memory:changed": ["memory", "overview", "memoryProjects", "memoryHealth"],
+        // The review queue's own event: a park (hoist), an approve (ships to
+        // both user tiers), or a discard moves the depth + the queue list;
+        // an approve also moves the tiers (memory:changed is emitted there).
+        "memory:review:changed": ["memoryReview", "memoryHealth"],
+        // A finished hoist parked candidates (Divertimento: the hoist is the
+        // queue's only producer today); the depth warning rides the health card.
+        "hoist:finished": ["memoryReview", "memoryHealth"],
         "memory:budget": ["memory"],
         hook: ["hooks", "overview"],
         "note:created": ["notes", "overview"],

@@ -74,28 +74,29 @@ the CHANGELOG folded, the version bumped, this round graduated.
 
 ---
 
-## ACTIVE ROUND — the Memory Divertimento round (2026-11-14, OPENED at CP0)
+## ACTIVE ROUND — the Memory Divertimento round (2026-11-14, CP1 SHIPPED)
 
 `docs/memory-divertimento-round-session.md` — fix what broke, prove the
-patterns, make it delightful. CP0 done: five new-wave platform teardowns
-(memU, MIRIX + MIRIX-2.0, Nemori, Memobase, Hindsight —
-`docs/TEARDOWN_2026-11-14_new-wave-memory-platforms.md`), the 2025–2026
-papers + consumer-UX sweep
-(`docs/memory-divertimento-round-research.md`), and an in-repo audit that
-found the v2 round half-shipped: the memory review queue is an ORPHAN
-MODULE (zero callers, hoists still auto-write both user tiers), the recall
-path leaks superseded memories as current (`filterLatestOnly` runs only in
-the render), and the per-type budget never replaced the flat 110/60 cap.
-Baseline bring-up green on the pristine tree `0d1a8cf0` (bun 1.4.4,
-`build:offline` 52 files/8.5 MiB, Agnes upstream injected into `.env`,
-typecheck 0, unit 2094/0, engine 5598/0, bridge 248/0, all five landing
-checks green, print-mode smoke round-trips). Remaining: CP1 the integrity
-lane (wire the review queue, seal the recall path, per-type budget) → CP2
-deterministic SRO supersession → CP3 usage-conditioned dormancy → CP4 the
-delight lane (provenance badges, honest counts, the AutoDream digest) →
-CP5 `unown memory doctor` → CP6 export/import interchange → CP7 verify,
-docs/landing/blog/DOX, version bump, release cut, security alerts. Push on
-every milestone; the phase ledger in the round log is the resume point.
+patterns, make it delightful. CP0 done (five teardowns + papers + consumer
+UX, baseline green). **CP1 SHIPPED — the integrity lane**: the memory
+review queue wired end-to-end (user-level `~/.unown/memory/review-queue/`
+inbox; hoist parks, never auto-writes; `/memory review` + `unown memory
+review` + `POST /api/memory/review/[approve|discard]` + the dashboard card
++ the amber `review-pending` health warning; approve ships via
+`memory-review-ship.ts` re-deduped + re-guarded at decision time, stamped
+`shippedVersion` only after both writes land; a decided candidate is never
+overwritten — re-observations park under `-r<N>` ids); the recall-integrity
+seal (every search lane excludes superseded memories by default;
+`--all`/`latest_only=0` opts into a badged audit view — the soft-delete-leak
+class); the per-type render budget (shares + waterfall; `## Preferences`/
+`## Episodes` sections; per-type kept/pruned footer) replacing the flat cap;
+env-docs drift closed. Suites: engine 5623/0, root unit 2094/0, root e2e
+15/15, the landing budget twin green at MAX_WORDS 4590 (rail 59 stops /
+580 entries), typecheck 0, lint 0 errors. Remaining: CP2 deterministic SRO
+supersession → CP3 usage-conditioned dormancy → CP4 the delight lane →
+CP5 `unown memory doctor` → CP6 export/import → CP7 verify + release.
+Push on every milestone; the phase ledger in the round log is the resume
+point.
 
 ---
 ## GRADUATED — the v0.0.62 release cut (2026-11-11, the five-bump gap closed)

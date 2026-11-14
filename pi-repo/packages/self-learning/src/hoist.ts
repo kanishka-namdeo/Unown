@@ -20,12 +20,10 @@
  *   1. WRONG TARGET: the hoist appended to the ENGINE's user tier
  *      (DATA_DIR/memory/user.md — injected into engine sandbox runs only).
  *      Terminal sessions read ~/.unown/memory/user.md, so a "hoisted" rule
- *      NEVER reached the user's actual projects — the cross-project
- *      transfer feature shipped to the wrong file. The write is now
- *      DUAL-TARGET: the terminal user tier (term.ts appendTerminalUserRules,
+ *      NEVER reached the user's actual projects. The ship now writes BOTH
+ *      targets — the terminal user tier (term.ts appendTerminalUserRules,
  *      atomic + attribution-stamped) AND the engine user tier (appendRules,
- *      versioned + rollback-able) — every surface that injects tier 2 gets
- *      the rule.
+ *      versioned + rollback-able) — but only at APPROVE time.
  *
  *   2. NO CROSS-PROJECT EVIDENCE: one project's dream promoted rules into
  *      EVERY future project on a single observation. The multi-repo gate
@@ -37,14 +35,24 @@
  *      project-suspicious; the same rule from two projects is a user-level
  *      habit. PI_HOIST_MIN_PROJECTS=1 restores single-observation behavior.
  *
+ * THE DIVERTIMENTO REWIRE (2026-11-14): a promoted rule no longer auto-writes.
+ * It parks into the human MEMORY REVIEW QUEUE (~/.unown/memory/review-queue/,
+ * memory-review.ts) and ships only when the human approves — the Memory v2
+ * round's CP3 contract, which shipped as an orphan module, finally wired.
+ * The ship (memory-review-ship.ts) re-dedupes against BOTH user tiers and
+ * re-runs the deterministic guard at decision time, then performs the exact
+ * dual-target write the auto-hoist used to do.
+ *
  * The user tier is the user's file (memory.md: "you — seeded once,
  * hand-edited"). An automated writer is a contract change, so the feature
- * is OPT-IN (PI_USER_TIER_HOIST=1), additive-only on both targets (existing
- * content is never rewritten), versioned and rollback-able on the engine
- * side, provenance-stamped per rule (naming the observing projects), capped
- * at 3 candidate rules per dream, guarded by the same deterministic layer
- * as dreams, and deduped against BOTH user tiers. "Hoist NOTHING" is a
- * fully correct outcome — most project memories are project-bound.
+ * remains OPT-IN (PI_USER_TIER_HOIST=1) — and now gated by a HUMAN: every
+ * promotion is additive-only at ship time (existing content is never
+ * rewritten), versioned and rollback-able on the engine side,
+ * provenance-stamped per rule (naming the observing projects AND the review
+ * decision), capped at 3 candidate rules per dream, guarded by the same
+ * deterministic layer as dreams (re-run at decision time), and deduped
+ * against BOTH user tiers (at park time AND at ship time). "Hoist NOTHING"
+ * is a fully correct outcome — most project memories are project-bound.
  *
  * Purity note: like skills.ts, this module is engine-side (store + llm + bus
  * + the term.ts file seam). The deterministic specificity filter is
@@ -52,12 +60,13 @@
  * filter is the model-independent backstop, not the primary mechanism.
  */
 import { createHash } from "node:crypto";
-import { appendRules, currentVersion, readTier, type Tier } from "./memory.ts";
+import { currentVersion, readTier, type Tier } from "./memory.ts";
 import { modelFor, chatJson } from "./llm.ts";
 import { decideGuardAction } from "./guard.ts";
 import { emit } from "./bus.ts";
-import { appendTerminalUserRules, readTerminalUserTier, isPristineTerminalUserTier } from "./term.ts";
+import { readTerminalUserTier, isPristineTerminalUserTier } from "./term.ts";
 import { store } from "./store.ts";
+import { parkMemoryReviewCandidate } from "./memory-review.ts";
 import { basename } from "node:path";
 
 export const HOIST_SYSTEM = `You are the Hoist, the cross-project generalization sub-agent of a self-learning coding agent.
@@ -86,18 +95,20 @@ export interface HoistSkipped {
 }
 
 export interface HoistResult {
-        /** How many rules were promoted into the user tiers (0 is success). */
+        /** How many rules crossed the promotion gate this dream — parked into
+         *  the memory review queue, NOT written (0 is success; the tiers change
+         *  only at approve time). */
         hoisted: number;
-        /** The promoted rule texts. */
+        /** The promoted rule texts (queued for review). */
         rules: string[];
+        /** The review-queue ids the promoted rules parked under. */
+        review: Array<{ id: string; rule: string }>;
         /** Rules observed this dream but still below the multi-project gate (parked). */
         parked: string[];
         /** Rules the deterministic filters or the guard rejected (the audit trail). */
         skipped: HoistSkipped[];
         /** The guard verdict on the promotion block. */
         guardAction: "ship" | "sanitize" | "gate" | "off";
-        /** The engine user-tier version AFTER the append (absent when nothing promoted). */
-        version?: number;
 }
 
 /** Generic path segments that must never trigger name matching (a rule that
@@ -303,52 +314,52 @@ export async function hoistCrossProjectRules(opts: {
         }
 
         // ---- The multi-project promotion gate: record observations, promote
-        // only what enough DISTINCT projects have abstracted.
+        // only what enough DISTINCT projects have abstracted — every promoted
+        // rule now lands in the human REVIEW QUEUE (the Memory Divertimento
+        // rewire, 2026-11-14: the v2 round's CP3 contract, finally wired).
+        // Nothing auto-writes: the dual-target tier write happens only at
+        // approve time (memory-review-ship.ts), re-deduped and re-guarded
+        // against the tiers AS THEY ARE at decision time.
         const minProjects = hoistMinProjects();
-        const promoted: string[] = [];
-        const parked: string[] = [];
-        const promotedProjects = new Map<string, string[]>(); // rule -> observing projects (provenance)
+        const review: Array<{ id: string; rule: string }> = [];
+        const parkedWaiting: string[] = [];
         for (const r of guardSurvivors) {
                 const projects = recordObservation(r, opts.slug);
                 if (new Set(projects).size >= minProjects) {
-                        promoted.push(r);
-                        promotedProjects.set(r, [...new Set(projects)]);
+                        const id = parkMemoryReviewCandidate({
+                                rule: r,
+                                projects: [...new Set(projects)],
+                                evidence: `observed in ${new Set(projects).size} project(s): ${[...new Set(projects)].join(", ")} — cross-project hoist candidate`,
+                                source: "hoist",
+                        });
+                        review.push({ id, rule: r });
                 } else {
-                        parked.push(r);
+                        parkedWaiting.push(r);
                         skipped.push({ rule: r, reason: "awaiting-second-project" });
                 }
         }
 
-        if (!promoted.length) {
-                const out: HoistResult = { hoisted: 0, rules: [], parked, skipped, guardAction: guard.action };
+        if (!review.length) {
+                const out: HoistResult = { hoisted: 0, rules: [], review: [], parked: parkedWaiting, skipped, guardAction: guard.action };
                 emit("hoist:finished", { ...out, slug: opts.slug, project: opts.slug });
                 return out;
         }
 
-        // ---- Dual-target write: BOTH user tiers. Bullets stay CLEAN (the
-        // HOIST_SYSTEM contract: "no provenance tags — the caller stamps
-        // provenance" — a provenance suffix inside a bullet would put the
-        // source project's name INTO the rule text the next project reads,
-        // exactly what the specificity filter exists to prevent); the
-        // attribution comment + appendRules note carry the observing projects.
-        const stamp = new Date().toISOString().slice(0, 10);
-        const projectsList = [...new Set(promoted.flatMap((r) => promotedProjects.get(r) ?? []))];
-        const provenance = `hoisted from ${projectsList.length} project(s): ${projectsList.join(", ")} (${stamp})`;
-        appendTerminalUserRules(promoted, "autodream-hoist", provenance);
-        const version = await appendRules("user" as Tier, promoted, "autodream-hoist", provenance);
-        // Promoted rules leave the candidate ledger (they live in the user
-        // tiers now; the tier dedupe above filters future re-observations).
-        for (const r of promoted) {
-                store.run(`DELETE FROM hoist_candidates WHERE rule_hash = ?`, [hoistRuleHash(r)]);
+        // Promoted rules leave the candidate ledger at PARK time (they live in
+        // the review queue now); the ship-time re-dedupe catches future
+        // re-observations, and a discard re-parks under a new id with more
+        // evidence behind it — "more projects, re-ask" is the honest behavior.
+        for (const rv of review) {
+                store.run(`DELETE FROM hoist_candidates WHERE rule_hash = ?`, [hoistRuleHash(rv.rule)]);
         }
 
         const out: HoistResult = {
-                hoisted: promoted.length,
-                rules: promoted,
-                parked,
+                hoisted: review.length,
+                rules: review.map((rv) => rv.rule),
+                review,
+                parked: parkedWaiting,
                 skipped,
                 guardAction: guard.action,
-                version,
         };
         emit("hoist:finished", { ...out, slug: opts.slug, project: opts.slug });
         return out;

@@ -4629,7 +4629,7 @@ export function createUnownToolsExtension(opts: UnownToolsOptions) {
 
                 pi.registerCommand("memory", {
                         description:
-                                "Memory: /memory search <query> searches every project's learned memory (cross-scope); /memory show prints exactly what was injected this session; bare /memory opens the dashboard Memory screen",
+                                "Memory: /memory search <query> [--all] searches every project's learned memory (cross-scope, superseded excluded by default); /memory show prints exactly what was injected this session; /memory review lists the review queue (approve <id> | discard <id>); bare /memory opens the dashboard Memory screen",
                         handler: async (args, ctx) => {
                                 // /memory search <query> — the shared-memory recall surface:
                                 // one semantic search across the engine scope AND every project
@@ -4638,14 +4638,16 @@ export function createUnownToolsExtension(opts: UnownToolsOptions) {
                                 // project A — read-only, scope-tagged results.
                                 const trimmed = String(args ?? "").trim();
                                 if (/^search\s+\S/i.test(trimmed) || /^search$/i.test(trimmed)) {
-                                        const query = trimmed.replace(/^search\s+/i, "").trim();
+                                        const rest = trimmed.replace(/^search\s+/i, "").trim();
+                                        const all = /(^|\s)--all(\s|$)/.test(rest);
+                                        const query = rest.replace(/(^|\s)--all(\s|$)/, " ").replace(/\s+/g, " ").trim();
                                         if (!query) {
-                                                ctx.ui.notify("usage: /memory search <query> — searches every project's learned memory", "info");
+                                                ctx.ui.notify("usage: /memory search <query> [--all] — searches every project's learned memory (--all includes superseded, badged)", "info");
                                                 return;
                                         }
                                         try {
                                                 const res = await engineFetch(
-                                                        `${ENGINE_URL}/api/memories?across=1&q=${encodeURIComponent(query)}&limit=12`,
+                                                        `${ENGINE_URL}/api/memories?across=1&q=${encodeURIComponent(query)}&limit=12${all ? "&latest_only=0" : ""}`,
                                                         { signal: AbortSignal.timeout(8000) },
                                                 );
                                                 if (!res.ok) {
@@ -4657,7 +4659,7 @@ export function createUnownToolsExtension(opts: UnownToolsOptions) {
                                                         return;
                                                 }
                                                 const data = (await res.json()) as {
-                                                        memories: Array<{ text: string; scope: string; score?: number }>;
+                                                        memories: Array<{ text: string; scope: string; score?: number; metadata?: Record<string, any> }>;
                                                         scopes?: string[];
                                                 };
                                                 if (!data.memories?.length) {
@@ -4670,10 +4672,16 @@ export function createUnownToolsExtension(opts: UnownToolsOptions) {
                                                 const lines = data.memories.map((m) => {
                                                         const where = m.scope === "engine" ? "engine" : m.scope;
                                                         const score = typeof m.score === "number" ? ` · ${(m.score * 100).toFixed(0)}%` : "";
-                                                        return `· [${where}${score}] ${m.text}`;
+                                                        // The recall-integrity badge (Divertimento CP1): a superseded
+                                                        // memory only ever appears in an --all (audit) view, and never
+                                                        // bare — it renders its invalidation, never a silent "current".
+                                                        const inv = String(m.metadata?.invalidAt ?? "");
+                                                        const date = inv && Number.isFinite(Date.parse(inv)) ? ` ${new Date(inv).toISOString().slice(0, 10)}` : "";
+                                                        const badge = m.metadata?.supersededBy ? ` · superseded${date}` : "";
+                                                        return `· [${where}${score}${badge}] ${m.text}`;
                                                 });
                                                 ctx.ui.notify(
-                                                        `cross-project memory search — "${query}" (${data.memories.length} match(es) across ${data.scopes?.length ?? "?"} scopes):\n${lines.join("\n")}`,
+                                                        `cross-project memory search — "${query}" (${data.memories.length} match(es) across ${data.scopes?.length ?? "?"} scopes${all ? ", --all: superseded included, badged" : ""}):\n${lines.join("\n")}`,
                                                         "info",
                                                 );
                                         } catch (err: any) {
@@ -4718,6 +4726,83 @@ export function createUnownToolsExtension(opts: UnownToolsOptions) {
                                                 `${parts.join("\n\n")}\n\n${budgetLine}\nthe model receives exactly this stack (${files.length} file(s)) · /learning — per-tier staleness · /dashboard — versions, diffs, rollbacks`,
                                                 "info",
                                         );
+                                        return;
+                                }
+                                // /memory review [approve <id> | discard <id> [--reason "..."]]
+                                // — the human gate (Divertimento CP1). Bare lists the
+                                // pending queue (id + evidence + rule); approve ships
+                                // via the engine's memory-review-ship lane; discard
+                                // records the verdict. One inbox across projects: the
+                                // queue is user-level, so it answers from any session.
+                                if (/^review\b/i.test(trimmed)) {
+                                        const rest = trimmed.replace(/^review\s+/i, "").trim();
+                                        const mApprove = /^approve\s+(\S+)\s*$/i.exec(rest);
+                                        const mDiscard = /^discard\s+(\S+)(?:\s+--reason\s+(.+))?$/i.exec(rest);
+                                        try {
+                                                if (mApprove) {
+                                                        const res = await engineFetch(`${ENGINE_URL}/api/memory/review/approve`, {
+                                                                method: "POST",
+                                                                headers: { "content-type": "application/json" },
+                                                                body: JSON.stringify({ id: mApprove[1] }),
+                                                                signal: AbortSignal.timeout(15000),
+                                                        });
+                                                        const body = (await res.json().catch(() => ({}))) as any;
+                                                        if (!res.ok) {
+                                                                ctx.ui.notify(`approve failed (engine ${res.status}): ${body?.error ?? "see unown engine status"}`, "error");
+                                                                return;
+                                                        }
+                                                        ctx.ui.notify(
+                                                                `memory review approved — shipped ${body.shipped?.length ?? 0} rule(s) to both user tiers (v${body.tierVersion})${
+                                                                        body.skippedDupes?.length ? ` · ${body.skippedDupes.length} already present (skipped)` : ""
+                                                                }${body.droppedByGuard?.length ? ` · ${body.droppedByGuard.length} dropped by the guard re-check` : ""}`,
+                                                                "info",
+                                                        );
+                                                        return;
+                                                }
+                                                if (mDiscard) {
+                                                        const res = await engineFetch(`${ENGINE_URL}/api/memory/review/discard`, {
+                                                                method: "POST",
+                                                                headers: { "content-type": "application/json" },
+                                                                body: JSON.stringify({ id: mDiscard[1], reason: mDiscard[2] }),
+                                                                signal: AbortSignal.timeout(10000),
+                                                        });
+                                                        const body = (await res.json().catch(() => ({}))) as any;
+                                                        if (!res.ok) {
+                                                                ctx.ui.notify(`discard failed (engine ${res.status}): ${body?.error ?? "see unown engine status"}`, "error");
+                                                                return;
+                                                        }
+                                                        ctx.ui.notify(`memory review discarded — ${mDiscard[1]} (kept for audit)`, "info");
+                                                        return;
+                                                }
+                                                const res = await engineFetch(`${ENGINE_URL}/api/memory/review`, { signal: AbortSignal.timeout(8000) });
+                                                if (!res.ok) {
+                                                        const body = (await res.json().catch(() => ({}))) as any;
+                                                        ctx.ui.notify(`memory review unavailable (engine ${res.status}): ${body?.error ?? "see unown engine status"}`, "error");
+                                                        return;
+                                                }
+                                                const data = (await res.json()) as {
+                                                        queue: Array<{ id: string; rule: string; evidence: string; projects: string[]; createdAt: number }>;
+                                                        depth: number;
+                                                };
+                                                if (!data.depth) {
+                                                        ctx.ui.notify("memory review queue is empty — nothing awaits your decision", "info");
+                                                        return;
+                                                }
+                                                const lines = data.queue.map((c) => {
+                                                        const age = Date.now() - (c.createdAt ?? Date.now());
+                                                        const mins = Math.max(1, Math.round(age / 60000));
+                                                        return `· ${c.id} · queued ${mins >= 60 ? `${Math.round(mins / 60)}h` : `${mins}m`} ago — ${c.evidence}\n  rule: ${c.rule}`;
+                                                });
+                                                ctx.ui.notify(
+                                                        `memory review queue — ${data.depth} pending (approve: /memory review approve <id> · discard: /memory review discard <id>):\n${lines.join("\n")}`,
+                                                        "info",
+                                                );
+                                        } catch (err: any) {
+                                                ctx.ui.notify(
+                                                        `memory review unreachable (${err instanceof Error ? err.message : String(err)}) — is the engine up? (unown engine status)`,
+                                                        "error",
+                                                );
+                                        }
                                         return;
                                 }
                                 await openDashboardScreen(ctx, "memory");

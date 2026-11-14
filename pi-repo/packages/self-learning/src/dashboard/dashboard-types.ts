@@ -246,7 +246,7 @@ export interface ProjectMemoryResponse {
  *  Encore round's dashboard surface: the existing-but-invisible audit).
  *  `lastReconcile`/warning `since` are epoch ms or null. */
 export interface MemoryHealthWarning {
-        kind: "reconcile-failing" | "tier-at-cap" | "reconcile-stale";
+        kind: "reconcile-failing" | "tier-at-cap" | "reconcile-stale" | "review-pending";
         detail: string;
 }
 
@@ -260,6 +260,10 @@ export interface MemoryHealthCard {
         supersededCount: number;
         /** Per-type breakdown (Memory v2 round): fact/episode/procedure/preference. */
         typeBreakdown: Record<string, number>;
+        /** The memory review queue's pending depth (Divertimento CP1): the
+         *  human gate's visible counter — every model-inferred user-tier rule
+         *  waits here until decided. */
+        reviewQueueDepth: number;
         warnings: MemoryHealthWarning[];
         memoryCount: number;
 }
@@ -272,6 +276,23 @@ export interface MemoryHealthResponse {
                 model: string;
                 error?: string;
         };
+}
+
+/** One candidate in the memory review queue (Divertimento CP1). */
+export interface MemoryReviewEntry {
+        id: string;
+        rule: string;
+        projects: string[];
+        evidence: string;
+        createdAt: number;
+        status: string;
+        source: string;
+}
+
+export interface MemoryReviewResponse {
+        queue: MemoryReviewEntry[];
+        depth: number;
+        status: string;
 }
 
 export interface MemoryHistoryEntry {

@@ -54,7 +54,7 @@ export interface DashboardAppOptions {
 /** The registry — sidebar order IS the product statement: learning first. */
 export const SCREEN_SPECS: ScreenSpec[] = [
         { id: "overview", title: "Overview", group: "learning", resources: ["overview", "tasks"] },
-        { id: "memory", title: "Memory", group: "learning", resources: ["memory", "memoryProjects", "memoryHealth"] },
+        { id: "memory", title: "Memory", group: "learning", resources: ["memory", "memoryProjects", "memoryHealth", "memoryReview"] },
         { id: "dreams", title: "Dreams", group: "learning", resources: ["dreams", "overview"] },
         { id: "notes", title: "Notes", group: "learning", resources: ["notes", "overview"] },
         { id: "skills", title: "Skills", group: "learning", resources: ["skills"] },

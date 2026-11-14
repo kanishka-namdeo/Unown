@@ -21,6 +21,7 @@ import type {
         MemoryHealthWarning,
         MemoryHistoryEntry,
         MemoryResponse,
+        MemoryReviewResponse,
         ProjectMemoryResponse,
 } from "../dashboard-types.ts";
 import type { Screen, ScreenDeps, SelectionWindow } from "../screen.ts";
@@ -233,6 +234,43 @@ export function createMemoryScreen(deps: ScreenDeps): Screen {
                 return rows;
         }
 
+        /** The Divertimento round (2026-11-14): the review-queue card — the
+         *  human gate, made visible where memory lives. One user-level inbox
+         *  across projects: every model-inferred user-tier rule waits here
+         *  until the human decides. Renders ONLY when candidates are pending
+         *  (a healthy, empty queue stays quiet — the Encore pattern); a
+         *  failed fetch degrades to absent, never a blocker. */
+        function renderReviewRows(width: number): string[] {
+                const snap = store.snapshot<MemoryReviewResponse>("memoryReview");
+                if (snap.error && !snap.data) return [];
+                if (!snap.data) return [];
+                const depth = snap.data.depth;
+                if (!depth || !snap.data.queue?.length) return [];
+                const rows: string[] = [];
+                rows.push(
+                        theme.fg(
+                                "text",
+                                `review · ${depth} candidate${depth === 1 ? "" : "s"} awaiting your decision — decide with /memory review (or unown memory review)`,
+                        ),
+                );
+                const shown = snap.data.queue.slice(0, 3);
+                for (const c of shown) {
+                        const age = Date.now() - (c.createdAt ?? Date.now());
+                        const mins = Math.max(1, Math.round(age / 60000));
+                        rows.push(
+                                trunc(
+                                        `${theme.fg("accent", "  ▸ ")}${theme.fg("text", c.id)} ${theme.fg("dim", `· ${c.evidence} · queued ${mins >= 60 ? `${Math.round(mins / 60)}h` : `${mins}m`} ago`)}`,
+                                        width,
+                                ),
+                        );
+                        rows.push(trunc(`${theme.fg("muted", "    ")}${theme.fg("muted", c.rule)}`, width));
+                }
+                if (snap.data.queue.length > shown.length) {
+                        rows.push(theme.fg("dim", `  … ${snap.data.queue.length - shown.length} more — /memory review`));
+                }
+                return rows;
+        }
+
         /** Project tiers have no content in the list response — the newest
          * history entry carries it. */
         function contentFromHistory(): string | null {
@@ -277,6 +315,10 @@ export function createMemoryScreen(deps: ScreenDeps): Screen {
                         // The Memory Encore round: the health card rides under the
                         // budget meter — the two "is memory OK?" answers together.
                         for (const l of renderHealthRows(width)) push(l);
+                        // The Divertimento round: the review queue rides under the
+                        // health card — the third "is memory OK?" answer: nothing is
+                        // waiting on a human in silence.
+                        for (const l of renderReviewRows(width)) push(l);
                 }
 
                 push("");
