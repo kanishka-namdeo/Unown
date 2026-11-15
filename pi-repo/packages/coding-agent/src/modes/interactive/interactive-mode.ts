@@ -3233,7 +3233,16 @@ export class InteractiveMode {
                                 const filePath = path.join(tmpDir, fileName);
                                 fs.writeFileSync(filePath, Buffer.from(image.bytes));
 
-                                this.editor.insertTextAtCursor?.(filePath);
+                                // Claude Code parity (the Toccata round): the pasted image
+                                // inserts as an atomic [Image #N] chip at the cursor so the
+                                // prompt can reference it positionally; submit expands the
+                                // chip to the stored file path. Editors without chip support
+                                // keep the previous raw-path insertion.
+                                if (this.editor.insertImageChip) {
+                                        this.editor.insertImageChip(filePath);
+                                } else {
+                                        this.editor.insertTextAtCursor?.(filePath);
+                                }
                                 this.ui.requestRender();
                                 return;
                         }

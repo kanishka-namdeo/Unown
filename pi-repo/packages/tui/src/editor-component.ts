@@ -51,6 +51,12 @@ export interface EditorComponent extends Component {
         /** Restore a snapshot from saveEditorState (paste markers intact). */
         restoreEditorState?(snapshot: import("./components/editor.ts").EditorStateSnapshot): void;
 
+        /**
+         * Insert an image chip — `[Image #N]` — referencing a pasted image
+         * (atomic cursor unit, expands to the file path on submit).
+         */
+        insertImageChip?(path: string): number;
+
         // =========================================================================
         // Advanced text manipulation (optional)
         // =========================================================================

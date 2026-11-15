@@ -24,6 +24,12 @@ const PASTE_MARKER_REGEX = /\[paste #(\d+)( (\+\d+ lines|\d+ chars))?\]/g;
 /** Non-global version for single-segment testing. */
 const PASTE_MARKER_SINGLE = /^\[paste #(\d+)( (\+\d+ lines|\d+ chars))?\]$/;
 
+/** Image chips: `[Image #N]` — a pasted image referenced positionally (the Claude Code form). */
+const IMAGE_CHIP_REGEX = /\[Image #(\d+)\]/g;
+
+/** Non-global version for single-segment testing. */
+const IMAGE_CHIP_SINGLE = /^\[Image #(\d+)\]$/;
+
 /** Check if a segment is a paste marker (i.e. was merged by segmentWithMarkers). */
 function isPasteMarker(segment: string): boolean {
         return segment.length >= 10 && PASTE_MARKER_SINGLE.test(segment);
@@ -31,31 +37,42 @@ function isPasteMarker(segment: string): boolean {
 
 /**
  * A segmenter that wraps Intl.Segmenter and merges graphemes that fall
- * within paste markers into single atomic segments.  This makes cursor
- * movement, deletion, word-wrap, etc. treat paste markers as single units.
+ * within paste markers or image chips into single atomic segments.  This
+ * makes cursor movement, deletion, word-wrap, etc. treat both marker kinds
+ * as single units.
  *
- * Only markers whose numeric ID exists in `validIds` are merged.
+ * Only markers whose numeric ID exists in the matching valid set are merged.
  */
 function segmentWithMarkers(
         text: string,
         baseSegmenter: Intl.Segmenter,
         validIds: Set<number>,
+        validImageIds: Set<number> = new Set(),
 ): Iterable<Intl.SegmentData> {
-        // Fast path: no paste markers in the text or no valid IDs.
-        if (validIds.size === 0 || !text.includes("[paste #")) {
+        // Fast path: no markers in the text or no valid IDs.
+        if (
+                (validIds.size === 0 || !text.includes("[paste #")) &&
+                (validImageIds.size === 0 || !text.includes("[Image #"))
+        ) {
                 return baseSegmenter.segment(text);
         }
 
-        // Find all marker spans with valid IDs.
+        // Find all marker spans with valid IDs (paste markers + image chips).
         const markers: Array<{ start: number; end: number }> = [];
         for (const m of text.matchAll(PASTE_MARKER_REGEX)) {
                 const id = Number.parseInt(m[1]!, 10);
                 if (!validIds.has(id)) continue;
                 markers.push({ start: m.index, end: m.index + m[0].length });
         }
+        for (const m of text.matchAll(IMAGE_CHIP_REGEX)) {
+                const id = Number.parseInt(m[1]!, 10);
+                if (!validImageIds.has(id)) continue;
+                markers.push({ start: m.index, end: m.index + m[0].length });
+        }
         if (markers.length === 0) {
                 return baseSegmenter.segment(text);
         }
+        markers.sort((a, b) => a.start - b.start);
 
         // Build merged segment list.
         const baseSegments = baseSegmenter.segment(text);
@@ -217,6 +234,8 @@ interface EditorSnapshot {
         state: EditorState;
         pastes: Map<number, string>;
         pasteCounter: number;
+        imageChips?: Map<number, string>;
+        imageCounter?: number;
 }
 
 interface LayoutLine {
@@ -266,6 +285,8 @@ export interface EditorStateSnapshot {
         cursorCol: number;
         pastes: Map<number, string>;
         pasteCounter: number;
+        imageChips: Map<number, string>;
+        imageCounter: number;
 }
 
 const SLASH_COMMAND_SELECT_LIST_LAYOUT: SelectListLayoutOptions = {
@@ -445,6 +466,12 @@ export class Editor implements Component, Focusable {
         private pastes: Map<number, string> = new Map();
         private pasteCounter: number = 0;
 
+        // Image chips ([Image #N]) — pasted images referenced positionally
+        // (Claude Code's contract: the chip inserts at the cursor "so you can
+        // reference it positionally in your prompt"; submit expands to the path).
+        private imageChips: Map<number, string> = new Map();
+        private imageCounter: number = 0;
+
         // Bracketed paste mode buffering
         private pasteBuffer: string = "";
         private isInPaste: boolean = false;
@@ -493,9 +520,18 @@ export class Editor implements Component, Focusable {
                 return new Set(this.pastes.keys());
         }
 
-        /** Segment text with paste-marker awareness, only merging markers with valid IDs. */
+        private validImageIds(): Set<number> {
+                return new Set(this.imageChips.keys());
+        }
+
+        /** Segment text with paste-marker + image-chip awareness. */
         private segment(text: string, mode: "word" | "grapheme"): Iterable<Intl.SegmentData> {
-                return segmentWithMarkers(text, mode === "word" ? wordSegmenter : graphemeSegmenter, this.validPasteIds());
+                return segmentWithMarkers(
+                        text,
+                        mode === "word" ? wordSegmenter : graphemeSegmenter,
+                        this.validPasteIds(),
+                        this.validImageIds(),
+                );
         }
 
         getPaddingX(): number {
@@ -589,6 +625,8 @@ export class Editor implements Component, Focusable {
                         cursorCol: this.state.cursorCol,
                         pastes: new Map(this.pastes),
                         pasteCounter: this.pasteCounter,
+                        imageChips: new Map(this.imageChips),
+                        imageCounter: this.imageCounter,
                 };
         }
 
@@ -610,6 +648,8 @@ export class Editor implements Component, Focusable {
                 this.setCursorCol(Math.min(snapshot.cursorCol, next[this.state.cursorLine]?.length ?? 0));
                 this.pastes = new Map(snapshot.pastes);
                 this.pasteCounter = snapshot.pasteCounter;
+                this.imageChips = new Map(snapshot.imageChips ?? []);
+                this.imageCounter = snapshot.imageCounter ?? 0;
                 this.scrollOffset = 0;
                 this.preferredVisualCol = null;
                 this.snappedFromCursorCol = null;
@@ -1228,11 +1268,34 @@ export class Editor implements Component, Focusable {
                 return this.state.lines.join("\n");
         }
 
+        /**
+         * Insert an image chip — `[Image #N]` — referencing a pasted image
+         * file. The chip is an atomic cursor unit (like paste markers) and
+         * expands to the file path on submit, so the prompt can reference it
+         * positionally: "compare [Image #1] with [Image #2]". Returns the
+         * chip id.
+         */
+        insertImageChip(path: string): number {
+                if (!path) return 0;
+                this.cancelAutocomplete();
+                this.pushUndoSnapshot();
+                this.lastAction = null;
+                this.exitHistoryBrowsing();
+                this.imageCounter++;
+                const id = this.imageCounter;
+                this.imageChips.set(id, path);
+                this.insertTextAtCursorInternal(`[Image #${id}]`);
+                return id;
+        }
+
         private expandPasteMarkers(text: string): string {
                 let result = text;
                 for (const [pasteId, pasteContent] of this.pastes) {
                         const markerRegex = new RegExp(`\\[paste #${pasteId}( (\\+\\d+ lines|\\d+ chars))?\\]`, "g");
                         result = result.replace(markerRegex, () => pasteContent);
+                }
+                for (const [chipId, chipPath] of this.imageChips) {
+                        result = result.replace(new RegExp(`\\[Image #${chipId}\\]`, "g"), () => chipPath);
                 }
                 return result;
         }
@@ -1264,6 +1327,8 @@ export class Editor implements Component, Focusable {
                 }
                 this.pastes.clear();
                 this.pasteCounter = 0;
+                this.imageChips.clear();
+                this.imageCounter = 0;
                 this.setTextInternal(normalized);
         }
 
@@ -1510,6 +1575,8 @@ export class Editor implements Component, Focusable {
                 this.state = { lines: [""], cursorLine: 0, cursorCol: 0 };
                 this.pastes.clear();
                 this.pasteCounter = 0;
+                this.imageChips.clear();
+                this.imageCounter = 0;
                 this.exitHistoryBrowsing();
                 this.scrollOffset = 0;
                 this.undoStack.clear();
@@ -1535,8 +1602,13 @@ export class Editor implements Component, Focusable {
                         const lastGrapheme = graphemes[graphemes.length - 1];
                         const graphemeLength = lastGrapheme ? lastGrapheme.segment.length : 1;
                         const isPastedSegmented = PASTE_MARKER_SINGLE.exec(lastGrapheme.segment);
+                        const isImageChipSegment = IMAGE_CHIP_SINGLE.exec(lastGrapheme.segment);
 
-                        if (isPastedSegmented) {
+                        if (isImageChipSegment) {
+                                // Deleting an image chip removes its registry entry
+                                // (ids stay stable — a later [Image #2] keeps its number).
+                                this.imageChips.delete(Number(isImageChipSegment[1]));
+                        } else if (isPastedSegmented) {
                                 // This contains the id part e.g 4 from [paste #4 +123 lines]
                                 const targetId = Number(isPastedSegmented[1]);
                                 this.pastes.delete(targetId);
@@ -2256,7 +2328,13 @@ export class Editor implements Component, Focusable {
         }
 
         private pushUndoSnapshot(): void {
-                this.undoStack.push({ state: this.state, pastes: this.pastes, pasteCounter: this.pasteCounter });
+                this.undoStack.push({
+                        state: this.state,
+                        pastes: this.pastes,
+                        pasteCounter: this.pasteCounter,
+                        imageChips: this.imageChips,
+                        imageCounter: this.imageCounter,
+                });
         }
 
         private undo(): void {
@@ -2266,6 +2344,8 @@ export class Editor implements Component, Focusable {
                 Object.assign(this.state, snapshot.state);
                 this.pastes = snapshot.pastes;
                 this.pasteCounter = snapshot.pasteCounter;
+                this.imageChips = snapshot.imageChips ?? new Map();
+                this.imageCounter = snapshot.imageCounter ?? 0;
                 this.lastAction = null;
                 this.preferredVisualCol = null;
                 if (this.onChange) {

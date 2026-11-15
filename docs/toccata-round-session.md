@@ -15,7 +15,7 @@ This is the keyboard round.
 |---|---|---|
 | CP0 research — the teardown + 47-point audit | ✅ done | `docs/tui-claude-code-parity-research.md` |
 | CP1 the editor lane — history, search, stash, drafts | ✅ done | `test/input-history.test.ts` (16) + tui `editor-history-persistence` (10) + `history-lane-keybindings` (6); suites 5768/0 |
-| CP2 the queue/image lane — send-now, image chips | 🔲 pending | |
+| CP2 the queue/image lane — send-now, image chips | ✅ done | send-now in CP1's commit; chips: tui `editor-image-chips` (10/10) |
 | CP3 the transcript lane — viewer keys, aggregation, timestamps | 🔲 pending | |
 | CP4 the dialog/command lane — permission comments, aliases, rewind picker, mid-prompt completion | 🔲 pending | |
 | CP5 the personality lane — spinner verbs, AGENTS.md flight | 🔲 pending | |
@@ -79,9 +79,14 @@ this round's regressions. CHANGELOG entry filed, landing rail regenerated
 (62 stops), `.env.example` + `docs/configuration.md` + `docs/usage.md`
 keybinding tables updated, self-learning AGENTS.md contract added.
 
-## CP2 — the queue/image lane (pending)
+## CP2 — the queue/image lane (done, 2026-11-15)
 
-Scope: A7 send-queued-now chords, A8 image paste chips.
+A7 (send-queued-now: Ctrl+Enter where the terminal reports extended keys,
+Alt+S everywhere, draft joins the queue then the abort matrix drains it)
+landed inside CP1's commit. A8 image chips: Ctrl+V inserts an atomic
+`[Image #N]` (stable ids, atomic segmenting beside paste markers, undo +
+stash aware, submit expands to the stored path, literal unregistered chips
+stay literal). tui suite green including the 10-case chip battery.
 
 ## CP3 — the transcript lane (pending)
 

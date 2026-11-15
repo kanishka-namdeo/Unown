@@ -590,7 +590,7 @@ The most useful defaults (Windows/WSL variants in parentheses):
 | Ctrl+S | Stash the draft (text, cursor, paste markers, bash mode) / restore it again on an empty editor |
 | Alt+Enter | Queue a follow-up message while the agent works (Ctrl+Q) |
 | Alt+S / Ctrl+Enter | Send queued messages now — the draft joins the queue first, then the running turn is interrupted through the abort matrix and the queue drains (Ctrl+Enter only in terminals that report extended keys; Alt+S works everywhere) |
-| Ctrl+V | Paste an image from the clipboard (Alt+V) |
+| Ctrl+V | Paste an image from the clipboard (Alt+V) — inserts an atomic `[Image #N]` chip you can reference positionally; submit expands it to the stored file path |
 
 **Navigation**
 

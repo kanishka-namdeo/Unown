@@ -30,10 +30,10 @@ export interface ChangelogStop {
   groups: ChangelogGroup[];
 }
 
-export const CHANGELOG_TOTAL_ENTRIES = 595;
+export const CHANGELOG_TOTAL_ENTRIES = 596;
 
 export const CHANGELOG_TOTALS: Record<ChangelogBucket, number> = {
-  "Added": 252,
+  "Added": 253,
   "Changed": 32,
   "Deprecated": 0,
   "Removed": 3,
@@ -46,9 +46,9 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
   {
     "label": "Unreleased",
     "date": null,
-    "total": 39,
+    "total": 40,
     "counts": {
-      "Added": 2,
+      "Added": 3,
       "Changed": 0,
       "Deprecated": 0,
       "Removed": 0,
@@ -183,6 +183,10 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
         "items": [
           {
             "title": "The Toccata round CP1 — the Claude Code input-history and draft-lifecycle lanes land (the reverse-engineered…",
+            "behavior": false
+          },
+          {
+            "title": "The Toccata round CP2 — image paste chips",
             "behavior": false
           },
           {
