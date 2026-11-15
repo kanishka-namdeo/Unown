@@ -214,8 +214,18 @@ const MAX_PAGE_VH = 20.5;
  * undeletable receipts class, f16e8fda precedent) plus headroom so the
  * next release does not open on a knife's edge. No generated number, no
  * gated literal touched.
+ *
+ * The 0.0.68 amendment (the Toccata round's cut): 4648 -> 4684 carries
+ * the rail's 63rd stop. Compressed FIRST, as the contract demands: the
+ * stop's listed title ("A2H-9 closes" -> "A2H-9", -1 measured word; the
+ * round's own five CP entry bodies were ALSO tightened, -91 words —
+ * hygiene, not budget, the MAX_LISTED=1 lesson re-learned: only the
+ * stop's first Behavior entry renders). Post-compression the page
+ * measures 4,661w; the ceiling carries the stop's undeletable chrome
+ * (label, date, tally, "+N more") plus one more stop's (~20w) headroom
+ * per the 0.0.44 rule. No generated number, no gated literal touched.
  */
-const MAX_WORDS = 4648;
+const MAX_WORDS = 4684;
 
 /*
  * The 2026-10-31 planning-round release amendment (the tenth): 3,860 ->

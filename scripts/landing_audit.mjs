@@ -183,7 +183,16 @@ const MAX_VH = 20.5;
 // rail's 61st stop (the ~+23w structural cost; the round's own titles
 // compressed first, -2w; the historical-lead lesson re-learned: only the
 // latest stop's items render). Both twins move together — the 0.0.48 lesson.
-const MAX_WORDS = 4612;
+// The 2026-11-16 v0.0.68 release amendment (the Toccata round's cut):
+// 4,612 -> 4,684 carries the rail's 63rd stop AND realigns this twin with
+// the e2e ceiling — the 0.0.67 amendment moved only the e2e spec (4,648),
+// leaving this gate 36 words behind (a divergence the 0.0.48 lesson
+// forbids; caught at the 0.0.68 cut's e2e failure). Compressed FIRST: the
+// stop's listed title ("A2H-9 closes" -> "A2H-9", -1w) and the round's own
+// CP bodies (-91w, hygiene); post-compression the page measures 4,661w; the
+// ceiling carries the stop's chrome plus one more stop's headroom. The e2e
+// twin (e2e/landing-budget.spec.ts) carries the full receipt.
+const MAX_WORDS = 4684;
 const MAX_BAND_VH = 3;
 
 let chromium = null;

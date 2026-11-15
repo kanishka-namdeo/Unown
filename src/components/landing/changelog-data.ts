@@ -61,7 +61,7 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
         "bucket": "Behavior",
         "items": [
           {
-            "title": "A2H-9 closes — the encore Finale test-isolation fix (2026-11-06)",
+            "title": "A2H-9 — the encore Finale test-isolation fix (2026-11-06)",
             "behavior": true
           },
           {
