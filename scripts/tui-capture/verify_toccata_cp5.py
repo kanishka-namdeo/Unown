@@ -167,6 +167,11 @@ def main() -> int:
         if not verb_seen and re.search(r"(Pondering|Brewing|Vibing)\.\.\.", pane_text):
             verb_seen = True
             say(f"A: verb on the working line: {[v for v in VERBS if v + '...' in pane_text]}")
+            # The round's blog still: the working line carrying a verb mid-turn.
+            try:
+                a.still("verb-thinking", ["..."], mode="any")
+            except Exception as exc:  # cosmetic — the pane check is the verdict
+                say(f"(verb still soft-failed: {exc!r})")
         if not tool_label_seen and "Reading README.md..." in pane_text:
             tool_label_seen = True
             say("A: honest tool label took over (Reading README.md...)")
@@ -204,6 +209,12 @@ def main() -> int:
 
     ok_b1 = OFFER_HEADLINE in text_b and OFFER_BLURB in text_b
     check("B1 the offer card (Initialize an AGENTS.md + no-AGENTS.md blurb)", ok_b1)
+    if ok_b1:
+        # The round's blog still: the AGENTS.md offer card in a bare repo.
+        try:
+            b.still("agents-md-offer", [OFFER_HEADLINE], mode="any")
+        except Exception as exc:  # cosmetic — the pane check is the verdict
+            say(f"(offer still soft-failed: {exc!r})")
     if ok_b1:
         # The promoted flight leads: the offer appears before the memory flight.
         idx_offer = text_b.index(OFFER_HEADLINE)

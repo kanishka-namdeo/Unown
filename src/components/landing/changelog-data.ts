@@ -44,8 +44,8 @@ export const CHANGELOG_TOTALS: Record<ChangelogBucket, number> = {
 
 export const CHANGELOG_STOPS: ChangelogStop[] = [
   {
-    "label": "Unreleased",
-    "date": null,
+    "label": "0.0.68",
+    "date": "2026-11-16",
     "total": 43,
     "counts": {
       "Added": 6,

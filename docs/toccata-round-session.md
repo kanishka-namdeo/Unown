@@ -20,7 +20,7 @@ This is the keyboard round.
 | CP4 the dialog/command lane — permission comments, aliases, rewind picker, mid-prompt completion | ✅ done | self-learning `permission-comment` (5) + `checkpoints-rewind` (6) + `theme-command` (8); coding-agent `extension-selector-comment` (8); tui `mid-prompt-slash` (10) |
 | CP5 the personality lane — spinner verbs, AGENTS.md flight | ✅ done | coding-agent `spinner-verbs` (19); flights/onboarding battery 66/66 |
 | CP6 verification — suites + PTY lanes as a real user | ✅ done | PTY: toccata-cp5 10/10, footer-quiet 9/9, settings-hub lane pre-existing timeout (identical at baseline); suites green over documented baselines |
-| CP7 docs/landing/blog/CHANGELOG/DOX + version + release | 🔲 pending | |
+| CP7 docs/landing/blog/CHANGELOG/DOX + version + release | ✅ done | v0.0.68 cut: CHANGELOG fold + rail (62 stops, 62 dated), blog post + lane stills, overview re-stamped, dependabot 0 / code-scanning 0 |
 
 ## CP0 — the research (2026-11-15)
 
@@ -269,9 +269,25 @@ Ctrl+S stash, Alt+S/Ctrl+Enter send-now, Ctrl+V/Alt+V image chips, Ctrl+D
 800 ms exit, the transcript-mode key table); the 3-OS build legs ride the
 release tag (CP7).
 
-## CP7 — ship (pending)
+## CP7 — ship (done, 2026-11-16)
 
-CHANGELOG (+ Agent Behavior where behavior moves), docs/usage.md
-keybinding tables, self-learning AGENTS.md contract lines, blog post +
-landing captures via the TUI capture lane, version bump + release, the
-dependabot/code-scanning sweep.
+CHANGELOG: the round's five CP entries + the accumulated Unreleased
+entries folded into **[0.0.68] — 2026-11-16**; the landing rail
+regenerated (62 stops, 599 entries, 62 dated; the empty-Unreleased fold
+rule re-learned — the parser refuses a stop with no entries, so the
+header drops until the next round opens). Blog: `content/blog/
+2026-11-16-the-toccata-round.md` (feature post, tags tui/keyboard/
+verification) with the lane's own stills — verb-thinking.png (the
+working line mid-turn: `⠦ Pondering... 0:00`) and agents-md-offer.png
+(the offer card leading the catalog) — produced by
+verify_toccata_cp5.py's still pass, placed under public/blog/<slug>/;
+check:blog green (55 posts, 142 tags). unown-overview re-stamped at
+v0.0.68 with the Toccata lane noted (no counted figure moved — the
+round added surfaces, not counts). Version 0.0.68 in package.json,
+`bun bin/unown --version` matches; tag v0.0.68 cut per the version
+contract (the release workflow's six per-OS builds + the 3-OS CI legs
+ride the tag). The dependabot + code-scanning sweep: **0 open alerts
+on both** (CodeQL #91 already cured in this release's entries).
+Docs complete: usage.md (the working-line section + the /flights row),
+configuration.md + .env.example (UNOWN_SPINNER_VERBS), the self-learning
+AGENTS contract (CP5 line), the DOX tree current.

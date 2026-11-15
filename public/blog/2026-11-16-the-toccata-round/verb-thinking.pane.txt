@@ -1,0 +1,36 @@
+global preferences), .unown/memory/local.md (local overrides — highest precedence)
+
+── Skills ──
+  accessibility-auditor, design-system-generator, fix-nocturne-seed-invariants, frontend-craftsman, hostile-page-checkout,
+landing-page-architect, methodical-debugging, motion-designer, pin-settings-defaults, pre-commit-engine-check,
+recover-failed-cycle, repo-exploration, restart-engine, test-cadence-domain, unown-self-learning, ux-reviewer,
+verification-first
+
+── Extensions ──
+  <inline:6>
+
+── Themes ──
+  unown
+
+[Extension issues]
+  <inline:unown-tools>
+    Extension command '/settings' overrides a built-in interactive command. The extension version is dispatched and listed in
+autocomplete.
+
+
+ fd not found. Downloading...
+ Warning: Failed to download fd: GitHub API error: 403
+
+ ◈ memory recalled: 117 rules · v2 · dreamed 7m ago — /memory show
+
+» Use the read tool to read the file README.md in the current directory, then reply with only the first heading line you see.
+
+ ⠦ Pondering... 0:00
+
+ ○ no tracked steps · conf ✓ · 0m in session
+»───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+~/my-project/unown (main) · ctx ▕░░░░░░░░░░▏ 0.0%/524k (auto)                                                    agnes-3.0-flash
+memory: up · old build
+escape interrupt · ctrl+o tools · ctrl+t thinking
