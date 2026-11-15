@@ -38,7 +38,12 @@ describe("readOnboardingState (default-on-error, never throws)", () => {
         test("missing file → default state", () => {
                 const home = tempHome();
                 expect(readOnboardingState(home)).toEqual(defaultOnboardingState());
-                expect(readOnboardingState(home)).toEqual({ schema: 1, flightsDismissed: false, tipsSeen: [] });
+                expect(readOnboardingState(home)).toEqual({
+                        schema: 1,
+                        flightsDismissed: false,
+                        tipsSeen: [],
+                        agentsMdOfferedFor: [],
+                });
         });
 
         test("corrupt JSON (\"{oops\") → default state", () => {
@@ -66,7 +71,28 @@ describe("readOnboardingState (default-on-error, never throws)", () => {
                         JSON.stringify({ schema: 1, flightsDismissed: "yes", firstTaskAt: "not-a-date", tipsSeen: "nope" }),
                         "utf8",
                 );
-                expect(readOnboardingState(home)).toEqual({ schema: 1, flightsDismissed: false, tipsSeen: [] });
+                expect(readOnboardingState(home)).toEqual({ schema: 1, flightsDismissed: false, tipsSeen: [], agentsMdOfferedFor: [] });
+        });
+
+        test("agentsMdOfferedFor normalizes wrong-typed entries, drops empties and honors the cap (Toccata A16)", () => {
+                const home = tempHome();
+                writeFileSync(
+                        onboardingStatePath(home),
+                        JSON.stringify({
+                                schema: 1,
+                                flightsDismissed: false,
+                                tipsSeen: [],
+                                agentsMdOfferedFor: ["/repo/a", 42, "", null, "/repo/b", ...Array.from({ length: 30 }, (_, i) => `/repo/extra-${i}`)],
+                        }),
+                        "utf8",
+                );
+                const state = readOnboardingState(home);
+                // Wrong-typed and empty entries dropped; the 20-cap keeps the
+                // FIRST 20 of the normalized list (oldest-offered preserved).
+                expect(state.agentsMdOfferedFor.length).toBe(20);
+                expect(state.agentsMdOfferedFor[0]).toBe("/repo/a");
+                expect(state.agentsMdOfferedFor[1]).toBe("/repo/b");
+                expect(state.agentsMdOfferedFor.includes("")).toBe(false);
         });
 
         test("a wrong-typed or empty installCardSeenFor is dropped, not fatal", () => {
@@ -108,6 +134,7 @@ describe("writeOnboardingState / round-trip", () => {
                         flightsDismissed: true,
                         firstTaskAt: "2026-10-22T10:00:00.000Z",
                         tipsSeen: ["a"],
+                        agentsMdOfferedFor: [],
                 };
                 writeOnboardingState(state, home);
                 expect(readOnboardingState(home)).toEqual(state);
@@ -124,6 +151,7 @@ describe("writeOnboardingState / round-trip", () => {
                         flightsDismissed: false,
                         firstTaskAt: "2026-10-25T09:00:00.000Z",
                         tipsSeen: ["a"],
+                        agentsMdOfferedFor: ["/repo/one", "/repo/two"],
                         installCardSeenFor: "binary:0.0.16",
                 };
                 writeOnboardingState(state, home);
@@ -134,7 +162,7 @@ describe("writeOnboardingState / round-trip", () => {
                 const home = tempHome();
                 writeOnboardingState(defaultOnboardingState(), home);
                 // a second write exercises the rename-over-existing path
-                writeOnboardingState({ schema: 1, flightsDismissed: true, tipsSeen: [] }, home);
+                writeOnboardingState({ schema: 1, flightsDismissed: true, tipsSeen: [], agentsMdOfferedFor: [] }, home);
                 const leftovers = readdirSync(home).filter((name) => name.endsWith(".tmp"));
                 expect(leftovers).toEqual([]);
                 expect(readOnboardingState(home).flightsDismissed).toBe(true); // last write won

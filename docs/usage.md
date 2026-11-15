@@ -127,6 +127,29 @@ and [the user journeys](bottom-area-user-journeys.md):
 - **The kill switch**: `UNOWN_FOOTER_CLASSIC=1` restores the pre-round
   four-row footer with every ambient chip line.
 
+### The working line: thinking verbs, honest labels (2026-11-15)
+
+While a turn runs, the working line (the spinner row above the editor)
+follows Claude Code's two-lane contract — **honest labels keep priority**:
+
+- **While a tool runs** — the verb-first activity label: `Editing
+  math.ts...`, `Running npm...`, `Searching files...` (what is actually
+  happening, built from the tool's own arguments).
+- **While the model thinks** (no tool active) — a rotating **spinner
+  verb**: `Pondering...`, `Percolating...`, `Vibing...`, one verb held per
+  3-second window, never repeating the verb it replaces. The built-in
+  catalog is a 64-verb curation of Claude Code's leaked 187-verb list
+  (the thinking-words community catalog documents the same surface);
+  an extension-set working message overrides both lanes.
+- The `mm:ss` elapsed chip ticks beside whichever label is live, and the
+  completion beat resolves the last label with a `✓`.
+
+Make it yours: `/settings` → Interface → **Spinner verbs** — a
+comma-separated list replaces the catalog (`Pondering,Brewing`), empty
+restores it. The `UNOWN_SPINNER_VERBS` env wins over the setting
+(a list, `1` = the built-ins, `0` = the static `Working...`). Changes
+apply on the next turn — no restart.
+
 Three always-on presence surfaces ship with the convergence round:
 
 - **OSC 7501 program status** — the terminal-status protocol Claude Code
@@ -473,7 +496,7 @@ unown adds forty-seven commands of its own — plus the split-view display mode'
 |---|---|
 | `/abort` | Abort what is running — the turn, a bash command, compaction or a retry wait (Esc parity; the partial turn is kept in the session file, queued messages return to the editor, `unown -c` resumes). Honest "Nothing to abort" when idle. The whole matrix is one code path — [session lifecycle](session-lifecycle.md) |
 | `/plan` | Toggle plan mode (read-only exploration → numbered plan → execute) |
-| `/flights` | Reopen the **First flights** starter catalog — the one-time guided first task a fresh TUI session opens with (digits `1`–`4` or ↑↓+Enter pick, the prompt lands in the editor ready to send; `Esc` closes, `x` never auto-shows it again) |
+| `/flights` | Reopen the **First flights** starter catalog — the one-time guided first task a fresh TUI session opens with (digits `1`–`4` or ↑↓+Enter pick, the prompt lands in the editor ready to send; `Esc` closes, `x` never auto-shows it again). The catalog is repo-aware (the Toccata round's AGENTS.md offer, Claude Code's `/init` moment): in a repo with no instruction file, **Initialize an AGENTS.md** leads the list — and a returning user opening such a repo still gets that one offer card once per repo (never after `x`, never once the repo has an `AGENTS.md`/`CLAUDE.md`) |
 | `/todos` | Show the session todo list, grouped by status with dependency chains ([todo addon](addons.md)) |
 | `/addons` | Interactive configurator for the [addons](addons.md) — enable/disable `ask_user_question` / `todo` / `advisor` and edit their settings; every change persists to `~/.unown/agent/addons.json` immediately (`/addons status` prints the effective config) |
 | `/advisor [status\|on\|off]` | [Advisor](addons.md#advisor) status and control — model, cadence, budgets, usage, watchdog state; `on`/`off` persist the flag (`/reload` applies). Registered only while the advisor addon is enabled |

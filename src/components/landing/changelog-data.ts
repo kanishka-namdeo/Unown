@@ -30,10 +30,10 @@ export interface ChangelogStop {
   groups: ChangelogGroup[];
 }
 
-export const CHANGELOG_TOTAL_ENTRIES = 598;
+export const CHANGELOG_TOTAL_ENTRIES = 599;
 
 export const CHANGELOG_TOTALS: Record<ChangelogBucket, number> = {
-  "Added": 255,
+  "Added": 256,
   "Changed": 32,
   "Deprecated": 0,
   "Removed": 3,
@@ -46,9 +46,9 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
   {
     "label": "Unreleased",
     "date": null,
-    "total": 42,
+    "total": 43,
     "counts": {
-      "Added": 5,
+      "Added": 6,
       "Changed": 0,
       "Deprecated": 0,
       "Removed": 0,
@@ -195,6 +195,10 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
           },
           {
             "title": "The Toccata round CP4 — the dialog/command lane: permission comments, mid-prompt slash completion…",
+            "behavior": false
+          },
+          {
+            "title": "The Toccata round CP5 — the personality lane: thinking-time spinner verbs (A15) and the AGENTS.md first-flight…",
             "behavior": false
           },
           {

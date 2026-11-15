@@ -6,7 +6,7 @@
 // extension + isolated tmp home per case — never the real ~/.unown).
 import "./_env.ts"; // MUST be the first import
 import { afterAll, describe, expect, test } from "bun:test";
-import { mkdirSync, mkdtempSync, rmSync } from "node:fs";
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { createFirstFlightsExtension, type FlightsCatalogResult } from "../src/flights.ts";
@@ -21,6 +21,13 @@ afterAll(() => {
                 /* best effort */
         }
 });
+
+// The tips suite tests the TIP lanes — its repo fixture carries an AGENTS.md
+// so the Toccata A16 offer lane (a catalog for a bare repo, tested in
+// flights.test.ts) never intercepts the returning boots here.
+const REPO_WITH = join(TMP, "repo-with-agents");
+mkdirSync(REPO_WITH, { recursive: true });
+writeFileSync(join(REPO_WITH, "AGENTS.md"), "# fixture\n", "utf8");
 
 let seq = 0;
 /** Isolated home per case (the extension writes onboarding.json there). */
@@ -95,7 +102,7 @@ function fresh(overrides: { autoShow?: boolean } = {}) {
 
 /** Boot a FRESH extension instance (new process flags) over an existing home. */
 function boot(home: string) {
-        const ext: any = createFirstFlightsExtension({ cwd: TMP, home });
+        const ext: any = createFirstFlightsExtension({ cwd: REPO_WITH, home });
         const fake = makeFakePi();
         ext.factory(fake.pi);
         const ui = makeFakeCtx();

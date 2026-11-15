@@ -6,11 +6,11 @@
 // extension instance and an isolated tmp home (never the real ~/.unown).
 import "./_env.ts"; // MUST be the first import
 import { afterAll, describe, expect, test } from "bun:test";
-import { mkdirSync, mkdtempSync, rmSync } from "node:fs";
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { createFirstFlightsExtension, type FlightsCatalogResult } from "../src/flights.ts";
-import { firstFlightCatalog } from "../src/flights-core.ts";
+import { createFirstFlightsExtension, type FlightsCatalogResult, repoHasInstructionFile } from "../src/flights.ts";
+import { firstFlightCatalog, orderFlightsForRepo } from "../src/flights-core.ts";
 import { defaultOnboardingState, readOnboardingState, writeOnboardingState } from "../src/onboarding-state.ts";
 
 const TMP = mkdtempSync(join(tmpdir(), "unown-flights-"));
@@ -29,6 +29,15 @@ function freshHome(): string {
         mkdirSync(dir, { recursive: true });
         return dir;
 }
+
+/** A repo fixture that CARRIES an AGENTS.md (the standard catalog shape). */
+const REPO_WITH = join(TMP, "repo-with-agents");
+mkdirSync(REPO_WITH, { recursive: true });
+writeFileSync(join(REPO_WITH, "AGENTS.md"), "# fixture\n", "utf8");
+
+/** A repo fixture with NO instruction file (the A16 offer shape). */
+const REPO_WITHOUT = join(TMP, "repo-without-agents");
+mkdirSync(REPO_WITHOUT, { recursive: true });
 
 /** Pass-through theme (pi's plain mode): styles are identity so assertions read plain text. */
 const plainTheme: any = {
@@ -87,9 +96,9 @@ function makeFakeCtx(overrides: { hasUI?: boolean; mode?: string } = {}) {
 }
 
 /** Fresh extension + fake pi wired through the factory, with an isolated tmp home. */
-function fresh(overrides: { autoShow?: boolean } = {}) {
+function fresh(overrides: { autoShow?: boolean; cwd?: string } = {}) {
         const home = freshHome();
-        const ext: any = createFirstFlightsExtension({ cwd: TMP, home, ...overrides });
+        const ext: any = createFirstFlightsExtension({ cwd: overrides.cwd ?? REPO_WITH, home, autoShow: overrides.autoShow });
         const fake = makeFakePi();
         ext.factory(fake.pi);
         return { home, fake };
@@ -262,5 +271,146 @@ describe("createFirstFlightsExtension", () => {
                 const ui = makeFakeCtx();
                 await fake.emit("input", { type: "input", text: "   ", source: "interactive" }, ui.ctx);
                 expect(readOnboardingState(home)).toEqual(defaultOnboardingState());
+        });
+});
+
+describe("repoHasInstructionFile (Toccata A16)", () => {
+        test("every loader candidate counts, whatever its spelling", () => {
+                for (const filename of ["AGENTS.override.md", "AGENTS.md", "AGENTS.MD", "CLAUDE.md", "CLAUDE.MD"]) {
+                        const repo = join(TMP, `repo-candidate-${filename.toLowerCase()}`);
+                        mkdirSync(repo, { recursive: true });
+                        writeFileSync(join(repo, filename), "# fixture\n", "utf8");
+                        expect(repoHasInstructionFile(repo)).toBe(true);
+                }
+        });
+
+        test("a repo with none of them, or a DIRECTORY named like one, does not count", () => {
+                expect(repoHasInstructionFile(REPO_WITHOUT)).toBe(false);
+                const decoy = join(TMP, "repo-decoy-dir");
+                mkdirSync(join(decoy, "AGENTS.md"), { recursive: true }); // a directory, not a file
+                expect(repoHasInstructionFile(decoy)).toBe(false);
+        });
+});
+
+describe("orderFlightsForRepo (Toccata A16, pure core)", () => {
+        test("a repo WITH an instruction file keeps the pinned catalog order, as a fresh copy", () => {
+                const catalog = firstFlightCatalog();
+                const ordered = orderFlightsForRepo(catalog, true);
+                expect(ordered).toEqual(catalog);
+                expect(ordered).not.toBe(catalog);
+                expect(ordered[0]).not.toBe(catalog[0]); // fresh objects — no aliasing
+        });
+
+        test("a repo WITHOUT one promotes the offer-variant agents-md flight to the top", () => {
+                const ordered = orderFlightsForRepo(firstFlightCatalog(), false);
+                expect(ordered[0]!.id).toBe("agents-md");
+                expect(ordered[0]!.title).toBe("Initialize an AGENTS.md");
+                expect(ordered[0]!.blurb).toContain("no AGENTS.md yet");
+                // The prompt (what lands in the editor) and the summary (the
+                // setup wizard's pinned bytes) ride along unchanged.
+                expect(ordered[0]!.prompt).toBe("generate an AGENTS.md for this repo");
+                expect(ordered[0]!.summary).toBe('"generate an AGENTS.md for this repo"  (or run: unown init-agents)');
+                // The other three flights follow in catalog order.
+                expect(ordered.slice(1).map((f) => f.id)).toEqual(["memory", "dashboard", "doctor"]);
+        });
+
+        test("a catalog without an agents-md flight passes through either way", () => {
+                const catalog = firstFlightCatalog().filter((f) => f.id !== "agents-md");
+                expect(orderFlightsForRepo(catalog, false).map((f) => f.id)).toEqual(["memory", "dashboard", "doctor"]);
+        });
+});
+
+describe("the AGENTS.md first-flight offer (Toccata A16)", () => {
+        test("a FRESH boot in a repo without an instruction file leads with the offer card", async () => {
+                const { home, fake } = fresh({ cwd: REPO_WITHOUT });
+                const ui = makeFakeCtx();
+                await fake.emit("session_start", STARTUP, ui.ctx);
+                expect(ui.customCalls.length).toBe(1);
+                const card = ui.mounted[0]!.component.render(100).join("\n");
+                expect(card).toContain("Initialize an AGENTS.md"); // the headline
+                expect(card.indexOf("Initialize an AGENTS.md")).toBeLessThan(card.indexOf("How unown's memory works"));
+                expect(card).toContain("this repo has no AGENTS.md yet");
+                // The fresh boot never records an offer — the returning-boot
+                // lane below still owns its one dedicated offer.
+                expect(readOnboardingState(home).agentsMdOfferedFor).toEqual([]);
+        });
+
+        test("a RETURNING user in an unoffered repo without a file gets the offer once, then never again", async () => {
+                const home = freshHome();
+                writeOnboardingState({ ...defaultOnboardingState(), firstTaskAt: "2026-11-01T00:00:00.000Z" }, home);
+                const ext: any = createFirstFlightsExtension({ cwd: REPO_WITHOUT, home });
+                const fake = makeFakePi();
+                ext.factory(fake.pi);
+                // First returning boot: the offer card (not the rotating tip).
+                const ui = makeFakeCtx();
+                await fake.emit("session_start", STARTUP, ui.ctx);
+                expect(ui.customCalls.length).toBe(1);
+                expect(ui.notifications.length).toBe(0); // no tip — the card owns the boot
+                expect(readOnboardingState(home).agentsMdOfferedFor).toEqual([REPO_WITHOUT]);
+                // A later process in the same repo: neither card nor offer —
+                // the tip lane resumes (nothing unseen left here, so silence).
+                const ext2: any = createFirstFlightsExtension({ cwd: REPO_WITHOUT, home });
+                const fake2 = makeFakePi();
+                ext2.factory(fake2.pi);
+                const ui2 = makeFakeCtx();
+                await fake2.emit("session_start", STARTUP, ui2.ctx);
+                expect(ui2.customCalls.length).toBe(0);
+        });
+
+        test("a returning user in a repo WITH a file never gets the offer card", async () => {
+                const home = freshHome();
+                writeOnboardingState({ ...defaultOnboardingState(), firstTaskAt: "2026-11-01T00:00:00.000Z" }, home);
+                const ext: any = createFirstFlightsExtension({ cwd: REPO_WITH, home });
+                const fake = makeFakePi();
+                ext.factory(fake.pi);
+                const ui = makeFakeCtx();
+                await fake.emit("session_start", STARTUP, ui.ctx);
+                expect(ui.customCalls.length).toBe(0);
+                expect(readOnboardingState(home).agentsMdOfferedFor).toEqual([]);
+        });
+
+        test("a never-again user never gets the offer, even in a bare repo", async () => {
+                const home = freshHome();
+                writeOnboardingState(
+                        { ...defaultOnboardingState(), flightsDismissed: true, firstTaskAt: "2026-11-01T00:00:00.000Z" },
+                        home,
+                );
+                const ext: any = createFirstFlightsExtension({ cwd: REPO_WITHOUT, home });
+                const fake = makeFakePi();
+                ext.factory(fake.pi);
+                const ui = makeFakeCtx();
+                await fake.emit("session_start", STARTUP, ui.ctx);
+                expect(ui.customCalls.length).toBe(0);
+                expect(readOnboardingState(home).agentsMdOfferedFor).toEqual([]);
+        });
+
+        test("picking the offer prefills the AGENTS.md prompt", async () => {
+                const { fake } = fresh({ cwd: REPO_WITHOUT });
+                const ui = makeFakeCtx();
+                await fake.emit("session_start", STARTUP, ui.ctx);
+                ui.mounted[0]!.component.handleInput("1"); // the promoted offer is flight 1
+                const result = await ui.customCalls[0];
+                expect(result).toMatchObject({ id: "agents-md", prompt: "generate an AGENTS.md for this repo" });
+                await settle();
+                expect(ui.editorTexts).toEqual(["generate an AGENTS.md for this repo"]);
+        });
+
+        test("/flights in a bare repo reopens the offer-shaped catalog without flipping latches", async () => {
+                const home = freshHome();
+                writeOnboardingState(
+                        { ...defaultOnboardingState(), flightsDismissed: true, firstTaskAt: "2026-11-01T00:00:00.000Z" },
+                        home,
+                );
+                const ext: any = createFirstFlightsExtension({ cwd: REPO_WITHOUT, home });
+                const fake = makeFakePi();
+                ext.factory(fake.pi);
+                const ui = makeFakeCtx();
+                const commandPromise = fake.runCommand("flights", undefined, ui.ctx);
+                expect(ui.customCalls.length).toBe(1);
+                const card = ui.mounted[0]!.component.render(100).join("\n");
+                expect(card).toContain("Initialize an AGENTS.md");
+                ui.mounted[0]!.done(undefined); // Esc closes it
+                await commandPromise;
+                expect(readOnboardingState(home).agentsMdOfferedFor).toEqual([]); // no latch flips
         });
 });

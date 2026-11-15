@@ -79,6 +79,46 @@ export function firstFlightCatalog(): Flight[] {
 }
 
 // ---------------------------------------------------------------------------
+// Repo-state ordering (Toccata A16 — the AGENTS.md first-flight offer)
+// ---------------------------------------------------------------------------
+
+/** The offer-variant title for the agents-md flight in a repo missing one. */
+export const AGENTS_MD_OFFER_TITLE = "Initialize an AGENTS.md";
+
+/**
+ * Order (and when the repo lacks an instruction file, PROMOTE) the catalog
+ * for a specific session — the Toccata A16 lane, Claude Code's /init
+ * CLAUDE.md offer translated to Unown's flights card.
+ *
+ *   hasInstructionFile true  → a fresh copy, order untouched (the
+ *                              agents-md flight stays a plain catalog
+ *                              entry for regenerating).
+ *   hasInstructionFile false → the agents-md flight moves FIRST and takes
+ *                              the offer wording ("Initialize an
+ *                              AGENTS.md" + "this repo has none yet"), so
+ *                              the card leads with the one task the repo
+ *                              state actually asks for. The prompt and
+ *                              summary ride along unchanged.
+ *
+ * Pure and total: a catalog without an agents-md flight passes through
+ * untouched either way, and the input array is never mutated.
+ */
+export function orderFlightsForRepo(flights: Flight[], hasInstructionFile: boolean): Flight[] {
+        if (hasInstructionFile) return flights.map((flight) => ({ ...flight }));
+        const agentsMd = flights.find((flight) => flight.id === "agents-md");
+        if (!agentsMd) return flights.map((flight) => ({ ...flight }));
+        const rest = flights.filter((flight) => flight.id !== "agents-md");
+        return [
+                {
+                        ...agentsMd,
+                        title: AGENTS_MD_OFFER_TITLE,
+                        blurb: "this repo has no AGENTS.md yet — scaffold one for future agents (or run: unown init-agents)",
+                },
+                ...rest.map((flight) => ({ ...flight })),
+        ];
+}
+
+// ---------------------------------------------------------------------------
 // Key routing (pure — raw handleInput bytes in, declarative action out)
 // ---------------------------------------------------------------------------
 

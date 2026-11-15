@@ -51,10 +51,35 @@
 import type { ExtensionAPI, ExtensionContext, Theme } from "@earendil-works/pi-coding-agent";
 import type { Component } from "@earendil-works/pi-tui";
 import { truncateToWidth, visibleWidth, wrapTextWithAnsi } from "@earendil-works/pi-tui";
-import { firstFlightCatalog, flightsHandleKey, type Flight } from "./flights-core.ts";
+import { existsSync, statSync } from "node:fs";
+import { join } from "node:path";
+import { AGENTS_MD_OFFERED_CAP } from "./onboarding-state.ts";
+import { firstFlightCatalog, flightsHandleKey, orderFlightsForRepo, type Flight } from "./flights-core.ts";
 import { readOnboardingState, writeOnboardingState } from "./onboarding-state.ts";
 import { flyingTipText, FLYING_TIP_ID, nextSessionTip } from "./onboarding-tips.ts";
 import { FOOTER_PRIORITY } from "./footer-mode.ts";
+
+/**
+ * The instruction-file candidates a session loads, mirrored from
+ * coding-agent's resource-loader (loadContextFileFromDir) — the offer fires
+ * only when the repo has NONE of them (an AGENTS.md-shaped file counts,
+ * whatever its exact spelling). A DIRECTORY named like a candidate is not a
+ * file and does not count.
+ */
+const INSTRUCTION_FILE_CANDIDATES = ["AGENTS.override.md", "AGENTS.md", "AGENTS.MD", "CLAUDE.md", "CLAUDE.MD"];
+
+/** Does this working directory carry an instruction file the agent loads? */
+export function repoHasInstructionFile(cwd: string): boolean {
+        for (const filename of INSTRUCTION_FILE_CANDIDATES) {
+                const filePath = join(cwd, filename);
+                try {
+                        if (existsSync(filePath) && statSync(filePath).isFile()) return true;
+                } catch {
+                        /* unreadable = not present for offer purposes */
+                }
+        }
+        return false;
+}
 
 export interface FirstFlightsOptions {
         cwd: string;
@@ -62,6 +87,8 @@ export interface FirstFlightsOptions {
         autoShow?: boolean;
         /** Test seam: override the unown home (defaults to the module UNOWN_HOME inside onboarding-state). */
         home?: string;
+        /** Test seam: override the repo-state probe (defaults to repoHasInstructionFile(cwd)). */
+        hasInstructionFile?: (cwd: string) => boolean;
 }
 
 /** What the catalog settles to: a picked Flight, "never-again", or undefined (Esc). */
@@ -108,6 +135,10 @@ export interface FlightsCatalogOptions {
         selected: number;
         theme: Theme;
         done: (result: FlightsCatalogResult) => void;
+        /** Card headline — "First flights" by default; the AGENTS.md offer
+         *  lane (Toccata A16) re-words it so a returning user is not greeted
+         *  as fresh. */
+        title?: string;
 }
 
 /**
@@ -122,6 +153,7 @@ export class FlightsCatalogComponent implements Component {
         private selected: number;
         private readonly theme: Theme;
         private readonly done: (result: FlightsCatalogResult) => void;
+        private readonly title: string;
         private settled = false;
 
         constructor(options: FlightsCatalogOptions) {
@@ -129,6 +161,7 @@ export class FlightsCatalogComponent implements Component {
                 this.selected = Math.min(Math.max(options.selected, 0), Math.max(options.flights.length - 1, 0));
                 this.theme = options.theme;
                 this.done = options.done;
+                this.title = options.title ?? "First flights";
         }
 
         // -- Component contract ------------------------------------------------
@@ -194,7 +227,7 @@ export class FlightsCatalogComponent implements Component {
 
         private renderInner(width: number): string[] {
                 const lines: string[] = [];
-                lines.push(`  ${this.theme.bg("selectedBg", this.theme.fg("accent", " First flights "))}`);
+                lines.push(`  ${this.theme.bg("selectedBg", this.theme.fg("accent", ` ${this.title} `))}`);
                 lines.push("");
                 const intro = wrapTextWithAnsi(
                         this.theme.fg("muted", "Pick a starter task — it lands in the editor, ready to send."),
@@ -239,12 +272,32 @@ export class FlightsCatalogComponent implements Component {
  * no-op (the card simply shows again next session). `pi` is part of the
  * pinned signature for future extension points; the component talks to the
  * host exclusively through ctx.ui.
+ *
+ * Toccata A16: the catalog is ordered for the session's repo — when the cwd
+ * carries no instruction file the agents-md flight leads with the offer
+ * wording ("Initialize an AGENTS.md") and the card headline matches, so the
+ * one task the repo state asks for is the first thing offered.
  */
-async function showCatalog(pi: ExtensionAPI, ctx: ExtensionContext, home?: string): Promise<void> {
+async function showCatalog(
+        pi: ExtensionAPI,
+        ctx: ExtensionContext,
+        home?: string,
+        cwd?: string,
+        hasInstructionFile?: (dir: string) => boolean,
+): Promise<void> {
         void pi; // reserved by the pinned signature — see the doc comment
+        const probe = hasInstructionFile ?? repoHasInstructionFile;
+        const repoHasFile = cwd ? probe(cwd) : true;
+        const flights = orderFlightsForRepo(firstFlightCatalog(), repoHasFile);
         const result = await ctx.ui.custom<FlightsCatalogResult>(
                 (_tui, theme, _keybindings, done) =>
-                        new FlightsCatalogComponent({ flights: firstFlightCatalog(), selected: 0, theme, done }),
+                        new FlightsCatalogComponent({
+                                flights,
+                                selected: 0,
+                                theme,
+                                done,
+                                title: repoHasFile ? "First flights" : "Initialize an AGENTS.md",
+                        }),
         );
         if (result === undefined) {
                 return; // Esc — dismissed for this session only.
@@ -273,6 +326,8 @@ async function showCatalog(pi: ExtensionAPI, ctx: ExtensionContext, home?: strin
 export function createFirstFlightsExtension(options: FirstFlightsOptions) {
         const autoShow = options.autoShow ?? true;
         const home = options.home;
+        const cwd = options.cwd;
+        const hasInstructionFile = options.hasInstructionFile ?? ((dir: string) => repoHasInstructionFile(dir));
 
         const factory = (pi: ExtensionAPI): void => {
                 // One auto-show per process: session_start also fires for /new,
@@ -295,20 +350,50 @@ export function createFirstFlightsExtension(options: FirstFlightsOptions) {
                 // the onboarding state is read again.
                 let flyingShownThisProcess = false;
 
+                /** Record the cwd as offered (Toccata A16) — an LRU push, most recent first. */
+                const recordOffered = (state: ReturnType<typeof readOnboardingState>): void => {
+                        writeOnboardingState(
+                                {
+                                        ...state,
+                                        agentsMdOfferedFor: [cwd, ...state.agentsMdOfferedFor.filter((dir) => dir !== cwd)].slice(
+                                                0,
+                                                AGENTS_MD_OFFERED_CAP,
+                                        ),
+                                },
+                                home,
+                        );
+                };
+
                 pi.on("session_start", (event, ctx) => {
                         if (!autoShow) return;
                         if (event?.reason !== "startup") return;
                         if (!ctx?.hasUI || ctx?.mode !== "tui") return;
+                        if (shownThisProcess) return;
                         const state = readOnboardingState(home);
                         if (!state.firstTaskAt && !state.flightsDismissed) {
                                 // The fresh boot: the catalog card owns this
                                 // session. One onboarding surface per boot —
                                 // never also a rotating tip.
-                                if (shownThisProcess) return;
                                 shownThisProcess = true;
                                 // Fire-and-forget with a silent catch: the catalog is
                                 // cosmetic — a failure must NEVER break boot.
-                                void showCatalog(pi, ctx, home).catch(() => {
+                                void showCatalog(pi, ctx, home, cwd, hasInstructionFile).catch(() => {
+                                        /* the card is best-effort */
+                                });
+                                return;
+                        }
+                        // Toccata A16 — the AGENTS.md first-flight offer: a
+                        // RETURNING user (not never-again) opening a repo with
+                        // no instruction file still gets the one offer CC's
+                        // /init moment promises, once per repo (the recorded
+                        // LRU). The catalog is repo-ordered, so the card leads
+                        // with "Initialize an AGENTS.md". A repo that already
+                        // carries one never interrupts the returning boot —
+                        // the rotating-tip lane below runs as before.
+                        if (!state.flightsDismissed && !hasInstructionFile(cwd) && !state.agentsMdOfferedFor.includes(cwd)) {
+                                shownThisProcess = true;
+                                recordOffered(state);
+                                void showCatalog(pi, ctx, home, cwd, hasInstructionFile).catch(() => {
                                         /* the card is best-effort */
                                 });
                                 return;
@@ -369,7 +454,7 @@ export function createFirstFlightsExtension(options: FirstFlightsOptions) {
                                 }
                                 // Manual reopen never flips any latch — a
                                 // dismissed user can still browse the catalog.
-                                await showCatalog(pi, ctx, home);
+                                await showCatalog(pi, ctx, home, cwd, hasInstructionFile);
                         },
                 });
         };

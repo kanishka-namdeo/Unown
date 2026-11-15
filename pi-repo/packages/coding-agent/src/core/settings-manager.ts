@@ -106,6 +106,7 @@ export interface Settings {
         retry?: RetrySettings;
         hideThinkingBlock?: boolean;
         showCacheMissNotices?: boolean; // default: false - show prompt-cache miss and compaction cost notices
+        spinnerVerbs?: string; // Comma-separated thinking-time spinner verbs (Toccata A15); empty/absent = the built-in pool
         externalEditor?: string; // Command for Ctrl+G external editor; takes precedence over VISUAL/EDITOR
         shellPath?: string; // Custom shell path (e.g., for Cygwin users on Windows); supports leading ~ expansion
         quietStartup?: boolean;
@@ -916,6 +917,11 @@ export class SettingsManager {
                 return this.settings.hideThinkingBlock ?? false;
         }
 
+        /** Toccata A15: the comma-separated thinking-time verb list ("" = the built-in pool). */
+        getSpinnerVerbs(): string {
+                return typeof this.settings.spinnerVerbs === "string" ? this.settings.spinnerVerbs : "";
+        }
+
         getShowCacheMissNotices(): boolean {
                 return this.settings.showCacheMissNotices ?? false;
         }
@@ -935,6 +941,12 @@ export class SettingsManager {
         setHideThinkingBlock(hide: boolean): void {
                 this.globalSettings.hideThinkingBlock = hide;
                 this.markModified("hideThinkingBlock");
+                this.save();
+        }
+
+        setSpinnerVerbs(verbs: string): void {
+                this.globalSettings.spinnerVerbs = verbs;
+                this.markModified("spinnerVerbs");
                 this.save();
         }
 

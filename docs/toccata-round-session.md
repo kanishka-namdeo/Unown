@@ -18,7 +18,7 @@ This is the keyboard round.
 | CP2 the queue/image lane — send-now, image chips | ✅ done | send-now in CP1's commit; chips: tui `editor-image-chips` (10/10) |
 | CP3 the transcript lane — viewer keys, aggregation, timestamps | ✅ done | tui `tui-alt-screen-transcript` (9/9) + coding-agent `tool-call-groups` (11/11); tui suite 1059/0 |
 | CP4 the dialog/command lane — permission comments, aliases, rewind picker, mid-prompt completion | ✅ done | self-learning `permission-comment` (5) + `checkpoints-rewind` (6) + `theme-command` (8); coding-agent `extension-selector-comment` (8); tui `mid-prompt-slash` (10) |
-| CP5 the personality lane — spinner verbs, AGENTS.md flight | 🔲 pending | |
+| CP5 the personality lane — spinner verbs, AGENTS.md flight | ✅ done | coding-agent `spinner-verbs` (19); flights/onboarding battery 66/66 |
 | CP6 verification — suites + PTY lanes as a real user | 🔲 pending | |
 | CP7 docs/landing/blog/CHANGELOG/DOX + version + release | 🔲 pending | |
 
@@ -188,10 +188,49 @@ neighbors 85/85); tui `mid-prompt-slash` 10/10; full tui suite **1069/0**,
 full self-learning suite green over the one known plm-wiring env artifact
 (verified passing in isolation, stack stopped).
 
-## CP5 — the personality lane (pending)
+## CP5 — the personality lane (done, 2026-11-16)
 
-Scope: A15 spinner verbs (thinking-time flavor, honest labels keep
-priority), A16 the AGENTS.md first-flight offer.
+A15 spinner verbs: `spinner-verbs.ts` (coding-agent, pure — the 64-verb
+curated pool from CC's leaked 187-verb catalog, `parseSpinnerVerbs`
+comma-split/trim/dedupe, `resolveSpinnerVerbPool` env > setting >
+default with `0/false/off` kill and `1/true/on` explicit-enable values,
+`pickSpinnerVerbIndex` never-repeats with a bounded stuck-rng fallback).
+`WorkingStatusIndicator.setVerbPool` rotates one verb per 3 s window on
+the elapsed chip's EXISTING 1 s tick (`onElapsedTick`, the new protected
+hook — the no-new-timers pin holds); an external `setMessage` (tool
+label, extension message) clears the pool — honest labels keep priority;
+interactive-mode resolves the pool per turn (`newWorkingStatusIndicator`)
+so a settings change applies next turn. Config: settings.json
+`spinnerVerbs` (hub row `interface.spinner-verbs`, kind text) +
+`UNOWN_SPINNER_VERBS` env. Docs: usage.md "The working line" section,
+configuration.md env row, `.env.example`.
+
+A16 the AGENTS.md first-flight offer: `orderFlightsForRepo` (pure core)
+promotes the offer-variant agents-md flight first when the cwd has no
+instruction file (checked against the resource-loader's candidate list —
+AGENTS.override.md/AGENTS.md/AGENTS.MD/CLAUDE.md/CLAUDE.MD; a directory
+named like a candidate does not count); the card title follows
+("Initialize an AGENTS.md"); a RETURNING non-dismissed user in an
+unoffered bare repo gets the offer card once per repo (the new
+`agentsMdOfferedFor` LRU latch in onboarding.json, cap 20, field-wise
+normalized); the fresh boot shows the repo-ordered catalog but never
+records; `/flights` stays latch-free; the setup wizard's pinned summary
+bytes ride along unchanged. Research verified this session: the leaked
+187-verb list (wesbos), the `spinnerVerbs` settings shape
+(`{mode: replace|append, verbs: [...]}` — the fork's text-setting form
+uses the simpler replace-only list, documented), verbs chosen at random
+while the model thinks with contextual labels during tool runs.
+
+Verification: coding-agent `spinner-verbs` 19/19 + `status-indicator`
+15/15 untouched; interactive-mode/settings neighbors 46/46; settings hub
+suites green (the one combined-run flake re-verified green twice and at
+baseline); flights/onboarding battery **66/66** across the four files
+(flights, flights-core, flights-tips, onboarding-state); coding-agent
+dist REBUILT (build:unbundled) — the workspace resolves
+`@earendil-works/pi-coding-agent` through `dist/`, so vendored source
+changes need the rebuild for both runtime and self-learning's tsc (back
+to its 88-error pre-existing baseline, zero new). CHANGELOG entry filed,
+self-learning AGENTS.md contract extended with CP5.
 
 ## CP6 — verification (pending)
 

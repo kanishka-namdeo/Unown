@@ -167,6 +167,7 @@ import {
         type StatusIndicator,
         WorkingStatusIndicator,
 } from "./components/status-indicator.ts";
+import { resolveSpinnerVerbPool } from "./components/spinner-verbs.ts";
 import { ThinkingSelectorComponent } from "./components/thinking-selector.ts";
 import { ToolExecutionComponent } from "./components/tool-execution.ts";
 import { ChatTranscriptContainer } from "./components/tool-call-group.ts";
@@ -2397,13 +2398,7 @@ export class InteractiveMode {
                         return;
                 }
                 if (this.session.isStreaming && this.activeStatusIndicator?.kind !== "working") {
-                        this.showStatusIndicator(
-                                new WorkingStatusIndicator(
-                                        this.ui,
-                                        this.workingMessage ?? this.defaultWorkingMessage,
-                                        this.workingIndicatorOptions,
-                                ),
-                        );
+                        this.showStatusIndicator(this.newWorkingStatusIndicator());
                 }
                 this.ui.requestRender();
         }
@@ -2428,6 +2423,32 @@ export class InteractiveMode {
                         this.activeStatusIndicator.setIndicator(options);
                 }
                 this.ui.requestRender();
+        }
+
+        /**
+         * Build the turn's working indicator (Toccata A15). An extension-set
+         * working message is a full override — never rotated, never replaced.
+         * Otherwise the thinking-time label carries a spinner verb from the
+         * resolved pool (UNOWN_SPINNER_VERBS env > spinnerVerbs setting > the
+         * built-in catalog; env "0" falls back to the static "Working..."),
+         * picked fresh per turn so a settings change applies on the next turn
+         * with no restart. A live tool label still wins the moment a tool
+         * starts (updateWorkingLabelForTool clears the pool).
+         */
+        private newWorkingStatusIndicator(): WorkingStatusIndicator {
+                const indicator = new WorkingStatusIndicator(
+                        this.ui,
+                        this.workingMessage ?? this.defaultWorkingMessage,
+                        this.workingIndicatorOptions,
+                );
+                if (this.workingMessage === undefined) {
+                        const pool = resolveSpinnerVerbPool(
+                                process.env.UNOWN_SPINNER_VERBS,
+                                this.settingsManager.getSpinnerVerbs(),
+                        );
+                        if (pool) indicator.setVerbPool(pool);
+                }
+                return indicator;
         }
 
         /**
@@ -3524,13 +3545,7 @@ export class InteractiveMode {
                                         this.retryEscapeHandler = undefined;
                                 }
                                 if (this.workingVisible) {
-                                        this.showStatusIndicator(
-                                                new WorkingStatusIndicator(
-                                                        this.ui,
-                                                        this.workingMessage ?? this.defaultWorkingMessage,
-                                                        this.workingIndicatorOptions,
-                                                ),
-                                        );
+                                        this.showStatusIndicator(this.newWorkingStatusIndicator());
                                 } else {
                                         this.clearStatusIndicator();
                                 }

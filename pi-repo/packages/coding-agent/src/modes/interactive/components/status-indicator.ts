@@ -4,6 +4,7 @@ import { theme } from "../theme/theme.ts";
 import { CountdownTimer } from "./countdown-timer.ts";
 import { keyText } from "./keybinding-hints.ts";
 import { workingLabelShimmer } from "./shimmer-label.ts";
+import { pickSpinnerVerbIndex, SPINNER_VERB_ROTATE_TICKS } from "./spinner-verbs.ts";
 
 export type StatusIndicatorKind = "working" | "retry" | "compaction" | "branchSummary";
 
@@ -70,6 +71,16 @@ export class StatusIndicator extends Loader {
 	}
 
 	/**
+	 * One beat of the elapsed chip's 1 s tick. The base behavior advances the
+	 * shimmer phase and refreshes; subclasses extend it (the spinner-verb
+	 * rotation rides this same timer — the no-new-timers discipline).
+	 */
+	protected onElapsedTick(): void {
+		this.advanceShimmerPhase();
+		this.refresh();
+	}
+
+	/**
 	 * The elapsed-time chip (move 7): `mm:ss` in dim, ticking once a second on
 	 * the loader's suffix lane. Long tool runs read as live progress without
 	 * touching the label itself.
@@ -85,8 +96,7 @@ export class StatusIndicator extends Loader {
 		// The same 1s tick advances the shimmer's phase (beauty-4) — one timer,
 		// two lanes: the mm:ss chip and the label's gradient sweep.
 		this.elapsedTimerId = setInterval(() => {
-			this.advanceShimmerPhase();
-			this.refresh();
+			this.onElapsedTick();
 		}, 1000);
 	}
 
@@ -126,6 +136,11 @@ export class StatusIndicator extends Loader {
 }
 
 export class WorkingStatusIndicator extends StatusIndicator {
+	/** Toccata A15: the rotating thinking-time verb pool (empty = no rotation). */
+	private verbs: readonly string[] = [];
+	private lastVerbIndex = -1;
+	private elapsedTickCount = 0;
+
 	constructor(ui: TUI, message: string, indicator?: WorkingIndicatorOptions) {
 		super(
 			"working",
@@ -140,6 +155,39 @@ export class WorkingStatusIndicator extends StatusIndicator {
 		// (2-3 step ramp in 256-color, solid in plain mode).
 		this.setMessageShimmer(workingLabelShimmer(theme));
 		this.showElapsedChip();
+	}
+
+	/**
+	 * Toccata A15 — Claude Code's thinking-time spinner verbs. A non-empty
+	 * pool replaces the initial label with a first verb and rotates it on the
+	 * elapsed chip's existing 1 s tick (every SPINNER_VERB_ROTATE_TICKS beats,
+	 * never repeating the verb it replaces). An empty pool is a no-op.
+	 */
+	setVerbPool(verbs: readonly string[]): void {
+		this.verbs = verbs.length > 0 ? [...verbs] : [];
+		this.lastVerbIndex = -1;
+		this.elapsedTickCount = 0;
+		if (this.verbs.length > 0) this.applyNextVerb();
+	}
+
+	/** An external label (tool activity, extension message) wins — rotation stops. */
+	override setMessage(message: string): void {
+		this.verbs = [];
+		super.setMessage(message);
+	}
+
+	protected override onElapsedTick(): void {
+		super.onElapsedTick();
+		if (this.verbs.length === 0) return;
+		this.elapsedTickCount++;
+		if (this.elapsedTickCount % SPINNER_VERB_ROTATE_TICKS === 0) this.applyNextVerb();
+	}
+
+	private applyNextVerb(): void {
+		const index = pickSpinnerVerbIndex(this.verbs.length, this.lastVerbIndex);
+		if (index < 0) return;
+		this.lastVerbIndex = index;
+		super.setMessage(`${this.verbs[index]}...`);
 	}
 }
 

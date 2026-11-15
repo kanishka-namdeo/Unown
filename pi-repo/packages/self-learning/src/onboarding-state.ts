@@ -37,15 +37,23 @@ export interface OnboardingState {
         firstTaskAt?: string;
         /** One-time tip ids already shown (reserved for the next milestone — keep the field). */
         tipsSeen: string[];
+        /** Working directories the AGENTS.md first-flight offer already fired
+         *  for (Toccata A16 — one offer per repo, most-recent-first, capped:
+         *  the same repo never nags, a new repo without an instruction file
+         *  still gets its one offer). */
+        agentsMdOfferedFor: string[];
         /** The install receipt already shown as a card, as `<mode>:<version>`
          *  (install-surface.ts). Absent = never shown; a recorded version change
          *  re-shows it, so an update gets one line of acknowledgement. */
         installCardSeenFor?: string;
 }
 
+/** Cap for agentsMdOfferedFor — an LRU of offered cwds (most recent first). */
+export const AGENTS_MD_OFFERED_CAP = 20;
+
 /** The blank slate: catalog not dismissed, nothing flown, no tips shown. */
 export function defaultOnboardingState(): OnboardingState {
-        return { schema: 1, flightsDismissed: false, tipsSeen: [] };
+        return { schema: 1, flightsDismissed: false, tipsSeen: [], agentsMdOfferedFor: [] };
 }
 
 /** The latch file: <home ?? UNOWN_HOME>/onboarding.json. */
@@ -65,6 +73,11 @@ function parseOnboardingState(raw: unknown): OnboardingState | null {
                 flightsDismissed: raw.flightsDismissed === true,
                 tipsSeen: Array.isArray(raw.tipsSeen)
                         ? raw.tipsSeen.filter((tip): tip is string => typeof tip === "string")
+                        : [],
+                agentsMdOfferedFor: Array.isArray(raw.agentsMdOfferedFor)
+                        ? raw.agentsMdOfferedFor
+                                        .filter((dir): dir is string => typeof dir === "string" && dir.length > 0)
+                                        .slice(0, AGENTS_MD_OFFERED_CAP)
                         : [],
         };
         if (typeof raw.firstTaskAt === "string" && !Number.isNaN(Date.parse(raw.firstTaskAt))) {
