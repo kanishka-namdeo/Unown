@@ -291,3 +291,18 @@ on both** (CodeQL #91 already cured in this release's entries).
 Docs complete: usage.md (the working-line section + the /flights row),
 configuration.md + .env.example (UNOWN_SPINNER_VERBS), the self-learning
 AGENTS contract (CP5 line), the DOX tree current.
+
+The release-recovery receipt (the v0.0.53 precedent re-run): the first
+v0.0.68 tag failed CI's e2e on the scroll budget (4662 > 4648 — the
+63rd stop's structural chrome + its listed title). Compressed FIRST per
+the landing contract (the listed title -1 rendered word; the CP5 body
+-91 words, hygiene — the MAX_LISTED=1 lesson re-learned: only the stop's
+first Behavior entry renders), then BOTH ceilings amended together
+(e2e 4648 → 4684; the audit twin realigned 4612 → 4684 — the 0.0.67
+amendment had moved only the e2e spec, a divergence the 0.0.48 lesson
+forbids). Verified locally (budget spec 1/1, audit:landing exit 0 on
+the rebuilt page) before the tag re-cut. The re-cut landed green:
+CI (all three OS legs), CodeQL, Scorecard, deploy-verify and the
+Release workflow all SUCCESS — v0.0.68 published with 13 assets (the
+six per-OS binaries + installers + manifest + SBOM + checksums),
+nothing published from the first cut.
