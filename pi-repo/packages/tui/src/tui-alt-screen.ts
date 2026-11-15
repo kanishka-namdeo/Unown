@@ -6,7 +6,8 @@ import {
 } from "./alt-screen-search.ts";
 import { AltScreenFlashContainer } from "./components/alt-screen-flash.ts";
 import { ScrollView } from "./components/scroll-view.ts";
-import { getKeybindings } from "./keybindings.ts";
+import { TranscriptHelpPanelComponent, TranscriptModeHintComponent } from "./components/transcript-overlays.ts";
+import { type Keybinding, getKeybindings, type KeybindingsManager } from "./keybindings.ts";
 import { isKeyRelease } from "./keys.ts";
 import {
         getScrollbarGeometry,
@@ -174,6 +175,25 @@ export interface TuiAltScreenOptions {
          * render after a resize back to a workable size resumes the layout.
          */
         minSizeNotice?: boolean;
+        /**
+         * Transcript mode (Toccata round A9 — the Claude Code Ctrl+O
+         * transcript-viewer contract): fired on entry/exit so the host can
+         * expand tool output while reviewing and restore the prior state
+         * afterwards.
+         */
+        onTranscriptModeChange?: (active: boolean) => void;
+        /**
+         * Open the conversation in the user's $VISUAL/$EDITOR (the `v` key).
+         * The host owns the terminal stop/start dance around the editor
+         * process; transcript mode re-arms itself when the promise resolves.
+         */
+        onTranscriptOpenEditor?: () => Promise<void>;
+        /**
+         * The press-any-key wait under the `[` scrollback write. Injectable
+         * for tests (the default reads the next raw stdin chunk, which the
+         * virtual terminal cannot produce).
+         */
+        onTranscriptWaitKeypress?: () => Promise<void>;
 }
 
 /** Alternate-screen TUI with a scrollable, application-owned viewport. */
@@ -216,6 +236,14 @@ export class TuiAltScreen extends TuiBase implements ViewportTUI {
         private copyOnSelect: boolean;
         private readonly copySelection?: (text: string) => Promise<boolean>;
         private readonly minSizeNotice: boolean;
+        private readonly onTranscriptModeChange?: (active: boolean) => void;
+        private readonly onTranscriptOpenEditor?: () => Promise<void>;
+        private readonly onTranscriptWaitKeypress?: () => Promise<void>;
+        private transcriptModeActive = false;
+        private transcriptHintOverlay?: OverlayHandle;
+        private transcriptHelpOverlay?: OverlayHandle;
+        private transcriptLastSearchQuery: string | undefined;
+        private transcriptScrollbackPending = false;
 
         constructor(
                 terminal: Terminal,
@@ -241,6 +269,9 @@ export class TuiAltScreen extends TuiBase implements ViewportTUI {
                 this.copyOnSelect = options.copyOnSelect ?? true;
                 this.copySelection = options.copySelection;
                 this.minSizeNotice = options.minSizeNotice ?? false;
+                this.onTranscriptModeChange = options.onTranscriptModeChange;
+                this.onTranscriptOpenEditor = options.onTranscriptOpenEditor;
+                this.onTranscriptWaitKeypress = options.onTranscriptWaitKeypress;
                 this.addInputListener((data) => this.handleViewportInput(data));
         }
 
@@ -497,9 +528,215 @@ export class TuiAltScreen extends TuiBase implements ViewportTUI {
         private closeSearch(): void {
                 const search = this.activeSearch;
                 if (!search) return;
+                if (search.query.trim()) this.transcriptLastSearchQuery = search.query;
                 this.activeSearch = undefined;
                 search.overlay?.hide();
                 this.requestRender();
+        }
+
+        /**
+         * Transcript mode (Toccata round A9) — the Claude Code Ctrl+O
+         * transcript-viewer contract on the fullscreen viewport: a modal
+         * review surface with less-style navigation, `{`/`}` prompt jumps,
+         * `/` search with `n`/`N`, `[` write-to-scrollback and `v`
+         * open-in-$EDITOR. While active, unbound keys are consumed so the
+         * docked editor never receives mode keystrokes; the host expands
+         * tool output via onTranscriptModeChange and gets it restored on
+         * exit.
+         */
+        isTranscriptModeActive(): boolean {
+                return this.transcriptModeActive;
+        }
+
+        toggleTranscriptMode(): void {
+                if (this.transcriptModeActive) {
+                        this.exitTranscriptMode();
+                } else {
+                        this.enterTranscriptMode();
+                }
+        }
+
+        enterTranscriptMode(): void {
+                if (this.transcriptModeActive) return;
+                this.transcriptModeActive = true;
+                const hint = new TranscriptModeHintComponent(() => this.exitTranscriptMode());
+                this.transcriptHintOverlay = this.showOverlay(hint, {
+                        anchor: "bottom-center",
+                        width: "70%",
+                        margin: 0,
+                        nonCapturing: true,
+                });
+                this.onTranscriptModeChange?.(true);
+                this.requestRender();
+        }
+
+        exitTranscriptMode(): void {
+                if (!this.transcriptModeActive) return;
+                this.transcriptModeActive = false;
+                this.transcriptHintOverlay?.hide();
+                this.transcriptHintOverlay = undefined;
+                this.hideTranscriptHelp();
+                this.closeSearch();
+                this.onTranscriptModeChange?.(false);
+                this.requestRender();
+        }
+
+        private toggleTranscriptHelp(): void {
+                if (this.transcriptHelpOverlay) {
+                        this.hideTranscriptHelp();
+                        return;
+                }
+                const panel = new TranscriptHelpPanelComponent();
+                this.transcriptHelpOverlay = this.showOverlay(panel, {
+                        anchor: "center",
+                        width: "60%",
+                        minWidth: 44,
+                        maxHeight: "70%",
+                        nonCapturing: true,
+                });
+        }
+
+        private hideTranscriptHelp(): void {
+                this.transcriptHelpOverlay?.hide();
+                this.transcriptHelpOverlay = undefined;
+                this.requestRender();
+        }
+
+        /** `n`/`N` in transcript mode: navigate the live search, or re-open the last closed query first (the CC contract). */
+        private transcriptNavigateSearch(direction: -1 | 1): void {
+                if (!this.activeSearch) {
+                        const lastQuery = this.transcriptLastSearchQuery?.trim();
+                        if (!lastQuery) return;
+                        this.openSearch();
+                        this.updateSearchQuery(lastQuery);
+                }
+                this.navigateSearch(direction);
+        }
+
+        /**
+         * `[` — write the rendered conversation (tool output expanded by the
+         * host's onTranscriptModeChange hook) into the terminal's native
+         * scrollback, park on a press-any-key hint, then re-enter the mode.
+         * Mirrors CC: the conversation becomes ordinary scrollback text so
+         * Cmd+F / tmux copy mode can search it.
+         */
+        private async writeTranscriptToScrollback(): Promise<void> {
+                if (this.transcriptScrollbackPending) return;
+                this.transcriptScrollbackPending = true;
+                try {
+                        this.exitTranscriptMode();
+                        this.stop();
+                        this.terminal.write(
+                                "\r\n\x1b[2m— transcript written to scrollback · press any key to return —\x1b[22m\r\n",
+                        );
+                        await (this.onTranscriptWaitKeypress ?? this.waitForKeypress.bind(this))();
+                        this.start();
+                        this.enterTranscriptMode();
+                } finally {
+                        this.transcriptScrollbackPending = false;
+                }
+        }
+
+        /** `v` — hand the conversation to the host's $EDITOR flow; re-enter the mode when it returns. */
+        private async openTranscriptInExternalEditor(): Promise<void> {
+                if (!this.onTranscriptOpenEditor) {
+                        this.flash("No external editor configured");
+                        return;
+                }
+                this.exitTranscriptMode();
+                try {
+                        await this.onTranscriptOpenEditor();
+                } catch {
+                        // The host reports its own errors; the mode simply does not re-arm.
+                }
+                this.enterTranscriptMode();
+        }
+
+        /**
+         * One-shot raw keypress wait between stop() and start(): the TUI's
+         * stdin pipeline is detached while stopped, so a fresh listener owns
+         * the stream until the next chunk arrives.
+         */
+        private waitForKeypress(): Promise<void> {
+                return new Promise<void>((resolve) => {
+                        const stdin = process.stdin;
+                        const onData = () => {
+                                stdin.removeListener("data", onData);
+                                resolve();
+                        };
+                        if (stdin.setRawMode) stdin.setRawMode(true);
+                        stdin.resume();
+                        stdin.once("data", onData);
+                });
+        }
+
+        /**
+         * The transcript-mode keymap. Every key is consumed (the docked editor
+         * must not receive mode keystrokes); actions are resolved through the
+         * live keybinding registry so user rebinds apply without a reload.
+         */
+        private handleTranscriptModeInput(data: string, isRelease: boolean): { consume: true } {
+                const keybindings = getKeybindings();
+                if (!isRelease) {
+                        if (
+                                keybindings.matches(data, "tui.altScreen.transcript") ||
+                                keybindings.matches(data, "tui.altScreen.transcriptExit")
+                        ) {
+                                this.exitTranscriptMode();
+                        } else if (keybindings.matches(data, "tui.altScreen.transcriptHelp")) {
+                                this.toggleTranscriptHelp();
+                        } else if (keybindings.matches(data, "tui.altScreen.transcriptSearch")) {
+                                this.openSearch();
+                        } else if (keybindings.matches(data, "tui.altScreen.transcriptSearchNext")) {
+                                this.transcriptNavigateSearch(1);
+                        } else if (keybindings.matches(data, "tui.altScreen.transcriptSearchPrevious")) {
+                                this.transcriptNavigateSearch(-1);
+                        } else if (keybindings.matches(data, "tui.altScreen.transcriptWriteScrollback")) {
+                                void this.writeTranscriptToScrollback();
+                        } else if (keybindings.matches(data, "tui.altScreen.transcriptOpenEditor")) {
+                                void this.openTranscriptInExternalEditor();
+                        } else if (
+                                keybindings.matches(data, "tui.altScreen.transcriptPrevPrompt") ||
+                                keybindings.matches(data, "tui.altScreen.previousPrompt")
+                        ) {
+                                this.scrollToPrompt(-1);
+                        } else if (
+                                keybindings.matches(data, "tui.altScreen.transcriptNextPrompt") ||
+                                keybindings.matches(data, "tui.altScreen.nextPrompt")
+                        ) {
+                                this.scrollToPrompt(1);
+                        } else {
+                                this.handleTranscriptScrollInput(data, keybindings);
+                        }
+                }
+                return { consume: true };
+        }
+
+        /** The scroll table shared by transcript mode: the mode's own keys plus the standing alt-screen bindings. */
+        private handleTranscriptScrollInput(data: string, keybindings: KeybindingsManager): void {
+                const view = this.getPrimaryScrollView();
+                const page = Math.max(1, view.viewportHeight - PAGE_SCROLL_OVERLAP);
+                const half = Math.max(1, Math.floor(view.viewportHeight / 2));
+                const rows: Array<{ ids: string[]; scroll: number | "top" | "bottom" }> = [
+                        { ids: ["tui.altScreen.transcriptLineUp", "tui.altScreen.lineUp"], scroll: -1 },
+                        { ids: ["tui.altScreen.transcriptLineDown", "tui.altScreen.lineDown"], scroll: 1 },
+                        { ids: ["tui.altScreen.transcriptHalfPageUp", "tui.altScreen.halfPageUp"], scroll: -half },
+                        { ids: ["tui.altScreen.transcriptHalfPageDown", "tui.altScreen.halfPageDown"], scroll: half },
+                        { ids: ["tui.altScreen.transcriptPageUp", "tui.altScreen.pageUp"], scroll: -page },
+                        { ids: ["tui.altScreen.transcriptPageDown", "tui.altScreen.pageDown"], scroll: page },
+                        { ids: ["tui.altScreen.transcriptTop", "tui.altScreen.top"], scroll: "top" },
+                        { ids: ["tui.altScreen.transcriptBottom", "tui.altScreen.bottom"], scroll: "bottom" },
+                ];
+                for (const row of rows) {
+                        for (const id of row.ids) {
+                                if (keybindings.matches(data, id as Keybinding)) {
+                                        if (row.scroll === "top") this.scrollToTop();
+                                        else if (row.scroll === "bottom") this.scrollToBottom();
+                                        else this.scrollBy(row.scroll);
+                                        return;
+                                }
+                        }
+                }
         }
 
         private updateSearchQuery(query: string): void {
@@ -652,7 +889,28 @@ export class TuiAltScreen extends TuiBase implements ViewportTUI {
                                 return { consume: true };
                         }
                 }
+                // Transcript mode (Toccata A9). The mode's ownership check runs
+                // BEFORE the overlay/dock deferral gate: when a docked dialog or
+                // focused overlay (a permission ask, a picker) has the keyboard,
+                // the mode yields on the first key and that key flows to the
+                // dialog. The toggle below stays AFTER the gate so dialogs keep
+                // keys they own (the tree picker's ctrl+o filter cycle).
+                if (this.transcriptModeActive) {
+                        if (this.activeSearch?.overlay?.isFocused()) {
+                                // The focused search overlay owns typing; the mode stays armed
+                                // and the existing search-key block above already ran.
+                        } else if (this.isOverlayFocused() || this.getFocusedComponent()?.wantsViewportNav === true) {
+                                this.exitTranscriptMode();
+                                return undefined;
+                        } else {
+                                return this.handleTranscriptModeInput(data, isRelease);
+                        }
+                }
                 if (this.shouldDeferViewportInputToOverlay()) return undefined;
+                if (keybindings.matches(data, "tui.altScreen.transcript")) {
+                        if (!isRelease) this.toggleTranscriptMode();
+                        return { consume: true };
+                }
                 if (keybindings.matches(data, "tui.altScreen.pageUp")) {
                         if (!isRelease) {
                                 this.scrollBy(-Math.max(1, this.getPrimaryScrollView().viewportHeight - PAGE_SCROLL_OVERLAP));

@@ -596,10 +596,30 @@ The most useful defaults (Windows/WSL variants in parentheses):
 
 | Key | Action |
 |---|---|
-| Ctrl+O | Toggle tool output expansion |
+| Ctrl+O | Regular mode: toggle tool output expansion. Fullscreen: toggle **transcript mode** — the Claude Code viewer lane (table below); tool output auto-expands inside it and the prior state returns on exit |
 | Ctrl+Shift+F | Search the transcript (Ctrl+F) |
 | Ctrl+Up / Ctrl+Down | Jump to the previous / next prompt |
 | Ctrl+X | Copy the message under the cursor to the clipboard |
+
+**Transcript mode** (fullscreen only, `Ctrl+O` to enter and exit) — the review
+surface Claude Code ships as its transcript viewer: tool output is expanded
+while you read (each block carries a dim `HH:MM:SS` timestamp), consecutive
+calls to the same tool collapse to `⋯ called <tool> ×N · Ctrl+O` when you
+leave, and a hint bar names the keys:
+
+| Key | Action |
+|---|---|
+| `{` / `}` | Jump to the previous / next user prompt (vim paragraph motion) |
+| `/` | Search the transcript (typing queries live; Esc closes) |
+| `n` / `N` | Next / previous search match — works after the search bar closes too |
+| `j` / `k`, `↑` / `↓` | Scroll one line |
+| `g` / `G`, Home / End | Jump to the top / bottom |
+| Ctrl+U / Ctrl+D | Scroll half a page |
+| Ctrl+B / Ctrl+F, `b` / Space | Scroll a full page |
+| `[` | Write the conversation (tool output expanded) into the terminal's native scrollback — Cmd+F and tmux copy mode can search it; press any key to return |
+| `v` | Write the conversation to a temp file and open it in `$VISUAL` / `$EDITOR` |
+| `?` | Toggle the keyboard-help panel |
+| `q` / Esc / Ctrl+C | Exit transcript mode (the editor gets the keyboard back; a docked dialog — a permission ask — always preempts the mode) |
 
 **Model**
 

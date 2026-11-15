@@ -21,6 +21,13 @@ import { stripAnsi } from "../../../utils/ansi.ts";
 
 const FALLBACK_PREVIEW_LINES = 10;
 
+/** `HH:MM:SS` (local time) for the expanded-block timestamp lane. */
+function formatTimestamp(timestampMs: number): string {
+        const date = new Date(timestampMs);
+        const pad = (value: number) => String(value).padStart(2, "0");
+        return `${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`;
+}
+
 export interface ToolExecutionOptions {
         showImages?: boolean;
         imageWidthCells?: number;
@@ -55,6 +62,7 @@ export class ToolExecutionComponent extends Container {
         };
         private convertedImages: Map<number, { data: string; mimeType: string }> = new Map();
         private hideComponent = false;
+        private resultTimestamp: number | undefined;
 
         constructor(
                 toolName: string,
@@ -176,6 +184,16 @@ export class ToolExecutionComponent extends Container {
                 return new Text(text, 0, 0);
         }
 
+        /** The tool name this block renders (the aggregation lane's grouping key). */
+        getToolName(): string {
+                return this.toolName;
+        }
+
+        /** Whether the execution is still streaming (the aggregation lane's present-tense signal). */
+        isExecutionPartial(): boolean {
+                return this.isPartial;
+        }
+
         updateArgs(args: any): void {
                 this.args = args;
                 this.updateDisplay();
@@ -198,10 +216,13 @@ export class ToolExecutionComponent extends Container {
                         content: Array<{ type: string; text?: string; data?: string; mimeType?: string }>;
                         details?: any;
                         isError: boolean;
+                        /** Unix ms — when the result arrived; rendered as a dim timestamp on expanded blocks (Toccata A9). */
+                        timestamp?: number;
                 },
                 isPartial = false,
         ): void {
                 this.result = result;
+                this.resultTimestamp = result.timestamp;
                 this.isPartial = isPartial;
                 this.updateDisplay();
                 this.maybeConvertImagesForKitty();
@@ -289,9 +310,12 @@ export class ToolExecutionComponent extends Container {
          * Prefix a rendered block with the glyph column: glyph + space on the first
          * visible line, two-space gutter on every other line, so content aligns
          * under the tool title and blocks read as one visual unit without fills.
+         * Expanded blocks with a known result timestamp carry it dim on the
+         * first content line (Toccata A9 — the transcript-viewer contract).
          */
         private decorateBlock(lines: string[]): string[] {
                 const glyph = this.stateGlyph();
+                const timestamp = this.expanded && this.resultTimestamp !== undefined ? formatTimestamp(this.resultTimestamp) : undefined;
                 const out: string[] = [];
                 let placed = false;
                 for (const line of lines) {
@@ -302,7 +326,7 @@ export class ToolExecutionComponent extends Container {
                         // opened with the glyph orphaned on its own padding row and the
                         // title indented below it (pane-verified: "✓\n   write …").
                         if (!placed && stripAnsi(line).trim().length > 0) {
-                                out.push(`${glyph} ${line}`);
+                                out.push(`${glyph} ${timestamp ? theme.fg("dim", `${timestamp} `) : ""}${line}`);
                                 placed = true;
                         } else {
                                 out.push(`  ${line}`);

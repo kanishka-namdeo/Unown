@@ -169,11 +169,13 @@ import {
 } from "./components/status-indicator.ts";
 import { ThinkingSelectorComponent } from "./components/thinking-selector.ts";
 import { ToolExecutionComponent } from "./components/tool-execution.ts";
+import { ChatTranscriptContainer } from "./components/tool-call-group.ts";
 import { TreeSelectorComponent } from "./components/tree-selector.ts";
 import { TrustSelectorComponent } from "./components/trust-selector.ts";
 import { UserMessageComponent } from "./components/user-message.ts";
 import { UserMessageSelectorComponent } from "./components/user-message-selector.ts";
 import { editInExternalEditor } from "./external-editor.ts";
+import { buildTranscriptMarkdown } from "./transcript-export.ts";
 import { refreshModelCatalogs } from "./model-catalog-refresh.ts";
 import { getModelSearchText } from "./model-search.ts";
 import { shareSession } from "./session-share.ts";
@@ -500,6 +502,10 @@ interface InteractiveTuiOptions {
         fullscreenCopyOnSelect?: boolean;
         /** Show the "terminal too small" notice below the minimum geometry (round 5, R2). The app opts in; direct renderer uses (tests, embedders) stay permissive. */
         minSizeNotice?: boolean;
+        /** Transcript mode hooks (Toccata A9): expand tool output on entry, restore on exit. */
+        onTranscriptModeChange?: (active: boolean) => void;
+        /** Transcript mode `v`: open the conversation in $VISUAL/$EDITOR (the host owns the stop/start dance). */
+        onTranscriptOpenEditor?: () => Promise<void>;
 }
 
 /** Composition root for selecting the interactive terminal renderer. */
@@ -520,6 +526,8 @@ export function createInteractiveTui(options: InteractiveTuiOptions): TuiMainScr
                         // true; direct renderer uses (tests, embedders) default
                         // to the permissive behavior.
                         minSizeNotice: options.minSizeNotice ?? false,
+                        onTranscriptModeChange: options.onTranscriptModeChange,
+                        onTranscriptOpenEditor: options.onTranscriptOpenEditor,
                         copySelection: async (text) => {
                                 try {
                                         await copyToClipboard(text);
@@ -744,6 +752,8 @@ export class InteractiveMode {
                         onRightClickPaste: this.onRightClickPaste,
                         fullscreenCopyOnSelect: this.settingsManager.getFullscreenCopyOnSelect(),
                         minSizeNotice: true,
+                        onTranscriptModeChange: (active) => this.handleTranscriptModeChange(active),
+                        onTranscriptOpenEditor: () => this.openTranscriptInExternalEditor(),
                 });
                 this.ui = createInteractiveTuiReference(() => this.renderer);
                 // Move 9 (arrival pacing): streaming text arrives in smooth <=8fps
@@ -752,7 +762,7 @@ export class InteractiveMode {
                 this.ui.setClearOnShrink(this.settingsManager.getClearOnShrink());
                 this.headerContainer = new Container();
                 this.loadedResourcesContainer = new Container();
-                this.chatContainer = new Container();
+                this.chatContainer = new ChatTranscriptContainer();
                 this.documentContainer = new Container();
                 this.documentContainer.addChild(this.headerContainer);
                 this.documentContainer.addChild(this.loadedResourcesContainer);
@@ -3609,6 +3619,7 @@ export class InteractiveMode {
                                                         component.updateResult({
                                                                 content: [{ type: "text", text: errorMessage }],
                                                                 isError: true,
+                                                                timestamp: Date.now(),
                                                         });
                                                 }
                                                 this.pendingTools.clear();
@@ -3660,7 +3671,7 @@ export class InteractiveMode {
                         case "tool_execution_update": {
                                 const component = this.pendingTools.get(event.toolCallId);
                                 if (component) {
-                                        component.updateResult({ ...event.partialResult, isError: false }, true);
+                                        component.updateResult({ ...event.partialResult, isError: false, timestamp: Date.now() }, true);
                                         this.ui.requestRender();
                                 }
                                 break;
@@ -3669,7 +3680,7 @@ export class InteractiveMode {
                         case "tool_execution_end": {
                                 const component = this.pendingTools.get(event.toolCallId);
                                 if (component) {
-                                        component.updateResult({ ...event.result, isError: event.isError });
+                                        component.updateResult({ ...event.result, isError: event.isError, timestamp: Date.now() });
                                         // Beauty-4: fold this execution's diff into the footer's +N -M chip.
                                         const counts = component.diffLineCounts();
                                         if (counts) {
@@ -4745,7 +4756,8 @@ export class InteractiveMode {
                 if (busy) {
                         // Working: the keys that matter right now.
                         const interrupt = keyText("app.interrupt");
-                        const tools = keyText("app.tools.expand");
+                        const tools =
+                                this.ui.mode === "fullscreen" ? keyText("tui.altScreen.transcript") : keyText("app.tools.expand");
                         const thinking = keyText("app.thinking.toggle");
                         return `${dim(interrupt)} ${dim("interrupt")}${sep}${dim(tools)} ${dim("tools")}${sep}${dim(thinking)} ${dim("thinking")}`;
                 }
@@ -4763,8 +4775,14 @@ export class InteractiveMode {
                         `${dim(keyText("app.palette"))} ${dim("palette")}`,
                         `${dim("/")} ${dim("commands")}`,
                         `${dim("!")} ${dim("bash")}`,
-                        `${dim(keyText("app.tools.expand"))} ${dim("tools")}`,
                 ];
+                if (this.ui.mode === "fullscreen") {
+                        // Fullscreen: ctrl+o is the transcript-mode toggle (the
+                        // Claude Code viewer lane); plain expand rides inside it.
+                        parts.push(`${dim(keyText("tui.altScreen.transcript"))} ${dim("transcript")}`);
+                } else {
+                        parts.push(`${dim(keyText("app.tools.expand"))} ${dim("tools")}`);
+                }
                 const escAction = this.settingsManager.getDoubleEscapeAction();
                 if (escAction !== "none") {
                         parts.push(`${dim("esc-esc")} ${dim(escAction)}`);
@@ -4828,7 +4846,44 @@ export class InteractiveMode {
                 this.setToolsExpanded(!this.toolOutputExpanded);
         }
 
-        private setToolsExpanded(expanded: boolean): void {
+        /** Tool-output expansion the transcript-mode entry asked to remember (Toccata A9). */
+        private toolsExpandedBeforeTranscript: boolean | undefined;
+
+        /** Transcript mode (Toccata A9): expand on entry, restore the prior state on exit. */
+        private handleTranscriptModeChange(active: boolean): void {
+                if (active) {
+                        if (this.toolOutputExpanded) return;
+                        this.toolsExpandedBeforeTranscript = this.toolOutputExpanded;
+                        this.setToolsExpanded(true, { silent: true });
+                } else {
+                        const restore = this.toolsExpandedBeforeTranscript;
+                        this.toolsExpandedBeforeTranscript = undefined;
+                        if (restore !== undefined && restore !== this.toolOutputExpanded) {
+                                this.setToolsExpanded(restore, { silent: true });
+                        }
+                }
+        }
+
+        /** Transcript mode `v`: the conversation as markdown in $VISUAL/$EDITOR, then back to the mode. */
+        private async openTranscriptInExternalEditor(): Promise<void> {
+                const editorCmd = this.settingsManager.getExternalEditorCommand();
+                const content = buildTranscriptMarkdown(this.sessionManager);
+                this.ui.stop();
+                try {
+                        const result = await editInExternalEditor({
+                                command: editorCmd,
+                                content,
+                        });
+                        if (result.status === "failed") {
+                                this.showWarning("External editor exited non-zero — transcript unchanged");
+                        }
+                } finally {
+                        this.ui.start();
+                        this.ui.requestRender(true);
+                }
+        }
+
+        private setToolsExpanded(expanded: boolean, options: { silent?: boolean } = {}): void {
                 if (expanded === this.toolOutputExpanded) return;
 
                 this.toolOutputExpanded = expanded;
@@ -4843,7 +4898,9 @@ export class InteractiveMode {
                                 }
                         }
                 }
-                this.showStatus(`Tool output: ${expanded ? "expanded" : "collapsed"}`);
+                if (!options.silent) {
+                        this.showStatus(`Tool output: ${expanded ? "expanded" : "collapsed"}`);
+                }
         }
 
         /** Update rendered assistant messages without rebuilding live tool components. */

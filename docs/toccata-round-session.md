@@ -16,7 +16,7 @@ This is the keyboard round.
 | CP0 research — the teardown + 47-point audit | ✅ done | `docs/tui-claude-code-parity-research.md` |
 | CP1 the editor lane — history, search, stash, drafts | ✅ done | `test/input-history.test.ts` (16) + tui `editor-history-persistence` (10) + `history-lane-keybindings` (6); suites 5768/0 |
 | CP2 the queue/image lane — send-now, image chips | ✅ done | send-now in CP1's commit; chips: tui `editor-image-chips` (10/10) |
-| CP3 the transcript lane — viewer keys, aggregation, timestamps | 🔲 pending | |
+| CP3 the transcript lane — viewer keys, aggregation, timestamps | ✅ done | tui `tui-alt-screen-transcript` (9/9) + coding-agent `tool-call-groups` (11/11); tui suite 1059/0 |
 | CP4 the dialog/command lane — permission comments, aliases, rewind picker, mid-prompt completion | 🔲 pending | |
 | CP5 the personality lane — spinner verbs, AGENTS.md flight | 🔲 pending | |
 | CP6 verification — suites + PTY lanes as a real user | 🔲 pending | |
@@ -88,10 +88,56 @@ landed inside CP1's commit. A8 image chips: Ctrl+V inserts an atomic
 stash aware, submit expands to the stored path, literal unregistered chips
 stay literal). tui suite green including the 10-case chip battery.
 
-## CP3 — the transcript lane (pending)
+## CP3 — the transcript lane (done, 2026-11-15)
 
-Scope: A9 transcript viewer keys (? { } [ v, timestamps), A10 tool-call
-aggregation chip.
+A9 transcript mode: fullscreen Ctrl+O toggles a MODAL review view (CC's
+transcript viewer is modal — bare `{`/`}`/`q`/`v` keys can never shadow
+editor typing, so the mode consumes unknown keys and yields on the first
+key when a docked dialog wants the keyboard). Keys: `{`/`}` prompt jumps
+(reusing the OSC-133 seam), `/` search + `n`/`N` (the last query survives
+search-close), less-nav (`j`/`k`/`g`/`G`/ctrl+u/d/ctrl+b/f/space/b — j down,
+k up, the vim contract), `[` write-to-scrollback (stop → park hint →
+keypress → start → re-enter; the press-any-key wait is injectable for the
+virtual terminal), `v` open-in-$EDITOR (host-owned stop/start dance, the
+conversation as markdown via `transcript-export.ts` — a viewing artifact,
+not the share format), `?` help panel (config-live from the registry),
+`q`/Esc/Ctrl+C exit. Tool output auto-expands on entry and restores on
+exit (`onTranscriptModeChange`, the silent setToolsExpanded option);
+expanded blocks carry a dim `HH:MM:SS` result timestamp (updateResult
+gains `timestamp`; live callers stamp `Date.now()`, replay passes the
+message's own). Regular mode keeps Ctrl+O as expand-all — the fork's
+split, documented in usage.md. New `tui.altScreen.transcript*` binding
+ids (16), all rebindable.
+
+A10 aggregation: `ChatTranscriptContainer` wraps consecutive
+same-name tool calls into a `ToolCallGroupComponent` at the container
+level (all four creation paths — live message_update,
+tool_execution_start fallback, replay, and future ones — group for
+free; any other component splits the run). Collapsed: one dim chip
+`⋯ called bash ×N · ctrl+o` (present tense `calling …` while streaming);
+expanded: the individual blocks (the group implements the Expandable
+fan-out and sums diffLineCounts). Single-call groups delegate to the
+bare block byte-identically. Per-call routing (pendingTools,
+updateResult) still addresses the individual components.
+
+Research verification (the resume session's fresh sweep): the official
+interactive-mode + fullscreen pages were re-fetched and quoted — the
+transcript-viewer key table, the `[` scrollback semantics ("lasts until
+you exit transcript mode"), `v`'s $VISUAL/$EDITOR contract, and the
+aggregation example (`Called slack 3 times` for MCP runs; consecutive
+runs split on a different tool — pinned by CC's own v2.1.234 changelog).
+Binary string-extraction from CC v2.1.325 confirmed no literal "Called
+Bash N times" — category-specific wording — so the fork's `⋯ called
+<tool> ×N` chip stays the decided form.
+
+Verification: tui suite **1059/0** (46 files), the new transcript battery
+9/9; coding-agent `tool-call-groups` 11/11 with the affected neighbors
+(tool-execution-component, truncation-chip, interactive-tui,
+history-lane, glyph-placement, execution-lanes) 55/55; the full
+coding-agent battery green over its documented environment baseline
+(model-registry, model-resolver, syntax-highlight, theme-detection,
+tools/find — all `fd`/model-catalog artifacts, verified present at the
+pristine baseline in CP1).
 
 ## CP4 — the dialog/command lane (pending)
 
