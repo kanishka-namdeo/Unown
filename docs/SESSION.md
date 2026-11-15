@@ -8,7 +8,25 @@ archaeology. When a round completes, its log graduates to a round-specific
 
 ---
 
-## IN FLIGHT — the Memory Nocturne round (2026-11-15)
+## IN FLIGHT — the Toccata round (2026-11-15)
+
+`docs/toccata-round-session.md` — the keyboard round: Claude Code's TUI
+experience reverse-engineered from the official interactive-mode and
+commands references plus the community/niche sources (every claim cited
+in `docs/tui-claude-code-parity-research.md`), audited against Unown at
+`47e4eca3` as a 47-point table, and the sixteen proven adoptions shipping
+end to end: the input-history lane (persistent per-cwd history, cleared-
+draft recall, Ctrl+R reverse search with scope cycling), the draft
+lifecycle (Ctrl+S stash/restore, Ctrl+D two-press matrix, Esc-Esc
+clear-draft-first), the queue lane (send-queued-now chords) and image
+chips, the transcript viewer keys (? { } [ v, timestamps, tool-call
+aggregation), the permission comment lane, mid-prompt slash completion,
+the /cost + /theme aliases, the interactive /rewind picker, spinner verbs
+(thinking-time flavor, honest labels keep priority), and the AGENTS.md
+first-flight offer — with six deliberate non-adoptions on record (vim
+editor, voice, spell check, emoji shortcodes, Enter-queues, ghost text).
+
+## GRADUATED — the Memory Nocturne round (2026-11-15, CLOSED at CP6)
 
 `docs/memory-nocturne-round-session.md` — the evidence-chain round: eight
 systems torn down (Mastra, Letta 2026, MemoryMesh, mcp-memory-service,
