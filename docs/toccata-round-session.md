@@ -19,7 +19,7 @@ This is the keyboard round.
 | CP3 the transcript lane — viewer keys, aggregation, timestamps | ✅ done | tui `tui-alt-screen-transcript` (9/9) + coding-agent `tool-call-groups` (11/11); tui suite 1059/0 |
 | CP4 the dialog/command lane — permission comments, aliases, rewind picker, mid-prompt completion | ✅ done | self-learning `permission-comment` (5) + `checkpoints-rewind` (6) + `theme-command` (8); coding-agent `extension-selector-comment` (8); tui `mid-prompt-slash` (10) |
 | CP5 the personality lane — spinner verbs, AGENTS.md flight | ✅ done | coding-agent `spinner-verbs` (19); flights/onboarding battery 66/66 |
-| CP6 verification — suites + PTY lanes as a real user | 🔲 pending | |
+| CP6 verification — suites + PTY lanes as a real user | ✅ done | PTY: toccata-cp5 10/10, footer-quiet 9/9, settings-hub lane pre-existing timeout (identical at baseline); suites green over documented baselines |
 | CP7 docs/landing/blog/CHANGELOG/DOX + version + release | 🔲 pending | |
 
 ## CP0 — the research (2026-11-15)
@@ -232,11 +232,42 @@ changes need the rebuild for both runtime and self-learning's tsc (back
 to its 88-error pre-existing baseline, zero new). CHANGELOG entry filed,
 self-learning AGENTS.md contract extended with CP5.
 
-## CP6 — verification (pending)
+## CP6 — verification (done, 2026-11-16)
 
-Unit batteries per surface + the PTY capture lane phases; the full
-suite green; cross-platform keybinding matrix (win32/WSL alt-fallbacks
-documented).
+Unit batteries per surface: every CP's pins re-ran green at its commit;
+at CP5's close the full self-learning suite ran **5798 pass / 105 skip /
+1 fail** — the fail is the router-singleton "initially idle" order flake,
+verified byte-identical at the pristine baseline (passes 24/24 isolated,
+pre-existing); tui suite exit-0 green; the coding-agent battery green over
+its documented environment-artifact baseline (model-registry,
+model-resolver, syntax-highlight, theme-detection, tools/find — the exact
+files, no new failures); self-learning tsc at its 88-error pre-existing
+baseline with zero new; biome zero new warnings; instruction-chars,
+check:docs, check:changelog (rail regenerated, 63rd stop), check:claims,
+check:benchmarks all green.
+
+PTY lanes as a real user: `verify_toccata_cp5.py` **10/10** — a live Agnes
+turn with the forced pool (UNOWN_SPINNER_VERBS=Pondering,Brewing,Vibing)
+showed the verb on the working line ("Vibing...") and the honest tool
+label takeover ("Reading README.md..."); the A16 offer card verified across
+four boot shapes (fresh boot in a bare repo — the offer leads + no latch
+write; returning user in an unoffered bare repo — the offer once, recorded
+in agentsMdOfferedFor; re-boot in the offered repo — never again; a repo
+WITH an AGENTS.md — never). `verify_footer_quiet.py` **9/9** after a
+stack restart — the first run failed A2/A3 on the honest `memory: up ·
+old build` chip because the engine was still booted from the pre-CP5 sha:
+the Divertimento round's live-verification law re-proven (a stale engine
+is a stale verdict; `agent:stop` + `agent:start` onto the current tree,
+sha b69b3b3c, restored the lane). `verify_settings_hub.py` timed out on
+its hub-menu anchor IDENTICALLY at baseline (pre-existing environment
+drift in this sandbox, not this round — the hub unit suites 30/30 and the
+lane's own pane dumps show the hub rendering).
+
+Cross-platform matrix: the keybinding tables (usage.md) carry every
+Toccata key with its Windows/WSL variants in parentheses (Ctrl+R search,
+Ctrl+S stash, Alt+S/Ctrl+Enter send-now, Ctrl+V/Alt+V image chips, Ctrl+D
+800 ms exit, the transcript-mode key table); the 3-OS build legs ride the
+release tag (CP7).
 
 ## CP7 — ship (pending)
 
