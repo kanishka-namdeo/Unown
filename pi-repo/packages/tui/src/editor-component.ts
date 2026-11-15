@@ -9,72 +9,84 @@ import type { Component } from "./tui.ts";
  * compatibility with the core application.
  */
 export interface EditorComponent extends Component {
-	// =========================================================================
-	// Core text access (required)
-	// =========================================================================
+        // =========================================================================
+        // Core text access (required)
+        // =========================================================================
 
-	/** Get the current text content */
-	getText(): string;
+        /** Get the current text content */
+        getText(): string;
 
-	/** Set the text content */
-	setText(text: string): void;
+        /** Set the text content */
+        setText(text: string): void;
 
-	/** Handle raw terminal input (key presses, paste sequences, etc.) */
-	handleInput(data: string): void;
+        /** Handle raw terminal input (key presses, paste sequences, etc.) */
+        handleInput(data: string): void;
 
-	// =========================================================================
-	// Callbacks (required)
-	// =========================================================================
+        // =========================================================================
+        // Callbacks (required)
+        // =========================================================================
 
-	/** Called when user submits (e.g., Enter key) */
-	onSubmit?: (text: string) => void;
+        /** Called when user submits (e.g., Enter key) */
+        onSubmit?: (text: string) => void;
 
-	/** Called when text changes */
-	onChange?: (text: string) => void;
+        /** Called when text changes */
+        onChange?: (text: string) => void;
 
-	// =========================================================================
-	// History support (optional)
-	// =========================================================================
+        // =========================================================================
+        // History support (optional)
+        // =========================================================================
 
-	/** Add text to history for up/down navigation */
-	addToHistory?(text: string): void;
+        /** Add text to history for up/down navigation */
+        addToHistory?(text: string): void;
 
-	// =========================================================================
-	// Advanced text manipulation (optional)
-	// =========================================================================
+        /** Seed history with persisted entries (newest first; dedup by text). */
+        seedHistory?(entries: string[]): void;
 
-	/** Insert text at current cursor position */
-	insertTextAtCursor?(text: string): void;
+        /** Read-only view of the in-session history (newest first). */
+        getHistoryEntries?(): string[];
 
-	/**
-	 * Get text with any markers expanded (e.g., paste markers).
-	 * Falls back to getText() if not implemented.
-	 */
-	getExpandedText?(): string;
+        /** Save a restorable snapshot of the editor state (draft stash lane). */
+        saveEditorState?(): import("./components/editor.ts").EditorStateSnapshot;
 
-	// =========================================================================
-	// Autocomplete support (optional)
-	// =========================================================================
+        /** Restore a snapshot from saveEditorState (paste markers intact). */
+        restoreEditorState?(snapshot: import("./components/editor.ts").EditorStateSnapshot): void;
 
-	/** Set the autocomplete provider */
-	setAutocompleteProvider?(provider: AutocompleteProvider): void;
+        // =========================================================================
+        // Advanced text manipulation (optional)
+        // =========================================================================
 
-	// =========================================================================
-	// Appearance (optional)
-	// =========================================================================
+        /** Insert text at current cursor position */
+        insertTextAtCursor?(text: string): void;
 
-	/** Border color function */
-	borderColor?: (str: string) => string;
+        /**
+         * Get text with any markers expanded (e.g., paste markers).
+         * Falls back to getText() if not implemented.
+         */
+        getExpandedText?(): string;
 
-	/** Mode badge rendered inline on the top border (e.g. "bash", "thinking high") */
-	borderBadge?: string;
+        // =========================================================================
+        // Autocomplete support (optional)
+        // =========================================================================
 
-	/** Styling for the mode badge */
-	borderBadgeColor?: (str: string) => string;
+        /** Set the autocomplete provider */
+        setAutocompleteProvider?(provider: AutocompleteProvider): void;
 
-	/** Set horizontal padding */
-	setPaddingX?(padding: number): void;
+        // =========================================================================
+        // Appearance (optional)
+        // =========================================================================
 
-	/** Set max visible items in autocomplete dropdown */
-	setAutocompleteMaxVisible?(maxVisible: number): void;
+        /** Border color function */
+        borderColor?: (str: string) => string;
+
+        /** Mode badge rendered inline on the top border (e.g. "bash", "thinking high") */
+        borderBadge?: string;
+
+        /** Styling for the mode badge */
+        borderBadgeColor?: (str: string) => string;
+
+        /** Set horizontal padding */
+        setPaddingX?(padding: number): void;
+
+        /** Set max visible items in autocomplete dropdown */
+        setAutocompleteMaxVisible?(maxVisible: number): void;
 }

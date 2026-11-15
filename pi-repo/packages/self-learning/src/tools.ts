@@ -116,6 +116,7 @@ import {
         renderGoalStatus,
 } from "./goal.ts";
 import { generateAgentsMd } from "./init-agents.ts";
+import { createInputHistoryStore } from "./input-history.ts";
 import { buildInsightsReport, insightsHintLine, renderInsightsReport } from "./insights.ts";
 import { markInstallCardSeen, modelPillFromAgentDir, pendingInstallCard } from "./install-surface.ts";
 import { checkSchemaShape, type SchemaIssue, validateJsonSchema } from "./jsonschema.ts";
@@ -7400,6 +7401,21 @@ Execute the steps in order. The seeded todo tasks ARE these steps — complete e
                         // is at rest — terminals (Rex, Ghostty) surface it in the tab/status
                         // area. Cosmetic best-effort, same posture as the OSC-9 turn ping.
                         reportIdle("session ready");
+                        // The Toccata round (2026-11-15): the persisted per-cwd
+                        // input history — Claude Code's history contract (per
+                        // working directory, survives sessions, feeds the
+                        // Ctrl+R reverse-search scopes). The store seeds the
+                        // editor, records every submission, and never throws.
+                        // UNOWN_INPUT_HISTORY=0 detaches the lane (the in-editor
+                        // session history still works); subagents and headless
+                        // runs never attach it.
+                        if (!isSubagent && ctx?.hasUI && ctx.mode === "tui" && typeof ctx.ui?.setHistoryStore === "function") {
+                                try {
+                                        ctx.ui.setHistoryStore(createInputHistoryStore());
+                                } catch {
+                                        /* optional seam — history stays session-scoped */
+                                }
+                        }
                         if (pi.getFlag("plan") === true) planModeEnabled = true;
                         // Plan Mode V2 (gap P-07): the opusplan-style model split flag.
                         // `--plan-model <id>` (or PI_PLAN_MODEL_ID) applies while planning;

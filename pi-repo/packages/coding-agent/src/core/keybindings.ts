@@ -28,6 +28,9 @@ export interface AppKeybindings {
         "app.message.copy": true;
         "app.message.followUp": true;
         "app.message.dequeue": true;
+        "app.message.sendQueued": true;
+        "app.history.search": true;
+        "app.editor.stash": true;
         "app.clipboard.pasteImage": true;
         "app.session.new": true;
         "app.session.tree": true;
@@ -147,6 +150,22 @@ export const KEYBINDINGS = {
         "app.message.dequeue": {
                 defaultKeys: windowsKeybindings ? "alt+q" : "alt+up",
                 description: "Restore queued messages",
+        },
+        "app.message.sendQueued": {
+                // Claude Code's "send queued messages now" lane (Ctrl+Enter
+                // there). ctrl+enter only arrives in terminals with extended
+                // keys (Kitty CSI-u / modifyOtherKeys); everywhere else it
+                // collapses to plain Enter, so alt+s is the always-works key.
+                defaultKeys: ["ctrl+enter", "alt+s"],
+                description: "Send queued messages now",
+        },
+        "app.history.search": {
+                defaultKeys: "ctrl+r",
+                description: "Search input history",
+        },
+        "app.editor.stash": {
+                defaultKeys: "ctrl+s",
+                description: "Stash or restore the prompt draft",
         },
         "app.clipboard.pasteImage": {
                 defaultKeys: windowsKeybindings ? "alt+v" : "ctrl+v",

@@ -581,11 +581,15 @@ The most useful defaults (Windows/WSL variants in parentheses):
 
 | Key | Action |
 |---|---|
-| Esc | Abort what is running (turn / bash / compaction / retry) / cancel a dialog — the same matrix as `/abort` |
-| Ctrl+C | Clear the editor; on an already-empty editor the first press shows "Press Ctrl+C again to exit" and a second press within 500 ms exits — every exit prints the [resume hint](session-lifecycle.md#the-exit-hint--the-line-every-exit-prints) |
-| Ctrl+D | Exit when the editor is empty |
+| Esc | Abort what is running (turn / bash / compaction / retry) / cancel a dialog — the same matrix as `/abort`; Esc-Esc with text in the editor clears the draft to history first (Up restores it) |
+| Esc Esc | Empty editor: the session tree / fork picker (the `doubleEscapeAction` setting) |
+| Ctrl+C | Clear the editor (the cleared draft lands in history — Up restores it); on an already-empty editor the first press shows "Press Ctrl+C again to exit" and a second press within 500 ms exits — every exit prints the [resume hint](session-lifecycle.md#the-exit-hint--the-line-every-exit-prints) |
+| Ctrl+D | Delete the character after the cursor when the editor holds text; on an empty editor the first press shows "Press Ctrl+D again to exit" and a second press within 800 ms exits |
 | Ctrl+G | Open your external editor for long prompts |
+| Ctrl+R | Search input history: fuzzy filter, first-line previews, Ctrl+R next match, Ctrl+S cycles the scope (this session → this project → all projects); Enter accepts and submits, Tab accepts and keeps editing, Esc cancels |
+| Ctrl+S | Stash the draft (text, cursor, paste markers, bash mode) / restore it again on an empty editor |
 | Alt+Enter | Queue a follow-up message while the agent works (Ctrl+Q) |
+| Alt+S / Ctrl+Enter | Send queued messages now — the draft joins the queue first, then the running turn is interrupted through the abort matrix and the queue drains (Ctrl+Enter only in terminals that report extended keys; Alt+S works everywhere) |
 | Ctrl+V | Paste an image from the clipboard (Alt+V) |
 
 **Navigation**
@@ -622,6 +626,14 @@ The most useful defaults (Windows/WSL variants in parentheses):
 | Ctrl+] | Collapse/expand an open ask_user_question dialog |
 
 `/hotkeys` shows the full list; `~/.unown/agent/keybindings.json` overrides any default.
+
+**Input history** — every submitted prompt (and `!` shell command) is
+recorded per working directory under `~/.unown/agent/input-history/`, so
+Up-recall reaches past sessions of the same project and the Ctrl+R search
+dialog can query this project or all projects. Consecutive duplicates
+collapse to one entry; cleared drafts (Ctrl+C clear, Esc-Esc) land in the
+session history for immediate Up recall. `UNOWN_INPUT_HISTORY=0` detaches
+the whole lane.
 
 ## Sessions
 

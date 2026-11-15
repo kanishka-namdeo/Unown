@@ -94,6 +94,22 @@ export type { AppKeybinding, KeybindingsManager } from "../keybindings.ts";
 // UI Context
 // ============================================================================
 
+/**
+ * A persisted input-history store (Claude Code's per-working-directory
+ * input history contract). The interactive layer seeds the editor from the
+ * store, appends every submitted prompt to it, and offers the store's
+ * scopes inside the Ctrl+R history-search dialog alongside the always-
+ * present "session" scope.
+ */
+export interface EditorHistoryStore {
+        /** Extra search scopes, in cycle order (e.g. this project, all projects). */
+        scopes(): Array<{ id: string; label: string }>;
+        /** Entries for a scope id, newest first. Unknown ids return []. */
+        load(scope: string): string[];
+        /** Record a submitted prompt. Never throws. */
+        append(text: string): void;
+}
+
 /** Options for extension UI dialogs. */
 export interface ExtensionUIDialogOptions {
         /** AbortSignal to programmatically dismiss the dialog. */
@@ -218,6 +234,15 @@ export interface ExtensionUIContext {
 
         /** Paste text into the editor, triggering paste handling (collapse for large content). */
         pasteToEditor(text: string): void;
+
+        /**
+         * Provide a persisted input-history store (Claude Code's per-working-
+         * directory input history). The editor's in-session history always
+         * exists; a store adds cross-session persistence and extra search
+         * scopes for the input-history search dialog (Ctrl+R). Pass
+         * undefined to detach.
+         */
+        setHistoryStore(store?: EditorHistoryStore): void;
 
         /** Set the text in the core input editor. */
         setEditorText(text: string): void;

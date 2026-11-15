@@ -14,7 +14,7 @@ This is the keyboard round.
 | Phase | Status | Artifact |
 |---|---|---|
 | CP0 research — the teardown + 47-point audit | ✅ done | `docs/tui-claude-code-parity-research.md` |
-| CP1 the editor lane — history, search, stash, drafts | 🔲 pending | |
+| CP1 the editor lane — history, search, stash, drafts | ✅ done | `test/input-history.test.ts` (16) + tui `editor-history-persistence` (10) + `history-lane-keybindings` (6); suites 5768/0 |
 | CP2 the queue/image lane — send-now, image chips | 🔲 pending | |
 | CP3 the transcript lane — viewer keys, aggregation, timestamps | 🔲 pending | |
 | CP4 the dialog/command lane — permission comments, aliases, rewind picker, mid-prompt completion | 🔲 pending | |
@@ -54,11 +54,30 @@ emoji shortcodes, Enter-queues, ghost text).
   AutoDream writes from this session's smoke tests — never staged into
   round commits (DOX: stage explicit paths only).
 
-## CP1 — the editor lane (pending)
+## CP1 — the editor lane (done, 2026-11-15)
 
-Scope: A1 persistent per-cwd history, A2 cleared-draft recall, A3
-Ctrl+R reverse search with scope cycle, A4 Ctrl+S stash/restore, A5
-Ctrl+D two-press + delete-forward, A6 Esc-Esc clear-draft first step.
+Landed: A1 persistent per-cwd history (`input-history.ts` — 500-cap JSONL
+per sha256(cwd), consecutive-dup suppression, corrupt-line tolerance,
+`UNOWN_INPUT_HISTORY=0` kill switch, editor seeded at session_start), A2
+cleared-draft recall (Ctrl+C clear + Esc-Esc with text land the draft in
+session history, "Up restores it" hint), A3 the Ctrl+R search dialog
+(fuzzy filter, previews, Ctrl+R next, Ctrl+S scope cycle
+session→project→all; Enter submits, Tab edits), A4 Ctrl+S stash/restore of
+the full editor snapshot (paste markers + bash badge included, undoable),
+A5 Ctrl+D 800 ms two-press exit confirm (delete-forward-when-text
+verified), A6 Esc-Esc clear-draft-first. Bonus: Ctrl+Enter/Alt+S
+send-queued-now (the draft joins the queue, then the abort matrix drains
+it) and the 100→500 in-memory cap rise.
+
+Verification: self-learning suite **5768/0** (267 files), tui suite green
+(incl. the new 10-case history-persistence battery), coding-agent
+startup-input test updated to the recordHistory seam + the new 6-case
+dispatch battery; the pre-existing coding-agent failures (model-registry,
+model-resolver, syntax-highlight, theme-detection, tools/find) verified
+present at the pristine baseline 47e4eca3 — environment artifacts, not
+this round's regressions. CHANGELOG entry filed, landing rail regenerated
+(62 stops), `.env.example` + `docs/configuration.md` + `docs/usage.md`
+keybinding tables updated, self-learning AGENTS.md contract added.
 
 ## CP2 — the queue/image lane (pending)
 

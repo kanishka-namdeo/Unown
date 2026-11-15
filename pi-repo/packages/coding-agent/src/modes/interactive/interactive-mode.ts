@@ -14,6 +14,7 @@ import type {
         AutocompleteItem,
         AutocompleteProvider,
         EditorComponent,
+        EditorStateSnapshot,
         Keybinding,
         KeyId,
         MarkdownTheme,
@@ -70,6 +71,7 @@ import { DEFAULT_THINKING_LEVEL, THINKING_LEVEL_OPTIONS } from "../../core/defau
 import type {
         AutocompleteProviderFactory,
         EditorFactory,
+        EditorHistoryStore,
         ExtensionCommandContext,
         ExtensionContext,
         ExtensionRunner,
@@ -122,6 +124,10 @@ import { ArminComponent } from "./components/armin.ts";
 import { AssistantMessageComponent } from "./components/assistant-message.ts";
 import { BashExecutionComponent } from "./components/bash-execution.ts";
 import { BranchSummaryMessageComponent } from "./components/branch-summary-message.ts";
+import {
+        createHistorySearchOverlay,
+        type HistorySearchScope,
+} from "./components/history-search.ts";
 import { CompactionSummaryMessageComponent } from "./components/compaction-summary-message.ts";
 import { CommandPalette, type PaletteEntry } from "./components/command-palette.ts";
 import { CustomEditor } from "./components/custom-editor.ts";
@@ -601,6 +607,14 @@ export class InteractiveMode {
 
         private lastSigintTime = 0;
         private lastEscapeTime = 0;
+        // The Toccata round (2026-11-15): the Claude Code input-history and
+        // draft-lifecycle lanes.
+        /** Persisted input-history store (per-cwd), injected by an extension. */
+        private historyStore: EditorHistoryStore | undefined;
+        /** Two-press Ctrl+D exit window (Claude Code: 800 ms). */
+        private lastCtrlDTime = 0;
+        /** Ctrl+S draft stash: full editor snapshot (or text fallback) + bash mode. */
+        private draftStash: { snapshot: EditorStateSnapshot | null; text: string; bashMode: boolean } | null = null;
         private changelogMarkdown: string | undefined = undefined;
         private startupNoticesShown = false;
         private anthropicSubscriptionWarningShown = false;
@@ -2693,6 +2707,7 @@ export class InteractiveMode {
                         setTitle: (title) => this.ui.terminal.setTitle(title),
                         custom: (factory, options) => this.showExtensionCustom(factory, options),
                         pasteToEditor: (text) => this.editor.handleInput(`\x1b[200~${text}\x1b[201~`),
+                        setHistoryStore: (store) => this.setHistoryStore(store),
                         setEditorText: (text) => this.editor.setText(text),
                         getEditorText: () => this.editor.getExpandedText?.() ?? this.editor.getText(),
                         editor: (title, prefill) => this.showExtensionEditor(title, prefill),
@@ -2918,6 +2933,16 @@ export class InteractiveMode {
                         newEditor.onSubmit = this.defaultEditor.onSubmit;
                         newEditor.onChange = this.defaultEditor.onChange;
 
+                        // Seed input history into the swapped editor (the
+                        // Toccata round: history follows the editor slot) —
+                        // the previous editor's in-session entries first, the
+                        // persisted store under them.
+                        const sessionEntries = this.editor.getHistoryEntries?.() ?? [];
+                        if (sessionEntries.length > 0) {
+                                newEditor.seedHistory?.(sessionEntries);
+                        }
+                        this.seedHistoryInto(newEditor);
+
                         // Copy text from previous editor
                         newEditor.setText(currentText);
 
@@ -3120,6 +3145,19 @@ export class InteractiveMode {
                                                 this.lastEscapeTime = now;
                                         }
                                 }
+                        } else {
+                                // Claude Code parity (Toccata round): Esc-Esc with
+                                // text in the editor clears the draft to history
+                                // (Up restores it) BEFORE the empty-input behavior
+                                // (tree/fork picker) becomes reachable.
+                                const now = Date.now();
+                                if (now - this.lastEscapeTime < 500) {
+                                        this.clearDraftToHistory("esc-esc");
+                                        this.editor.setText("");
+                                        this.lastEscapeTime = 0;
+                                } else {
+                                        this.lastEscapeTime = now;
+                                }
                         }
                 };
 
@@ -3143,6 +3181,9 @@ export class InteractiveMode {
                 );
                 this.defaultEditor.onAction("app.message.followUp", () => this.handleFollowUp());
                 this.defaultEditor.onAction("app.message.dequeue", () => this.handleDequeue());
+                this.defaultEditor.onAction("app.message.sendQueued", () => void this.handleSendQueued());
+                this.defaultEditor.onAction("app.history.search", () => this.openHistorySearch());
+                this.defaultEditor.onAction("app.editor.stash", () => this.handleDraftStash());
                 this.defaultEditor.onAction("app.session.new", () => this.handleClearCommand());
                 this.defaultEditor.onAction("app.session.tree", () => this.showTreeSelector());
                 this.defaultEditor.onAction("app.session.fork", () => this.showUserMessageSelector());
@@ -3371,7 +3412,7 @@ export class InteractiveMode {
                                                 this.editor.setText(text);
                                                 return;
                                         }
-                                        this.editor.addToHistory?.(text);
+                                        this.recordHistory(text);
                                         await this.handleBashCommand(command, isExcluded);
                                         this.isBashMode = false;
                                         this.updateEditorBorderColor();
@@ -3382,7 +3423,7 @@ export class InteractiveMode {
                         // Queue input during compaction (extension commands execute immediately)
                         if (this.session.isCompacting) {
                                 if (this.isExtensionCommand(text)) {
-                                        this.editor.addToHistory?.(text);
+                                        this.recordHistory(text);
                                         this.editor.setText("");
                                         await this.session.prompt(text);
                                 } else {
@@ -3394,7 +3435,7 @@ export class InteractiveMode {
                         // If streaming, use prompt() with steer behavior
                         // This handles extension commands (execute immediately), prompt template expansion, and queueing
                         if (this.session.isStreaming) {
-                                this.editor.addToHistory?.(text);
+                                this.recordHistory(text);
                                 this.editor.setText("");
                                 await this.session.prompt(text, { streamingBehavior: "steer" });
                                 this.updatePendingMessagesDisplay();
@@ -3411,7 +3452,7 @@ export class InteractiveMode {
                         } else {
                                 this.pendingUserInputs.push(text);
                         }
-                        this.editor.addToHistory?.(text);
+                        this.recordHistory(text);
                 };
         }
 
@@ -3944,7 +3985,7 @@ export class InteractiveMode {
                                                 this.chatContainer.addChild(userComponent);
                                         }
                                         if (options?.populateHistory) {
-                                                this.editor.addToHistory?.(textContent);
+                                                this.recordHistory(textContent);
                                         }
                                 }
                                 break;
@@ -4200,6 +4241,8 @@ export class InteractiveMode {
                         // editor held text, the clear itself is the visible feedback.
                         if (this.editor.getText().length === 0) {
                                 this.showStatus("Press Ctrl+C again to exit");
+                        } else {
+                                this.clearDraftToHistory("cleared");
                         }
                         this.clearEditor();
                         this.lastSigintTime = now;
@@ -4207,8 +4250,197 @@ export class InteractiveMode {
         }
 
         private handleCtrlD(): void {
-                // Only called when editor is empty (enforced by CustomEditor)
-                void this.shutdown();
+                // Only called when editor is empty (enforced by CustomEditor).
+                // Claude Code parity: the first press shows a confirmation hint;
+                // a second press within 800 ms exits.
+                const now = Date.now();
+                if (now - this.lastCtrlDTime < 800) {
+                        void this.shutdown();
+                } else {
+                        this.showStatus("Press Ctrl+D again to exit");
+                        this.lastCtrlDTime = now;
+                }
+        }
+
+        // =========================================================================
+        // Input history + draft lifecycle (the Toccata round, 2026-11-15 —
+        // Claude Code's history contract: per-cwd persistence, cleared-draft
+        // recall, Ctrl+R reverse search, Ctrl+S stash/restore)
+        // =========================================================================
+
+        /**
+         * Record a submitted prompt: the editor's in-session history (Up/Down
+         * recall) and, when a store is attached, the persisted per-cwd file.
+         * The store append is failure-tolerant by contract (never throws).
+         */
+        private recordHistory(text: string): void {
+                this.editor.addToHistory?.(text);
+                if (this.historyStore) {
+                        try {
+                                this.historyStore.append(text);
+                        } catch {
+                                // A history write must never break a submission.
+                        }
+                }
+        }
+
+        /**
+         * Save a draft being cleared (Ctrl+C clear or Esc-Esc with text) into
+         * the in-session history so Up immediately recalls it — Claude Code's
+         * "bring back a cleared draft" lane. In-session only: a cleared draft
+         * is not a submission and never reaches the persisted store.
+         */
+        private clearDraftToHistory(reason: "cleared" | "esc-esc"): void {
+                const draft = this.editor.getExpandedText?.() ?? this.editor.getText();
+                const trimmed = draft.trim();
+                if (!trimmed) return;
+                this.editor.addToHistory?.(trimmed);
+                this.showStatus(
+                        reason === "esc-esc"
+                                ? "Draft saved to history — Up restores it"
+                                : "Draft cleared — Up restores it",
+                );
+        }
+
+        /** Attach (or detach) the persisted input-history store and seed the editor. */
+        setHistoryStore(store: EditorHistoryStore | undefined): void {
+                this.historyStore = store;
+                this.seedHistoryInto(this.editor);
+        }
+
+        /** Seed an editor from the store (dedup by the Editor's own seedHistory). */
+        private seedHistoryInto(editor: { seedHistory?: (entries: string[]) => void }): void {
+                if (!this.historyStore || !editor.seedHistory) return;
+                for (const scope of this.historyStore.scopes()) {
+                        // Seed from the first scope only — scopes overlap by
+                        // design (project ⊂ all) and the editor history is a
+                        // flat recall lane, not a search surface.
+                        try {
+                                editor.seedHistory(this.historyStore.load(scope.id));
+                        } catch {
+                                return;
+                        }
+                        return;
+                }
+        }
+
+        /** Ctrl+R — the input-history search dialog (Claude Code's reverse search). */
+        private openHistorySearch(): void {
+                const scopes: HistorySearchScope[] = [
+                        {
+                                id: "session",
+                                label: "this session",
+                                load: () => this.editor.getHistoryEntries?.() ?? [],
+                        },
+                ];
+                for (const scope of this.historyStore?.scopes() ?? []) {
+                        scopes.push({ id: scope.id, label: scope.label, load: () => this.historyStore?.load(scope.id) ?? [] });
+                }
+                const sessionCount = scopes[0]?.load().length ?? 0;
+                const storeCount = this.historyStore?.scopes().length ?? 0;
+                if (sessionCount === 0 && storeCount === 0) {
+                        this.showStatus("No input history yet");
+                        return;
+                }
+                this.showSelector((done) => {
+                        const overlay = createHistorySearchOverlay({
+                                scopes,
+                                terminalHeight: this.ui.terminal.rows,
+                                onAccept: (text, mode) => {
+                                        done();
+                                        this.editor.setText(text);
+                                        if (mode === "submit") {
+                                                // Claude Code: Enter accepts AND executes.
+                                                const onSubmit = this.editor.onSubmit ?? this.defaultEditor.onSubmit;
+                                                if (onSubmit) {
+                                                        this.editor.setText("");
+                                                        void onSubmit(text);
+                                                }
+                                        } else {
+                                                this.showStatus("Restored from history");
+                                        }
+                                },
+                                onCancel: () => done(),
+                        });
+                        return overlay;
+                });
+        }
+
+        /**
+         * Ctrl+S — stash the draft (or restore a stashed one on an empty
+         * editor). Claude Code restores "the stashed text, cursor position,
+         * pasted content, and input mode", so the stash carries a full
+         * editor snapshot plus the bash-mode flag.
+         */
+        private handleDraftStash(): void {
+                if (this.editor.getText().length === 0) {
+                        if (!this.draftStash) {
+                                this.showStatus("No stashed draft");
+                                return;
+                        }
+                        const stash = this.draftStash;
+                        this.draftStash = null;
+                        if (stash.snapshot) {
+                                this.editor.restoreEditorState?.(stash.snapshot);
+                        } else {
+                                this.editor.setText(stash.text);
+                        }
+                        this.isBashMode = stash.bashMode;
+                        this.updateEditorBorderColor();
+                        this.showStatus("Draft restored");
+                        return;
+                }
+                this.draftStash = {
+                        snapshot: this.editor.saveEditorState?.() ?? null,
+                        text: this.editor.getText(),
+                        bashMode: this.isBashMode,
+                };
+                this.editor.setText("");
+                this.showStatus("Draft stashed — Ctrl+S again to restore");
+        }
+
+        /**
+         * Ctrl+Enter / Alt+S — send queued messages now (Claude Code's
+         * "send what you queued" lane). The draft, if any, joins the queue
+         * first so order is preserved; an active turn is interrupted through
+         * the unified abort matrix (work done so far is kept) and the queue
+         * drains immediately after.
+         */
+        private async handleSendQueued(): Promise<void> {
+                const { steering, followUp } = this.getAllQueuedMessages();
+                const draft = (this.editor.getExpandedText?.() ?? this.editor.getText()).trim();
+
+                if (steering.length + followUp.length === 0 && !draft) {
+                        this.showStatus("Nothing queued to send");
+                        return;
+                }
+
+                // The draft rides last, after the already-queued messages.
+                if (draft) {
+                        this.recordHistory(draft);
+                        this.editor.setText("");
+                        if (this.session.isStreaming) {
+                                await this.session.prompt(draft, { streamingBehavior: "followUp" });
+                        } else if (this.session.isCompacting) {
+                                this.queueCompactionMessage(draft, "followUp");
+                        } else {
+                                // Nothing running: the draft is the whole payload.
+                                const onSubmit = this.editor.onSubmit ?? this.defaultEditor.onSubmit;
+                                if (onSubmit) void onSubmit(draft);
+                                this.showStatus("Sent");
+                                return;
+                        }
+                }
+
+                // Interrupt the running turn — the same cooperative abort as
+                // Esc, so the queue drains right away and work is kept.
+                if (this.abortActiveOperation()) {
+                        this.showStatus("Sending queued messages now");
+                        this.updatePendingMessagesDisplay();
+                        this.ui.requestRender();
+                } else {
+                        this.showStatus("Queued — the turn ends on its own");
+                }
         }
 
         /**
@@ -4439,7 +4671,7 @@ export class InteractiveMode {
                 // Queue input during compaction (extension commands execute immediately)
                 if (this.session.isCompacting) {
                         if (this.isExtensionCommand(text)) {
-                                this.editor.addToHistory?.(text);
+                                this.recordHistory(text);
                                 this.editor.setText("");
                                 await this.session.prompt(text);
                         } else {
@@ -4451,7 +4683,7 @@ export class InteractiveMode {
                 // Alt+Enter queues a follow-up message (waits until agent finishes)
                 // This handles extension commands (execute immediately), prompt template expansion, and queueing
                 if (this.session.isStreaming) {
-                        this.editor.addToHistory?.(text);
+                        this.recordHistory(text);
                         this.editor.setText("");
                         await this.session.prompt(text, { streamingBehavior: "followUp" });
                         this.updatePendingMessagesDisplay();
@@ -4814,7 +5046,7 @@ export class InteractiveMode {
 
         private queueCompactionMessage(text: string, mode: "steer" | "followUp"): void {
                 this.compactionQueuedMessages.push({ text, mode });
-                this.editor.addToHistory?.(text);
+                this.recordHistory(text);
                 this.editor.setText("");
                 this.updatePendingMessagesDisplay();
                 this.showStatus("Queued message for after compaction");
