@@ -320,6 +320,7 @@ Every session also keeps a **receipts audit ledger** and a **checkpoint store** 
 |---|---|
 | `/checkpoint [label]` | Snapshot the current state of every file this session touched (bash-caused changes are not tracked file-by-file) |
 | `/undo [n\|--all]` | Revert the file changes of the last n turn(s) (default 1) — restores pre-turn states; new files created this turn are deleted. Only **this session's** turns by default; `--all` also consumes other sessions'/subagents' turns. The overwritten content lands on the redo stack |
+| `/rewind` | The interactive rewind menu (the Claude Code Esc-Esc lane): pick a checkpoint — the list shows each turn's prompt, time and file count — then choose **Restore code and conversation** (revert the files AND rewind the conversation; the turn's prompt comes back into the editor), **Restore conversation**, **Restore code**, or **Never mind**. The two code restores appear only when the checkpoint has tracked file changes; conversation restores need the turn's conversation point (checkpoints sealed before the Toccata round are code-only). Also wired to the `doubleEscapeAction: "rewind"` setting |
 | `/redo [n\|--all]` | Re-apply the last n undone change(s) (default 1) — the inverse of `/undo`, popping the redo stack newest-first. Only **this session's** undos by default; `--all` also re-applies other sessions' |
 | `/restore <id\|label>` | Rewrite the files of a named (or turn) checkpoint; prefix matching works |
 | `/checkpoints` | List checkpoints (turn + named) with the blob-store size and this session's redo depth |
@@ -545,6 +546,8 @@ pi ships 23 built-in slash commands. The ones worth learning first:
 | `/resume` | Resume a different session |
 | `/compact` | Manually compact the session context |
 | `/settings` | Open the settings menu |
+| `/theme [name]` | The theme picker with live preview — arrow through the themes (each previews in place; nothing persists until Enter), Enter keeps, Esc restores what you started from; `/theme <name>` switches directly (also works headless) |
+| `/cost` | Alias for `/usage` — the token & cost report (Claude Code's own alias) |
 | `/hotkeys` | Show all keyboard shortcuts |
 | `/login <provider>` | Configure provider authentication |
 
@@ -573,6 +576,8 @@ Every discovered [skill](skills.md) also registers itself as `/skill:<name>`, wh
 
 Slash commands are not a fixed set: drop a markdown file into `.unown/commands/` (project) or `~/.unown/agent/commands/` (global) and it becomes a command — `/pr-description`, `/release-notes 0.0.1`, anything you write — with `$ARGUMENTS` / `$1..$N` substitution and frontmatter autocomplete. See the [custom slash commands](custom-commands.md) page.
 
+**Mid-prompt completion** (the Claude Code lane): typing `/` after a space anywhere in the prompt offers the command list too — `run the tests, then /com` completes commands whose names start with `com` (a path like `/tmp/notes.md` keeps no list open). Enter accepts the highlighted entry and keeps editing; a mid-prompt command never *runs* — a command runs only when it starts the message.
+
 ## Keybindings
 
 The most useful defaults (Windows/WSL variants in parentheses):
@@ -582,7 +587,7 @@ The most useful defaults (Windows/WSL variants in parentheses):
 | Key | Action |
 |---|---|
 | Esc | Abort what is running (turn / bash / compaction / retry) / cancel a dialog — the same matrix as `/abort`; Esc-Esc with text in the editor clears the draft to history first (Up restores it) |
-| Esc Esc | Empty editor: the session tree / fork picker (the `doubleEscapeAction` setting) |
+| Esc Esc | Empty editor: the session tree / fork / rewind picker (the `doubleEscapeAction` setting — `tree` default, `fork`, `rewind` for the `/rewind` menu, `none`) |
 | Ctrl+C | Clear the editor (the cleared draft lands in history — Up restores it); on an already-empty editor the first press shows "Press Ctrl+C again to exit" and a second press within 500 ms exits — every exit prints the [resume hint](session-lifecycle.md#the-exit-hint--the-line-every-exit-prints) |
 | Ctrl+D | Delete the character after the cursor when the editor holds text; on an empty editor the first press shows "Press Ctrl+D again to exit" and a second press within 800 ms exits |
 | Ctrl+G | Open your external editor for long prompts |
@@ -644,6 +649,8 @@ leave, and a hint bar names the keys:
 |---|---|
 | Ctrl+Shift+T | Collapse/expand the todo panel above the editor |
 | Ctrl+] | Collapse/expand an open ask_user_question dialog |
+
+**Permission prompts** (Tab to amend — the Claude Code lane): while a permission ask is up ("Allow once / Always allow (this session) / Deny"), **Tab** on *Allow once* or *Deny* opens a comment field on that option — Enter answers with the comment attached, Tab/Esc close the field and keep the text (it still rides if you answer that option later). An allow-with-comment is sent to the model after the tool result; a deny-with-comment becomes the denial's reason. The rule-saving option (*Always allow*) never takes one.
 
 `/hotkeys` shows the full list; `~/.unown/agent/keybindings.json` overrides any default.
 

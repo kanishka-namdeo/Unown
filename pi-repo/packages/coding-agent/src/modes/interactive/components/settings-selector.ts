@@ -71,7 +71,7 @@ export interface SettingsConfig {
 	showCacheMissNotices: boolean;
 	collapseChangelog: boolean;
 	enableInstallTelemetry: boolean;
-	doubleEscapeAction: "fork" | "tree" | "none";
+	doubleEscapeAction: "fork" | "tree" | "rewind" | "none";
 	treeFilterMode: "default" | "no-tools" | "user-only" | "labeled-only" | "all";
 	showHardwareCursor: boolean;
 	editorPaddingX: number;
@@ -108,7 +108,7 @@ export interface SettingsCallbacks {
 	onShowCacheMissNoticesChange: (shown: boolean) => void;
 	onCollapseChangelogChange: (collapsed: boolean) => void;
 	onEnableInstallTelemetryChange: (enabled: boolean) => void;
-	onDoubleEscapeActionChange: (action: "fork" | "tree" | "none") => void;
+	onDoubleEscapeActionChange: (action: "fork" | "tree" | "rewind" | "none") => void;
 	onTreeFilterModeChange: (mode: "default" | "no-tools" | "user-only" | "labeled-only" | "all") => void;
 	onShowHardwareCursorChange: (enabled: boolean) => void;
 	onEditorPaddingXChange: (padding: number) => void;
@@ -546,7 +546,7 @@ export class SettingsSelectorComponent extends Container {
 				label: "Double-escape action",
 				description: "Action when pressing Escape twice with empty editor",
 				currentValue: config.doubleEscapeAction,
-				values: ["tree", "fork", "none"],
+				values: ["tree", "fork", "rewind", "none"],
 			},
 			{
 				id: "tree-filter-mode",
@@ -885,7 +885,7 @@ export class SettingsSelectorComponent extends Container {
 						break;
 					}
 					case "double-escape-action":
-						callbacks.onDoubleEscapeActionChange(newValue as "fork" | "tree");
+						callbacks.onDoubleEscapeActionChange(newValue as "fork" | "tree" | "rewind" | "none");
 						break;
 					case "tree-filter-mode":
 						callbacks.onTreeFilterModeChange(

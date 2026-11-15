@@ -116,6 +116,15 @@ export interface ExtensionUIDialogOptions {
         signal?: AbortSignal;
         /** Timeout in milliseconds. Dialog auto-dismisses with live countdown display. */
         timeout?: number;
+        /**
+         * The permission-comment lane (Toccata A11 — Claude Code's "Tab to
+         * amend" contract): option labels that accept a Tab-opened comment
+         * field on the selector. Only listed options take a comment; the
+         * field's Enter answers the option with the comment attached.
+         */
+        commentOn?: string[];
+        /** Receives the comment when the dialog resolves with one (A11). */
+        onComment?: (option: string, comment: string) => void;
 }
 
 /** Placement for extension widgets. */

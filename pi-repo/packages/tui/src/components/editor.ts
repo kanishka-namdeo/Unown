@@ -1,4 +1,5 @@
 import type { AutocompleteProvider, AutocompleteSuggestions } from "../autocomplete.ts";
+import { MID_PROMPT_SLASH_TOKEN } from "../autocomplete.ts";
 import { getKeybindings } from "../keybindings.ts";
 import { decodePrintableKey, matchesKey } from "../keys.ts";
 import { KillRing } from "../kill-ring.ts";
@@ -968,6 +969,16 @@ export class Editor implements Component, Focusable {
                         if (kb.matches(data, "tui.select.confirm")) {
                                 const selected = this.autocompleteList.getSelectedItem();
                                 if (selected && this.autocompleteProvider) {
+                                        // A message-start completion (the whole prompt begins with the
+                                        // command) submits after accepting; a mid-prompt completion
+                                        // (Toccata A12 — "run the tests, then /com") only inserts —
+                                        // the message keeps going.
+                                        const lineBeforeToken = (this.state.lines[this.state.cursorLine] || "").slice(
+                                                0,
+                                                Math.max(0, this.state.cursorCol - this.autocompletePrefix.length),
+                                        );
+                                        const isMessageStartCompletion =
+                                                this.state.cursorLine === 0 && lineBeforeToken.trim() === "";
                                         this.pushUndoSnapshot();
                                         this.lastAction = null;
                                         const result = this.autocompleteProvider.applyCompletion(
@@ -981,7 +992,7 @@ export class Editor implements Component, Focusable {
                                         this.state.cursorLine = result.cursorLine;
                                         this.setCursorCol(result.cursorCol);
 
-                                        if (this.autocompletePrefix.startsWith("/")) {
+                                        if (this.autocompletePrefix.startsWith("/") && isMessageStartCompletion) {
                                                 this.cancelAutocomplete();
                                                 // Fall through to submit
                                         } else {
@@ -1433,8 +1444,14 @@ export class Editor implements Component, Focusable {
 
                 // Check if we should trigger or update autocomplete
                 if (!this.autocompleteState) {
-                        // Auto-trigger for "/" at the start of a line (slash commands)
-                        if (char === "/" && this.isAtStartOfMessage()) {
+                        // Auto-trigger for "/" at the start of a message (slash commands)
+                        // or after whitespace anywhere — Claude Code's mid-prompt
+                        // completion lane (Toccata A12): "type `/` after a space, then
+                        // the first letters of a name, as in `run the tests, then /com`".
+                        if (
+                                char === "/" &&
+                                (this.isAtStartOfMessage() || before === "" || /\s$/.test(before))
+                        ) {
                                 this.tryTriggerAutocomplete();
                         }
                         // Auto-trigger for symbol-based completion like @, #, or provider triggers at token boundaries
@@ -2408,21 +2425,29 @@ export class Editor implements Component, Focusable {
                 );
         }
 
-        // Slash menu only allowed on the first line of the editor
+        // Slash menu: any line (Toccata A12 — Claude Code's mid-prompt `/`
+        // completion works "after a space" anywhere in the prompt; a command
+        // still only RUNS when it starts the message, which the submit
+        // handler owns).
         private isSlashMenuAllowed(): boolean {
-                return this.state.cursorLine === 0;
+                return true;
         }
 
         // Helper method to check if cursor is at start of message (for slash command detection)
         private isAtStartOfMessage(): boolean {
                 if (!this.isSlashMenuAllowed()) return false;
+                if (this.state.cursorLine !== 0) return false;
                 const currentLine = this.state.lines[this.state.cursorLine] || "";
                 const beforeCursor = currentLine.slice(0, this.state.cursorCol);
                 return beforeCursor.trim() === "" || beforeCursor.trim() === "/";
         }
 
         private isInSlashCommandContext(textBeforeCursor: string): boolean {
-                return this.isSlashMenuAllowed() && textBeforeCursor.trimStart().startsWith("/");
+                if (!this.isSlashMenuAllowed()) return false;
+                if (textBeforeCursor.trimStart().startsWith("/")) return true;
+                // Mid-prompt (Toccata A12): a trailing "/token" after whitespace
+                // or at a line start re-triggers the command list while typing.
+                return MID_PROMPT_SLASH_TOKEN.test(textBeforeCursor);
         }
 
         // Autocomplete methods

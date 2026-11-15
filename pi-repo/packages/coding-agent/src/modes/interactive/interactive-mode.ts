@@ -2772,9 +2772,10 @@ export class InteractiveMode {
                         this.extensionSelector = new ExtensionSelectorComponent(
                                 title,
                                 options,
-                                (option) => {
+                                (option, comment) => {
                                         opts?.signal?.removeEventListener("abort", onAbort);
                                         this.hideExtensionSelector();
+                                        if (comment !== undefined) opts?.onComment?.(option, comment);
                                         resolve(option);
                                 },
                                 () => {
@@ -2782,7 +2783,12 @@ export class InteractiveMode {
                                         this.hideExtensionSelector();
                                         resolve(undefined);
                                 },
-                                { tui: this.ui, timeout: opts?.timeout, onToggleToolsExpanded: () => this.toggleToolOutputExpansion() },
+                                {
+                                        tui: this.ui,
+                                        timeout: opts?.timeout,
+                                        onToggleToolsExpanded: () => this.toggleToolOutputExpansion(),
+                                        commentOn: opts?.commentOn,
+                                },
                         );
 
                         this.disposeActiveSelector();
@@ -3140,13 +3146,30 @@ export class InteractiveMode {
                                 this.isBashMode = false;
                                 this.updateEditorBorderColor();
                         } else if (!this.editor.getText().trim()) {
-                                // Double-escape with empty editor triggers /tree, /fork, or nothing based on setting
+                                // Double-escape with empty editor triggers /tree, /fork, /rewind, or nothing based on setting
                                 const action = this.settingsManager.getDoubleEscapeAction();
                                 if (action !== "none") {
                                         const now = Date.now();
                                         if (now - this.lastEscapeTime < 500) {
                                                 if (action === "tree") {
                                                         this.showTreeSelector();
+                                                } else if (action === "rewind") {
+                                                        // Toccata A14 — Claude Code's Esc-Esc rewind menu:
+                                                        // dispatch the /rewind picker (the checkpoint picker).
+                                                        // Dispatching as a prompt keeps the command's own
+                                                        // argument handling; fall back to the tree picker
+                                                        // when the command is not registered.
+                                                        if (
+                                                                this.session.extensionRunner
+                                                                        .getRegisteredCommands()
+                                                                        .some((command) => command.invocationName === "rewind")
+                                                        ) {
+                                                                void this.session.prompt("/rewind", {
+                                                                        expandPromptTemplates: true,
+                                                                });
+                                                        } else {
+                                                                this.showTreeSelector();
+                                                        }
                                                 } else {
                                                         this.showUserMessageSelector();
                                                 }

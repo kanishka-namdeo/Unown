@@ -822,16 +822,38 @@ export function createPermissionGate(opts: PermissionGateOptions): PermissionGat
                                 const subject = evaluation.subject;
                                 const preview = subject ? ` ${subject.slice(0, 120)}${subject.length > 120 ? "…" : ""}` : "";
                                 const c = ctx as
-                                        | { hasUI?: boolean; ui?: { select?: (t: string, o: string[], opts?: any) => Promise<string | undefined> } }
+                                        | {
+                                                  hasUI?: boolean;
+                                                  ui?: {
+                                                          select?: (
+                                                                  t: string,
+                                                                  o: string[],
+                                                                  opts?: any,
+                                                          ) => Promise<string | undefined>;
+                                                  };
+                                                  sendMessage?: (message: unknown, options?: unknown) => void;
+                                          }
                                         | null
                                         | undefined;
                                 if (!c || c.hasUI !== true || typeof c.ui?.select !== "function") {
                                         return degradeAsk(tool, pattern);
                                 }
+                                // The permission-comment lane (Toccata A11 — Claude Code's
+                                // "Tab to amend"): the single-action options take a comment;
+                                // the rule-saving option ("Always allow (this session)")
+                                // never does — CC's own rule.
+                                let amended: { option: string; comment: string } | undefined;
                                 const picked = await c.ui.select(
                                         `unown permissions: ${tool}${preview} matched ask rule "${pattern}" (${rule?.source}). Proceed?`,
                                         ["Allow once", "Always allow (this session)", "Deny"],
-                                        { timeout: ASK_TIMEOUT_MS },
+                                        {
+                                                timeout: ASK_TIMEOUT_MS,
+                                                commentOn: ["Allow once", "Deny"],
+                                                onComment: (option: string, comment: string) => {
+                                                        const trimmed = comment.trim();
+                                                        if (trimmed) amended = { option, comment: trimmed };
+                                                },
+                                        },
                                 );
                                 if (picked === "Always allow (this session)") {
                                         const pattern2 = gate.rememberSessionAllow(tool, subject);
@@ -841,11 +863,35 @@ export function createPermissionGate(opts: PermissionGateOptions): PermissionGat
                                         }
                                         return undefined;
                                 }
-                                if (picked === "Allow once") return undefined;
+                                if (picked === "Allow once") {
+                                        // CC's contract: "Claude Code runs the action, then sends
+                                        // your comment to Claude after the result." A custom message
+                                        // sent during the tool's execute defers to end-of-turn —
+                                        // exactly the after-the-result delivery.
+                                        if (amended && amended.option === "Allow once" && typeof c.sendMessage === "function") {
+                                                try {
+                                                        c.sendMessage(
+                                                                {
+                                                                        customType: "unown-permission-comment",
+                                                                        content: `[permission comment on ${tool}] ${amended.comment}`,
+                                                                        display: true,
+                                                                },
+                                                                { deliverAs: "followUp" },
+                                                        );
+                                                } catch {
+                                                        // The comment is a courtesy lane — never block the allow.
+                                                }
+                                        }
+                                        return undefined;
+                                }
                                 // "Deny", dialog dismissed, or timeout — fail closed.
+                                // A deny-with-comment rides the reason: CC sends the comment
+                                // "as the reason for the denial, and Claude continues working".
+                                const amendedReason =
+                                        amended && amended.option === "Deny" ? `: ${amended.comment}` : "";
                                 return {
                                         block: true,
-                                        reason: `[unown-permissions] ${tool} call denied at the confirmation prompt (ask rule "${pattern}")`,
+                                        reason: `[unown-permissions] ${tool} call denied at the confirmation prompt (ask rule "${pattern}")${amendedReason}`,
                                         terminate: false,
                                 };
                         } catch (err: any) {

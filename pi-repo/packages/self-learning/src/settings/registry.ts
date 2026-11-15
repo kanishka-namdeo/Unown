@@ -61,6 +61,11 @@ export function resetPiManagerCache(): void {
         piManager = null;
 }
 
+/** The current theme setting (raw — includes automatic `light/dark` composites). Used by `/theme` (Toccata A13). */
+export function currentThemeSetting(): string | undefined {
+        return pi().getThemeSetting();
+}
+
 // ---------------------------------------------------------------------------
 // Helper factories
 // ---------------------------------------------------------------------------
@@ -483,17 +488,18 @@ const interfaceItems: SettingsItem[] = [
                 kind: "select",
                 risk: "low",
                 summary: "What pressing Escape twice with an empty editor does",
-                help: "'tree' opens the session tree, 'fork' forks the session, 'none' does nothing. Revert: pick another action here.",
+                help: "'tree' opens the session tree, 'fork' forks the session, 'rewind' opens the checkpoint rewind menu (/rewind — the Claude Code Esc-Esc lane, Toccata A14), 'none' does nothing. Revert: pick another action here.",
                 persistedIn: "~/.unown/agent/settings.json",
-                tags: ["escape", "keyboard", "tree", "fork"],
+                tags: ["escape", "keyboard", "tree", "fork", "rewind", "checkpoint"],
                 default: "tree",
                 choices: [
                         { label: "Open tree", value: "tree" },
                         { label: "Fork session", value: "fork" },
+                        { label: "Rewind menu", value: "rewind" },
                         { label: "Nothing", value: "none" },
                 ],
                 get: () => pi().getDoubleEscapeAction(),
-                set: (v) => pi().setDoubleEscapeAction(v === "fork" || v === "none" ? v : "tree"),
+                set: (v) => pi().setDoubleEscapeAction(v === "fork" || v === "rewind" || v === "none" ? v : "tree"),
         },
         toggle({
                 id: "interface.cache-miss",

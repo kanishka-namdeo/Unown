@@ -243,6 +243,7 @@ import {
         saveReviewArtifact,
 } from "./review.ts";
 import { registerSettingsCommand } from "./settings/command.ts";
+import { registerThemeCommand } from "./settings/theme-command.ts";
 import { annotateToolOutput } from "./shield.ts";
 import { registerStatusCommands } from "./status-card.ts";
 import { PLANNING_BUILTIN_AGENTS, ROLE_BUILTIN_AGENTS } from "./subagent-builtins.ts";
@@ -4564,6 +4565,9 @@ export function createUnownToolsExtension(opts: UnownToolsOptions) {
                 // the built-in /settings (pi's theme selector) to this one when
                 // present — the hub's Agent → Interface group covers those rows.
                 registerSettingsCommand(pi, { cwd: opts.cwd });
+                // /theme — the Claude Code alias onto the theme surface (Toccata A13):
+                // the live-preview picker over the hub's Interface → Theme row.
+                registerThemeCommand(pi);
 
                 pi.registerCommand("plan", {
                         // The 2026-11-09 label fix: the description still said
@@ -5211,37 +5215,42 @@ export function createUnownToolsExtension(opts: UnownToolsOptions) {
                 // /usage — the Claude Code / Codex / Aider usage surface, in-session:
                 // this session's token/cost totals + the bridge's windowed report
                 // (the same pure core `unown usage` runs — usage-cli.ts).
+                const usageHandler = async (args: string, ctx: any) => {
+                        const trimmed = (args ?? "").trim();
+                        // The first bare numeric token is the days window (Claude Code's
+                        // /usage d|w ergonomics, without the keybinding).
+                        const argv = trimmed
+                                ? trimmed
+                                                .split(/\s+/)
+                                                .map((tok) => (/^\d+(?:\.\d+)?$/.test(tok) ? `--days=${tok}` : tok))
+                                                .join(" ")
+                                                .split(/\s+/)
+                                : [];
+                        const result = await runUsageCommand(argv);
+                        // Session totals ride on top: the same attribution semantics
+                        // /session uses (assistant usage + toolResult/compaction usage),
+                        // computed from the read-only entries every extension sees.
+                        const entries =
+                                typeof ctx?.sessionManager?.getEntries === "function" ? ctx.sessionManager.getEntries() : [];
+                        const session = sessionUsageSummary(entries);
+                        const sessionLines = [
+                                "This session (all turns, current branch):",
+                                `  messages: ${session.messages} · tokens: ${session.tokensIn + session.tokensOut + session.cacheRead + session.cacheWrite} (in ${session.tokensIn}, out ${session.tokensOut}, cached ${session.cacheRead}${session.cacheWrite ? `, cache-writes ${session.cacheWrite}` : ""})`,
+                                session.models.length > 0 ? `  models: ${session.models.join(", ")}` : "",
+                        ].filter(Boolean);
+                        const out = [sessionLines.join("\n"), "", result.stdout ?? result.stderr ?? ""].join("\n").trimEnd();
+                        ctx.ui.notify(out, result.exitCode === 0 ? "info" : "warning");
+                };
                 pi.registerCommand("usage", {
                         description:
                                 "Token & cost report: this session's totals + the bridge's window (/usage [days] [--model id] [--json])",
-                        handler: async (args: string, ctx) => {
-                                const trimmed = (args ?? "").trim();
-                                // The first bare numeric token is the days window (Claude Code's
-                                // /usage d|w ergonomics, without the keybinding).
-                                const argv = trimmed
-                                        ? trimmed
-                                                        .split(/\s+/)
-                                                        .map((tok) => (/^\d+(?:\.\d+)?$/.test(tok) ? `--days=${tok}` : tok))
-                                                        .join(" ")
-                                                        .split(/\s+/)
-                                        : [];
-                                const result = await runUsageCommand(argv);
-                                // Session totals ride on top: the same attribution semantics
-                                // /session uses (assistant usage + toolResult/compaction usage),
-                                // computed from the read-only entries every extension sees.
-                                const entries =
-                                        typeof (ctx as any)?.sessionManager?.getEntries === "function"
-                                                ? (ctx as any).sessionManager.getEntries()
-                                                : [];
-                                const session = sessionUsageSummary(entries);
-                                const sessionLines = [
-                                        "This session (all turns, current branch):",
-                                        `  messages: ${session.messages} · tokens: ${session.tokensIn + session.tokensOut + session.cacheRead + session.cacheWrite} (in ${session.tokensIn}, out ${session.tokensOut}, cached ${session.cacheRead}${session.cacheWrite ? `, cache-writes ${session.cacheWrite}` : ""})`,
-                                        session.models.length > 0 ? `  models: ${session.models.join(", ")}` : "",
-                                ].filter(Boolean);
-                                const out = [sessionLines.join("\n"), "", result.stdout ?? result.stderr ?? ""].join("\n").trimEnd();
-                                ctx.ui.notify(out, result.exitCode === 0 ? "info" : "warning");
-                        },
+                        handler: usageHandler,
+                });
+                // /cost — the Claude Code alias: "Alias for /usage" (the commands
+                // reference; Toccata A13). Same handler, same output.
+                pi.registerCommand("cost", {
+                        description: "Alias for /usage — the token & cost report (/cost [days] [--model id] [--json])",
+                        handler: usageHandler,
                 });
 
                 // /context — the context-window visualization every competitor ships

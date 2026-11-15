@@ -427,6 +427,10 @@ export interface CheckpointManifest {
     /** Set (atomically, before any file is touched) once /undo has claimed
      *  this manifest — a durable marker for crash-safe undo ordering. */
     consumed?: boolean;
+    /** The session-tree entry id of the user message that drove the turn this
+     *  checkpoint captured (Toccata A14 — the /rewind picker's conversation
+     *  restore point). Absent on manifests sealed before this round. */
+    entryId?: string;
 }
 
 /** One redo-stack entry — the content /undo is about to overwrite, captured
@@ -1007,7 +1011,23 @@ export function createCheckpointsExtension(opts: CheckpointsOptions) {
         return entry;
     };
 
-    const sealTurnCheckpoint = (): CheckpointManifest | null => {
+    /** The last user-message entry id in the session tree — at seal time it is
+     *  always the prompt that drove the turn being sealed (Toccata A14). */
+    const lastUserEntryId = (ctx: any): string | undefined => {
+        try {
+            const entries =
+                typeof ctx?.sessionManager?.getEntries === "function" ? (ctx.sessionManager.getEntries() as any[]) : [];
+            for (let i = entries.length - 1; i >= 0; i--) {
+                const entry = entries[i];
+                if (entry?.message?.role === "user") return entry.id as string;
+            }
+        } catch {
+            /* read-only best effort — legacy manifests simply carry no entryId */
+        }
+        return undefined;
+    };
+
+    const sealTurnCheckpoint = (entryId?: string): CheckpointManifest | null => {
         if (turnWritten.size === 0) return null;
         const files: CheckpointFile[] = [];
         for (const path of turnWritten) {
@@ -1025,6 +1045,7 @@ export function createCheckpointsExtension(opts: CheckpointsOptions) {
             ts: Date.now(),
             files,
             owner: bootId,
+            ...(entryId ? { entryId } : {}),
         };
         store.writeManifest(manifest);
         store.prune(KEEP_MANIFESTS, bootId);
@@ -1051,22 +1072,22 @@ export function createCheckpointsExtension(opts: CheckpointsOptions) {
             log(`ledger at ${ledgerFile}`);
         });
 
-        pi.on("input", (event: any) => {
+        pi.on("input", (event: any, ctx: any) => {
             const text = typeof event?.text === "string" ? event.text : "";
-            sealTurnCheckpoint(); // close out the previous turn if it wrote files
+            sealTurnCheckpoint(lastUserEntryId(ctx)); // close out the previous turn if it wrote files
             turnBefore = new Map();
             turnWritten = new Set();
             if (text.trim()) {
                 ledger.append({ kind: "input", preview: previewText(text) });
             }
         });
-        pi.on("agent_end", () => {
+        pi.on("agent_end", (_event: any, ctx: any) => {
             // Seal at TURN END, not only on the next input: /undo and
             // /checkpoints are extension slash commands, and prompt() dispatches
             // those BEFORE the "input" event fires — without this, the turn that
             // just finished stays unsealed and /undo finds nothing to revert
             // until the user sends another (non-slash) message.
-            sealTurnCheckpoint();
+            sealTurnCheckpoint(lastUserEntryId(ctx));
             turnBefore = new Map();
             turnWritten = new Set();
         });
@@ -1302,6 +1323,79 @@ export function createCheckpointsExtension(opts: CheckpointsOptions) {
                         ? `\n${failures.length} file(s) could NOT be re-applied:\n${failures.slice(0, 20).map((f) => `- ${f.path} (${f.action})`).join("\n")}`
                         : "";
                 ctx.ui.notify(`Redid ${chosen.length} change(s) — ${files} file(s) re-applied${listed}${failed}.`, failures.length > 0 ? "warning" : "info");
+            },
+        });
+
+        pi.registerCommand("rewind", {
+            description:
+                "Open the rewind menu: pick a checkpoint, then restore code and/or conversation (the Claude Code Esc-Esc picker)",
+            handler: async (_args: string, ctx: any) => {
+                const manifests = store.list().filter((m) => m.consumed !== true).reverse(); // newest first
+                if (manifests.length === 0) {
+                    ctx.ui.notify(
+                        "No checkpoints to rewind to yet — turns that write files seal one automatically (/checkpoint <label> for a named snapshot).",
+                        "info",
+                    );
+                    return;
+                }
+                // Rows carry the turn's prompt preview (Claude Code's picker lists
+                // the prompts you sent) — resolved through the manifest's entryId.
+                const entries: any[] =
+                    typeof ctx?.sessionManager?.getEntries === "function" ? (ctx.sessionManager.getEntries() as any[]) : [];
+                const entryById = new Map(entries.map((entry) => [entry?.id, entry]));
+                const rows = manifests.map((manifest) => {
+                    const entry = manifest.entryId ? entryById.get(manifest.entryId) : undefined;
+                    const prompt = previewText(entry?.message?.content ?? "");
+                    const label = (prompt ? prompt.slice(0, 48) : "") || manifest.label || manifest.id;
+                    const time = new Date(manifest.ts).toTimeString().slice(0, 5);
+                    return `${time} · ${label} · ${manifest.files.length} file(s)`;
+                });
+                const picked = await ctx.ui.select("Rewind — pick a point (Esc to cancel)", [...rows, "Never mind"]);
+                if (picked === undefined || picked === "Never mind") return;
+                const index = rows.indexOf(picked);
+                const manifest = index >= 0 ? manifests[index] : undefined;
+                if (!manifest) return;
+
+                // The action menu mirrors Claude Code's rewind menu: the two code
+                // restores appear only when the checkpoint has tracked file
+                // changes; "Restore conversation" needs a conversation point.
+                const hasFiles = manifest.files.length > 0;
+                const hasConversationPoint = Boolean(manifest.entryId);
+                const actions: string[] = [];
+                if (hasFiles && hasConversationPoint) actions.push("Restore code and conversation");
+                if (hasConversationPoint) actions.push("Restore conversation");
+                if (hasFiles) actions.push("Restore code");
+                actions.push("Never mind");
+                const action = await ctx.ui.select(`Rewind to ${rows[index]}`, actions);
+                if (action === undefined || action === "Never mind") return;
+
+                const restoreCode = (): string => {
+                    const outcomes = store.restore(manifest, opts.cwd);
+                    const ok = outcomes.filter((o) => o.ok).length;
+                    ledger.append({ kind: "restore", ids: [manifest.id], files: ok });
+                    return `${ok}/${outcomes.length} file(s) restored`;
+                };
+                const restoreConversation = async (): Promise<string> => {
+                    await pi.navigateTree(manifest.entryId!);
+                    return "conversation rewound (the prompt is back in the editor)";
+                };
+                try {
+                    if (action === "Restore code and conversation") {
+                        const files = restoreCode();
+                        const conversation = await restoreConversation();
+                        ctx.ui.notify(`Rewound — ${files}, ${conversation}.`, "info");
+                    } else if (action === "Restore conversation") {
+                        const conversation = await restoreConversation();
+                        ctx.ui.notify(`Rewound — ${conversation}.`, "info");
+                    } else if (action === "Restore code") {
+                        ctx.ui.notify(`Rewound — ${restoreCode()}.`, "info");
+                    }
+                } catch (error) {
+                    ctx.ui.notify(
+                        `Rewind failed: ${error instanceof Error ? error.message : String(error)} (the code restore, if any, already landed)`,
+                        "warning",
+                    );
+                }
             },
         });
 

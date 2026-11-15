@@ -30,10 +30,10 @@ export interface ChangelogStop {
   groups: ChangelogGroup[];
 }
 
-export const CHANGELOG_TOTAL_ENTRIES = 597;
+export const CHANGELOG_TOTAL_ENTRIES = 598;
 
 export const CHANGELOG_TOTALS: Record<ChangelogBucket, number> = {
-  "Added": 254,
+  "Added": 255,
   "Changed": 32,
   "Deprecated": 0,
   "Removed": 3,
@@ -46,9 +46,9 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
   {
     "label": "Unreleased",
     "date": null,
-    "total": 41,
+    "total": 42,
     "counts": {
-      "Added": 4,
+      "Added": 5,
       "Changed": 0,
       "Deprecated": 0,
       "Removed": 0,
@@ -191,6 +191,10 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
           },
           {
             "title": "The Toccata round CP3 — the transcript lane: transcript mode (the Claude Code Ctrl+O viewer) and tool-call…",
+            "behavior": false
+          },
+          {
+            "title": "The Toccata round CP4 — the dialog/command lane: permission comments, mid-prompt slash completion…",
             "behavior": false
           },
           {

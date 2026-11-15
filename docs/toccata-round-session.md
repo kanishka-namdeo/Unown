@@ -17,7 +17,7 @@ This is the keyboard round.
 | CP1 the editor lane — history, search, stash, drafts | ✅ done | `test/input-history.test.ts` (16) + tui `editor-history-persistence` (10) + `history-lane-keybindings` (6); suites 5768/0 |
 | CP2 the queue/image lane — send-now, image chips | ✅ done | send-now in CP1's commit; chips: tui `editor-image-chips` (10/10) |
 | CP3 the transcript lane — viewer keys, aggregation, timestamps | ✅ done | tui `tui-alt-screen-transcript` (9/9) + coding-agent `tool-call-groups` (11/11); tui suite 1059/0 |
-| CP4 the dialog/command lane — permission comments, aliases, rewind picker, mid-prompt completion | 🔲 pending | |
+| CP4 the dialog/command lane — permission comments, aliases, rewind picker, mid-prompt completion | ✅ done | self-learning `permission-comment` (5) + `checkpoints-rewind` (6) + `theme-command` (8); coding-agent `extension-selector-comment` (8); tui `mid-prompt-slash` (10) |
 | CP5 the personality lane — spinner verbs, AGENTS.md flight | 🔲 pending | |
 | CP6 verification — suites + PTY lanes as a real user | 🔲 pending | |
 | CP7 docs/landing/blog/CHANGELOG/DOX + version + release | 🔲 pending | |
@@ -139,11 +139,54 @@ coding-agent battery green over its documented environment baseline
 tools/find — all `fd`/model-catalog artifacts, verified present at the
 pristine baseline in CP1).
 
-## CP4 — the dialog/command lane (pending)
+## CP4 — the dialog/command lane (done, 2026-11-15)
 
-Scope: A11 permission comment lane, A12 mid-prompt slash completion,
-A13 /cost + /theme aliases, A14 interactive /rewind picker +
-doubleEscapeAction "rewind".
+A11 permission comments: `ExtensionSelectorComponent` gains `commentOn`
+(labels that take a Tab-opened comment field — a headless `Editor`, the
+questionnaire's notes pattern) + per-option kept text; the comment rides
+`onSelect(option, comment)` → `showExtensionSelector` → the new
+`ExtensionUIDialogOptions.commentOn`/`onComment` (non-breaking, optional).
+The gate (`permissions.ts handleAsk`) offers it on ["Allow once", "Deny"]
+only; allow+comment → `ctx.sendMessage` followUp (deferred to end-of-turn
+during the tool's execute — CC's after-the-result delivery); deny+comment
+rides the reason. Hint strip gains "Tab to amend".
+
+A12 mid-prompt slash: `MID_PROMPT_SLASH_TOKEN` (exported from
+autocomplete.ts; the token is match group 1 — the whitespace boundary is
+not part of it) drives the editor trigger (`/` after whitespace, re-trigger
+on letters, any line) and the provider lane (plain prefix matching —
+"Only commands whose names start with those letters match"; a second `/`
+disqualifies the token so `/tmp/notes.md` keeps no list open; falls through
+to the file lane when nothing matches so absolute paths keep completing).
+The start-of-message lane is now gated on `cursorLine === 0`; Enter accepts
+mid-prompt WITHOUT submitting (the `isMessageStartCompletion` split);
+applyCompletion inserts for whitespace-preceded tokens.
+
+A13 aliases: `/cost` (Claude Code's own "Alias for /usage" — the same
+handler) and `/theme` (`settings/theme-command.ts` — the live-preview
+picker: in-memory `Theme` instances while navigating (the `setTheme(Theme)`
+path never persists), Enter commits through the string path (the hub row's
+write), Esc restores the original setting (by name, or the captured active
+instance for automatic composites); `/theme <name>` direct + headless).
+
+A14 the rewind picker: turn manifests gain `entryId` (stamped at seal — the
+last user entry in the tree is always the sealed turn's prompt);
+`/rewind` lists checkpoints with prompt previews (resolved through the
+entries), then the CC action menu — Restore code and conversation /
+Restore conversation / Restore code / Never mind — gated on tracked files
+(both code restores) and the conversation point (CC's own gating; legacy
+manifests are code-only). Conversation restore rides the host's
+`navigateTree` (the extension handler repaints + restores the prompt into
+the editor). `doubleEscapeAction` gains `rewind` (settings-manager,
+selector row, hub choices, Esc-Esc dispatch through the registered command
+with a tree-picker fallback).
+
+Verification: self-learning `permission-comment` 5/5, `checkpoints-rewind`
+6/6, `theme-command` 8/8; coding-agent `extension-selector-comment` 8/8
+(+ the affected selector/settings/keybindings/interactive-tui/groups
+neighbors 85/85); tui `mid-prompt-slash` 10/10; full tui suite **1069/0**,
+full self-learning suite green over the one known plm-wiring env artifact
+(verified passing in isolation, stack stopped).
 
 ## CP5 — the personality lane (pending)
 
