@@ -1501,7 +1501,10 @@ async function bootRuntime(cwd: string, verbose: boolean, bootOpts: BootOptions 
                                 ? SessionManager.inMemory(cwd)
                                 : SessionManager.create(cwd, join(UNOWN_AGENT_DIR, "sessions")));
         const runtime = await createAgentSessionRuntime(createRuntime, { cwd, agentDir, sessionManager });
-        return { runtime };
+        // Da capo R2 — the statusline payload's permissionMode: the live mode
+        // from the shared permission gate (session overrides included), so the
+        // bar always tells the truth about what the agent may do unasked.
+        return { runtime, getPermissionMode: () => permissionsGate.status().mode };
 }
 
 // ---------------------------------------------------------------------------
@@ -3991,7 +3994,7 @@ async function cmdTui(prompt: string | undefined, verbose: boolean, bootOpts: Bo
                 console.log(`  → ${pre.hint}`);
                 console.log();
         }
-        const { runtime } = await bootRuntime(cwd, verbose, {
+        const { runtime, getPermissionMode } = await bootRuntime(cwd, verbose, {
                 ...bootOpts,
                 // First flights: the positional prompt becomes the TUI's
                 // initialMessage — surface it to bootRuntime so the flights
@@ -4017,6 +4020,11 @@ async function cmdTui(prompt: string | undefined, verbose: boolean, bootOpts: Bo
                 // --resume <id>` resolves the id in unown's own stores (both lanes)
                 // and needs no --session-dir at all.
                 resumeCommand: (sessionId: string) => `unown --resume ${sessionId}`,
+                // Da capo R2 — the statusline payload's permissionMode field:
+                // the live value from the shared permission gate (bootRuntime
+                // always returns the reader — the gate is shared with the
+                // terminal hook seam and /permissions).
+                getPermissionMode,
                 ...(prompt ? { initialMessage: prompt } : {}),
         });
         await mode.run(); // blocks until exit; normal exit path is process.exit(0)

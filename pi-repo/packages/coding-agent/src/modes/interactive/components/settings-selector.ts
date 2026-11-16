@@ -82,6 +82,8 @@ export interface SettingsConfig {
         clearOnShrink: boolean;
         showTerminalProgress: boolean;
         terminalTitleStates: boolean;
+        /** Da capo R4 — Ctrl+G prepends the last assistant reply as '#' commented context. */
+        externalEditorContext: boolean;
         tuiMode: TuiMode;
         fullscreenExitOutput: FullscreenExitOutput;
         fullscreenScrollbar: ScrollViewScrollbar;
@@ -121,6 +123,8 @@ export interface SettingsCallbacks {
         onShowTerminalProgressChange: (enabled: boolean) => void;
         /** Da capo R1 — the working / needs-input terminal-title suffixes. */
         onTerminalTitleStatesChange: (enabled: boolean) => void;
+        /** Da capo R4 — Ctrl+G external-editor context block. */
+        onExternalEditorContextChange: (enabled: boolean) => void;
         onTuiModeChange: (mode: TuiMode) => void;
         onFullscreenExitOutputChange: (output: FullscreenExitOutput) => void;
         onFullscreenScrollbarChange: (mode: ScrollViewScrollbar) => void;
@@ -828,6 +832,15 @@ export class SettingsSelectorComponent extends Container {
                         values: ["true", "false"],
                 });
 
+                // External editor context toggle (Da capo R4 — the '#' commented last reply in Ctrl+G)
+                items.splice(clearOnShrinkIndex + 3, 0, {
+                        id: "external-editor-context",
+                        label: "External editor context",
+                        description: "Ctrl+G shows the last reply as '#' commented context (stripped on save)",
+                        currentValue: config.externalEditorContext ? "true" : "false",
+                        values: ["true", "false"],
+                });
+
                 // Add borders
                 this.addChild(new DynamicBorder());
 
@@ -924,6 +937,9 @@ export class SettingsSelectorComponent extends Container {
                                                 break;
                                         case "terminal-title-states":
                                                 callbacks.onTerminalTitleStatesChange(newValue === "true");
+                                                break;
+                                        case "external-editor-context":
+                                                callbacks.onExternalEditorContextChange(newValue === "true");
                                                 break;
                                         case "tui-mode":
                                                 callbacks.onTuiModeChange(newValue as TuiMode);

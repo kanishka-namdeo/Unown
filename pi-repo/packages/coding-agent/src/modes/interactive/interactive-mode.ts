@@ -142,6 +142,7 @@ import { ExtensionEditorComponent } from "./components/extension-editor.ts";
 import { ExtensionInputComponent } from "./components/extension-input.ts";
 import { ExtensionSelectorComponent } from "./components/extension-selector.ts";
 import { FooterComponent, formatTokens } from "./components/footer.ts";
+import { type StatusLineInput, StatusLineComponent } from "./components/status-line.ts";
 import { SessionDiffStats } from "./components/session-diff-stats.ts";
 import { formatKeyText, keyDisplayText, keyHint, keyText, rawKeyHint } from "./components/keybinding-hints.ts";
 import { LoginDialogComponent } from "./components/login-dialog.ts";
@@ -177,7 +178,12 @@ import { TreeSelectorComponent } from "./components/tree-selector.ts";
 import { TrustSelectorComponent } from "./components/trust-selector.ts";
 import { UserMessageComponent } from "./components/user-message.ts";
 import { UserMessageSelectorComponent } from "./components/user-message-selector.ts";
-import { editExistingFileInExternalEditor, editInExternalEditor } from "./external-editor.ts";
+import {
+        buildExternalEditorContextBlock,
+        editExistingFileInExternalEditor,
+        editInExternalEditor,
+        stripExternalEditorContext,
+} from "./external-editor.ts";
 import { buildTranscriptMarkdown } from "./transcript-export.ts";
 import { refreshModelCatalogs } from "./model-catalog-refresh.ts";
 import { getModelSearchText } from "./model-search.ts";
@@ -494,6 +500,13 @@ export interface InteractiveModeOptions {
          * the default builder names the vendored app and pi's own flags.
          */
         resumeCommand?: (sessionId: string) => string | undefined;
+        /**
+         * Launcher-provided live permission mode (Da capo R2): the statusline
+         * payload's `permissionMode` field. Wrappers that own a permission gate
+         * (e.g. unown's /permissions gate) pass a reader; absent → the field is
+         * omitted from the payload.
+         */
+        getPermissionMode?: () => string | undefined;
 }
 
 interface InteractiveTuiOptions {
@@ -598,6 +611,10 @@ export class InteractiveMode {
         private activeSelectorDispose?: () => void;
         private footer: FooterComponent;
         private footerContainer: Container;
+        /** Da capo R2 — the statusline row docks between the widgets-below container and the footer. */
+        private statusLineContainer!: Container;
+        private statusLine?: StatusLineComponent;
+        private readonly statusLineBootedAtMs = Date.now();
         private footerDataProvider: FooterDataProvider;
         // Stored so the same manager can be injected into custom editors, selectors, and extension UI.
         private keybindings: KeybindingsManager;
@@ -803,6 +820,22 @@ export class InteractiveMode {
                 this.footer.setHintProvider(() => this.computeHintLine());
                 this.footerContainer = new Container();
                 this.footerContainer.addChild(this.footer);
+
+                // Da capo R2 — the statusline script contract. Global-scope config only
+                // (a project repo can't run commands in your bar); `UNOWN_STATUSLINE=0`
+                // is the kill switch. Content refreshes on turn end + the optional
+                // refreshMs timer; render is synchronous from the cache.
+                this.statusLineContainer = new Container();
+                const statusLineConfig = this.settingsManager.getStatusLine();
+                if (statusLineConfig && process.env.UNOWN_STATUSLINE !== "0") {
+                        this.statusLine = new StatusLineComponent({
+                                command: statusLineConfig.command,
+                                refreshMs: this.settingsManager.getStatusLineRefreshMs(),
+                                payloadProvider: () => this.collectStatusLineInput(),
+                                onRequestRender: () => this.ui.requestRender(),
+                        });
+                        this.statusLineContainer.addChild(this.statusLine);
+                }
 
                 // Load hide thinking block setting
                 this.hideThinkingBlock = this.settingsManager.getHideThinkingBlock();
@@ -1138,6 +1171,7 @@ export class InteractiveMode {
                         { component: this.widgetContainerAbove, shrink: 1, minSize: 0 },
                         { component: this.editorContainer, shrink: 1, minSize: 3 },
                         { component: this.widgetContainerBelow, shrink: 1, minSize: 0 },
+                        { component: this.statusLineContainer, shrink: 1, minSize: 0 },
                         { component: this.footerContainer, shrink: 1, minSize: 1 },
                 ]);
                 this.fullscreenLayoutRoot = new TuiLayouts.VStack([
@@ -1151,6 +1185,7 @@ export class InteractiveMode {
                         this.widgetContainerAbove,
                         this.editorContainer,
                         this.widgetContainerBelow,
+                        this.statusLineContainer,
                         this.footerContainer,
                 ]);
                 // Accept text while startup completes, but only enable interrupt, exit, and submission feedback.
@@ -1162,6 +1197,9 @@ export class InteractiveMode {
                 // Start the UI before initializing extensions so session_start handlers can use interactive dialogs
                 this.ui.start();
                 this.isInitialized = true;
+
+                // Da capo R2 — the statusline's first run + optional refresh timer.
+                this.statusLine?.start();
 
                 await this.themeController.applyFromSettings();
                 this.applyOverlayScrim(this.renderer);
@@ -3840,6 +3878,8 @@ export class InteractiveMode {
                                 if (this.settingsManager.getShowTerminalProgress()) {
                                         this.ui.terminal.setProgress(false);
                                 }
+                                // Da capo R2 — the statusline refreshes when a turn ends.
+                                void this.statusLine?.refresh();
                                 // Move 7: resolve the working line with a beat only when the turn
                                 // genuinely finished - never on retry, abort or error stops.
                                 const lastStopReason = [...event.messages]
@@ -5156,14 +5196,27 @@ export class InteractiveMode {
         private async handleOpenExternalEditor(): Promise<void> {
                 const editorCmd = this.settingsManager.getExternalEditorCommand();
                 const content = this.editor.getExpandedText?.() ?? this.editor.getText();
+                // Da capo R4 — external editor context: with the setting on and a
+                // previous reply present, the reply rides above the prompt as a
+                // '#'-commented block; the exact block is stripped on save (byte-exact
+                // prefix bookkeeping — a deleted/edited block strips nothing).
+                let contextBlock: string | undefined;
+                let seed = content;
+                if (this.settingsManager.getExternalEditorContext()) {
+                        const lastReply = this.session.getLastAssistantText();
+                        if (lastReply) {
+                                contextBlock = buildExternalEditorContextBlock(lastReply);
+                                seed = contextBlock + content;
+                        }
+                }
                 this.ui.stop();
                 try {
                         const result = await editInExternalEditor({
                                 command: editorCmd,
-                                content,
+                                content: seed,
                         });
                         if (result.status === "complete") {
-                                this.editor.setText(result.content);
+                                this.editor.setText(stripExternalEditorContext(result.content, contextBlock));
                         }
                 } finally {
                         this.ui.start();
@@ -5532,6 +5585,7 @@ export class InteractiveMode {
                                         clearOnShrink: this.settingsManager.getClearOnShrink(),
                                         showTerminalProgress: this.settingsManager.getShowTerminalProgress(),
                                         terminalTitleStates: this.settingsManager.getTerminalTitleStates(),
+                                        externalEditorContext: this.settingsManager.getExternalEditorContext(),
                                         tuiMode: this.ui.mode,
                                         fullscreenExitOutput: this.settingsManager.getFullscreenExitOutput(),
                                         fullscreenScrollbar: this.settingsManager.getFullscreenScrollbar(),
@@ -5694,6 +5748,9 @@ export class InteractiveMode {
                                         onTerminalTitleStatesChange: (enabled) => {
                                                 this.settingsManager.setTerminalTitleStates(enabled);
                                                 this.updateTerminalTitle();
+                                        },
+                                        onExternalEditorContextChange: (enabled) => {
+                                                this.settingsManager.setExternalEditorContext(enabled);
                                         },
                                         onTuiModeChange: (mode) => {
                                                 if (!this.switchTuiMode(mode)) {
@@ -7865,9 +7922,36 @@ ${deleteToLineEndRow}| \`${yank}\` | Paste the most-recently-deleted text |
                 }
         }
 
+        /**
+         * Da capo R2 — collect the statusline payload inputs from the surfaces this
+         * mode owns (session identity, cwd, model, thinking level, context usage,
+         * tokens, turn count, queued messages, version, uptime). The permission
+         * mode comes from the launcher's optional hook (wrappers own that state).
+         */
+        private collectStatusLineInput(): StatusLineInput {
+                const stats = this.session.getSessionStats();
+                const model = this.session.state.model;
+                return {
+                        sessionId: this.sessionManager.getSessionId(),
+                        sessionName: this.sessionManager.getSessionName() ?? undefined,
+                        cwd: this.sessionManager.getCwd(),
+                        modelId: model?.id,
+                        modelProvider: model?.provider,
+                        thinkingLevel: this.session.thinkingLevel,
+                        permissionMode: this.options.getPermissionMode?.(),
+                        contextUsage: this.session.getContextUsage(),
+                        tokens: stats.tokens,
+                        turnCount: stats.assistantMessages,
+                        queuedMessages: this.session.pendingMessageCount,
+                        version: this.version,
+                        bootedAtMs: this.statusLineBootedAtMs,
+                };
+        }
+
         stop(fullscreenExitOutput = this.settingsManager.getFullscreenExitOutput()): void {
                 this.disposeActiveSelector();
                 this.streamRenderScheduler?.dispose();
+                this.statusLine?.stop();
                 if (this.settingsManager.getShowTerminalProgress()) {
                         this.ui.terminal.setProgress(false);
                 }

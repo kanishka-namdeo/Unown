@@ -19,6 +19,34 @@ export interface EditExistingFileOptions {
 }
 
 /**
+ * Da capo R4 — build the '#'-commented context block prepended above the prompt
+ * when `externalEditorContext` is on. The block is a byte-exact prefix: on save
+ * the exact prepended block is stripped (`stripExternalEditorContext`); if the
+ * user deleted or edited it, nothing is stripped. Claude Code parity: "Show
+ * last response in external editor" — the reply rides as comments, the reply
+ * lives under it.
+ */
+export function buildExternalEditorContextBlock(reply: string): string {
+        const commented = reply
+                .split("\n")
+                .map((line) => (line === "" ? "#" : `# ${line}`))
+                .join("\n");
+        return `# --- previous reply (context — this block is stripped on save) ---\n${commented}\n\n`;
+}
+
+/**
+ * Da capo R4 — strip the prepended context block byte-exactly. A block the user
+ * deleted or edited is NOT stripped (byte-exact prefix bookkeeping — Claude
+ * Code's contract: "if the user deleted the block, nothing to strip").
+ */
+export function stripExternalEditorContext(saved: string, block: string | undefined): string {
+        if (!block || !saved.startsWith(block)) {
+                return saved;
+        }
+        return saved.slice(block.length);
+}
+
+/**
  * Open an EXISTING file in the external editor and await its exit (Da capo
  * R10 — Claude Code's /keybindings: "Open your keyboard shortcuts file").
  * Unlike editInExternalEditor this never writes content or cleans up — the

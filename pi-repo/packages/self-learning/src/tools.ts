@@ -55,6 +55,7 @@ import {
         getMarkdownTheme,
         keyText,
         parseFrontmatter,
+        SettingsManager,
 } from "@earendil-works/pi-coding-agent";
 import { Key, Markdown, stableLaneIndex, Text } from "@earendil-works/pi-tui";
 import { Type } from "typebox";
@@ -816,6 +817,21 @@ function formatTokens(count: number): string {
         if (count < 1000) return String(count);
         if (count < 1_000_000) return `${Math.round(count / 1000)}k`;
         return `${(count / 1_000_000).toFixed(1)}M`;
+}
+
+/**
+ * Da capo R2 — read the statusline script config for /statusline. Global-scope
+ * only (the vendored getter ignores project scope — a repo can't run commands
+ * in your bar); lazy manager so the command never costs a settings read at
+ * boot (the same pattern as settings/registry.ts).
+ */
+function readStatusLineConfig(): { command: string; refreshMs?: number } | undefined {
+        try {
+                const manager = SettingsManager.create(process.cwd(), join(resolveUnownHome(), "agent"));
+                return manager.getStatusLine();
+        } catch {
+                return undefined;
+        }
 }
 
 interface KillableProc {
@@ -5483,6 +5499,52 @@ export function createUnownToolsExtension(opts: UnownToolsOptions) {
                                         "• Windows/WSL: Alt+V pastes images, Alt+S sends the queue now, Alt+Z undoes — the terminals that swallow Ctrl-combos are covered by the alt-key matrix.",
                                 );
                                 lines.push("• Full keybinding tables: docs/usage.md — and every key is rebindable via keybindings.json (/keybindings to edit).");
+                                ctx.ui.notify(lines.join("\n"), "info");
+                        },
+                });
+
+                // /statusline — the deterministic fork of Claude Code's
+                // statusline wizard: no metered model call for a config task,
+                // just the active config, the payload contract, and a
+                // copy-paste example script. Configuration itself lives in
+                // /settings (interface → Statusline command) or
+                // ~/.unown/agent/settings.json under `statusLine`.
+                pi.registerCommand("statusline", {
+                        description: "Show the statusline config, the JSON payload contract, and an example script",
+                        handler: async (_args: string, ctx) => {
+                                const config = readStatusLineConfig();
+                                const lines: string[] = [];
+                                if (config) {
+                                        lines.push(
+                                                `Statusline: ${config.command}${config.refreshMs ? ` (refresh every ${Math.round(config.refreshMs / 1000)} s + on turn end)` : " (refresh on turn end)"}`,
+                                        );
+                                } else {
+                                        lines.push("Statusline: off (no command configured)");
+                                }
+                                lines.push("");
+                                lines.push("The payload your script receives on stdin (UTF-8 JSON, one write):");
+                                lines.push("  session.id, session.name      — this session's identity");
+                                lines.push("  cwd, project                  — working directory and its basename");
+                                lines.push("  model.id, model.provider      — the active model");
+                                lines.push("  thinkingLevel                 — minimal|low|medium|high|xhigh");
+                                lines.push("  permissionMode                — default|acceptEdits|bypassPermissions");
+                                lines.push("  contextWindow.usedPercent     — context window used (null = unknown)");
+                                lines.push("  contextWindow.tokens/window   — context tokens and the window size");
+                                lines.push("  tokens.input/output/…/total   — cumulative session token usage");
+                                lines.push("  turnCount, queuedMessages     — completed turns, queued messages");
+                                lines.push("  version, uptimeMs             — unown version, ms since boot");
+                                lines.push("");
+                                lines.push("Contract: stdout's first 2 lines render above the footer (ANSI passes");
+                                lines.push("through); the command runs through your shell with a 500 ms budget;");
+                                lines.push("it refreshes on turn end + the optional interval; config is global-only");
+                                lines.push("(a project repo can't run commands in your bar); UNOWN_STATUSLINE=0 kills it.");
+                                lines.push("");
+                                lines.push("Example — ~/.unown/statusline.sh (chmod +x), then set it in /settings:");
+                                lines.push("  #!/usr/bin/env bash");
+                                lines.push('  bun -e \'const p=JSON.parse(require("node:fs").readFileSync(0,"utf8"));\\');
+                                lines.push("    console.log(`${p.project} · ${p.model.id??\"?\"} · ctx ${p.contextWindow.usedPercent??\"?\"}% · turn ${p.turnCount}`)\\'");
+                                lines.push("");
+                                lines.push("Configure: /settings → Interface → Statusline command (empty = off).");
                                 ctx.ui.notify(lines.join("\n"), "info");
                         },
                 });

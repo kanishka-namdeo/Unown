@@ -680,6 +680,38 @@ const interfaceItems: SettingsItem[] = [
                 get: () => pi().getEditorPaddingX(),
                 set: (v) => pi().setEditorPaddingX(Number(v)),
         },
+        toggle({
+                id: "interface.terminal-title-states",
+                section: "interface",
+                name: "Terminal title states",
+                risk: "low",
+                summary: "The terminal title says what the session is doing",
+                help: "Claude Code parity (Da capo R2 round, CP2): the terminal/tab title carries ' — working' while a turn runs, ' — needs input' while an ask waits, and the plain form at rest. Revert: toggle here. Applies to the next title write.",
+                persistedIn: "~/.unown/agent/settings.json",
+                related: ["/settings", "docs/configuration.md"],
+                tags: ["terminal", "title", "working", "needs input", "state", "tab"],
+                env: "UNOWN_TERMINAL_TITLE_STATES=0",
+                // vendored default: true (the state suffixes are on out of the box).
+                default: true,
+                get: () => pi().getTerminalTitleStates(),
+                set: (v) => pi().setTerminalTitleStates(Boolean(v)),
+        }),
+        toggle({
+                id: "interface.external-editor-context",
+                section: "interface",
+                name: "External editor context",
+                risk: "low",
+                advanced: true,
+                summary: "Ctrl+G shows the last reply above your prompt",
+                help: "Claude Code parity (Da capo R4): with this on, Ctrl+G (edit prompt in $VISUAL/$EDITOR) prepends the previous assistant reply as '#' commented context above your prompt — write your reply under it; the exact block is stripped on save (delete it and nothing is stripped). Off = the editor opens with your prompt only. Revert: toggle here. Applies to the next Ctrl+G.",
+                persistedIn: "~/.unown/agent/settings.json",
+                related: ["/settings", "docs/usage.md"],
+                tags: ["editor", "external", "context", "ctrl+g", "visual", "editor"],
+                // vendored default: false (the plain prompt-only Ctrl+G).
+                default: false,
+                get: () => pi().getExternalEditorContext(),
+                set: (v) => pi().setExternalEditorContext(Boolean(v)),
+        }),
         {
                 id: "interface.output-padding",
                 section: "interface",
@@ -763,6 +795,61 @@ const interfaceItems: SettingsItem[] = [
                 get: () => pi().getSpinnerVerbs(),
                 set: (v) => pi().setSpinnerVerbs(String(v ?? "")),
                 format: (value) => (String(value ?? "").trim() === "" ? "(built-in catalog)" : String(value)),
+        },
+        {
+                id: "interface.statusline",
+                section: "interface",
+                name: "Statusline command",
+                kind: "text",
+                risk: "med",
+                summary: "A script whose output renders as a row above the footer",
+                help: "Claude Code parity (Da capo R2): the command receives a JSON payload on stdin (session, cwd, model, thinking level, permission mode, context-window usage, tokens, turn count, queued messages, version, uptime) and its stdout (first 2 lines, ANSI passes through) renders above the quiet footer. Refreshes on turn end and via the statusline refresh interval. Runs through your shell, 500 ms budget, global settings only (a project repo can't run commands in your bar). Run /statusline for the payload contract + a copy-paste example. Empty = no statusline. Revert: clear here.",
+                persistedIn: "~/.unown/agent/settings.json",
+                related: ["/statusline", "docs/configuration.md"],
+                tags: ["statusline", "status", "bar", "script", "footer", "chrome"],
+                env: "UNOWN_STATUSLINE=0",
+                default: "",
+                reloadNote: "a new session binds it",
+                get: () => pi().getStatusLine()?.command ?? "",
+                set: (v) => {
+                        const command = String(v ?? "").trim();
+                        if (command === "") {
+                                pi().setStatusLine(undefined);
+                                return;
+                        }
+                        pi().setStatusLine({ command, refreshMs: pi().getStatusLine()?.refreshMs });
+                },
+                format: (value) => (String(value ?? "").trim() === "" ? "(off)" : String(value)),
+        },
+        {
+                id: "interface.statusline-refresh",
+                section: "interface",
+                name: "Statusline refresh (seconds)",
+                kind: "number",
+                risk: "low",
+                advanced: true,
+                summary: "How often the statusline re-runs (0 = on turn end only)",
+                help: "The statusline command re-runs on this interval (minimum 1 s when nonzero) in addition to every turn end. 0 = refresh on turn end only — the quiet default. Revert: set back to 0.",
+                persistedIn: "~/.unown/agent/settings.json",
+                related: ["/statusline"],
+                tags: ["statusline", "refresh", "interval", "timer"],
+                integer: true,
+                min: 0,
+                max: 3600,
+                default: 0,
+                reloadNote: "a new session binds it",
+                get: () => {
+                        const ms = pi().getStatusLine()?.refreshMs;
+                        return typeof ms === "number" && ms >= 1000 ? Math.round(ms / 1000) : 0;
+                },
+                set: (v) => {
+                        const seconds = Math.max(0, Math.floor(Number(v) || 0));
+                        pi().setStatusLine({
+                                command: pi().getStatusLine()?.command ?? "",
+                                refreshMs: seconds > 0 ? seconds * 1000 : undefined,
+                        });
+                },
+                format: (value) => (Number(value) === 0 ? "0 (turn end only)" : String(value)),
         },
         {
                 id: "interface.fullscreen-scrollbar",

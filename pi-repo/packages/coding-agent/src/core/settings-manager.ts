@@ -53,6 +53,12 @@ export interface ImageSettings {
         blockImages?: boolean; // default: false - when true, prevents all images from being sent to LLM providers
 }
 
+/** Da capo R2 — the statusline script contract (global scope only; a repo can't run commands in your bar). */
+export interface StatusLineSettings {
+        command: string; // the script/binary whose stdout renders as one row above the quiet footer
+        refreshMs?: number; // periodic refresh interval in ms (minimum 1000); absent = refresh on turn end only
+}
+
 export interface ThinkingBudgetsSettings {
         minimal?: number;
         low?: number;
@@ -109,6 +115,7 @@ export interface Settings {
         showCacheMissNotices?: boolean; // default: false - show prompt-cache miss and compaction cost notices
         spinnerVerbs?: string; // Comma-separated thinking-time spinner verbs (Toccata A15); empty/absent = the built-in pool
         externalEditor?: string; // Command for Ctrl+G external editor; takes precedence over VISUAL/EDITOR
+        externalEditorContext?: boolean; // default: false - Da capo R4: Ctrl+G prepends the last assistant reply as '#' commented context, stripped on save
         shellPath?: string; // Custom shell path (e.g., for Cygwin users on Windows); supports leading ~ expansion
         quietStartup?: boolean;
         defaultProjectTrust?: DefaultProjectTrust; // default: "ask"; global setting only
@@ -145,6 +152,7 @@ export interface Settings {
         fullscreenExitOutput?: FullscreenExitOutput; // default: "transcript"; no effect in regular TUI mode
         fullscreenScrollbar?: ScrollViewScrollbar; // default: "auto"; no effect in regular TUI mode
         fullscreenCopyOnSelect?: boolean; // default: true; no effect in regular TUI mode
+        statusLine?: StatusLineSettings; // Da capo R2 — global scope only (project-scope ignored, the keybindings precedent)
 }
 
 function isMergeableObject(value: unknown): value is Record<string, unknown> {
@@ -1223,6 +1231,50 @@ export class SettingsManager {
                 }
                 this.globalSettings.terminal.terminalTitleStates = enabled;
                 this.markModified("terminal", "terminalTitleStates");
+                this.save();
+        }
+
+        /**
+         * Da capo R4 — external editor context (default OFF). When ON, Ctrl+G prepends the last
+         * assistant reply as '#'-commented context above the prompt and strips it on save.
+         */
+        getExternalEditorContext(): boolean {
+                return this.settings.externalEditorContext ?? false;
+        }
+
+        setExternalEditorContext(enabled: boolean): void {
+                this.globalSettings.externalEditorContext = enabled;
+                this.markModified("externalEditorContext");
+                this.save();
+        }
+
+        /**
+         * Da capo R2 — the statusline script contract. Global scope ONLY: a project repo can't run
+         * commands in your bar (the keybindings precedent — project-scope values are ignored).
+         */
+        getStatusLine(): StatusLineSettings | undefined {
+                const config = this.globalSettings.statusLine;
+                if (!config || typeof config.command !== "string" || config.command.trim() === "") {
+                        return undefined;
+                }
+                return config;
+        }
+
+        getStatusLineRefreshMs(): number | undefined {
+                const refreshMs = this.globalSettings.statusLine?.refreshMs;
+                if (typeof refreshMs !== "number" || !Number.isFinite(refreshMs) || refreshMs < 1000) {
+                        return undefined;
+                }
+                return Math.floor(refreshMs);
+        }
+
+        setStatusLine(config: StatusLineSettings | undefined): void {
+                if (config === undefined) {
+                        this.globalSettings.statusLine = undefined;
+                } else {
+                        this.globalSettings.statusLine = config;
+                }
+                this.markModified("statusLine");
                 this.save();
         }
 

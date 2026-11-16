@@ -30,7 +30,6 @@
  */
 import { notifyGated } from "./notify.ts";
 import { type NotifyChannel, resolveNotifyChannel } from "./notify-channel.ts";
-import { type NotifyChannel, resolveNotifyChannel } from "./notify-channel.ts";
 
 /** Default minimum turn duration (ms) before a turn-end ping is earned. */
 export const TUI_NOTIFY_DEFAULT_MS = 120_000;

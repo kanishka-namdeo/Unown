@@ -462,7 +462,7 @@ describe("headless renders (print/RPC parity)", () => {
 // ---------------------------------------------------------------------------
 
 describe("the interface section (S2-1: every pi selector row has a settable home)", () => {
-        // The vendored pi settings-selector's 35 settings rows (the audit's
+        // The vendored pi settings-selector's 37 settings rows (the audit's
         // machine inventory; dialog chrome apply/single-mode excluded), each
         // mapped to the hub item that now owns it. This is the regression
         // gate BM-2's probes measure end-to-end: if a pi row loses its hub
@@ -502,6 +502,8 @@ describe("the interface section (S2-1: every pi selector row has a settable home
                 ["autocomplete-max-visible", "interface.autocomplete-height"],
                 ["clear-on-shrink", "interface.clear-on-shrink"],
                 ["terminal-progress", "interface.terminal-progress"],
+                ["terminal-title-states", "interface.terminal-title-states"],
+                ["external-editor-context", "interface.external-editor-context"],
                 ["autocompact", "agent.autocompact"],
         ];
 
@@ -528,6 +530,43 @@ describe("the interface section (S2-1: every pi selector row has a settable home
                 const timeout = itemById("interface.http-idle-timeout")!;
                 timeout.set!(60000);
                 expect(timeout.get!()).toBe(60000);
+        });
+
+        test("Da capo round-trips: title states + external editor context + the statusline rows", async () => {
+                const { itemById, resetPiManagerCache } = await import("../src/settings/registry.ts");
+                resetPiManagerCache();
+
+                // R1 (the CP2 row the hub lacked — closed in CP4): default ON, writes through.
+                const titleStates = itemById("interface.terminal-title-states")!;
+                expect(titleStates.get!()).toBe(true);
+                titleStates.set!(false);
+                expect(titleStates.get!()).toBe(false);
+
+                // R4: default OFF.
+                const editorContext = itemById("interface.external-editor-context")!;
+                expect(editorContext.get!()).toBe(false);
+                editorContext.set!(true);
+                expect(editorContext.get!()).toBe(true);
+
+                // R2: the command row writes {command} and preserves refreshMs; empty clears.
+                const statusline = itemById("interface.statusline")!;
+                expect(statusline.get!()).toBe("");
+                statusline.set!("node ~/.unown/statusline.js");
+                expect(statusline.get!()).toBe("node ~/.unown/statusline.js");
+
+                // The refresh row writes refreshMs in seconds → ms and keeps the command.
+                const refresh = itemById("interface.statusline-refresh")!;
+                expect(refresh.get!()).toBe(0);
+                refresh.set!(5);
+                expect(refresh.get!()).toBe(5);
+                statusline.set!("echo bar"); // re-set keeps the interval
+                expect(refresh.get!()).toBe(5);
+                expect(statusline.get!()).toBe("echo bar");
+
+                // Clearing the command drops the whole config; the interval row reads 0.
+                statusline.set!("");
+                expect(statusline.get!()).toBe("");
+                expect(refresh.get!()).toBe(0);
         });
 
         test("theme composite: light/dark items write the 'light/dark' encoding", async () => {
