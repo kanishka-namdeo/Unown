@@ -81,6 +81,7 @@ import type {
         ExtensionWidgetOptions,
         MarkdownTransformer,
         ProjectTrustContext,
+        SessionAccentColor,
         WorkingIndicatorOptions,
 } from "../../core/extensions/index.ts";
 import { FooterDataProvider, type ReadonlyFooterDataProvider } from "../../core/footer-data-provider.ts";
@@ -176,7 +177,7 @@ import { TreeSelectorComponent } from "./components/tree-selector.ts";
 import { TrustSelectorComponent } from "./components/trust-selector.ts";
 import { UserMessageComponent } from "./components/user-message.ts";
 import { UserMessageSelectorComponent } from "./components/user-message-selector.ts";
-import { editInExternalEditor } from "./external-editor.ts";
+import { editExistingFileInExternalEditor, editInExternalEditor } from "./external-editor.ts";
 import { buildTranscriptMarkdown } from "./transcript-export.ts";
 import { refreshModelCatalogs } from "./model-catalog-refresh.ts";
 import { getModelSearchText } from "./model-search.ts";
@@ -2780,6 +2781,31 @@ export class InteractiveMode {
                         setFooter: (factory) => this.setExtensionFooter(factory),
                         setHeader: (factory) => this.setExtensionHeader(factory),
                         setTitle: (title) => this.ui.terminal.setTitle(title),
+                        // Da capo R11 — Claude Code's /tui live renderer switch.
+                        setTuiMode: (mode) => {
+                                if (!this.switchTuiMode(mode)) return false;
+                                this.settingsManager.setTuiMode(mode);
+                                this.showStatus(`TUI mode: ${mode}`);
+                                return true;
+                        },
+                        // Da capo R3 — Claude Code's Ctrl+L redraw contract.
+                        requestRedraw: () => {
+                                this.ui.requestRender(true);
+                        },
+                        // Da capo R10 — Claude Code's /keybindings: open an existing
+                        // file in $VISUAL/$EDITOR, then let the caller reload.
+                        openExternalFile: async (filePath) => {
+                                const editorCmd = this.settingsManager.getExternalEditorCommand();
+                                this.ui.stop();
+                                try {
+                                        return await editExistingFileInExternalEditor({ command: editorCmd, filePath });
+                                } finally {
+                                        this.ui.start();
+                                        this.ui.requestRender(true);
+                                }
+                        },
+                        // Da capo R9 — Claude Code's /color session accent.
+                        setSessionAccent: (color) => this.applySessionAccent(color),
                         custom: (factory, options) => this.showExtensionCustom(factory, options),
                         pasteToEditor: (text) => this.editor.handleInput(`\x1b[200~${text}\x1b[201~`),
                         setHistoryStore: (store) => this.setHistoryStore(store),
@@ -3284,6 +3310,7 @@ export class InteractiveMode {
                 // Global debug handler on TUI (works regardless of focus)
                 this.ui.onDebug = () => this.handleDebugCommand();
                 this.defaultEditor.onAction("app.model.select", () => this.showModelSelector());
+                        this.defaultEditor.onAction("app.redraw", () => this.handleRedraw());
                 this.defaultEditor.onAction("app.tools.expand", () => this.toggleToolOutputExpansion());
                 this.defaultEditor.onAction("app.thinking.toggle", () => this.toggleThinkingBlockVisibility());
                 this.defaultEditor.onAction("app.editor.external", () => void this.handleOpenExternalEditor());
@@ -4887,6 +4914,63 @@ export class InteractiveMode {
                         this.editor.borderBadge = supportsThinking && level !== "off" ? `thinking ${level}` : undefined;
                 }
                 this.ui.requestRender();
+        }
+
+        /** The /color session-accent palette (Da capo R9 — Claude Code's /color
+         *  names → CSS hex; rendered through theme.rawFg so 256-color and
+         *  plain-mode terminals degrade exactly like themed colors). */
+        private static readonly SESSION_ACCENT_HEX: Record<SessionAccentColor, string> = {
+                red: "#ef4444",
+                blue: "#3b82f6",
+                green: "#22c55e",
+                yellow: "#eab308",
+                purple: "#a855f7",
+                orange: "#f97316",
+                pink: "#ec4899",
+                cyan: "#06b6d4",
+        };
+
+        /** The editor's themed border styles, captured before an accent applies (R9). */
+        private originalEditorBorder: { borderColor: (s: string) => string; focusBorderColor?: (s: string) => string } | null =
+                null;
+
+        /**
+         * Da capo R9 — Claude Code's /color: "Set the prompt bar color for the
+         * current session". The input editor's border (rest + focused) takes
+         * the named accent for THIS session only — never persisted, "default"
+         * restores the theme's own border styles.
+         */
+        private applySessionAccent(color: SessionAccentColor | "default"): boolean {
+                if (color !== "default") {
+                        if (!this.originalEditorBorder) {
+                                this.originalEditorBorder = {
+                                        borderColor: this.editor.borderColor ?? ((s) => s),
+                                        focusBorderColor: this.editor.focusBorderColor,
+                                };
+                        }
+                        const styleFn = (s: string) => theme.rawFg(InteractiveMode.SESSION_ACCENT_HEX[color], s);
+                        this.editor.borderColor = styleFn;
+                        this.editor.focusBorderColor = styleFn;
+                } else if (this.originalEditorBorder) {
+                        this.editor.borderColor = this.originalEditorBorder.borderColor;
+                        if (this.originalEditorBorder.focusBorderColor) {
+                                this.editor.focusBorderColor = this.originalEditorBorder.focusBorderColor;
+                        }
+                        this.originalEditorBorder = null;
+                }
+                this.ui.requestRender();
+                return true;
+        }
+
+        /**
+         * Da capo R3 — Claude Code's Ctrl+L redraw: force a full repaint of the
+         * live region, keeping input and conversation history. The recovery
+         * gesture for a garbled or partially blank display.
+         */
+        private handleRedraw(): void {
+                this.ui.requestRender(true);
+                this.updateTerminalTitle();
+                this.showStatus("Redrew the screen");
         }
 
         /**

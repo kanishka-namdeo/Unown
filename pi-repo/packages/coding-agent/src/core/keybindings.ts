@@ -21,6 +21,7 @@ export interface AppKeybindings {
         "app.model.cycleForward": true;
         "app.model.cycleBackward": true;
         "app.model.select": true;
+        "app.redraw": true;
         "app.tools.expand": true;
         "app.thinking.toggle": true;
         "app.palette": true;
@@ -123,6 +124,14 @@ export const KEYBINDINGS = {
                 description: "Cycle to previous model",
         },
         "app.model.select": { defaultKeys: "ctrl+l", description: "Open model selector" },
+        "app.redraw": {
+                // Da capo R3 — Claude Code's Ctrl+L redraw contract ("Forces a
+                // full terminal redraw, keeping input and conversation history")
+                // on the fork's key: ctrl+l stays the model selector, so the
+                // redraw lane lives one modifier over.
+                defaultKeys: "ctrl+alt+l",
+                description: "Force a full redraw (recover a garbled display)",
+        },
         "app.tools.expand": { defaultKeys: "ctrl+o", description: "Toggle tool output" },
         "app.palette": {
                 defaultKeys: "ctrl+k",

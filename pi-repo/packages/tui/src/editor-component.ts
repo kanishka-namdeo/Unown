@@ -84,6 +84,9 @@ export interface EditorComponent extends Component {
         /** Border color function */
         borderColor?: (str: string) => string;
 
+        /** The border style while focused (the /color session accent overrides both; Da capo R9). */
+        focusBorderColor?: (str: string) => string;
+
         /** Mode badge rendered inline on the top border (e.g. "bash", "thinking high") */
         borderBadge?: string;
 

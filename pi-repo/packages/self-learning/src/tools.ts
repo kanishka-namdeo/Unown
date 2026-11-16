@@ -49,6 +49,7 @@ import { tmpdir } from "node:os";
 import { dirname, isAbsolute, join, resolve } from "node:path";
 import { StringEnum } from "@earendil-works/pi-ai";
 import {
+        copyToClipboard,
         type ExtensionAPI,
         type ExtensionUIContext,
         getMarkdownTheme,
@@ -72,6 +73,7 @@ import { maybeAutoTitleSession } from "./auto-title.ts";
 import { blameFile, blameSummary, formatBlameJson, formatBlameReport } from "./blame.ts";
 import { registerBrowserTools } from "./browser/tools.ts";
 import { scheduleInputNeededPing } from "./notify-channel.ts";
+import { resolveUnownHome } from "./unown-home.ts";
 import { answerBtw, btwHeader } from "./btw.ts";
 import { BtwOverlay } from "./btw-overlay.ts";
 import { receiptsDir } from "./checkpoints.ts";
@@ -1560,6 +1562,10 @@ const goalFooterLine = (g: GoalState | null, panelOwnsActive: boolean): string |
 export interface UnownToolsOptions {
         cwd: string; // the user's real project directory
         engineUrl: string;
+        /** The clipboard seam (Da capo R12's /copy [N]): defaults to pi's
+         *  copyToClipboard; tests inject a recorder so the lane stays
+         *  deterministic without a system clipboard. */
+        clipboard?: { copy(text: string): Promise<void> };
         isSubagent?: boolean; // inside a spawned subagent: disable the task tool (no nesting)
         /** The shared permission gate's live status (bootRuntime owns the gate);
          *  feeds the /status card's permissions line. */
@@ -5257,6 +5263,228 @@ export function createUnownToolsExtension(opts: UnownToolsOptions) {
                 pi.registerCommand("cost", {
                         description: "Alias for /usage — the token & cost report (/cost [days] [--model id] [--json])",
                         handler: usageHandler,
+                });
+
+                // ── The Da capo command lane (round 2 of the Claude Code touch
+                // study; docs/tui-claude-code-parity-research-2.md). Six
+                // commands, each the ported contract of an official Claude
+                // Code command. ────────────────────────────────────────────
+
+                // /copy [N] — "Copy the last assistant response to clipboard.
+                // Pass a number N to copy the Nth-latest" (the commands
+                // reference). The extension override wins over pi's built-in
+                // interception (the /settings rule), so N parsing lands here.
+                pi.registerCommand("copy", {
+                        description:
+                                "Copy an assistant response to the clipboard (/copy = the last, /copy 2 = the second-latest)",
+                        handler: async (args: string, ctx) => {
+                                const raw = (args ?? "").trim();
+                                const n = raw === "" ? 1 : Number(raw);
+                                if (!Number.isInteger(n) || n < 1) {
+                                        ctx.ui.notify(`/copy: expected a positive integer (got "${raw}")`, "warning");
+                                        return;
+                                }
+                                const entries =
+                                        typeof ctx?.sessionManager?.getEntries === "function" ? ctx.sessionManager.getEntries() : [];
+                                const messages = entries
+                                        .map((e: unknown) => (e as { message?: unknown })?.message)
+                                        .filter((m): m is { role?: string; content?: unknown } => Boolean(m));
+                                // Newest-first non-empty assistant texts.
+                                const texts: string[] = [];
+                                for (let i = messages.length - 1; i >= 0; i--) {
+                                        const text = assistantTextOf(messages[i] as never);
+                                        if (text) texts.push(text);
+                                }
+                                if (texts.length === 0) {
+                                        ctx.ui.notify("No agent messages to copy yet.", "warning");
+                                        return;
+                                }
+                                if (n > texts.length) {
+                                        const list = texts
+                                                .slice(0, 5)
+                                                .map((t, idx) => `  ${idx + 1}. ${t.split("\n")[0]?.slice(0, 60) ?? ""}`)
+                                                .join("\n");
+                                        ctx.ui.notify(
+                                                `Only ${texts.length} assistant message${texts.length === 1 ? "" : "s"} to copy (you asked for ${n}):\n${list}`,
+                                                "info",
+                                        );
+                                        return;
+                                }
+                                const picked = texts[n - 1];
+                                try {
+                                        const clipboard = opts.clipboard ?? { copy: (t: string) => copyToClipboard(t) };
+                                        await clipboard.copy(picked);
+                                        ctx.ui.notify(
+                                                n === 1
+                                                        ? "Copied the last agent message to the clipboard"
+                                                        : `Copied message ${n} of ${texts.length} (latest first) to the clipboard`,
+                                                "info",
+                                        );
+                                } catch (error) {
+                                        ctx.ui.notify(`/copy failed: ${error instanceof Error ? error.message : String(error)}`, "error");
+                                }
+                        },
+                });
+
+                // /color — "Set the prompt bar color for the current session"
+                // (the commands reference: red, blue, green, yellow, purple,
+                // orange, pink, cyan; /color with no argument lists them).
+                pi.registerCommand("color", {
+                        description: "Set the session accent color of the input editor (/color [name|default])",
+                        handler: async (args: string, ctx) => {
+                                const COLOR_NAMES = ["red", "blue", "green", "yellow", "purple", "orange", "pink", "cyan"] as const;
+                                type ColorName = (typeof COLOR_NAMES)[number] | "default";
+                                const raw = (args ?? "").trim().toLowerCase();
+                                if (raw === "" || raw === "list" || raw === "help") {
+                                        ctx.ui.notify(
+                                                `Session accent colors: ${COLOR_NAMES.join(", ")} — /color <name> sets it for this session, /color default restores the theme.`,
+                                                "info",
+                                        );
+                                        return;
+                                }
+                                if (raw !== "default" && !COLOR_NAMES.includes(raw as (typeof COLOR_NAMES)[number])) {
+                                        ctx.ui.notify(
+                                                `Unknown color "${raw}". Available: ${COLOR_NAMES.join(", ")} (or default).`,
+                                                "warning",
+                                        );
+                                        return;
+                                }
+                                const ui = ctx.ui as { setSessionAccent?: (c: ColorName) => boolean };
+                                if (typeof ui.setSessionAccent !== "function") {
+                                        ctx.ui.notify("/color needs an interactive TUI session.", "warning");
+                                        return;
+                                }
+                                ui.setSessionAccent(raw as ColorName);
+                                ctx.ui.notify(
+                                        raw === "default" ? "Editor accent restored to the theme" : `Editor accent: ${raw} (this session)`,
+                                        "info",
+                                );
+                        },
+                });
+
+                // /redraw — Claude Code's Ctrl+L contract as a command ("Forces
+                // a full terminal redraw, keeping input and conversation
+                // history. Use this to recover if the display becomes garbled
+                // or partially blank."). The keybinding form is ctrl+alt+l
+                // (ctrl+l is the fork's model selector).
+                pi.registerCommand("redraw", {
+                        description: "Force a full redraw of the terminal (recover a garbled display)",
+                        handler: async (_args: string, ctx) => {
+                                const ui = ctx.ui as { requestRedraw?: () => void };
+                                if (typeof ui.requestRedraw !== "function") {
+                                        ctx.ui.notify("/redraw needs an interactive TUI session.", "warning");
+                                        return;
+                                }
+                                ui.requestRedraw();
+                                ctx.ui.notify("Redrew the screen", "info");
+                        },
+                });
+
+                // /keybindings — "Open your keyboard shortcuts file" (the
+                // commands reference): keybindings.json in $VISUAL/$EDITOR,
+                // then the /reload lane picks the changes up.
+                pi.registerCommand("keybindings", {
+                        description: "Open keybindings.json in your $VISUAL/$EDITOR, then reload the bindings",
+                        handler: async (_args: string, ctx) => {
+                                const ui = ctx.ui as { openExternalFile?: (p: string) => Promise<boolean> };
+                                if (typeof ui.openExternalFile !== "function") {
+                                        ctx.ui.notify("/keybindings needs an interactive TUI session.", "warning");
+                                        return;
+                                }
+                                const file = join(resolveUnownHome(), "agent", "keybindings.json");
+                                if (!existsSync(file)) {
+                                        mkdirSync(dirname(file), { recursive: true });
+                                        writeFileSync(
+                                                file,
+                                                "{\n  // Rebind any action id: { \"app.palette\": \"ctrl+o\" }\n}\n",
+                                                "utf8",
+                                        );
+                                }
+                                const ok = await ui.openExternalFile(file);
+                                if (!ok) {
+                                        ctx.ui.notify("The editor exited nonzero — bindings not reloaded.", "warning");
+                                        return;
+                                }
+                                ctx.ui.notify(
+                                        "keybindings.json saved — run /reload to apply the new bindings (extensions reload with it).",
+                                        "info",
+                                );
+                        },
+                });
+
+                // /tui — "Set the terminal UI renderer and relaunch into it
+                // with your conversation intact… With no argument, prints the
+                // active renderer" (the commands reference). The live switch
+                // (no relaunch needed — the fork switches in place).
+                pi.registerCommand("tui", {
+                        description: "Switch the TUI renderer (/tui [default|fullscreen]; no argument prints the active one)",
+                        handler: async (args: string, ctx) => {
+                                const raw = (args ?? "").trim().toLowerCase();
+                                const ui = ctx.ui as { setTuiMode?: (m: "regular" | "fullscreen") => boolean };
+                                if (raw === "" || raw === "status") {
+                                        ctx.ui.notify(
+                                                "Usage: /tui default | /tui fullscreen (no argument prints this; the switch is live, the conversation stays).",
+                                                "info",
+                                        );
+                                        return;
+                                }
+                                if (raw !== "default" && raw !== "fullscreen" && raw !== "regular") {
+                                        ctx.ui.notify(`/tui: expected "default" or "fullscreen" (got "${raw}").`, "warning");
+                                        return;
+                                }
+                                if (typeof ui.setTuiMode !== "function") {
+                                        ctx.ui.notify("/tui needs an interactive TUI session.", "warning");
+                                        return;
+                                }
+                                if (!ui.setTuiMode(raw === "default" ? "regular" : "fullscreen")) {
+                                        ctx.ui.notify("Close active overlays before changing the TUI mode.", "warning");
+                                }
+                        },
+                });
+
+                // /terminal-setup — Claude Code's terminal onboarding command
+                // in the read-only fork: detect the terminal and print the
+                // exact setup steps (Shift+Enter lanes, Option-as-Meta,
+                // clipboard, extended-keys, tmux). CC mutates editor/terminal
+                // configs; unown tells you precisely what to change — the
+                // safe fork for a tool that lives inside anyone's terminal.
+                pi.registerCommand("terminal-setup", {
+                        description: "Show the terminal-specific setup steps (Shift+Enter, clipboard, mouse, tmux)",
+                        handler: async (_args: string, ctx) => {
+                                const program = (process.env.TERM_PROGRAM ?? "").toLowerCase();
+                                const term = (process.env.TERM ?? "").toLowerCase();
+                                const lines: string[] = ["Terminal setup for unown:"];
+                                if (program.includes("vscode")) {
+                                        lines.push(
+                                                "• VS Code terminal: terminal.integrated.sendKeybindingsToShell makes Shift+Enter reach the TUI; Ctrl+J inserts a newline everywhere.",
+                                       );
+                                } else if (program.includes("iterm")) {
+                                        lines.push(
+                                                "• iTerm2: Settings → General → Selection → Applications in terminal may access clipboard (enables /copy); Shift+Enter newline is native.",
+                                        );
+                                } else if (program.includes("apple_terminal")) {
+                                        lines.push(
+                                                "• Apple Terminal: enable 'Use Option as Meta key' for Alt+letter bindings; \\ + Enter inserts newlines; Ctrl+J always works.",
+                                        );
+                                } else if (program.includes("ghostty")) {
+                                        lines.push("• Ghostty: Shift+Enter newline and the Kitty keyboard protocol are native — no setup needed.");
+                                } else if (program.includes("wezterm")) {
+                                        lines.push("• WezTerm: Shift+Enter newline is native; the Kitty protocol can be enabled per config for cleaner modifier reporting.");
+                                } else if (term.includes("tmux") || program.includes("tmux")) {
+                                        lines.push(
+                                                "• tmux: set -g extended-keys on + set -ga terminal-overrides ',*:extended-keys:u' so Ctrl+Enter and friends reach the TUI; \\ + Enter inserts newlines.",
+                                        );
+                                } else {
+                                        lines.push(
+                                                "• Any terminal: \\ + Enter or Ctrl+J inserts a newline; Shift+Enter needs a terminal that sends it distinctly (iTerm2, WezTerm, Ghostty, Kitty, Windows Terminal).",
+                                        );
+                                }
+                                lines.push(
+                                        "• Windows/WSL: Alt+V pastes images, Alt+S sends the queue now, Alt+Z undoes — the terminals that swallow Ctrl-combos are covered by the alt-key matrix.",
+                                );
+                                lines.push("• Full keybinding tables: docs/usage.md — and every key is rebindable via keybindings.json (/keybindings to edit).");
+                                ctx.ui.notify(lines.join("\n"), "info");
+                        },
                 });
 
                 // /context — the context-window visualization every competitor ships

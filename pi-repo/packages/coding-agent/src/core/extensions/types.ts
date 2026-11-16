@@ -128,6 +128,9 @@ export interface EditorHistoryStore {
         loadEntries?(scope: string): EditorHistoryEntry[];
 }
 
+/** The /color session-accent palette (Da capo R9 — Claude Code's /color names). */
+export type SessionAccentColor = "red" | "blue" | "green" | "yellow" | "purple" | "orange" | "pink" | "cyan";
+
 /** Options for extension UI dialogs. */
 export interface ExtensionUIDialogOptions {
         /** AbortSignal to programmatically dismiss the dialog. */
@@ -249,6 +252,36 @@ export interface ExtensionUIContext {
 
         /** Set the terminal window/tab title. */
         setTitle(title: string): void;
+
+        /**
+         * Switch the TUI renderer live (Da capo R11 — Claude Code's /tui):
+         * "fullscreen" is the flicker-free alt-screen renderer, "regular" the
+         * stream renderer. Returns false when overlays are open (the switch
+         * is refused, nothing changes). Persists the tuiMode setting.
+         */
+        setTuiMode(mode: "regular" | "fullscreen"): boolean;
+
+        /**
+         * Force a full redraw of the live region (Da capo R3 — Claude Code's
+         * Ctrl+L redraw contract: "Forces a full terminal redraw, keeping
+         * input and conversation history. Use this to recover if the display
+         * becomes garbled or partially blank.").
+         */
+        requestRedraw(): void;
+
+        /**
+         * Open an EXISTING file in $VISUAL/$EDITOR with the stop/start dance
+         * (Da capo R10 — Claude Code's /keybindings: "Open your keyboard
+         * shortcuts file"). Returns false when the editor failed.
+         */
+        openExternalFile(filePath: string): Promise<boolean>;
+
+        /**
+         * Set the session accent color for the input editor's border (Da capo
+         * R9 — Claude Code's /color: "Set the prompt bar color for the current
+         * session"). Session-scoped: never persisted, "default" restores.
+         */
+        setSessionAccent(color: SessionAccentColor | "default"): boolean;
 
         /** Show a custom component with keyboard focus. */
         custom<T>(

@@ -309,6 +309,17 @@ export async function runRpcMode(runtimeHost: AgentSessionRuntime): Promise<neve
                         return false;
                 },
 
+                setTuiMode(_mode: "regular" | "fullscreen") {
+                        // RPC clients render their own UI — the live renderer switch is TUI-only.
+                        return false;
+                },
+                requestRedraw() {},
+                async openExternalFile(_filePath: string) {
+                        return false;
+                },
+                setSessionAccent(_color: "red" | "blue" | "green" | "yellow" | "purple" | "orange" | "pink" | "cyan" | "default") {
+                        return false;
+                },
                 setToolsExpanded(_expanded: boolean) {
                         // Tool expansion not supported in RPC mode - no TUI
                 },

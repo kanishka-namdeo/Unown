@@ -74,6 +74,7 @@ export type {
         ExtensionMode,
         EditorHistoryEntry,
         EditorHistoryStore,
+        SessionAccentColor,
         // Runtime
         ExtensionRuntime,
         ExtensionShortcut,
