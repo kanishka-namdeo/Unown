@@ -32,7 +32,7 @@ Related pages: [research record](tui-overwhelm-research.md) · [UX principles](u
 | CP3 | Command discoverability (W10–W12) | done | grouped popup/palette (PTY 3/3), /help card, usage.md counts, +2 pre-existing bug fixes |
 | CP4 | Plain-language chrome (W13–W14, W16) | done | ttft classic-only, 5-hint row, cache chips classic-only (PTY verified) |
 | CP5 | Onboarding consolidation (W16–W17) | done | flights printable fall-through (PTY 2/2); W17 verified already-held (pi's dialog is official-distribution-only, never fires for unown) |
-| CP6 | `--help` restructure (W18) | planned | everyday-first help, topic pages |
+| CP6 | `--help` restructure (W18) | done | Everyday block, grouped subcommands, compressed plan + env, topic pointers |
 | CP7 | Ship | planned | docs/landing/blog sync, v0.0.70, cross-platform builds, security sweep |
 
 ## Environment notes (for resume)
@@ -236,6 +236,23 @@ UNOWN_TURN_METER row, bottom-area-user-journeys.md's hint-row rows.
 
 **Verification:** `test/flights-core.test.ts` (the fall-through matrix: printables with data, control keys inert, clamping) + the flights component suites — 51/51 across the three flights files; tsc at the 88-error baseline. PTY as a real user (`semplice_cp5`, 2/2): the fresh boot shows the card, typing `hello` at it dismisses the card and the editor carries `hello`.
 
+## CP6 — the everyday-first `--help`
+
+**Landed (W18):** `unown --help` now opens with an **Everyday** block — the
+seven verbs a first-week user needs (session, prompt, -p, -c, setup, doctor,
+update), each one line — before the full usage grammar. The usage block drops
+its duplicated everyday lines; the `--plan` sprawl compresses from eight
+lines to three; the ~31 subcommands group under six category headers (Setup &
+providers, Project memory & docs, Learning engine & ops, Sessions &
+migration, Repo knowledge, Support & housekeeping — same order, no content
+lost); the Environment block one-lines every variable and points at
+`docs/configuration.md` plus the `unown help <topic>` pages. The honest
+measure: the total line count held (~315 — every fact was kept), but a new
+user now reads NINE lines and starts — the wall became a front porch.
+
+**Verification:** `test/cli/help.test.ts` (the `Usage:` anchor survived the
+restructure), the completions + claims gates green, full suite re-run.
+
 ## Checkpoints
 
 - **CP1** (2026-11-17): committed as `engine(tui): semplice CP1 — the quiet first boot`; suites and receipts as above.
@@ -243,6 +260,7 @@ UNOWN_TURN_METER row, bottom-area-user-journeys.md's hint-row rows.
 - **CP3** (2026-11-17): committed as `engine(tui): semplice CP3 — the grouped command catalog`; receipts above.
 - **CP4** (2026-11-17): committed as `engine(tui): semplice CP4 — plain-language chrome`; receipts above.
 - **CP5** (2026-11-17): committed as `engine(tui): semplice CP5 — the flights fall-through`; receipts above.
+- **CP6** (2026-11-17): committed as `engine(tui): semplice CP6 — the everyday-first --help`; receipts above.
 
 ## The round closes
 

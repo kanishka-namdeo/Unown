@@ -179,10 +179,16 @@ const VERSION: string = unownVersion(join(import.meta.dir, "..", "..", "..", "..
 
 const HELP = `unown — a self-improving terminal coding agent
 
-Usage:
+Everyday:
   unown                    interactive session in the current directory
-  unown "do something"     interactive session starting with a prompt
+  unown "do something"     start with this prompt
   unown -p "prompt"        one-shot headless run (print mode)
+  unown -c                 continue this directory's latest session
+  unown setup              connect a model provider (the wizard)
+  unown doctor             end-to-end diagnostics
+  unown update             check for a newer release and self-update
+
+Usage: (everyday forms above — the rest)
   unown -c                 continue this directory's latest session (TUI;
                            with -p "..." it resumes and runs the prompt)
   unown --resume <id|name> resume by session id, name or file path
@@ -193,17 +199,14 @@ Usage:
   unown sessions resume    the same resume as a subcommand (Codex muscle
                            memory): bare = the picker, or pass <id|name|path>;
                            composes with -p "..." like the flag lane
-  unown --plan [...]       start (print or TUI) in plan mode (V3 orchestrator by
-                           default; UNOWN_PLAN_MODE_V3=0 restores V2): read-only
-                           exploration, the plan file + scored plan doc (0-100
-                           rubric), then the approval gate — execute
-                           auto-accept/manual, edit in the in-TUI editor, or send
-                           feedback (also /plan [description|open|show|off], Ctrl+Alt+P,
-                           Shift+Tab cycles default -> acceptEdits -> plan)
+  unown --plan [...]       start in plan mode (V3 orchestrator; V2 via
+                           UNOWN_PLAN_MODE_V3=0): read-only exploration → scored
+                           plan → the approval gate. In-session: /plan, Ctrl+Alt+P
   unown --plan-model <id>  the opusplan lane: use <id> while planning; the session model
                            returns on approval/exit (also PI_PLAN_MODEL_ID)
   unown --goal "objective"  start with a durable goal: evidence-verified completion,
                            unfinished todos block it (also /goal <objective>)
+Setup & providers:
   unown setup              connect a model provider — interactive wizard
                            presets: bridge (bundled), openai, openrouter, anthropic,
                            dashscope, deepseek, agnes, custom (any OpenAI-compatible)
@@ -216,6 +219,7 @@ Usage:
   unown models verify      re-run spec detection for the registered models
                            (records provenance, heals models.json; --provider,
                            --model, --json filters)
+Project memory & docs:
   unown init               scaffold .unown/ project memory
   unown init-agents        generate or update AGENTS.md (Milestone 3.1)
                            (--overwrite, --print, --json; reverse-engineered
@@ -240,6 +244,7 @@ Usage:
                            gate); --apply writes directly, source stamped
                            import; unknown versions refuse, per-record
                            quarantine (caps, guard, retired rows)
+Learning engine & ops:
   unown dashboard [screen] the TUI mission control for the learning memory
                            system (alias: dash) — screens: overview, memory,
                            dreams, notes, skills, lab, hooks, router,
@@ -287,6 +292,7 @@ Usage:
                            UNOWN_PRICE_* pins exact prices)
   unown webcache <sub>   inspect the web results store (stats [--json] |
                            clear | sweep) shared by web_search + webfetch
+Sessions & migration:
   unown sessions <sub>  session export / import / list / delete / rename
                            (Milestone 3.5 + the 2026-10-25 completion round):
                            export <id> [--format <md|json|html>] [--out <file>] |
@@ -297,6 +303,7 @@ Usage:
                          auto): instructions → AGENTS.md, commands →
                          .unown/commands, skills, agents, MCP servers →
                          .unown/mcp.json (never overwrites; --dry-run; --list)
+Repo knowledge:
   unown blame [file]     receipts-backed blame: which sessions and tool calls
                            touched <file>; no arg = whole-ledger summary
                            (flags: --session <id> --since <ts> --json —
@@ -315,6 +322,7 @@ Usage:
                            the cross-session aggregate; the CLI twin of the
                            /delegation session command and the dashboard's
                            Delegation screen)
+Support & housekeeping:
   unown acp               run the ACP editor server on stdio (JSON-RPC 2.0,
                            newline-delimited) — point Zed or any ACP client at
                            it: agent program 'unown', args 'acp' (see
@@ -465,33 +473,24 @@ One-shot run flags (print mode; several also used by the task tool):
                           (write access; repeatable) — Claude Code --add-dir
                           parity, the /add-dir twin at launch
 
-Environment:
+Environment (full reference: docs/configuration.md):
   UNOWN_HOME               state dir (default ~/.unown)
   UNOWN_ENGINE_URL         self-learning engine (default http://127.0.0.1:3030)
   UNOWN_STRICT_HOOKS=1     sandbox-grade hooks (blocks network, git push, sudo)
   UNOWN_NO_PREFLIGHT=1     skip the endpoint reachability check before sessions
-  UNOWN_ALLOW_UNVERIFIED_SPECS=1  use models whose specs (context window /
-                           max output tokens) no verifiable source could
-                           confirm — the model-specs gate's documented escape
-                           (compaction + the reply cap run on unown's defaults)
-  UNOWN_LSP=0              disable the lsp tool + after-edit diagnostics loop
-                           (waits/timeouts: UNOWN_LSP_WAIT_MS / UNOWN_LSP_TIMEOUT_MS)
-  UNOWN_MCP=0              disable the MCP client (no mcp__* tools register)
-                           (timeouts: UNOWN_MCP_TIMEOUT_MS / UNOWN_MCP_CONNECT_TIMEOUT_MS)
-  UNOWN_PERMISSIONS=0      disable the granular permissions layer (the
-                           hard-coded bash deny-list + write jail stay on)
+  UNOWN_ALLOW_UNVERIFIED_SPECS=1  use models no verifiable source could confirm
+  UNOWN_LSP=0 / UNOWN_MCP=0 / UNOWN_PERMISSIONS=0   disable a subsystem
   UNOWN_PERMISSIONS_LEARN=1  append allow rules for passed bash commands
-                           to ~/.unown/agent/permissions.json (opt-in)
   NO_UPDATE_NOTIFIER=1     silence the startup update notice
   UNOWN_DISABLE_UPDATES=1  disable all update paths (org/CI switch)
-  PI_BRIDGE_URL/PI_MODEL_ID/PI_PROVIDER   LLM endpoint for ~/.unown/agent/models.json
-  UNOWN_SUBAGENT_MODEL     override PI_MODEL_ID for EVERY subagent (per-agent
-                           model still wins; useful for routing all subagents
-                           to a local model)
-  UNOWN_FLEET_TIMEOUT_MS   hard cap on one async fleet child in ms (default
-                           900000; values < 1000 fall back to the default)
-  UNOWN_WORKTREE_ISOLATION=0  disable the task tool's worktree-isolation lane
-                           (fleet spawns compose with it)
+  PI_BRIDGE_URL/PI_MODEL_ID/PI_PROVIDER   LLM endpoint for models.json
+  UNOWN_SUBAGENT_MODEL     override the model for EVERY subagent
+  UNOWN_FLEET_TIMEOUT_MS   hard cap on one async fleet child (default 900000)
+  UNOWN_WORKTREE_ISOLATION=0  disable the task tool's worktree isolation
+
+  unown help <topic> — deeper pages: doctor, mcp, info, update, uninstall,
+  completions, setup, models, note, providers, acp, init-agents,
+  doctor-instructions, routines, usage (unown help lists them all)
 `;
 
 // ---------------------------------------------------------------------------
