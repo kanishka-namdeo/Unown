@@ -177,8 +177,8 @@ def phase_boot(log, cwd) -> bool:
         pc.dismiss_first_flights(s, log)
         s.pump(2.0)
         pane = s.pane_text()
-        check("TUI boots in the target project", "esc-esc tree" in pane or "Themes" in pane)
-        s.still("mem-boot", ["esc-esc tree"], mode="any")
+        check("TUI boots in the target project", "? help" in pane or "Themes" in pane)
+        s.still("mem-boot", ["? help"], mode="any")
     finally:
         s.close()
     return all(ok for _, ok in steps)
@@ -484,7 +484,7 @@ def phase_budget(log, cwd) -> bool:
         except pc.PaneTimeout:
             check("the budget line renders under an overflowing cap", False, "timeout")
             check("overflow is NAMED (pruned/head-truncated/OVERFLOW)", False)
-            s.still("mem-budget", ["esc-esc tree"], mode="any")
+            s.still("mem-budget", ["? help"], mode="any")
     finally:
         s.close()
     return all(ok for _, ok in steps)
@@ -525,7 +525,7 @@ def phase_exit(log, cwd) -> bool:
             s.wait_for(["OK"], timeout=90)
         except pc.PaneTimeout:
             pass
-        s.still("mem-exit-pre", [os.path.basename(cwd.rstrip("/")), "esc-esc tree"], mode="any")
+        s.still("mem-exit-pre", [os.path.basename(cwd.rstrip("/")), "? help"], mode="any")
     finally:
         s.close()
     # The session ended (close) → the exit note must land within a grace window

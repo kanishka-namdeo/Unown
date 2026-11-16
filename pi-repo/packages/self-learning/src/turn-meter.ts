@@ -11,7 +11,10 @@
  * This module is the pure core: format a compact, ASCII, one-row footer
  * chip from the facts a turn boundary already has —
  *
- *   turn 3.4s · ttft 0.8s · ~$0.0084
+ *   turn 3.4s · ~$0.0084
+ *
+ * (classic layout: `turn 3.4s · ttft 0.8s · ~$0.0084` — Semplice W13 moved
+ * ttft behind the classic switch)
  *
  * rendered through pi's `ctx.ui.setStatus("turn", ...)` seam. Session
  * rollup semantics follow /usage's attribution (sessionUsageSummary:
@@ -41,62 +44,62 @@ import { footerClassicMode } from "./footer-mode.ts";
 export const TURN_METER_ENV = "UNOWN_TURN_METER";
 
 export interface TurnUsageDelta {
-        /** Cumulative session input tokens at this turn boundary. */
-        tokensIn: number;
-        /** Cumulative session output tokens at this turn boundary. */
-        tokensOut: number;
-        /** Cumulative session cache-read tokens at this turn boundary. */
-        cacheRead: number;
-        /** The model id whose pricing applies (e.g. "agnes-3.0-flash"). */
-        model?: string;
+	/** Cumulative session input tokens at this turn boundary. */
+	tokensIn: number;
+	/** Cumulative session output tokens at this turn boundary. */
+	tokensOut: number;
+	/** Cumulative session cache-read tokens at this turn boundary. */
+	cacheRead: number;
+	/** The model id whose pricing applies (e.g. "agnes-3.0-flash"). */
+	model?: string;
 }
 
 export interface TurnMeterInput {
-        usage: TurnUsageDelta;
-        /** Wall-clock duration of the turn just completed (ms). */
-        durationMs: number;
-        /** Time-to-first-token: when the host observed the first streamed
-         *  assistant chunk (ms after turn start) — the latency the user FELT.
-         *  Omitted when the host cannot observe it (non-streaming runs). */
-        firstTokenMs?: number;
-        /** Live context utilization, when the host reports it: tokens + window. */
-        context?: { tokens: number; contextWindow: number };
-        /** Env (injected for tests); reads UNOWN_TURN_METER and the price overrides. */
-        env?: Record<string, string | undefined>;
-        /** Pricing resolver — defaults to usage-cli's resolveModelPrice. */
-        resolvePrice?: (
-                model: string,
-                env: Record<string, string | undefined>,
-        ) => { inputUsdPer1M: number; outputUsdPer1M: number } | null | undefined;
+	usage: TurnUsageDelta;
+	/** Wall-clock duration of the turn just completed (ms). */
+	durationMs: number;
+	/** Time-to-first-token: when the host observed the first streamed
+	 *  assistant chunk (ms after turn start) — the latency the user FELT.
+	 *  Omitted when the host cannot observe it (non-streaming runs). */
+	firstTokenMs?: number;
+	/** Live context utilization, when the host reports it: tokens + window. */
+	context?: { tokens: number; contextWindow: number };
+	/** Env (injected for tests); reads UNOWN_TURN_METER and the price overrides. */
+	env?: Record<string, string | undefined>;
+	/** Pricing resolver — defaults to usage-cli's resolveModelPrice. */
+	resolvePrice?: (
+		model: string,
+		env: Record<string, string | undefined>,
+	) => { inputUsdPer1M: number; outputUsdPer1M: number } | null | undefined;
 }
 
 export interface TurnMeterResult {
-        text: string;
-        enabled: boolean;
+	text: string;
+	enabled: boolean;
 }
 
 /** Is the meter on? (default on; UNOWN_TURN_METER=0 disables) */
 export function turnMeterEnabled(env: Record<string, string | undefined> = process.env): boolean {
-        return (env[TURN_METER_ENV] ?? "") !== "0";
+	return (env[TURN_METER_ENV] ?? "") !== "0";
 }
 
 /** Compact token count: 942 → "942", 12_345 → "12.3k", 1_234_567 → "1.23M". */
 export function compactTokens(n: number): string {
-        if (!Number.isFinite(n) || n < 0) return "0";
-        if (n < 1_000) return String(Math.round(n));
-        if (n < 1_000_000) {
-                const v = n / 1_000;
-                return `${v >= 100 ? Math.round(v) : Math.round(v * 10) / 10}k`;
-        }
-        return `${Math.round(n / 10_000) / 100}M`;
+	if (!Number.isFinite(n) || n < 0) return "0";
+	if (n < 1_000) return String(Math.round(n));
+	if (n < 1_000_000) {
+		const v = n / 1_000;
+		return `${v >= 100 ? Math.round(v) : Math.round(v * 10) / 10}k`;
+	}
+	return `${Math.round(n / 10_000) / 100}M`;
 }
 
 /** Compact duration: 830ms → "0.8s", 34_200ms → "34s", 92_000ms → "1.5m". */
 export function compactDuration(ms: number): string {
-        if (!Number.isFinite(ms) || ms < 0) return "0s";
-        if (ms < 1_000) return "<1s";
-        if (ms < 60_000) return `${Math.round(ms / 100) / 10}s`;
-        return `${Math.round(ms / 6_000) / 10}m`;
+	if (!Number.isFinite(ms) || ms < 0) return "0s";
+	if (ms < 1_000) return "<1s";
+	if (ms < 60_000) return `${Math.round(ms / 100) / 10}s`;
+	return `${Math.round(ms / 6_000) / 10}m`;
 }
 
 /**
@@ -106,37 +109,37 @@ export function compactDuration(ms: number): string {
  * the /usage docs already frame this as an estimate).
  */
 export function estimateSessionCostUsd(
-        usage: TurnUsageDelta,
-        resolvePrice: TurnMeterInput["resolvePrice"],
-        env: Record<string, string | undefined>,
+	usage: TurnUsageDelta,
+	resolvePrice: TurnMeterInput["resolvePrice"],
+	env: Record<string, string | undefined>,
 ): number | null {
-        if (!usage.model) return null;
-        const price = resolvePrice?.(usage.model, env);
-        if (!price) return null;
-        const inUsd = (usage.tokensIn / 1_000_000) * price.inputUsdPer1M;
-        const outUsd = (usage.tokensOut / 1_000_000) * price.outputUsdPer1M;
-        return inUsd + outUsd;
+	if (!usage.model) return null;
+	const price = resolvePrice?.(usage.model, env);
+	if (!price) return null;
+	const inUsd = (usage.tokensIn / 1_000_000) * price.inputUsdPer1M;
+	const outUsd = (usage.tokensOut / 1_000_000) * price.outputUsdPer1M;
+	return inUsd + outUsd;
 }
 
 function formatCost(usd: number): string {
-        // Show two decimals above a cent, three below — the ranges a flash-model
-        // session actually lands in ($0.0009 … $0.42).
-        if (usd >= 0.01) return `$${Math.round(usd * 100) / 100}`;
-        return `$${Math.round(usd * 10_000) / 10_000}`;
+	// Show two decimals above a cent, three below — the ranges a flash-model
+	// session actually lands in ($0.0009 … $0.42).
+	if (usd >= 0.01) return `$${Math.round(usd * 100) / 100}`;
+	return `$${Math.round(usd * 10_000) / 10_000}`;
 }
 
 /** The session-cost chip alone — `~$0.0084`, or undefined when the price
  *  model is unknown. The meter-off fallback (cost keeps exactly one row when
  *  UNOWN_TURN_METER=0) and the shared formatter for both modes. */
 export function formatCostChip(
-        usage: TurnUsageDelta,
-        resolvePrice: TurnMeterInput["resolvePrice"],
-        env: Record<string, string | undefined>,
+	usage: TurnUsageDelta,
+	resolvePrice: TurnMeterInput["resolvePrice"],
+	env: Record<string, string | undefined>,
 ): string | undefined {
-        if (!usage.model) return undefined;
-        const cost = estimateSessionCostUsd(usage, resolvePrice, env);
-        if (cost === null) return undefined;
-        return `~${formatCost(cost)}`;
+	if (!usage.model) return undefined;
+	const cost = estimateSessionCostUsd(usage, resolvePrice, env);
+	if (cost === null) return undefined;
+	return `~${formatCost(cost)}`;
 }
 
 /**
@@ -144,43 +147,52 @@ export function formatCostChip(
  * /usage attribution), so consecutive turns show a growing total — the same
  * mental model Claude Code's statusline cost uses.
  *
- * Quiet layout (default): `turn 3.4s · ttft 0.8s · ~$0.0084` — per-turn
- * dynamics + the session cost. Classic layout (UNOWN_FOOTER_CLASSIC=1):
- * the legacy full format with ctx % and token rollups included.
+ * Quiet layout (default): `turn 3.4s · ~$0.0084` — the turn's duration and
+ * the session cost. Classic layout (UNOWN_FOOTER_CLASSIC=1): the legacy
+ * full format with ttft, ctx % and token rollups included.
  */
 export function formatTurnMeter(input: TurnMeterInput): TurnMeterResult {
-        const env = input.env ?? {};
-        if (!turnMeterEnabled(env)) return { text: "", enabled: false };
+	const env = input.env ?? {};
+	if (!turnMeterEnabled(env)) return { text: "", enabled: false };
 
-        const classic = footerClassicMode(env);
-        const parts: string[] = [];
-        parts.push(`turn ${compactDuration(input.durationMs)}`);
+	const classic = footerClassicMode(env);
+	const parts: string[] = [];
+	parts.push(`turn ${compactDuration(input.durationMs)}`);
 
-        // TTFT (the goose v1.42+ row parity): how long the model made the user
-        // wait before the first streamed token. Only when the host observed it.
-        if (typeof input.firstTokenMs === "number" && Number.isFinite(input.firstTokenMs) && input.firstTokenMs > 0) {
-                parts.push(`ttft ${compactDuration(input.firstTokenMs)}`);
-        }
+	// TTFT (the goose v1.42+ row parity): how long the model made the user
+	// wait before the first streamed token. Semplice W13: CLASSIC-ONLY —
+	// the quiet row reads `turn 3.4s · ~$0.0084`; "ttft" is perf-diagnosis
+	// shorthand a first-week user cannot act on (the plain-language-chrome
+	// finding: every chip either says what it means or moves behind the
+	// classic switch). Only when the host observed it.
+	if (
+		classic &&
+		typeof input.firstTokenMs === "number" &&
+		Number.isFinite(input.firstTokenMs) &&
+		input.firstTokenMs > 0
+	) {
+		parts.push(`ttft ${compactDuration(input.firstTokenMs)}`);
+	}
 
-        if (classic) {
-                // CLASSIC: the pre-round full format — context %, token rollup and
-                // cache totals included (the quiet round's F3 dedup does not apply
-                // to the kill-switch path).
-                if (input.context && input.context.contextWindow > 0) {
-                        const pct = Math.min(100, Math.round((input.context.tokens / input.context.contextWindow) * 100));
-                        parts.push(`ctx ${pct}%`);
-                }
+	if (classic) {
+		// CLASSIC: the pre-round full format — context %, token rollup and
+		// cache totals included (the quiet round's F3 dedup does not apply
+		// to the kill-switch path).
+		if (input.context && input.context.contextWindow > 0) {
+			const pct = Math.min(100, Math.round((input.context.tokens / input.context.contextWindow) * 100));
+			parts.push(`ctx ${pct}%`);
+		}
 
-                const { tokensIn, tokensOut, cacheRead } = input.usage;
-                let tokenPart = `in ${compactTokens(tokensIn)} out ${compactTokens(tokensOut)}`;
-                if (cacheRead > 0) tokenPart += ` (cached ${compactTokens(cacheRead)})`;
-                parts.push(tokenPart);
-        }
+		const { tokensIn, tokensOut, cacheRead } = input.usage;
+		let tokenPart = `in ${compactTokens(tokensIn)} out ${compactTokens(tokensOut)}`;
+		if (cacheRead > 0) tokenPart += ` (cached ${compactTokens(cacheRead)})`;
+		parts.push(tokenPart);
+	}
 
-        if (input.usage.model) {
-                const costChip = formatCostChip(input.usage, input.resolvePrice, env);
-                if (costChip) parts.push(costChip);
-        }
+	if (input.usage.model) {
+		const costChip = formatCostChip(input.usage, input.resolvePrice, env);
+		if (costChip) parts.push(costChip);
+	}
 
-        return { text: parts.join(" · "), enabled: true };
+	return { text: parts.join(" · "), enabled: true };
 }

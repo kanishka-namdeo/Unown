@@ -25,7 +25,7 @@ log](footer-quiet-round-session.md).
 ~/my-project/Unown (main)                         ← footer L1: location (always)
 ctx ▕█░░░░░░░░▏ 5.1%/524k (auto) ↓2 ↑27k   agnes-3.0-flash   ← footer L2: stats (always)
 conf ✓ memory: up · stale (v0.0.51) turn 2.7s · ttft 2.7s · ctx 5% · in 26.8k out 2   ← footer L3: every extension chip, alphabetical, truncated mid-chip
-? help · ctrl+k palette · / commands · ! bash · ctrl+o tools · esc-esc tree   ← footer L4: hints (idle set)
+? help · ctrl+k palette · / commands · ! bash · ctrl+o transcript   ← footer L4: hints (idle set, Semplice: five hints; esc-esc moved to /hotkeys + ?)
 ```
 
 Eight rows of chrome at rest; the L3 dump grows with every registered chip
@@ -44,7 +44,7 @@ count, or a cache-hit rate.
 | A-1 Boot | splash, startup hints, first-flights catalog (16 rows in the editor slot), mission-panel line, editor, **4-line footer** | The one action they need (type) competes with 8 rows of chrome; the footer answers questions they don't have | Footer falls to 2 lines at rest (J1-1) |
 | A-2 The stats line | `ctx ▕░░░░░░░░░▏ 0.0%/524k (auto)` | Zero-percent context with a 10-cell bar is noise before the first turn; `0.0%` precision is meaningless | Meter keeps rendering (it is the one live risk metric) but rides the merged line — the identity row it occupied is gone (J1-1) |
 | A-3 The chip dump | `memory: up · … · 107 rules · dreamed 2h ago` | Cryptic micro-text (a memory bar, a version, a rules count) with no action attached; contradicts "what do I type?" | Ambient engine state stops painting; attention states still would be impossible to miss (J2-1) |
-| A-4 Hints | `? help · ctrl+k palette · / commands · ! bash · ctrl+o tools · esc-esc tree` | GOOD — this is the one footer row that answers their question; the palette is the expansion gesture | Kept verbatim (J4-1) |
+| A-4 Hints | `? help · ctrl+k palette · / commands · ! bash · ctrl+o transcript` | GOOD — this is the one footer row that answers their question; the palette is the expansion gesture | Kept, pruned to five hints (Semplice W14 — Cowan 4±1; esc-esc lives in /hotkeys, `?` and /tree) |
 | A-5 First turn ends | `turn 2.7s · ttft 2.7s · ctx 5% · in 26.8k out 2` | A second place showing ctx and tokens, truncated mid-chip, sorted after `conf ✓` and `memory:` | Turn chip deduplicates to per-turn dynamics + cost; priority ordering puts nothing cosmetic ahead of actionable chips (J3-2, J3-1) |
 
 **Journey-A verdict:** the quiet footer answers "where am I, what model, is

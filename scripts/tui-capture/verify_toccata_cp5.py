@@ -117,7 +117,7 @@ def boot(cwd: str, env_extra: dict | None = None, settle_s: float = 3.0) -> Unow
     """
     session = UnownPty(say, cwd=cwd, env_extra=env_extra)
     session.wait_for(
-        ["Pick a starter task", "esc-esc tree", "── Themes ──", "First run"],
+        ["Pick a starter task", "? help", "── Themes ──", "First run"],
         mode="any",
         timeout=240,
         desc="TUI ready (card-or-footer)",

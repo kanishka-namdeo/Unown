@@ -220,7 +220,7 @@ describe("FooterComponent width handling", () => {
                 expect(statsLine).toContain("$1.250");
         });
 
-        it("shows the latest cache hit rate when cache usage is present", () => {
+        it("shows the latest cache hit rate when cache usage is present (classic — Semplice W16)", () => {
                 const session = createSession({
                         sessionName: "",
                         usage: {
@@ -233,9 +233,13 @@ describe("FooterComponent width handling", () => {
                 });
                 const footer = new FooterComponent(session, createFooterData(1));
 
+                // The cache chips (CH/W/R) are classic-only since the Semplice
+                // round — the quiet row keeps location · ctx · ↑/↓ only.
+                const statsLine = withClassicEnv(() => stripAnsi(footer.render(120)[1]));
+                expect(statsLine).toContain("CH25.0%");
                 for (const line of footer.render(120)) {
                         if (stripAnsi(line).includes("ctx")) {
-                                expect(stripAnsi(line)).toContain("CH25.0%");
+                                expect(stripAnsi(line)).not.toContain("CH");
                         }
                 }
         });
@@ -563,9 +567,14 @@ describe("FooterComponent quiet layout (footer quiet round)", () => {
                 const wide = withQuietEnv(() => stripAnsi(footer.render(112)[0]));
                 expect(wide).toContain("▕");
                 expect(wide).toContain("↑4.7k");
-                expect(wide).toContain("R4.1k");
+                // Semplice W16: the cache chips (CH/W/R) are classic-only — the
+                // quiet wide row carries the meter + ↑/↓ + model, nothing coded.
+                expect(wide).not.toContain("R4.1k");
+                expect(wide).not.toContain("CH");
                 expect(wide).toContain("agnes-3.0-flash");
                 expect(wide.length).toBeLessThanOrEqual(112);
+                const wideClassic = withClassicEnv(() => stripAnsi(footer.render(112).join("\n")));
+                expect(wideClassic).toContain("R4.1k");
         });
 
         it("carries the session name only at the wide tiers", () => {

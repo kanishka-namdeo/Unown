@@ -942,7 +942,7 @@ export class InteractiveMode {
                         ...(command.argumentHint && { argumentHint: command.argumentHint }),
                         // Semplice W10: the host's category resolver groups the
                         // catalog (undefined for pi without a host map).
-                        ...(this.options.getCommandCategory?.(command.name) && {
+                        ...(this.options?.getCommandCategory?.(command.name) && {
                                 group: this.options.getCommandCategory!(command.name),
                         }),
                 }));
@@ -1005,7 +1005,7 @@ export class InteractiveMode {
                         name: cmd.name,
                         description: this.prefixAutocompleteDescription(cmd.description, cmd.sourceInfo),
                         ...(cmd.argumentHint && { argumentHint: cmd.argumentHint }),
-                        ...(this.options.getCommandCategory?.(cmd.name) && {
+                        ...(this.options?.getCommandCategory?.(cmd.name) && {
                                 group: this.options.getCommandCategory!(cmd.name),
                         }),
                 }));
@@ -4101,7 +4101,7 @@ export class InteractiveMode {
                 // surfaces, once, with what still needs the tool, when it retries, and
                 // the manual way out. UNOWN_MANAGED_TOOLS_VERBOSE=1 (or --verbose)
                 // restores the full progress lane.
-                const verbose = this.options.verbose || process.env.UNOWN_MANAGED_TOOLS_VERBOSE === "1";
+                const verbose = this.options?.verbose || process.env.UNOWN_MANAGED_TOOLS_VERBOSE === "1";
                 if (status.type === "info" && !verbose) {
                         return;
                 }
@@ -5110,10 +5110,11 @@ export class InteractiveMode {
                         const followUp = keyText("app.message.followUp");
                         return `${dim(dequeue)} ${dim("edit queue")}${sep}${dim(followUp)} ${dim("queue another")}`;
                 }
-                // Idle: the discoverability set — the two round-5 keys first,
-                // then the U1 gestures: the double-esc picker (undiscoverable
-                // otherwise) and, outside fullscreen, the transcript-search
-                // key that only works there.
+                // Idle: the discoverability set — the round-5 keys plus the
+                // transcript lane. Semplice W14: FIVE hints, not six (Cowan 4±1;
+                // the baseline counted six) — the esc-esc gesture left the
+                // always-on row for /hotkeys, the ? reference and usage.md
+                // (its tree picker is also /tree in the grouped catalog).
                 const parts = [
                         `${dim("?")} ${dim("help")}`,
                         `${dim(keyText("app.palette"))} ${dim("palette")}`,
@@ -5126,10 +5127,6 @@ export class InteractiveMode {
                         parts.push(`${dim(keyText("tui.altScreen.transcript"))} ${dim("transcript")}`);
                 } else {
                         parts.push(`${dim(keyText("app.tools.expand"))} ${dim("tools")}`);
-                }
-                const escAction = this.settingsManager.getDoubleEscapeAction();
-                if (escAction !== "none") {
-                        parts.push(`${dim("esc-esc")} ${dim(escAction)}`);
                 }
                 if (this.ui.mode !== "fullscreen") {
                         parts.push(`${dim(keyText("tui.altScreen.search"))} ${dim("search (fullscreen)")}`);

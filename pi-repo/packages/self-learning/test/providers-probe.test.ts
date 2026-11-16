@@ -207,15 +207,14 @@ describe("formatTurnMeter — the TTFT chip", () => {
                 env: {},
         } as const;
 
-        test("renders ttft between turn and the cost when observed (quiet; classic keeps ctx after it)", () => {
+        test("Semplice W13: ttft is classic-only — quiet is turn + cost, classic keeps the legacy order", () => {
                 const price = () => ({ inputUsdPer1M: 0.6, outputUsdPer1M: 2.5 });
                 const res = formatTurnMeter({ ...base, firstTokenMs: 830, context: { tokens: 10, contextWindow: 100 }, resolvePrice: price });
                 expect(res.text).toContain("turn 3.4s");
-                expect(res.text).toContain("ttft <1s");
-                expect(res.text.indexOf("ttft")).toBeGreaterThan(res.text.indexOf("turn"));
-                expect(res.text.indexOf("ttft")).toBeLessThan(res.text.indexOf("$"));
+                expect(res.text).not.toContain("ttft");
+                expect(res.text).toContain("$");
                 // The quiet layout deduplicates ctx/tokens (F3) — they live on the
-                // status line; classic restores the legacy order.
+                // status line; classic restores ttft + ctx + tokens.
                 const classic = formatTurnMeter({
                         ...base,
                         firstTokenMs: 830,
@@ -223,6 +222,7 @@ describe("formatTurnMeter — the TTFT chip", () => {
                         env: { UNOWN_FOOTER_CLASSIC: "1" },
                         resolvePrice: price,
                 });
+                expect(classic.text.indexOf("ttft")).toBeGreaterThan(classic.text.indexOf("turn"));
                 expect(classic.text.indexOf("ttft")).toBeLessThan(classic.text.indexOf("ctx"));
         });
         test("omits ttft when the host could not observe it", () => {

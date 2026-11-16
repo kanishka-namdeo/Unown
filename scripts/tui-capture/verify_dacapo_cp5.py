@@ -96,7 +96,7 @@ def boot(extra_env: dict | None = None, settle_s: float = 8.0) -> RecordingPty:
     deadline = time.time() + 90
     while time.time() < deadline:
         session.pump(1.0)
-        if "esc-esc tree" in session.pane_text():
+        if "? help" in session.pane_text():
             break
         session.key("Esc", delay=0.3)
     session.wait_ready(timeout=60)

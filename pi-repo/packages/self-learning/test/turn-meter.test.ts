@@ -109,9 +109,16 @@ describe("the chip", () => {
                 const { text } = formatTurnMeter(input({ usage: { tokensIn: 1_000, tokensOut: 100, cacheRead: 0, model: "kimi-k2.5" } }));
                 expect(text).toContain("~$0.0009");
         });
-        test("ttft rides between turn and cost", () => {
+        test("Semplice W13: ttft is classic-only — quiet reads turn + cost", () => {
                 const { text } = formatTurnMeter(input({ firstTokenMs: 830 }));
-                expect(text).toBe("turn 3.4s · ttft <1s · ~$0.0091");
+                expect(text).toBe("turn 3.4s · ~$0.0091");
+        });
+        test("classic keeps ttft between turn and cost", () => {
+                const { text } = formatTurnMeter(
+                        input({ firstTokenMs: 830, env: { UNOWN_FOOTER_CLASSIC: "1" } }),
+                );
+                expect(text).toContain("ttft <1s");
+                expect(text).toContain("~$0.0091");
         });
 });
 

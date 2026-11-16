@@ -30,7 +30,7 @@ Related pages: [research record](tui-overwhelm-research.md) · [UX principles](u
 | CP1 | Quiet first boot (W1–W4, W15) | done | this page; `test/semplice-round.test.ts` (7) + updated pins; PTY after-capture (1 preamble line) |
 | CP2 | Two-beat first run (W6–W9) | done | gate default flip (PTY 3/3), ≤8-row summary, spec-gate safe default |
 | CP3 | Command discoverability (W10–W12) | done | grouped popup/palette (PTY 3/3), /help card, usage.md counts, +2 pre-existing bug fixes |
-| CP4 | Plain-language chrome (W13–W14, W16) | planned | turn chip, hint row, token chips |
+| CP4 | Plain-language chrome (W13–W14, W16) | done | ttft classic-only, 5-hint row, cache chips classic-only (PTY verified) |
 | CP5 | Onboarding consolidation (W16–W17) | planned | flights fall-through, FirstTimeSetup suppression |
 | CP6 | `--help` restructure (W18) | planned | everyday-first help, topic pages |
 | CP7 | Ship | planned | docs/landing/blog sync, v0.0.70, cross-platform builds, security sweep |
@@ -203,11 +203,39 @@ clean. PTY as a real user (`semplice_cp3`, 3/3): the bare-`/` popup opens
 GROUPED (headers visible, commands under them), `/pl` filters flat with no
 headers, and `/help` renders the grouped card in the transcript.
 
+## CP4 — plain-language chrome
+
+**Landed:** **W13** — the turn meter's quiet chip reads `turn 3.4s · ~$0.0084`;
+`ttft` (perf-diagnosis shorthand a first-week user cannot act on) moved behind
+`UNOWN_FOOTER_CLASSIC=1` with the classic layout keeping the full legacy
+order. **W14** — the idle hint row carries FIVE hints, not six (Cowan 4±1;
+the baseline counted six): `? help · ctrl+k palette · / commands · ! bash ·
+ctrl+o transcript`; the esc-esc gesture moved to `/hotkeys`, the `?`
+reference and `/tree` in the grouped catalog. **W16** — the footer's cache
+chips (`CH` hit-rate, `W` write, `R` read) are CLASSIC-ONLY single-letter
+codes no first-week user can decode; the quiet stats row keeps location ·
+ctx meter · ↑/↓ · model, and the cache facts live where they are explained
+(`/context`'s where-it-goes breakdown, `/usage`).
+
+**Verification:** `test/turn-meter.test.ts` + `test/providers-probe.test.ts`
+(quiet = turn + cost with no ttft, classic keeps the legacy order),
+coding-agent `footer-width` + `interactive-mode-status` vitest suites
+(the cache-chip classic gate, the managed-tool quiet lane with the verbose
+restore). The PTY lanes' ready anchors moved from `esc-esc tree` to the
+stable `? help` token (verify_dacapo_cp5, verify_memory_matrix,
+verify_toccata_cp5, verify_abort_resume — any-of lists). PTY as a real user
+(`semplice_cp4`, live model turn through the bridge): the hint row reads
+FIVE hints with no esc-esc, the stats row carries `ctx · ↓2 · ↑1.4k · model`
+with no CH/W/R codes, and the turn chip renders `turn 1.1s` with no ttft.
+Docs synced: usage.md's turn-meter section, configuration.md's
+UNOWN_TURN_METER row, bottom-area-user-journeys.md's hint-row rows.
+
 ## Checkpoints
 
 - **CP1** (2026-11-17): committed as `engine(tui): semplice CP1 — the quiet first boot`; suites and receipts as above.
 - **CP2** (2026-11-17): committed as `engine(tui): semplice CP2 — the two-beat first run`; receipts above.
 - **CP3** (2026-11-17): committed as `engine(tui): semplice CP3 — the grouped command catalog`; receipts above.
+- **CP4** (2026-11-17): committed as `engine(tui): semplice CP4 — plain-language chrome`; receipts above.
 
 ## The round closes
 

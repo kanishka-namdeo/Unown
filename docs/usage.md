@@ -164,12 +164,13 @@ Three always-on presence surfaces ship with the convergence round:
   Emission is TTY-only and opt-out: `PROGRAM_STATUS=0` (the spec-wide name) or
   `UNOWN_OSC7501=0`.
 - **The turn meter** — after every turn the footer carries the live chip
-  `turn 3.4s · ttft 0.8s · ~$0.0084`: the turn's duration, the
-  time-to-first-token (the latency you felt) and the session cost (the
+  `turn 3.4s · ~$0.0084`: the turn's duration and the session cost (the
   `/usage` attribution + price-model estimate — `UNOWN_PRICE_<MODEL>_IN/_OUT`
   overrides; unknown models drop the cost segment, a price is never
   invented). The context % and token rollups it used to repeat live on the
-  status row instead — one fact, one home. This is the per-turn visibility
+  status row instead — one fact, one home; the time-to-first-token (ttft)
+  moved behind the classic switch with the Semplice round (plain-language
+  chrome: every chip says what it means). This is the per-turn visibility
   Goose (v1.42+), Gemini CLI (`/stats`) and Claude Code (the status line)
   all normalize; `UNOWN_TURN_METER=0` turns it off (a dedicated cost chip
   keeps the spend visible) and `UNOWN_FOOTER_CLASSIC=1` restores the full
