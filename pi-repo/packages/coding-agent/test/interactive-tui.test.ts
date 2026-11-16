@@ -4,347 +4,378 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { VirtualTerminal } from "../../tui/test/virtual-terminal.ts";
 import type { FullscreenExitOutput, TuiMode } from "../src/core/settings-manager.ts";
 import {
-	createInteractiveTui,
-	createInteractiveTuiReference,
-	InteractiveMode,
+        createInteractiveTui,
+        createInteractiveTuiReference,
+        InteractiveMode,
 } from "../src/modes/interactive/interactive-mode.ts";
 
 const clipboardMocks = vi.hoisted(() => ({
-	copyToClipboard: vi.fn<(text: string) => Promise<void>>(),
-	readClipboardText: vi.fn<() => Promise<string | null>>(),
+        copyToClipboard: vi.fn<(text: string) => Promise<void>>(),
+        readClipboardText: vi.fn<() => Promise<string | null>>(),
 }));
 
 vi.mock("../src/utils/clipboard.ts", () => clipboardMocks);
 
 class RecordingTerminal extends VirtualTerminal implements Terminal {
-	readonly writes: string[] = [];
-	startCount = 0;
-	stopCount = 0;
+        readonly writes: string[] = [];
+        startCount = 0;
+        stopCount = 0;
 
-	override start(onInput: (data: string) => void, onResize: () => void): void {
-		this.startCount += 1;
-		super.start(onInput, onResize);
-	}
+        override start(onInput: (data: string) => void, onResize: () => void): void {
+                this.startCount += 1;
+                super.start(onInput, onResize);
+        }
 
-	override write(data: string): void {
-		this.writes.push(data);
-		super.write(data);
-	}
+        override write(data: string): void {
+                this.writes.push(data);
+                super.write(data);
+        }
 
-	override stop(): void {
-		this.stopCount += 1;
-		super.stop();
-	}
+        override stop(): void {
+                this.stopCount += 1;
+                super.stop();
+        }
 }
 
 describe("createInteractiveTui", () => {
-	it("selects the alternate-screen renderer only when requested", async () => {
-		const mainTerminal = new RecordingTerminal();
-		const mainTui = createInteractiveTui({
-			tuiMode: "regular",
-			showHardwareCursor: false,
-			logDirectory: "/tmp",
-			terminal: mainTerminal,
-		});
-		expect(mainTui.mode).toBe("regular");
-		expect(isViewportTUI(mainTui)).toBe(false);
-		mainTui.start();
-		await mainTerminal.waitForRender();
-		expect(mainTerminal.writes.some((write) => write.includes("\x1b[?1049h"))).toBe(false);
-		mainTui.stop();
+        it("selects the alternate-screen renderer only when requested", async () => {
+                const mainTerminal = new RecordingTerminal();
+                const mainTui = createInteractiveTui({
+                        tuiMode: "regular",
+                        showHardwareCursor: false,
+                        logDirectory: "/tmp",
+                        terminal: mainTerminal,
+                });
+                expect(mainTui.mode).toBe("regular");
+                expect(isViewportTUI(mainTui)).toBe(false);
+                mainTui.start();
+                await mainTerminal.waitForRender();
+                expect(mainTerminal.writes.some((write) => write.includes("\x1b[?1049h"))).toBe(false);
+                mainTui.stop();
 
-		const altTerminal = new RecordingTerminal();
-		const altTui = createInteractiveTui({
-			tuiMode: "fullscreen",
-			showHardwareCursor: false,
-			logDirectory: "/tmp",
-			terminal: altTerminal,
-		});
-		expect(altTui.mode).toBe("fullscreen");
-		expect(isViewportTUI(altTui)).toBe(true);
-		altTui.start();
-		await altTerminal.waitForRender();
-		expect(altTerminal.writes.some((write) => write.includes("\x1b[?1049h"))).toBe(true);
-		altTui.stop();
-	});
+                const altTerminal = new RecordingTerminal();
+                const altTui = createInteractiveTui({
+                        tuiMode: "fullscreen",
+                        showHardwareCursor: false,
+                        logDirectory: "/tmp",
+                        terminal: altTerminal,
+                });
+                expect(altTui.mode).toBe("fullscreen");
+                expect(isViewportTUI(altTui)).toBe(true);
+                altTui.start();
+                await altTerminal.waitForRender();
+                expect(altTerminal.writes.some((write) => write.includes("\x1b[?1049h"))).toBe(true);
+                altTui.stop();
+        });
 
-	it("replaces the renderer and restores the previous screen for resume-hint exits", async () => {
-		const terminal = new RecordingTerminal(40, 8);
-		const renderer = createInteractiveTui({
-			tuiMode: "regular",
-			showHardwareCursor: false,
-			logDirectory: "/tmp",
-			terminal,
-		});
-		let stableUi: TUI;
-		const invalidatedModes: TuiMode[] = [];
-		const component: Component & { focused: boolean } = {
-			focused: false,
-			render: () => ["content"],
-			invalidate: () => invalidatedModes.push(stableUi.mode),
-		};
-		renderer.addChild(component);
-		renderer.setFocus(component);
+        it("replaces the renderer and restores the previous screen for resume-hint exits", async () => {
+                const terminal = new RecordingTerminal(40, 8);
+                const renderer = createInteractiveTui({
+                        tuiMode: "regular",
+                        showHardwareCursor: false,
+                        logDirectory: "/tmp",
+                        terminal,
+                });
+                let stableUi: TUI;
+                const invalidatedModes: TuiMode[] = [];
+                const component: Component & { focused: boolean } = {
+                        focused: false,
+                        render: () => ["content"],
+                        invalidate: () => invalidatedModes.push(stableUi.mode),
+                };
+                renderer.addChild(component);
+                renderer.setFocus(component);
 
-		type SwitchContext = {
-			runtimeHost: { session: { settingsManager: { getFullscreenCopyOnSelect: () => boolean } } };
-			renderer: ReturnType<typeof createInteractiveTui>;
-			ui: TUI;
-			fullscreenLayoutRoot: Component;
-			options: { tuiMode?: TuiMode };
-			themeController: { rebindTui: () => void };
-			extensionTerminalInputSubscriptions: Set<never>;
-		};
-		const context = Object.assign(Object.create(InteractiveMode.prototype), {
-			runtimeHost: { session: { settingsManager: { getFullscreenCopyOnSelect: () => true } } },
-			renderer,
-			ui: undefined as unknown as TUI,
-			fullscreenLayoutRoot: component,
-			options: { tuiMode: "regular" as TuiMode },
-			themeController: { rebindTui: () => {} },
-			extensionTerminalInputSubscriptions: new Set<never>(),
-		}) as SwitchContext;
-		stableUi = createInteractiveTuiReference(() => context.renderer);
-		context.ui = stableUi;
-		const { stopInteractiveTui, switchTuiMode } = InteractiveMode.prototype as unknown as {
-			stopInteractiveTui(this: SwitchContext, fullscreenExitOutput: FullscreenExitOutput): void;
-			switchTuiMode(this: SwitchContext, mode: TuiMode, restoreProgress?: boolean): boolean;
-		};
+                type SwitchContext = {
+                        runtimeHost: { session: { settingsManager: { getFullscreenCopyOnSelect: () => boolean } } };
+                        renderer: ReturnType<typeof createInteractiveTui>;
+                        ui: TUI;
+                        fullscreenLayoutRoot: Component;
+                        options: { tuiMode?: TuiMode };
+                        themeController: { rebindTui: () => void };
+                        extensionTerminalInputSubscriptions: Set<never>;
+                        // Da capo CP5: the switch refreshes the pending strip (the click
+                        // affordance is mode-dependent) and re-binds its click region.
+                        pendingMessagesContainer: Container;
+                        pendingSendNowContainer: Container;
+                        clickRegionUnsubscribe?: () => void;
+                        focusLostAtMs?: number;
+                };
+                const context = Object.assign(Object.create(InteractiveMode.prototype), {
+                        runtimeHost: {
+                                session: {
+                                        settingsManager: { getFullscreenCopyOnSelect: () => true },
+                                        // The pending-strip refresh reads the live queues; empty stubs.
+                                        getSteeringMessages: () => [] as string[],
+                                        getFollowUpMessages: () => [] as string[],
+                                },
+                        },
+                        renderer,
+                        ui: undefined as unknown as TUI,
+                        fullscreenLayoutRoot: component,
+                        options: { tuiMode: "regular" as TuiMode },
+                        themeController: { rebindTui: () => {} },
+                        extensionTerminalInputSubscriptions: new Set<never>(),
+                        pendingMessagesContainer: new Container(),
+                        pendingSendNowContainer: new Container(),
+                        clickRegionUnsubscribe: undefined,
+                        focusLostAtMs: undefined,
+                        compactionQueuedMessages: [] as Array<{ mode: string; text: string }>,
+                }) as SwitchContext;
+                stableUi = createInteractiveTuiReference(() => context.renderer);
+                context.ui = stableUi;
+                const { stopInteractiveTui, switchTuiMode } = InteractiveMode.prototype as unknown as {
+                        stopInteractiveTui(this: SwitchContext, fullscreenExitOutput: FullscreenExitOutput): void;
+                        switchTuiMode(this: SwitchContext, mode: TuiMode, restoreProgress?: boolean): boolean;
+                };
 
-		renderer.start();
-		await terminal.waitForRender();
-		expect(switchTuiMode.call(context, "fullscreen", false)).toBe(true);
-		await terminal.waitForRender();
+                renderer.start();
+                await terminal.waitForRender();
+                expect(switchTuiMode.call(context, "fullscreen", false)).toBe(true);
+                await terminal.waitForRender();
 
-		expect(stableUi.mode).toBe("fullscreen");
-		expect(context.renderer.children).toEqual([component]);
-		expect(context.renderer.getFocusedComponent()).toBe(component);
-		expect(component.focused).toBe(true);
-		expect(invalidatedModes).toEqual(["fullscreen"]);
-		expect([terminal.startCount, terminal.stopCount]).toEqual([2, 1]);
+                expect(stableUi.mode).toBe("fullscreen");
+                expect(context.renderer.children).toEqual([component]);
+                expect(context.renderer.getFocusedComponent()).toBe(component);
+                expect(component.focused).toBe(true);
+                expect(invalidatedModes).toEqual(["fullscreen"]);
+                expect([terminal.startCount, terminal.stopCount]).toEqual([2, 1]);
 
-		stopInteractiveTui.call(context, "resume-hint");
+                // Da capo CP5 regression pin: the switched-to renderer must carry
+                // the transcript hooks and the focus lane — a runtime /tui switch
+                // used to drop them silently (tool-output expansion, the `v`
+                // editor, and the refocus recap all died with the first switch).
+                const fullscreenRenderer = context.renderer as unknown as {
+                        onTranscriptModeChange?: (active: boolean) => void;
+                        onTranscriptOpenEditor?: () => Promise<void>;
+                        onFocusChange?: (focused: boolean) => void;
+                };
+                expect(fullscreenRenderer.onTranscriptModeChange).toBeTypeOf("function");
+                expect(fullscreenRenderer.onTranscriptOpenEditor).toBeTypeOf("function");
+                expect(fullscreenRenderer.onFocusChange).toBeTypeOf("function");
 
-		expect(stableUi.mode).toBe("fullscreen");
-		expect([terminal.startCount, terminal.stopCount]).toEqual([2, 2]);
-	});
+                stopInteractiveTui.call(context, "resume-hint");
+
+                expect(stableUi.mode).toBe("fullscreen");
+                expect([terminal.startCount, terminal.stopCount]).toEqual([2, 2]);
+        });
 });
 
 describe("InteractiveMode right-click paste", () => {
-	it("feeds clipboard text to the focused component as a bracketed paste", async () => {
-		clipboardMocks.readClipboardText.mockResolvedValue("clipboard text");
-		const handleInput = vi.fn<(data: string) => void>();
-		const target = { render: () => [], invalidate: () => {}, handleInput } satisfies Component;
-		const requestRender = vi.fn();
-		const context = {
-			renderer: { getFocusedComponent: () => target },
-			ui: { requestRender },
-		};
-		const prototype = InteractiveMode.prototype as unknown as {
-			handleRightClickPaste(this: typeof context): Promise<void>;
-		};
+        it("feeds clipboard text to the focused component as a bracketed paste", async () => {
+                clipboardMocks.readClipboardText.mockResolvedValue("clipboard text");
+                const handleInput = vi.fn<(data: string) => void>();
+                const target = { render: () => [], invalidate: () => {}, handleInput } satisfies Component;
+                const requestRender = vi.fn();
+                const context = {
+                        renderer: { getFocusedComponent: () => target },
+                        ui: { requestRender },
+                };
+                const prototype = InteractiveMode.prototype as unknown as {
+                        handleRightClickPaste(this: typeof context): Promise<void>;
+                };
 
-		await prototype.handleRightClickPaste.call(context);
+                await prototype.handleRightClickPaste.call(context);
 
-		expect(handleInput).toHaveBeenCalledWith("\x1b[200~clipboard text\x1b[201~");
-		expect(requestRender).toHaveBeenCalledOnce();
-	});
+                expect(handleInput).toHaveBeenCalledWith("\x1b[200~clipboard text\x1b[201~");
+                expect(requestRender).toHaveBeenCalledOnce();
+        });
 });
 
 type CopyCommandContext = {
-	session: { getLastAssistantText: () => string | undefined };
-	ui: ReturnType<typeof createInteractiveTui>;
-	showStatus: (message: string) => void;
-	showError: (message: string) => void;
+        session: { getLastAssistantText: () => string | undefined };
+        ui: ReturnType<typeof createInteractiveTui>;
+        showStatus: (message: string) => void;
+        showError: (message: string) => void;
 };
 
 type CopyCommandOptions = { flashConfirmation?: boolean; preferSelection?: boolean };
 
 type CopyCommandPrototype = {
-	handleCopyCommand(this: CopyCommandContext, options?: CopyCommandOptions): Promise<void>;
+        handleCopyCommand(this: CopyCommandContext, options?: CopyCommandOptions): Promise<void>;
 };
 
 const copyCommandPrototype = InteractiveMode.prototype as unknown as CopyCommandPrototype;
 
 describe("InteractiveMode copy confirmation", () => {
-	beforeEach(() => {
-		clipboardMocks.copyToClipboard.mockReset();
-		clipboardMocks.copyToClipboard.mockResolvedValue(undefined);
-	});
+        beforeEach(() => {
+                clipboardMocks.copyToClipboard.mockReset();
+                clipboardMocks.copyToClipboard.mockResolvedValue(undefined);
+        });
 
-	it("copies an active fullscreen selection when copy-on-select is disabled", async () => {
-		const terminal = new RecordingTerminal(40, 4);
-		const ui = createInteractiveTui({
-			tuiMode: "fullscreen",
-			showHardwareCursor: false,
-			logDirectory: "/tmp",
-			terminal,
-			fullscreenCopyOnSelect: false,
-		});
-		const getLastAssistantText = vi.fn(() => "assistant response");
-		const showStatus = vi.fn();
-		const showError = vi.fn();
-		const context: CopyCommandContext = {
-			session: { getLastAssistantText },
-			ui,
-			showStatus,
-			showError,
-		};
-		ui.addChild(new Text("alpha\nbeta\ngamma\ndelta", 0, 0));
+        it("copies an active fullscreen selection when copy-on-select is disabled", async () => {
+                const terminal = new RecordingTerminal(40, 4);
+                const ui = createInteractiveTui({
+                        tuiMode: "fullscreen",
+                        showHardwareCursor: false,
+                        logDirectory: "/tmp",
+                        terminal,
+                        fullscreenCopyOnSelect: false,
+                });
+                const getLastAssistantText = vi.fn(() => "assistant response");
+                const showStatus = vi.fn();
+                const showError = vi.fn();
+                const context: CopyCommandContext = {
+                        session: { getLastAssistantText },
+                        ui,
+                        showStatus,
+                        showError,
+                };
+                ui.addChild(new Text("alpha\nbeta\ngamma\ndelta", 0, 0));
 
-		ui.start();
-		try {
-			await terminal.waitForRender();
-			terminal.sendInput("\x1b[<0;1;1M");
-			terminal.sendInput("\x1b[<32;4;2M");
-			terminal.sendInput("\x1b[<0;4;2m");
-			await terminal.waitForRender();
-			clipboardMocks.copyToClipboard.mockClear();
+                ui.start();
+                try {
+                        await terminal.waitForRender();
+                        terminal.sendInput("\x1b[<0;1;1M");
+                        terminal.sendInput("\x1b[<32;4;2M");
+                        terminal.sendInput("\x1b[<0;4;2m");
+                        await terminal.waitForRender();
+                        clipboardMocks.copyToClipboard.mockClear();
 
-			await copyCommandPrototype.handleCopyCommand.call(context, { flashConfirmation: true, preferSelection: true });
-			await terminal.waitForRender();
+                        await copyCommandPrototype.handleCopyCommand.call(context, { flashConfirmation: true, preferSelection: true });
+                        await terminal.waitForRender();
 
-			expect(clipboardMocks.copyToClipboard).toHaveBeenCalledOnce();
-			expect(clipboardMocks.copyToClipboard).toHaveBeenCalledWith("alpha\nbeta");
-			expect(getLastAssistantText).not.toHaveBeenCalled();
-			expect(showStatus).not.toHaveBeenCalled();
-			expect(showError).not.toHaveBeenCalled();
-			expect(terminal.getViewport().some((line) => line.includes("Copied!"))).toBe(true);
-		} finally {
-			ui.stop();
-		}
-	});
+                        expect(clipboardMocks.copyToClipboard).toHaveBeenCalledOnce();
+                        expect(clipboardMocks.copyToClipboard).toHaveBeenCalledWith("alpha\nbeta");
+                        expect(getLastAssistantText).not.toHaveBeenCalled();
+                        expect(showStatus).not.toHaveBeenCalled();
+                        expect(showError).not.toHaveBeenCalled();
+                        expect(terminal.getViewport().some((line) => line.includes("Copied!"))).toBe(true);
+                } finally {
+                        ui.stop();
+                }
+        });
 
-	it("copies the last assistant message with an active fullscreen selection when copy-on-select is enabled", async () => {
-		const terminal = new RecordingTerminal(40, 4);
-		const ui = createInteractiveTui({
-			tuiMode: "fullscreen",
-			showHardwareCursor: false,
-			logDirectory: "/tmp",
-			terminal,
-		});
-		const getLastAssistantText = vi.fn(() => "assistant response");
-		const showStatus = vi.fn();
-		const showError = vi.fn();
-		const context: CopyCommandContext = {
-			session: { getLastAssistantText },
-			ui,
-			showStatus,
-			showError,
-		};
-		ui.addChild(new Text("alpha\nbeta\ngamma\ndelta", 0, 0));
+        it("copies the last assistant message with an active fullscreen selection when copy-on-select is enabled", async () => {
+                const terminal = new RecordingTerminal(40, 4);
+                const ui = createInteractiveTui({
+                        tuiMode: "fullscreen",
+                        showHardwareCursor: false,
+                        logDirectory: "/tmp",
+                        terminal,
+                });
+                const getLastAssistantText = vi.fn(() => "assistant response");
+                const showStatus = vi.fn();
+                const showError = vi.fn();
+                const context: CopyCommandContext = {
+                        session: { getLastAssistantText },
+                        ui,
+                        showStatus,
+                        showError,
+                };
+                ui.addChild(new Text("alpha\nbeta\ngamma\ndelta", 0, 0));
 
-		ui.start();
-		try {
-			await terminal.waitForRender();
-			terminal.sendInput("\x1b[<0;1;1M");
-			terminal.sendInput("\x1b[<32;4;2M");
-			terminal.sendInput("\x1b[<0;4;2m");
-			await terminal.waitForRender();
-			clipboardMocks.copyToClipboard.mockClear();
+                ui.start();
+                try {
+                        await terminal.waitForRender();
+                        terminal.sendInput("\x1b[<0;1;1M");
+                        terminal.sendInput("\x1b[<32;4;2M");
+                        terminal.sendInput("\x1b[<0;4;2m");
+                        await terminal.waitForRender();
+                        clipboardMocks.copyToClipboard.mockClear();
 
-			await copyCommandPrototype.handleCopyCommand.call(context, { flashConfirmation: true, preferSelection: true });
-			await terminal.waitForRender();
+                        await copyCommandPrototype.handleCopyCommand.call(context, { flashConfirmation: true, preferSelection: true });
+                        await terminal.waitForRender();
 
-			expect(clipboardMocks.copyToClipboard).toHaveBeenCalledOnce();
-			expect(clipboardMocks.copyToClipboard).toHaveBeenCalledWith("assistant response");
-			expect(getLastAssistantText).toHaveBeenCalledOnce();
-			expect(showStatus).not.toHaveBeenCalled();
-			expect(showError).not.toHaveBeenCalled();
-			expect(terminal.getViewport().some((line) => line.includes("Copied!"))).toBe(true);
-		} finally {
-			ui.stop();
-		}
-	});
+                        expect(clipboardMocks.copyToClipboard).toHaveBeenCalledOnce();
+                        expect(clipboardMocks.copyToClipboard).toHaveBeenCalledWith("assistant response");
+                        expect(getLastAssistantText).toHaveBeenCalledOnce();
+                        expect(showStatus).not.toHaveBeenCalled();
+                        expect(showError).not.toHaveBeenCalled();
+                        expect(terminal.getViewport().some((line) => line.includes("Copied!"))).toBe(true);
+                } finally {
+                        ui.stop();
+                }
+        });
 
-	it("flashes Copied! for the copy shortcut in fullscreen mode", async () => {
-		const terminal = new RecordingTerminal(40, 4);
-		const ui = createInteractiveTui({
-			tuiMode: "fullscreen",
-			showHardwareCursor: false,
-			logDirectory: "/tmp",
-			terminal,
-		});
-		const showStatus = vi.fn();
-		const showError = vi.fn();
-		const context: CopyCommandContext = {
-			session: { getLastAssistantText: () => "assistant response" },
-			ui,
-			showStatus,
-			showError,
-		};
+        it("flashes Copied! for the copy shortcut in fullscreen mode", async () => {
+                const terminal = new RecordingTerminal(40, 4);
+                const ui = createInteractiveTui({
+                        tuiMode: "fullscreen",
+                        showHardwareCursor: false,
+                        logDirectory: "/tmp",
+                        terminal,
+                });
+                const showStatus = vi.fn();
+                const showError = vi.fn();
+                const context: CopyCommandContext = {
+                        session: { getLastAssistantText: () => "assistant response" },
+                        ui,
+                        showStatus,
+                        showError,
+                };
 
-		ui.start();
-		try {
-			await terminal.waitForRender();
-			await copyCommandPrototype.handleCopyCommand.call(context, { flashConfirmation: true, preferSelection: true });
-			await terminal.waitForRender();
+                ui.start();
+                try {
+                        await terminal.waitForRender();
+                        await copyCommandPrototype.handleCopyCommand.call(context, { flashConfirmation: true, preferSelection: true });
+                        await terminal.waitForRender();
 
-			expect(clipboardMocks.copyToClipboard).toHaveBeenCalledWith("assistant response");
-			expect(showStatus).not.toHaveBeenCalled();
-			expect(showError).not.toHaveBeenCalled();
-			expect(terminal.getViewport().some((line) => line.includes("Copied!"))).toBe(true);
-		} finally {
-			ui.stop();
-		}
-	});
+                        expect(clipboardMocks.copyToClipboard).toHaveBeenCalledWith("assistant response");
+                        expect(showStatus).not.toHaveBeenCalled();
+                        expect(showError).not.toHaveBeenCalled();
+                        expect(terminal.getViewport().some((line) => line.includes("Copied!"))).toBe(true);
+                } finally {
+                        ui.stop();
+                }
+        });
 
-	it("keeps the status-line confirmation for the copy shortcut in regular mode", async () => {
-		const ui = createInteractiveTui({
-			tuiMode: "regular",
-			showHardwareCursor: false,
-			logDirectory: "/tmp",
-			terminal: new RecordingTerminal(),
-		});
-		const showStatus = vi.fn();
-		const showError = vi.fn();
-		const context: CopyCommandContext = {
-			session: { getLastAssistantText: () => "assistant response" },
-			ui,
-			showStatus,
-			showError,
-		};
+        it("keeps the status-line confirmation for the copy shortcut in regular mode", async () => {
+                const ui = createInteractiveTui({
+                        tuiMode: "regular",
+                        showHardwareCursor: false,
+                        logDirectory: "/tmp",
+                        terminal: new RecordingTerminal(),
+                });
+                const showStatus = vi.fn();
+                const showError = vi.fn();
+                const context: CopyCommandContext = {
+                        session: { getLastAssistantText: () => "assistant response" },
+                        ui,
+                        showStatus,
+                        showError,
+                };
 
-		await copyCommandPrototype.handleCopyCommand.call(context, { flashConfirmation: true, preferSelection: true });
+                await copyCommandPrototype.handleCopyCommand.call(context, { flashConfirmation: true, preferSelection: true });
 
-		expect(showStatus).toHaveBeenCalledWith("Copied last agent message to clipboard");
-		expect(showError).not.toHaveBeenCalled();
-	});
+                expect(showStatus).toHaveBeenCalledWith("Copied last agent message to clipboard");
+                expect(showError).not.toHaveBeenCalled();
+        });
 });
 
 type ClearStatusContext = {
-	activeStatusIndicator: { kind: "working"; dispose: () => void } | undefined;
-	statusContainer: Container;
-	options: { tuiMode?: TuiMode };
-	ui: { getClearOnShrink: () => boolean };
-	idleStatus: Component;
+        activeStatusIndicator: { kind: "working"; dispose: () => void } | undefined;
+        statusContainer: Container;
+        options: { tuiMode?: TuiMode };
+        ui: { getClearOnShrink: () => boolean };
+        idleStatus: Component;
 };
 
 type InteractiveModePrototype = {
-	clearStatusIndicator(this: ClearStatusContext, kind?: "working"): void;
+        clearStatusIndicator(this: ClearStatusContext, kind?: "working"): void;
 };
 
 const interactiveModePrototype = InteractiveMode.prototype as unknown as InteractiveModePrototype;
 
 describe("clear-on-shrink status spacing", () => {
-	it("reserves status height only on the main-screen renderer", () => {
-		for (const [tuiMode, expectedChildren] of [
-			["regular", 1],
-			["fullscreen", 0],
-		] as const) {
-			const dispose = vi.fn();
-			const context: ClearStatusContext = {
-				activeStatusIndicator: { kind: "working", dispose },
-				statusContainer: new Container(),
-				options: { tuiMode },
-				ui: { getClearOnShrink: () => true },
-				idleStatus: new Text("", 0, 0),
-			};
+        it("reserves status height only on the main-screen renderer", () => {
+                for (const [tuiMode, expectedChildren] of [
+                        ["regular", 1],
+                        ["fullscreen", 0],
+                ] as const) {
+                        const dispose = vi.fn();
+                        const context: ClearStatusContext = {
+                                activeStatusIndicator: { kind: "working", dispose },
+                                statusContainer: new Container(),
+                                options: { tuiMode },
+                                ui: { getClearOnShrink: () => true },
+                                idleStatus: new Text("", 0, 0),
+                        };
 
-			interactiveModePrototype.clearStatusIndicator.call(context);
+                        interactiveModePrototype.clearStatusIndicator.call(context);
 
-			expect(dispose).toHaveBeenCalledOnce();
-			expect(context.statusContainer.children).toHaveLength(expectedChildren);
-		}
-	});
+                        expect(dispose).toHaveBeenCalledOnce();
+                        expect(context.statusContainer.children).toHaveLength(expectedChildren);
+                }
+        });
 });

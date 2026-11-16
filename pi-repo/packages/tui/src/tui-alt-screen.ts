@@ -194,6 +194,50 @@ export interface TuiAltScreenOptions {
          * virtual terminal cannot produce).
          */
         onTranscriptWaitKeypress?: () => Promise<void>;
+        /**
+         * Terminal focus changes (Da capo R16 — the refocus recap): fired
+         * with `false` on `\x1b[O` (window blurred) and `true` on `\x1b[I`
+         * (refocused). Focus reporting rides the mouse enable sequences
+         * (`?1004h` is bundled with `?1000h/?1002h/?1006h`), so the events
+         * flow whenever mouse capture is on (the default).
+         */
+        onFocusChange?: (focused: boolean) => void;
+}
+
+/**
+ * A screen-space click region (Da capo R8 — click-to-send, Claude Code
+ * 2.1.312's contract: clicking the "to send now" hint under a queued
+ * message sends it right away, as its key does). Rows are absolute screen
+ * rows spanning the full width; `endRow` is exclusive. Regions are
+ * re-resolved from their provider on EVERY render, so a region tracks the
+ * layout instead of holding stale rows.
+ */
+export interface AltScreenClickRegion {
+        id: string;
+        startRow: number;
+        endRow: number;
+        onSelect: () => void;
+}
+
+/** Resolves the live click regions for a freshly computed layout. */
+export type AltScreenClickRegionProvider = (
+        layout: LayoutFrame,
+) => AltScreenClickRegion | AltScreenClickRegion[] | undefined | null;
+
+/** A region must name itself, cover at least one row, and be actionable. */
+function isValidClickRegion(region: unknown): region is AltScreenClickRegion {
+        if (!region || typeof region !== "object") return false;
+        const candidate = region as Partial<AltScreenClickRegion>;
+        return (
+                typeof candidate.id === "string" &&
+                candidate.id.length > 0 &&
+                typeof candidate.startRow === "number" &&
+                Number.isFinite(candidate.startRow) &&
+                typeof candidate.endRow === "number" &&
+                Number.isFinite(candidate.endRow) &&
+                candidate.endRow > candidate.startRow &&
+                typeof candidate.onSelect === "function"
+        );
 }
 
 /** Alternate-screen TUI with a scrollable, application-owned viewport. */
@@ -227,6 +271,9 @@ export class TuiAltScreen extends TuiBase implements ViewportTUI {
         private activeSearch?: ActiveSearch;
         private pressedUrl?: string;
         private selectionDragged = false;
+        private readonly clickRegionProviders = new Set<AltScreenClickRegionProvider>();
+        private clickRegions: AltScreenClickRegion[] = [];
+        private pressedClickRegion?: AltScreenClickRegion;
         private readonly wheelScrollLines: number;
         private readonly mouseEnabled: boolean;
         private readonly searchMatchStyle: (text: string) => string;
@@ -239,6 +286,7 @@ export class TuiAltScreen extends TuiBase implements ViewportTUI {
         private readonly onTranscriptModeChange?: (active: boolean) => void;
         private readonly onTranscriptOpenEditor?: () => Promise<void>;
         private readonly onTranscriptWaitKeypress?: () => Promise<void>;
+        private readonly onFocusChange?: (focused: boolean) => void;
         private transcriptModeActive = false;
         private transcriptHintOverlay?: OverlayHandle;
         private transcriptHelpOverlay?: OverlayHandle;
@@ -272,7 +320,89 @@ export class TuiAltScreen extends TuiBase implements ViewportTUI {
                 this.onTranscriptModeChange = options.onTranscriptModeChange;
                 this.onTranscriptOpenEditor = options.onTranscriptOpenEditor;
                 this.onTranscriptWaitKeypress = options.onTranscriptWaitKeypress;
+                this.onFocusChange = options.onFocusChange;
                 this.addInputListener((data) => this.handleViewportInput(data));
+        }
+
+        /**
+         * Register a per-render click-region provider (Da capo R8). The
+         * provider is re-invoked with the layout after EVERY render; it
+         * returns the region(s) currently on screen (or nothing when the
+         * affordance is absent — an empty queue must unregister its rows).
+         * Provider exceptions never break rendering. Returns an unsubscribe.
+         */
+        addClickRegionProvider(provider: AltScreenClickRegionProvider): () => void {
+                this.clickRegionProviders.add(provider);
+                return () => {
+                        this.clickRegionProviders.delete(provider);
+                };
+        }
+
+        /** Re-resolve every provider against `layout`; a vanished region cancels its press. */
+        private refreshClickRegions(): void {
+                if (this.clickRegionProviders.size === 0) {
+                        this.clickRegions = [];
+                        this.pressedClickRegion = undefined;
+                        return;
+                }
+                const layout = this.currentLayout;
+                const next: AltScreenClickRegion[] = [];
+                if (layout) {
+                        for (const provider of this.clickRegionProviders) {
+                                try {
+                                        const region = provider(layout);
+                                        if (!region) continue;
+                                        if (Array.isArray(region)) {
+                                                for (const item of region) {
+                                                        if (isValidClickRegion(item)) next.push(item);
+                                                }
+                                        } else if (isValidClickRegion(region)) next.push(region);
+                                } catch {
+                                        // A provider must never break the render pass.
+                                }
+                        }
+                }
+                this.clickRegions = next;
+                if (this.pressedClickRegion && !next.some((region) => region.id === this.pressedClickRegion?.id)) {
+                        this.pressedClickRegion = undefined;
+                }
+        }
+
+        /**
+         * Click regions act on the mouse RELEASE, and only when the release
+         * lands inside the region's CURRENT rows (Claude Code 2.1.311's
+         * release-commit lesson: moving off the target before letting go
+         * cancels the click). A press that starts outside every region falls
+         * through to the selection/scrollbar handlers untouched.
+         */
+        private handleClickRegionMouseEvent(event: SgrMouseEvent): boolean {
+                if (this.hasOverlay()) {
+                        this.pressedClickRegion = undefined;
+                        return false;
+                }
+                if ((event.button & 64) !== 0) return false; // wheel — never a click
+                const button = event.button & 3;
+                if (event.release) {
+                        const pressed = this.pressedClickRegion;
+                        this.pressedClickRegion = undefined;
+                        if (!pressed) return false;
+                        if (button !== 0 && button !== 3) return true; // a different button's release — still ours to swallow
+                        const region = this.clickRegions.find((item) => item.id === pressed.id) ?? pressed;
+                        if (event.y >= region.startRow && event.y < region.endRow) {
+                                try {
+                                        region.onSelect();
+                                } catch {
+                                        // Region actions are best-effort, like URL activation.
+                                }
+                        }
+                        return true;
+                }
+                if ((event.button & 32) !== 0) return this.pressedClickRegion !== undefined; // motion during a region press
+                if (button !== 0) return false;
+                const region = this.clickRegions.find((item) => event.y >= item.startRow && event.y < item.endRow);
+                if (!region) return false;
+                this.pressedClickRegion = region;
+                return true;
         }
 
         get viewportTop(): number {
@@ -344,6 +474,8 @@ export class TuiAltScreen extends TuiBase implements ViewportTUI {
                 this.selectionInitialRange = undefined;
                 this.lastClick = undefined;
                 this.pressedUrl = undefined;
+                this.pressedClickRegion = undefined;
+                this.clickRegions = [];
                 this.selectionDragged = false;
                 this.resetRenderState();
                 const term = process.env.TERM?.toLowerCase() ?? "";
@@ -840,6 +972,7 @@ export class TuiAltScreen extends TuiBase implements ViewportTUI {
                         this.stopScrollbarHover();
                         this.stopScrollbarDrag();
                         this.pressedUrl = undefined;
+                        this.pressedClickRegion = undefined;
                         this.selectionDragged = false;
                         if (hadActiveSelection) {
                                 this.selectionAnchor = undefined;
@@ -849,9 +982,13 @@ export class TuiAltScreen extends TuiBase implements ViewportTUI {
                                 if (hadNonEmptyActiveSelection) this.requestRender();
                         }
                         this.lastClick = undefined;
+                        this.onFocusChange?.(false);
                         return { consume: true };
                 }
-                if (data === FOCUS_IN) return { consume: true };
+                if (data === FOCUS_IN) {
+                        this.onFocusChange?.(true);
+                        return { consume: true };
+                }
 
                 const wheelEvent = this.parseWheelEvent(data);
                 if (wheelEvent) {
@@ -862,6 +999,7 @@ export class TuiAltScreen extends TuiBase implements ViewportTUI {
                 const mouseEvent = this.parseSgrMouseEvent(data);
                 if (mouseEvent) {
                         if (this.handleRightClickPaste(mouseEvent)) return { consume: true };
+                        if (this.handleClickRegionMouseEvent(mouseEvent)) return { consume: true };
                         const handled = this.handleScrollbarMouseEvent(mouseEvent);
                         if (!this.scrollbarDrag) this.updateScrollbarHover(mouseEvent.x, mouseEvent.y);
                         if (!handled) this.handleSelectionMouseEvent(mouseEvent);
@@ -1689,5 +1827,6 @@ export class TuiAltScreen extends TuiBase implements ViewportTUI {
                 this.previousScreenWidth = width;
                 this.previousScreenHeight = height;
                 this.currentLayout = nextLayout;
+                this.refreshClickRegions();
         }
 }

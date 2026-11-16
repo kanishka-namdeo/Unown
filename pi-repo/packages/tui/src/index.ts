@@ -145,7 +145,14 @@ export {
         type TuiStopOptions,
         type ViewportTUI,
 } from "./tui.ts";
-export { TuiAltScreen, type TuiAltScreenOptions } from "./tui-alt-screen.ts";
+export {
+        type AltScreenClickRegion,
+        type AltScreenClickRegionProvider,
+        TuiAltScreen,
+        type TuiAltScreenOptions,
+} from "./tui-alt-screen.ts";
+// Layout lookups (Da capo R8 — the click-region seam reads a component's rect)
+export { findComponentRect, type LayoutFrame, type LayoutRect } from "./layout.ts";
 export { TranscriptHelpPanelComponent, TranscriptModeHintComponent } from "./components/transcript-overlays.ts";
 export { TuiMainScreen, type TuiMainScreenRenderState } from "./tui-main-screen.ts";
 // Viewport tiers (the TUI's breakpoint vocabulary)

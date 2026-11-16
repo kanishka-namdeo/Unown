@@ -44,6 +44,7 @@ import {
         type TUI,
         TuiAltScreen,
         TuiMainScreen,
+        findComponentRect,
         visibleWidth,
 } from "@earendil-works/pi-tui";
 import chalk from "chalk";
@@ -187,6 +188,10 @@ import {
 import { buildTranscriptMarkdown } from "./transcript-export.ts";
 import { refreshModelCatalogs } from "./model-catalog-refresh.ts";
 import { getModelSearchText } from "./model-search.ts";
+import {
+        renderRefocusRecapLine,
+        shouldShowRefocusRecap,
+} from "./refocus-recap.ts";
 import { shareSession } from "./session-share.ts";
 import {
         getAvailableThemes,
@@ -522,6 +527,8 @@ interface InteractiveTuiOptions {
         onTranscriptModeChange?: (active: boolean) => void;
         /** Transcript mode `v`: open the conversation in $VISUAL/$EDITOR (the host owns the stop/start dance). */
         onTranscriptOpenEditor?: () => Promise<void>;
+        /** Fullscreen focus events (Da capo R16 — the refocus recap). Fired on `\x1b[O`/`\x1b[I`; flows only in fullscreen, where focus reporting is enabled with mouse capture. */
+        onFocusChange?: (focused: boolean) => void;
 }
 
 /** Composition root for selecting the interactive terminal renderer. */
@@ -544,6 +551,7 @@ export function createInteractiveTui(options: InteractiveTuiOptions): TuiMainScr
                         minSizeNotice: options.minSizeNotice ?? false,
                         onTranscriptModeChange: options.onTranscriptModeChange,
                         onTranscriptOpenEditor: options.onTranscriptOpenEditor,
+                        onFocusChange: options.onFocusChange,
                         copySelection: async (text) => {
                                 try {
                                         await copyToClipboard(text);
@@ -599,6 +607,12 @@ export class InteractiveMode {
         private transcriptScrollView: TuiLayouts.ScrollView | undefined;
         private fullscreenLayoutRoot: Component | undefined;
         private pendingMessagesContainer: Container;
+        /** The "send now" hint line, its own dock entry so its rows are findable for the click region (Da capo R8). */
+        private pendingSendNowContainer: Container;
+        /** Unsubscribes the active renderer's click-region provider (re-bound on every mode switch). */
+        private clickRegionUnsubscribe?: () => void;
+        /** When the fullscreen terminal last blurred (Da capo R16 — the refocus recap). */
+        private focusLostAtMs?: number;
         private statusContainer: Container;
         private defaultEditor: CustomEditor;
         private editor: EditorComponent;
@@ -776,6 +790,7 @@ export class InteractiveMode {
                         minSizeNotice: true,
                         onTranscriptModeChange: (active) => this.handleTranscriptModeChange(active),
                         onTranscriptOpenEditor: () => this.openTranscriptInExternalEditor(),
+                        onFocusChange: (focused) => this.handleFocusChange(focused),
                 });
                 this.ui = createInteractiveTuiReference(() => this.renderer);
                 // Move 9 (arrival pacing): streaming text arrives in smooth <=8fps
@@ -790,6 +805,7 @@ export class InteractiveMode {
                 this.documentContainer.addChild(this.loadedResourcesContainer);
                 this.documentContainer.addChild(this.chatContainer);
                 this.pendingMessagesContainer = new Container();
+                this.pendingSendNowContainer = new Container();
                 this.statusContainer = new Container();
                 this.widgetContainerAbove = new Container();
                 this.widgetContainerBelow = new Container();
@@ -1106,6 +1122,13 @@ export class InteractiveMode {
                         onRightClickPaste: this.onRightClickPaste,
                         fullscreenCopyOnSelect: this.settingsManager.getFullscreenCopyOnSelect(),
                         minSizeNotice: true,
+                        // Da capo CP5: the switch used to drop the transcript-mode
+                        // hooks — a runtime /tui fullscreen switch silently lost
+                        // tool-output expansion and the `v` editor. The renderer
+                        // construction sites must stay in lockstep.
+                        onTranscriptModeChange: (active) => this.handleTranscriptModeChange(active),
+                        onTranscriptOpenEditor: () => this.openTranscriptInExternalEditor(),
+                        onFocusChange: (focused) => this.handleFocusChange(focused),
                 });
                 nextUi.setClearOnShrink(clearOnShrink);
                 this.applyOverlayScrim(nextUi);
@@ -1116,6 +1139,10 @@ export class InteractiveMode {
                 this.renderer = nextUi;
                 this.options.tuiMode = mode;
                 this.mountInteractiveTui(nextUi, components);
+                // Da capo R8: re-bind the click region to the new renderer, then
+                // refresh the strip so the click affordance text matches the mode.
+                this.bindFullscreenClickRegions();
+                this.updatePendingMessagesDisplay();
                 nextUi.invalidate();
                 nextUi.setFocus(focus);
                 if (!startRenderer) return true;
@@ -1167,6 +1194,7 @@ export class InteractiveMode {
                 });
                 const dock = new TuiLayouts.VStack([
                         { component: this.pendingMessagesContainer, shrink: 1, minSize: 0 },
+                        { component: this.pendingSendNowContainer, shrink: 1, minSize: 0 },
                         { component: this.statusContainer, shrink: 1, minSize: 0 },
                         { component: this.widgetContainerAbove, shrink: 1, minSize: 0 },
                         { component: this.editorContainer, shrink: 1, minSize: 3 },
@@ -1181,6 +1209,7 @@ export class InteractiveMode {
                 this.mountInteractiveTui(this.renderer, [
                         this.documentContainer,
                         this.pendingMessagesContainer,
+                        this.pendingSendNowContainer,
                         this.statusContainer,
                         this.widgetContainerAbove,
                         this.editorContainer,
@@ -1188,6 +1217,9 @@ export class InteractiveMode {
                         this.statusLineContainer,
                         this.footerContainer,
                 ]);
+                // Da capo R8: the "send now" strip's click region rides the
+                // active fullscreen renderer from the first render on.
+                this.bindFullscreenClickRegions();
                 // Accept text while startup completes, but only enable interrupt, exit, and submission feedback.
                 this.defaultEditor.onAction("app.clear", () => this.handleCtrlC());
                 this.defaultEditor.onCtrlD = () => this.handleCtrlD();
@@ -5330,6 +5362,7 @@ export class InteractiveMode {
 
         private updatePendingMessagesDisplay(): void {
                 this.pendingMessagesContainer.clear();
+                this.pendingSendNowContainer.clear();
                 const { steering: steeringMessages, followUp: followUpMessages } = this.getAllQueuedMessages();
                 if (steeringMessages.length > 0 || followUpMessages.length > 0) {
                         this.pendingMessagesContainer.addChild(new Spacer(1));
@@ -5344,6 +5377,73 @@ export class InteractiveMode {
                         const dequeueHint = this.getAppKeyDisplay("app.message.dequeue");
                         const hintText = theme.fg("dim", `↳ ${dequeueHint} to edit all queued messages`);
                         this.pendingMessagesContainer.addChild(new TruncatedText(hintText, 1, 0));
+                        // Da capo R8 — Claude Code 2.1.312's "to send now" hint under
+                        // a queued message. The key sends immediately; in fullscreen the
+                        // hint row is also a click region (bindFullscreenClickRegions)
+                        // whose click triggers the same handler, as CC's does.
+                        const sendNowKey = this.getAppKeyDisplay("app.message.sendQueued");
+                        const clickSuffix =
+                                this.renderer.mode === "fullscreen" && this.clickRegionUnsubscribe !== undefined
+                                        ? " — click here to send"
+                                        : "";
+                        const sendNowText = theme.fg("dim", `↳ ${sendNowKey} to send now${clickSuffix}`);
+                        this.pendingSendNowContainer.addChild(new TruncatedText(sendNowText, 1, 0));
+                }
+        }
+
+        /**
+         * Bind the "send now" hint's click region to the ACTIVE fullscreen
+         * renderer (Da capo R8). Re-bound on every renderer switch; the
+         * provider re-resolves the hint's rows on each render, so the region
+         * tracks the layout and vanishes with the queue.
+         */
+        private bindFullscreenClickRegions(): void {
+                this.clickRegionUnsubscribe?.();
+                this.clickRegionUnsubscribe = undefined;
+                if (!(this.renderer instanceof TuiAltScreen)) return;
+                const tui = this.renderer;
+                this.clickRegionUnsubscribe = tui.addClickRegionProvider((layout) => {
+                        const rect = findComponentRect(layout, this.pendingSendNowContainer);
+                        if (!rect || rect.height < 1) return undefined;
+                        return {
+                                id: "pending-send-now",
+                                startRow: rect.y,
+                                endRow: rect.y + rect.height,
+                                onSelect: () => {
+                                        // Clicking the hint does what the key does
+                                        // (Claude Code 2.1.312's contract).
+                                        void this.handleSendQueued();
+                                },
+                        };
+                });
+        }
+
+        /**
+         * Fullscreen focus events (Da capo R16). A blur records when you
+         * left; a refocus after a long-enough gap renders the deterministic
+         * refocus recap line — no model call, ever (the metered-upstream
+         * fork; the threshold knob is shared with the prompt-path brief).
+         */
+        private handleFocusChange(focused: boolean): void {
+                if (focused) {
+                        const lostAt = this.focusLostAtMs;
+                        this.focusLostAtMs = undefined;
+                        if (lostAt === undefined) return;
+                        this.maybeShowRefocusRecap(Date.now() - lostAt);
+                        return;
+                }
+                this.focusLostAtMs = Date.now();
+        }
+
+        private maybeShowRefocusRecap(awayMs: number): void {
+                try {
+                        const stats = this.session.getSessionStats();
+                        const decision = shouldShowRefocusRecap(awayMs, stats.assistantMessages);
+                        if (decision.action !== "show") return;
+                        const lastReply = this.session.getLastAssistantText();
+                        this.showStatus(renderRefocusRecapLine(awayMs, stats.assistantMessages, lastReply));
+                } catch {
+                        // The recap is cosmetic — never disturb the session on its behalf.
                 }
         }
 

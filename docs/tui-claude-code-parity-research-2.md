@@ -104,6 +104,8 @@ Every source fetched in full unless noted. The load-bearing findings:
 | R17 | /diff sources | per-turn diff panel, source cycling T1/T2/Current/uncommitted/branch (§1.3) | /diff = working tree; checkpoints track states | **deferred (assessed)** |
 | R18 | Chord prefix (Ctrl+X …) | Ctrl+X Ctrl+E/S/K, Ctrl+X Enter, pane keys (§1.1) | no chord layer | **deferred (assessed)** |
 
+Post-ship status (the round's close): R1/R5/R13 shipped in CP2, R6/R7/R15 in CP1, R3/R9/R10/R11/R12/R14 in CP3, R2/R4 in CP4, and R8/R16 in CP5 — every "this round" row above shipped; R17/R18 stay deferred as assessed. Receipts: `docs/dacapo-round-session.md` (per-CP verification) + the CP entries in CHANGELOG.md.
+
 Held from round 1 (re-verified, no action): multiline lanes, kill ring, word nav, `@`-file mentions (no session bus), `!`/`!!` bash lanes, queue take-back + send-now, image chips, transcript mode keys, aggregation, permission comments + mid-prompt slash + aliases + rewind picker, spinner verbs, AGENTS.md offer, quiet footer, context meter, `?` panel, themes, keybindings.json, Windows/WSL matrix, Kitty protocol.
 
 ## 3. Adoption decisions — R1–R16, and the deliberate non-adoptions
