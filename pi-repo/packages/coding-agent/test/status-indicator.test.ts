@@ -2,6 +2,8 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { TUI } from "@earendil-works/pi-tui";
 import {
 	describeToolActivity,
+	elapsedChipColor,
+	SPINNER_AMBER_AFTER_S,
 	WorkingStatusIndicator,
 } from "../src/modes/interactive/components/status-indicator.ts";
 import { loadThemeFromPath, setThemeInstance } from "../src/modes/interactive/theme/theme.ts";
@@ -207,5 +209,22 @@ describe("working-line shimmer (beauty-4)", () => {
 		expect(vi.getTimerCount()).toBe(0);
 		expect(indicator.render(80).join("\n")).toBe(before);
 		indicator.dispose();
+	});
+});
+
+describe("elapsedChipColor (Da capo R5 — the amber-after-10s chip)", () => {
+	it("stays dim before the threshold", () => {
+		expect(elapsedChipColor(0)).toBe("dim");
+		expect(elapsedChipColor(9)).toBe("dim");
+	});
+
+	it("warms to warning at exactly the threshold and after", () => {
+		expect(elapsedChipColor(SPINNER_AMBER_AFTER_S)).toBe("warning");
+		expect(elapsedChipColor(60)).toBe("warning");
+		expect(elapsedChipColor(600)).toBe("warning");
+	});
+
+	it("the threshold is Claude Code's 10 seconds", () => {
+		expect(SPINNER_AMBER_AFTER_S).toBe(10);
 	});
 });

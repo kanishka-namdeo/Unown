@@ -143,6 +143,14 @@ export interface ExtensionUIDialogOptions {
         commentOn?: string[];
         /** Receives the comment when the dialog resolves with one (A11). */
         onComment?: (option: string, comment: string) => void;
+        /**
+         * The dialog waits on the USER for agent-initiated input (Da capo
+         * R1/R13 — Claude Code's tab-status signal): permission asks, plan
+         * approvals, questionnaires. Drives the terminal title's
+         * "needs input" state. User-opened pickers (theme, rewind, model)
+         * leave it unset — the user is at the keyboard by definition.
+         */
+        attention?: boolean;
 }
 
 /** Placement for extension widgets. */
@@ -256,6 +264,8 @@ export interface ExtensionUIContext {
                         overlayOptions?: OverlayOptions | (() => OverlayOptions);
                         /** Called with the overlay handle after the overlay is shown. Use to control visibility. */
                         onHandle?: (handle: OverlayHandle) => void;
+                        /** Da capo R1 — the component waits on the user (the "needs input" title state). */
+                        attention?: boolean;
                 },
         ): Promise<T>;
 

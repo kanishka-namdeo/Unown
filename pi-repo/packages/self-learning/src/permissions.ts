@@ -68,6 +68,7 @@ import { isAbsolute, join, relative, resolve } from "node:path";
 import { atomicWriteFileSync } from "./atomic.ts";
 import { configFingerprint, trustApprovalNeeded, trustBypassed, trustConfig, trustStatePath } from "./config-trust.ts";
 import { UNOWN_AGENT_DIR } from "./term.ts";
+import { scheduleInputNeededPing } from "./notify-channel.ts";
 import { addSessionWriteRoot, clearSessionWriteRoots, setSessionWriteRoots, sessionWriteRoots } from "./write-roots.ts";
 
 // ---------------------------------------------------------------------------
@@ -843,18 +844,26 @@ export function createPermissionGate(opts: PermissionGateOptions): PermissionGat
                                 // the rule-saving option ("Always allow (this session)")
                                 // never does — CC's own rule.
                                 let amended: { option: string; comment: string } | undefined;
+                                // Da capo R1/R13 — the ask is agent-initiated attention: the
+                                // terminal title flips to "needs input" and the needs-input
+                                // ping fires (one per ask, cancelled on answer).
+                                const inputPing = scheduleInputNeededPing(`${tool}${preview ? ` ${preview.trim().slice(0, 60)}` : ""}`, {
+                                        isTty: process.stdout.isTTY === true,
+                                });
                                 const picked = await c.ui.select(
                                         `unown permissions: ${tool}${preview} matched ask rule "${pattern}" (${rule?.source}). Proceed?`,
                                         ["Allow once", "Always allow (this session)", "Deny"],
                                         {
                                                 timeout: ASK_TIMEOUT_MS,
                                                 commentOn: ["Allow once", "Deny"],
+                                                attention: true,
                                                 onComment: (option: string, comment: string) => {
                                                         const trimmed = comment.trim();
                                                         if (trimmed) amended = { option, comment: trimmed };
                                                 },
                                         },
                                 );
+                                inputPing?.cancel();
                                 if (picked === "Always allow (this session)") {
                                         const pattern2 = gate.rememberSessionAllow(tool, subject);
                                         if (loaded.learn && pattern2) {

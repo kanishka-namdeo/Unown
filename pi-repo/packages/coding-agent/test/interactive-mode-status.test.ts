@@ -300,6 +300,9 @@ describe("InteractiveMode.showExtensionCustom", () => {
 			keybindings: {},
 			ui,
 			disposeActiveSelector: vi.fn(),
+			// Da capo R1: the attention/title-state hooks (no-ops in the harness).
+			titleNeedsInput: false,
+			setTitleNeedsInput: vi.fn(),
 		};
 		const showExtensionCustom = <T>(
 			factory: (tui: TUI, theme: unknown, keybindings: unknown, done: (result: T) => void) => Component,

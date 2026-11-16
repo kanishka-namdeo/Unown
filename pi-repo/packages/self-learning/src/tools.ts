@@ -71,6 +71,7 @@ import { formatIdleCompactNotice, shouldIdleCompact } from "./auto-compact.ts";
 import { maybeAutoTitleSession } from "./auto-title.ts";
 import { blameFile, blameSummary, formatBlameJson, formatBlameReport } from "./blame.ts";
 import { registerBrowserTools } from "./browser/tools.ts";
+import { scheduleInputNeededPing } from "./notify-channel.ts";
 import { answerBtw, btwHeader } from "./btw.ts";
 import { BtwOverlay } from "./btw-overlay.ts";
 import { receiptsDir } from "./checkpoints.ts";
@@ -2759,7 +2760,12 @@ export function createUnownToolsExtension(opts: UnownToolsOptions) {
                                 // plan" away, and ctrl+o still passes through the open dialog to
                                 // expand the plan_write block above.
                                 const title = planDialogPreviewTitle(currentDoc, currentScore);
-                                const choice = await ctx.ui.select(title, [...planApprovalOptions]);
+                                // Da capo R1/R13 — agent-initiated attention (title state + ping).
+                                const planPing = scheduleInputNeededPing("plan approval", {
+                                        isTty: process.stdout.isTTY === true,
+                                });
+                                const choice = await ctx.ui.select(title, [...planApprovalOptions], { attention: true });
+                                planPing?.cancel();
                                 if (choice === PLAN_APPROVAL_EXECUTE_AUTO) {
                                         await approvePlanExecution(ctx, currentDoc, "acceptEdits");
                                         return { kind: "approved", mode: "acceptEdits" };

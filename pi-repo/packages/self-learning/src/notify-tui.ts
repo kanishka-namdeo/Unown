@@ -29,6 +29,8 @@
  * the process, and tests inject a fake clock + recorder stream.
  */
 import { notifyGated } from "./notify.ts";
+import { type NotifyChannel, resolveNotifyChannel } from "./notify-channel.ts";
+import { type NotifyChannel, resolveNotifyChannel } from "./notify-channel.ts";
 
 /** Default minimum turn duration (ms) before a turn-end ping is earned. */
 export const TUI_NOTIFY_DEFAULT_MS = 120_000;
@@ -72,9 +74,12 @@ export function shouldPingOnTurnEnd(
 }
 
 /** Format the OSC-9 + BEL pair for a turn-end ping. Pure. */
-export function turnEndPingPayload(answerPreview: string): string {
+export function turnEndPingPayload(answerPreview: string, channel: NotifyChannel = "osc9"): string {
     const preview = answerPreview.trim().replace(/\s+/g, " ").slice(0, 80);
     const body = preview ? `done — ${preview}` : "done — waiting for your next message";
+    if (channel === "osc777") {
+        return `\x1b]777;notify;unown;${body}\x07`;
+    }
     return `\x1b]9;unown: ${body}\x07\x07`;
 }
 
@@ -105,7 +110,7 @@ export function scheduleTurnEndPing(
             /* best-effort — a failed ping must never surface */
         }
     });
-    const payload = turnEndPingPayload(answerPreview);
+    const payload = turnEndPingPayload(answerPreview, resolveNotifyChannel(env));
     const deferMs = opts.deferMs ?? NOTIFY_DEFER_MS;
     if (opts.setTimeoutFn) {
         return opts.setTimeoutFn(() => write(payload), deferMs);

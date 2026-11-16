@@ -1281,17 +1281,50 @@ export class InteractiveMode {
         }
 
         /**
-         * Update terminal title with session name and cwd.
+         * Update terminal title with session name and cwd. Da capo R1 — the
+         * title carries the session's STATE (Claude Code's tab-status signal,
+         * the portable OSC 0 lane): " — working" while a turn or compaction
+         * runs, " — needs input" when an attention dialog (a permission ask,
+         * a plan approval, a questionnaire) is waiting. Input wins over
+         * working — the ask is the thing the user must act on. Disabled by
+         * the terminalTitleStates setting (default on) or
+         * UNOWN_TERMINAL_TITLE_STATES=0.
          */
         private updateTerminalTitle(): void {
                 const cwdBasename = path.basename(this.sessionManager.getCwd());
                 const sessionName = this.sessionManager.getSessionName();
                 const titlePrefix = this.options.appName ?? APP_TITLE;
+                const statesEnabled =
+                        process.env.UNOWN_TERMINAL_TITLE_STATES !== "0" && this.settingsManager?.getTerminalTitleStates() !== false;
+                const suffix = !statesEnabled
+                        ? ""
+                        : this.titleNeedsInput
+                          ? " — needs input"
+                          : this.titleWorking
+                            ? " — working"
+                            : "";
                 if (sessionName) {
-                        this.ui.terminal.setTitle(`${titlePrefix} - ${sessionName} - ${cwdBasename}`);
+                        this.ui.terminal.setTitle(`${titlePrefix} - ${sessionName} - ${cwdBasename}${suffix}`);
                 } else {
-                        this.ui.terminal.setTitle(`${titlePrefix} - ${cwdBasename}`);
+                        this.ui.terminal.setTitle(`${titlePrefix} - ${cwdBasename}${suffix}`);
                 }
+        }
+
+        /** A turn or compaction is running (the " — working" title suffix, R1). */
+        private titleWorking = false;
+        /** An attention dialog (permission ask / plan approval / questionnaire) is open (the " — needs input" suffix, R1). */
+        private titleNeedsInput = false;
+
+        private setTitleWorking(working: boolean): void {
+                if (this.titleWorking === working) return;
+                this.titleWorking = working;
+                this.updateTerminalTitle();
+        }
+
+        private setTitleNeedsInput(needsInput: boolean): void {
+                if (this.titleNeedsInput === needsInput) return;
+                this.titleNeedsInput = needsInput;
+                this.updateTerminalTitle();
         }
 
         /**
@@ -2796,22 +2829,30 @@ export class InteractiveMode {
                         }
 
                         const onAbort = () => {
+                                this.setTitleNeedsInput(false);
                                 this.hideExtensionSelector();
                                 resolve(undefined);
                         };
                         opts?.signal?.addEventListener("abort", onAbort, { once: true });
+
+                        // Da capo R1: an attention dialog flips the terminal title to
+                        // "needs input" until it resolves by any path.
+                        const finishTitle = () => this.setTitleNeedsInput(false);
+                        if (opts?.attention) this.setTitleNeedsInput(true);
 
                         this.extensionSelector = new ExtensionSelectorComponent(
                                 title,
                                 options,
                                 (option, comment) => {
                                         opts?.signal?.removeEventListener("abort", onAbort);
+                                        finishTitle();
                                         this.hideExtensionSelector();
                                         if (comment !== undefined) opts?.onComment?.(option, comment);
                                         resolve(option);
                                 },
                                 () => {
                                         opts?.signal?.removeEventListener("abort", onAbort);
+                                        finishTitle();
                                         this.hideExtensionSelector();
                                         resolve(undefined);
                                 },
@@ -3069,6 +3110,8 @@ export class InteractiveMode {
                         overlay?: boolean;
                         overlayOptions?: OverlayOptions | (() => OverlayOptions);
                         onHandle?: (handle: OverlayHandle) => void;
+                        /** Da capo R1 — the component waits on the user (the "needs input" title state). */
+                        attention?: boolean;
                 },
         ): Promise<T> {
                 const savedText = this.editor.getText();
@@ -3089,6 +3132,7 @@ export class InteractiveMode {
                         const close = (result: T) => {
                                 if (closed) return;
                                 closed = true;
+                                this.setTitleNeedsInput(false);
                                 if (isOverlay) this.ui.hideOverlay();
                                 else restoreEditor();
                                 // Note: both branches above already call requestRender
@@ -3099,6 +3143,8 @@ export class InteractiveMode {
                                         /* ignore dispose errors */
                                 }
                         };
+
+                        if (options?.attention) this.setTitleNeedsInput(true);
 
                         Promise.resolve(factory(this.ui, theme, this.keybindings, close))
                                 .then((c) => {
@@ -3131,6 +3177,7 @@ export class InteractiveMode {
                                 })
                                 .catch((err) => {
                                         if (closed) return;
+                                        this.setTitleNeedsInput(false);
                                         if (!isOverlay) restoreEditor();
                                         reject(err);
                                 });
@@ -3565,6 +3612,7 @@ export class InteractiveMode {
                 switch (event.type) {
                         case "agent_start":
                                 this.pendingTools.clear();
+                                this.setTitleWorking(true);
                                 if (this.settingsManager.getShowTerminalProgress()) {
                                         this.ui.terminal.setProgress(true);
                                 }
@@ -3761,6 +3809,7 @@ export class InteractiveMode {
                         }
 
                         case "agent_end": {
+                                this.setTitleWorking(false);
                                 if (this.settingsManager.getShowTerminalProgress()) {
                                         this.ui.terminal.setProgress(false);
                                 }
@@ -3789,6 +3838,7 @@ export class InteractiveMode {
                                 break;
 
                         case "compaction_start": {
+                                this.setTitleWorking(true);
                                 if (this.settingsManager.getShowTerminalProgress()) {
                                         this.ui.terminal.setProgress(true);
                                 }
@@ -3803,6 +3853,7 @@ export class InteractiveMode {
                         }
 
                         case "compaction_end": {
+                                this.setTitleWorking(false);
                                 if (this.settingsManager.getShowTerminalProgress()) {
                                         this.ui.terminal.setProgress(false);
                                 }
@@ -5396,6 +5447,7 @@ export class InteractiveMode {
                                         quietStartup: this.settingsManager.getQuietStartup(),
                                         clearOnShrink: this.settingsManager.getClearOnShrink(),
                                         showTerminalProgress: this.settingsManager.getShowTerminalProgress(),
+                                        terminalTitleStates: this.settingsManager.getTerminalTitleStates(),
                                         tuiMode: this.ui.mode,
                                         fullscreenExitOutput: this.settingsManager.getFullscreenExitOutput(),
                                         fullscreenScrollbar: this.settingsManager.getFullscreenScrollbar(),
@@ -5554,6 +5606,10 @@ export class InteractiveMode {
                                         },
                                         onShowTerminalProgressChange: (enabled) => {
                                                 this.settingsManager.setShowTerminalProgress(enabled);
+                                        },
+                                        onTerminalTitleStatesChange: (enabled) => {
+                                                this.settingsManager.setTerminalTitleStates(enabled);
+                                                this.updateTerminalTitle();
                                         },
                                         onTuiModeChange: (mode) => {
                                                 if (!this.switchTuiMode(mode)) {

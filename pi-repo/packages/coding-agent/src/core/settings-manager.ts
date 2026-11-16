@@ -42,6 +42,7 @@ export interface TerminalSettings {
         imageWidthCells?: number; // default: 60 (preferred inline image width in terminal cells)
         clearOnShrink?: boolean; // default: false (clear empty rows when content shrinks)
         showTerminalProgress?: boolean; // default: false (OSC 9;4 terminal progress indicators)
+        terminalTitleStates?: boolean; // default: true (Da capo R1: " — working / needs input" terminal-title state suffixes)
         hyperlinks?: boolean | "auto";
         images?: "kitty" | "iterm2" | "auto" | false;
         trueColor?: boolean | "auto";
@@ -1208,6 +1209,20 @@ export class SettingsManager {
                 }
                 this.globalSettings.terminal.showTerminalProgress = enabled;
                 this.markModified("terminal", "showTerminalProgress");
+                this.save();
+        }
+
+        /** Da capo R1 — terminal-title state suffixes (working / needs input), default ON. */
+        getTerminalTitleStates(): boolean {
+                return this.settings.terminal?.terminalTitleStates ?? true;
+        }
+
+        setTerminalTitleStates(enabled: boolean): void {
+                if (!this.globalSettings.terminal) {
+                        this.globalSettings.terminal = {};
+                }
+                this.globalSettings.terminal.terminalTitleStates = enabled;
+                this.markModified("terminal", "terminalTitleStates");
                 this.save();
         }
 
