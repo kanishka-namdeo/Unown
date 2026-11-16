@@ -35,6 +35,7 @@ import {
         Markdown,
         matchesKey,
         ProcessTerminal,
+        sanitizeInvisibleCharacters,
         Spacer,
         setCapabilityOverrides,
         setKeybindings,
@@ -620,6 +621,8 @@ export class InteractiveMode {
         // draft-lifecycle lanes.
         /** Persisted input-history store (per-cwd), injected by an extension. */
         private historyStore: EditorHistoryStore | undefined;
+        /** Marker form → expanded form for this session's input history (Da capo R6). */
+        private sessionHistoryExpansions = new Map<string, string>();
         /** Two-press Ctrl+D exit window (Claude Code: 800 ms). */
         private lastCtrlDTime = 0;
         /** Ctrl+S draft stash: full editor snapshot (or text fallback) + bash mode. */
@@ -774,6 +777,14 @@ export class InteractiveMode {
                 this.widgetContainerBelow = new Container();
                 this.keybindings = KeybindingsManager.create();
                 setKeybindings(this.keybindings);
+                // Da capo R15 — a misspelled modifier never silently rebinds a
+                // bare key; the ignored binding is named at boot.
+                const bootBindingWarnings = this.keybindings.getLoadWarnings();
+                if (bootBindingWarnings.length > 0) {
+                        this.showWarning(
+                                `keybindings.json: ${bootBindingWarnings.length} binding${bootBindingWarnings.length > 1 ? "s" : ""} ignored — ${bootBindingWarnings[0]}`,
+                        );
+                }
                 const editorPaddingX = this.settingsManager.getEditorPaddingX();
                 const autocompleteMaxVisible = this.settingsManager.getAutocompleteMaxVisible();
                 this.defaultEditor = new CustomEditor(this.ui, getEditorTheme(), this.keybindings, {
@@ -3256,6 +3267,12 @@ export class InteractiveMode {
                         }
                 };
 
+                // Da capo R7 — paste-time invisible-character stripping notice
+                // (the editor sanitizes; the app owns the status line).
+                this.defaultEditor.onInvisibleStripped = (count) => {
+                        this.showStatus(`Stripped ${count} invisible character${count > 1 ? "s" : ""} from paste`);
+                };
+
                 // Handle clipboard paste (triggered on Ctrl+V). Images are attached by path;
                 // otherwise, paste plain text from the system clipboard.
                 this.defaultEditor.onPasteImage = () => {
@@ -3317,8 +3334,21 @@ export class InteractiveMode {
         }
 
         private setupEditorSubmitHandler(): void {
-                this.defaultEditor.onSubmit = async (text: string) => {
+                this.defaultEditor.onSubmit = async (text: string, raw?: string) => {
+                        // Da capo R7 — Claude Code v2.1.314: "plain prompts now send
+                        // cleaned on the first Enter". Typed (non-paste) input can
+                        // still carry invisible Unicode; strip it before anything
+                        // else sees the text. Paste-time stripping already happened
+                        // in the editor; this is the send-time net.
+                        const sanitized = sanitizeInvisibleCharacters(text);
+                        if (sanitized.stripped > 0) {
+                                text = sanitized.text;
+                                const sanitizedRaw = raw === undefined ? undefined : sanitizeInvisibleCharacters(raw).text;
+                                raw = sanitizedRaw;
+                                this.showStatus(`Stripped ${sanitized.stripped} invisible character${sanitized.stripped > 1 ? "s" : ""}`);
+                        }
                         text = text.trim();
+                        const rawText = raw?.trim() || text;
                         if (!text) return;
 
                         // Handle commands
@@ -3475,7 +3505,7 @@ export class InteractiveMode {
                                                 this.editor.setText(text);
                                                 return;
                                         }
-                                        this.recordHistory(text);
+                                        this.recordHistory(text, rawText);
                                         await this.handleBashCommand(command, isExcluded);
                                         this.isBashMode = false;
                                         this.updateEditorBorderColor();
@@ -3486,7 +3516,7 @@ export class InteractiveMode {
                         // Queue input during compaction (extension commands execute immediately)
                         if (this.session.isCompacting) {
                                 if (this.isExtensionCommand(text)) {
-                                        this.recordHistory(text);
+                                        this.recordHistory(text, rawText);
                                         this.editor.setText("");
                                         await this.session.prompt(text);
                                 } else {
@@ -3498,7 +3528,7 @@ export class InteractiveMode {
                         // If streaming, use prompt() with steer behavior
                         // This handles extension commands (execute immediately), prompt template expansion, and queueing
                         if (this.session.isStreaming) {
-                                this.recordHistory(text);
+                                this.recordHistory(text, rawText);
                                 this.editor.setText("");
                                 await this.session.prompt(text, { streamingBehavior: "steer" });
                                 this.updatePendingMessagesDisplay();
@@ -3515,7 +3545,7 @@ export class InteractiveMode {
                         } else {
                                 this.pendingUserInputs.push(text);
                         }
-                        this.recordHistory(text);
+                        this.recordHistory(text, rawText);
                 };
         }
 
@@ -4327,15 +4357,28 @@ export class InteractiveMode {
         // =========================================================================
 
         /**
-         * Record a submitted prompt: the editor's in-session history (Up/Down
-         * recall) and, when a store is attached, the persisted per-cwd file.
-         * The store append is failure-tolerant by contract (never throws).
+         * Record a submitted prompt into input history (Da capo R6 — Claude
+         * Code v2.1.314: history keeps the marker/pill form, search matches
+         * inside the paste). `text` is the expanded submit form; `rawText`
+         * the pre-expansion marker form when the caller has it. The editor's
+         * in-session history (Up/Down recall) and the persisted store (when
+         * attached) both record the display form; the store append is
+         * failure-tolerant by contract (never throws).
          */
-        private recordHistory(text: string): void {
-                this.editor.addToHistory?.(text);
+        private recordHistory(text: string, rawText?: string): void {
+                const displayForm = rawText !== undefined && rawText.trim() ? rawText.trim() : text;
+                if (displayForm !== text) {
+                        this.sessionHistoryExpansions.set(displayForm, text);
+                        if (this.sessionHistoryExpansions.size > 200) {
+                                // Bounded: the first key is the oldest insertion.
+                                const oldest = this.sessionHistoryExpansions.keys().next().value;
+                                if (oldest !== undefined) this.sessionHistoryExpansions.delete(oldest);
+                        }
+                }
+                this.editor.addToHistory?.(displayForm);
                 if (this.historyStore) {
                         try {
-                                this.historyStore.append(text);
+                                this.historyStore.append(displayForm, displayForm !== text ? text : undefined);
                         } catch {
                                 // A history write must never break a submission.
                         }
@@ -4349,10 +4392,12 @@ export class InteractiveMode {
          * is not a submission and never reaches the persisted store.
          */
         private clearDraftToHistory(reason: "cleared" | "esc-esc"): void {
-                const draft = this.editor.getExpandedText?.() ?? this.editor.getText();
-                const trimmed = draft.trim();
-                if (!trimmed) return;
-                this.editor.addToHistory?.(trimmed);
+                const raw = this.editor.getText().trim();
+                const draft = this.editor.getExpandedText?.().trim() ?? raw;
+                if (!draft && !raw) return;
+                const displayForm = raw || draft;
+                if (displayForm !== draft) this.sessionHistoryExpansions.set(displayForm, draft);
+                this.editor.addToHistory?.(displayForm);
                 this.showStatus(
                         reason === "esc-esc"
                                 ? "Draft saved to history — Up restores it"
@@ -4389,10 +4434,25 @@ export class InteractiveMode {
                                 id: "session",
                                 label: "this session",
                                 load: () => this.editor.getHistoryEntries?.() ?? [],
+                                // Da capo R6: dual-form session entries — the editor's
+                                // history keeps the marker form; this map carries its
+                                // expansion so search matches inside pasted content.
+                                loadEntries: () =>
+                                        (this.editor.getHistoryEntries?.() ?? []).map((text) => ({
+                                                text,
+                                                expanded: this.sessionHistoryExpansions.get(text),
+                                        })),
                         },
                 ];
                 for (const scope of this.historyStore?.scopes() ?? []) {
-                        scopes.push({ id: scope.id, label: scope.label, load: () => this.historyStore?.load(scope.id) ?? [] });
+                        scopes.push({
+                                id: scope.id,
+                                label: scope.label,
+                                load: () => this.historyStore?.load(scope.id) ?? [],
+                                loadEntries: this.historyStore?.loadEntries
+                                        ? () => this.historyStore?.loadEntries?.(scope.id) ?? []
+                                        : undefined,
+                        });
                 }
                 const sessionCount = scopes[0]?.load().length ?? 0;
                 const storeCount = this.historyStore?.scopes().length ?? 0;
@@ -4475,7 +4535,7 @@ export class InteractiveMode {
 
                 // The draft rides last, after the already-queued messages.
                 if (draft) {
-                        this.recordHistory(draft);
+                        this.recordHistory(draft, this.editor.getText().trim());
                         this.editor.setText("");
                         if (this.session.isStreaming) {
                                 await this.session.prompt(draft, { streamingBehavior: "followUp" });
@@ -4729,7 +4789,7 @@ export class InteractiveMode {
                 // Queue input during compaction (extension commands execute immediately)
                 if (this.session.isCompacting) {
                         if (this.isExtensionCommand(text)) {
-                                this.recordHistory(text);
+                                this.recordHistory(text, this.editor.getText().trim());
                                 this.editor.setText("");
                                 await this.session.prompt(text);
                         } else {
@@ -4741,7 +4801,7 @@ export class InteractiveMode {
                 // Alt+Enter queues a follow-up message (waits until agent finishes)
                 // This handles extension commands (execute immediately), prompt template expansion, and queueing
                 if (this.session.isStreaming) {
-                        this.recordHistory(text);
+                        this.recordHistory(text, this.editor.getText().trim());
                         this.editor.setText("");
                         await this.session.prompt(text, { streamingBehavior: "followUp" });
                         this.updatePendingMessagesDisplay();
@@ -7069,6 +7129,14 @@ export class InteractiveMode {
                         await this.session.reload({ beforeSessionStart: restoreChatBeforeSessionStart });
                         restoreChatBeforeSessionStart();
                         this.keybindings.reload();
+                        // Da capo R15 — load-time binding validation: ignored keys
+                        // are reported, never silent.
+                        const bindingWarnings = this.keybindings.getLoadWarnings();
+                        if (bindingWarnings.length > 0) {
+                                this.showWarning(
+                                        `keybindings.json: ${bindingWarnings.length} binding${bindingWarnings.length > 1 ? "s" : ""} ignored — ${bindingWarnings[0]}`,
+                                );
+                        }
                         const activeHeader = this.customHeader ?? this.builtInHeader;
                         if (isExpandable(activeHeader)) {
                                 activeHeader.setExpanded(this.toolOutputExpanded);

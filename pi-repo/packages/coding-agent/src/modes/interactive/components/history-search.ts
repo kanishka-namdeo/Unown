@@ -25,6 +25,7 @@ import {
         Text,
         truncateToWidth,
 } from "@earendil-works/pi-tui";
+import type { EditorHistoryEntry } from "../../../core/extensions/index.ts";
 import { theme } from "../theme/theme.ts";
 import { DynamicBorder } from "./dynamic-border.ts";
 import { SelectorHints } from "./selector-hints.ts";
@@ -34,6 +35,14 @@ export interface HistorySearchScope {
         label: string;
         /** Entries, newest first. */
         load: () => string[];
+        /**
+         * Dual-form entries, newest first (Da capo R6 — Claude Code v2.1.314:
+         * "Ctrl+R now matches text inside collapsed [Pasted text] pills").
+         * When present the dialog matches against each entry's expansion
+         * while displaying the marker form; absent, `load()` strings match
+         * and display as themselves.
+         */
+        loadEntries?: () => EditorHistoryEntry[];
 }
 
 export interface HistorySearchOptions {
@@ -46,27 +55,39 @@ export interface HistorySearchOptions {
 }
 
 interface HistoryEntry {
+        /** The display form (paste markers intact). */
         text: string;
+        /** The form search matches (the expansion when one exists). */
+        searchText: string;
+        /** The form accept inserts (the expansion when one exists — marker ids die on setText). */
+        acceptText: string;
         firstLine: string;
         continuationCount: number;
         charCount: number;
+        /** True when the entry carries a paste expansion (the ⧉ meta chip). */
+        hasExpansion: boolean;
 }
 
 const MAX_VISIBLE_MATCHES = 8;
 
-function buildEntries(entries: string[]): HistoryEntry[] {
+function buildEntries(entries: (string | EditorHistoryEntry)[]): HistoryEntry[] {
         const seen = new Set<string>();
         const result: HistoryEntry[] = [];
-        for (const text of entries) {
-                const trimmed = text.trim();
-                if (!trimmed || seen.has(trimmed)) continue;
-                seen.add(trimmed);
-                const lines = trimmed.split("\n");
+        for (const raw of entries) {
+                const text = typeof raw === "string" ? raw.trim() : (raw.text ?? "").trim();
+                if (!text || seen.has(text)) continue;
+                seen.add(text);
+                const expanded = typeof raw === "string" ? undefined : raw.expanded?.trim();
+                const searchText = expanded || text;
+                const lines = text.split("\n");
                 result.push({
-                        text: trimmed,
+                        text,
+                        searchText,
+                        acceptText: expanded || text,
                         firstLine: lines[0] ?? "",
-                        continuationCount: Math.max(0, lines.length - 1),
-                        charCount: trimmed.length,
+                        continuationCount: Math.max(0, searchText.split("\n").length - 1),
+                        charCount: searchText.length,
+                        hasExpansion: Boolean(expanded && expanded !== text),
                 });
         }
         return result;
@@ -100,10 +121,23 @@ export class HistorySearchComponent extends Container implements Component, Focu
                         0,
                         options.scopes.findIndex((scope) => scope.id === options.initialScopeId),
                 );
-                this.scopeEntries = buildEntries(this.currentScope().load());
+                this.scopeEntries = buildEntries(this.loadCurrentScopeEntries());
                 this.input = new Input();
                 this.input.onEscape = () => this.options.onCancel();
                 this.refilter();
+        }
+
+        /** Dual-form entries when the scope provides them (R6), else its strings. */
+        private loadCurrentScopeEntries(): (string | EditorHistoryEntry)[] {
+                const scope = this.currentScope();
+                if (scope.loadEntries) {
+                        try {
+                                return scope.loadEntries();
+                        } catch {
+                                // A scope read must never break the dialog.
+                        }
+                }
+                return scope.load();
         }
 
         /** True once Ctrl+R has been pressed inside the dialog — used for the next-match hint. */
@@ -125,7 +159,9 @@ export class HistorySearchComponent extends Container implements Component, Focu
                         this.filtered = this.scopeEntries;
                 } else {
                         this.filtered = this.scopeEntries.filter((entry) => {
-                                const lower = entry.text.toLowerCase();
+                                // Match against the search form — inside paste
+                                // content when the entry carries an expansion (R6).
+                                const lower = entry.searchText.toLowerCase();
                                 const queryLower = query.toLowerCase();
                                 if (lower.includes(queryLower)) return true;
                                 // Subsequence fuzzy match as fallback (matches characters in order).
@@ -143,7 +179,7 @@ export class HistorySearchComponent extends Container implements Component, Focu
         private cycleScope(): void {
                 if (this.options.scopes.length === 0) return;
                 this.scopeIndex = (this.scopeIndex + 1) % this.options.scopes.length;
-                this.scopeEntries = buildEntries(this.currentScope().load());
+                this.scopeEntries = buildEntries(this.loadCurrentScopeEntries());
                 this.refilter();
         }
 
@@ -161,7 +197,9 @@ export class HistorySearchComponent extends Container implements Component, Focu
         private accept(mode: "submit" | "edit"): void {
                 const entry = this.filtered[this.selectedIndex];
                 if (!entry) return;
-                this.options.onAccept(entry.text, mode);
+                // The expansion when one exists: setText clears the editor's
+                // paste store, so marker forms must not travel through accept.
+                this.options.onAccept(entry.acceptText, mode);
         }
 
         handleInput(keyData: string): void {
@@ -226,6 +264,7 @@ export class HistorySearchComponent extends Container implements Component, Focu
                                 const meta: string[] = [];
                                 if (entry.continuationCount > 0) meta.push(`+${entry.continuationCount} ln`);
                                 meta.push(`${entry.charCount} ch`);
+                                if (entry.hasExpansion) meta.push("⧉ in paste");
                                 const metaText = theme.fg("dim", `  (${meta.join(", ")})`);
                                 const row = `  ${isSelected ? theme.fg("accent", "❯") : " "} ${entry.firstLine}${metaText}`;
                                 lines.push(truncateToWidth(isSelected ? theme.fg("accent", row) : theme.fg("muted", row), width));

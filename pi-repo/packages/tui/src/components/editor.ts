@@ -1,6 +1,7 @@
 import type { AutocompleteProvider, AutocompleteSuggestions } from "../autocomplete.ts";
 import { MID_PROMPT_SLASH_TOKEN } from "../autocomplete.ts";
 import { getKeybindings } from "../keybindings.ts";
+import { sanitizeInvisibleCharacters } from "../invisible.ts";
 import { decodePrintableKey, matchesKey } from "../keys.ts";
 import { KillRing } from "../kill-ring.ts";
 import { type Component, CURSOR_MARKER, type Focusable, type TUI } from "../tui.ts";
@@ -502,8 +503,18 @@ export class Editor implements Component, Focusable {
         // Undo support
         private undoStack = new UndoStack<EditorSnapshot>();
 
-        public onSubmit?: (text: string) => void;
+        /**
+         * Submit handler. Receives the EXPANDED text (paste markers and image
+         * chips resolved to their content/paths) as the first argument, and —
+         * since the Da capo round — the RAW pre-expansion text (marker chips
+         * intact) as the optional second argument, so the caller can record
+         * the human-readable form in input history while sending the expanded
+         * form to the model.
+         */
+        public onSubmit?: (text: string, raw?: string) => void;
         public onChange?: (text: string) => void;
+        /** Called when a paste carried invisible Unicode characters that were stripped (Da capo R7). */
+        public onInvisibleStripped?: (count: number) => void;
         public disableSubmit: boolean = false;
 
         constructor(tui: TUI, theme: EditorTheme, options: EditorOptions = {}) {
@@ -1509,6 +1520,15 @@ export class Editor implements Component, Focusable {
                         .filter((char) => char === "\n" || char.charCodeAt(0) >= 32)
                         .join("");
 
+                // Strip invisible Unicode formatting characters (Da capo R7 — the
+                // trojan-source class: zero-width, bidi overrides, tag characters).
+                // Visible text, whitespace and combining marks are untouched.
+                const sanitized = sanitizeInvisibleCharacters(filteredText);
+                if (sanitized.stripped > 0) {
+                        filteredText = sanitized.text;
+                        this.onInvisibleStripped?.(sanitized.stripped);
+                }
+
                 // If pasting a file path (starts with /, ~, or .) and the character before
                 // the cursor is a word character, prepend a space for better readability
                 if (/^[/~.]/.test(filteredText)) {
@@ -1587,6 +1607,7 @@ export class Editor implements Component, Focusable {
 
         private submitValue(): void {
                 this.cancelAutocomplete();
+                const rawText = this.state.lines.join("\n").trim();
                 const result = this.expandPasteMarkers(this.state.lines.join("\n")).trim();
 
                 this.state = { lines: [""], cursorLine: 0, cursorCol: 0 };
@@ -1600,7 +1621,7 @@ export class Editor implements Component, Focusable {
                 this.lastAction = null;
 
                 if (this.onChange) this.onChange("");
-                if (this.onSubmit) this.onSubmit(result);
+                if (this.onSubmit) this.onSubmit(result, rawText);
         }
 
         private handleBackspace(): void {

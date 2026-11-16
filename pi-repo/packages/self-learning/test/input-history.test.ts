@@ -10,7 +10,7 @@
  */
 import "./_env.ts";
 import { describe, expect, test } from "bun:test";
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import {
@@ -19,7 +19,9 @@ import {
 	inputHistoryEnabled,
 	inputHistoryPaths,
 	INPUT_HISTORY_ENV,
+	loadAllProjectsEntriesNewestFirst,
 	loadAllProjectsNewestFirst,
+	loadFileEntriesNewestFirst,
 	loadFileNewestFirst,
 	parseInputHistoryLine,
 	readInputHistoryFile,
@@ -70,8 +72,8 @@ describe("input-history line parsing", () => {
 describe("input-history append + load (the Claude Code contract)", () => {
 	test("appends land newest-last and load newest-first", () => {
 		const { env, home } = tempEnv();
-		appendInputHistory("/repo", "first prompt", env, 1000);
-		appendInputHistory("/repo", "second prompt", env, 2000);
+		appendInputHistory("/repo", "first prompt", undefined, env, 1000);
+		appendInputHistory("/repo", "second prompt", undefined, env, 2000);
 		const { file } = inputHistoryPaths("/repo", env);
 		expect(loadFileNewestFirst(file)).toEqual(["second prompt", "first prompt"]);
 		cleanup(home);
@@ -79,8 +81,8 @@ describe("input-history append + load (the Claude Code contract)", () => {
 
 	test("consecutive duplicates record one entry", () => {
 		const { env, home } = tempEnv();
-		appendInputHistory("/repo", "same prompt", env, 1000);
-		appendInputHistory("/repo", "same prompt", env, 2000);
+		appendInputHistory("/repo", "same prompt", undefined, env, 1000);
+		appendInputHistory("/repo", "same prompt", undefined, env, 2000);
 		const { file } = inputHistoryPaths("/repo", env);
 		expect(loadFileNewestFirst(file)).toEqual(["same prompt"]);
 		cleanup(home);
@@ -88,7 +90,7 @@ describe("input-history append + load (the Claude Code contract)", () => {
 
 	test("blank and whitespace-only prompts never persist", () => {
 		const { env, home } = tempEnv();
-		appendInputHistory("/repo", "   ", env, 1000);
+		appendInputHistory("/repo", "   ", undefined, env, 1000);
 		const { file } = inputHistoryPaths("/repo", env);
 		expect(loadFileNewestFirst(file)).toEqual([]);
 		cleanup(home);
@@ -96,7 +98,7 @@ describe("input-history append + load (the Claude Code contract)", () => {
 
 	test("whitespace is trimmed on persist", () => {
 		const { env, home } = tempEnv();
-		appendInputHistory("/repo", "  padded prompt  ", env, 1000);
+		appendInputHistory("/repo", "  padded prompt  ", undefined, env, 1000);
 		const { file } = inputHistoryPaths("/repo", env);
 		expect(loadFileNewestFirst(file)).toEqual(["padded prompt"]);
 		cleanup(home);
@@ -118,7 +120,7 @@ describe("input-history append + load (the Claude Code contract)", () => {
 		const blocker = join(home, "blocker");
 		writeFileSync(blocker, "x", "utf8");
 		const blockedEnv = { ...env, UNOWN_HOME: join(blocker, "sub", "dir") };
-		expect(() => appendInputHistory("/repo", "prompt", blockedEnv, 1000)).not.toThrow();
+		expect(() => appendInputHistory("/repo", "prompt", undefined, blockedEnv, 1000)).not.toThrow();
 		cleanup(home);
 	});
 });
@@ -126,10 +128,10 @@ describe("input-history append + load (the Claude Code contract)", () => {
 describe("input-history all-projects scope", () => {
 	test("merges every per-cwd file by timestamp, newest first, deduped", () => {
 		const { env, home } = tempEnv();
-		appendInputHistory("/repo/a", "from a (old)", env, 1000);
-		appendInputHistory("/repo/b", "from b (new)", env, 3000);
-		appendInputHistory("/repo/a", "from a (new)", env, 2000);
-		appendInputHistory("/repo/b", "from b (new)", env, 4000); // same text, later — dedup keeps first sight (newest)
+		appendInputHistory("/repo/a", "from a (old)", undefined, env, 1000);
+		appendInputHistory("/repo/b", "from b (new)", undefined, env, 3000);
+		appendInputHistory("/repo/a", "from a (new)", undefined, env, 2000);
+		appendInputHistory("/repo/b", "from b (new)", undefined, env, 4000); // same text, later — dedup keeps first sight (newest)
 		const { dir } = inputHistoryPaths("/repo/a", env);
 		const merged = loadAllProjectsNewestFirst(dir);
 		expect(merged[0]).toBe("from b (new)");
@@ -190,6 +192,64 @@ describe("input-history store facade", () => {
 		expect(loaded.length).toBe(500);
 		expect(loaded[0]).toBe("prompt 649");
 		expect(loaded[loaded.length - 1]).toBe("prompt 150");
+		cleanup(home);
+	});
+});
+
+describe("input-history dual-form entries (the Da capo R6 lane)", () => {
+	test("append records the expansion only when it differs", () => {
+		const { env, home } = tempEnv();
+		appendInputHistory("/repo", "fix this\n[paste #1 +5 lines]", "fix this\npasted content line", env, 1000);
+		appendInputHistory("/repo", "plain prompt", "plain prompt", env, 2000);
+		const { file } = inputHistoryPaths("/repo", env);
+		const raw = readFileSync(file, "utf8");
+		const lines = raw.trim().split("\n");
+		expect(JSON.parse(lines[0]).x).toBe("fix this\npasted content line");
+		expect(JSON.parse(lines[1]).x).toBeUndefined();
+		cleanup(home);
+	});
+
+	test("load returns the SAFE form (expansion) for recall", () => {
+		const { env, home } = tempEnv();
+		appendInputHistory("/repo", "fix this\n[paste #1 +5 lines]", "fix this\npasted content line", env, 1000);
+		const { file } = inputHistoryPaths("/repo", env);
+		// A recalled marker from a dead session would submit literally — the
+		// recall lane must hand back the expansion.
+		expect(loadFileNewestFirst(file)).toEqual(["fix this\npasted content line"]);
+		cleanup(home);
+	});
+
+	test("loadEntries returns both forms for the search dialog", () => {
+		const { env, home } = tempEnv();
+		appendInputHistory("/repo", "fix this\n[paste #1 +5 lines]", "fix this\npasted content line", env, 1000);
+		const { file } = inputHistoryPaths("/repo", env);
+		const entries = loadFileEntriesNewestFirst(file);
+		expect(entries).toEqual([{ text: "fix this\n[paste #1 +5 lines]", expanded: "fix this\npasted content line" }]);
+		cleanup(home);
+	});
+
+	test("the store facade carries the expansion through loadEntries", () => {
+		const { env, home } = tempEnv();
+		const store = createInputHistoryStore({ cwd: "/repo", env, now: () => 1234 });
+		store.append("fix this\n[paste #1 +5 lines]", "fix this\npasted content line");
+		store.append("plain");
+		expect(store.loadEntries?.("project")).toEqual([
+			{ text: "plain" },
+			{ text: "fix this\n[paste #1 +5 lines]", expanded: "fix this\npasted content line" },
+		]);
+		// load keeps the safe form.
+		expect(store.load("project")[0]).toBe("plain");
+		expect(store.load("project")[1]).toBe("fix this\npasted content line");
+		cleanup(home);
+	});
+
+	test("legacy entries without x parse and load unchanged", () => {
+		const { env, home } = tempEnv();
+		const { dir, file } = inputHistoryPaths("/repo", env);
+		mkdirSync(dir, { recursive: true });
+		writeFileSync(file, '{"t":1,"c":"legacy prompt"}\n', "utf8");
+		expect(loadFileNewestFirst(file)).toEqual(["legacy prompt"]);
+		expect(loadFileEntriesNewestFirst(file)).toEqual([{ text: "legacy prompt" }]);
 		cleanup(home);
 	});
 });

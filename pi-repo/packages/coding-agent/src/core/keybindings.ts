@@ -5,6 +5,7 @@ import {
         type KeyId,
         TUI_KEYBINDINGS,
         KeybindingsManager as TuiKeybindingsManager,
+        validateBindingKey,
 } from "@earendil-works/pi-tui";
 import { existsSync, readFileSync } from "fs";
 import { join } from "path";
@@ -331,18 +332,30 @@ function isLegacyKeybindingName(key: string): key is keyof typeof KEYBINDING_NAM
         return key in KEYBINDING_NAME_MIGRATIONS;
 }
 
-function toKeybindingsConfig(value: Record<string, unknown>): KeybindingsConfig {
+function toKeybindingsConfig(value: Record<string, unknown>): { config: KeybindingsConfig; warnings: string[] } {
         const config: KeybindingsConfig = {};
+        const warnings: string[] = [];
         for (const [key, binding] of Object.entries(value)) {
+                const collect = (entry: unknown): KeyId | undefined => {
+                        if (typeof entry !== "string") return undefined;
+                        const validated = validateBindingKey(entry);
+                        if (!validated.valid) {
+                                warnings.push(`${key}: ${entry} ignored — ${validated.error}`);
+                                return undefined;
+                        }
+                        return validated.normalized as KeyId;
+                };
                 if (typeof binding === "string") {
-                        config[key] = binding as KeyId;
+                        const normalized = collect(binding);
+                        if (normalized) config[key] = normalized;
                         continue;
                 }
-                if (Array.isArray(binding) && binding.every((entry) => typeof entry === "string")) {
-                        config[key] = binding as KeyId[];
+                if (Array.isArray(binding)) {
+                        const keys = binding.map(collect).filter((entry): entry is KeyId => entry !== undefined);
+                        if (keys.length > 0) config[key] = keys;
                 }
         }
-        return config;
+        return { config, warnings };
 }
 
 export function migrateKeybindingsConfig(rawConfig: Record<string, unknown>): {
@@ -398,6 +411,7 @@ function loadRawConfig(path: string): Record<string, unknown> | undefined {
 
 export class KeybindingsManager extends TuiKeybindingsManager {
         private configPath: string | undefined;
+        private loadWarnings: string[] = [];
 
         constructor(userBindings: KeybindingsConfig = {}, configPath?: string) {
                 super(KEYBINDINGS, userBindings);
@@ -406,23 +420,33 @@ export class KeybindingsManager extends TuiKeybindingsManager {
 
         static create(agentDir: string = getAgentDir()): KeybindingsManager {
                 const configPath = join(agentDir, "keybindings.json");
-                const userBindings = KeybindingsManager.loadFromFile(configPath);
-                return new KeybindingsManager(userBindings, configPath);
+                const { userBindings, warnings } = KeybindingsManager.loadFromFile(configPath);
+                const manager = new KeybindingsManager(userBindings, configPath);
+                manager.loadWarnings = warnings;
+                return manager;
         }
 
         reload(): void {
                 if (!this.configPath) return;
-                this.setUserBindings(KeybindingsManager.loadFromFile(this.configPath));
+                const { userBindings, warnings } = KeybindingsManager.loadFromFile(this.configPath);
+                this.loadWarnings = warnings;
+                this.setUserBindings(userBindings);
+        }
+
+        /** Load-time binding validation warnings (Da capo R15): ignored keys with reasons. */
+        getLoadWarnings(): string[] {
+                return [...this.loadWarnings];
         }
 
         getEffectiveConfig(): KeybindingsConfig {
                 return this.getResolvedBindings();
         }
 
-        private static loadFromFile(path: string): KeybindingsConfig {
+        private static loadFromFile(path: string): { userBindings: KeybindingsConfig; warnings: string[] } {
                 const rawConfig = loadRawConfig(path);
-                if (!rawConfig) return {};
-                return toKeybindingsConfig(migrateKeybindingsConfig(rawConfig).config);
+                if (!rawConfig) return { userBindings: {}, warnings: [] };
+                const { config, warnings } = toKeybindingsConfig(migrateKeybindingsConfig(rawConfig).config);
+                return { userBindings: config, warnings };
         }
 }
 

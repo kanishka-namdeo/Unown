@@ -319,6 +319,115 @@ export interface KeybindingConflict {
         keybindings: string[];
 }
 
+// ---------------------------------------------------------------------------
+// Binding-key string validation (the Da capo round, R15)
+// ---------------------------------------------------------------------------
+
+/**
+ * Named (non-single-character) key identifiers a binding string may name.
+ * Mirrors the keys `parseKeyId`/`matchesKey` understand. A single alphanumeric
+ * or symbol character is always a valid key name.
+ */
+const NAMED_BINDING_KEYS = new Set([
+        "escape",
+        "esc",
+        "tab",
+        "enter",
+        "return",
+        "backspace",
+        "delete",
+        "insert",
+        "space",
+        "up",
+        "down",
+        "left",
+        "right",
+        "home",
+        "end",
+        "pageup",
+        "pagedown",
+        "kpenter",
+        "kp0",
+        "kp1",
+        "kp2",
+        "kp3",
+        "kp4",
+        "kp5",
+        "kp6",
+        "kp7",
+        "kp8",
+        "kp9",
+        "kpadd",
+        "kpsubtract",
+        "kpmultiply",
+        "kpdivide",
+        "kpdecimal",
+        ...Array.from({ length: 24 }, (_, i) => `f${i + 1}`),
+]);
+
+/** Canonical modifier spellings; aliases normalize onto them. */
+const MODIFIER_ALIASES: Record<string, string> = {
+        control: "ctrl",
+        option: "alt",
+        meta: "super",
+        cmd: "super",
+        win: "super",
+};
+
+export interface ValidatedBindingKey {
+        valid: boolean;
+        /** The normalized key id (aliases resolved) when valid. */
+        normalized?: string;
+        /** Human-readable reason when invalid. */
+        error?: string;
+}
+
+/**
+ * Validate one user-supplied binding key string (Da capo R15 — Claude Code
+ * v2.1.323's contract: "a misspelled keybinding modifier, such as `ctl+k`,
+ * binding the bare key; the binding is now ignored").
+ *
+ * Before this, `ctl+k` parsed as the bare `k` (parseKeyId takes the last
+ * `+`-separated token as the key and only recognizes the exact modifier
+ * spellings) — a silent footgun that rebound a printable key. Now unknown
+ * modifier tokens and unknown key names invalidate the binding, and the
+ * common alias spellings (control/option/meta/cmd/win) normalize instead.
+ * Programmatic callers keep passing canonical ids; this is a load-time gate.
+ */
+export function validateBindingKey(keyId: string): ValidatedBindingKey {
+        const raw = keyId.trim().toLowerCase();
+        if (!raw) return { valid: false, error: "empty key" };
+        const parts = raw.split("+").map((part) => part.trim()).filter(Boolean);
+        if (parts.length === 0) return { valid: false, error: `"${keyId}" has no key` };
+        const keyName = parts[parts.length - 1]!;
+        const canonical: string[] = [];
+        for (const part of parts.slice(0, -1)) {
+                if (part === "ctrl" || part === "shift" || part === "alt" || part === "super") {
+                        canonical.push(part);
+                        continue;
+                }
+                const alias = MODIFIER_ALIASES[part];
+                if (alias) {
+                        canonical.push(alias);
+                        continue;
+                }
+                return {
+                        valid: false,
+                        error: `"${part}" in "${keyId}" is not a known modifier (ctrl, shift, alt, super)`,
+                };
+        }
+        if (!/^[a-z0-9]$/.test(keyName) && !NAMED_BINDING_KEYS.has(keyName) && keyName.length !== 1) {
+                return {
+                        valid: false,
+                        error: `"${keyName}" in "${keyId}" is not a known key name`,
+                };
+        }
+        if (keyName.length === 1 && !/^[a-z0-9!"#$%&'()*+,\-./:;<=>?@[\\\]^_`{|}~]$/.test(keyName)) {
+                return { valid: false, error: `"${keyName}" in "${keyId}" is not a printable key` };
+        }
+        return { valid: true, normalized: [...canonical, keyName].join("+") };
+}
+
 function normalizeKeys(keys: KeyId | KeyId[] | undefined): KeyId[] {
         if (keys === undefined) return [];
         const keyList = Array.isArray(keys) ? keys : [keys];

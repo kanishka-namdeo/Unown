@@ -101,13 +101,31 @@ export type { AppKeybinding, KeybindingsManager } from "../keybindings.ts";
  * scopes inside the Ctrl+R history-search dialog alongside the always-
  * present "session" scope.
  */
+export interface EditorHistoryEntry {
+        /** The human-readable form (paste markers intact — the pill form). */
+        text: string;
+        /** The expanded form (paste contents inline) when it differs; search matches this. */
+        expanded?: string;
+}
+
 export interface EditorHistoryStore {
         /** Extra search scopes, in cycle order (e.g. this project, all projects). */
         scopes(): Array<{ id: string; label: string }>;
         /** Entries for a scope id, newest first. Unknown ids return []. */
         load(scope: string): string[];
-        /** Record a submitted prompt. Never throws. */
-        append(text: string): void;
+        /**
+         * Record a submitted prompt (Da capo R6 — Claude Code v2.1.314's
+         * "Ctrl+R matches text inside collapsed [Pasted text] pills"):
+         * `text` is the marker form, `expanded` the paste-resolved form
+         * recorded for search when it differs. Never throws.
+         */
+        append(text: string, expanded?: string): void;
+        /**
+         * Dual-form entries for the search dialog (marker form + expansion).
+         * Optional: stores that only keep one form omit it and the dialog
+         * falls back to `load()`.
+         */
+        loadEntries?(scope: string): EditorHistoryEntry[];
 }
 
 /** Options for extension UI dialogs. */

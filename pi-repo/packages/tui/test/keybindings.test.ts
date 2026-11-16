@@ -1,6 +1,6 @@
 import assert from "node:assert";
 import { describe, it } from "node:test";
-import { KeybindingsManager, TUI_KEYBINDINGS } from "../src/keybindings.ts";
+import { KeybindingsManager, TUI_KEYBINDINGS, validateBindingKey } from "../src/keybindings.ts";
 
 describe("KeybindingsManager", () => {
 	it("binds Ctrl+J as a default newline alias", () => {
@@ -84,5 +84,56 @@ describe("KeybindingsManager", () => {
 			},
 		]);
 		assert.deepStrictEqual(keybindings.getKeys("tui.editor.cursorLeft"), ["left", "ctrl+b"]);
+	});
+});
+
+describe("validateBindingKey (the Da capo R15 lane — misspelled modifiers never bind bare keys)", () => {
+	it("accepts canonical ids unchanged", () => {
+		for (const key of ["ctrl+k", "shift+enter", "alt+left", "super+k", "escape", "a", "ctrl+alt+]", "f5", "pageup"]) {
+			const result = validateBindingKey(key);
+			assert.strictEqual(result.valid, true, key);
+			assert.strictEqual(result.normalized, key);
+		}
+	});
+
+	it("normalizes alias modifiers (control/option/meta/cmd/win)", () => {
+		assert.deepStrictEqual(validateBindingKey("control+k"), { valid: true, normalized: "ctrl+k" });
+		assert.deepStrictEqual(validateBindingKey("option+enter"), { valid: true, normalized: "alt+enter" });
+		assert.deepStrictEqual(validateBindingKey("cmd+c"), { valid: true, normalized: "super+c" });
+		assert.deepStrictEqual(validateBindingKey("win+l"), { valid: true, normalized: "super+l" });
+	});
+
+	it("rejects misspelled modifiers (the ctl+k footgun)", () => {
+		const result = validateBindingKey("ctl+k");
+		assert.strictEqual(result.valid, false);
+		assert.ok(result.error?.includes("ctl"), "names the bad token");
+		assert.ok(result.error?.includes("modifier"));
+	});
+
+	it("rejects unknown key names", () => {
+		const result = validateBindingKey("ctrl+quux");
+		assert.strictEqual(result.valid, false);
+		assert.ok(result.error?.includes("not a known key name"));
+	});
+
+	it("rejects empty and modifier-only strings", () => {
+		assert.strictEqual(validateBindingKey("").valid, false);
+		assert.strictEqual(validateBindingKey("   ").valid, false);
+		assert.strictEqual(validateBindingKey("ctrl").valid, false);
+		assert.strictEqual(validateBindingKey("ctrl+").valid, false);
+	});
+
+	it("rejects non-printable single characters", () => {
+		assert.strictEqual(validateBindingKey("ctrl+\u200b").valid, false);
+	});
+
+	it("accepts symbol keys", () => {
+		for (const key of ["ctrl+-", "ctrl+=", "alt+[", "shift+;", "ctrl+`"]) {
+			assert.strictEqual(validateBindingKey(key).valid, true, key);
+		}
+	});
+
+	it("is case-insensitive and trims", () => {
+		assert.deepStrictEqual(validateBindingKey("  Ctrl+K "), { valid: true, normalized: "ctrl+k" });
 	});
 });

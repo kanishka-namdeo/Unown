@@ -15,6 +15,7 @@ export { DEFAULT_LANE_COUNT, stableLaneIndex } from "./color-lanes.ts";
 export { Box } from "./components/box.ts";
 export { CancellableLoader } from "./components/cancellable-loader.ts";
 export { Editor, type EditorOptions, type EditorStateSnapshot, type EditorTheme } from "./components/editor.ts";
+export { type SanitizeInvisibleResult, sanitizeInvisibleCharacters } from "./invisible.ts";
 export { HStack } from "./components/h-stack.ts";
 export { Image, type ImageOptions, type ImageTheme } from "./components/image.ts";
 export { Input } from "./components/input.ts";
@@ -61,6 +62,8 @@ export {
         KeybindingsManager,
         setKeybindings,
         TUI_KEYBINDINGS,
+        type ValidatedBindingKey,
+        validateBindingKey,
 } from "./keybindings.ts";
 // Keyboard input handling
 export {

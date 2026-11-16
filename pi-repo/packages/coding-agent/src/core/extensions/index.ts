@@ -72,6 +72,7 @@ export type {
         ExtensionFlag,
         ExtensionHandler,
         ExtensionMode,
+        EditorHistoryEntry,
         EditorHistoryStore,
         // Runtime
         ExtensionRuntime,

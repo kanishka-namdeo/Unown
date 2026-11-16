@@ -1,6 +1,6 @@
 /**
  * input-history.ts — the persisted per-cwd input history store (the
- * Toccata round, 2026-11-15).
+ * Toccata round, 2026-11-15; the Da capo round adds the dual-form entries).
  *
  * The Claude Code history contract (fetched 2026-11-15,
  * code.claude.com/docs/en/interactive-mode): "Input history is stored per
@@ -14,6 +14,13 @@
  * file (rewritten when the file drifts past 600 — append stays cheap,
  * trimming stays rare). The "all projects" scope merges every file by
  * timestamp, newest first, capped the same.
+ *
+ * Da capo R6 (Claude Code v2.1.314: "Ctrl+R now matches text inside
+ * collapsed [Pasted text] pills"): entries may carry an optional `x`
+ * expansion — `c` is the marker/pill form (what Up-recall displays), `x`
+ * the paste-resolved form the search dialog matches. `load()` returns the
+ * SAFE form (`x` when present — a recalled marker from a dead session
+ * would submit literally), `loadEntries()` returns both forms.
  *
  * Everything is failure-tolerant by contract: a history write must never
  * break a submission (append never throws), a corrupt line is skipped
@@ -38,6 +45,8 @@ export const INPUT_HISTORY_TRIM_AT = 600;
 export interface InputHistoryEntry {
         t: number;
         c: string;
+        /** The paste-resolved expansion (Da capo R6) — present only when it differs from `c`. */
+        x?: string;
 }
 
 export interface InputHistoryPaths {
@@ -57,10 +66,11 @@ export function parseInputHistoryLine(line: string): InputHistoryEntry | undefin
         const trimmed = line.trim();
         if (!trimmed) return undefined;
         try {
-                const parsed = JSON.parse(trimmed) as { t?: unknown; c?: unknown };
+                const parsed = JSON.parse(trimmed) as { t?: unknown; c?: unknown; x?: unknown };
                 if (typeof parsed.c !== "string" || typeof parsed.t !== "number") return undefined;
                 if (!Number.isFinite(parsed.t)) return undefined;
-                return { t: parsed.t, c: parsed.c };
+                if (parsed.x !== undefined && typeof parsed.x !== "string") return undefined;
+                return { t: parsed.t, c: parsed.c, ...(parsed.x !== undefined ? { x: parsed.x } : {}) };
         } catch {
                 return undefined;
         }
@@ -83,23 +93,36 @@ export function readInputHistoryFile(file: string): InputHistoryEntry[] {
         return entries;
 }
 
-/** Newest-first view of a file, deduped by exact text, capped. */
+/** Newest-first view of a file, deduped by exact text, capped (the SAFE form — expansion when present). */
 export function loadFileNewestFirst(file: string): string[] {
+        return loadFileEntriesNewestFirst(file).map((entry) => entry.expanded ?? entry.text);
+}
+
+/** Dual-form entries of one file, newest first, deduped by marker form (Da capo R6). */
+export function loadFileEntriesNewestFirst(file: string): Array<{ text: string; expanded?: string }> {
         const entries = readInputHistoryFile(file);
         const seen = new Set<string>();
-        const result: string[] = [];
+        const result: Array<{ text: string; expanded?: string }> = [];
         for (let i = entries.length - 1; i >= 0; i--) {
                 const text = entries[i].c.trim();
                 if (!text || seen.has(text)) continue;
                 seen.add(text);
-                result.push(text);
+                const expanded = entries[i].x?.trim();
+                result.push(expanded && expanded !== text ? { text, expanded } : { text });
                 if (result.length >= INPUT_HISTORY_FILE_CAP) break;
         }
         return result;
 }
 
-/** Append one prompt to a per-cwd file. Never throws. */
-export function appendInputHistory(cwd: string, text: string, env: NodeJS.ProcessEnv = process.env, now = Date.now()): void {
+/** Append one prompt to a per-cwd file. Never throws. The optional
+ *  expansion (Da capo R6) is recorded when it differs from the text. */
+export function appendInputHistory(
+        cwd: string,
+        text: string,
+        expanded: string | undefined,
+        env: NodeJS.ProcessEnv = process.env,
+        now = Date.now(),
+): void {
         const trimmed = text.trim();
         if (!trimmed) return;
         try {
@@ -108,17 +131,25 @@ export function appendInputHistory(cwd: string, text: string, env: NodeJS.Proces
                 // Claude Code parity: submitting the same prompt twice in a row
                 // records one history entry.
                 if (entries.length > 0 && entries[entries.length - 1].c === trimmed) return;
-                entries.push({ t: now, c: trimmed });
+                const cleanExpansion = expanded?.trim();
+                const entry: InputHistoryEntry =
+                        cleanExpansion && cleanExpansion !== trimmed ? { t: now, c: trimmed, x: cleanExpansion } : { t: now, c: trimmed };
+                entries.push(entry);
                 mkdirSync(dir, { recursive: true });
-                const lines = entries.map((entry) => JSON.stringify(entry)).join("\n") + "\n";
+                const lines = entries.map((e) => JSON.stringify(e)).join("\n") + "\n";
                 writeFileSync(file, lines, "utf8");
         } catch {
                 // A history write must never break a submission.
         }
 }
 
-/** The "all projects" scope: merge every per-cwd file by timestamp, newest first. */
+/** The "all projects" scope: merge every per-cwd file by timestamp, newest first (the SAFE form). */
 export function loadAllProjectsNewestFirst(dir: string): string[] {
+        return loadAllProjectsEntriesNewestFirst(dir).map((entry) => entry.expanded ?? entry.text);
+}
+
+/** Dual-form "all projects" entries, newest first, deduped by marker form (Da capo R6). */
+export function loadAllProjectsEntriesNewestFirst(dir: string): Array<{ text: string; expanded?: string }> {
         let files: string[];
         try {
                 files = readdirSync(dir).filter((name) => name.endsWith(".jsonl"));
@@ -134,12 +165,13 @@ export function loadAllProjectsNewestFirst(dir: string): string[] {
         }
         collected.sort((a, b) => b.t - a.t);
         const seen = new Set<string>();
-        const result: string[] = [];
+        const result: Array<{ text: string; expanded?: string }> = [];
         for (const entry of collected) {
                 const text = entry.c.trim();
                 if (!text || seen.has(text)) continue;
                 seen.add(text);
-                result.push(text);
+                const expanded = entry.x?.trim();
+                result.push(expanded && expanded !== text ? { text, expanded } : { text });
                 if (result.length >= INPUT_HISTORY_FILE_CAP) break;
         }
         return result;
@@ -180,9 +212,19 @@ export function createInputHistoryStore(options: InputHistoryStoreOptions = {}):
                         }
                         return [];
                 },
-                append: (text: string): void => {
+                loadEntries: (scope: string): Array<{ text: string; expanded?: string }> => {
+                        try {
+                                const { dir, file } = inputHistoryPaths(cwd, env);
+                                if (scope === "project") return loadFileEntriesNewestFirst(file);
+                                if (scope === "all") return loadAllProjectsEntriesNewestFirst(dir);
+                        } catch {
+                                // Corrupt or unreadable history reads as empty, never throws.
+                        }
+                        return [];
+                },
+                append: (text: string, expanded?: string): void => {
                         if (!inputHistoryEnabled(env)) return;
-                        appendInputHistory(cwd, text, env, now());
+                        appendInputHistory(cwd, text, expanded, env, now());
                 },
         };
 }
