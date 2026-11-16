@@ -295,7 +295,12 @@ KEYS = {
 # changed shape). The default is now an ANY-of set: the Themes section OR the
 # always-rendered status footer's stable token (the resume lane's established
 # contract — the footer only draws once the interactive loop is live).
-READY_ANCHORS = ["── Themes ──", "esc-esc tree"]
+# Semplice W3: fresh homes seed quietStartup:true — the startup resource
+# block (── Themes ──) no longer renders there, so the ready set gains the
+# footer's contextual hint row ("? help"), stable in both quiet and verbose
+# boots. Any-of semantics keep pre-Semplice homes (verbose resource block)
+# and post-Semplice homes both provably ready.
+READY_ANCHORS = ["? help", "── Themes ──", "esc-esc tree"]
 # Kept for callers that want the block itself (same fix as driver.js waitReady).
 READY_ANCHOR = "── Themes ──"
 

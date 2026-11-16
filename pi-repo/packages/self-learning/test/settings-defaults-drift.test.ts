@@ -62,6 +62,11 @@ function writeOutOfBoxSettings(): void {
                                 // writes fullscreen (term.ts) — the diff view's baseline
                                 // for interface.tui-mode is the OUT-OF-BOX state.
                                 tuiMode: "fullscreen",
+                                // Semplice W3: onboarding seeds the quiet boot (the
+                                // resource listing stays behind ctrl+o). Keep this
+                                // fixture byte-honest with term.ts's seed — the pin
+                                // exists to catch exactly this kind of drift.
+                                quietStartup: true,
                         },
                         null,
                         2,

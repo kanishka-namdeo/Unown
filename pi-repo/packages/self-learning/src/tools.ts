@@ -2290,12 +2290,24 @@ export function createUnownToolsExtension(opts: UnownToolsOptions) {
                                                 confidence,
                                                 risks,
                                                 learned: freshLearnedLine(feedEvents),
-                                                telemetry: { ...telemetry, turns: completedTurns },
+                                                // turns counts the turn IN FLIGHT too — the busy
+                                                // row reads `turn N running` and a first boot's
+                                                // maiden turn must read `turn 1`, not `turn 0`.
+                                                telemetry: {
+                                                        ...telemetry,
+                                                        turns: completedTurns + (turnStartTs !== null ? 1 : 0),
+                                                },
                                                 busy: turnStartTs !== null,
                                         });
+                                        // Semplice W4: the null-state panel renders no rows and
+                                        // mounts NOTHING (setWidget([]) would still reserve a
+                                        // blank row above the editor) — the healthy ambient
+                                        // state earns no row.
                                         ctx.ui.setWidget(
                                                 "unown-mission",
-                                                panel.map((line) => ctx.ui.theme.fg(line.role, line.text)),
+                                                panel.length > 0
+                                                        ? panel.map((line) => ctx.ui.theme.fg(line.role, line.text))
+                                                        : undefined,
                                         );
                                 } else {
                                         ctx.ui.setWidget("unown-mission", undefined);

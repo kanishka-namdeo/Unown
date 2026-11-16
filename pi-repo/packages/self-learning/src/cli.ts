@@ -1320,12 +1320,12 @@ async function bootRuntime(cwd: string, verbose: boolean, bootOpts: BootOptions 
         const settingsManager = SettingsManager.create(cwd, agentDir);
 
         // Startup mark: a Unown form opens in the header slot for ~1 s, then
-        // hands the header back (src/splash.ts). Created after settingsManager
-        // because a quiet start gets no mark.
+        // hands the header back (src/splash.ts). Created after settingsManager;
+        // Semplice W3 decoupled it from quietStartup (the quiet seed must not
+        // kill the brand moment) — its switches are UNOWN_NO_SPLASH / NO_COLOR.
         const splashExtension = createSplashExtension({
                 appName: "unown",
                 version: VERSION,
-                quietStartup: settingsManager.getQuietStartup(),
         });
 
         // Verify-first defaults (2026-10): when the user has NOT configured a

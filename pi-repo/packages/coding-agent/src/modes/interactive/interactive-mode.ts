@@ -29,14 +29,15 @@ import {
         CombinedAutocompleteProvider,
         type Component,
         Container,
+        findComponentRect,
         fuzzyFilter,
         getCapabilities,
         hyperlink,
         Markdown,
         matchesKey,
         ProcessTerminal,
-        sanitizeInvisibleCharacters,
         Spacer,
+        sanitizeInvisibleCharacters,
         setCapabilityOverrides,
         setKeybindings,
         Text,
@@ -44,7 +45,6 @@ import {
         type TUI,
         TuiAltScreen,
         TuiMainScreen,
-        findComponentRect,
         visibleWidth,
 } from "@earendil-works/pi-tui";
 import chalk from "chalk";
@@ -99,10 +99,10 @@ import { DefaultPackageManager } from "../../core/package-manager.ts";
 import type { ResourceDiagnostic } from "../../core/resource-loader.ts";
 import { formatMissingSessionCwdPrompt, MissingSessionCwdError } from "../../core/session-cwd.ts";
 import {
-        type SessionEntry,
-        SessionManager,
         getExtraSessionDirs,
         mergeSessionInfos,
+        type SessionEntry,
+        SessionManager,
         sessionEntryToContextMessages,
 } from "../../core/session-manager.ts";
 import type { FullscreenExitOutput, TuiMode } from "../../core/settings-manager.ts";
@@ -127,12 +127,8 @@ import { ArminComponent } from "./components/armin.ts";
 import { AssistantMessageComponent } from "./components/assistant-message.ts";
 import { BashExecutionComponent } from "./components/bash-execution.ts";
 import { BranchSummaryMessageComponent } from "./components/branch-summary-message.ts";
-import {
-        createHistorySearchOverlay,
-        type HistorySearchScope,
-} from "./components/history-search.ts";
-import { CompactionSummaryMessageComponent } from "./components/compaction-summary-message.ts";
 import { CommandPalette, type PaletteEntry } from "./components/command-palette.ts";
+import { CompactionSummaryMessageComponent } from "./components/compaction-summary-message.ts";
 import { CustomEditor } from "./components/custom-editor.ts";
 import { CustomEntryComponent } from "./components/custom-entry.ts";
 import { CustomMessageComponent, formatSectionLabel } from "./components/custom-message.ts";
@@ -143,8 +139,7 @@ import { ExtensionEditorComponent } from "./components/extension-editor.ts";
 import { ExtensionInputComponent } from "./components/extension-input.ts";
 import { ExtensionSelectorComponent } from "./components/extension-selector.ts";
 import { FooterComponent, formatTokens } from "./components/footer.ts";
-import { type StatusLineInput, StatusLineComponent } from "./components/status-line.ts";
-import { SessionDiffStats } from "./components/session-diff-stats.ts";
+import { createHistorySearchOverlay, type HistorySearchScope } from "./components/history-search.ts";
 import { formatKeyText, keyDisplayText, keyHint, keyText, rawKeyHint } from "./components/keybinding-hints.ts";
 import { LoginDialogComponent } from "./components/login-dialog.ts";
 import { createMermaidMarkdownTransformer } from "./components/mermaid.ts";
@@ -155,13 +150,11 @@ import {
         OAuthSelectorComponent,
 } from "./components/oauth-selector.ts";
 import { ScopedModelsSelectorComponent } from "./components/scoped-models-selector.ts";
+import { SessionDiffStats } from "./components/session-diff-stats.ts";
 import { SessionSelectorComponent } from "./components/session-selector.ts";
 import { SettingsSelectorComponent } from "./components/settings-selector.ts";
 import { SkillInvocationMessageComponent } from "./components/skill-invocation-message.ts";
-import {
-        createStreamRenderCoalescer,
-        type StreamRenderScheduler,
-} from "./components/stream-render-coalescer.ts";
+import { resolveSpinnerVerbPool } from "./components/spinner-verbs.ts";
 import {
         BranchSummaryStatusIndicator,
         CompactionStatusIndicator,
@@ -171,10 +164,11 @@ import {
         type StatusIndicator,
         WorkingStatusIndicator,
 } from "./components/status-indicator.ts";
-import { resolveSpinnerVerbPool } from "./components/spinner-verbs.ts";
+import { StatusLineComponent, type StatusLineInput } from "./components/status-line.ts";
+import { createStreamRenderCoalescer, type StreamRenderScheduler } from "./components/stream-render-coalescer.ts";
 import { ThinkingSelectorComponent } from "./components/thinking-selector.ts";
-import { ToolExecutionComponent } from "./components/tool-execution.ts";
 import { ChatTranscriptContainer } from "./components/tool-call-group.ts";
+import { ToolExecutionComponent } from "./components/tool-execution.ts";
 import { TreeSelectorComponent } from "./components/tree-selector.ts";
 import { TrustSelectorComponent } from "./components/trust-selector.ts";
 import { UserMessageComponent } from "./components/user-message.ts";
@@ -185,13 +179,9 @@ import {
         editInExternalEditor,
         stripExternalEditorContext,
 } from "./external-editor.ts";
-import { buildTranscriptMarkdown } from "./transcript-export.ts";
 import { refreshModelCatalogs } from "./model-catalog-refresh.ts";
 import { getModelSearchText } from "./model-search.ts";
-import {
-        renderRefocusRecapLine,
-        shouldShowRefocusRecap,
-} from "./refocus-recap.ts";
+import { renderRefocusRecapLine, shouldShowRefocusRecap } from "./refocus-recap.ts";
 import { shareSession } from "./session-share.ts";
 import {
         getAvailableThemes,
@@ -208,6 +198,7 @@ import {
         theme,
 } from "./theme/theme.ts";
 import { InteractiveThemeController } from "./theme/theme-controller.ts";
+import { buildTranscriptMarkdown } from "./transcript-export.ts";
 
 /** Interface for components that can be expanded/collapsed */
 interface Expandable {
@@ -383,7 +374,10 @@ export interface ResumeCommandOptions {
         buildResumeCommand?: (sessionId: string) => string | undefined;
 }
 
-export function formatResumeCommand(sessionManager: SessionManager, options?: ResumeCommandOptions): string | undefined {
+export function formatResumeCommand(
+        sessionManager: SessionManager,
+        options?: ResumeCommandOptions,
+): string | undefined {
         if (!process.stdout.isTTY) return undefined;
         if (!sessionManager.isPersisted()) return undefined;
 
@@ -902,17 +896,26 @@ export class InteractiveMode {
 
         private getBuiltInCommandConflictDiagnostics(extensionRunner: ExtensionRunner): ResourceDiagnostic[] {
                 const builtinNames = new Set(BUILTIN_SLASH_COMMANDS.map((command) => command.name));
-                return extensionRunner
-                        .getRegisteredCommands()
-                        .filter((command) => builtinNames.has(command.name))
-                        .map((command) => ({
-                                type: "collision" as const,
-                                message:
-                                        command.invocationName === command.name
-                                                ? `Extension command '/${command.name}' overrides a built-in interactive command. The extension version is dispatched and listed in autocomplete.`
-                                                : `Extension command '/${command.name}' shares a built-in name; it is reachable as '/${command.invocationName}'.`,
-                                path: command.sourceInfo.path,
-                        }));
+                return (
+                        extensionRunner
+                                .getRegisteredCommands()
+                                // Semplice W1: product-owned inline extensions (`<inline:…>` paths —
+                                // the host app registers them programmatically) override built-ins
+                                // BY DESIGN (unown ships its own /settings, /copy). The collision
+                                // notice is extension-author feedback, not end-user signal, so it
+                                // never reaches the boot pane. File- and npm-sourced extensions
+                                // keep the diagnostic — those overrides may be accidental.
+                                .filter((command) => !command.sourceInfo.path.startsWith("<inline:"))
+                                .filter((command) => builtinNames.has(command.name))
+                                .map((command) => ({
+                                        type: "collision" as const,
+                                        message:
+                                                command.invocationName === command.name
+                                                        ? `Extension command '/${command.name}' overrides a built-in interactive command. The extension version is dispatched and listed in autocomplete.`
+                                                        : `Extension command '/${command.name}' shares a built-in name; it is reachable as '/${command.invocationName}'.`,
+                                        path: command.sourceInfo.path,
+                                }))
+                );
         }
 
         private createBaseAutocompleteProvider(): AutocompleteProvider {
@@ -1370,10 +1373,10 @@ export class InteractiveMode {
                 const suffix = !statesEnabled
                         ? ""
                         : this.titleNeedsInput
-                          ? " — needs input"
-                          : this.titleWorking
-                            ? " — working"
-                            : "";
+                                ? " — needs input"
+                                : this.titleWorking
+                                        ? " — working"
+                                        : "";
                 if (sessionName) {
                         this.ui.terminal.setTitle(`${titlePrefix} - ${sessionName} - ${cwdBasename}${suffix}`);
                 } else {
@@ -2036,11 +2039,7 @@ export class InteractiveMode {
                         }
                         return theme.fg("dim", `  ${labels.join(", ")}`);
                 };
-                const addLoadedSection = (
-                        name: string,
-                        collapsedBody: string,
-                        expandedBody = collapsedBody,
-                ): void => {
+                const addLoadedSection = (name: string, collapsedBody: string, expandedBody = collapsedBody): void => {
                         const section = new ExpandableText(
                                 () => `${sectionHeader(name)}\n${collapsedBody}`,
                                 () => `${sectionHeader(name)}\n${expandedBody}`,
@@ -2557,10 +2556,7 @@ export class InteractiveMode {
                         this.workingIndicatorOptions,
                 );
                 if (this.workingMessage === undefined) {
-                        const pool = resolveSpinnerVerbPool(
-                                process.env.UNOWN_SPINNER_VERBS,
-                                this.settingsManager.getSpinnerVerbs(),
-                        );
+                        const pool = resolveSpinnerVerbPool(process.env.UNOWN_SPINNER_VERBS, this.settingsManager.getSpinnerVerbs());
                         if (pool) indicator.setVerbPool(pool);
                 }
                 return indicator;
@@ -3380,7 +3376,7 @@ export class InteractiveMode {
                 // Global debug handler on TUI (works regardless of focus)
                 this.ui.onDebug = () => this.handleDebugCommand();
                 this.defaultEditor.onAction("app.model.select", () => this.showModelSelector());
-                        this.defaultEditor.onAction("app.redraw", () => this.handleRedraw());
+                this.defaultEditor.onAction("app.redraw", () => this.handleRedraw());
                 this.defaultEditor.onAction("app.tools.expand", () => this.toggleToolOutputExpansion());
                 this.defaultEditor.onAction("app.thinking.toggle", () => this.toggleThinkingBlockVisibility());
                 this.defaultEditor.onAction("app.editor.external", () => void this.handleOpenExternalEditor());
@@ -4071,12 +4067,28 @@ export class InteractiveMode {
 
         /** Show a managed-tool status update in the chat. */
         private showManagedToolStatus(status: ToolStatus): void {
+                // Semplice W2: managed-tool housekeeping is quiet by default — progress
+                // ("not found. Downloading…") and success ("installed to …") earn no
+                // row: the download is background work with nothing for the user to
+                // decide, and a healthy result is the expected state. Only a FAILURE
+                // surfaces, once, with what still needs the tool, when it retries, and
+                // the manual way out. UNOWN_MANAGED_TOOLS_VERBOSE=1 (or --verbose)
+                // restores the full progress lane.
+                const verbose = this.options.verbose || process.env.UNOWN_MANAGED_TOOLS_VERBOSE === "1";
+                if (status.type === "info" && !verbose) {
+                        return;
+                }
+                let message = status.type === "warning" ? `Warning: ${status.message}` : status.message;
+                const color = status.type === "warning" ? "warning" : "dim";
+                const failedDownload = status.message.match(/^Failed to download (\S+?): (.+)$/);
+                if (failedDownload) {
+                        const needsIt = failedDownload[1] === "fd" ? "the find tool" : "the grep tool";
+                        message = `${failedDownload[1]} not installed (download failed: ${failedDownload[2]}) — ${needsIt} needs it; it retries next start, or install ${failedDownload[1]} yourself`;
+                }
                 if (!this.managedToolStatusStarted) {
                         this.chatContainer.addChild(new Spacer(1));
                         this.managedToolStatusStarted = true;
                 }
-                const message = status.type === "warning" ? `Warning: ${status.message}` : status.message;
-                const color = status.type === "warning" ? "warning" : "dim";
                 this.chatContainer.addChild(new Text(theme.fg(color, message), 1, 0));
                 this.lastStatusSpacer = undefined;
                 this.lastStatusText = undefined;
@@ -4549,9 +4561,7 @@ export class InteractiveMode {
                 if (displayForm !== draft) this.sessionHistoryExpansions.set(displayForm, draft);
                 this.editor.addToHistory?.(displayForm);
                 this.showStatus(
-                        reason === "esc-esc"
-                                ? "Draft saved to history — Up restores it"
-                                : "Draft cleared — Up restores it",
+                        reason === "esc-esc" ? "Draft saved to history — Up restores it" : "Draft cleared — Up restores it",
                 );
         }
 
@@ -5003,8 +5013,10 @@ export class InteractiveMode {
         };
 
         /** The editor's themed border styles, captured before an accent applies (R9). */
-        private originalEditorBorder: { borderColor: (s: string) => string; focusBorderColor?: (s: string) => string } | null =
-                null;
+        private originalEditorBorder: {
+                borderColor: (s: string) => string;
+                focusBorderColor?: (s: string) => string;
+        } | null = null;
 
         /**
          * Da capo R9 — Claude Code's /color: "Set the prompt bar color for the
@@ -6337,10 +6349,7 @@ export class InteractiveMode {
                                 entries.push({
                                         id: `key:${row.id}`,
                                         label: row.keys.map((k) => formatKeyText(String(k), { capitalize: true })).join(" / "),
-                                        description:
-                                                row.description +
-                                                (shadow ? ` — ${shadow}` : "") +
-                                                (category ? ` · ${category}` : ""),
+                                        description: row.description + (shadow ? ` — ${shadow}` : "") + (category ? ` · ${category}` : ""),
                                         run: () => done(),
                                 });
                         }
@@ -6408,8 +6417,7 @@ export class InteractiveMode {
                 winnerByKey: Map<string, string>,
         ): string | undefined {
                 const isHistory = row.id === "tui.editor.historyPrevious" || row.id === "tui.editor.historyNext";
-                const isEditorOwned =
-                        (row.id.startsWith("tui.editor.") || row.id.startsWith("tui.input.")) && !isHistory;
+                const isEditorOwned = (row.id.startsWith("tui.editor.") || row.id.startsWith("tui.input.")) && !isHistory;
                 if (!isEditorOwned) return undefined;
                 for (const key of row.keys) {
                         const winner = winnerByKey.get(key);
@@ -6762,25 +6770,25 @@ export class InteractiveMode {
                 const currentLoader = async (onProgress?: (loaded: number, total: number) => void) =>
                         extraDirs.length > 0
                                 ? mergeSessionInfos(
-                                        await Promise.all([
-                                                SessionManager.list(cwd, sessionDir, onProgress),
-                                                ...extraDirs.map((dir) => SessionManager.list(cwd, dir, onProgress)),
-                                        ]),
-                                )
+                                                await Promise.all([
+                                                        SessionManager.list(cwd, sessionDir, onProgress),
+                                                        ...extraDirs.map((dir) => SessionManager.list(cwd, dir, onProgress)),
+                                                ]),
+                                        )
                                 : SessionManager.list(cwd, sessionDir, onProgress);
                 const allLoader = async (onProgress?: (loaded: number, total: number) => void) =>
                         extraDirs.length > 0
                                 ? mergeSessionInfos(
-                                        await Promise.all([
-                                                this.sessionManager.usesDefaultSessionDir()
-                                                        ? SessionManager.listAll(onProgress)
-                                                        : SessionManager.listAll(sessionDir, onProgress),
-                                                ...extraDirs.map((dir) => SessionManager.list(cwd, dir, onProgress)),
-                                        ]),
-                                )
+                                                await Promise.all([
+                                                        this.sessionManager.usesDefaultSessionDir()
+                                                                ? SessionManager.listAll(onProgress)
+                                                                : SessionManager.listAll(sessionDir, onProgress),
+                                                        ...extraDirs.map((dir) => SessionManager.list(cwd, dir, onProgress)),
+                                                ]),
+                                        )
                                 : this.sessionManager.usesDefaultSessionDir()
-                                  ? SessionManager.listAll(onProgress)
-                                  : SessionManager.listAll(sessionDir, onProgress);
+                                        ? SessionManager.listAll(onProgress)
+                                        : SessionManager.listAll(sessionDir, onProgress);
                 this.showSelector((done) => {
                         const selector = new SessionSelectorComponent(
                                 (onProgress) => currentLoader(onProgress),

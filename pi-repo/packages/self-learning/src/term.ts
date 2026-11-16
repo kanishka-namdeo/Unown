@@ -247,6 +247,14 @@ export function ensureUnownAgentDirInfo(): AgentDirInit {
                                         // (band + files dock) is built on. Switch back any time via /settings
                                         // (Interface layout); existing installs keep their saved settings.
                                         tuiMode: "fullscreen",
+                                        // Semplice W3: fresh installs open on the editor, not on the
+                                        // startup resource listing (Context/Skills/Extensions/Themes —
+                                        // ctrl+o expands it any time; /settings Agent → Quiet startup
+                                        // flips it back). The splash is decoupled (UNOWN_NO_SPLASH) so
+                                        // the brand moment survives the quiet default. Seeded only at
+                                        // agent-dir creation — a user's saved settings.json is never
+                                        // clobbered.
+                                        quietStartup: true,
                                 },
                                 null,
                                 2,

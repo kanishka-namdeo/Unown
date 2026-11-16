@@ -89,8 +89,9 @@ It is decoration that stays out of the way, by construction:
 - Colour comes from the active theme's tokens only; there are no background
   fills.
 
-To turn it off: `UNOWN_NO_SPLASH=1`, or set `quietStartup` (which already
-suppresses the whole header), or export `NO_COLOR`. See
+To turn it off: `UNOWN_NO_SPLASH=1`, or export `NO_COLOR`. (The Semplice round
+decoupled the mark from `quietStartup` — a quiet boot is now the
+fresh-install default, and that default must not kill the brand moment.) See
 [configuration](configuration.md#terminal-agent-unown-cli).
 
 ## Terminal status & the turn meter (2026-10-25)
