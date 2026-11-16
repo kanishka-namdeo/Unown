@@ -92,7 +92,7 @@ export interface FirstFlightsOptions {
 }
 
 /** What the catalog settles to: a picked Flight, "never-again", or undefined (Esc). */
-export type FlightsCatalogResult = Flight | "never-again" | undefined;
+export type FlightsCatalogResult = Flight | "never-again" | { fallThrough: string } | undefined;
 
 /**
  * Footer status line: pi's `ctx.ui.setStatus(key, text)` seam — the footer
@@ -212,6 +212,14 @@ export class FlightsCatalogComponent implements Component {
                                 this.finish("never-again");
                                 return;
                         }
+                        case "fall-through": {
+                                // Semplice W16 — plain typing dismisses into the
+                                // editor: the card hands the typed text to its
+                                // mounter (which setEditorText's it once the
+                                // editor slot is restored). No keystroke is eaten.
+                                this.finish({ fallThrough: action.data });
+                                return;
+                        }
                 }
         }
 
@@ -254,7 +262,7 @@ export class FlightsCatalogComponent implements Component {
                 const hintWidth = Math.max(width - 4, 10);
                 return [
                         "",
-                        `  ${this.theme.fg("dim", truncateToWidth(`1-${this.flights.length} pick · ↑↓ move · enter use · esc close`, hintWidth))}`,
+                        `  ${this.theme.fg("dim", truncateToWidth(`1-${this.flights.length} pick · ↑↓ move · enter use · esc close · or just type`, hintWidth))}`,
                         `  ${this.theme.fg("dim", truncateToWidth("x  don't show this again", hintWidth))}`,
                 ];
         }
@@ -304,6 +312,13 @@ async function showCatalog(
         }
         if (result === "never-again") {
                 writeOnboardingState({ ...readOnboardingState(home), flightsDismissed: true }, home);
+                return;
+        }
+        // Semplice W16 — plain typing at the card falls through: the typed
+        // text lands in the editor (same restore-then-prefill contract as the
+        // pick below) and the user simply keeps typing their own prompt.
+        if (typeof result === "object" && "fallThrough" in result) {
+                ctx.ui.setEditorText(result.fallThrough);
                 return;
         }
         // A pick: the custom() promise resolves after the editor slot was

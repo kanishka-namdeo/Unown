@@ -128,7 +128,14 @@ export type FlightsKeyAction =
         | { type: "pick"; index: number }
         | { type: "move"; delta: number }
         | { type: "dismiss" }
-        | { type: "never-again" };
+        | { type: "never-again" }
+        /** Semplice W16 — plain typing falls through: the card dismisses for
+         * this session and the typed text lands in the editor (the component's
+         * mounter setEditorText's it). Mode-error prevention: a modal that
+         * EATS printable keystrokes is the classic trap — a user who starts
+         * typing their real prompt at the card loses the characters (and a
+         * stray 'x' used to latch never-again PERSISTENTLY). */
+        | { type: "fall-through"; data: string };
 
 /**
  * Route one raw keypress for a focused catalog of `count` flights.
@@ -139,6 +146,9 @@ export type FlightsKeyAction =
  *   ↓ / j    move down, clamped at the bottom (no wrap)
  *   Esc / q  dismiss the catalog for this session
  *   x / X    never-again (persist the latch — never auto-show again)
+ *   printable fall-through (Semplice W16): any other printable text
+ *            dismisses the card for this session and rides through to the
+ *            editor — typing a prompt at the card now WORKS
  *   else     none
  *
  * The returned `selected` is ALWAYS clamped into [0, count-1]; with
@@ -162,5 +172,17 @@ export function flightsHandleKey(
         if (data === "\x1b[B" || data === "j") return { action: { type: "move", delta: 1 }, selected: clamp(cur + 1) };
         if (data === "\x1b" || data === "q") return { action: { type: "dismiss" }, selected: cur };
         if (data === "x" || data === "X") return { action: { type: "never-again" }, selected: cur };
+        // Semplice W16 — plain typing falls through. Everything printable that
+        // no binding claims: letters (minus q/x), digits (minus 1-9, 0 is
+        // free), punctuation, space, and multi-char pastes. Control bytes and
+        // escape sequences stay "none" (never-again can now only be hit
+        // DELIBERATELY — a stray 'x' inside a typed prompt dismisses first).
+        const printable = [...data].every((ch) => {
+                const cp = ch.codePointAt(0) ?? 0;
+                return cp >= 0x20 && cp !== 0x7f;
+        });
+        if (data.length > 0 && printable) {
+                return { action: { type: "fall-through", data }, selected: cur };
+        }
         return { action: { type: "none" }, selected: cur };
 }

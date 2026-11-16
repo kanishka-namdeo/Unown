@@ -31,7 +31,7 @@ Related pages: [research record](tui-overwhelm-research.md) · [UX principles](u
 | CP2 | Two-beat first run (W6–W9) | done | gate default flip (PTY 3/3), ≤8-row summary, spec-gate safe default |
 | CP3 | Command discoverability (W10–W12) | done | grouped popup/palette (PTY 3/3), /help card, usage.md counts, +2 pre-existing bug fixes |
 | CP4 | Plain-language chrome (W13–W14, W16) | done | ttft classic-only, 5-hint row, cache chips classic-only (PTY verified) |
-| CP5 | Onboarding consolidation (W16–W17) | planned | flights fall-through, FirstTimeSetup suppression |
+| CP5 | Onboarding consolidation (W16–W17) | done | flights printable fall-through (PTY 2/2); W17 verified already-held (pi's dialog is official-distribution-only, never fires for unown) |
 | CP6 | `--help` restructure (W18) | planned | everyday-first help, topic pages |
 | CP7 | Ship | planned | docs/landing/blog sync, v0.0.70, cross-platform builds, security sweep |
 
@@ -211,7 +211,7 @@ headers, and `/help` renders the grouped card in the transcript.
 order. **W14** — the idle hint row carries FIVE hints, not six (Cowan 4±1;
 the baseline counted six): `? help · ctrl+k palette · / commands · ! bash ·
 ctrl+o transcript`; the esc-esc gesture moved to `/hotkeys`, the `?`
-reference and `/tree` in the grouped catalog. **W16** — the footer's cache
+reference and `/tree` in the grouped catalog. **the W13 addendum** — the footer's cache
 chips (`CH` hit-rate, `W` write, `R` read) are CLASSIC-ONLY single-letter
 codes no first-week user can decode; the quiet stats row keeps location ·
 ctx meter · ↑/↓ · model, and the cache facts live where they are explained
@@ -230,12 +230,19 @@ with no CH/W/R codes, and the turn chip renders `turn 1.1s` with no ttft.
 Docs synced: usage.md's turn-meter section, configuration.md's
 UNOWN_TURN_METER row, bottom-area-user-journeys.md's hint-row rows.
 
+## CP5 — onboarding consolidation
+
+**Landed:** **W16 — plain typing falls through the First-flights card**: `flightsHandleKey` gains a `fall-through` action — any printable text no binding claims (letters minus q/x, 0, punctuation, space, pastes) dismisses the card for this session and rides through to the editor via `setEditorText` (the same restore-then-prefill contract as a pick); control bytes and escape sequences stay inert. The documented hazard is gone: a prompt typed at the card used to be EATEN, and a stray `x` latched never-again persistently — never-again can now only be hit deliberately. The card's footer hint teaches it: `… esc close · or just type`. **W17 — verified already-held**: pi's FirstTimeSetup dialog is gated to the OFFICIAL distribution (`isOfficialDistribution` in `shouldRunFirstTimeSetup`) and never fires for a fork — no suppression needed; recorded.
+
+**Verification:** `test/flights-core.test.ts` (the fall-through matrix: printables with data, control keys inert, clamping) + the flights component suites — 51/51 across the three flights files; tsc at the 88-error baseline. PTY as a real user (`semplice_cp5`, 2/2): the fresh boot shows the card, typing `hello` at it dismisses the card and the editor carries `hello`.
+
 ## Checkpoints
 
 - **CP1** (2026-11-17): committed as `engine(tui): semplice CP1 — the quiet first boot`; suites and receipts as above.
 - **CP2** (2026-11-17): committed as `engine(tui): semplice CP2 — the two-beat first run`; receipts above.
 - **CP3** (2026-11-17): committed as `engine(tui): semplice CP3 — the grouped command catalog`; receipts above.
 - **CP4** (2026-11-17): committed as `engine(tui): semplice CP4 — plain-language chrome`; receipts above.
+- **CP5** (2026-11-17): committed as `engine(tui): semplice CP5 — the flights fall-through`; receipts above.
 
 ## The round closes
 

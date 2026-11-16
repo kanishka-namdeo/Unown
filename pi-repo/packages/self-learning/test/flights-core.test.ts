@@ -150,15 +150,26 @@ describe("flightsHandleKey", () => {
                 }
         });
 
-        test('unmapped keys ("a"/"Z"/"\\t"/"") are none', () => {
-                for (const key of ["a", "Z", "\t", ""]) {
+        test('Semplice W16: printable keys fall through; control keys stay none', () => {
+                for (const [key, data] of [
+                        ["a", "a"],
+                        ["Z", "Z"],
+                        ["0", "0"],
+                        [" ", " "],
+                ] as const) {
+                        expect(flightsHandleKey(key, 2, COUNT)).toEqual({
+                                action: { type: "fall-through", data },
+                                selected: 2,
+                        });
+                }
+                for (const key of ["\t", "", "\x7f", "\x01"]) {
                         expect(flightsHandleKey(key, 2, COUNT)).toEqual({ action: { type: "none" }, selected: 2 });
                 }
         });
 
         test("selected is always clamped into [0, count-1]", () => {
-                expect(flightsHandleKey("a", -2, COUNT)).toEqual({ action: { type: "none" }, selected: 0 });
-                expect(flightsHandleKey("a", 99, COUNT)).toEqual({ action: { type: "none" }, selected: 3 });
+                expect(flightsHandleKey("a", -2, COUNT)).toEqual({ action: { type: "fall-through", data: "a" }, selected: 0 });
+                expect(flightsHandleKey("a", 99, COUNT)).toEqual({ action: { type: "fall-through", data: "a" }, selected: 3 });
                 expect(flightsHandleKey("9", 99, COUNT)).toEqual({ action: { type: "none" }, selected: 3 });
                 // active keys clamp too: Enter picks the clamped index
                 expect(flightsHandleKey("\r", -2, COUNT)).toEqual({ action: { type: "pick", index: 0 }, selected: 0 });
