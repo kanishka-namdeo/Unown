@@ -491,7 +491,7 @@ Limits (zcode's, transliterated): 20 routines total, 2 concurrent runs (manual r
 
 ## Slash commands
 
-unown adds forty-seven commands of its own — plus the split-view display mode's twelve (`/split*` and `/files`), listed last:
+unown adds seventy-four commands of its own — including the split-view display mode's eleven (`/split*` and `/files`), listed last. The `/` popup and the ctrl+k palette chunk the whole catalog (~100 with the built-ins) under category headers (the Semplice round); `/help` prints the same grouped catalog, and `?` shows the keyboard reference:
 
 | Command | What it does |
 |---|---|

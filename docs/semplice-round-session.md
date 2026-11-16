@@ -29,7 +29,7 @@ Related pages: [research record](tui-overwhelm-research.md) · [UX principles](u
 | CP0 | Research + baseline capture | done | [research record](tui-overwhelm-research.md); baseline stills/panes (fresh-home boot, 11 preamble lines pre-flights) |
 | CP1 | Quiet first boot (W1–W4, W15) | done | this page; `test/semplice-round.test.ts` (7) + updated pins; PTY after-capture (1 preamble line) |
 | CP2 | Two-beat first run (W6–W9) | done | gate default flip (PTY 3/3), ≤8-row summary, spec-gate safe default |
-| CP3 | Command discoverability (W10–W12) | planned | grouped popup/palette, /help, usage.md counts |
+| CP3 | Command discoverability (W10–W12) | done | grouped popup/palette (PTY 3/3), /help card, usage.md counts, +2 pre-existing bug fixes |
 | CP4 | Plain-language chrome (W13–W14, W16) | planned | turn chip, hint row, token chips |
 | CP5 | Onboarding consolidation (W16–W17) | planned | flights fall-through, FirstTimeSetup suppression |
 | CP6 | `--help` restructure (W18) | planned | everyday-first help, topic pages |
@@ -152,10 +152,62 @@ questions**, and the wizard (via `y`) opens with the compact header + short
 recommended tag. Docs synced: quickstart.md (first-run + wizard steps +
 summary description).
 
+## CP3 — command discoverability
+
+**Landed:**
+
+- **W10 — the catalog chunks under category headers**: `SelectItem` gains
+  `selectable: false` (section-header rows: navigation skips them, Enter never
+  selects them, the new `SelectListTheme.sectionLabel` hook styles them) —
+  and both command surfaces interleave headers between groups: the `/`
+  autocomplete popup (a bare `/` opens the category-sorted catalog; a typed
+  query flattens it — search neutralizes grouping) and the ctrl+k
+  `CommandPalette` (grouped while the filter is empty, flat once the user
+  types). The host seam is `InteractiveModeOptions.getCommandCategory` (the
+  `getPermissionMode` precedent); unown's map lives in
+  `src/command-categories.ts` — name-keyed (a user does not care whether
+  `/model` is pi's or `/plan` is unown's), 97 commands across 10 categories
+  (Session, Plan & review, Memory & learning, Models & providers, Display,
+  Tools & data, Safety & permissions, Engine & ops, Add-ons, Help &
+  onboarding). Product-owned inline extensions also STOP carrying the
+  `[t]` scope tag in their descriptions (provenance for extension authors,
+  noise for users — user/project/npm sources keep theirs).
+- **W11 — `/help` exists**: the "You're flying" tip and the footer hint both
+  promised `/help`, but no such command was registered — typing it sent a
+  CHAT TURN to the model (the baseline capture caught the model answering
+  instead). `/help` now prints the compact grouped catalog (one wrapped
+  name-row per category + the discovery pointers: `ctrl+k` searches, `?`
+  shows keys, `docs/usage.md`).
+- **W12 — the count drift fixed**: usage.md said "forty-seven + twelve"
+  against a real surface of 74 unown + 23 built-ins + dynamic; now
+  "seventy-four (including the split-view eleven)" with the grouping story.
+- **Two pre-existing bugs found by the round's render-pinning tests**:
+  (1) the ctrl+k palette's `listChildIndex` was computed BEFORE `addChild`
+  — every filter keystroke replaced the SPACER above the list and left the
+  previous list mounted (stale lists stacked as you typed; interaction
+  worked because `selectList` is tracked separately, so no test noticed);
+  fixed and pinned. (2) `getBestAutocompleteMatchIndex`'s flat index was
+  applied to the interleaved list — selection now goes by VALUE
+  (`selectItemByValue`), header-row-safe.
+
+**Verification:** tui `select-list` + `autocomplete` + `editor` node suites
+**208/208** (5 new header cases: initial-selection lands on a command,
+nav skips headers both directions with wrap, home/end on selectables, header
+render through `sectionLabel`, `selectItemByValue`); coding-agent vitest
+`command-palette` + selector suites **23/23** (3 new: headers between groups
+unfiltered, typed query flattens, Enter never lands on a header — the test
+that caught the stacking bug); self-learning `semplice-round.test.ts` (the
+23-builtins coverage pin, representative category pins, the /help card
+pins) — full suite **5867 pass / 105 skip / 0 fail**; vendored builds + biome
+clean. PTY as a real user (`semplice_cp3`, 3/3): the bare-`/` popup opens
+GROUPED (headers visible, commands under them), `/pl` filters flat with no
+headers, and `/help` renders the grouped card in the transcript.
+
 ## Checkpoints
 
 - **CP1** (2026-11-17): committed as `engine(tui): semplice CP1 — the quiet first boot`; suites and receipts as above.
 - **CP2** (2026-11-17): committed as `engine(tui): semplice CP2 — the two-beat first run`; receipts above.
+- **CP3** (2026-11-17): committed as `engine(tui): semplice CP3 — the grouped command catalog`; receipts above.
 
 ## The round closes
 

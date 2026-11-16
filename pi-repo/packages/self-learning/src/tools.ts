@@ -161,6 +161,7 @@ import {
         renderMissionPanel,
         resolveMission,
 } from "./mission.ts";
+import { helpCardLines } from "./command-categories.ts";
 import {
         isModelUnhealthy,
         isProviderStyleFailure,
@@ -5682,6 +5683,21 @@ export function createUnownToolsExtension(opts: UnownToolsOptions) {
                 // turns plus a one-line LLM summary through the /btw side-question lane
                 // (never entering the transcript / receipts / AutoDream); the digest is
                 // shown even when the model lane is down.
+                // Semplice W11 — /help: the compact grouped catalog. The old
+                // surface was a lie by drift: the "You're flying" tip and the
+                // header hint both said "/help", but no /help command existed —
+                // typing it sent a chat turn to the model (the baseline capture
+                // caught exactly that). This card answers in place, grouped the
+                // same way the / popup and the ctrl+k palette chunk.
+                pi.registerCommand("help", {
+                        description: "The compact command catalog — grouped like the / popup; ctrl+k searches everything",
+                        handler: async (_args: string, ctx) => {
+                                for (const line of helpCardLines()) {
+                                        ctx.ui.notify(line, "info");
+                                }
+                        },
+                });
+
                 pi.registerCommand("recap", {
                         description:
                                 "Summarize what happened in this session — /recap [turns] shows the digest of the last turns plus a one-line model summary",

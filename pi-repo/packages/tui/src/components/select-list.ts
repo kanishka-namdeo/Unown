@@ -13,6 +13,14 @@ export interface SelectItem {
 	value: string;
 	label: string;
 	description?: string;
+	/** Semplice W10 — section headers. `false` renders the row as a
+	 * non-interactive group label: navigation skips it, Enter never selects
+	 * it, and the row styles through `SelectListTheme.sectionLabel` instead
+	 * of the selected/description lanes. Callers interleave header rows
+	 * between selectable groups (the `/` command popup and the ctrl+k
+	 * palette chunk their command lists this way — chunking beats a flat
+	 * 99-row wall for scanning; see docs/tui-overwhelm-research.md). */
+	selectable?: boolean;
 }
 
 export interface SelectListTheme {
@@ -21,6 +29,9 @@ export interface SelectListTheme {
 	description: (text: string) => string;
 	scrollInfo: (text: string) => string;
 	noMatch: (text: string) => string;
+	/** Section-header rows (selectable: false) — dim-bold by convention.
+	 * Falls back to the plain label when a theme omits it. */
+	sectionLabel?: (text: string) => string;
 	// === Beauty move 8: overlay choreography surface hooks (optional) ===
 	/** Row background applied to every non-selected body row (the overlayBg surface). */
 	background?: (line: string) => string;
@@ -66,12 +77,50 @@ export class SelectList implements Component {
 		this.maxVisible = maxVisible;
 		this.theme = theme;
 		this.layout = layout;
+		this.selectedIndex = this.firstSelectableIndex();
+	}
+
+	/** The first row a user can actually land on (skips section headers). */
+	private firstSelectableIndex(): number {
+		const first = this.filteredItems.findIndex((item) => item.selectable !== false);
+		return first === -1 ? 0 : first;
+	}
+
+	private isSelectable(index: number): boolean {
+		const item = this.filteredItems[index];
+		return item !== undefined && item.selectable !== false;
+	}
+
+	/** Step to the next selectable row in `dir` (+1/-1), wrapping once. */
+	private stepSelectable(from: number, dir: 1 | -1): number {
+		const n = this.filteredItems.length;
+		if (n === 0) return 0;
+		let i = from;
+		for (let step = 0; step < n; step++) {
+			i = (i + dir + n) % n;
+			if (this.isSelectable(i)) return i;
+		}
+		return from; // nothing selectable — stay put
+	}
+
+	/** Nearest selectable row at-or-after `from` in `dir` (no wrap). */
+	private clampSelectable(from: number, dir: 1 | -1): number {
+		let i = from;
+		while (i >= 0 && i < this.filteredItems.length && !this.isSelectable(i)) i += dir;
+		return i >= 0 && i < this.filteredItems.length && this.isSelectable(i) ? i : from;
+	}
+
+	/** Select the (selectable) row carrying `value` — used when the caller
+	 * holds a flat item array and the list interleaves section headers. */
+	selectItemByValue(value: string): void {
+		const idx = this.filteredItems.findIndex((item) => item.selectable !== false && item.value === value);
+		if (idx !== -1) this.selectedIndex = idx;
 	}
 
 	setFilter(filter: string): void {
 		this.filteredItems = this.items.filter((item) => item.value.toLowerCase().startsWith(filter.toLowerCase()));
-		// Reset selection when filter changes
-		this.selectedIndex = 0;
+		// Reset selection when filter changes — to the first SELECTABLE row
+		this.selectedIndex = this.firstSelectableIndex();
 	}
 
 	setSelectedIndex(index: number): void {
@@ -105,6 +154,12 @@ export class SelectList implements Component {
 			const item = this.filteredItems[i];
 			if (!item) continue;
 
+			// Section headers (Semplice W10): one styled label row, never selected.
+			if (item.selectable === false) {
+				lines.push(this.theme.sectionLabel ? this.theme.sectionLabel(item.label) : item.label);
+				continue;
+			}
+
 			const isSelected = i === this.selectedIndex;
 			const descriptionSingleLine = item.description ? normalizeToSingleLine(item.description) : undefined;
 			lines.push(this.renderItem(item, isSelected, width, descriptionSingleLine, primaryColumnWidth));
@@ -122,40 +177,50 @@ export class SelectList implements Component {
 
 	handleInput(keyData: string): void {
 		const kb = getKeybindings();
-		// Up arrow - wrap to bottom when at top
+		// Up arrow - wrap to bottom when at top (skipping section headers)
 		if (kb.matches(keyData, "tui.select.up")) {
-			this.selectedIndex = this.selectedIndex === 0 ? this.filteredItems.length - 1 : this.selectedIndex - 1;
+			this.selectedIndex = this.stepSelectable(this.selectedIndex, -1);
 			this.notifySelectionChange();
 		}
-		// Down arrow - wrap to top when at bottom
+		// Down arrow - wrap to top when at bottom (skipping section headers)
 		else if (kb.matches(keyData, "tui.select.down")) {
-			this.selectedIndex = this.selectedIndex === this.filteredItems.length - 1 ? 0 : this.selectedIndex + 1;
+			this.selectedIndex = this.stepSelectable(this.selectedIndex, 1);
 			this.notifySelectionChange();
 		}
 		// Page up - jump by one viewport, clamping at the top
 		else if (kb.matches(keyData, "tui.select.pageUp")) {
-			this.selectedIndex = Math.max(0, this.selectedIndex - this.maxVisible);
+			this.selectedIndex = this.clampSelectable(Math.max(0, this.selectedIndex - this.maxVisible), -1);
 			this.notifySelectionChange();
 		}
 		// Page down - jump by one viewport, clamping at the bottom
 		else if (kb.matches(keyData, "tui.select.pageDown")) {
-			this.selectedIndex = Math.min(this.filteredItems.length - 1, this.selectedIndex + this.maxVisible);
+			this.selectedIndex = this.clampSelectable(
+				Math.min(this.filteredItems.length - 1, this.selectedIndex + this.maxVisible),
+				1,
+			);
 			this.notifySelectionChange();
 		}
-		// Home - jump to the first item
+		// Home - jump to the first selectable item
 		else if (kb.matches(keyData, "tui.select.first")) {
-			this.selectedIndex = 0;
+			this.selectedIndex = this.firstSelectableIndex();
 			this.notifySelectionChange();
 		}
-		// End - jump to the last item
+		// End - jump to the last selectable item
 		else if (kb.matches(keyData, "tui.select.last")) {
-			this.selectedIndex = this.filteredItems.length - 1;
+			let last = -1;
+			for (let i = this.filteredItems.length - 1; i >= 0; i--) {
+				if (this.isSelectable(i)) {
+					last = i;
+					break;
+				}
+			}
+			this.selectedIndex = last === -1 ? this.selectedIndex : last;
 			this.notifySelectionChange();
 		}
 		// Enter
 		else if (kb.matches(keyData, "tui.select.confirm")) {
 			const selectedItem = this.filteredItems[this.selectedIndex];
-			if (selectedItem && this.onSelect) {
+			if (selectedItem && selectedItem.selectable !== false && this.onSelect) {
 				this.onSelect(selectedItem);
 			}
 		}

@@ -30,11 +30,11 @@ export interface ChangelogStop {
   groups: ChangelogGroup[];
 }
 
-export const CHANGELOG_TOTAL_ENTRIES = 606;
+export const CHANGELOG_TOTAL_ENTRIES = 607;
 
 export const CHANGELOG_TOTALS: Record<ChangelogBucket, number> = {
   "Added": 261,
-  "Changed": 34,
+  "Changed": 35,
   "Deprecated": 0,
   "Removed": 3,
   "Fixed": 222,
@@ -46,10 +46,10 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
   {
     "label": "Unreleased",
     "date": null,
-    "total": 2,
+    "total": 3,
     "counts": {
       "Added": 0,
-      "Changed": 2,
+      "Changed": 3,
       "Deprecated": 0,
       "Removed": 0,
       "Fixed": 0,
@@ -60,6 +60,10 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
       {
         "bucket": "Changed",
         "items": [
+          {
+            "title": "The Semplice round CP3 — the grouped command catalog (W10–W12; research record docs/tui-overwhelm-research.md)",
+            "behavior": false
+          },
           {
             "title": "The Semplice round CP2 — the two-beat first run (W6–W9; research record docs/tui-overwhelm-research.md)",
             "behavior": false

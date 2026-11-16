@@ -106,3 +106,60 @@ describe("semplice W15 — plain-language chips", () => {
 afterAll(() => {
     rmSync(ROOT, { recursive: true, force: true });
 });
+
+describe("semplice W10 — the command-category map", () => {
+    test("every pi built-in command is categorized (the popup groups them all)", async () => {
+        const { commandCategory } = await import("../src/command-categories.ts");
+        // The 23 pi built-ins (vendored slash-commands.ts) + help (W11).
+        const builtins = [
+            "settings", "model", "tree", "thinking", "scoped-models", "export", "import", "share",
+            "copy", "name", "session", "changelog", "hotkeys", "fork", "clone", "trust", "login",
+            "logout", "new", "compact", "resume", "reload", "quit",
+        ];
+        for (const name of builtins) {
+            expect(commandCategory(name), name).toBeDefined();
+        }
+        expect(commandCategory("help")).toBe("Help & onboarding");
+    });
+
+    test("representative unown commands land in their groups", async () => {
+        const { commandCategory } = await import("../src/command-categories.ts");
+        expect(commandCategory("plan")).toBe("Plan & review");
+        expect(commandCategory("memory")).toBe("Memory & learning");
+        expect(commandCategory("undo")).toBe("Session");
+        expect(commandCategory("providers")).toBe("Models & providers");
+        expect(commandCategory("split")).toBe("Display");
+        expect(commandCategory("mcp")).toBe("Tools & data");
+        expect(commandCategory("permissions")).toBe("Safety & permissions");
+        expect(commandCategory("engine")).toBe("Engine & ops");
+        expect(commandCategory("init-agents")).toBe("Help & onboarding");
+        expect(commandCategory("totally-unknown-command")).toBeUndefined();
+    });
+});
+
+describe("semplice W11 — the /help card", () => {
+    test("renders the grouped catalog with the discovery pointers", async () => {
+        const { helpCardLines, CATEGORIZED_COMMAND_NAMES } = await import("../src/command-categories.ts");
+        const text = helpCardLines().join("\n");
+        expect(text).toContain("ctrl+k searches them");
+        for (const category of [
+            "── Session ──",
+            "── Plan & review ──",
+            "── Memory & learning ──",
+            "── Models & providers ──",
+            "── Display ──",
+            "── Tools & data ──",
+            "── Safety & permissions ──",
+            "── Engine & ops ──",
+            "── Help & onboarding ──",
+        ]) {
+            expect(text).toContain(category);
+        }
+        expect(text).toContain("? keyboard shortcuts");
+        expect(text).toContain("docs/usage.md");
+        // The catalog header carries the honest count.
+        expect(text).toContain(`${CATEGORIZED_COMMAND_NAMES.length} in the catalog`);
+        // Names render WITHOUT the leading slash inside category rows.
+        expect(text).toContain("plan");
+    });
+});

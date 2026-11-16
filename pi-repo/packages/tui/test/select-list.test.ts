@@ -172,3 +172,70 @@ describe("SelectList", () => {
 		assert.deepEqual(selected, ["item-11", "item-6", "item-11"]);
 	});
 });
+
+describe("SelectList section headers (Semplice W10)", () => {
+	const sectionTheme = {
+		...testTheme,
+		sectionLabel: (text: string) => `§ ${text}`,
+	};
+	const groupedItems = [
+		{ value: "__group:Session", label: "Session", selectable: false },
+		{ value: "new", label: "new" },
+		{ value: "resume", label: "resume" },
+		{ value: "__group:Display", label: "Display", selectable: false },
+		{ value: "theme", label: "theme" },
+	];
+
+	it("initial selection lands on the first SELECTABLE row, never a header", () => {
+		const list = new SelectList(groupedItems, 5, sectionTheme);
+		let selected = "";
+		list.onSelect = (item) => {
+			selected = item.value;
+		};
+		list.handleInput("\r"); // Enter — the initially-selected row fires
+		assert.equal(selected, "new");
+	});
+
+	it("down/up navigation skips header rows both directions", () => {
+		const list = new SelectList(groupedItems, 5, sectionTheme);
+		const landed: string[] = [];
+		list.onSelectionChange = (item) => {
+			landed.push(item.value);
+		};
+		list.handleInput("\x1b[B"); // down → resume
+		list.handleInput("\x1b[B"); // down → skips Display header → theme
+		list.handleInput("\x1b[B"); // down → wraps, skips headers → new
+		list.handleInput("\x1b[A"); // up → wraps past the Session header → theme (last selectable)
+		assert.deepEqual(landed, ["resume", "theme", "new", "theme"]);
+	});
+
+	it("home/end land on first/last selectable; Enter on a header never fires", () => {
+		const list = new SelectList(groupedItems, 5, sectionTheme);
+		let selected = "";
+		list.onSelectionChange = (item) => {
+			selected = item.value;
+		};
+		list.handleInput("\x1b[F"); // End → last selectable (theme), not the header above it
+		assert.equal(selected, "theme");
+		list.handleInput("\x1b[H"); // Home → first selectable (new)
+		assert.equal(selected, "new");
+	});
+
+	it("render styles headers through sectionLabel and keeps them non-selected", () => {
+		const list = new SelectList(groupedItems, 5, sectionTheme);
+		const lines = list.render(60).join("\n");
+		assert.ok(lines.includes("§ Session"));
+		assert.ok(lines.includes("§ Display"));
+	});
+
+	it("selectItemByValue selects through interleaved headers", () => {
+		const list = new SelectList(groupedItems, 5, sectionTheme);
+		let selected = "";
+		list.onSelect = (item) => {
+			selected = item.value;
+		};
+		list.selectItemByValue("theme");
+		list.handleInput("\r");
+		assert.equal(selected, "theme");
+	});
+});

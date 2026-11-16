@@ -285,6 +285,7 @@ KEYS = {
     "Right": b"\x1b[C",
     "Left": b"\x1b[D",
     "CtrlC": b"\x03",
+    "Backspace": b"\x7f",
 }
 
 # The TUI's readiness anchors (2026-11-10, the combination round 2's L1 fix):

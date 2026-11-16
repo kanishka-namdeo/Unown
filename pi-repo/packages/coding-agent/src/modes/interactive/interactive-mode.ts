@@ -506,6 +506,12 @@ export interface InteractiveModeOptions {
          * omitted from the payload.
          */
         getPermissionMode?: () => string | undefined;
+        /** Semplice W10 — the command-category resolver: name → category, or
+         *  undefined for uncategorized. When the host app provides it, the /
+         *  command popup and the ctrl+k palette chunk their catalogs under
+         *  section headers (a flat 99-row wall is the round's top overwhelm
+         *  finding); pi's own commands stay ungrouped by default. */
+        getCommandCategory?: (name: string) => string | undefined;
 }
 
 interface InteractiveTuiOptions {
@@ -887,6 +893,16 @@ export class InteractiveMode {
         }
 
         private prefixAutocompleteDescription(description: string | undefined, sourceInfo?: SourceInfo): string | undefined {
+                // Semplice W10: product-owned inline extensions carry no source tag.
+                // The "[t]" scope shorthand was provenance for extension AUTHORS; for an
+                // end user it decorated every unown command's description with a code
+                // nobody documented — and the category grouping (W10) already answers
+                // "what is this". User/project/npm/git sources keep their tags — those
+                // distinguish user-authored commands from built-ins, which is real
+                // information.
+                if (sourceInfo?.path?.startsWith("<inline:")) {
+                        return description;
+                }
                 const sourceTag = this.getAutocompleteSourceTag(sourceInfo);
                 if (!sourceTag) {
                         return description;
@@ -924,6 +940,11 @@ export class InteractiveMode {
                         name: command.name,
                         description: command.description,
                         ...(command.argumentHint && { argumentHint: command.argumentHint }),
+                        // Semplice W10: the host's category resolver groups the
+                        // catalog (undefined for pi without a host map).
+                        ...(this.options.getCommandCategory?.(command.name) && {
+                                group: this.options.getCommandCategory!(command.name),
+                        }),
                 }));
 
                 const modelCommand = slashCommands.find((command) => command.name === "model");
@@ -984,6 +1005,9 @@ export class InteractiveMode {
                         name: cmd.name,
                         description: this.prefixAutocompleteDescription(cmd.description, cmd.sourceInfo),
                         ...(cmd.argumentHint && { argumentHint: cmd.argumentHint }),
+                        ...(this.options.getCommandCategory?.(cmd.name) && {
+                                group: this.options.getCommandCategory!(cmd.name),
+                        }),
                 }));
 
                 // Convert extension commands to SlashCommand format.
@@ -1009,6 +1033,9 @@ export class InteractiveMode {
                                 name: cmd.invocationName,
                                 description: this.prefixAutocompleteDescription(cmd.description, cmd.sourceInfo),
                                 getArgumentCompletions: cmd.getArgumentCompletions,
+                                ...(this.options.getCommandCategory?.(cmd.name) && {
+                                        group: this.options.getCommandCategory!(cmd.name),
+                                }),
                         }));
 
                 // Build skill commands from session.skills (if enabled)
@@ -6145,6 +6172,7 @@ export class InteractiveMode {
         private openCommandPalette(initialQuery?: string): void {
                 this.showSelector((done) => {
                         const entries: PaletteEntry[] = [];
+                        const categoryOf = (name: string): string | undefined => this.options.getCommandCategory?.(name);
 
                         // Slash commands — the same sources autocomplete uses.
                         const builtinNames = new Set(BUILTIN_SLASH_COMMANDS.map((command) => command.name));
@@ -6153,6 +6181,7 @@ export class InteractiveMode {
                                         id: `cmd:${command.name}`,
                                         label: `/${command.name}`,
                                         description: command.description,
+                                        ...(categoryOf(command.name) && { group: categoryOf(command.name) }),
                                         run: () => {
                                                 done();
                                                 this.editor.setText(`/${command.name} `);
@@ -6167,6 +6196,7 @@ export class InteractiveMode {
                                         id: `cmd:${cmd.name}`,
                                         label: `/${cmd.name}`,
                                         description: cmd.description,
+                                        ...(categoryOf(cmd.name) && { group: categoryOf(cmd.name) }),
                                         run: () => {
                                                 done();
                                                 this.editor.setText(`/${cmd.name} `);
@@ -6181,6 +6211,7 @@ export class InteractiveMode {
                                         id: `cmd:${cmd.invocationName}`,
                                         label: `/${cmd.invocationName}`,
                                         description: cmd.description,
+                                        ...(categoryOf(cmd.name) && { group: categoryOf(cmd.name) }),
                                         run: () => {
                                                 done();
                                                 this.editor.setText(`/${cmd.invocationName} `);

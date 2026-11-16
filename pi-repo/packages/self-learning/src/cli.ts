@@ -86,6 +86,7 @@ import {
 import { loadOutputSchema, renderSchemaFailure, validateAnswerAgainstSchema } from "./output-schema.ts";
 import { unownVersion } from "./packaging.ts";
 import { createPermissionGate, createPermissionsExtension, permissionsDoctorSummary } from "./permissions.ts";
+import { commandCategory } from "./command-categories.ts";
 import {
         isLoopbackProvider,
         probeLatencyNote,
@@ -4035,6 +4036,11 @@ async function cmdTui(prompt: string | undefined, verbose: boolean, bootOpts: Bo
                 // always returns the reader — the gate is shared with the
                 // terminal hook seam and /permissions).
                 getPermissionMode,
+                // Semplice W10 — the command-category resolver: the / popup and
+                // the ctrl+k palette chunk their ~100-command catalogs under
+                // section headers (the round's top overwhelm finding was the
+                // flat "(1/99)" wall).
+                getCommandCategory: commandCategory,
                 ...(prompt ? { initialMessage: prompt } : {}),
         });
         await mode.run(); // blocks until exit; normal exit path is process.exit(0)

@@ -114,3 +114,57 @@ describe("CustomEditor help key (round 5, I1)", () => {
                 expect(editor.getText()).toBe("?");
         });
 });
+
+describe("CommandPalette grouping (Semplice W10)", () => {
+        beforeAll(() => {
+                initTheme(undefined, false);
+        });
+
+        const groupedEntries: PaletteEntry[] = [
+                { id: "cmd:new", label: "/new", description: "clear", group: "Session", run: vi.fn() },
+                { id: "cmd:resume", label: "/resume", description: "reopen", group: "Session", run: vi.fn() },
+                { id: "cmd:theme", label: "/theme", description: "colors", group: "Display", run: vi.fn() },
+        ];
+
+        it("renders section headers between groups while unfiltered", () => {
+                const palette = new CommandPalette({
+                        title: "Command palette",
+                        entries: groupedEntries,
+                        onSelect: (entry) => entry.run(),
+                        onCancel: () => {},
+                });
+                const text = stripAnsi(palette.render(100).join("\n"));
+                expect(text).toContain("Session");
+                expect(text).toContain("Display");
+                // Session before Display (first-appearance order)
+                expect(text.indexOf("Session")).toBeLessThan(text.indexOf("Display"));
+                expect(text).toContain("/new");
+                expect(text).toContain("/theme");
+        });
+
+        it("a typed query flattens the catalog — no header rows in results", () => {
+                const palette = new CommandPalette({
+                        title: "Command palette",
+                        entries: groupedEntries,
+                        onSelect: (entry) => entry.run(),
+                        onCancel: () => {},
+                });
+                palette.handleInput("t"); // matches /theme only
+                const text = stripAnsi(palette.render(100).join("\n"));
+                expect(text).toContain("/theme");
+                expect(text).not.toContain("Display");
+                expect(text).not.toContain("Session");
+        });
+
+        it("Enter never lands on a section header", () => {
+                const palette = new CommandPalette({
+                        title: "Command palette",
+                        entries: groupedEntries,
+                        onSelect: (entry) => entry.run(),
+                        onCancel: () => {},
+                });
+                // From the first selectable (/new), one Enter fires its run.
+                palette.handleInput("\r");
+                expect(groupedEntries[0]!.run).toHaveBeenCalled();
+        });
+});

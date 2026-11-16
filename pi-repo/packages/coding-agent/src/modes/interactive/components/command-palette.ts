@@ -27,6 +27,11 @@ export interface PaletteEntry {
         label: string;
         /** Right-column description. */
         description?: string;
+        /** Semplice W10 — the category this entry groups under while the
+         *  filter is EMPTY: the list interleaves non-selectable section-header
+         *  rows between groups. Dropped the moment the user types — fuzzy
+         *  search neutralizes grouping. */
+        group?: string;
         /** Invoked on Enter. */
         run: () => void;
 }
@@ -80,7 +85,13 @@ export class CommandPalette implements Component {
                 this.container.addChild(new Spacer(1));
 
                 this.selectList = this.buildList(this.filter(options.initialQuery ?? ""));
-                this.listChildIndex = this.container.children.length - 1;
+                // Semplice W10 find: this used to read `children.length - 1` BEFORE the
+                // list was added — the index pointed at the SPACER above it, so every
+                // filter rebuild replaced the spacer and left the previous list
+                // mounted below (stale lists stacked as the user typed; the
+                // interaction still worked because selectList is tracked separately,
+                // which is why no test caught it — a render-pinning test does).
+                this.listChildIndex = this.container.children.length;
                 this.container.addChild(this.selectList);
                 this.container.addChild(new Spacer(1));
                 this.container.addChild(new SelectorHints(["Type to filter", "Enter to run", "Esc to close"]));
@@ -89,15 +100,33 @@ export class CommandPalette implements Component {
 
         private filter(query: string): PaletteEntry[] {
                 if (!query) return this.entries;
-                return fuzzyFilter(this.entries, query, (entry) => `${entry.label} ${entry.description ?? ""}`);
+                // Semplice W10: a typed query flattens the catalog — grouping aids
+                // scanning, not searching (Hick's law does not apply once the
+                // user types), and stripped groups keep header rows out of the
+                // fuzzy results.
+                return fuzzyFilter(this.entries, query, (entry) => `${entry.label} ${entry.description ?? ""}`).map(
+                        ({ group: _group, ...entry }) => entry,
+                );
         }
 
         private buildList(entries: PaletteEntry[]): SelectList {
-                const items: SelectItem[] = entries.map((entry) => ({
-                        value: entry.id,
-                        label: entry.label,
-                        description: entry.description,
-                }));
+                // Semplice W10: unfiltered grouped entries interleave section-header
+                // rows (selectable: false) between groups; SelectList skips them in
+                // navigation and styles them through the theme's sectionLabel hook.
+                const grouped = entries.some((entry) => entry.group);
+                const items: SelectItem[] = [];
+                let lastGroup: string | undefined;
+                for (const entry of entries) {
+                        if (grouped && entry.group && entry.group !== lastGroup) {
+                                items.push({ value: `__group:${entry.group}`, label: entry.group, selectable: false });
+                                lastGroup = entry.group;
+                        }
+                        items.push({
+                                value: entry.id,
+                                label: entry.label,
+                                description: entry.description,
+                        });
+                }
                 const list = new SelectList(items, Math.min(items.length, 12), getSelectListTheme(), PALETTE_LAYOUT);
                 list.onSelect = (item) => {
                         const entry = entries.find((e) => e.id === item.value);
