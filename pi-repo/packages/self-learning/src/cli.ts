@@ -1659,17 +1659,27 @@ export function firstRunGateLines(bridgeUp: boolean): {
         question: string;
         declined: string[];
         wizardFailed: string;
+        /** The Enter default. Semplice W6: when the bundled bridge ANSWERS, a
+         * working provider already exists — Enter keeps it (the competence
+         * moment: a new user's first prompt is one keypress away, matching the
+         * two-beat first run every studied competitor ships). Only a
+         * bridge-less install (the standalone binary) keeps Enter = setup,
+         * because there declining leaves nothing to talk to. */
+        defaultYes: boolean;
 } {
         const decline = bridgeUp ? "n = keep the bundled bridge for now" : "n = skip for now (no provider connected)";
         return {
-                question: `\nFirst run — no provider connected yet.\nConnect one now? (Agnes, OpenAI, OpenRouter, Anthropic, Dashscope, DeepSeek, local…)\n  Enter = guided setup · ${decline}`,
+                question: bridgeUp
+                        ? `\nFirst run — the bundled llm-bridge is answering (the default provider).\nConnect your own instead? (Agnes, OpenAI, OpenRouter, Anthropic, Dashscope, DeepSeek, local…)\n  Enter = keep the bundled bridge · y = guided setup`
+                        : `\nFirst run — no provider connected yet.\nConnect one now? (Agnes, OpenAI, OpenRouter, Anthropic, Dashscope, DeepSeek, local…)\n  Enter = guided setup · ${decline}`,
                 declined: [
-                        bridgeUp ? "  Skipped — the bundled bridge is wired for now." : "  Skipped — no provider is connected yet.",
+                        bridgeUp ? "  Kept — the bundled bridge is wired for now." : "  Skipped — no provider is connected yet.",
                         "  (anytime: unown setup · unown providers add · unown providers list)",
                 ],
                 wizardFailed: bridgeUp
                         ? "Continuing with the bundled bridge (re-run `unown setup` anytime)…"
                         : "No provider connected (re-run `unown setup` anytime)…",
+                defaultYes: !bridgeUp,
         };
 }
 
@@ -3959,7 +3969,7 @@ async function cmdTui(prompt: string | undefined, verbose: boolean, bootOpts: Bo
         if (init?.created && process.stdin.isTTY && process.stdout.isTTY && !bootOpts.provider && !bootOpts.model) {
                 gateBridgeUp = (await bridgeHealth(1000))?.ok === true;
                 const gate = firstRunGateLines(gateBridgeUp);
-                if (promptYesNo(gate.question, true)) {
+                if (promptYesNo(gate.question, gate.defaultYes)) {
                         const code = await runSetupCommand([]);
                         wizardSucceeded = code === 0;
                         if (code === 0) console.log("\nStarting the session with your provider…\n");

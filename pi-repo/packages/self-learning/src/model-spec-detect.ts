@@ -57,6 +57,11 @@ export type SpecSource =
         | "litellm"
         | "endpoint"
         | "user"
+        /** The Semplice W8 lane: the user accepted the conservative default
+         * (blank answer at the spec ask) rather than typing numbers — the
+         * values are real and safe (32k/8k), but the provenance must not
+         * claim the user KNEW them. */
+        | "user-default"
         | "learned"
         /** A sidecar record whose `source` was not one of the known values
          *  (a hand-edit, a foreign pinning script, a future version). Records
@@ -71,6 +76,7 @@ const KNOWN_SPEC_SOURCES: ReadonlySet<string> = new Set([
         "litellm",
         "endpoint",
         "user",
+        "user-default",
         "learned",
 ]);
 
@@ -896,6 +902,19 @@ export function userSpec(contextWindow: number, maxTokens: number): ModelSpecDet
         return { contextWindow, maxTokens, source: "user", match: "exact", contributors: [{ source: "user", fields: ["contextWindow", "maxTokens"], match: "exact" }] };
 }
 
+/** The Semplice W8 twin: numbers the user accepted as a conservative default
+ *  (blank at the ask). Same values, honest source — `unown models verify` and
+ *  doctor render it with the adjust hint instead of "you entered it". */
+export function userDefaultSpec(contextWindow: number, maxTokens: number): ModelSpecDetection {
+        return {
+                contextWindow,
+                maxTokens,
+                source: "user-default",
+                match: "exact",
+                contributors: [{ source: "user-default", fields: ["contextWindow", "maxTokens"], match: "exact" }],
+        };
+}
+
 // ---------------------------------------------------------------------------
 // Display helpers (shared by setup summary, `unown models`, doctor)
 // ---------------------------------------------------------------------------
@@ -906,6 +925,7 @@ const SOURCE_LABELS: Record<SpecSource, string> = {
         litellm: "LiteLLM model database",
         endpoint: "the endpoint's own /models",
         user: "you entered it",
+        "user-default": "the safe default you accepted (unown setup --context-window/--max-tokens to set real numbers)",
         learned: "learned from an upstream error",
         unknown: "an unrecognized source",
 };

@@ -173,15 +173,18 @@ describe("buildSetupSummaryText", () => {
                 });
                 expect(text).toContain("✓ setup complete");
                 expect(text).toContain("provider  agnes → https://apihub.agnes-ai.com/v1");
-                expect(text).toContain("model     agnes-3.0-flash  (+2 more:");
+                expect(text).toContain("model     agnes-3.0-flash (+2 more) · endpoint reachable — serves");
                 expect(text).toContain("key       auth.json (mode 0600) — entered masked");
                 expect(text).toContain("theme     switched: dark");
-                expect(text).toContain("verify    endpoint reachable — serves");
                 expect(text).toContain("kept      existing providers: zai-bridge");
                 expect(text).toContain("files     ~/.unown/agent/{models,auth,settings}.json");
-                expect(text).toContain("unown                start a session in this project");
-                expect(text).toContain("First flights (paste into a session):");
-                expect(text.split("· ").length - 1).toBe(4); // four first-flight suggestions
+                // Semplice W7: the closer is ONE pointer line — no pasted flight
+                // catalog (a session can RUN a /flights starter; a pasted
+                // summary cannot), no three-command Next block.
+                expect(text).toContain("Start a session: run `unown` — /flights lists starter tasks, /settings everything else.");
+                expect(text).not.toContain("First flights (paste into a session):");
+                const rows = text.split("\n").filter((l) => l.startsWith("  "));
+                expect(rows.length).toBeLessThanOrEqual(8); // the ≤8-row contract
         });
 
         test("key dispositions: env-ref / bridge placeholder / keyless-with-note", () => {
@@ -203,6 +206,6 @@ describe("buildSetupSummaryText", () => {
                 expect(buildSetupSummaryText({ ...base, verified: "unreachable" })).toContain(
                         "endpoint not reachable (config written — verify later)",
                 );
-                expect(buildSetupSummaryText({ ...base, verified: "skipped" })).toContain("verify    not verified");
+                expect(buildSetupSummaryText({ ...base, verified: "skipped" })).toContain("not verified");
         });
 });

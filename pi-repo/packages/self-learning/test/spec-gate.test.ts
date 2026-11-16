@@ -284,11 +284,25 @@ describe("askSpecNumbers", () => {
                 expect(r).toEqual({ contextWindow: 262144, maxTokens: 32768 });
         });
 
-        test("garbage then blank then valid — validation loops, blank is refused", async () => {
-                const dialog = scriptedDialog(["abc", "", "131072", "8192"]);
+        test("Semplice W8: blank accepts the conservative default, never a dead end", async () => {
+                const dialog = scriptedDialog(["", ""]);
+                const r = await askSpecNumbers(dialog, "m");
+                expect(r).toEqual({ contextWindow: 32768, maxTokens: 8192, defaulted: true });
+                expect(dialog.notes.some((n) => n.includes("safe default"))).toBe(true);
+                expect(dialog.notes.some((n) => n.includes("unown setup --context-window"))).toBe(true);
+        });
+
+        test("Semplice W8: a blank context plus a typed output keeps the typed number", async () => {
+                const dialog = scriptedDialog(["", "4096"]);
+                const r = await askSpecNumbers(dialog, "m");
+                expect(r).toEqual({ contextWindow: 32768, maxTokens: 4096, defaulted: true });
+        });
+
+        test("garbage loops with a warning, then a valid answer passes", async () => {
+                const dialog = scriptedDialog(["abc", "131072", "8192"]);
                 const r = await askSpecNumbers(dialog, "m");
                 expect(r).toEqual({ contextWindow: 131072, maxTokens: 8192 });
-                expect(dialog.notes.some((n) => n.includes("required"))).toBe(true);
+                expect(r?.defaulted).toBeUndefined();
                 expect(dialog.notes.some((n) => n.includes("not a positive whole number"))).toBe(true);
         });
 
@@ -312,6 +326,14 @@ describe("askSpecNumbers", () => {
                 const sidecar = JSON.parse(readFileSync(join(dir, "model-specs.json"), "utf8"));
                 expect(sidecar.specs["p/m"].source).toBe("user");
                 expect(sidecar.specs["p/m"].maxTokens).toBe(100000);
+        });
+
+        test("Semplice W8: a defaulted answer records honest user-default provenance", () => {
+                const dir = agentDir("record-user-default");
+                const spec = recordUserSpec(dir, "p", "m", { contextWindow: 32768, maxTokens: 8192, defaulted: true });
+                expect(spec.source).toBe("user-default");
+                const sidecar = JSON.parse(readFileSync(join(dir, "model-specs.json"), "utf8"));
+                expect(sidecar.specs["p/m"].source).toBe("user-default");
         });
 });
 

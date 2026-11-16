@@ -28,7 +28,7 @@ Related pages: [research record](tui-overwhelm-research.md) · [UX principles](u
 |----|-------|--------|----------|
 | CP0 | Research + baseline capture | done | [research record](tui-overwhelm-research.md); baseline stills/panes (fresh-home boot, 11 preamble lines pre-flights) |
 | CP1 | Quiet first boot (W1–W4, W15) | done | this page; `test/semplice-round.test.ts` (7) + updated pins; PTY after-capture (1 preamble line) |
-| CP2 | Two-beat first run (W6–W9) | planned | gate default, wizard summary, spec-gate |
+| CP2 | Two-beat first run (W6–W9) | done | gate default flip (PTY 3/3), ≤8-row summary, spec-gate safe default |
 | CP3 | Command discoverability (W10–W12) | planned | grouped popup/palette, /help, usage.md counts |
 | CP4 | Plain-language chrome (W13–W14, W16) | planned | turn chip, hint row, token chips |
 | CP5 | Onboarding consolidation (W16–W17) | planned | flights fall-through, FirstTimeSetup suppression |
@@ -106,9 +106,56 @@ failure; the memory-recall line follows it — the only remaining pre-editor
 rows); the wizard/decline paths unchanged this CP. Gate copy itself untouched —
 CP2's scope.
 
+## CP2 — the two-beat first run
+
+**Landed:**
+
+- **W6** — `firstRunGateLines(bridgeUp)` gains a `defaultYes` field: when the
+  bundled bridge ANSWERS, the question leads with the truth (`First run —
+  the bundled llm-bridge is answering (the default provider).` / `Connect
+  your own instead?`) and **Enter keeps the bridge** — the working default,
+  never a question about it. A bridge-less install (the standalone binary)
+  keeps Enter = setup, because declining there leaves nothing to talk to.
+  The PTY helper (`answer_first_run_gate`) detects both eras of copy.
+- **W7** — `buildSetupSummaryText` compressed from ~25 rows to a ≤8-row
+  contract: provider row, model + verify on one row, key, files, and rows
+  that only appear when something needs saying (specs when unverified,
+  theme when switched, kept when present). The four pasted flight summaries
+  are gone — ONE closer line points at `/flights` (a session can RUN a
+  starter; a pasted summary cannot). The wizard's `Current configuration`
+  header no longer dumps the full model list (up to ten ids across three
+  wrapped lines) — it names the count and the default. Preset 1's
+  recommendation tag reads `← recommended (bundled stack is up)`.
+- **W8** — `askSpecNumbers`: a BLANK answer accepts the conservative safe
+  default (32k context / 8k output — compaction just triggers early) with a
+  note naming the adjust command; the questions say so up front
+  (`blank = safe default 32k`). The old blank-retry-warning loop and the
+  fatal decline dead-end are gone for blanks; an explicitly WRONG number
+  still warns and retries (the anti-guessing guard stays armed). Honest
+  provenance: a new `user-default` spec source (sidecar + `unown models
+  verify` + doctor render `the safe default you accepted …` instead of
+  claiming `you entered it`).
+- **W9** — verified already-held by the code (keep-current returns
+  immediately with nothing written; the bridge preset asks only the model);
+  recorded, no change needed.
+
+**Verification:** `test/first-run-copy.test.ts` (the two-era gate matrix +
+defaultYes pins), `test/spec-gate.test.ts` (blank-accepts-default, blank-ctx
++ typed-out mix, garbage still loops, three-invalid still refuses, the
+user-default provenance sidecar), `test/setup-dialog.test.ts` (the ≤8-row
+summary contract, one-row model+verify, the /flights closer, no pasted
+catalog). Full suite **5864 pass / 105 skip / 0 fail**; tsc at the 88-error
+pre-existing baseline, zero in the round's files. PTY as a real user
+(`semplice_cp2`, 3/3): the bridge-up gate reads `Enter = keep the bundled
+bridge · y = guided setup`, **Enter lands in the TUI with zero wizard
+questions**, and the wizard (via `y`) opens with the compact header + short
+recommended tag. Docs synced: quickstart.md (first-run + wizard steps +
+summary description).
+
 ## Checkpoints
 
 - **CP1** (2026-11-17): committed as `engine(tui): semplice CP1 — the quiet first boot`; suites and receipts as above.
+- **CP2** (2026-11-17): committed as `engine(tui): semplice CP2 — the two-beat first run`; receipts above.
 
 ## The round closes
 

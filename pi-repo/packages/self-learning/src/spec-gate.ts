@@ -44,6 +44,7 @@ import {
         isCompleteSpec,
         recordSpec,
         sanitizeSpecNumbers,
+        userDefaultSpec,
         userSpec,
         SPEC_CONTEXT_MIN,
         SPEC_CONTEXT_MAX,
@@ -204,6 +205,10 @@ export async function resolveSpecGate(input: SpecGateInput, ctx: SpecGateContext
 export interface SpecNumbers {
         contextWindow: number;
         maxTokens: number;
+        /** Semplice W8: true when any field came from the conservative default
+         *  (blank answer) — recordUserSpec records the honest `user-default`
+         *  provenance instead of claiming the user entered the numbers. */
+        defaulted?: boolean;
 }
 
 /**
@@ -215,18 +220,36 @@ export interface SpecNumbers {
  * has no built-in validation, so the loop is ours — the key-step retry
  * pattern. Suggestions come from `current` (the models.json values, when
  * they exist) so a re-run pre-fills what was there before.
+ *
+ * Semplice W8 — blank is a CONSERVATIVE DEFAULT, never a dead end: a new
+ * user cannot know a private model's numbers, and the old gate's decline
+ * was fatal ("an unverified model is not usable") — the strictness was
+ * right about GUESSING but wrong about DEFAULTING. A deliberately low
+ * floor (32k context / 8k output) is safe by construction: compaction
+ * triggers early, the output cap is modest, nothing runs on a wrong
+ * number. The questions say so ("blank = safe default 32k"), the note on
+ * accept says so, and the provenance sidecar records `conservative-default`
+ * so `unown models verify` can still flag it. An explicit WRONG number
+ * still warns and retries — the anti-guessing guard stays fully armed.
  */
+export const SPEC_CONSERVATIVE: SpecNumbers = { contextWindow: 32_768, maxTokens: 8_192 };
+
 export async function askSpecNumbers(
         dialog: SetupDialog,
         modelId: string,
         current?: { contextWindow?: number; maxTokens?: number },
 ): Promise<SpecNumbers | null> {
+        let defaulted = false;
         const askNumber = async (question: string, fallback: string, isCtx: boolean, other?: number): Promise<number | null> => {
                 for (let attempt = 0; attempt < 3; attempt++) {
                         const raw = (await dialog.ask(question, fallback)).trim().replace(/[,_ ]/g, "");
                         if (!raw) {
-                                dialog.note("  ⚠ a number is required — the model's limits drive compaction and the output cap (guessing is what this gate exists to stop).");
-                                continue;
+                                const mine = isCtx ? SPEC_CONSERVATIVE.contextWindow : SPEC_CONSERVATIVE.maxTokens;
+                                dialog.note(
+                                        `  · using the safe default ${mine.toLocaleString("en-US")} — adjust later with unown setup --${isCtx ? "context-window" : "max-tokens"}`,
+                                );
+                                defaulted = true;
+                                return mine;
                         }
                         const n = Number(raw);
                         if (!Number.isFinite(n) || !Number.isInteger(n) || n <= 0) {
@@ -248,12 +271,21 @@ export async function askSpecNumbers(
                 return null;
         };
         const ctxFallback = current?.contextWindow ? String(current.contextWindow) : "";
-        const contextWindow = await askNumber(`Context window for ${modelId} (tokens — total input+output the model accepts)`, ctxFallback, true);
+        const contextWindow = await askNumber(
+                `Context window for ${modelId} (tokens — total input+output the model accepts; blank = safe default 32k)`,
+                ctxFallback,
+                true,
+        );
         if (contextWindow === null) return null;
         const outFallback = current?.maxTokens ? String(current.maxTokens) : "";
-        const maxTokens = await askNumber(`Max output tokens for ${modelId} (the per-reply cap)`, outFallback, false, contextWindow);
+        const maxTokens = await askNumber(
+                `Max output tokens for ${modelId} (the per-reply cap; blank = safe default 8k)`,
+                outFallback,
+                false,
+                contextWindow,
+        );
         if (maxTokens === null) return null;
-        return { contextWindow, maxTokens };
+        return { contextWindow, maxTokens, ...(defaulted ? { defaulted: true } : {}) };
 }
 
 /** Record a user answer (the ask's or the flags') with full provenance. */
@@ -262,7 +294,9 @@ export function recordUserSpec(agentDir: string, providerId: string, modelId: st
         // The ask already validated; the flags path validates before calling. A
         // clamped maxTokens is recorded clamped (the sidecar must never carry a
         // number models.json will not).
-        const spec = userSpec(sane.contextWindow ?? numbers.contextWindow, sane.maxTokens ?? numbers.maxTokens);
+        const spec = numbers.defaulted
+                ? userDefaultSpec(sane.contextWindow ?? numbers.contextWindow, sane.maxTokens ?? numbers.maxTokens)
+                : userSpec(sane.contextWindow ?? numbers.contextWindow, sane.maxTokens ?? numbers.maxTokens);
         recordSpec(agentDir, providerId, modelId, spec, now);
         return spec;
 }

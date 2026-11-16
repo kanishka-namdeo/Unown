@@ -20,7 +20,6 @@
  */
 import { existsSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { firstFlightCatalog } from "./flights-core.ts";
 import { loadModelHealth, MODEL_HEALTH_TTL_MS } from "./model-health.ts";
 import {
         detectModelSpec,
@@ -335,14 +334,14 @@ export interface SetupOutcome {
 }
 
 // (the local firstFlightCatalog string list moved to src/flights-core.ts —
-// the shared First flights catalog: the setup summary and the in-TUI starter
-// card render from one source of truth.)
+// the shared First flights catalog: the /flights command and the in-TUI
+// starter card render from one source of truth. Semplice W7: the setup
+// summary POINTS at /flights instead of pasting the catalog — the session
+// can run a flight, a pasted summary cannot.)
 
 /** Pure builder (unit-tested): the summary text without printing. */
 export function buildSetupSummaryText(out: SetupOutcome): string {
-        const extra = out.extraModels?.length
-                ? `  (+${out.extraModels.length} more: ${out.extraModels.slice(0, 4).join(", ")}${out.extraModels.length > 4 ? " …" : ""})`
-                : "";
+        const extra = out.extraModels?.length ? ` (+${out.extraModels.length} more)` : "";
         const keyLine = (() => {
                 switch (out.keyDisposition) {
                         case "auth-json":
@@ -359,29 +358,34 @@ export function buildSetupSummaryText(out: SetupOutcome): string {
         })();
         const verifyLine =
                 out.verified === "ok"
-                        ? `endpoint reachable${out.served?.length ? ` — serves ${out.served.slice(0, 6).join(", ")}${out.served.length > 6 ? " …" : ""}` : ""}`
+                        ? `endpoint reachable${out.served?.length ? ` — serves ${out.served.slice(0, 3).join(", ")}${out.served.length > 3 ? " …" : ""}` : ""}`
                         : out.verified === "auth-rejected"
                                 ? "endpoint reachable but REJECTED the key"
                                 : out.verified === "unreachable"
                                         ? "endpoint not reachable (config written — verify later)"
                                         : "not verified";
+        // Semplice W7 — the closing summary is the LAST thing a new user reads
+        // before their first session; it must confirm what they chose and point
+        // at the first step, not re-list every disposition (the old ~25-line
+        // form was a reading assignment — the setup wizard's own overwhelm
+        // finding). Healthy facts earn no row: specs only print when
+        // UNVERIFIED, theme only when it CHANGED, kept providers only when
+        // present, and the four flight summaries live behind /flights where
+        // the session itself can run them — a pointer, not a paste.
         const lines: string[] = [];
         lines.push("");
         lines.push("✓ setup complete");
         lines.push(`  provider  ${out.providerId} → ${out.baseUrl}`);
-        lines.push(`  model     ${out.modelId}${extra}`);
+        lines.push(`  model     ${out.modelId}${extra} · ${verifyLine}`);
+        if (out.verified !== "ok" || !out.specLine?.match(/verified|source/i)) {
+                lines.push(`  specs     ${out.specLine ?? "unverified — checked at first use"}`);
+        }
+        if (out.theme) lines.push(`  theme     switched: ${out.theme}`);
         lines.push(`  key       ${keyLine}`);
-        lines.push(`  specs     ${out.specLine ?? "unverified — checked at first use"}`);
-        lines.push(`  theme     ${out.theme ? `switched: ${out.theme}` : "unchanged"}`);
-        lines.push(`  verify    ${verifyLine}`);
         if (out.kept?.length) lines.push(`  kept      existing providers: ${out.kept.join(", ")}`);
         lines.push("  files     ~/.unown/agent/{models,auth,settings}.json");
-        lines.push("\nNext:");
-        lines.push("  unown                start a session in this project");
-        lines.push("  unown doctor         end-to-end diagnostics");
-        lines.push("  unown providers list  see every configured provider");
-        lines.push("\nFirst flights (paste into a session):");
-        for (const f of firstFlightCatalog()) lines.push(`  · ${f.summary}`);
+        lines.push("");
+        lines.push("Start a session: run `unown` — /flights lists starter tasks, /settings everything else.");
         return lines.join("\n") + "\n";
 }
 
@@ -1130,8 +1134,14 @@ async function runInteractiveSetup(): Promise<number> {
                 const file = readAgentModelsFile(UNOWN_AGENT_DIR);
                 if (file.providers.length > 0) {
                         const active = resolveActiveProvider(UNOWN_AGENT_DIR);
+                        const mid = active?.modelIds?.[0] ?? "?";
+                        const count = active?.modelIds?.length ?? 0;
+                        // Semplice W7: the header names the active provider and
+                        // its default model — the full model list is what the
+                        // model step SHOWS you next (the old form printed up to
+                        // ten ids here, wrapping across three dense lines).
                         console.log(
-                                `Current configuration: ${active?.id ?? file.providers[0]?.id} → ${active?.baseUrl ?? "?"} (${active?.modelIds.join(", ") ?? "?"})`,
+                                `Current configuration: ${active?.id ?? file.providers[0]?.id} → ${active?.baseUrl ?? "?"} · ${count} model${count === 1 ? "" : "s"} (default ${mid})`,
                         );
                         console.log(`Files: ${join(UNOWN_AGENT_DIR, "models.json")}\n`);
                 } else {
@@ -1150,7 +1160,7 @@ async function runInteractiveSetup(): Promise<number> {
                         (p) =>
                                 p.label +
                                 (p.id === "bridge" && bridgeRecommended
-                                        ? "  ← recommended (your bundled stack is up, key set — zero extra keys)"
+                                        ? "  ← recommended (bundled stack is up)"
                                         : ""),
                 );
                 options.push("Keep the current configuration");
