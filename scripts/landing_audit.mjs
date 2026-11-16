@@ -192,7 +192,18 @@ const MAX_VH = 20.5;
 // CP bodies (-91w, hygiene); post-compression the page measures 4,661w; the
 // ceiling carries the stop's chrome plus one more stop's headroom. The e2e
 // twin (e2e/landing-budget.spec.ts) carries the full receipt.
-const MAX_WORDS = 4684;
+// The 2026-11-16 v0.0.69 release amendment (the Da capo round's cut):
+// 4,684 -> 4,710 carries the rail's 64th stop. Compressed FIRST: the stop's
+// listed title ("the mouse lane: … plus the renderer-switch hook repair"
+// -> "click-to-send (R8), the refocus recap (R16), the mode-switch hook
+// repair", -3w of the clipped form); body compression is unavailable this
+// time — MAX_LISTED=1 means only the listed title renders, and the round's
+// other CP entries were never in the rendered set. Post-compression the
+// page measures 4,687w; the ceiling carries the stop's chrome plus one
+// more stop's (~23w) headroom per the 0.0.44 rule. Both twins move
+// together — the 0.0.48 lesson holds. The e2e twin
+// (e2e/landing-budget.spec.ts) carries the full receipt.
+const MAX_WORDS = 4710;
 const MAX_BAND_VH = 3;
 
 let chromium = null;

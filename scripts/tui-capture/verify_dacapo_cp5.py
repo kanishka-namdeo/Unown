@@ -173,6 +173,7 @@ def main() -> int:
             if row is None:
                 fail("B: the click affordance row was not found in the pane", pane_b)
             say(f"   clicking row {row} (press+release)…")
+            ab.still("dacapo-cp5-send-now-strip", ["to send now", "click here to send"])
             ab.send(f"\x1b[<0;6;{row + 1}M", delay=0.12)
             ab.send(f"\x1b[<0;6;{row + 1}m", delay=0.12)
             time.sleep(1.0)
@@ -209,6 +210,7 @@ def main() -> int:
             c.pump(2)
             pane_c = c.pane()
             text_c = "\n".join(pane_c)
+            c.still("dacapo-cp5-refocus-recap", ["back after"])
             ok_c1 = "back after" in text_c
             say(f"C1 the refocus line renders: {'OK' if ok_c1 else 'FAIL'}")
             results.append(("C1 refocus line renders", ok_c1))

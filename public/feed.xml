@@ -7,6 +7,16 @@
     <description>How each feature and release works, what it does, and the receipts behind it — the longhand record of the self-improving terminal coding agent Unown.</description>
     <language>en</language>
     <item>
+      <title>The Da capo round: Claude Code&apos;s touch study, played again</title>
+      <link>https://unown-nine.vercel.app/blog/2026-11-16-the-da-capo-round</link>
+      <guid isPermaLink="true">https://unown-nine.vercel.app/blog/2026-11-16-the-da-capo-round</guid>
+      <pubDate>Mon, 16 Nov 2026 00:00:00 GMT</pubDate>
+      <description>Round 2 of the Claude Code TUI teardown — sixteen fresh gaps audited against the v2.1.300→2.1.325 delta, and the second wave shipped.</description>
+      <category>tui</category>
+      <category>mouse</category>
+      <category>verification</category>
+    </item>
+    <item>
       <title>The Toccata round: reverse-engineering Claude Code&apos;s touch, key by key</title>
       <link>https://unown-nine.vercel.app/blog/2026-11-16-the-toccata-round</link>
       <guid isPermaLink="true">https://unown-nine.vercel.app/blog/2026-11-16-the-toccata-round</guid>

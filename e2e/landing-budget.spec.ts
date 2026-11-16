@@ -224,8 +224,24 @@ const MAX_PAGE_VH = 20.5;
  * measures 4,661w; the ceiling carries the stop's undeletable chrome
  * (label, date, tally, "+N more") plus one more stop's (~20w) headroom
  * per the 0.0.44 rule. No generated number, no gated literal touched.
+ *
+ * The 0.0.69 amendment (the Da capo round's cut): 4684 -> 4710 carries
+ * the rail's 64th stop. Compressed FIRST, as the contract demands: the
+ * stop's listed title ("the mouse lane: click-to-send (R8) and the
+ * refocus recap (R16), plus the renderer-switch hook repair" — already
+ * TITLE_MAX-clipped to 17 words — shortened to "click-to-send (R8), the
+ * refocus recap (R16), the mode-switch hook repair", 16 measured words);
+ * body compression is unavailable this cut — MAX_LISTED=1 means only the
+ * listed title renders, and the round's other four CP entries were never
+ * in the rendered set (the Toccata "-91w hygiene" lane has nothing to
+ * bite on here). Post-compression the page measures 4,687w; the ceiling
+ * carries the stop's undeletable chrome (label, date, "5 additions"
+ * tally, "+4 more") plus one more stop's (~23w) headroom per the 0.0.44
+ * rule. Both twins move together (audit:landing realigned in the same
+ * change — the 0.0.48 lesson). No generated number, no gated literal
+ * touched.
  */
-const MAX_WORDS = 4684;
+const MAX_WORDS = 4710;
 
 /*
  * The 2026-10-31 planning-round release amendment (the tenth): 3,860 ->

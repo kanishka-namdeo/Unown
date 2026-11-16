@@ -30,10 +30,10 @@ export interface ChangelogStop {
   groups: ChangelogGroup[];
 }
 
-export const CHANGELOG_TOTAL_ENTRIES = 599;
+export const CHANGELOG_TOTAL_ENTRIES = 604;
 
 export const CHANGELOG_TOTALS: Record<ChangelogBucket, number> = {
-  "Added": 256,
+  "Added": 261,
   "Changed": 32,
   "Deprecated": 0,
   "Removed": 3,
@@ -43,6 +43,47 @@ export const CHANGELOG_TOTALS: Record<ChangelogBucket, number> = {
 };
 
 export const CHANGELOG_STOPS: ChangelogStop[] = [
+  {
+    "label": "0.0.69",
+    "date": "2026-11-16",
+    "total": 5,
+    "counts": {
+      "Added": 5,
+      "Changed": 0,
+      "Deprecated": 0,
+      "Removed": 0,
+      "Fixed": 0,
+      "Security": 0,
+      "Behavior": 0
+    },
+    "groups": [
+      {
+        "bucket": "Added",
+        "items": [
+          {
+            "title": "The Da capo round CP5 — click-to-send (R8), the refocus recap (R16), the mode-switch hook repair",
+            "behavior": false
+          },
+          {
+            "title": "The Da capo round CP4 — the script lane: the statusline contract (R2), the external-editor context (R4)…",
+            "behavior": false
+          },
+          {
+            "title": "The Da capo round CP1 — the input lane: Ctrl+R matches inside paste pills (R6)…",
+            "behavior": false
+          },
+          {
+            "title": "The Da capo round CP2 — the status lane: terminal title states (R1), the amber-after-10s spinner chip (R5)…",
+            "behavior": false
+          },
+          {
+            "title": "The Da capo round CP3 — the command lane: /copy [N], /color, /redraw, /keybindings…",
+            "behavior": false
+          }
+        ]
+      }
+    ]
+  },
   {
     "label": "0.0.68",
     "date": "2026-11-16",

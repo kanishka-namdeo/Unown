@@ -1,0 +1,36 @@
+
+── Extensions ──
+  <inline:6>
+
+── Themes ──
+  unown
+
+[Extension issues]
+  <inline:unown-tools>
+    Extension command '/settings' overrides a built-in interactive command. The extension version is dispatched and listed in
+autocomplete.
+  <inline:unown-tools>
+    Extension command '/copy' overrides a built-in interactive command. The extension version is dispatched and listed in
+autocomplete.
+
+
+ ◈ memory recalled: 117 rules · v2 · dreamed 4m ago — /memory show
+
+» write a vivid 900-word story about a lighthouse keeper, no headings
+
+ The lighthouse had a name that no one on the island ever used. The manifest called it Point Sable Light, but to Maren it was
+ just the tower, the house, the lamp room, the stairs — one hundred and twelve steps she climbed twice every four hours, first
+
+ Steering: after the story output the marker word finished on its own line
+ ↳ Alt+Up to edit all queued messages
+ ↳ Ctrl+Enter/Alt+S to send now — click here to send
+
+ ⠴ Deliberating... 0:02
+
+ ○ no tracked steps · conf ✓ · 0m in session
+»───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+~/my-project/Unown (main) · ctx ▕░░░░░░░░░░▏ 0.0%/524k (auto)                                                    agnes-3.0-flash
+memory: up · old build
+escape interrupt · ctrl+o tools · ctrl+t thinking

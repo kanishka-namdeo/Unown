@@ -1,0 +1,36 @@
+ mission: none pinned — /mission <objective> or /goal
+ happened: 1 turn
+ last:     alpha
+ why:      /brief mines the decisions when you want them
+ conf:     high — no failures this session
+ learned:  nothing new while you were away
+ session:  0m · 160 in / 2 out
+ remains:  nothing open — the last turn settled
+
+» reply with the single word: bravo
+
+ bravo
+
+ ── brief · back after 0m ──
+ mission: none pinned — /mission <objective> or /goal
+ happened: 2 turns
+ last:     bravo
+ why:      /brief mines the decisions when you want them
+ conf:     high — no failures this session
+ learned:  nothing new while you were away
+ session:  0m · 342 in / 5 out
+ remains:  nothing open — the last turn settled
+
+» reply with the single word: charlie
+
+ charlie
+
+ back after 1 min · 3 turns this session · last: charlie
+
+ ○ no tracked steps · conf ✓ · 0m in session
+»───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+~/my-project/Unown (main) · ctx ▕█░░░░░░░░░▏ 6.0%/524k (auto) · ↓8 · ↑548 · CH99.3% · R94k                       agnes-3.0-flash
+memory: up · old build turn <1s · ttft <1s
+? help · ctrl+k palette · / commands · ! bash · ctrl+o transcript · esc-esc tree
