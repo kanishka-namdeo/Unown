@@ -8,10 +8,14 @@ archaeology. When a round completes, its log graduates to a round-specific
 
 ---
 
-## IN FLIGHT — none (2026-11-17)
+## IN FLIGHT — the Calando round (2026-11-17, OPENED)
 
-The index is current: the Semplice round graduated at v0.0.70. The next
-round opens with a fresh `docs/<round>-session.md` and a pointer here.
+`docs/calando-round-session.md` — the mid-session overwhelm round: the
+Semplice round quieted the first minute; Calando takes the same
+study-backed method to the rest of the session (transcript tool-output
+bulk, toast/chip narration, the wait experience, depth discoverability),
+working through the Semplice closing inventory (items 9–17) and a fresh
+competitor teardown + mid-session research brief. Findings are Q-numbers.
 
 ## GRADUATED — the Semplice round (2026-11-17, CLOSED at CP7; v0.0.70)
 
