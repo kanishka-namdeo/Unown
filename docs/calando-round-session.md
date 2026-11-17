@@ -336,6 +336,20 @@ the landing rail regenerated at **65 stops / 615 entries / 65 dated**
 commit per the version contract (tag = package.json), triggering the
 six-per-OS release matrix.
 
+**The release receipt (run 44104750062):** CI-green-on-tag, the three
+3-OS release assertions, production build + SBOM all green on attempt
+1; the macos-latest (darwin-arm64) leg was cancelled TWICE by the
+hosted-runner queue (~15 min parked, zero steps — platform-side pool
+starvation, not a workflow timeout; both cancellations receipted in the
+run history) and landed on the third re-run of the failed jobs. Final
+state: **run SUCCESS on attempt 3** — every per-OS artifact executed
+(linux-x64, linux-arm64, windows-x64, darwin-x64, darwin-arm64), the
+GitHub release created with **13 assets** (the six per-OS binaries +
+installers + release.json + SBOM + sha256sums + checklist + version),
+not draft, Latest slot, the published feed verified, and the 3-OS
+install matrix green. Zero open Dependabot/code-scanning alerts at
+close; CodeQL + Scorecard green on the tagged commit.
+
 
 
 
