@@ -1,0 +1,36 @@
+
+ ◈ memory recalled: 2 rules — /memory show
+
+
+
+
+
+
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+
+ unown settings — the control centre (Esc to exit)
+
+   Search settings…
+   Recently changed (0)
+   Recommended for you (2)
+   Health check
+   Agent — What this agent is, and how a session behaves (14)
+ → Interface — How the terminal looks and behaves — themes, modes, display (37)
+   Memory — What Unown remembers — inspect, edit, forget (9)
+   Learning — What it learned, and what it may learn automatically (9)
+   Automation — What runs unattended — and how to stop it (7)
+   Safety — What Unown is allowed to do, and who decides (14)
+   Models & Cost — Which model, at what price ceiling (7)
+   Tools & Integrations — What capabilities are connected (10)
+   Observability — See what happened, and why (7)
+   Recovery — Undo, restore, reset — one surface (7)
+   Advanced — Power knobs — env vars, network, retention (7)
+   Export / Import / Reset
+   Exit
+
+  ↑↓ navigate · Enter to select · Esc to cancel
+
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+/tmp/q4-receipt/cwd · ctx ▕░░░░░░░░░░▏ 0.0%/524k (auto)                                                          agnes-3.0-flash
+memory: up · old build
+? help · ctrl+k palette · / commands · ! bash · ctrl+o transcript

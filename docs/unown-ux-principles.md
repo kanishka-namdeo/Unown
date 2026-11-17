@@ -38,13 +38,21 @@ Priority top-down; a higher level may never be displaced by a lower one:
 
 The placement law: 1–3 live in the mission panel; 4–7 in the panel's compact rows and the brief; 8 in footer chips and the brief; 9 stays where it is. New surfaces compose existing facts — they do not fork the data. The footer quiet round (2026-10-31) amended the level-8 clause with the field's convergent rule — **healthy ambient state earns no row**: footer chips paint only when they need attention (failures, blocked/degraded states, active work), priority-ordered, dropping whole chips; the persistent budget below the input is two rows (one merged status line, one contextual hint line). The element-by-element contract is the manifest table in [the bottom-area user journeys](bottom-area-user-journeys.md); the kill switch is `UNOWN_FOOTER_CLASSIC=1`.
 
+The Calando round (2026-11-17) extended the same law into the mid-session
+pane, from the transient-information and redundancy research: **telemetry
+alone is not a row** — the panel's null state renders nothing no matter how
+many turns have run (session facts join the status row only when it already
+earns its place), and a completed command's duration line renders only at
+≥ 1 s (a live command's `Elapsed` line always renders — the occupied-wait
+rule; a running command must never look frozen).
+
 ## The honesty rules
 
 - **Receipts over self-report.** Confidence comes from the session's own ledger (tool errors, verify failures, denials) — the model never grades itself in chrome. A quiet session's `conf ✓` means "no failures this session", and says exactly that.
 - **Numbers carry their epistemics.** Costs keep the `~` estimate marker; unknown prices stay unknown (null, never zero); progress is a fraction of real tracked work; cache-hit and tokens match the /usage attribution.
 - **Absence is stated, never papered over.** "No tracked steps", "nothing needs attention", "learned: nothing new while you were away", "no serve list" — the empty state is a fact with a name, not a blank.
 - **Silence is a claim.** A surface that shows nothing while something happened is lying. Learning must paint (`✦`), failures must count (`✗ N to fix`), and transitions must toast — including the recovery transitions (down → up is narrated, not just the down).
-- **Spam is the other lie.** One toast per transition, never at session start; events dedupe at probe cadence; a no-add dream is not news; the chip counts unseen and clears when seen. Zero-spam is a contract with tests.
+- **Spam is the other lie.** One toast per transition, never at session start; events dedupe at probe cadence; a no-add dream is not news; the chip counts unseen and clears when seen. Zero-spam is a contract with tests. Recurring identical failures are the slow form of the same lie: the first failure keeps its full actionable notice, repeats degrade to ONE dim line naming the tool, the attempt count and the manual way out (the managed-tools download latch), and success clears the count — a notice that repeats unchanged every boot trains scan-past (the crying-wolf failure mode), the one thing an error must never do.
 - **Fix paths ride the failure.** A complaint without a repair is not a tool: every recovery row names its command (`/undo n`, `/engine`, the dead-letter directory), and the footer chip carries its drill-in.
 
 ## The composition rules
@@ -52,7 +60,7 @@ The placement law: 1–3 live in the mission panel; 4–7 in the panel's compact
 - **One idempotent refresh pass.** All ambient surfaces repaint through one guarded pass; a quiet session is byte-identical to pre-change; every seam is TUI-only, never in a subagent.
 - **Compose, don't compete.** The panel restates what the widgets know (progress, activity) in one place; it never steals budget from the todo/fleet/plan widgets — it composes them and yields rows gracefully at narrow widths. A fact with two homes has no home: the footer's turn chip does not repeat the status line's context/tokens (the quiet round's dedup), and the conf/goal chips yield to the mission panel that already carries them.
 - **Deterministic before LLM.** The auto surfaces (brief, panel, recovery) never touch the model on the prompt path — the user's next keystroke is never taxed. LLM depth (the decision miner) is explicit and optional (`/brief`), through the side channel that never enters the transcript.
-- **Kill switches stay first-class.** Every ambient surface has one: `UNOWN_MISSION_PANEL=0`, `/mission off`, `UNOWN_TURN_METER=0`, `UNOWN_RECAP_IDLE_MINUTES=0`. A feature that cannot be turned off is not shipped.
+- **Kill switches stay first-class.** Every ambient surface has one: `UNOWN_MISSION_PANEL=0`, `/mission off`, `UNOWN_TURN_METER=0`, `UNOWN_RECAP_IDLE_MINUTES=0`. A feature that cannot be turned off is not shipped — and since Calando, a knob the user can only flip by editing shell config is not shipped either: the three quiet knobs are hub-owned toggles (settings-hub.json, the `/settings` observability/interface rows) with the env var as the explicit override — an env value set before boot wins, and the hub reports the lock instead of silently losing the write.
 - **Survive everything.** Restore-on-restart for the pin; counter resets per session; a throwing listener can never break a push; malformed entries load as null with a warning, never a crash.
 
 ## The restraint rules
@@ -69,11 +77,11 @@ Rejected with reasons (the full ledger in [the competitor research](observabilit
 
 | Surface | Levels it serves | Kill switch |
 |---|---|---|
-| Mission panel | 1, 2, 3, 4, 6, 7, 8 | `UNOWN_MISSION_PANEL=0`, `/mission off` |
+| Mission panel | 1, 2, 3, 4, 6, 7, 8 | `UNOWN_MISSION_PANEL=0`, `/mission off`, the hub toggle |
 | The brief (auto + `/brief`) | 1–8 in one screenful | `UNOWN_RECAP_IDLE_MINUTES=0` (auto); `/brief` always answers |
 | `/recovery` + the health chip | 4, 6 (+ the standing fixes) | informational; chip appears only when true |
 | `/feed` + the feed chip | 7 (+ sources named on the card) | `/feed` marks seen; chip only while unseen |
-| The turn meter | 8 | `UNOWN_TURN_METER=0` |
-| The quiet footer (status row + attention row) | 8 + the attention gate for 6/7 | `UNOWN_FOOTER_CLASSIC=1` |
+| The turn meter | 8 | `UNOWN_TURN_METER=0`, the hub toggle |
+| The quiet footer (status row + attention row) | 8 + the attention gate for 6/7 | `UNOWN_FOOTER_CLASSIC=1`, the hub toggle |
 | The todo/plan/fleet widgets | 2, 3 | their own addon/config switches |
 | The dashboard (15 screens) | the deep surfaces for every level | n/a (the ambient layer points here) |

@@ -1,0 +1,36 @@
+── Extensions ──
+  <inline:6>
+
+── Themes ──
+  unown
+
+
+ ◈ memory recalled: 2 rules — /memory show
+
+ Tip — sessions leave notes for tomorrow: .unown/memory/project.md remembers what mattered.
+
+» Create a file named hi.py containing print('hi from unown') and then run it with python3. Reply with exactly: DENSITYOK
+
+
+✓  write hi.py
+
+   print('hi from unown')
+
+
+
+✓  $ python3 hi.py
+
+   hi from unown
+
+
+ DENSITYOK
+
+»───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+📂 1  hi.py
+/tmp/unown-density-128 • DENSITYOK · ctx ▕█░░░░░░░░░▏ 11.3%/131k (auto) · +1 -0 · ↓77 · ↑7.0k                    agnes-3.0-flash
+turn <1s
+? help · ctrl+k palette · / commands · ! bash · ctrl+o tools · ctrl+shift+f search (fullscreen)
+
+

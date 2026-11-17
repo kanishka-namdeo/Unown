@@ -1,0 +1,36 @@
+
+ ◈ memory recalled: 2 rules — /memory show
+
+ Saved: Classic footer (legacy 4-row) = true
+
+ Saved: Classic footer (legacy 4-row) = false
+
+
+
+
+
+
+
+
+
+
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+
+ Interface → Classic footer (legacy 4-row)
+ ● low · toggle
+ Restore the pre-quiet footer: 4 rows, ambient chips always painted
+ Now: off
+ Default: false
+ Lives in: ~/.unown/agent/settings-hub.json
+
+ → 1. Turn ON
+   2. Revert to default
+   3. Help (what / where / how to revert)
+   4. Back
+
+  ↑↓ navigate · Enter to select · Esc to cancel · 1-4 quick select
+
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+/tmp/q4-receipt/cwd · ctx ▕░░░░░░░░░░▏ 0.0%/524k (auto)                                                          agnes-3.0-flash
+memory: up · old build
+? help · ctrl+k palette · / commands · ! bash · ctrl+o transcript

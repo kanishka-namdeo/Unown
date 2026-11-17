@@ -1,6 +1,6 @@
 # The Calando round — session log (mid-session overwhelm, end to end)
 
-Opened: 2026-11-17. Status: IN FLIGHT (CP3 done, CP4 next).
+Opened: 2026-11-17. Status: IN FLIGHT (CP4 done, CP5 next).
 
 Operator mission (verbatim):
 
@@ -278,6 +278,42 @@ kill-timer container flake — again the only fail, 5021 ms against the
 5000 ms test timeout). Focused lanes re-run green after the idempotency
 fix: quiet-knobs (5), settings-hub, settings-defaults-drift, mission.
 
+## CP4 — the docs/landing/blog sync (2026-11-17)
+
+- **UX principles card** (`docs/unown-ux-principles.md`): the binding
+  amendments — the information-hierarchy clause gains the mid-session
+  law (telemetry alone is not a row; completed duration renders only at
+  ≥ 1 s, the live Elapsed line always renders), the spam rule gains the
+  recurring-failure latch (first failure full, repeats one dim line with
+  the count, success clears — the crying-wolf failure mode), the
+  kill-switch rule gains the hub-owned graduation ("a knob the user can
+  only flip by editing shell config is not shipped either"), and the
+  surface map's three quiet rows now carry "the hub toggle".
+- **configuration.md**: the three knob rows document the hub toggle, the
+  settings-hub.json field names, the env > pref > default precedence and
+  the honest lock report; the mission row carries the Q1 null-state
+  note.
+- **Blog**: `content/blog/2026-11-17-the-calando-round.md` (type
+  feature, tags tui/ux/research) with six stills — the baseline pane
+  (noise visible), the after pane, the multitool pane, and the three Q4
+  hub captures (menu / section list with the Classic footer row / the
+  toggle landing). Assets + `.pane.txt` receipts in
+  `public/blog/2026-11-17-the-calando-round/`; `landing_blog.mjs`
+  regenerated (58 posts, feed + blog-data).
+- **unown-overview.md**: the stamp's verification parenthetical gains
+  the Calando sentence (the four surfaces counted against their
+  sources; surfaces-not-counts again).
+- **SESSION.md**: the round's IN FLIGHT entry carries the CP0–CP3
+  progress + the CP4/CP5/CP6 shape.
+- README deliberately untouched (the Semplice release's own convention —
+  the docs index table row lands with a round that adds a doc page;
+  Calando's record lives in the session doc the index already points
+  at).
+
+Gates at CP4: `check_docs` 0, `landing_blog.test.mjs` 9/9, `tsc
+--noEmit` 0 errors.
+
+
 
 
 ## Phase ledger
@@ -288,8 +324,8 @@ fix: quiet-knobs (5), settings-hub, settings-defaults-drift, mission.
 | CP1 | Gap analysis → intervention set | DONE | the Q-list above |
 | CP2 | Implementation (end to end) | DONE | the Q1–Q4 section above |
 | CP3 | Verification (unit + PTY + suites) | DONE | the CP3 section above |
-| CP4 | Docs/DOX/landing/blog sync | IN FLIGHT | — |
-| CP5 | Dependabot + code scanning sweep | — | — |
+| CP4 | Docs/DOX/landing/blog sync | DONE | the CP4 section above |
+| CP5 | Dependabot + code scanning sweep | IN FLIGHT | — |
 | CP6 | Version bump + release + OS builds | — | — |
 
 ## Environment notes (for resume)
