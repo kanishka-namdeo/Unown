@@ -301,7 +301,12 @@ KEYS = {
 # footer's contextual hint row ("? help"), stable in both quiet and verbose
 # boots. Any-of semantics keep pre-Semplice homes (verbose resource block)
 # and post-Semplice homes both provably ready.
-READY_ANCHORS = ["? help", "── Themes ──", "esc-esc tree"]
+# The status row's ctx token renders at EVERY width (the hints row drops
+# whole segments at narrow tiers and is gone by 72 cols — the 2026-11-17
+# Calando density lane hit this: its 72-col leg never saw "? help"). The
+# matrix lane already carried a local ANY-of superset; this is the shared
+# version of the same fix.
+READY_ANCHORS = ["? help", "── Themes ──", "esc-esc tree", "memory: ", "· ctx"]
 # Kept for callers that want the block itself (same fix as driver.js waitReady).
 READY_ANCHOR = "── Themes ──"
 

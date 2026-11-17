@@ -33,7 +33,10 @@ def drive(log, width: int, rows: int, out_root: str, records: list):
 
     s = UnownPty(log, cwd=scratch)
     try:
-        s.wait_ready(timeout=120)
+        # 240 s default (the combo-round-2 hardened cold-boot contract): a
+        # first spawn after a recycle cold-compiles the TUI entry and can
+        # outrun the old explicit 120 s.
+        s.wait_ready()
         s.wait_idle(timeout=45, stable_for=1.5)
         s.log(f"[{width}] send tool turn")
         s.type_prompt(PROMPT, cps=90)
