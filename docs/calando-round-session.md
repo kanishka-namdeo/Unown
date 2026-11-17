@@ -85,13 +85,76 @@ round's working notes and folded into the interventions below):
    file seam and density constants (the audit's baseline table; the
    intervention list below names its seams).
 
+## CP1 — the gap analysis (Q-list, 2026-11-17)
+
+Method: the two PTY baselines (density 128/72 + multitool 128) read line by
+line against the research brief's top-8 findings, the UX card's footer-quiet
+amendment, and the competitor pattern table. Every finding names its seam.
+
+**What the baselines got RIGHT (kept, no action):** tool output is collapsed
+with previews capped; `read` renders header-only when collapsed; repeat
+tool-calls aggregate; the footer is two rows with attention-only chips
+(the `memory: up · old build` row in the receipts is the OLD-BUILD verdict,
+not a healthy-state leak — `engineFooterAttention` is correctly
+attention-only); the 📂 below-editor strip is the persistent session-state
+block the transient-information research asks for (files touched survive
+the scroll); tips are one-shot latched; the flights card yields to typing.
+
+- **Q1 — the mission panel narrates nothing, every turn.**
+  `mission.ts` `renderMissionPanel`: Semplice W4's null state requires
+  `telemetry.turns === 0`, so after the FIRST completed turn an idle session
+  with no mission/plan/todo/risks renders
+  `○ no tracked steps · on track ✓ · 0m in session` forever — three facts
+  about nothing (W4's own words) that survive their own fix by one
+  condition. Violates the footer-quiet amendment ("healthy ambient state
+  earns no row") and the redundancy rule (the turn chip already carries
+  per-turn time/cost; /usage owns the totals). FIX: the panel renders only
+  when something is happening — mission, tracked progress, busy turn,
+  risks, or fresh learning; telemetry alone is not a row.
+- **Q2 — "Took 0.0s" on every instant command.**
+  `coding-agent/src/core/tools/bash.ts:341-346`: the duration line renders
+  whenever `startedAt` is set, including sub-second runs — pure noise on the
+  most common case (a fast command), rationed-line principle. FIX: the
+  completed `Took <d>` renders only when d ≥ 1 s; the live `Elapsed <d>`
+  line keeps rendering always (occupied-wait research — a running command
+  must never look frozen).
+- **Q3 — the managed-tool download failure repeats its full notice every
+  boot.** `tools-manager.ts:367-373` + `interactive-mode.ts:4110`: a user
+  behind a proxy (or rate-limited GitHub, as in this sandbox: 403) sees the
+  two-line actionable notice at EVERY session start — recurring identical
+  failures train scan-past (the crying-wolf failure mode of error
+  guidelines). FIX: a failure counter persisted in the bin dir
+  (`.download-failures.json`, tools-manager-owned); the first failure keeps
+  the full actionable notice, repeat failures render one dim line naming
+  the tool, the count, and the manual way out; success clears the counter.
+- **Q4 — quiet knobs are env-only (Semplice inventory item 14, the class
+  must close).** `UNOWN_FOOTER_CLASSIC`, `UNOWN_TURN_METER`,
+  `UNOWN_MISSION_PANEL` are documented in `.env.example` and shown as
+  READONLY rows in the settings hub (`registry.ts` obs.turn-meter /
+  obs.mission-panel) — a user cannot flip them without leaving the TUI and
+  editing shell config. The hub already owns `settings-hub.json`
+  (`settings/prefs.ts`) with the exact persistence pattern needed. FIX:
+  graduate the three knobs to hub-owned toggles; env stays the first-class
+  override (explicit env wins over the pref — kill switches stay king);
+  the boot seam seeds unset env vars from the prefs so BOTH layers
+  (self-learning + the vendored footer) keep reading one runtime source
+  with zero circular imports.
+
+**Deferred with reasons (not lost):** token-info consolidation (~8 homes —
+needs an owning-surface decision per fact; audit recorded, architecture
+round), the fleet panic button (needs the chord layer Da capo deferred as
+"its own round's architecture"), the consolidated trust surface (5+ notices;
+same), split-view command sprawl and plan-mode entry-lane compression
+(menus, not narration — next density round), i18n/IME edge cases. Each lands
+in the round's closing notes as the explicit open list.
+
 ## Phase ledger
 
 | CP | Name | Status | Artifact |
 |----|------|--------|----------|
 | CP0 | Research + baseline | DONE | this file + PTY density baseline |
-| CP1 | Gap analysis → intervention set | IN FLIGHT | Q-numbered list below |
-| CP2 | Implementation (end to end) | — | — |
+| CP1 | Gap analysis → intervention set | DONE | the Q-list above |
+| CP2 | Implementation (end to end) | IN FLIGHT | — |
 | CP3 | Verification (unit + PTY + suites) | — | — |
 | CP4 | Docs/DOX/landing/blog sync | — | — |
 | CP5 | Dependabot + code scanning sweep | — | — |
