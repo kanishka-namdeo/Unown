@@ -187,6 +187,12 @@ export interface HubPrefs {
         showAdvanced: boolean;
         /** Ledger length cap (entries kept, oldest trimmed). */
         historyCap: number;
+        /** Calando Q4: the legacy 4-row footer layout (default false — quiet). */
+        footerClassic: boolean;
+        /** Calando Q4: the per-turn footer chip (default true). */
+        turnMeter: boolean;
+        /** Calando Q4: the ambient mission/progress panel (default true). */
+        missionPanel: boolean;
 }
 
 export const DEFAULT_HUB_PREFS: HubPrefs = {
@@ -195,6 +201,9 @@ export const DEFAULT_HUB_PREFS: HubPrefs = {
         hookMaxDepth: 3,
         showAdvanced: false,
         historyCap: 500,
+        footerClassic: false,
+        turnMeter: true,
+        missionPanel: true,
 };
 
 // ---------------------------------------------------------------------------

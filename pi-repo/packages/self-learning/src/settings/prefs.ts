@@ -40,6 +40,10 @@ export function parseHubPrefs(raw: unknown): HubPrefs {
         prefs.hookMaxDepth = clampInt(record.hookMaxDepth, DEFAULT_HUB_PREFS.hookMaxDepth, 1, 10);
         if (typeof record.showAdvanced === "boolean") prefs.showAdvanced = record.showAdvanced;
         prefs.historyCap = clampInt(record.historyCap, DEFAULT_HUB_PREFS.historyCap, 50, 5000);
+        // Calando Q4 — the quiet knobs graduate from env-only to hub-owned.
+        if (typeof record.footerClassic === "boolean") prefs.footerClassic = record.footerClassic;
+        if (typeof record.turnMeter === "boolean") prefs.turnMeter = record.turnMeter;
+        if (typeof record.missionPanel === "boolean") prefs.missionPanel = record.missionPanel;
         return prefs;
 }
 

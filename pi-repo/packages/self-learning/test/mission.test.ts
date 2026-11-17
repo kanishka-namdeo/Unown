@@ -118,18 +118,49 @@ describe("renderMissionPanel — 2-4 lines, composed not competing", () => {
                 });
                 expect(lines).toEqual([]);
         });
-        test("no mission renders the status row once turns have run, honestly", () => {
+        test("Calando Q1: telemetry alone renders NOTHING (idle after turns)", () => {
+                // W4's null state gated on turns === 0, so the facts-about-nothing
+                // row survived its own fix: after the first completed turn an idle
+                // session with nothing tracked rendered "no tracked steps · on
+                // track · 0m in session" forever. Calando Q1 removes telemetry
+                // from the null-state condition — session facts join the status
+                // row only when the row otherwise earns its place.
                 const lines = renderMissionPanel({
                         mission: null,
                         progress: null,
                         confidence: high,
                         risks: [],
-                        telemetry: { sessionMs: 5 * 60_000, costUsd: null, turns: 1 },
+                        telemetry: { sessionMs: 5 * 60_000, costUsd: 0.01, turns: 3 },
+                        now: NOW,
+                });
+                expect(lines).toEqual([]);
+        });
+        test("a mission keeps the status row honest when nothing is tracked yet", () => {
+                const lines = renderMissionPanel({
+                        mission: { text: "ship it", source: "user", createdAt: NOW - 60_000 },
+                        progress: null,
+                        confidence: high,
+                        risks: [],
+                        telemetry: { sessionMs: 60_000, costUsd: null, turns: 1 },
+                        now: NOW,
+                });
+                expect(lines[0].text).toContain("mission — ship it");
+                expect(lines[1].text).toContain("no tracked steps");
+                expect(lines[1].text).toContain("1m in session");
+        });
+        test("degraded confidence drivers keep the status row (never silently dropped)", () => {
+                const degraded = { level: "medium" as const, drivers: ["no receipts in 3 turns"] };
+                const lines = renderMissionPanel({
+                        mission: null,
+                        progress: null,
+                        confidence: degraded,
+                        risks: [],
+                        telemetry: { sessionMs: 5 * 60_000, costUsd: null, turns: 2 },
                         now: NOW,
                 });
                 expect(lines[0].text).toContain("no tracked steps");
-                expect(lines[0].text).toContain("on track ✓");
-                expect(lines.some((l) => l.text.startsWith("●"))).toBe(false);
+                expect(lines[1].text.startsWith("└ ")).toBe(true);
+                expect(lines[1].text).toContain("no receipts in 3 turns");
         });
         test("a live turn defeats the null state even before it completes", () => {
                 const lines = renderMissionPanel({

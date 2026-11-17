@@ -280,6 +280,17 @@ export interface RenderMissionPanelInputs {
  * half a percent of a small pane spent on them. The row returns the moment
  * anything is actually happening (a turn runs, a plan/todo exists, a risk
  * appears, learning lands).
+ *
+ * Calando Q1 — telemetry alone is not a row either. W4's null state gated
+ * on `telemetry.turns === 0`, so the facts-about-nothing row survived its
+ * own fix by exactly one condition: after the FIRST completed turn an idle
+ * session with no mission/plan/todo/risks rendered "○ no tracked steps ·
+ * on track ✓ · 0m in session" forever. The turn chip already carries the
+ * per-turn time and cost; /usage owns the session totals; "on track" is
+ * vacuous with nothing to be on track FOR. The null state now ignores
+ * telemetry entirely — session facts join the status row only when the
+ * row otherwise earns its place (mission, tracked progress, live turn,
+ * risks, fresh learning, or degraded confidence drivers).
  */
 export function renderMissionPanel(inputs: RenderMissionPanelInputs): MissionPanelLine[] {
         const now = inputs.now ?? Date.now();
@@ -291,7 +302,7 @@ export function renderMissionPanel(inputs: RenderMissionPanelInputs): MissionPan
                 !inputs.busy &&
                 inputs.risks.length === 0 &&
                 !inputs.learned &&
-                (inputs.telemetry?.turns ?? 0) === 0;
+                inputs.confidence.drivers.length === 0;
         if (nullState) {
                 return lines;
         }

@@ -20,6 +20,7 @@ import { SettingsManager } from "@earendil-works/pi-coding-agent";
 import { loadAddonsConfig, saveAddonsConfig } from "../addons/config.ts";
 import { resolveUnownHome } from "../unown-home.ts";
 import { loadHubPrefs, saveHubPrefs } from "./prefs.ts";
+import { applyQuietKnobPref, quietKnobEffective } from "./quiet-knobs.ts";
 import {
         SETTINGS_SECTIONS,
         type SettingsItem,
@@ -298,6 +299,22 @@ const agentItems: SettingsItem[] = [
 // ---------------------------------------------------------------------------
 
 const interfaceItems: SettingsItem[] = [
+        toggle({
+                id: "interface.footer-classic",
+                section: "interface",
+                name: "Classic footer (legacy 4-row)",
+                risk: "low",
+                summary: "Restore the pre-quiet footer: 4 rows, ambient chips always painted",
+                help: "OFF by default — the quiet footer is two rows (status + hint) with attention-only chips; healthy ambient state earns no row. ON restores the legacy layout for muscle memory or nostalgia. Calando Q4 graduated the env-only knob to this hub toggle (settings-hub.json); an explicit UNOWN_FOOTER_CLASSIC=1 in your shell still wins (kill switches stay king). Applies live — every reader reads per call.",
+                persistedIn: "~/.unown/agent/settings-hub.json",
+                env: "UNOWN_FOOTER_CLASSIC",
+                tags: ["footer", "classic", "legacy", "quiet", "rows", "chips"],
+                default: false,
+                get: () => quietKnobEffective("UNOWN_FOOTER_CLASSIC"),
+                set: (v) => {
+                        applyQuietKnobPref("UNOWN_FOOTER_CLASSIC", Boolean(v));
+                },
+        }),
         {
                 id: "interface.theme",
                 section: "interface",
@@ -1666,25 +1683,37 @@ const observabilityItems: SettingsItem[] = [
                 related: ["/settings recent"],
                 actionLabel: "opens Recently changed",
         }),
-        readonly({
+        toggle({
                 id: "obs.turn-meter",
                 section: "observability",
                 name: "Turn meter",
                 risk: "low",
                 summary: "Per-turn footer chip: time, TTFT, context %, tokens",
-                help: "Cosmetic observability; hides nothing. UNOWN_TURN_METER=0 hides it.",
+                help: "Cosmetic observability; hides nothing. Calando Q4 graduated the env-only knob to this hub toggle (settings-hub.json); an explicit UNOWN_TURN_METER in your shell still wins (kill switches stay king). Off = the plain cost chip carries the turn's cost instead.",
+                persistedIn: "~/.unown/agent/settings-hub.json",
                 env: "UNOWN_TURN_METER",
-                get: () => envBool("UNOWN_TURN_METER", "on"),
+                tags: ["turn", "meter", "footer", "chip", "cost", "quiet"],
+                default: true,
+                get: () => quietKnobEffective("UNOWN_TURN_METER"),
+                set: (v) => {
+                        applyQuietKnobPref("UNOWN_TURN_METER", Boolean(v));
+                },
         }),
-        readonly({
+        toggle({
                 id: "obs.mission-panel",
                 section: "observability",
                 name: "Mission panel",
                 risk: "low",
                 summary: "The objective/progress/confidence panel (goal > /mission pin > auto-title)",
-                help: "Progress and confidence derive from receipts only — the panel never invents numbers. UNOWN_MISSION_PANEL=0 hides it; /mission off is the in-session switch.",
+                help: "Progress and confidence derive from receipts only — the panel never invents numbers. Calando Q1: an idle session with nothing tracked renders NO panel row (telemetry alone is not a row). Calando Q4 graduated the env-only knob to this hub toggle; an explicit UNOWN_MISSION_PANEL still wins; /mission off is the in-session switch.",
+                persistedIn: "~/.unown/agent/settings-hub.json",
                 env: "UNOWN_MISSION_PANEL",
-                get: () => envBool("UNOWN_MISSION_PANEL", "on"),
+                tags: ["mission", "panel", "progress", "confidence", "quiet"],
+                default: true,
+                get: () => quietKnobEffective("UNOWN_MISSION_PANEL"),
+                set: (v) => {
+                        applyQuietKnobPref("UNOWN_MISSION_PANEL", Boolean(v));
+                },
         }),
         readonly({
                 id: "obs.telemetry",

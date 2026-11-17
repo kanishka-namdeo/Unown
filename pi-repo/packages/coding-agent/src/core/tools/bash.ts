@@ -252,6 +252,17 @@ function formatDuration(ms: number): string {
         return `${(ms / 1000).toFixed(1)}s`;
 }
 
+/**
+ * Calando Q2 — does a bash duration deserve its footer line? The completed
+ * "Took <d>" renders only at >= 1 s (a sub-second command's duration is
+ * noise — "Took 0.0s" printed on every fast call was rationed-line waste);
+ * the LIVE "Elapsed <d>" always renders (a running command must never look
+ * frozen — the occupied-wait rule). Pinned by test/bash-duration-line.test.ts.
+ */
+export function bashDurationLineVisible(isPartial: boolean, durationMs: number): boolean {
+        return isPartial || durationMs >= 1000;
+}
+
 function formatShellCall(args: { command?: string; timeout?: number } | undefined, prompt: string): string {
         const command = str(args?.command);
         const timeout = args?.timeout as number | undefined;
@@ -340,9 +351,12 @@ function rebuildBashResultRenderComponent(
         }
 
         if (startedAt !== undefined) {
-                const label = options.isPartial ? "Elapsed" : "Took";
                 const endTime = endedAt ?? Date.now();
-                component.addChild(new Text(`\n${theme.fg("muted", `${label} ${formatDuration(endTime - startedAt)}`)}`, 0, 0));
+                const durationMs = endTime - startedAt;
+                if (bashDurationLineVisible(options.isPartial, durationMs)) {
+                        const label = options.isPartial ? "Elapsed" : "Took";
+                        component.addChild(new Text(`\n${theme.fg("muted", `${label} ${formatDuration(durationMs)}`)}`, 0, 0));
+                }
         }
 }
 

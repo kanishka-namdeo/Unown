@@ -1,6 +1,6 @@
 # The Calando round — session log (mid-session overwhelm, end to end)
 
-Opened: 2026-11-17. Status: IN FLIGHT.
+Opened: 2026-11-17. Status: IN FLIGHT (CP2 done, CP3 next).
 
 Operator mission (verbatim):
 
@@ -148,14 +148,89 @@ same), split-view command sprawl and plan-mode entry-lane compression
 (menus, not narration — next density round), i18n/IME edge cases. Each lands
 in the round's closing notes as the explicit open list.
 
+## CP2 — the implementation (2026-11-17)
+
+All four Q-fixes landed source-to-test; `build:unbundled` re-run so the TUI
+boots the vendored changes.
+
+- **Q1** `self-learning/src/mission.ts` — the null state drops
+  `telemetry` from its condition entirely: no mission/plan/todo/risks +
+  nothing tracked + no busy turn renders NOTHING, however many turns ran.
+  Session facts (`Xm in session`) join the status row only when the row
+  already earns its place (a mission is on). Tests:
+  `test/mission.test.ts` — the W4-era pin rewritten to the honest contract
+  (telemetry-alone renders `[]`), plus mission-keeps-status-row and
+  degraded-confidence-keeps-row pins.
+- **Q2** `coding-agent/src/core/tools/bash.ts` — new exported
+  `bashDurationLineVisible(isPartial, durationMs)`: completed runs render
+  the `Took <d>` line only at ≥ 1000 ms; partial (running) runs ALWAYS
+  render the live `Elapsed <d>` line — occupied-wait stays non-negotiable.
+  Test: `test/bash-duration-line.test.ts` (threshold both sides + the
+  partial lane).
+- **Q3** `coding-agent/src/utils/tools-manager.ts` — the recurring-failure
+  latch: `.download-failures.json` in the bin dir (advisory, corrupt =
+  empty, failed write non-fatal). First failure keeps the full two-line
+  actionable notice; repeats render one dim line naming tool + attempt
+  count + the manual way out (`UNOWN_MANAGED_TOOLS_VERBOSE=1` restores the
+  full error); a found binary or successful download clears the counter.
+  Test: `test/tools-manager-failure-latch.test.ts` (first/repeat/clear).
+- **Q4** the quiet knobs graduate to hub-owned toggles. New
+  `self-learning/src/settings/quiet-knobs.ts` (env > hub pref > default;
+  explicit env locks the knob — kill switches stay king; live toggle writes
+  update pref + `process.env` so both reader layers see one runtime source
+  with zero circular imports). `types.ts` gains the three `HubPrefs`
+  fields, `prefs.ts` parses them, `term.ts`'s
+  `ensureUnownAgentDirInfo` seeds unset env vars right after
+  `seedHubPrefs()` (every entry lane: TUI, print, dashboard),
+  `registry.ts` flips obs.footer-classic/obs.turn-meter/obs.mission-panel
+  from readonly to toggles backed by `applyQuietKnobPref`, and
+  `.env.example` documents the new precedence. Test:
+  `test/quiet-knobs.test.ts` (boot seeding, env lock, live write,
+  effective readers).
+
+**The full-suite interference war (two findings worth their own ink):**
+
+1. *My own Q4 test leaked the suite's `UNOWN_HOME` redirect.* The first
+   CP2-gate run failed `setup-catalog.test.ts` x2 (setup "succeeded",
+   models.json vanished) — because `quiet-knobs.test.ts`'s afterEach did
+   `delete process.env.UNOWN_HOME` and bun runs the suite's files in ONE
+   process, every later file's per-call resolvers fell back to the real
+   `~/.unown` (the 2026-10-22 incident class, verbatim) and the suite
+   overwrote a live config with test endpoints. Fix: the file now leads
+   with `import "./_env.ts"` and restores a load-time snapshot of every
+   env var it touches (comment cites the incident). The live config was
+   re-registered through `unown setup` against the real endpoint.
+2. *The GitSpawn kill-timer flake is environmental, not code.* Proven with
+   a minimal probe outside the repo: Bun 1.3.14's `spawnSync` timeout
+   kills git but then waits on the grandchild (`sh -c 'sleep 5'`) holding
+   the pipes — wall time 5004 ms vs the 5000 ms test timeout, a coin flip
+   per run. Fails on pristine HEAD in this container (already canonized in
+   the plan-mode-keyboard round's notes); passes on CI runners. Not this
+   round's to fix; documented, not masked.
+
+Also verified NOT pre-existing-vs-mine: the one-shot `--print` wedge when
+run as this sandbox's foreground child (answers in ~1 s, then the process
+survives SIGTERM) reproduces identically on pristine HEAD — environment,
+not the round. With output to any file/fifo/pipe-to-tail the CLI exits in
+3–5 s on both trees.
+
+**CP2 gate:** full self-learning suite 5873 pass / 105 skip / 1 fail — the
+fail is exactly the canonicalized kill-timer flake above. Focused lanes:
+mission, quiet-knobs, settings-hub, settings-defaults-drift,
+semplice-round, bash-duration-line, tools-manager-failure-latch,
+bash-execution-width, agent-session-dynamic-tools — all green.
+`pi-repo/bun.lock` clean (the v1-downgrade trap did not fire — no installs
+this phase).
+
+
 ## Phase ledger
 
 | CP | Name | Status | Artifact |
 |----|------|--------|----------|
 | CP0 | Research + baseline | DONE | this file + PTY density baseline |
 | CP1 | Gap analysis → intervention set | DONE | the Q-list above |
-| CP2 | Implementation (end to end) | IN FLIGHT | — |
-| CP3 | Verification (unit + PTY + suites) | — | — |
+| CP2 | Implementation (end to end) | DONE | the Q1–Q4 section above |
+| CP3 | Verification (unit + PTY + suites) | IN FLIGHT | — |
 | CP4 | Docs/DOX/landing/blog sync | — | — |
 | CP5 | Dependabot + code scanning sweep | — | — |
 | CP6 | Version bump + release + OS builds | — | — |

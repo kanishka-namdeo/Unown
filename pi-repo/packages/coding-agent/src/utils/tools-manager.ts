@@ -1,5 +1,15 @@
 import { type SpawnSyncReturns, spawnSync } from "child_process";
-import { chmodSync, createWriteStream, existsSync, mkdirSync, readdirSync, renameSync, rmSync } from "fs";
+import {
+	chmodSync,
+	createWriteStream,
+	existsSync,
+	mkdirSync,
+	readdirSync,
+	readFileSync,
+	renameSync,
+	rmSync,
+	writeFileSync,
+} from "fs";
 import { arch, platform } from "os";
 import { join } from "path";
 import { Readable } from "stream";
@@ -327,6 +337,49 @@ export interface ToolStatus {
 	message: string;
 }
 
+// Calando Q3 — the recurring-failure latch. A user behind a proxy (or a
+// rate-limited GitHub, 403) saw the full two-line actionable notice at EVERY
+// session start; recurring identical failures train scan-past, so the first
+// failure keeps the full notice and repeats degrade to ONE dim line naming
+// the tool, the attempt count and the manual way out. Success (or the tool
+// appearing on PATH) clears the counter. The counter lives next to the
+// binaries this module owns (`.download-failures.json`); a corrupt file
+// degrades to {} and a failed write is non-fatal — counts are advisory.
+const FAILURE_COUNTS_PATH = join(TOOLS_DIR, ".download-failures.json");
+
+function readFailureCounts(): Record<string, number> {
+	try {
+		const parsed = JSON.parse(readFileSync(FAILURE_COUNTS_PATH, "utf8"));
+		if (typeof parsed === "object" && parsed !== null && !Array.isArray(parsed)) {
+			const out: Record<string, number> = {};
+			for (const [k, v] of Object.entries(parsed as Record<string, unknown>)) {
+				if (typeof v === "number" && Number.isFinite(v) && v > 0) out[k] = Math.trunc(v);
+			}
+			return out;
+		}
+	} catch {
+		/* missing or corrupt — degrade to empty */
+	}
+	return {};
+}
+
+function writeFailureCounts(counts: Record<string, number>): void {
+	try {
+		mkdirSync(TOOLS_DIR, { recursive: true });
+		writeFileSync(FAILURE_COUNTS_PATH, JSON.stringify(counts), "utf8");
+	} catch {
+		/* non-fatal: the count is advisory */
+	}
+}
+
+function clearFailureCount(tool: "fd" | "rg"): void {
+	if (!existsSync(FAILURE_COUNTS_PATH)) return;
+	const counts = readFailureCounts();
+	if (counts[tool] === undefined) return;
+	delete counts[tool];
+	writeFailureCounts(counts);
+}
+
 /**
  * Ensure a tool is available, downloading if necessary.
  * Reports progress through `onStatus`; status messages are otherwise silent.
@@ -338,6 +391,7 @@ export async function ensureTool(
 ): Promise<string | undefined> {
 	const existingPath = getToolPath(tool);
 	if (existingPath) {
+		clearFailureCount(tool);
 		return existingPath;
 	}
 
@@ -362,12 +416,23 @@ export async function ensureTool(
 
 	try {
 		const path = await downloadTool(tool);
+		clearFailureCount(tool);
 		onStatus?.({ type: "info", message: `${config.name} installed to ${path}` });
 		return path;
 	} catch (e) {
+		const counts = readFailureCounts();
+		const prior = counts[tool] ?? 0;
+		counts[tool] = prior + 1;
+		writeFailureCounts(counts);
+		const verbose = process.env.UNOWN_MANAGED_TOOLS_VERBOSE === "1";
+		const detail = e instanceof Error ? e.message : e;
+		const message =
+			prior === 0 || verbose
+				? `Failed to download ${config.name}: ${detail}`
+				: `${config.name} still not installed — download failed again (attempt ${counts[tool]}); install ${config.name} yourself, or set UNOWN_MANAGED_TOOLS_VERBOSE=1 for the full error`;
 		onStatus?.({
 			type: "warning",
-			message: `Failed to download ${config.name}: ${e instanceof Error ? e.message : e}`,
+			message,
 		});
 		return undefined;
 	}

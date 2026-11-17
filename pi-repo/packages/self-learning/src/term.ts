@@ -32,6 +32,7 @@ import {
 import { basename, join } from "node:path";
 import { seedAddonsConfig } from "./addons/config.ts";
 import { seedHubPrefs } from "./settings/prefs.ts";
+import { seedQuietKnobEnv } from "./settings/quiet-knobs.ts";
 import { atomicWriteFileSync } from "./atomic.ts";
 import { type BudgetReport, pruneToBudget } from "./budget.ts";
 import { engineFetch } from "./engine-auth.ts";
@@ -271,6 +272,11 @@ export function ensureUnownAgentDirInfo(): AgentDirInit {
         // depth — the Settings Evolution round): seeded only when absent, the
         // same never-clobber contract as the addons config.
         seedHubPrefs();
+        // Calando Q4 — the quiet knobs graduate to hub-owned toggles; unset
+        // env vars are seeded from the prefs here so every entry lane (TUI,
+        // print, dashboard) and BOTH reader layers see one runtime source.
+        // Explicit env vars stay first-class overrides (kill switches).
+        seedQuietKnobEnv();
         // Verify-first seed upgrade (2026-10): a PRISTINE v1 policy seed gains
         // the read-before-edit / no-success-with-failing-check rules; a
         // user-edited policy file is never touched (refreshSeedPolicyAt).
