@@ -56,16 +56,33 @@ describe("quiet-knobs — Calando Q4 precedence", () => {
                 freshHome({ footerClassic: true, turnMeter: false, missionPanel: true });
                 for (const v of ENV_VARS) delete process.env[v];
                 const seam = await importSeam();
+                seam.resetQuietKnobSeamForTests();
                 seam.seedQuietKnobEnv();
                 expect(process.env.UNOWN_FOOTER_CLASSIC).toBe("1");
                 expect(process.env.UNOWN_TURN_METER).toBe("0");
                 expect(process.env.UNOWN_MISSION_PANEL).toBe("1");
         });
 
+        test("idempotent seeding: a second ensure pass never locks (the live Q4 receipt's bug)", async () => {
+                // The boot seam is an ENSURE — it fires again on dashboard boot
+                // or reload. The second pass used to see the first pass's OWN
+                // seeded env vars as "explicit" and lock every knob: the hub
+                // then printed Saved over a write that never landed.
+                freshHome({ footerClassic: true });
+                for (const v of ENV_VARS) delete process.env[v];
+                const seam = await importSeam();
+                seam.resetQuietKnobSeamForTests();
+                seam.seedQuietKnobEnv();
+                seam.seedQuietKnobEnv(); // the ensure seam fires again
+                expect(seam.quietKnobEnvLocked("UNOWN_FOOTER_CLASSIC")).toBe(false); // own seeding is not explicit env
+                expect(seam.applyQuietKnobPref("UNOWN_FOOTER_CLASSIC", false)).toBe(true); // the write lands
+        });
+
         test("explicit env wins and locks the knob", async () => {
                 freshHome({ footerClassic: true });
                 process.env.UNOWN_FOOTER_CLASSIC = "0"; // explicit, opposes the pref
                 const seam = await importSeam();
+                seam.resetQuietKnobSeamForTests();
                 seam.seedQuietKnobEnv();
                 expect(process.env.UNOWN_FOOTER_CLASSIC).toBe("0"); // untouched
                 expect(seam.quietKnobEnvLocked("UNOWN_FOOTER_CLASSIC")).toBe(true);
@@ -77,6 +94,7 @@ describe("quiet-knobs — Calando Q4 precedence", () => {
                 freshHome({});
                 for (const v of ENV_VARS) delete process.env[v];
                 const seam = await importSeam();
+                seam.resetQuietKnobSeamForTests();
                 seam.seedQuietKnobEnv();
                 expect(seam.applyQuietKnobPref("UNOWN_TURN_METER", false)).toBe(true);
                 expect(process.env.UNOWN_TURN_METER).toBe("0");

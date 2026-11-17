@@ -1,6 +1,6 @@
 # The Calando round — session log (mid-session overwhelm, end to end)
 
-Opened: 2026-11-17. Status: IN FLIGHT (CP2 done, CP3 next).
+Opened: 2026-11-17. Status: IN FLIGHT (CP3 done, CP4 next).
 
 Operator mission (verbatim):
 
@@ -222,6 +222,63 @@ bash-execution-width, agent-session-dynamic-tools — all green.
 `pi-repo/bun.lock` clean (the v1-downgrade trap did not fire — no installs
 this phase).
 
+## CP3 — the verification receipts (2026-11-17)
+
+Engine restarted onto the CP2 build before every lane (the stale-verdict
+law). `build:unbundled` re-run. Receipts live under
+`unown-density-captures/calando-cp3/` (density + multitool panes/PNGs).
+
+**The density lanes (Q1 + Q2, before/after on the same scenario):**
+
+| noise row | CP0 baseline | Calando CP3 |
+|---|---|---|
+| `Took 0.0s` (density 128) | line 22 | **gone** |
+| `○ no tracked steps · on track ✓ · 0m in session` (density 128) | line 29 | **gone** |
+| `Took 0.0s` x2 + null row (multitool 128) | lines 12/24/29 | **gone** |
+
+Both lanes PASS their anchors (DENSITYOK at 128+72, MULTIOK at 128); the
+72-col pane keeps the compact footer contract (📂 strip, ctx %, turn <1s).
+The healthy pane is unchanged where it should be: collapsed tool blocks
+with previews, two-row footer, attention-only chips, the 📂 session-state
+strip — quiet removed exactly the three noise shapes, nothing else.
+
+**The Q4 live receipt (and the bug it caught):** drove the real hub in a
+PTY — `/settings` → control centre → Interface → the new
+`Classic footer (legacy 4-row)` row → the item editor (risk badge, summary,
+Now/Default/Lives-in, 1-4 quick select) → `1` (Turn ON). First run
+exposed a REAL bug: the editor printed `Saved … = true` while `Now`
+stayed off and the pref never landed. Root cause: `seedQuietKnobEnv` was
+not idempotent — the boot seam is an ENSURE that fires again (dashboard
+boot, reload), and the second pass mistook the first pass's own seeded
+env vars for explicit env, silently locking every knob; the registry's
+`set` also swallowed the refusal (a silent `false` still printed Saved).
+Fix (committed with CP3): a one-shot guard on the seam
+(`resetQuietKnobSeamForTests` for the per-case test lane, the
+`resetGitAvailableCache` convention) + the three registry sets now THROW
+on env-lock so the editor shows the honest `Write failed: … env var wins
+— unset it in your shell` notice. New pin: "idempotent seeding: a second
+ensure pass never locks". Second live run: `Saved ✓ · Now: on ✓ · option
+flips to Turn OFF ✓ · settings-hub.json footerClassic: true on disk ✓`.
+
+**The verify_settings_hub lane quirk (pre-existing, not the round's):**
+its A1 (`/settings` → the hub menu) now times out because the hub opens
+straight into the Search dialog — the submitted Enter leaks into the
+select and picks the first option. Verified IDENTICAL on baf3e9f3
+(pre-CP2, detached checkout): the lane's timing assumption drifted, not
+the hub. The Q4 receipt above drives around it (Esc back, arrow keys);
+rebinding that lane is filed for its owning round.
+
+**Q3's live coverage:** unit pins (first/repeat/clear) + the boot receipt
+— with tools present the pane shows no failure notice at all (correct);
+the failure lane cannot be honestly triggered in a PTY without breaking
+the network on purpose, so the repeat-line shape stays unit-pinned.
+
+**CP3 gate:** full suite 5874 pass / 105 skip / 1 fail (the canonicalized
+kill-timer container flake — again the only fail, 5021 ms against the
+5000 ms test timeout). Focused lanes re-run green after the idempotency
+fix: quiet-knobs (5), settings-hub, settings-defaults-drift, mission.
+
+
 
 ## Phase ledger
 
@@ -230,8 +287,8 @@ this phase).
 | CP0 | Research + baseline | DONE | this file + PTY density baseline |
 | CP1 | Gap analysis → intervention set | DONE | the Q-list above |
 | CP2 | Implementation (end to end) | DONE | the Q1–Q4 section above |
-| CP3 | Verification (unit + PTY + suites) | IN FLIGHT | — |
-| CP4 | Docs/DOX/landing/blog sync | — | — |
+| CP3 | Verification (unit + PTY + suites) | DONE | the CP3 section above |
+| CP4 | Docs/DOX/landing/blog sync | IN FLIGHT | — |
 | CP5 | Dependabot + code scanning sweep | — | — |
 | CP6 | Version bump + release + OS builds | — | — |
 

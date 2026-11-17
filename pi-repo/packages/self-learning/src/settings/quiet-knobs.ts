@@ -26,9 +26,9 @@ import type { HubPrefs } from "./types.ts";
 
 /** The three quiet knobs: env var ↔ hub pref. */
 export const QUIET_KNOBS = [
-	{ env: "UNOWN_FOOTER_CLASSIC", pref: "footerClassic" },
-	{ env: "UNOWN_TURN_METER", pref: "turnMeter" },
-	{ env: "UNOWN_MISSION_PANEL", pref: "missionPanel" },
+        { env: "UNOWN_FOOTER_CLASSIC", pref: "footerClassic" },
+        { env: "UNOWN_TURN_METER", pref: "turnMeter" },
+        { env: "UNOWN_MISSION_PANEL", pref: "missionPanel" },
 ] as const;
 
 export type QuietKnobEnv = (typeof QUIET_KNOBS)[number]["env"];
@@ -36,21 +36,38 @@ export type QuietKnobEnv = (typeof QUIET_KNOBS)[number]["env"];
 /** Env vars that were EXPLICITLY set when this module first seeded — locked. */
 const envLocked = new Set<string>();
 
-/** Boot seam: seed unset env vars from the hub prefs. Call once per process. */
+/** The boot seam is an ENSURE — it can fire more than once per process
+ * (agent-dir init, dashboard boot, a reload). A re-run must not mistake
+ * the previous run's OWN seeding for an explicit env var and lock every
+ * knob — the live Q4 receipt caught exactly that (the editor said Saved,
+ * the pref never landed). One shot per process, like every other seed. */
+let seededThisProcess = false;
+
+/** Boot seam: seed unset env vars from the hub prefs. Idempotent per
+ * process — call as often as the ensure seam fires. */
 export function seedQuietKnobEnv(): void {
-	const prefs = loadHubPrefs();
-	for (const knob of QUIET_KNOBS) {
-		if (process.env[knob.env] !== undefined) {
-			envLocked.add(knob.env);
-			continue; // explicit env wins — kill switches stay king
-		}
-		process.env[knob.env] = prefs[knob.pref] ? "1" : "0";
-	}
+        if (seededThisProcess) return;
+        seededThisProcess = true;
+        const prefs = loadHubPrefs();
+        for (const knob of QUIET_KNOBS) {
+                if (process.env[knob.env] !== undefined) {
+                        envLocked.add(knob.env);
+                        continue; // explicit env wins — kill switches stay king
+                }
+                process.env[knob.env] = prefs[knob.pref] ? "1" : "0";
+        }
 }
 
 /** Is this knob pinned by an explicit env var set before boot seeding? */
 export function quietKnobEnvLocked(env: QuietKnobEnv): boolean {
-	return envLocked.has(env);
+        return envLocked.has(env);
+}
+
+/** Test seam: reset the one-shot guard + the lock set (tests re-seed per
+ * case against fresh homes — the resetGitAvailableCache convention). */
+export function resetQuietKnobSeamForTests(): void {
+        seededThisProcess = false;
+        envLocked.clear();
 }
 
 /**
@@ -58,25 +75,25 @@ export function quietKnobEnvLocked(env: QuietKnobEnv): boolean {
  * the knob is env-locked. Returns true when the runtime state changed.
  */
 export function applyQuietKnobPref(env: QuietKnobEnv, value: boolean): boolean {
-	if (envLocked.has(env)) return false;
-	const knob = QUIET_KNOBS.find((k) => k.env === env);
-	if (!knob) return false;
-	const prefs: HubPrefs = loadHubPrefs();
-	(prefs as unknown as Record<string, boolean>)[knob.pref] = value;
-	saveHubPrefs(prefs);
-	process.env[env] = value ? "1" : "0";
-	return true;
+        if (envLocked.has(env)) return false;
+        const knob = QUIET_KNOBS.find((k) => k.env === env);
+        if (!knob) return false;
+        const prefs: HubPrefs = loadHubPrefs();
+        (prefs as unknown as Record<string, boolean>)[knob.pref] = value;
+        saveHubPrefs(prefs);
+        process.env[env] = value ? "1" : "0";
+        return true;
 }
 
 /** Effective on/off for a knob (the env reader's verdict). */
 export function quietKnobEffective(
-	env: QuietKnobEnv,
-	envSource: Record<string, string | undefined> = process.env,
+        env: QuietKnobEnv,
+        envSource: Record<string, string | undefined> = process.env,
 ): boolean {
-	switch (env) {
-		case "UNOWN_FOOTER_CLASSIC":
-			return (envSource[env] ?? "") === "1";
-		default:
-			return (envSource[env] ?? "") !== "0";
-	}
+        switch (env) {
+                case "UNOWN_FOOTER_CLASSIC":
+                        return (envSource[env] ?? "") === "1";
+                default:
+                        return (envSource[env] ?? "") !== "0";
+        }
 }

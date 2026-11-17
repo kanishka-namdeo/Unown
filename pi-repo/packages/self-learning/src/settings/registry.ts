@@ -312,7 +312,15 @@ const interfaceItems: SettingsItem[] = [
                 default: false,
                 get: () => quietKnobEffective("UNOWN_FOOTER_CLASSIC"),
                 set: (v) => {
-                        applyQuietKnobPref("UNOWN_FOOTER_CLASSIC", Boolean(v));
+                        // The refusal must be LOUD: the editor's contract turns a
+                        // thrown set into "Write failed: ..." — a silent false would
+                        // print "Saved" over a write that never landed (the live Q4
+                        // receipt caught exactly that shape).
+                        if (!applyQuietKnobPref("UNOWN_FOOTER_CLASSIC", Boolean(v))) {
+                                throw new Error(
+                                        "UNOWN_FOOTER_CLASSIC is set in your environment and wins over the hub (kill switches stay king) — unset it in your shell to toggle here",
+                                );
+                        }
                 },
         }),
         {
@@ -1696,7 +1704,11 @@ const observabilityItems: SettingsItem[] = [
                 default: true,
                 get: () => quietKnobEffective("UNOWN_TURN_METER"),
                 set: (v) => {
-                        applyQuietKnobPref("UNOWN_TURN_METER", Boolean(v));
+                        if (!applyQuietKnobPref("UNOWN_TURN_METER", Boolean(v))) {
+                                throw new Error(
+                                        "UNOWN_TURN_METER is set in your environment and wins over the hub (kill switches stay king) — unset it in your shell to toggle here",
+                                );
+                        }
                 },
         }),
         toggle({
@@ -1712,7 +1724,11 @@ const observabilityItems: SettingsItem[] = [
                 default: true,
                 get: () => quietKnobEffective("UNOWN_MISSION_PANEL"),
                 set: (v) => {
-                        applyQuietKnobPref("UNOWN_MISSION_PANEL", Boolean(v));
+                        if (!applyQuietKnobPref("UNOWN_MISSION_PANEL", Boolean(v))) {
+                                throw new Error(
+                                        "UNOWN_MISSION_PANEL is set in your environment and wins over the hub (kill switches stay king) — unset it in your shell to toggle here",
+                                );
+                        }
                 },
         }),
         readonly({
