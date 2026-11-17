@@ -8,7 +8,52 @@ archaeology. When a round completes, its log graduates to a round-specific
 
 ---
 
-## IN FLIGHT — the Toccata round (2026-11-15)
+## IN FLIGHT — none (2026-11-17)
+
+The index is current: the Semplice round graduated at v0.0.70. The next
+round opens with a fresh `docs/<round>-session.md` and a pointer here.
+
+## GRADUATED — the Semplice round (2026-11-17, CLOSED at CP7; v0.0.70)
+
+`docs/semplice-round-session.md` — the overwhelm-reduction round: the
+competitor teardown (Claude Code, Codex CLI, Gemini CLI, OpenCode, Crush,
+aider, the classic TUIs) plus the study-backed digests (cognitive load,
+Miller/Cowan, Hick, progressive disclosure, Nielsen, onboarding/SDT,
+error guidelines, terminal a11y — every claim sourced in
+`docs/tui-overwhelm-research.md`) turned against a PTY-captured baseline
+of unown's own first boot. Six checkpoints shipped: the quiet first boot
+(25 lines of preamble → 1 — override diagnostics suppressed, managed-tool
+status silent unless failed, quietStartup seeded, mission null state
+silent), the two-beat first run (Enter keeps a working bridge, ≤8-row
+setup summary, spec-gate safe default with honest provenance), the
+grouped command catalog (category headers in the `/` popup and ctrl+k
+palette, `/help` created — it never existed, the tip lied — plus two
+pre-existing render bugs fixed), plain-language chrome (turn + cost
+chip, five-hint row, cache codes classic-only), the flights fall-through
+(typing dismisses the starter card into the editor — the eats-keystrokes
+hazard is gone), and the everyday-first `--help`. Two open questions
+closed with receipts (`//help` verified as the Claude-Code escape hatch,
+the security sweep's "corrupted branch filter" retracted as a
+terminal-escape display artifact); the sweep's real findings shipped
+(eslint chain cleared to 0 vulnerabilities, the edit-bench Dependabot
+stream + audit lane). Suites at the cut: self-learning 5973/105/0,
+landing 2094/0, audit + budget + docs + claims + theme gates green.
+
+## GRADUATED — the Da capo round (2026-11-16, CLOSED at CP5; v0.0.69)
+
+`docs/dacapo-round-session.md` — the round-2 Claude Code touch study:
+sixteen fresh gaps audited against the v2.1.300→2.1.325 delta, the input
+lane (paste-pill Ctrl+R search, invisible-char sanitization, keybinding
+validation), the status lane (terminal title states, amber-after-10s
+chip, notification channels + the needs-input ping), the command lane
+(/color, /keybindings, /tui, /copy [N], /redraw, ctrl+alt+l,
+/terminal-setup), the script lane (the statusline contract +
+external-editor context + the settings-hub rows), and the mouse lane
+(click-to-send on the queued strip, the deterministic refocus recap, the
+mode-switch hook repair). Research record
+`docs/tui-claude-code-parity-research-2.md`.
+
+## GRADUATED — the Toccata round (2026-11-15, CLOSED; v0.0.68)
 
 `docs/toccata-round-session.md` — the keyboard round: Claude Code's TUI
 experience reverse-engineered from the official interactive-mode and

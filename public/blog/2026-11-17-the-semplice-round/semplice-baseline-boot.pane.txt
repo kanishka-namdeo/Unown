@@ -1,0 +1,36 @@
+
+[Extension issues]
+  <inline:unown-tools>
+    Extension command '/settings' overrides a built-in interactive command. The extension version is dispatched and listed in
+autocomplete.
+  <inline:unown-tools>
+    Extension command '/copy' overrides a built-in interactive command. The extension version is dispatched and listed in
+autocomplete.
+
+
+ fd not found. Downloading...
+ Warning: Failed to download fd: GitHub API error: 403
+
+ ◈ memory recalled: 2 rules — /memory show
+
+ ○ no tracked steps · conf ✓ · 0m in session
+┌────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
+│   Initialize an AGENTS.md                                                                                                  │
+│                                                                                                                            │
+│  Pick a starter task — it lands in the editor, ready to send.                                                              │
+│                                                                                                                            │
+│  ❯ 1  Initialize an AGENTS.md                                                                                              │
+│    this repo has no AGENTS.md yet — scaffold one for future agents (or run: unown init-agents)                             │
+│    2  How unown's memory works                                                                                             │
+│    explain how unown's memory tiers work                                                                                   │
+│    3  Open the dashboard                                                                                                   │
+│    boot it and walk me through it (or run: unown dashboard)                                                                │
+│    4  Run a health check                                                                                                   │
+│    run unown doctor and explain anything yellow                                                                            │
+│                                                                                                                            │
+│  1-4 pick · ↑↓ move · enter use · esc close                                                                                │
+│  x  don't show this again                                                                                                  │
+└────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┘
+
+/tmp/semplice-A-cwd-6e0dv316 · ctx ▕░░░░░░░░░░▏ 0.0%/524k (auto)                                                 agnes-3.0-flash
+? help · ctrl+k palette · / commands · ! bash · ctrl+o transcript · esc-esc tree

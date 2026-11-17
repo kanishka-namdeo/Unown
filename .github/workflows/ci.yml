@@ -736,9 +736,9 @@ jobs:
         # @huggingface/transformers + onnxruntime-node on every run of that
         # probe. Its package-lock.json is committed precisely so this audit is
         # a measurement of the pinned tree rather than a fresh resolution.
-        # edit-bench is deliberately absent: it ships no lockfile, so npm audit
-        # errors out (ENOLOCK) rather than answering — commit one, add it to
-        # this list, and to dependabot, in the same change.
+        # edit-bench audits through its committed bun.lock in the bun-lock loop
+        # below (the 2026-11-17 hygiene sweep closed the gap this comment used
+        # to describe — no lockfile, no stream, no audit lane).
         #
         # (The 2026-10-17 triage list was three prisma-internal GHSA ignores —
         # deepmerge-ts via @prisma/config and two mysql2 advisories. D7 removed
@@ -755,6 +755,14 @@ jobs:
             fi
             echo "npm audit --omit=dev in $dir"
             (cd "$dir" && npm audit --omit=dev --audit-level=high)
+          done
+          for dir in benchmarks/edit-bench; do
+            if [ ! -f "$dir/bun.lock" ]; then
+              echo "::error::$dir is on the audit list but has no committed bun.lock"
+              exit 1
+            fi
+            echo "bun audit --prod in $dir"
+            (cd "$dir" && bun audit --prod)
           done
 
   mermaid:

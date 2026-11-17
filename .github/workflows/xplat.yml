@@ -361,9 +361,9 @@ jobs:
           bun-version: "1.4.3"
       - name: Advisory audit (every installed manifest, production deps)
         # Mirrored from ci.yml's security job by the maintenance contract above:
-        # root `bun audit` plus the nested manifest the nonllm bench lane
-        # installs. Same guard — a listed dir with no committed lockfile is a
-        # failure, not a silent skip.
+        # root `bun audit` plus the nested manifests the nonllm (npm lock) and
+        # edit-bench (bun.lock) bench lanes install. Same guard — a listed dir
+        # with no committed lockfile is a failure, not a silent skip.
         shell: bash
         run: |
           set -euo pipefail
@@ -375,6 +375,14 @@ jobs:
             fi
             echo "npm audit --omit=dev in $dir"
             (cd "$dir" && npm audit --omit=dev --audit-level=high)
+          done
+          for dir in benchmarks/edit-bench; do
+            if [ ! -f "$dir/bun.lock" ]; then
+              echo "::error::$dir is on the audit list but has no committed bun.lock"
+              exit 1
+            fi
+            echo "bun audit --prod in $dir"
+            (cd "$dir" && bun audit --prod)
           done
 
   sandbox-smoke:

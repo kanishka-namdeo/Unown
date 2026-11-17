@@ -7,6 +7,16 @@
     <description>How each feature and release works, what it does, and the receipts behind it — the longhand record of the self-improving terminal coding agent Unown.</description>
     <language>en</language>
     <item>
+      <title>The Semplice round: a quieter terminal, on evidence</title>
+      <link>https://unown-nine.vercel.app/blog/2026-11-17-the-semplice-round</link>
+      <guid isPermaLink="true">https://unown-nine.vercel.app/blog/2026-11-17-the-semplice-round</guid>
+      <pubDate>Tue, 17 Nov 2026 00:00:00 GMT</pubDate>
+      <description>We tore down Claude Code, Codex CLI, Gemini CLI and aider like UX researchers, then removed everything a first-time user should never see.</description>
+      <category>tui</category>
+      <category>ux</category>
+      <category>research</category>
+    </item>
+    <item>
       <title>The Da capo round: Claude Code&apos;s touch study, played again</title>
       <link>https://unown-nine.vercel.app/blog/2026-11-16-the-da-capo-round</link>
       <guid isPermaLink="true">https://unown-nine.vercel.app/blog/2026-11-16-the-da-capo-round</guid>

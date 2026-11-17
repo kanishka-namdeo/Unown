@@ -1,0 +1,36 @@
+
+First run — the bundled llm-bridge is answering (the default provider).
+Connect your own instead? (Agnes, OpenAI, OpenRouter, Anthropic, Dashscope, DeepSeek, local…)
+  Enter = keep the bundled bridge · y = guided setup [y/N]
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

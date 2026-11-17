@@ -1,0 +1,36 @@
+   login, logout, model, providers, scoped-models, thinking
+
+ ── Plan & review ──
+
+   blame, goal, output-style, plan, promote, review
+
+ ── Safety & permissions ──
+
+   add-dir, permissions, project-settings, trust
+
+ ── Session ──
+
+   checkpoint, checkpoints, clone, compact, edit-resend, export, fork, import, name, new, quit
+
+   receipts, redo, reload, restore, resume, rewind, session, sessions, share, tree, undo
+
+ ── Tools & data ──
+
+   commit, context, copy, lsp, mcp, repomap
+
+
+
+ ? keyboard shortcuts · /hotkeys the full key map · /flights starter tasks · docs/usage.md
+
+»───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+/
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+Add-ons
+▌ addons                      Configure the TUI addons (ask_user_question, todo, advisor)
+  todos                       Show all todos on the current branch, grouped by status
+Display
+  color                       Set the session accent color of the input editor (/color [name|default])
+  (2/110)
+/tmp/semplice3-cwd-qlzv50zy · ctx ▕░░░░░░░░░░▏ 0.0%/524k (auto)                                                  agnes-3.0-flash
+memory: up · old build
+? help · ctrl+k palette · / commands · ! bash · ctrl+o transcript · esc-esc tree

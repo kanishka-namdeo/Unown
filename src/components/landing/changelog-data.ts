@@ -30,36 +30,40 @@ export interface ChangelogStop {
   groups: ChangelogGroup[];
 }
 
-export const CHANGELOG_TOTAL_ENTRIES = 610;
+export const CHANGELOG_TOTAL_ENTRIES = 612;
 
 export const CHANGELOG_TOTALS: Record<ChangelogBucket, number> = {
   "Added": 261,
-  "Changed": 38,
+  "Changed": 39,
   "Deprecated": 0,
   "Removed": 3,
   "Fixed": 222,
-  "Security": 5,
+  "Security": 6,
   "Behavior": 81
 };
 
 export const CHANGELOG_STOPS: ChangelogStop[] = [
   {
-    "label": "Unreleased",
-    "date": null,
-    "total": 6,
+    "label": "0.0.70",
+    "date": "2026-11-17",
+    "total": 8,
     "counts": {
       "Added": 0,
-      "Changed": 6,
+      "Changed": 7,
       "Deprecated": 0,
       "Removed": 0,
       "Fixed": 0,
-      "Security": 0,
+      "Security": 1,
       "Behavior": 0
     },
     "groups": [
       {
         "bucket": "Changed",
         "items": [
+          {
+            "title": "The Semplice round CP7 — the round ships (v0.0.70; research record docs/tui-overwhelm-research.md)",
+            "behavior": false
+          },
           {
             "title": "The Semplice round CP6 — the everyday-first --help (W18; research record docs/tui-overwhelm-research.md)",
             "behavior": false
@@ -82,6 +86,15 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
           },
           {
             "title": "The Semplice round CP1 — the quiet first boot (W1–W4 of the overwhelm-reduction round; every decision cited in…",
+            "behavior": false
+          }
+        ]
+      },
+      {
+        "bucket": "Security",
+        "items": [
+          {
+            "title": "The dependency-hygiene fixes the 2026-11-17 sweep found real (dev-tooling advisory + a coverage gap)",
             "behavior": false
           }
         ]

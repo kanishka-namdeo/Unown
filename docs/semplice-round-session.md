@@ -21,6 +21,13 @@ Related pages: [research record](tui-overwhelm-research.md) · [UX principles](u
 - [Environment notes (for resume)](#environment-notes-for-resume)
 - [CP0 — research + baseline](#cp0--research--baseline)
 - [CP1 — the quiet first boot](#cp1--the-quiet-first-boot)
+- [CP2 — the two-beat first run](#cp2--the-two-beat-first-run)
+- [CP3 — command discoverability](#cp3--command-discoverability)
+- [CP4 — plain-language chrome](#cp4--plain-language-chrome)
+- [CP5 — onboarding consolidation](#cp5--onboarding-consolidation)
+- [CP6 — the everyday-first `--help`](#cp6--the-everyday-first---help)
+- [CP7 — the ship](#cp7--the-ship)
+- [The round closes](#the-round-closes)
 
 ## Phase ledger
 
@@ -33,7 +40,7 @@ Related pages: [research record](tui-overwhelm-research.md) · [UX principles](u
 | CP4 | Plain-language chrome (W13–W14, W16) | done | ttft classic-only, 5-hint row, cache chips classic-only (PTY verified) |
 | CP5 | Onboarding consolidation (W16–W17) | done | flights printable fall-through (PTY 2/2); W17 verified already-held (pi's dialog is official-distribution-only, never fires for unown) |
 | CP6 | `--help` restructure (W18) | done | Everyday block, grouped subcommands, compressed plan + env, topic pointers |
-| CP7 | Ship | planned | docs/landing/blog sync, v0.0.70, cross-platform builds, security sweep |
+| CP7 | Ship | done | this page; v0.0.70 fold + rail regen; blog `2026-11-17-the-semplice-round` + 3 stills; overview re-stamp; security fixes (eslint chain, edit-bench stream + audit lanes); two investigations closed (`//help` escape-hatch verified, branch-filter false positive retracted) |
 
 ## Environment notes (for resume)
 
@@ -43,6 +50,7 @@ Related pages: [research record](tui-overwhelm-research.md) · [UX principles](u
 - Baseline/after stills + `.pane.txt` receipts: `/home/z/my-project/download/unown-semplice/{baseline,after-cp1}/` (session-local; the round's durable receipts land in the changelog narrative).
 - Gotcha: `rg -rn` is NOT "recursive grep" — `-r` is `--replace` and silently mangles output. Use `rg -n` + `-l`.
 - Full-suite runs: `cd pi-repo/packages/self-learning && bun test test/` (~260 s; 3 order-dependent flakes observed once — automation-kill-switch/PLM×2 — green in isolation and on the full re-run).
+- Resume note (2026-11-17, post-sandbox-recycle): the canonical engine suite cwd is `pi-repo/packages/self-learning` — a bare `bun test test/` from the REPO ROOT sweeps every `test/` directory in the tree (apps, pi-repo packages) and dies on an unrelated 5 s timeout; do not use it. The 5973/105/0 figure at CP7 is the canonical suite. Bun 1.4.4 can live at `/home/z/my-project/.tools/bun` (PATH-prepend) so it survives recycles.
 
 ## CP0 — research + baseline
 
@@ -261,7 +269,67 @@ restructure), the completions + claims gates green, full suite re-run.
 - **CP4** (2026-11-17): committed as `engine(tui): semplice CP4 — plain-language chrome`; receipts above.
 - **CP5** (2026-11-17): committed as `engine(tui): semplice CP5 — the flights fall-through`; receipts above.
 - **CP6** (2026-11-17): committed as `engine(tui): semplice CP6 — the everyday-first --help`; receipts above.
+- **CP7** (2026-11-17): the ship — security fixes, investigation closures, docs/blog/overview, v0.0.70 fold + release; details below.
+
+## CP7 — the ship
+
+**The two open investigations, closed with receipts.**
+
+1. **The `//help` double-slash artifact (baseline 06) — correct behavior, verified live.** The
+   baseline pane's `» //help` echo was NOT a corrupted buffer. The `/` that opens the command
+   popup SURVIVES Esc by design (closing autocomplete must never destroy typed text — the
+   baseline capture script's submit dance stacked `/help` on the surviving `/`), and `//text`
+   falls through to the model as a chat turn: the double-slash escape hatch Claude Code ships
+   (a user who genuinely wants to send a message starting with `/` types two). Verified as a
+   real user (`scripts/tui-capture/verify_slash_escape.py`, committed, 4/4 stills): clean
+   `/help` renders the grouped card; popup-Esc leftover `/` + `help` composes to `/help` and
+   renders the same card; `//help` submits as chat (echo + tool call + ctx deltas, no error,
+   no command dispatch).
+
+2. **The security sweep's "corrupted branch filter in 7 workflows" — RETRACTED as a false
+   positive.** The files on `main` read `branches: [main]` and always did; the sweep's
+   `branches: ain]` reading was a display artifact — the `[m` byte pair is an SGR escape
+   suffix, eaten by terminal-emulating capture output. Proven by `od -c` against both the
+   working tree and `git show HEAD:`. No workflow change was needed; the retraction is
+   recorded in the changelog. (The sweep's OTHER findings were real — see the security
+   paragraph below. The meta-lesson is the round's thesis wearing a different coat: read the
+   actual bytes before believing what the screen tells you.)
+
+**Security fixes shipped (the sweep's real findings).** The tree's one live advisory — a
+`minimatch@10.2.x` chain under the eslint dev stack (dev-only, low risk) — cleared by moving
+the chain, not overriding it: `eslint` 10.14.0 → 10.15.0, `eslint-config-next` 16.4.5 →
+16.4.6, `typescript-eslint` 8.72.0 → 8.73.0; `bun audit` across all 458 packages now reports
+**0 vulnerabilities**, lint stays 0 errors (144 pre-existing warnings, unchanged). The
+`benchmarks/edit-bench` coverage gap closed: a fifth Dependabot stream (`bun` @
+`/benchmarks/edit-bench`, monthly, PR limit 1) + a bun-lock audit loop in the ci.yml and
+xplat.yml advisory-audit jobs (verified clean locally) + the stale "ships no lockfile"
+comment retired. Dependabot PRs #57–62 (the weekly batch) were merged upstream before the
+cut; code scanning and secret scanning show zero open alerts.
+
+**Docs + landing.** The blog post `content/blog/2026-11-17-the-semplice-round.md` ships with
+the round's own stills (the quiet boot, the honest gate, the grouped catalog) + `.pane.txt`
+receipts under `public/blog/2026-11-17-the-semplice-round/`; `unown-overview.md` re-stamped
+at v0.0.70 (surfaces, not counts — the round changed what the surfaces say, not how many
+there are); the changelog rail regenerated with the fold.
+
+**Suites at the cut.** Self-learning `bun test test/` **5973 pass / 105 skip / 0 fail**
+(~254 s, canonical cwd); landing `bun test ./src` **2094 pass / 0 fail**; `bun run lint` 0
+errors; `bun audit` 0 across 458 packages (+ edit-bench clean); `bun bin/unown --version`
+matches package.json at 0.0.70.
 
 ## The round closes
 
-(pending — CP2..CP7)
+The Semplice round shipped as **v0.0.70** — eighteen of nineteen planned interventions
+landed across six checkpoints (one — W5, the first-boot memory-recall gating — was a
+documented non-adoption: the recall line is a Claude-Code-parity contract and it is honest;
+one — W17 — was a verified already-held). The round's honest measure is not the count of
+changes but the count of REMOVED conversations: 25 lines of first-boot preamble → 1; a
+99-command flat list → a grouped catalog with a real `/help`; a gate that asked before it
+needed to → Enter when the bridge is answering; a footer that spoke `ttft` and `CH%` → a
+footer that says `turn 3.4s · ~$0.0084`; a starter card that ate keystrokes → one that
+steps aside when you type; a 315-line `--help` wall → nine everyday lines before the wall.
+
+Every change cites the research record; every change is pinned by tests; every checkpoint
+was verified through the PTY lane as a real user. The two questions the round opened that
+were not product bugs — the `//help` echo and the sweep's branch-filter reading — were
+closed the same way the round opened them: by reading the actual bytes.
