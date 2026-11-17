@@ -8,25 +8,29 @@ archaeology. When a round completes, its log graduates to a round-specific
 
 ---
 
-## IN FLIGHT — the Calando round (2026-11-17, OPENED)
+## GRADUATED — the Calando round (2026-11-17, CLOSED at CP6; v0.0.71)
 
 `docs/calando-round-session.md` — the mid-session overwhelm round: the
-Semplice round quieted the first minute; Calando takes the same
+Semplice round quieted the first minute; Calando took the same
 study-backed method to the rest of the session (transcript tool-output
 bulk, toast/chip narration, the wait experience, depth discoverability),
 working through the Semplice closing inventory (items 9–17) and a fresh
-competitor teardown + mid-session research brief. Findings are Q-numbers.
-Progress: **CP0–CP3 DONE, CP4 in flight** — the four Q-fixes shipped and
-verified (the mission panel's telemetry-alone null state, the ≥1 s Took
-threshold with the always-live Elapsed line, the managed-tool
-recurring-failure latch, the three quiet knobs as settings-hub toggles
-with env-wins precedence); the PTY receipts show the baseline's noise
-rows gone at both widths and the multi-tool lane; the live hub receipt
-caught and cured a non-idempotent boot-seam lock (the editor once
-printed Saved over a refused write — now the refusal is loud); the blog
-post + UX-principles amendments + configuration rows + overview stamp
-land with CP4; the [0.0.71] cut (CHANGELOG fold, six-OS release) is
-CP5–CP6.
+competitor teardown + mid-session research brief. Findings were
+Q-numbers. **Shipped**: the mission panel's telemetry-alone null state
+(idle-after-turns renders no row), the ≥1 s Took threshold with the
+always-live Elapsed line, the managed-tool recurring-failure latch
+(first failure full, repeats one dim line, success clears), and the
+three quiet knobs as settings-hub toggles (env > pref > default, the
+honest lock report — the live PTY receipt caught and cured a
+non-idempotent boot-seam lock that printed Saved over refused writes).
+The PTY receipts show the baseline's noise rows gone at both widths and
+the multi-tool lane; the UX principles card carries the mid-session
+amendments as binding contract; the blog post ships with six stills.
+The deferred list (token-info consolidation, the fleet panic button,
+the trust surface, split-view sprawl, plan-mode entry compression) is
+on the record in the session log's closing notes. v0.0.71 cut with the
+six-per-OS release matrix; 0 open Dependabot/code-scanning alerts at
+close.
 
 ## GRADUATED — the Semplice round (2026-11-17, CLOSED at CP7; v0.0.70)
 

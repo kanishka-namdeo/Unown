@@ -30,11 +30,11 @@ export interface ChangelogStop {
   groups: ChangelogGroup[];
 }
 
-export const CHANGELOG_TOTAL_ENTRIES = 612;
+export const CHANGELOG_TOTAL_ENTRIES = 615;
 
 export const CHANGELOG_TOTALS: Record<ChangelogBucket, number> = {
   "Added": 261,
-  "Changed": 39,
+  "Changed": 42,
   "Deprecated": 0,
   "Removed": 3,
   "Fixed": 222,
@@ -43,6 +43,39 @@ export const CHANGELOG_TOTALS: Record<ChangelogBucket, number> = {
 };
 
 export const CHANGELOG_STOPS: ChangelogStop[] = [
+  {
+    "label": "0.0.71",
+    "date": "2026-11-17",
+    "total": 3,
+    "counts": {
+      "Added": 0,
+      "Changed": 3,
+      "Deprecated": 0,
+      "Removed": 0,
+      "Fixed": 0,
+      "Security": 0,
+      "Behavior": 0
+    },
+    "groups": [
+      {
+        "bucket": "Changed",
+        "items": [
+          {
+            "title": "The Calando round CP4 — the docs/landing/blog sync (the principles amendments; session log…",
+            "behavior": false
+          },
+          {
+            "title": "The Calando round CP3 — the live receipt's two catches, cured (session log docs/calando-round-session.md)",
+            "behavior": false
+          },
+          {
+            "title": "The Calando round CP2 — the four quiet fixes…",
+            "behavior": false
+          }
+        ]
+      }
+    ]
+  },
   {
     "label": "0.0.70",
     "date": "2026-11-17",

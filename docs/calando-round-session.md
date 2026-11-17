@@ -1,6 +1,6 @@
 # The Calando round — session log (mid-session overwhelm, end to end)
 
-Opened: 2026-11-17. Status: IN FLIGHT (CP4 done, CP5 next).
+Opened: 2026-11-17. Status: CLOSED at CP6 (v0.0.71).
 
 Operator mission (verbatim):
 
@@ -313,6 +313,29 @@ fix: quiet-knobs (5), settings-hub, settings-defaults-drift, mission.
 Gates at CP4: `check_docs` 0, `landing_blog.test.mjs` 9/9, `tsc
 --noEmit` 0 errors.
 
+## CP5 — the Dependabot + code-scanning sweep (2026-11-17)
+
+Zero-open verified across the board: **0 open Dependabot alerts, 0 open
+code-scanning alerts, 0 open PRs** (GitHub API, all manifests — the
+Semplice round's five Dependabot streams incl. the benchmarks/edit-bench
+bun-lock stream keep watching); `bun audit --all` at the repo root: **0
+vulnerabilities** (458 packages, dev included). pi-repo's v3 lockfile
+cannot be read by this sandbox's bun 1.3.14 (`UnknownLockfileVersion` —
+the documented trap; the CI advisory-audit jobs under bun ≥ 1.4 own that
+lane, and GitHub's 0-alert state covers its manifests). CI on the
+round's commits: ad3e59f6 CI/CodeQL/Scorecard/deploy-verify ALL GREEN;
+689b85e3 green as tagged. Nothing to remediate — the sweep's receipt is
+the zero state itself.
+
+## CP6 — the v0.0.71 cut (2026-11-17)
+
+The CHANGELOG fold: the round's three CP entries (CP2/CP3/CP4) under
+`[0.0.71]`; package.json **0.0.71**; `bun bin/unown --version` → 0.0.71;
+the landing rail regenerated at **65 stops / 615 entries / 65 dated**
+(`landing_changelog.mjs --check` ok). Tag `v0.0.71` cut on the release
+commit per the version contract (tag = package.json), triggering the
+six-per-OS release matrix.
+
 
 
 
@@ -325,8 +348,8 @@ Gates at CP4: `check_docs` 0, `landing_blog.test.mjs` 9/9, `tsc
 | CP2 | Implementation (end to end) | DONE | the Q1–Q4 section above |
 | CP3 | Verification (unit + PTY + suites) | DONE | the CP3 section above |
 | CP4 | Docs/DOX/landing/blog sync | DONE | the CP4 section above |
-| CP5 | Dependabot + code scanning sweep | IN FLIGHT | — |
-| CP6 | Version bump + release + OS builds | — | — |
+| CP5 | Dependabot + code scanning sweep | DONE | the CP5 section above |
+| CP6 | Version bump + release + OS builds | DONE | the CP6 section above |
 
 ## Environment notes (for resume)
 
