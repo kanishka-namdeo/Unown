@@ -78,7 +78,7 @@
                 "eslint": "10.15.0",
                 "eslint-config-next": "^16.4.6",
                 "happy-dom": "^21.0.4",
-                "marked": "^18.2.0",
+                "marked": "^18.2.1",
                 "playwright": "1.65.1",
                 "playwright-core": "1.65.1",
                 "tailwindcss": "^4.3.5",
